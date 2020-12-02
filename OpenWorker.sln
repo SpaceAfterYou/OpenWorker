@@ -1,0 +1,51 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30709.64
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LoginService", "LoginService\LoginService.csproj", "{B3FDC7B7-5176-4AEB-977E-7F904AAD7A61}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Core", "Core\Core.shproj", "{75F460CB-D3B5-4B1E-8803-DB0D22BB8466}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SoulWorker", "SoulWorker\SoulWorker.shproj", "{F48A867D-7F37-4DF2-A0DB-4C01BD32AA59}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GateService", "GateService\GateService.csproj", "{9C229B8E-B343-4B38-BB3E-485A7297ACEA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SetupDatabase", "SetupDatabase\SetupDatabase.csproj", "{F8521A81-E8EF-4388-9917-55FD7F328DEA}"
+EndProject
+Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Core\Core.projitems*{75f460cb-d3b5-4b1e-8803-db0d22bb8466}*SharedItemsImports = 13
+		Core\Core.projitems*{9c229b8e-b343-4b38-bb3e-485a7297acea}*SharedItemsImports = 5
+		SoulWorker\SoulWorker.projitems*{9c229b8e-b343-4b38-bb3e-485a7297acea}*SharedItemsImports = 5
+		Core\Core.projitems*{b3fdc7b7-5176-4aeb-977e-7f904aad7a61}*SharedItemsImports = 5
+		SoulWorker\SoulWorker.projitems*{b3fdc7b7-5176-4aeb-977e-7f904aad7a61}*SharedItemsImports = 5
+		SoulWorker\SoulWorker.projitems*{f48a867d-7f37-4df2-a0db-4c01bd32aa59}*SharedItemsImports = 13
+		Core\Core.projitems*{f8521a81-e8ef-4388-9917-55fd7f328dea}*SharedItemsImports = 5
+		SoulWorker\SoulWorker.projitems*{f8521a81-e8ef-4388-9917-55fd7f328dea}*SharedItemsImports = 5
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B3FDC7B7-5176-4AEB-977E-7F904AAD7A61}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3FDC7B7-5176-4AEB-977E-7F904AAD7A61}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3FDC7B7-5176-4AEB-977E-7F904AAD7A61}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3FDC7B7-5176-4AEB-977E-7F904AAD7A61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9C229B8E-B343-4B38-BB3E-485A7297ACEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C229B8E-B343-4B38-BB3E-485A7297ACEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C229B8E-B343-4B38-BB3E-485A7297ACEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C229B8E-B343-4B38-BB3E-485A7297ACEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8521A81-E8EF-4388-9917-55FD7F328DEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8521A81-E8EF-4388-9917-55FD7F328DEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8521A81-E8EF-4388-9917-55FD7F328DEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8521A81-E8EF-4388-9917-55FD7F328DEA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F383596F-D1E6-48AD-9150-C1C27F5333B2}
+	EndGlobalSection
+EndGlobal

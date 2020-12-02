@@ -1,0 +1,103 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>75f460cb-d3b5-4b1e-8803-db0d22bb8466</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>Core</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Accounts\AccountContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\CharacterPosts\CharacterPostContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\CharacterPosts\CharacterPostMap.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\CharacterPosts\CharacterPostModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Characters\CharacterContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Context.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Guilds\GuildContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\AccountPosts\AccountPostContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Storage\StorageContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Accounts\AccountMap.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Characters\CharacterMap.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Guilds\GuildMap.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\AccountPosts\AccountPostMap.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Storage\StorageMap.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Accounts\AccountModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Characters\CharacterModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Guilds\GuildModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\AccountPosts\AccountPostModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Storage\StorageModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Extensions\BinaryReaderExtension.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Convert.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Opcodes\ClientOpcode.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Channel\SwitchRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\ChangeSlotRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\CreateRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\DeleteRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\InfoRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\ListRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\MarkFavoriteRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\SelectRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\Title\UpdateRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Character\ToggleWeaponRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Chat\ReceiveRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\CityConnectRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Exchange\InterestListRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Exchange\MyListRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Friends\RecruitListRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Gate\ConnectRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Gate\EnterRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Gesture\DoRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Gesture\SlotsUpdateRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Market\SearchRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Maze\CreateRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\JumpRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\LoopMotionEndBtRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\MoveRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\StopBtRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\Unknown1Request.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Party\AcceptRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Party\ChangeMasterRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Party\InviteRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Post\AccountListRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Post\RecvListRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Quest\AcceptRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Quest\EpisodeCompleteRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\QuickSlot\SetItemsRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\QuickSlot\SetSkillsRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Server\EnterRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Server\HeartbeatRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Server\KeepAliveRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Server\LogoutRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Server\TickCountRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Skill\UpgradeRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\SpecialOption\UpdateListRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Storage\BankInfoRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Storage\InventoryOpenSlotInfoRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Storage\Item\BreakRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Storage\Item\MoveRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Storage\Item\UpgradeRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Storage\Item\UseRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Storage\UpgradeRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Unknown1Request.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Packets\UtilsPacket.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Packets\WriterPacket.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Permissions\HandlerPermission.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Providers\HandlerProvider.cs" />
+    <Compile Include="..\Core\Systems\NetSystem\SwSession.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Attributes\HandlerAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Attributes\RequestAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Extensions\BinaryReaderExtension.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Opcodes\HandlerOpcode.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\LoginRequest.cs" />
+    <Compile Include="..\Core\Systems\NetSystem\SwServer.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Systems\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\CharacterPosts\" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>f48a867d-7f37-4df2-a0db-4c01bd32aa59</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>SoulWorker</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Datas\DotDot\Bin\Tables\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Types\CharacterPostType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\ChatType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\EnterGateWayType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Extensions\BinaryReaderExtension.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\GroupRoleType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\ItemStatType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\LogoutWayType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\ProfileStatusType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\StorageType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\CharacterType.cs" />
+  </ItemGroup>
+</Project>
