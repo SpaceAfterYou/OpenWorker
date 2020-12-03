@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace SetupDatabase.Migrations
 {
     [DbContext(typeof(MigrationContext))]
-    [Migration("20201202191409_Initial")]
+    [Migration("20201203225803_Initial")]
     partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,19 +33,11 @@ namespace SetupDatabase.Migrations
                     b.Property<long>("AccountId")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime>("CreateTime")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime>("ModificationTime")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("timestamp without time zone");
-
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("account_post");
+                    b.ToTable("account_posts");
                 });
 
             modelBuilder.Entity("Core.DatabaseSystem.Accounts.AccountModel", b =>
@@ -55,10 +47,6 @@ namespace SetupDatabase.Migrations
                         .HasColumnType("bigint")
                         .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
-                    b.Property<DateTime>("CreateTime")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<int>("LastSelectedCharacter")
                         .HasColumnType("integer");
 
@@ -66,18 +54,14 @@ namespace SetupDatabase.Migrations
                         .IsRequired()
                         .HasColumnType("CHAR(18)");
 
-                    b.Property<DateTime>("ModificationTime")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<string>("Nickname")
                         .IsRequired()
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)");
 
-                    b.Property<string>("Password")
+                    b.Property<byte[]>("Password")
                         .IsRequired()
-                        .HasColumnType("CHAR(64)");
+                        .HasColumnType("bytea");
 
                     b.Property<decimal>("SessionKey")
                         .HasColumnType("numeric(20,0)");
@@ -92,78 +76,66 @@ namespace SetupDatabase.Migrations
 
                     b.HasIndex("SessionKey");
 
-                    b.ToTable("account");
+                    b.ToTable("accounts");
 
                     b.HasData(
                         new
                         {
                             Id = 1L,
-                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastSelectedCharacter = -1,
                             Mac = "00-00-00-00-00-00",
-                            ModificationTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Nickname = "sawich",
-                            Password = "VaVWDzfVP8ot1N4QMr3D4bSicnxcr3DYCtfLMPcVr6/kFbPr2jxw2oKGc05UqeqPAuZPoRpyMh42cLNa3b88+g==",
+                            Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SessionKey = 0m,
                             SoulCash = 0m
                         },
                         new
                         {
                             Id = 2L,
-                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastSelectedCharacter = -1,
                             Mac = "00-00-00-00-00-00",
-                            ModificationTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Nickname = "Leeroy",
-                            Password = "VaVWDzfVP8ot1N4QMr3D4bSicnxcr3DYCtfLMPcVr6/kFbPr2jxw2oKGc05UqeqPAuZPoRpyMh42cLNa3b88+g==",
+                            Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SessionKey = 0m,
                             SoulCash = 0m
                         },
                         new
                         {
                             Id = 3L,
-                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastSelectedCharacter = -1,
                             Mac = "00-00-00-00-00-00",
-                            ModificationTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Nickname = "Tweekly",
-                            Password = "VaVWDzfVP8ot1N4QMr3D4bSicnxcr3DYCtfLMPcVr6/kFbPr2jxw2oKGc05UqeqPAuZPoRpyMh42cLNa3b88+g==",
+                            Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SessionKey = 0m,
                             SoulCash = 0m
                         },
                         new
                         {
                             Id = 4L,
-                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastSelectedCharacter = -1,
                             Mac = "00-00-00-00-00-00",
-                            ModificationTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Nickname = "Chelsea",
-                            Password = "VaVWDzfVP8ot1N4QMr3D4bSicnxcr3DYCtfLMPcVr6/kFbPr2jxw2oKGc05UqeqPAuZPoRpyMh42cLNa3b88+g==",
+                            Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SessionKey = 0m,
                             SoulCash = 0m
                         },
                         new
                         {
                             Id = 5L,
-                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastSelectedCharacter = -1,
                             Mac = "00-00-00-00-00-00",
-                            ModificationTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Nickname = "Dez",
-                            Password = "VaVWDzfVP8ot1N4QMr3D4bSicnxcr3DYCtfLMPcVr6/kFbPr2jxw2oKGc05UqeqPAuZPoRpyMh42cLNa3b88+g==",
+                            Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SessionKey = 0m,
                             SoulCash = 0m
                         },
                         new
                         {
                             Id = 6L,
-                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastSelectedCharacter = -1,
                             Mac = "00-00-00-00-00-00",
-                            ModificationTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Nickname = "Godo",
-                            Password = "VaVWDzfVP8ot1N4QMr3D4bSicnxcr3DYCtfLMPcVr6/kFbPr2jxw2oKGc05UqeqPAuZPoRpyMh42cLNa3b88+g==",
+                            Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SessionKey = 0m,
                             SoulCash = 0m
                         });
@@ -179,14 +151,6 @@ namespace SetupDatabase.Migrations
                     b.Property<long>("CharacterId")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime>("CreateTime")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime>("ModificationTime")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
@@ -194,7 +158,7 @@ namespace SetupDatabase.Migrations
 
                     b.HasIndex("CharacterId");
 
-                    b.ToTable("character_post");
+                    b.ToTable("character_posts");
                 });
 
             modelBuilder.Entity("Core.DatabaseSystem.Characters.CharacterModel", b =>
@@ -218,13 +182,6 @@ namespace SetupDatabase.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<int>("Character")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreateTime")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<EnergyModel>("Energy")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -232,12 +189,15 @@ namespace SetupDatabase.Migrations
                     b.Property<decimal>("Exp")
                         .HasColumnType("numeric(20,0)");
 
-                    b.Property<int>("Gate")
+                    b.Property<int>("GateId")
                         .HasColumnType("integer");
 
                     b.Property<long[]>("Gesture")
                         .IsRequired()
                         .HasColumnType("bigint[]");
+
+                    b.Property<int>("Hero")
+                        .HasColumnType("integer");
 
                     b.Property<InventoryModel>("Inventory")
                         .IsRequired()
@@ -250,15 +210,15 @@ namespace SetupDatabase.Migrations
                     b.Property<byte>("Level")
                         .HasColumnType("smallint");
 
-                    b.Property<DateTime>("ModificationTime")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<long>("Portrait")
+                    b.Property<PlaceModel>("Place")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<long>("PortraitId")
                         .HasColumnType("bigint");
 
                     b.Property<ProfileModel>("Profile")
@@ -273,7 +233,7 @@ namespace SetupDatabase.Migrations
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
-                    b.Property<byte>("Slot")
+                    b.Property<byte>("SlotId")
                         .HasColumnType("smallint");
 
                     b.Property<StorageModel[]>("Storage")
@@ -284,10 +244,6 @@ namespace SetupDatabase.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<PositionModel>("WorldPosition")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
@@ -295,7 +251,7 @@ namespace SetupDatabase.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("character");
+                    b.ToTable("characters");
                 });
 
             modelBuilder.Entity("Core.DatabaseSystem.Guilds.GuildModel", b =>
@@ -305,18 +261,10 @@ namespace SetupDatabase.Migrations
                         .HasColumnType("bigint")
                         .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
-                    b.Property<DateTime>("CreateTime")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
-
-                    b.Property<DateTime>("ModificationTime")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -325,10 +273,10 @@ namespace SetupDatabase.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("guild");
+                    b.ToTable("guilds");
                 });
 
-            modelBuilder.Entity("Core.DatabaseSystem.Storages.StorageModel", b =>
+            modelBuilder.Entity("Core.DatabaseSystem.Storages.ItemModel", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -348,19 +296,11 @@ namespace SetupDatabase.Migrations
                     b.Property<int>("Count")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime>("CreateTime")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<byte>("Durability")
                         .HasColumnType("smallint");
 
                     b.Property<long>("DyeColor")
                         .HasColumnType("bigint");
-
-                    b.Property<DateTime>("ModificationTime")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("timestamp without time zone");
 
                     b.Property<long>("PrototypeId")
                         .HasColumnType("bigint");
@@ -392,7 +332,7 @@ namespace SetupDatabase.Migrations
 
                     b.HasIndex("CharacterId");
 
-                    b.ToTable("storage");
+                    b.ToTable("items");
                 });
 
             modelBuilder.Entity("Core.DatabaseSystem.AccouintPosts.AccountPostModel", b =>
@@ -428,7 +368,7 @@ namespace SetupDatabase.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("Core.DatabaseSystem.Storages.StorageModel", b =>
+            modelBuilder.Entity("Core.DatabaseSystem.Storages.ItemModel", b =>
                 {
                     b.HasOne("Core.DatabaseSystem.Characters.CharacterModel", "Character")
                         .WithMany()

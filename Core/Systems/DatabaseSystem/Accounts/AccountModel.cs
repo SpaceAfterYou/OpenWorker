@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Core.DatabaseSystem.Accounts
 {
-    [Table("account")]
+    [Table("accounts")]
     [Index("SessionKey")]
     [Index("Nickname", IsUnique = true)]
     public class AccountModel
@@ -26,7 +26,7 @@ namespace Core.DatabaseSystem.Accounts
         public string Nickname { get; init; }
 
         [Required]
-        [Column(TypeName = "CHAR(64)")]
+        //[Column(TypeName = "BYTEA(64)")]
         public byte[] Password { get; init; }
 
         [Required]
@@ -35,11 +35,5 @@ namespace Core.DatabaseSystem.Accounts
 
         [Required]
         public ulong SoulCash { get; init; } = 0;
-
-        [Required, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public DateTime CreateTime { get; init; }
-
-        [Required, DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-        public DateTime ModificationTime { get; init; }
     }
 }

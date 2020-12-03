@@ -2,5 +2,11 @@
 {
     public enum ProfileStatusType
     {
+        TeamSearch,
+        GuildSearch,
+        FriendsSearch,
+        Solo,
+        Rookie,
+        Afk
     }
 }

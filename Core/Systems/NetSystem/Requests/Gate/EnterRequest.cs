@@ -8,14 +8,14 @@ namespace Core.Systems.NetSystem.Requests.Gate
     [Request]
     public readonly struct EnterRequest
     {
-        public int AccountId { get; }
+        public uint AccountId { get; }
         public ushort GateId { get; }
         public ulong SessionKey { get; }
         public EnterGateWayType Way { get; }
 
         public EnterRequest(BinaryReader br)
         {
-            AccountId = br.ReadInt32();
+            AccountId = br.ReadUInt32();
             GateId = br.ReadUInt16();
             SessionKey = br.ReadUInt64();
             Way = br.ReadEnterGateWayType();

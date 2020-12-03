@@ -12,7 +12,7 @@ namespace GateService.Systems.GameSystem
         public TimeSpan InitializeTime { get; init; }
         public uint LastSelectedId { get; set; }
 
-        public Characters(uint accountId, byte gateId) : base()
+        public Characters(uint accountId, ushort gateId) : base(GetCharacterSlots())
         {
             Debug.Assert(accountId != 0);
             Debug.Assert(gateId != 0);
@@ -21,7 +21,7 @@ namespace GateService.Systems.GameSystem
             stopwatch.Start();
 
             using CharacterContext context = new();
-            foreach (var model in context.Character.AsNoTracking().Where(c => c.AccountId == accountId && c.GateId == gateId))
+            foreach (var model in context.Characters.AsNoTracking().Where(c => c.AccountId == accountId && c.GateId == gateId))
             {
                 this[model.SlotId] = new(model);
             }
@@ -32,6 +32,6 @@ namespace GateService.Systems.GameSystem
         }
 
         public static Character[] GetCharacterSlots() =>
-            Enumerable.Range(0, SoulWorker.Constants.CharactersCount).Select<int, Character>(_ => null).ToArray();
+            Enumerable.Repeat<Character>(null, SoulWorker.Constants.CharactersCount).ToArray();
     }
 }

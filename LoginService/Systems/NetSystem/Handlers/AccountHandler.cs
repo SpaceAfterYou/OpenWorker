@@ -33,7 +33,7 @@ namespace LoginService.Systems.NetSystem.Handlers
             byte[] hash = GetPasswordHash(password);
             using AccountContext context = new();
 
-            AccountModel model = context.Account.FirstOrDefault(a => a.Nickname == nickname && a.Password == hash);
+            AccountModel model = context.Accounts.FirstOrDefault(a => a.Nickname == nickname && a.Password == hash);
             if (model is null) { return null; }
 
             model.Mac = mac;

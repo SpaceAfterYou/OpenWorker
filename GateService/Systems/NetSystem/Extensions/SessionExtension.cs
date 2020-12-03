@@ -1,6 +1,8 @@
 ﻿using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Packets;
 using GateService.Systems.GameSystem;
+using GateService.Systems.GameSystem.Extensions;
+using GateService.Systems.GameSystem.Types;
 using System;
 
 namespace GateService.Systems.NetSystem.Extensions
@@ -11,7 +13,7 @@ namespace GateService.Systems.NetSystem.Extensions
         {
             using WriterPacket pw = new(ClientOpcode.GateEnter);
 
-            pw.Write((byte)0); // result
+            pw.Write(GateEnterResultType.Success);
             pw.Write(session.Account.Id);
 
             return session.SendAsync(pw) as Session;
@@ -21,20 +23,12 @@ namespace GateService.Systems.NetSystem.Extensions
         {
             using WriterPacket pw = new(ClientOpcode.CharactersList);
 
-            pw.Write((byte)characters.Count);
-            foreach (var character in characters.Values)
-            {
-                var equipped = character.GetComponent<EquippedStorage>();
+            pw.Write((byte)session.Characters.Count);
+            foreach (var character in session.Characters) { pw.Write(character); }
 
-                pw.WriteMainData(character);
-                pw.WriteWeaponData(equipped);
-                pw.WriteFashionData(equipped);
-                pw.WriteGateCharacterMetaData(character);
-            }
-
-            pw.Write(characters.Last?.Id ?? -1);
+            pw.Write(session.Characters.LastSelectedId);
             pw.Write((ushort)0);
-            pw.Write((ulong)characters.InitializeTime.TotalSeconds);
+            pw.Write((ulong)session.Characters.InitializeTime.TotalSeconds);
             pw.Write((uint)0);
             pw.Write((ulong)1262271600); // dec/31/2009
             pw.Write((byte)17);
@@ -43,16 +37,16 @@ namespace GateService.Systems.NetSystem.Extensions
             return session.SendAsync(pw) as Session;
         }
 
-        internal static Session SendCharacterSelect(this Session session, Character character, DistrictConnectionInfo connectionInfo)
+        internal static Session SendCharacterSelect(this Session session, Character character, District district)
         {
             using WriterPacket pw = new(ClientOpcode.CharacterSelect);
 
             pw.Write(character.Id);
             pw.Write(session.Account.Id);
             pw.Write(new byte[28]);
-            pw.WriteUtf8String(ip);
-            pw.Write(connectionInfo.Port);
-            pw.Write(character.WorldPosition);
+            pw.WriteNumberLengthUtf8String(district.Address.ToString());
+            pw.Write((ushort)district.Port);
+            pw.Write(character.Place);
             pw.Write(new byte[12]);
 
             return session.SendAsync(pw) as Session;

@@ -1,11 +1,10 @@
 ﻿using SoulWorker.Types;
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Core.DatabaseSystem.CharacterPosts
 {
-    [Table("character_post")]
+    [Table("character_posts")]
     public sealed class CharacterPostModel
     {
         [Key]
@@ -21,13 +20,5 @@ namespace Core.DatabaseSystem.CharacterPosts
 
         [Required]
         public CharacterPostType Type { get; init; }
-
-        [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public DateTime CreateTime { get; init; }
-
-        [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-        public DateTime ModificationTime { get; init; }
     }
 }

@@ -45,7 +45,7 @@ namespace Core.DatabaseSystem.Characters
         public float Z { get; init; }
     }
 
-    public sealed class PositionModel
+    public sealed class PlaceModel
     {
         public Vector3Model Position { get; init; }
         public float Rotation { get; init; }
@@ -80,7 +80,7 @@ namespace Core.DatabaseSystem.Characters
         public ulong Zenny { get; init; } = 0;
     }
 
-    [Table("character")]
+    [Table("characters")]
     [Index("Name", IsUnique = true)]
     public sealed class CharacterModel
     {
@@ -105,7 +105,7 @@ namespace Core.DatabaseSystem.Characters
         public string Name { get; init; }
 
         [Required]
-        public CharacterType Character { get; init; }
+        public HeroType Hero { get; init; }
 
         [Required]
         public byte Level { get; init; } = 1;
@@ -122,7 +122,7 @@ namespace Core.DatabaseSystem.Characters
         public BankModel Bank { get; init; }
 
         [Required]
-        public uint Portrait { get; init; } = 0;
+        public uint PortraitId { get; init; } = 0;
 
         [Required]
         public byte Advancement { get; init; } = 0;
@@ -136,7 +136,7 @@ namespace Core.DatabaseSystem.Characters
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public PositionModel WorldPosition { get; init; }
+        public PlaceModel Place { get; init; }
 
         [Required]
         public uint[] LearnedSkill { get; init; }
@@ -162,13 +162,5 @@ namespace Core.DatabaseSystem.Characters
         [Required]
         [Column(TypeName = "jsonb")]
         public ProfileModel Profile { get; init; }
-
-        [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public DateTime CreateTime { get; init; }
-
-        [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-        public DateTime ModificationTime { get; init; }
     }
 }

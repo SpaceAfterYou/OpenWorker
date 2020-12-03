@@ -168,7 +168,7 @@ namespace Core.Systems.NetSystem.Requests.Character
     {
         public int Id { get; }
         public string Name { get; }
-        public CharacterType Character { get; }
+        public HeroType Character { get; }
         public byte Advancement { get; }
         public uint Portrait { get; }
         public CreateCharacterAppearance Appearance { get; }

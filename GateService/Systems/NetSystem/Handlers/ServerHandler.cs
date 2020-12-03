@@ -1,14 +1,19 @@
-﻿using Core.Systems.NetSystem.Attributes;
+﻿using Core.DatabaseSystem.Accounts;
+using Core.Systems.NetSystem.Attributes;
 using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
 using Core.Systems.NetSystem.Requests.Gate;
+using GateService.Systems.GameSystem;
+using GateService.Systems.NetSystem.Extensions;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace GateService.Systems.NetSystem.Handlers
 {
     internal static class ServerHandler
     {
         [Handler(HandlerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(Session session, EnterRequest request, GateInfo gate, CharactersFactory charactersFactory)
+        public static void Enter(Session session, EnterRequest request, Gate gate)
         {
             if (gate.Id != request.GateId)
             {
@@ -16,22 +21,23 @@ namespace GateService.Systems.NetSystem.Handlers
                 return;
             }
 
-            session.Characters = new();
+            AccountModel account = GetAccount(request.AccountId, request.SessionKey);
+            if (account is null)
+            {
+                session.Disconnect();
+                return;
+            }
 
-            var accountModel = await GateEnterHelper.LoadAccount(request.AccountId, request.SessionKey);
+            session.Account = new(account);
+            session.Characters = new(request.AccountId, request.GateId);
 
-            var slots = await charactersFactory
-                .UseAccountId(accountModel.Id)
-                .UseGateId(request.GateId)
-                .UseLastCharacterId(accountModel.LastSelectedCharacter)
-                .Create();
+            session.SendGateEnterResult().SendCurrentDate();
+        }
 
-            session
-                .UseComponent(new Account(accountModel))
-                .UseComponent(slots)
-                .UseEventGroup<AuthorizedGroupAttribute>()
-                .SendEnterResultGate()
-                .SendCurrentDate();
+        private static AccountModel GetAccount(uint id, ulong sessionKey)
+        {
+            using AccountContext context = new();
+            return context.Accounts.AsNoTracking().FirstOrDefault(c => c.Id == id && c.SessionKey == sessionKey);
         }
     }
 }

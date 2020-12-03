@@ -1,10 +1,9 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Core.DatabaseSystem.AccouintPosts
 {
-    [Table("account_post")]
+    [Table("account_posts")]
     public sealed class AccountPostModel
     {
         [Key]
@@ -17,13 +16,5 @@ namespace Core.DatabaseSystem.AccouintPosts
 
         [ForeignKey("AccountId")]
         public Accounts.AccountModel Account { get; init; }
-
-        [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public DateTime CreateTime { get; init; }
-
-        [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-        public DateTime ModificationTime { get; init; }
     }
 }

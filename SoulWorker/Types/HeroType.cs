@@ -1,6 +1,7 @@
 ﻿namespace SoulWorker.Types
 {
-    public enum CharacterType
+    public enum HeroType
+
     {
         Haru = 1,
         Erwin = 2,

@@ -1,4 +1,5 @@
 ﻿using Core.Systems.NetSystem.Attributes;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Core.Systems.NetSystem.Requests.Character
@@ -8,7 +9,7 @@ namespace Core.Systems.NetSystem.Requests.Character
     {
         private int Unknown1 { get; }
         public int Id { get; }
-        private byte[] Unknown2 { get; }
+        private IReadOnlyList<byte> Unknown2 { get; }
 
         public MarkFavoriteRequest(BinaryReader br)
         {

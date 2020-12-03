@@ -2,6 +2,7 @@
 using SoulWorker.Types;
 using System;
 using System.IO;
+using System.Numerics;
 using System.Text;
 
 namespace Core.Systems.NetSystem.Packets
@@ -38,6 +39,14 @@ namespace Core.Systems.NetSystem.Packets
             BinaryWriter.Write(Encoding.Unicode.GetBytes(str));
         }
 
+        public void Write(in Vector3 value)
+        {
+            BinaryWriter.Write(value.X);
+            BinaryWriter.Write(value.Y);
+            BinaryWriter.Write(value.Z);
+        }
+
+        public void Write(HeroType value) => BinaryWriter.Write((byte)value);
         public void Write(GateStatusType value) => BinaryWriter.Write((byte)value);
 
         public void Write(ResponseType value) => BinaryWriter.Write((byte)value);
