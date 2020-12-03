@@ -1,4 +1,5 @@
 using Core.Systems.NetSystem.Providers;
+using LoginService.Systems.GameSystem;
 using LoginService.Systems.NetSystem;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,6 +18,8 @@ namespace LoginService
                         .AddHostedService<Worker>()
                         .AddSingleton<HandlerProvider>()
                         .AddSingleton<Server>()
+                        .AddSingleton<Gates>()
+                        .AddSingleton<Options>()
                         .AddTransient<Session>()
                 );
     }

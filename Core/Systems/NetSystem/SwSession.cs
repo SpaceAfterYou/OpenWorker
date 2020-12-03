@@ -87,11 +87,9 @@ namespace Core.Systems.NetSystem
             _provider[opcode].Invoke(this, br);
         }
 
-        public SwSession SendAsync(WriterPacket pw) => SendAsync(UtilsPacket.Pack(pw));
-
-        public new SwSession SendAsync(byte[] bytes)
+        public SwSession SendAsync(WriterPacket pw)
         {
-            var result = base.SendAsync(bytes);
+            bool result = SendAsync(UtilsPacket.Pack(pw));
             Debug.Assert(result);
 
             return this;

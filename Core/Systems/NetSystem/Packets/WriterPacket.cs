@@ -1,14 +1,16 @@
 ﻿using Core.Systems.NetSystem.Opcodes;
+using SoulWorker.Types;
+using System;
 using System.IO;
 using System.Text;
 
 namespace Core.Systems.NetSystem.Packets
 {
-    public class WriterPacket
+    public class WriterPacket : IDisposable
     {
         public void WriteNumberLengthUtf8String(string str)
         {
-            BinaryWriter.Write((ushort)(str.Length));
+            BinaryWriter.Write((ushort)str.Length);
             BinaryWriter.Write(Encoding.UTF8.GetBytes(str));
         }
 
@@ -35,6 +37,10 @@ namespace Core.Systems.NetSystem.Packets
             BinaryWriter.Write((ushort)(str.Length * 2));
             BinaryWriter.Write(Encoding.Unicode.GetBytes(str));
         }
+
+        public void Write(GateStatusType value) => BinaryWriter.Write((byte)value);
+
+        public void Write(ResponseType value) => BinaryWriter.Write((byte)value);
 
         public void Write(ulong value) => BinaryWriter.Write(value);
 

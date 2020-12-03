@@ -17,10 +17,12 @@
     <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\EnterGateWayType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Extensions\BinaryReaderExtension.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\GateStatusType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\GroupRoleType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\ItemStatType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\LogoutWayType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\ProfileStatusType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Types\ResponseType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\StorageType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\CharacterType.cs" />
   </ItemGroup>

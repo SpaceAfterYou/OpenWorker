@@ -96,10 +96,10 @@ namespace Core.DatabaseSystem.Characters
         public Accounts.AccountModel Account { get; init; }
 
         [Required]
-        public ushort Gate { get; init; }
+        public ushort GateId { get; init; }
 
         [Required]
-        public byte Slot { get; init; }
+        public byte SlotId { get; init; }
 
         [Required]
         public string Name { get; init; }

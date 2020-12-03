@@ -97,7 +97,6 @@
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
-    <Folder Include="$(MSBuildThisFileDirectory)Systems\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\CharacterPosts\" />
   </ItemGroup>
 </Project>

@@ -3,13 +3,14 @@ using Core.Systems.NetSystem.Attributes;
 using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
 using Core.Systems.NetSystem.Requests;
-using LoginService.Systems.NetSystem;
+using LoginService.Systems.GameSystem;
+using LoginService.Systems.NetSystem.Extensions;
 using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace LoginService.Systems.EventSystem.Handlers
+namespace LoginService.Systems.NetSystem.Handlers
 {
     internal static class AccountHandler
     {
@@ -19,10 +20,12 @@ namespace LoginService.Systems.EventSystem.Handlers
             AccountModel model = GetAccount(request.Nickname, request.Password, request.Mac);
             if (model is null)
             {
+                session.SendLogin(TableMessageId.LoginFailed);
+                return;
             }
-            else
-            {
-            }
+
+            session.Account = new(model);
+            session.SendLogin(model);
         }
 
         private static AccountModel GetAccount(string nickname, string password, string mac)
@@ -42,15 +45,15 @@ namespace LoginService.Systems.EventSystem.Handlers
 
         private static byte[] GetPasswordHash(string password)
         {
-            using var sham = new SHA512Managed();
+            using SHA512Managed sham = new();
             return sham.ComputeHash(Encoding.UTF8.GetBytes(password));
         }
 
         private static ulong GetSessionKey()
         {
-            Random random = new();
-
             byte[] buffer = new byte[8];
+
+            Random random = new();
             random.NextBytes(buffer);
 
             return BitConverter.ToUInt64(buffer);
