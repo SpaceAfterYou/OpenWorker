@@ -83,9 +83,9 @@ _appsettings.json_
 }
 ```
 
-#### Start
+### Start
 
-Just build solution
+Just build solution and launch output files.
 
 ## Services
 
