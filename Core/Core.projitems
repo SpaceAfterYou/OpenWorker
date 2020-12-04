@@ -18,17 +18,17 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Context.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Guilds\GuildContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\AccountPosts\AccountPostContext.cs" />
-    <Compile Include="..\Core\Systems\DatabaseSystem\Items\ItemContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Items\ItemContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Accounts\AccountMap.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Characters\CharacterMap.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Guilds\GuildMap.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\AccountPosts\AccountPostMap.cs" />
-    <Compile Include="..\Core\Systems\DatabaseSystem\Items\ItemMap.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Items\ItemMap.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Accounts\AccountModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Characters\CharacterModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Guilds\GuildModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\AccountPosts\AccountPostModel.cs" />
-    <Compile Include="..\Core\Systems\DatabaseSystem\Items\ItemModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Items\ItemModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Extensions\BinaryReaderExtension.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Convert.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Opcodes\ClientOpcode.cs" />
@@ -56,7 +56,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\JumpRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\LoopMotionEndBtRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\MoveRequest.cs" />
-    <Compile Include="..\Core\Systems\NetSystem\Requests\Movement\StopRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\StopRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\Unknown1Request.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Party\AcceptRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Party\ChangeMasterRequest.cs" />
@@ -86,13 +86,13 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Packets\WriterPacket.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Permissions\HandlerPermission.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Providers\HandlerProvider.cs" />
-    <Compile Include="..\Core\Systems\NetSystem\SwSession.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\SwSession.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Attributes\HandlerAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Attributes\RequestAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Extensions\BinaryReaderExtension.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Opcodes\HandlerOpcode.cs" />
-    <Compile Include="..\Core\Systems\NetSystem\Requests\Auth\EnterRequest.cs" />
-    <Compile Include="..\Core\Systems\NetSystem\SwServer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Auth\EnterRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\SwServer.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
