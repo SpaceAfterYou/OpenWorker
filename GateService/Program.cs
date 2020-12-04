@@ -1,3 +1,4 @@
+using Core.Systems.NetSystem.Providers;
 using GateService.Systems.GameSystem;
 using GateService.Systems.NetSystem;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,7 @@ namespace GateService
             .CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
+                .AddSingleton<HandlerProvider>()
                 .AddSingleton<Districts>()
                 .AddSingleton<Server>()
                 .AddSingleton<Gate>()

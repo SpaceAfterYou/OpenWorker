@@ -26,7 +26,6 @@ namespace Core.DatabaseSystem.Accounts
         public string Nickname { get; init; }
 
         [Required]
-        //[Column(TypeName = "BYTEA(64)")]
         public byte[] Password { get; init; }
 
         [Required]

@@ -47,6 +47,7 @@ namespace Core.Systems.NetSystem.Packets
         }
 
         public void Write(HeroType value) => BinaryWriter.Write((byte)value);
+
         public void Write(GateStatusType value) => BinaryWriter.Write((byte)value);
 
         public void Write(ResponseType value) => BinaryWriter.Write((byte)value);
@@ -81,6 +82,8 @@ namespace Core.Systems.NetSystem.Packets
         {
             BinaryWriter.Dispose();
             MemoryStream.Dispose();
+
+            GC.SuppressFinalize(this);
         }
 
         public WriterPacket(ClientOpcode client)

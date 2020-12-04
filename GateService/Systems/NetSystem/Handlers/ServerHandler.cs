@@ -17,14 +17,14 @@ namespace GateService.Systems.NetSystem.Handlers
         {
             if (gate.Id != request.GateId)
             {
-                session.Disconnect();
+                //session.Disconnect();
                 return;
             }
 
             AccountModel account = GetAccount(request.AccountId, request.SessionKey);
             if (account is null)
             {
-                session.Disconnect();
+                //session.Disconnect();
                 return;
             }
 

@@ -45,7 +45,7 @@ namespace Core.Systems.NetSystem.Packets
         {
             Debug.Assert(size > 0);
             Debug.Assert(offset >= 0);
-            Debug.Assert(offset > size);
+            Debug.Assert(offset <= size);
 
             for (int i = 0; i < size; ++i)
             {
@@ -63,7 +63,7 @@ namespace Core.Systems.NetSystem.Packets
     {
         public static byte[] Pack(WriterPacket writer)
         {
-            var response = writer.GetBuffer();
+            byte[] response = writer.GetBuffer();
             Exchange(ref response, EncryptedHeaderSize, (int)writer.Length - EncryptedHeaderSize);
 
             return response;

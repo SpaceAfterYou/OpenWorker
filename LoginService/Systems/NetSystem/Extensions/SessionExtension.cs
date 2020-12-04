@@ -24,10 +24,10 @@ namespace LoginService.Systems.NetSystem.Extensions
         {
             using WriterPacket pw = new(ClientOpcode.GateList);
 
-            pw.Write((byte)0);
+            pw.Write(byte.MinValue);
             pw.Write((byte)infos.Count);
 
-            foreach (var info in infos)
+            foreach (PersonalGate info in infos)
             {
                 pw.Write(info.Gate.Id);
                 pw.Write((ushort)info.Gate.EndPoint.Port);
@@ -77,10 +77,9 @@ namespace LoginService.Systems.NetSystem.Extensions
             pw.Write(model.Id);
 
             pw.Write(ResponseType.Success);
-            //pw.Write(Encoding.Convert(Encoding.Unicode, Encoding.UTF8, Encoding.Unicode.GetBytes(model.Mac)));
             pw.WriteNumberLengthUtf8String(model.Mac);
 
-            pw.Write((byte)0);
+            pw.Write(byte.MinValue);
             pw.WriteByteLengthUnicodeString(string.Empty);
             pw.Write(TableMessageId.None);
 
@@ -88,9 +87,9 @@ namespace LoginService.Systems.NetSystem.Extensions
             pw.WriteByteLengthUnicodeString(unknownString);
 
             pw.Write(model.SessionKey);
-            pw.Write((byte)0);
-            pw.Write((uint)0);
-            pw.Write((byte)0);
+            pw.Write(byte.MinValue);
+            pw.Write(uint.MinValue);
+            pw.Write(byte.MinValue);
 
             return session.SendAsync(pw) as Session;
         }
@@ -102,10 +101,9 @@ namespace LoginService.Systems.NetSystem.Extensions
             pw.Write(_emptyAccountId);
 
             pw.Write(ResponseType.Failure);
-            //pw.Write(_emptyMac);
             pw.WriteNumberLengthUtf8String(_emptyMac);
 
-            pw.Write((byte)0);
+            pw.Write(byte.MinValue);
             pw.WriteByteLengthUnicodeString(message);
             pw.Write(code);
 
@@ -113,9 +111,9 @@ namespace LoginService.Systems.NetSystem.Extensions
             pw.WriteByteLengthUnicodeString(string.Empty);
 
             pw.Write(_emptySessionKey);
-            pw.Write((byte)0);
-            pw.Write((uint)0);
-            pw.Write((byte)0);
+            pw.Write(byte.MinValue);
+            pw.Write(uint.MinValue);
+            pw.Write(byte.MinValue);
 
             return session.SendAsync(pw) as Session;
         }
@@ -123,6 +121,5 @@ namespace LoginService.Systems.NetSystem.Extensions
         private static readonly int _emptyAccountId = -1;
         private static readonly ulong _emptySessionKey = 0;
         private static readonly string _emptyMac = "00-00-00-00-00-00";
-        //private static readonly byte[] _emptyMac = Encoding.Convert(Encoding.Unicode, Encoding.UTF8, Encoding.Unicode.GetBytes("00-00-00-00-00-00"));
     }
 }

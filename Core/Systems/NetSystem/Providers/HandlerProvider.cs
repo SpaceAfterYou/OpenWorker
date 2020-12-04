@@ -32,10 +32,10 @@ namespace Core.Systems.NetSystem.Providers
 
             List<Event> handlers = Enumerable.Repeat((Event)Dummy, ushort.MaxValue).ToList();
 
-            foreach (var method in methods)
+            foreach (MethodInfo method in methods)
             {
-                var handler = CreateEventHandler(service, method);
-                var attribute = method.GetCustomAttribute<HandlerAttribute>();
+                Event handler = CreateEventHandler(service, method);
+                HandlerAttribute attribute = method.GetCustomAttribute<HandlerAttribute>();
 
                 logger.LogDebug($"Used EVENT ({attribute.Opcode}) invoker on {method.DeclaringType?.FullName}.{method.Name}.");
 
@@ -47,38 +47,38 @@ namespace Core.Systems.NetSystem.Providers
 
         private static Event CreateEventHandler(IServiceProvider service, MethodInfo method)
         {
-            var session = Expression.Parameter(typeof(SwSession), "Session");
-            var br = Expression.Parameter(typeof(BinaryReader), "BinaryReader");
+            ParameterExpression session = Expression.Parameter(typeof(SwSession), "Session");
+            ParameterExpression br = Expression.Parameter(typeof(BinaryReader), "BinaryReader");
 
-            var arguments = method.GetParameters().Select(param =>
+            Expression[] arguments = method.GetParameters().Select(param =>
             {
                 // In arguments not supported
                 Debug.Assert(!param.IsIn);
 
                 // Session typed parameter
-                if (param.ParameterType == typeof(SwSession))
+                if (param.ParameterType.IsSubclassOf(typeof(SwSession)))
                 {
-                    return session as Expression;
+                    return Expression.Convert(session, param.ParameterType) as Expression;
                 }
 
                 // Packet structure parameter
                 if (param.ParameterType.IsDefined(typeof(RequestAttribute)))
                 {
-                    var constructor = param.ParameterType.GetConstructor(new[] { typeof(BinaryReader) });
+                    ConstructorInfo constructor = param.ParameterType.GetConstructor(new[] { typeof(BinaryReader) });
                     Debug.Assert(constructor is not null);
 
-                    var @class = Expression.New(constructor, br);
+                    NewExpression @class = Expression.New(constructor, br);
                     return @class;
                 }
 
                 // Otherwise, get parameter from service collection
-                var innerService = Expression.Constant(service);
+                ConstantExpression innerService = Expression.Constant(service);
 
-                var getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) });
+                MethodInfo getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) });
                 Debug.Assert(getServiceMethod is not null);
 
-                var call = Expression.Call(null, getServiceMethod, innerService, Expression.Constant(param.ParameterType));
-                var conv = Expression.Convert(call, param.ParameterType);
+                MethodCallExpression call = Expression.Call(null, getServiceMethod, innerService, Expression.Constant(param.ParameterType));
+                UnaryExpression conv = Expression.Convert(call, param.ParameterType);
                 return conv;
             }).ToArray();
 

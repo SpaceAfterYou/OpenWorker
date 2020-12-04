@@ -78,10 +78,10 @@ namespace Core.Systems.NetSystem
         {
             UtilsPacket.Exchange(ref raw);
 
-            using var ms = new MemoryStream(raw, false);
-            using var br = new BinaryReader(ms);
+            using MemoryStream ms = new(raw, false);
+            using BinaryReader br = new(ms);
 
-            var opcode = br.ReadUInt16();
+            ushort opcode = br.ReadUInt16();
             DebugLogOpcode(opcode);
 
             _provider[opcode].Invoke(this, br);
@@ -89,7 +89,7 @@ namespace Core.Systems.NetSystem
 
         public SwSession SendAsync(WriterPacket pw)
         {
-            bool result = SendAsync(UtilsPacket.Pack(pw));
+            bool result = SendAsync(UtilsPacket.Pack(pw), 0, pw.Length);
             Debug.Assert(result);
 
             return this;
