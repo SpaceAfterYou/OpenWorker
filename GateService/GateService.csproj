@@ -27,6 +27,10 @@
     <PackageReference Include="StackExchange.Redis" Version="2.2.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Systems\NetSystem\Extensions\" />
+  </ItemGroup>
+
   <Import Project="..\Core\Core.projitems" Label="Shared" />
 
   <Import Project="..\SoulWorker\SoulWorker.projitems" Label="Shared" />

@@ -4,7 +4,6 @@ using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
 using Core.Systems.NetSystem.Requests.Gate;
 using GateService.Systems.GameSystem;
-using GateService.Systems.NetSystem.Extensions;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 

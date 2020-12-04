@@ -1,6 +1,7 @@
 ﻿using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Packets;
 using Core.Systems.NetSystem.Requests.Character;
+using Core.Systems.NetSystem.Requests.Chat;
 using Core.Systems.NetSystem.Requests.Gesture;
 using Core.Systems.NetSystem.Requests.Movement;
 using DistrictService.Systems.GameSystem.Items;
@@ -49,6 +50,9 @@ namespace DistrictService.Systems.GameSystem
         public Channel(ushort id) => Id = id;
 
         #region Brodcast Channel
+
+        public void BroadcastChatMessage(Session session, in ReceiveRequest request) =>
+            BroadcastChatMessage(session, request.Type, request.Message);
 
         public void BroadcastChatMessage(Session session, ChatType type, string message)
         {

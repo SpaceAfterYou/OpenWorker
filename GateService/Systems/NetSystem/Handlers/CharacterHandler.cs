@@ -4,7 +4,6 @@ using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
 using Core.Systems.NetSystem.Requests.Character;
 using GateService.Systems.GameSystem;
-using GateService.Systems.NetSystem.Extensions;
 using System.Linq;
 
 namespace GateService.Systems.NetSystem.Handlers

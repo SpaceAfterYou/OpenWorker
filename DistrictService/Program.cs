@@ -1,4 +1,5 @@
 using DistrictService.Systems.NetSystem;
+using DistrictService.Systems.NetSystem.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -13,6 +14,7 @@ namespace DistrictService
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
                 .AddSingleton<Server>()
+                .AddSingleton<ChatCommandRepository>()
                 .AddTransient<Session>());
     }
 }

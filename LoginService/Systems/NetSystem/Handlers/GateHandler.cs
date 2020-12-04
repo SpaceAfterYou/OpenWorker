@@ -4,7 +4,6 @@ using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
 using Core.Systems.NetSystem.Requests;
 using LoginService.Systems.GameSystem;
-using LoginService.Systems.NetSystem.Extensions;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
