@@ -20,6 +20,7 @@ namespace LoginService.Systems.NetSystem.Handlers
             AccountModel model = GetAccount(request.Nickname, request.Password, request.Mac);
             if (model is null)
             {
+                // TODO: Not Work
                 session.SendLogin(TableMessageId.LoginFailed);
                 return;
             }

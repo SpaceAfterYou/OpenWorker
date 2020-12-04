@@ -18,8 +18,8 @@ namespace LoginService.Systems.NetSystem.Handlers
             .SendOptionLoad(options);
 
         [Handler(HandlerOpcode.GateConnect, HandlerPermission.Authorized)]
-        public static void Connect(Session session, ConnectRequest request, Gates gates) =>
-            session.SendGateConnect(gates[request.GateId]);
+        public static void Connect(Session session, ConnectRequest request, Gates gates) => session
+            .SendGateConnect(gates[request.GateId]);
 
         private static PersonalGate[] GetPersonalGates(Account account, Gates gates)
         {

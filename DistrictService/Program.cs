@@ -1,10 +1,8 @@
-using Core.Systems.NetSystem.Providers;
-using LoginService.Systems.GameSystem;
-using LoginService.Systems.NetSystem;
+using DistrictService.Systems.NetSystem;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace LoginService
+namespace DistrictService
 {
     public static class Program
     {
@@ -14,10 +12,7 @@ namespace LoginService
             .CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
-                .AddSingleton<HandlerProvider>()
                 .AddSingleton<Server>()
-                .AddSingleton<Gates>()
-                .AddSingleton<Options>()
                 .AddTransient<Session>());
     }
 }

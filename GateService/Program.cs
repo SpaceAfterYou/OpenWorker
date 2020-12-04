@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace GateService
 {
-    public class Program
+    public static class Program
     {
         public static void Main(string[] args) => CreateHostBuilder(args).Build().Run();
 

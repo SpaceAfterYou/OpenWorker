@@ -11,7 +11,11 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SoulWorker", "SoulWorker\So
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GateService", "GateService\GateService.csproj", "{9C229B8E-B343-4B38-BB3E-485A7297ACEA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SetupDatabase", "SetupDatabase\SetupDatabase.csproj", "{F8521A81-E8EF-4388-9917-55FD7F328DEA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SetupDatabase", "SetupDatabase\SetupDatabase.csproj", "{F8521A81-E8EF-4388-9917-55FD7F328DEA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistrictService", "DistrictService\DistrictService.csproj", "{B6F409F5-58B2-4AFF-9B74-32D111E6017A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{1FA7CB67-B280-487D-9CB5-4460A881BC26}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
@@ -41,9 +45,18 @@ Global
 		{F8521A81-E8EF-4388-9917-55FD7F328DEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8521A81-E8EF-4388-9917-55FD7F328DEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8521A81-E8EF-4388-9917-55FD7F328DEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B6F409F5-58B2-4AFF-9B74-32D111E6017A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6F409F5-58B2-4AFF-9B74-32D111E6017A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B6F409F5-58B2-4AFF-9B74-32D111E6017A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6F409F5-58B2-4AFF-9B74-32D111E6017A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B3FDC7B7-5176-4AEB-977E-7F904AAD7A61} = {1FA7CB67-B280-487D-9CB5-4460A881BC26}
+		{9C229B8E-B343-4B38-BB3E-485A7297ACEA} = {1FA7CB67-B280-487D-9CB5-4460A881BC26}
+		{B6F409F5-58B2-4AFF-9B74-32D111E6017A} = {1FA7CB67-B280-487D-9CB5-4460A881BC26}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F383596F-D1E6-48AD-9150-C1C27F5333B2}

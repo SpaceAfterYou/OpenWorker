@@ -70,7 +70,6 @@ namespace LoginService.Systems.NetSystem.Extensions
 
         internal static Session SendLogin(this Session session, AccountModel model)
         {
-            string unknownString = "134006893";
 
             using WriterPacket pw = new(ClientOpcode.LoginResult);
 
@@ -84,7 +83,7 @@ namespace LoginService.Systems.NetSystem.Extensions
             pw.Write(TableMessageId.None);
 
             pw.Write((byte)1);
-            pw.WriteByteLengthUnicodeString(unknownString);
+            pw.WriteByteLengthUnicodeString(_unknownString);
 
             pw.Write(model.SessionKey);
             pw.Write(byte.MinValue);
@@ -108,7 +107,7 @@ namespace LoginService.Systems.NetSystem.Extensions
             pw.Write(code);
 
             pw.Write((byte)1);
-            pw.WriteByteLengthUnicodeString(string.Empty);
+            pw.WriteByteLengthUnicodeString(_unknownString);
 
             pw.Write(_emptySessionKey);
             pw.Write(byte.MinValue);
@@ -118,8 +117,9 @@ namespace LoginService.Systems.NetSystem.Extensions
             return session.SendAsync(pw) as Session;
         }
 
-        private static readonly int _emptyAccountId = -1;
-        private static readonly ulong _emptySessionKey = 0;
+        private static readonly uint _emptyAccountId = uint.MaxValue;
+        private static readonly ulong _emptySessionKey = ulong.MinValue;
         private static readonly string _emptyMac = "00-00-00-00-00-00";
+        private static readonly string _unknownString = "134006893";
     }
 }
