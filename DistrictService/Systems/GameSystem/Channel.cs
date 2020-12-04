@@ -36,7 +36,7 @@ namespace DistrictService.Systems.GameSystem
             }
 
             session.Channel = this;
-            BroadcastCharacterIn(session);
+            BrodcastCharacterIn(session);
 
             return true;
         }
@@ -44,17 +44,17 @@ namespace DistrictService.Systems.GameSystem
         public void Leave(Session session)
         {
             InternalSessions.Remove(session.Id);
-            BroadcastCharacterOut(session);
+            BrodcastCharacterOut(session);
         }
 
         public Channel(ushort id) => Id = id;
 
         #region Brodcast Channel
 
-        public void BroadcastChatMessage(Session session, in ReceiveRequest request) =>
-            BroadcastChatMessage(session, request.Type, request.Message);
+        public void BrodcastChatMessage(Session session, in ReceiveRequest request) =>
+            BrodcastChatMessage(session, request.Type, request.Message);
 
-        public void BroadcastChatMessage(Session session, ChatType type, string message)
+        public void BrodcastChatMessage(Session session, ChatType type, string message)
         {
             using WriterPacket writer = new(ClientOpcode.ChatMessage);
 
@@ -92,10 +92,10 @@ namespace DistrictService.Systems.GameSystem
             BrodcastAsync(writer);
         }
 
-        private Session BroadcastCharacterIn(Session session)
+        private Session BrodcastCharacterIn(Session session)
         { return session; } // => SendAsync(Responses.Character.InInfoResponse.Create(session));
 
-        private void BroadcastCharacterOut(params Session[] sessions)
+        private void BrodcastCharacterOut(params Session[] sessions)
         {
             using WriterPacket writer = new(ClientOpcode.CharacterOutInfo);
 
@@ -112,7 +112,7 @@ namespace DistrictService.Systems.GameSystem
 
         #region Brodcast Gesture
 
-        public void BroadcastGestureDo(Session session, in DoRequest request)
+        public void BrodcastGestureDo(Session session, in DoRequest request)
         {
             using WriterPacket writer = new(ClientOpcode.GestureDo);
 
@@ -132,14 +132,14 @@ namespace DistrictService.Systems.GameSystem
         public void BrodcastItemUpgradeResponse(Session session, BaseItem item)
         { }
 
-        public void BroadcastItemMove(Session session, params BaseItem[] slots)
+        public void BrodcastItemMove(Session session, params BaseItem[] slots)
         {
             // var size
             //     = sizeof(uint) /* Count */
             //     + (SystemDefinition.ItemSize * slots.Length) /* Items */
             //     + sizeof(byte) /* Unknown */;
             //
-            // using WriterPacket writer = new(size, ClientOpcode.StorageItemMoveBroadcast);
+            // using WriterPacket writer = new(size, ClientOpcode.StorageItemMoveBrodcast);
             //
             // writer.Write(slots.Length);
             // foreach (var item in slots)
@@ -156,7 +156,7 @@ namespace DistrictService.Systems.GameSystem
 
         #region Brodcast Movement
 
-        public void SendMovementMove(Session session, in MoveRequest request)
+        public void BrodcastMovementMove(Session session, in MoveRequest request)
         {
             using WriterPacket writer = new(ClientOpcode.MovementStopBrodcast);
 
@@ -173,7 +173,7 @@ namespace DistrictService.Systems.GameSystem
             BrodcastAsync(writer);
         }
 
-        public void BroadcastMovementStop(Session session, in StopRequest request)
+        public void BrodcastMovementStop(Session session, in StopRequest request)
         {
             using WriterPacket writer = new(ClientOpcode.MovementStopBrodcast);
 
@@ -187,7 +187,7 @@ namespace DistrictService.Systems.GameSystem
             BrodcastAsync(writer);
         }
 
-        public void SendMovementJump(Session session, in JumpRequest request)
+        public void BrodcastMovementJump(Session session, in JumpRequest request)
         {
             using WriterPacket writer = new(ClientOpcode.MovementJump);
 
@@ -205,7 +205,7 @@ namespace DistrictService.Systems.GameSystem
             BrodcastAsync(writer);
         }
 
-        public void BroadcastLoopMotionEnd(Session session)
+        public void BrodcastLoopMotionEnd(Session session)
         {
             using WriterPacket writer = new(ClientOpcode.MovementJump);
 

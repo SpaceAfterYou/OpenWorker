@@ -7,7 +7,7 @@ using SoulWorker.Types;
 
 namespace DistrictService.Systems.NetSystem.Handlers
 {
-    public static class ChatHandler
+    internal static class ChatHandler
     {
         [Handler(HandlerOpcode.ChatReceiveMessage, HandlerPermission.Authorized)]
         public static void Receive(Session session, ReceiveRequest request, ChatCommandRepository commands)
@@ -28,7 +28,7 @@ namespace DistrictService.Systems.NetSystem.Handlers
                 return;
             }
 
-            session.Channel.BroadcastChatMessage(session, request);
+            session.Channel.BrodcastChatMessage(session, request);
         }
     }
 }

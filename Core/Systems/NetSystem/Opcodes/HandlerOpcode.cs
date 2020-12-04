@@ -32,7 +32,7 @@
         MovementStopBt = 0x0503,
         MovementJump = 0x0505,
         CharacterToggleWeapon = 0x0507,
-        MovementLoopMotionEndBt = 0x0532,
+        MovementLoopMotionEnd = 0x0532,
 
         ChatReceiveMessage = 0x0701,
 
