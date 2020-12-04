@@ -13,12 +13,12 @@ namespace DistrictService.Systems.NetSystem.Handlers
             session.Character.Place.Position = request.Position;
             session.Character.Place.Rotation = request.Rotation;
 
-            session.Channel.BrodcastMovementJump(session, request);
+            session.Channel.BroadcastMovementJump(session, request);
         }
 
         [Handler(HandlerOpcode.MovementLoopMotionEnd, HandlerPermission.Authorized)]
         public static void LoopMotionEndBroadcast(Session session) =>
-            session.Channel.BrodcastLoopMotionEnd(session);
+            session.Channel.BroadcastLoopMotionEnd(session);
 
         [Handler(HandlerOpcode.MovementMove, HandlerPermission.Authorized)]
         public static void Move(Session session, MoveRequest request)
@@ -26,7 +26,7 @@ namespace DistrictService.Systems.NetSystem.Handlers
             session.Character.Place.Position = request.Position;
             session.Character.Place.Rotation = request.Rotation;
 
-            session.Channel.BrodcastMovementMove(session, request);
+            session.Channel.BroadcastMovementMove(session, request);
         }
 
         [Handler(HandlerOpcode.MovementStopBt, HandlerPermission.Authorized)]
@@ -35,7 +35,7 @@ namespace DistrictService.Systems.NetSystem.Handlers
             session.Character.Place.Position = request.Position;
             session.Character.Place.Rotation = request.Rotation;
 
-            session.Channel.BrodcastMovementStop(session, request);
+            session.Channel.BroadcastMovementStop(session, request);
         }
     }
 }

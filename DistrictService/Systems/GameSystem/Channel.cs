@@ -79,7 +79,7 @@ namespace DistrictService.Systems.GameSystem
             BroadcastAsync(writer);
         }
 
-        public void BrodcastCharacterToggleWeapon(Session session, in ToggleWeaponRequest request)
+        public void BroadcastCharacterToggleWeapon(Session session, in ToggleWeaponRequest request)
         {
             using WriterPacket writer = new(ClientOpcode.ChatMessage);
 
@@ -112,7 +112,7 @@ namespace DistrictService.Systems.GameSystem
 
         #region Broadcast Gesture
 
-        public void BrodcastGestureDo(Session session, in DoRequest request)
+        public void BroadcastGestureDo(Session session, in DoRequest request)
         {
             using WriterPacket writer = new(ClientOpcode.GestureDo);
 
@@ -129,17 +129,17 @@ namespace DistrictService.Systems.GameSystem
 
         #region Broadcast Storage
 
-        public void BrodcastItemUpgradeResponse(Session session, BaseItem item)
+        public void BroadcastItemUpgradeResponse(Session session, BaseItem item)
         { }
 
-        public void BrodcastItemMove(Session session, params BaseItem[] slots)
+        public void BroadcastItemMove(Session session, params BaseItem[] slots)
         {
             // var size
             //     = sizeof(uint) /* Count */
             //     + (SystemDefinition.ItemSize * slots.Length) /* Items */
             //     + sizeof(byte) /* Unknown */;
             //
-            // using WriterPacket writer = new(size, ClientOpcode.StorageItemMoveBrodcast);
+            // using WriterPacket writer = new(size, ClientOpcode.StorageItemMoveBroadcast);
             //
             // writer.Write(slots.Length);
             // foreach (var item in slots)
@@ -156,9 +156,9 @@ namespace DistrictService.Systems.GameSystem
 
         #region Broadcast Movement
 
-        public void BrodcastMovementMove(Session session, in MoveRequest request)
+        public void BroadcastMovementMove(Session session, in MoveRequest request)
         {
-            using WriterPacket writer = new(ClientOpcode.MovementStopBrodcast);
+            using WriterPacket writer = new(ClientOpcode.MovementStop);
 
             writer.Write(session.Character.Id);
             writer.Write(request.Unknown1);
@@ -173,9 +173,9 @@ namespace DistrictService.Systems.GameSystem
             BroadcastAsync(writer);
         }
 
-        public void BrodcastMovementStop(Session session, in StopRequest request)
+        public void BroadcastMovementStop(Session session, in StopRequest request)
         {
-            using WriterPacket writer = new(ClientOpcode.MovementStopBrodcast);
+            using WriterPacket writer = new(ClientOpcode.MovementStop);
 
             writer.Write(session.Character.Id);
             writer.Write(request.Unknown1);
@@ -187,7 +187,7 @@ namespace DistrictService.Systems.GameSystem
             BroadcastAsync(writer);
         }
 
-        public void BrodcastMovementJump(Session session, in JumpRequest request)
+        public void BroadcastMovementJump(Session session, in JumpRequest request)
         {
             using WriterPacket writer = new(ClientOpcode.MovementJump);
 
@@ -205,7 +205,7 @@ namespace DistrictService.Systems.GameSystem
             BroadcastAsync(writer);
         }
 
-        public void BrodcastLoopMotionEnd(Session session)
+        public void BroadcastLoopMotionEnd(Session session)
         {
             using WriterPacket writer = new(ClientOpcode.MovementJump);
 
@@ -226,7 +226,7 @@ namespace DistrictService.Systems.GameSystem
             }
         }
 
-        private void BrodcastExceptAsync(Session session, WriterPacket writer)
+        private void BroadcastExceptAsync(Session session, WriterPacket writer)
         {
             byte[] packet = UtilsPacket.Pack(writer);
             foreach (var s in InternalSessions.Values.Where(s => s.Id != session.Id))

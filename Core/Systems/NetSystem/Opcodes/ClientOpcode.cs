@@ -48,7 +48,7 @@
 
         MovementMove = 0x0205, /// 0x0502
         MovementJump = 0x0605, /// 0x0506
-        MovementStopBrodcast = 0x0405, /// 0x0504
+        MovementStop = 0x0405, /// 0x0504
         CharacterToggleWeapon = 0x0805, /// 0x0508
         MovementLoopMotionEnd = 0x3305, /// 0x0533
         MovementMoveAttached = 0x3405, /// 0x0534
