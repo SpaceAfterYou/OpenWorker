@@ -14,7 +14,7 @@ using System.Linq;
 
 namespace DistrictService.Systems.GameSystem
 {
-    public sealed partial class Channel
+    public sealed class Channel
     {
         public ushort Id { get; }
         public IReadOnlyDictionary<Guid, Session> Sessions => InternalSessions;
@@ -65,7 +65,7 @@ namespace DistrictService.Systems.GameSystem
 
         #region Brodcast Character
 
-        public void SendCharacterSetLevel(Session session)
+        public void BrodcastCharacterSetLevel(Session session)
         {
             using WriterPacket writer = new(ClientOpcode.ChatMessage);
 
@@ -75,7 +75,7 @@ namespace DistrictService.Systems.GameSystem
             BrodcastAsync(writer);
         }
 
-        public void SendCharacterToggleWeapon(Session session, in ToggleWeaponRequest request)
+        public void BrodcastCharacterToggleWeapon(Session session, in ToggleWeaponRequest request)
         {
             using WriterPacket writer = new(ClientOpcode.ChatMessage);
 
@@ -125,7 +125,7 @@ namespace DistrictService.Systems.GameSystem
 
         #region Brodcast Storage
 
-        public void SendItemUpgradeResponse(Session session, BaseItem item)
+        public void BrodcastItemUpgradeResponse(Session session, BaseItem item)
         { }
 
         public void BroadcastItemMove(Session session, params BaseItem[] slots)
