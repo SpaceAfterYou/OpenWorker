@@ -2,17 +2,17 @@
 using Core.Systems.NetSystem.Extensions;
 using System.IO;
 
-namespace Core.Systems.NetSystem.Requests
+namespace Core.Systems.NetSystem.Requests.Auth
 {
     [Request]
-    public readonly struct LoginRequest
+    public readonly struct EnterRequest
     {
         public string Nickname { get; }
         public string Password { get; }
         public string Mac { get; }
         public uint Version { get; }
 
-        public LoginRequest(BinaryReader br)
+        public EnterRequest(BinaryReader br)
         {
             Nickname = br.ReadNumberLengthUnicodeString();
             Password = br.ReadNumberLengthUnicodeString();

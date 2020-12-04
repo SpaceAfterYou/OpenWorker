@@ -5,7 +5,7 @@
         KeepAlive = 0x0105,
         Heartbeat = 0x0106,
 
-        Login = 0x0201,
+        AuthEnter = 0x0201,
         GateList = 0x0203,
         GateConnect = 0x0205,
         GateEnter = 0x0213,

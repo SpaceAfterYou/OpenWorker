@@ -2,7 +2,7 @@
 using Core.Systems.NetSystem.Attributes;
 using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
-using Core.Systems.NetSystem.Requests;
+using Core.Systems.NetSystem.Requests.Auth;
 using LoginService.Systems.GameSystem;
 using LoginService.Systems.NetSystem.Extensions;
 using System;
@@ -12,10 +12,10 @@ using System.Text;
 
 namespace LoginService.Systems.NetSystem.Handlers
 {
-    internal static class AccountHandler
+    internal static class ServiceHandler
     {
-        [Handler(HandlerOpcode.Login, HandlerPermission.UnAuthorized)]
-        public static void Login(Session session, LoginRequest request)
+        [Handler(HandlerOpcode.AuthEnter, HandlerPermission.UnAuthorized)]
+        public static void Enter(Session session, EnterRequest request)
         {
             AccountModel model = GetAccount(request.Nickname, request.Password, request.Mac);
             if (model is null)

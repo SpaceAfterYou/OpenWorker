@@ -12,109 +12,108 @@ namespace LoginService.Systems.NetSystem.Extensions
     {
         internal static Session SendGateConnect(this Session session, Gate gate)
         {
-            using WriterPacket pw = new(ClientOpcode.GateConnect);
+            using WriterPacket writer = new(ClientOpcode.GateConnect);
 
-            pw.WriteNumberLengthUtf8String(gate.EndPoint.Address.ToString());
-            pw.Write((ushort)gate.EndPoint.Port);
+            writer.WriteNumberLengthUtf8String(gate.EndPoint.Address.ToString());
+            writer.Write((ushort)gate.EndPoint.Port);
 
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
 
         internal static Session SendGateList(this Session session, IReadOnlyList<PersonalGate> infos)
         {
-            using WriterPacket pw = new(ClientOpcode.GateList);
+            using WriterPacket writer = new(ClientOpcode.GateList);
 
-            pw.Write(byte.MinValue);
-            pw.Write((byte)infos.Count);
+            writer.Write(byte.MinValue);
+            writer.Write((byte)infos.Count);
 
             foreach (PersonalGate info in infos)
             {
-                pw.Write(info.Gate.Id);
-                pw.Write((ushort)info.Gate.EndPoint.Port);
-                pw.WriteNumberLengthUtf8String(info.Gate.Name);
-                pw.WriteNumberLengthUtf8String(info.Gate.EndPoint.ToString());
-                pw.Write(info.Gate.Status);
-                pw.Write((byte)0);
-                pw.Write((byte)0);
-                pw.Write((byte)0);
-                pw.Write(info.Gate.PlayersOnlineCount);
-                pw.Write((ushort)0);
-                pw.Write(info.CharactersCount);
+                writer.Write(info.Gate.Id);
+                writer.Write((ushort)info.Gate.EndPoint.Port);
+                writer.WriteNumberLengthUtf8String(info.Gate.Name);
+                writer.WriteNumberLengthUtf8String(info.Gate.EndPoint.ToString());
+                writer.Write(info.Gate.Status);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                writer.Write(info.Gate.PlayersOnlineCount);
+                writer.Write((ushort)0);
+                writer.Write(info.CharactersCount);
             }
 
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
 
         internal static Session SendOptionLoad(this Session session, Options options)
         {
-            using WriterPacket pw = new(ClientOpcode.OptionLoad);
+            using WriterPacket writer = new(ClientOpcode.OptionLoad);
 
-            pw.Write(new byte[64]);
-            pw.Write(options.LoginBonus);
-            pw.Write(options.SecondaryPassword);
-            pw.Write(options.PremiumShop);
-            pw.Write(options.Option4);
-            pw.Write(options.Option5);
-            pw.Write(options.Option6);
-            pw.Write(options.Option7);
-            pw.Write(options.Option8);
-            pw.Write(options.Option9);
-            pw.Write(options.Option10);
-            pw.Write(options.Option11);
-            pw.Write(options.Option12);
-            pw.Write(options.Option13);
-            pw.Write(options.Option14);
+            writer.Write(new byte[64]);
+            writer.Write(options.LoginBonus);
+            writer.Write(options.SecondaryPassword);
+            writer.Write(options.PremiumShop);
+            writer.Write(options.Option4);
+            writer.Write(options.Option5);
+            writer.Write(options.Option6);
+            writer.Write(options.Option7);
+            writer.Write(options.Option8);
+            writer.Write(options.Option9);
+            writer.Write(options.Option10);
+            writer.Write(options.Option11);
+            writer.Write(options.Option12);
+            writer.Write(options.Option13);
+            writer.Write(options.Option14);
 
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
 
         internal static Session SendLogin(this Session session, AccountModel model)
         {
+            using WriterPacket writer = new(ClientOpcode.LoginResult);
 
-            using WriterPacket pw = new(ClientOpcode.LoginResult);
+            writer.Write(model.Id);
 
-            pw.Write(model.Id);
+            writer.Write(ResponseType.Success);
+            writer.WriteNumberLengthUtf8String(model.Mac);
 
-            pw.Write(ResponseType.Success);
-            pw.WriteNumberLengthUtf8String(model.Mac);
+            writer.Write(byte.MinValue);
+            writer.WriteByteLengthUnicodeString(string.Empty);
+            writer.Write(TableMessageId.None);
 
-            pw.Write(byte.MinValue);
-            pw.WriteByteLengthUnicodeString(string.Empty);
-            pw.Write(TableMessageId.None);
+            writer.Write((byte)1);
+            writer.WriteByteLengthUnicodeString(_unknownString);
 
-            pw.Write((byte)1);
-            pw.WriteByteLengthUnicodeString(_unknownString);
+            writer.Write(model.SessionKey);
+            writer.Write(byte.MinValue);
+            writer.Write(uint.MinValue);
+            writer.Write(byte.MinValue);
 
-            pw.Write(model.SessionKey);
-            pw.Write(byte.MinValue);
-            pw.Write(uint.MinValue);
-            pw.Write(byte.MinValue);
-
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
 
         internal static Session SendLogin(this Session session, TableMessageId code, string message = "")
         {
-            using WriterPacket pw = new(ClientOpcode.LoginResult);
+            using WriterPacket writer = new(ClientOpcode.LoginResult);
 
-            pw.Write(_emptyAccountId);
+            writer.Write(_emptyAccountId);
 
-            pw.Write(ResponseType.Failure);
-            pw.WriteNumberLengthUtf8String(_emptyMac);
+            writer.Write(ResponseType.Failure);
+            writer.WriteNumberLengthUtf8String(_emptyMac);
 
-            pw.Write(byte.MinValue);
-            pw.WriteByteLengthUnicodeString(message);
-            pw.Write(code);
+            writer.Write(byte.MinValue);
+            writer.WriteByteLengthUnicodeString(message);
+            writer.Write(code);
 
-            pw.Write((byte)1);
-            pw.WriteByteLengthUnicodeString(_unknownString);
+            writer.Write((byte)1);
+            writer.WriteByteLengthUnicodeString(_unknownString);
 
-            pw.Write(_emptySessionKey);
-            pw.Write(byte.MinValue);
-            pw.Write(uint.MinValue);
-            pw.Write(byte.MinValue);
+            writer.Write(_emptySessionKey);
+            writer.Write(byte.MinValue);
+            writer.Write(uint.MinValue);
+            writer.Write(byte.MinValue);
 
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
 
         private static readonly uint _emptyAccountId = uint.MaxValue;

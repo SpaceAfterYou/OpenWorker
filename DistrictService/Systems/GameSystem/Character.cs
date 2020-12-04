@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DistrictService.Systems.GameSystem
+﻿namespace DistrictService.Systems.GameSystem
 {
-    class Character
+    public class Character
     {
+        public uint Id { get; init; }
+        public byte Level { get; set; }
     }
 }

@@ -10,21 +10,25 @@ using System.Linq;
 
 namespace GateService.Systems.NetSystem.Handlers
 {
-    internal static class ServerHandler
+    internal static class ServiceHandler
     {
         [Handler(HandlerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
         public static void Enter(Session session, EnterRequest request, Gate gate)
         {
             if (gate.Id != request.GateId)
             {
-                //session.Disconnect();
+#if !DEBUG
+                session.Disconnect();
+#endif
                 return;
             }
 
             AccountModel account = GetAccount(request.AccountId, request.SessionKey);
             if (account is null)
             {
-                //session.Disconnect();
+#if !DEBUG
+                session.Disconnect();
+#endif
                 return;
             }
 

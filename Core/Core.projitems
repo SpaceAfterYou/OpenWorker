@@ -56,7 +56,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\JumpRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\LoopMotionEndBtRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\MoveRequest.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\StopBtRequest.cs" />
+    <Compile Include="..\Core\Systems\NetSystem\Requests\Movement\StopRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Movement\Unknown1Request.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Party\AcceptRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Party\ChangeMasterRequest.cs" />
@@ -91,12 +91,13 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Attributes\RequestAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Extensions\BinaryReaderExtension.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Opcodes\HandlerOpcode.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\LoginRequest.cs" />
+    <Compile Include="..\Core\Systems\NetSystem\Requests\Auth\EnterRequest.cs" />
     <Compile Include="..\Core\Systems\NetSystem\SwServer.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\CharacterPosts\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Auth\" />
   </ItemGroup>
 </Project>

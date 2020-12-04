@@ -12,6 +12,7 @@
     <Folder Include="$(MSBuildThisFileDirectory)Datas\DotDot\Bin\Tables\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)ChannelLoadStatus.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\CharacterPostType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\ChatType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />

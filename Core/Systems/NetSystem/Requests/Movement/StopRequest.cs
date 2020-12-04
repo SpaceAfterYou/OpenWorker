@@ -6,7 +6,7 @@ using System.Numerics;
 namespace Core.Systems.NetSystem.Requests.Movement
 {
     [Request]
-    public readonly struct StopBtRequest
+    public readonly struct StopRequest
     {
         public int CharacterId { get; }
         public ulong Unknown1 { get; }
@@ -15,7 +15,7 @@ namespace Core.Systems.NetSystem.Requests.Movement
         public float Unknown4 { get; }
         public byte Unknown5 { get; }
 
-        public StopBtRequest(BinaryReader br)
+        public StopRequest(BinaryReader br)
         {
             CharacterId = br.ReadInt32();
             Unknown1 = br.ReadUInt64();

@@ -48,9 +48,11 @@
 
         MovementMove = 0x0205, /// 0x0502
         MovementJump = 0x0605, /// 0x0506
-        MovementStop = 0x0405, /// 0x0504
+        MovementStopBrodcast = 0x0405, /// 0x0504
         CharacterToggleWeapon = 0x0805, /// 0x0508
-        MovementLoopMotionEndBt = 0x3305, /// 0x0533
+        MovementLoopMotionEnd = 0x3305, /// 0x0533
+        MovementMoveAttached = 0x3405, /// 0x0534
+        MovementMoveAttachedEnd = 0x3505, /// 0x0535
 
         Undefined0x0705 = 0x0507, /// 0x0705
         ChatMessage = 0x0107, /// 0x0701

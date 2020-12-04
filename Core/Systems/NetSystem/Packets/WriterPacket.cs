@@ -39,12 +39,20 @@ namespace Core.Systems.NetSystem.Packets
             BinaryWriter.Write(Encoding.Unicode.GetBytes(str));
         }
 
+        public void Write(in Vector2 value)
+        {
+            BinaryWriter.Write(value.X);
+            BinaryWriter.Write(value.Y);
+        }
+
         public void Write(in Vector3 value)
         {
             BinaryWriter.Write(value.X);
             BinaryWriter.Write(value.Y);
             BinaryWriter.Write(value.Z);
         }
+
+        public void Write(ChatType value) => BinaryWriter.Write((uint)value);
 
         public void Write(HeroType value) => BinaryWriter.Write((byte)value);
 

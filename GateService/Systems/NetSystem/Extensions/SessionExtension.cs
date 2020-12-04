@@ -11,63 +11,63 @@ namespace GateService.Systems.NetSystem.Extensions
     {
         internal static Session SendGateEnterResult(this Session session)
         {
-            using WriterPacket pw = new(ClientOpcode.GateEnter);
+            using WriterPacket writer = new(ClientOpcode.GateEnter);
 
-            pw.Write(GateEnterResultType.Success);
-            pw.Write(session.Account.Id);
+            writer.Write(GateEnterResultType.Success);
+            writer.Write(session.Account.Id);
 
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
 
         internal static Session SendCharactersList(this Session session)
         {
-            using WriterPacket pw = new(ClientOpcode.CharactersList);
+            using WriterPacket writer = new(ClientOpcode.CharactersList);
 
-            pw.Write((byte)session.Characters.Count);
-            foreach (var character in session.Characters) { pw.Write(character); }
+            writer.Write((byte)session.Characters.Count);
+            foreach (var character in session.Characters) { writer.Write(character); }
 
-            pw.Write(session.Characters.LastSelectedId);
-            pw.Write((ushort)0);
-            pw.Write((ulong)session.Characters.InitializeTime.TotalSeconds);
-            pw.Write((uint)0);
-            pw.Write((ulong)1262271600); // dec/31/2009
-            pw.Write((byte)17);
-            pw.Write((byte)0);
+            writer.Write(session.Characters.LastSelectedId);
+            writer.Write((ushort)0);
+            writer.Write((ulong)session.Characters.InitializeTime.TotalSeconds);
+            writer.Write((uint)0);
+            writer.Write((ulong)1262271600); // dec/31/2009
+            writer.Write((byte)17);
+            writer.Write((byte)0);
 
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
 
         internal static Session SendCharacterSelect(this Session session, Character character, District district)
         {
-            using WriterPacket pw = new(ClientOpcode.CharacterSelect);
+            using WriterPacket writer = new(ClientOpcode.CharacterSelect);
 
-            pw.Write(character.Id);
-            pw.Write(session.Account.Id);
-            pw.Write(new byte[28]);
-            pw.WriteNumberLengthUtf8String(district.Address.ToString());
-            pw.Write((ushort)district.Port);
-            pw.Write(character.Place);
-            pw.Write(new byte[12]);
+            writer.Write(character.Id);
+            writer.Write(session.Account.Id);
+            writer.Write(new byte[28]);
+            writer.WriteNumberLengthUtf8String(district.Address.ToString());
+            writer.Write((ushort)district.Port);
+            writer.Write(character.Place);
+            writer.Write(new byte[12]);
 
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
 
         internal static Session SendCurrentDate(this Session session)
         {
-            using WriterPacket pw = new(ClientOpcode.CurrentDate);
+            using WriterPacket writer = new(ClientOpcode.CurrentDate);
 
             DateTimeOffset dateTime = DateTimeOffset.Now;
 
-            pw.Write(dateTime.ToUnixTimeSeconds());
-            pw.Write((ushort)dateTime.Year);
-            pw.Write((ushort)dateTime.Month);
-            pw.Write((ushort)dateTime.Day);
-            pw.Write((ushort)dateTime.Hour);
-            pw.Write((ushort)dateTime.Minute);
-            pw.Write((ushort)dateTime.Second);
-            pw.Write(Convert.ToUInt16(TimeZoneInfo.Local.IsDaylightSavingTime(dateTime)));
+            writer.Write(dateTime.ToUnixTimeSeconds());
+            writer.Write((ushort)dateTime.Year);
+            writer.Write((ushort)dateTime.Month);
+            writer.Write((ushort)dateTime.Day);
+            writer.Write((ushort)dateTime.Hour);
+            writer.Write((ushort)dateTime.Minute);
+            writer.Write((ushort)dateTime.Second);
+            writer.Write(Convert.ToUInt16(TimeZoneInfo.Local.IsDaylightSavingTime(dateTime)));
 
-            return session.SendAsync(pw) as Session;
+            return session.SendAsync(writer) as Session;
         }
     }
 }
