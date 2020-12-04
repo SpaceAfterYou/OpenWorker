@@ -28,7 +28,7 @@ namespace DistrictService.Systems.NetSystem.Handlers
                 return;
             }
 
-            session.Channel.BrodcastChatMessage(session, request);
+            session.Channel.BroadcastChatMessage(session, request);
         }
     }
 }
