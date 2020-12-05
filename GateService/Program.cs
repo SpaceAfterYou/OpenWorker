@@ -1,6 +1,7 @@
 using Core.Systems.NetSystem.Providers;
 using GateService.Systems.GameSystem;
 using GateService.Systems.NetSystem;
+using GateService.Systems.ServiceSystem.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -19,6 +20,7 @@ namespace GateService
                 .AddSingleton<Server>()
                 .AddSingleton<Gate>()
                 .AddSingleton<Tables>()
-                .AddTransient<Session>());
+                .AddTransient<Session>()
+                .AddTables());
     }
 }

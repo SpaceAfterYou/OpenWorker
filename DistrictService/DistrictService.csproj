@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="DotNetZip" Version="1.15.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="5.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="5.0.0" />
@@ -27,7 +28,13 @@
     <PackageReference Include="StackExchange.Redis" Version="2.2.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Systems\GameSystem\Storage\" />
+  </ItemGroup>
+
   <Import Project="..\Core\Core.projitems" Label="Shared" />
 
   <Import Project="..\SoulWorker\SoulWorker.projitems" Label="Shared" />
+
+  <Import Project="..\TrinigyVisionEngine\TrinigyVisionEngine.projitems" Label="Shared" />
 </Project>

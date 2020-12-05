@@ -1,41 +1,71 @@
-﻿using Core.Systems.NetSystem.Attributes;
-using Core.Systems.NetSystem.Opcodes;
-using Core.Systems.NetSystem.Permissions;
-using Core.Systems.NetSystem.Requests.Movement;
-
-namespace DistrictService.Systems.NetSystem.Handlers
+﻿namespace DistrictService.Systems.NetSystem.Handlers
 {
     internal static class ServiceHandler
     {
-        [Handler(HandlerOpcode.MovementJump, HandlerPermission.Authorized)]
-        public static void Jump(Session session, JumpRequest request)
-        {
-            session.Character.Place.Position = request.Position;
-            session.Character.Place.Rotation = request.Rotation;
+        //[Handler(HandlerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
+        //public static void Enter(Session session, EnterRequest request, IBoosterRepository boosters, IDayEventBoosterRepository dayEventBoosterRepository, IChannelRepository channels)
+        //{
+        //    var accountModel = await DistrictEnterHelper.GetAccountModel(request.AccountId, request.SessionKey);
+        //    session.SetComponent(new Account(accountModel));
 
-            session.Channel.BroadcastMovementJump(session, request);
-        }
+        //    var characterModel = await DistrictEnterHelper.GetCharacterModel(request.CharacterId, request.AccountId);
 
-        [Handler(HandlerOpcode.MovementLoopMotionEnd, HandlerPermission.Authorized)]
-        public static void LoopMotionEndBroadcast(Session session) =>
-            session.Channel.BroadcastLoopMotionEnd(session);
+        //    var character = new Character(characterModel);
+        //    session
+        //        .SetComponent(character)
+        //            .SetComponent(new Profile(characterModel))
+        //            .SetComponent(new Stats())
+        //            .SetComponent(new SpecialOptions())
+        //            .SetComponent(new Gestures(characterModel));
 
-        [Handler(HandlerOpcode.MovementMove, HandlerPermission.Authorized)]
-        public static void Move(Session session, MoveRequest request)
-        {
-            session.Character.Place.Position = request.Position;
-            session.Character.Place.Rotation = request.Rotation;
+        //    DistrictEnterHelper.CreateStorages(session, accountModel, characterModel);
 
-            session.Channel.BroadcastMovementMove(session, request);
-        }
+        //    //Hub.SendSessionConnect(session, character);
 
-        [Handler(HandlerOpcode.MovementStopBt, HandlerPermission.Authorized)]
-        public static void Stop(Session session, StopRequest request)
-        {
-            session.Character.Place.Position = request.Position;
-            session.Character.Place.Rotation = request.Rotation;
+        //    channels.JoinToFirstAvailable(session);
 
-            session.Channel.BroadcastMovementStop(session, request);
-        }
+        //    session
+        //        .ReTarget<AuthorizedGroupAttribute>()
+        //        .SendCurrentDate()
+        //        .SendWorldVersion()
+        //        .SendDayEventBoosterList(dayEventBoosterRepository)
+        //        .SendWorldEnter()
+        //        .SendAddBoosters(boosters)
+        //        //eSUB_CMD_POST_ACCOUNT_RECV
+        //        //.SendAttendanceRewardLoad()
+        //        //.SendAttendancePlayTimeInit()
+        //        //receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
+        //        //receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
+        //        //receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
+        //        //.SendInfiniteTowerLoadInfo()
+        //        //receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
+        //        //.SendAttendanceReward()
+        //        //.SendAttendanceContinueReward()
+        //        // receive_eSUB_CMD_FRIEND_LOAD
+        //        // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
+        //        .SendCharacterDbLoadSync();
+        //}
+
+        //[Handler(HandlerOpcode.Heartbeat, HandlerPermission.Authorized)]
+        //public static void Heartbeat(Session session, HeartbeatRequest request) =>
+        //session.SendServerHeartbeat(request);
+
+        //[Handler(HandlerOpcode.LogOut, HandlerPermission.Authorized)]
+        //public static void LogOut(Session session, LogoutRequest request, GateConnection connection)
+        //{
+        //    var account = session.GetComponent<Account>();
+        //    if (account.Id != request.AccountId)
+        //    {
+        //        return;
+        //    }
+
+        //    var character = session.GetComponent<Character>();
+        //    if (character.Id != request.CharacterId)
+        //    {
+        //        return;
+        //    }
+
+        //    session.SendServerLogOut(account, character, connection);
+        //}
     }
 }

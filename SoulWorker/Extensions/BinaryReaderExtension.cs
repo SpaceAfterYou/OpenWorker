@@ -5,7 +5,7 @@ namespace SoulWorker.Extensions
 {
     public static class BinaryReaderExtension
     {
-        public static HeroType ReadCharacterType(this BinaryReader br) =>
+        public static HeroType ReadHeroType(this BinaryReader br) =>
             (HeroType)br.ReadByte();
 
         public static ChatType ReadChatType(this BinaryReader br) =>

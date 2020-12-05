@@ -13,6 +13,7 @@ namespace DistrictService.Systems.NetSystem
     {
         public Channel Channel { get; set; }
         public Character Character { get; init; }
+        public Profile Profile { get; init; }
 
         public Session(Server server, HandlerProvider provider, ILogger logger) : base(server, provider, logger)
         {

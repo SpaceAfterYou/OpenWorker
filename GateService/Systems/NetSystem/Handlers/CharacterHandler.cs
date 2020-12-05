@@ -4,6 +4,9 @@ using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
 using Core.Systems.NetSystem.Requests.Character;
 using GateService.Systems.GameSystem;
+using SoulWorker.Datas.DotDot.Bin.Tables;
+using SoulWorker.Types;
+using System;
 using System.Linq;
 
 namespace GateService.Systems.NetSystem.Handlers
@@ -13,23 +16,29 @@ namespace GateService.Systems.NetSystem.Handlers
         [Handler(HandlerOpcode.CharacterChangeSlot, HandlerPermission.Authorized)]
         public static void ChangeSlot(Session session, ChangeSlotRequest request)
         {
-            //if (1 > request.FirstSlot || request.FirstSlot > SoulWorker.Constants.CharactersSlotsCount)
-            //{
-            //    session.Disconnect();
-            //    return;
-            //}
+            if (1 > request.FirstSlot || request.FirstSlot > SoulWorker.Constants.CharactersSlotsCount)
+            {
+#if !DEBUG
+                session.Disconnect();
+#endif
+                return;
+            }
 
-            //if (1 > request.SecondSlot || request.SecondSlot > SoulWorker.Constants.CharactersSlotsCount)
-            //{
-            //    session.Disconnect();
-            //    return;
-            //}
+            if (1 > request.SecondSlot || request.SecondSlot > SoulWorker.Constants.CharactersSlotsCount)
+            {
+#if !DEBUG
+                session.Disconnect();
+#endif
+                return;
+            }
 
-            //if (request.FirstSlot == request.SecondSlot)
-            //{
-            //    session.Disconnect();
-            //    return;
-            //}
+            if (request.FirstSlot == request.SecondSlot)
+            {
+#if !DEBUG
+                session.Disconnect();
+#endif
+                return;
+            }
 
             //var first = slots.FirstOrDefault(slot => slot.Id == request.FirstSlot);
             //var second = slots.FirstOrDefault(slot => slot.Id == request.SecondSlot);
@@ -57,32 +66,56 @@ namespace GateService.Systems.NetSystem.Handlers
         }
 
         [Handler(HandlerOpcode.CharacterCreate, HandlerPermission.Authorized)]
-        public static void Create(Session session, CreateRequest request, Gate gate)
+        public static void Create(Session session, CreateRequest request, Gate gate, ICustomizeHairTable customizeHairTable)
         {
             ///* Validate nickname */
-            //if (request.Character.Main.Name.Length > SoulWorker.Constants.MaxCharacterNameLength || request.Character.Main.Name.Length < SoulWorker.Constants.MinCharacterNameLength)
-            //{
-            //    return;
-            //}
+            if (request.Character.Main.Name.Length > SoulWorker.Constants.MaxCharacterNameLength)
+            {
+                return;
+            }
+
+            if (request.Character.Main.Name.Length < SoulWorker.Constants.MinCharacterNameLength)
+            {
+                return;
+            }
 
             ///* Validate hero */
-            //if (!Enum.IsDefined(typeof(HeroType), request.Character.Main.Character)) { return; }
+            if (!Enum.IsDefined(typeof(HeroType), request.Character.Main.Character))
+            {
+#if !DEBUG
+                session.Disconnect();
+#endif
+                return;
+            }
 
-            //using var context = new CharacterContext();
+            using var context = new CharacterContext();
 
             ///* Slot is busy, client error */
-            //if (context.Characters.Any(c => c.SlotId == request.Slot && c.AccountId == account.Id)) { return; }
+            if (context.Characters.Any(c => c.SlotId == request.SlotId && c.AccountId == session.Account.Id))
+            {
+#if !DEBUG
+                session.Disconnect();
+# endif
+                return;
+            }
 
             ///* Nickname is busy */
-            //if (context.Characters.Any(c => c.Name == request.Character.Main.Name)) { return; }
+            if (context.Characters.Any(c => c.Name == request.Character.Main.Name)) { return; }
 
-            //var customizeHair = CustomizeHairTable.Instance[request.Character.Main.Character];
+            CustomizeHairTable.Entry customizeHair = customizeHairTable.ElementAtOrDefault((int)request.Character.Main.Character);
+            if (customizeHair is null)
+            {
+#if !DEBUG
+                session.Disconnect();
+# endif
+                return;
+            }
 
             ///* Validate hair style */
-            //if (!customizeHair.Style.Contains(request.Character.Main.Appearance.Hair.Style)) { return; }
+            if (!customizeHair.Style.Contains(request.Character.Main.Appearance.Hair.Style)) { return; }
 
             ///* Validate hair color */
-            //if (!customizeHair.Color.Contains(request.Character.Main.Appearance.Hair.Color)) { return; }
+            if (!customizeHair.Color.Contains(request.Character.Main.Appearance.Hair.Color)) { return; }
 
             //var customizeEyes = CustomizeEyesTable.Instance[request.Character.Main.Character];
 

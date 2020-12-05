@@ -2,5 +2,6 @@
 {
     public class BaseItem
     {
+        public uint Id { get; init; }
     }
 }

@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>3821fd1a-8486-4905-9bfe-e60e5e1b0c30</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>TrinigyVisionEngine</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\TrinigyVisionEngine\Vision\Runtime\Base\IO\Serialization\VArchive.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\EquipItem.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\GamePlugInSceneManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\BattleType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\ClearType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\CreationConditionType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\CreationPositionType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EntityType.cs" />
+    <Compile Include="..\TrinigyVisionEngine\Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VEntities.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VCheckEventSpawnBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VCheckMonsterSpawnBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VCheckSectorBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VClearSector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VCommonPositionBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VInterActionBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VLuaFunctionBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VMazeEscapeBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VMonster.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VMonsterSpawnBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VPersonalShopAreaBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VPortalBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VPortalExitBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VQuestMoveCheckBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VSafeAreaBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VSectorBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VSectorStartBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VServerGateBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VSocialItemExcludeBox.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventBox\VStartEventBox.cs" />
+    <Compile Include="..\TrinigyVisionEngine\Vision\Runtime\EnginePlugins\Game\World\Batch\EventPoint\VEntities.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventPoint\VEscortPoint.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventPoint\VPoint.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventPoint\VWayPoint.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\EventType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\GateType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\JumpType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\LayerBitmask.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\LuaFunctionType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\MonsterSpawnType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\MonsterType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\MoveType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\PointType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\PortalState.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\RespawnType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\Root.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\ScriptType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\SectorExitType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\SectorType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\SpawnType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\VEntity.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\Batch\WaitCreationSequenceType.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Havok\Ai\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Havok\Behavior\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Havok\Physics\" />
+  </ItemGroup>
+</Project>

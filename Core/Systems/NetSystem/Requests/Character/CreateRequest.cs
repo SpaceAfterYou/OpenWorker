@@ -12,16 +12,16 @@ namespace Core.Systems.NetSystem.Requests.Character
     public readonly struct CreateRequest
     {
         public CreateCharacter Character { get; }
-        public byte Slot { get; }
+        public byte SlotId { get; }
         private uint Unknown1 { get; }
-        public uint Outfit { get; }
+        public uint OutfitId { get; }
 
         public CreateRequest(BinaryReader br)
         {
             Character = new CreateCharacter(br);
-            Slot = br.ReadByte();
+            SlotId = br.ReadByte();
             Unknown1 = br.ReadUInt32();
-            Outfit = br.ReadUInt32();
+            OutfitId = br.ReadUInt32();
         }
     }
 
@@ -181,7 +181,7 @@ namespace Core.Systems.NetSystem.Requests.Character
         {
             Id = br.ReadInt32();
             Name = br.ReadNumberLengthUnicodeString();
-            Character = br.ReadCharacterType();
+            Character = br.ReadHeroType();
             Advancement = br.ReadByte();
             Portrait = br.ReadUInt32();
             Appearance = new CreateCharacterAppearance(br);
