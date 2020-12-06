@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Xml.Serialization;
 
 namespace Core.Systems.GameSystem.Datas.World.Table
 {
@@ -8,7 +9,9 @@ namespace Core.Systems.GameSystem.Datas.World.Table
         Self,
         Party,
         Monster,
-        Npc,
-        Warp
+        Warp,
+
+        [XmlEnum("NPC")]
+        Npc
     }
 }

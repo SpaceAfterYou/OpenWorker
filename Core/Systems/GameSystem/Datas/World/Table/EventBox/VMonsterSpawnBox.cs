@@ -145,7 +145,7 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
         internal VMonsterSpawnBox(XmlNode xml) : base(xml)
         {
             Monsters = Enumerable
-                .Range(0, 10)
+                .Range(1, 10)
                 .Select(id => new VMonster(
                     uint.Parse(xml.SelectSingleNode($"m_iMonsterID{id}").Attributes.GetNamedItem("value").Value),
                     (MonsterSpawnType)Enum.Parse(typeof(MonsterSpawnType), xml.SelectSingleNode($"m_eType{id}").Attributes.GetNamedItem("value").Value, true),

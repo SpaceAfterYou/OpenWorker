@@ -1,7 +1,7 @@
 ﻿using Core.Systems.GameSystem.Datas.World.Table;
 using System;
 using System.IO;
-using System.Xml.Serialization;
+using System.Xml;
 
 namespace LangTest
 {
@@ -11,8 +11,10 @@ namespace LangTest
         {
             using FileStream fs = new(@"Y:\soulworker-dev\swe\1\World\Table\T02_TUTORIAL.vbatch", FileMode.Open);
 
-            XmlSerializer xml = new(typeof(VRoot));
-            var q = (VRoot)xml.Deserialize(fs);
+            XmlDocument xml = new();
+            xml.Load(fs);
+
+            var q = new VRoot(xml.DocumentElement);
 
             Console.WriteLine("Hello World!");
         }
