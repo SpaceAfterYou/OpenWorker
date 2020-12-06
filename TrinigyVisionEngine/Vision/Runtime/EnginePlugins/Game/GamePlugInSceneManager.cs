@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Xml;
-using TrinigyVisionEngine.Vision.Runtime.Base.IO.Serialization;
-using TrinigyVisionEngine.Vision.Runtime.EnginePlugins.Game.World.Batch;
 
 namespace TrinigyVisionEngine.Vision.Runtime.EnginePlugins.Game
 {
@@ -79,18 +76,6 @@ namespace TrinigyVisionEngine.Vision.Runtime.EnginePlugins.Game
 
     public static class GamePlugInSceneManager
     {
-        public static Root LoadBatch(string archiveName, string fileName)
-        {
-            using var archive = new VArchive(archiveName);
-            using var stream = archive[fileName].OpenReader();
-
-            var xml = new XmlDocument();
-            xml.Load(stream);
-
-            var root = xml.DocumentElement;
-            return new Root(root);
-        }
-
         //public static SlotType GenerateItemType(EquipSlotType type) =>
         //    type switch
         //    {
