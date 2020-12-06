@@ -10,10 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)ChannelLoadStatus.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Datas\DotDot\Bin\Tables\CustomizeEyesTable.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Datas\DotDot\Bin\Tables\CustomizeHairTable.cs" />
     <Compile Include="..\SoulWorker\ITableItemEntry.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Datas\DotDot\Bin\Tables\ItemTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)StatId.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TableReader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Types\CharacterPostType.cs" />

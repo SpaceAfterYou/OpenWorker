@@ -4,7 +4,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Core.DatabaseSystem.Characters
+namespace Core.Systems.DatabaseSystem.Characters
 {
     public sealed class ProfileModel
     {

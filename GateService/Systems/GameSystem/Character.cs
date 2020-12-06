@@ -1,4 +1,4 @@
-﻿using Core.DatabaseSystem.Characters;
+﻿using Core.Systems.DatabaseSystem.Characters;
 using SoulWorker.Types;
 
 namespace GateService.Systems.GameSystem

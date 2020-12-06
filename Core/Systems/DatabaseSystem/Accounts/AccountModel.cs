@@ -3,7 +3,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Core.DatabaseSystem.Accounts
+namespace Core.Systems.DatabaseSystem.Accounts
 {
     [Table("accounts")]
     [Index("SessionKey")]

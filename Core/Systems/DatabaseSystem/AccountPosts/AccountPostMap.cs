@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Core.DatabaseSystem.AccouintPosts
+namespace Core.Systems.DatabaseSystem.AccouintPosts
 {
     public sealed class AccountPostMap : IEntityTypeConfiguration<AccountPostModel>
     {

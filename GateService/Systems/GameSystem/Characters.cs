@@ -1,4 +1,4 @@
-﻿using Core.DatabaseSystem.Characters;
+﻿using Core.Systems.DatabaseSystem.Characters;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;

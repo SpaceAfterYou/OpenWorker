@@ -31,6 +31,11 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Items\ItemModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Extensions\BinaryReaderExtension.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Convert.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\ITableItemEntry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\TableReader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\CustomizeEyesTable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\CustomizeHairTable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ItemTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\BattleType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\ClearType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\CreationConditionType.cs" />

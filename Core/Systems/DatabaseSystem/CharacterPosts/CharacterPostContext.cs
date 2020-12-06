@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace Core.DatabaseSystem.CharacterPosts
+namespace Core.Systems.DatabaseSystem.CharacterPosts
 {
     public sealed class CharacterPostContext : Context
     {

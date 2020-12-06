@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Core.DatabaseSystem.Guilds
+namespace Core.Systems.DatabaseSystem.Guilds
 {
     public sealed class GuildMap : IEntityTypeConfiguration<GuildModel>
     {

@@ -1,4 +1,4 @@
-﻿using Core.DatabaseSystem.Storages;
+﻿using Core.Systems.DatabaseSystem.Storages;
 
 namespace GateService.Systems.GameSystem
 {

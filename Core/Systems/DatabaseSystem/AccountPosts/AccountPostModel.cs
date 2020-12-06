@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Core.DatabaseSystem.AccouintPosts
+namespace Core.Systems.DatabaseSystem.AccouintPosts
 {
     [Table("account_posts")]
     public sealed class AccountPostModel

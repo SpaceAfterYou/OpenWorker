@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace Core.DatabaseSystem.Characters
+namespace Core.Systems.DatabaseSystem.Characters
 {
     public sealed class CharacterContext : Context
     {

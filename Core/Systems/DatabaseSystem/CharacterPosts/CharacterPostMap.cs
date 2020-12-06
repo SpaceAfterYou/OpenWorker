@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Core.DatabaseSystem.CharacterPosts
+namespace Core.Systems.DatabaseSystem.CharacterPosts
 {
     public sealed class CharacterPostMap : IEntityTypeConfiguration<CharacterPostModel>
     {

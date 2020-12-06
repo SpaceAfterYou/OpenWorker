@@ -1,4 +1,4 @@
-﻿using Core.DatabaseSystem.Characters;
+﻿using Core.Systems.DatabaseSystem.Characters;
 
 namespace GateService.Systems.GameSystem
 {

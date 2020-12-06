@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace Core.DatabaseSystem.Accounts
+namespace Core.Systems.DatabaseSystem.Accounts
 {
     public sealed class AccountContext : Context
     {

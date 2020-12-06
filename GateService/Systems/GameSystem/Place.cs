@@ -1,4 +1,4 @@
-﻿using Core.DatabaseSystem.Characters;
+﻿using Core.Systems.DatabaseSystem.Characters;
 using System.Numerics;
 
 namespace GateService.Systems.GameSystem

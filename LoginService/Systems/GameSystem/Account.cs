@@ -1,4 +1,4 @@
-﻿using Core.DatabaseSystem.Accounts;
+﻿using Core.Systems.DatabaseSystem.Accounts;
 
 namespace LoginService.Systems.GameSystem
 {

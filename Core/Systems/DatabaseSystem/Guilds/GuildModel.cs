@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Core.DatabaseSystem.Guilds
+namespace Core.Systems.DatabaseSystem.Guilds
 {
     [Table("guilds")]
     public sealed class GuildModel

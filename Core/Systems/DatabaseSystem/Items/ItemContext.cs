@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace Core.DatabaseSystem.Storages
+namespace Core.Systems.DatabaseSystem.Storages
 {
     public sealed class ItemContext : Context
     {

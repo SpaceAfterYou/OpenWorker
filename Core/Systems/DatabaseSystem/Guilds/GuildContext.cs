@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace Core.DatabaseSystem.Guilds
+namespace Core.Systems.DatabaseSystem.Guilds
 {
     public sealed class GuildContext : Context
     {

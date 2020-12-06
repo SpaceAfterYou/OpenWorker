@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Core.DatabaseSystem.Characters
+namespace Core.Systems.DatabaseSystem.Characters
 {
     public sealed class CharacterMap : IEntityTypeConfiguration<CharacterModel>
     {

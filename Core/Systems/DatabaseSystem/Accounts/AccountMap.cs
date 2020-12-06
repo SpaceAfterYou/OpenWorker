@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Core.DatabaseSystem.Accounts
+namespace Core.Systems.DatabaseSystem.Accounts
 {
     public sealed class AccountMap : IEntityTypeConfiguration<AccountModel>
     {

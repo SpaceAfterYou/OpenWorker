@@ -8,9 +8,8 @@ namespace TrinigyVisionEngine.Vision.Runtime.Base.IO.Serialization
     {
         public ZipEntry this[string filename] => _zipEntries[filename];
 
-        public VArchive(string filename, string password = null)
+        public VArchive(string path, string password = null)
         {
-            string path = $"{Environment.CurrentDirectory}\\datas\\{filename}.v";
             byte[] data = File.ReadAllBytes(path);
 
             Exchange(ref data);

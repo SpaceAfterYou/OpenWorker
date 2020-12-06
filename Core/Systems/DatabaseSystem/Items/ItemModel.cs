@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Core.DatabaseSystem.Storages
+namespace Core.Systems.DatabaseSystem.Storages
 {
     public sealed class StatModel
     {

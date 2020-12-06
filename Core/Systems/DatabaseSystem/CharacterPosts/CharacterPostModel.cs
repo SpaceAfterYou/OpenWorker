@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Core.DatabaseSystem.CharacterPosts
+namespace Core.Systems.DatabaseSystem.CharacterPosts
 {
     [Table("character_posts")]
     public sealed class CharacterPostModel

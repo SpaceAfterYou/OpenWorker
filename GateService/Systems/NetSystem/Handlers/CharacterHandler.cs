@@ -1,4 +1,4 @@
-﻿using Core.DatabaseSystem.Characters;
+﻿using Core.Systems.DatabaseSystem.Characters;
 using Core.Systems.NetSystem.Attributes;
 using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
