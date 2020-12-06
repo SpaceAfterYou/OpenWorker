@@ -7,7 +7,7 @@
 ![Discord](https://img.shields.io/discord/606442027873206292?style=for-the-badge)
 ![Twitch Status](https://img.shields.io/twitch/status/sawich?style=for-the-badge)
 
-Just another server emulator for korean SoulWoker written on .NET 5.
+Just another server emulator for korean SoulWoker written in .NET 5.
 
 ### Chat
 
@@ -23,6 +23,8 @@ Just another server emulator for korean SoulWoker written on .NET 5.
 Apply migration with nuget console: `update-database -Context MigrationContext -Project SetupDatabase`
 
 ### Configuration
+
+# COPY AND RENAME appsettings.example.* to appsettings.* in every projects
 
 #### Login Service
 
