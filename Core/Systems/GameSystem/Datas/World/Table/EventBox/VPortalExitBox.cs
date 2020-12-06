@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using Core.Systems.GameSystem.Extensions;
+using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 {
@@ -9,9 +10,7 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
         /// </summary>
         public uint ParentPortal { get; }
 
-        internal VPortalExitBox(XmlNode xml) : base(xml)
-        {
-            ParentPortal = uint.Parse(xml.SelectSingleNode("m_iParentPortalBoxID").Attributes.GetNamedItem("value").Value);
-        }
+        internal VPortalExitBox(XmlNode xml) : base(xml) =>
+            ParentPortal = xml.GetUInt32("m_iParentPortalBoxID");
     }
 }

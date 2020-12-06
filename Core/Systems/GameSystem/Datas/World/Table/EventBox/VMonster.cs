@@ -1,4 +1,6 @@
-﻿namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+
+namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 {
     public sealed class VMonster
     {
@@ -20,6 +22,7 @@
         /// </summary>
         public uint Chance { get; }
 
-        internal VMonster(uint id, MonsterSpawnType type, uint chance) => (Id, Type, Chance) = (id, type, chance);
+        internal VMonster(uint id, MonsterSpawnType type, uint chance) =>
+            (Id, Type, Chance) = (id, type, chance);
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using Core.Systems.GameSystem.Extensions;
+using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 {
@@ -9,9 +10,7 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
         /// </summary>
         public uint EpisodeCondition { get; }
 
-        internal VQuestMoveCheckBox(XmlNode xml) : base(xml)
-        {
-            EpisodeCondition = uint.Parse(xml.SelectSingleNode("m_uiEpisodeCondition").Attributes.GetNamedItem("value").Value);
-        }
+        internal VQuestMoveCheckBox(XmlNode xml) : base(xml) =>
+            EpisodeCondition = xml.GetUInt32("m_uiEpisodeCondition");
     }
 }

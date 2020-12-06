@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
@@ -13,18 +14,18 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
         /// <summary>
         ///
         /// </summary>
-        public uint NextSector { get; }
+        public uint NextSectorId { get; }
 
         /// <summary>
         ///
         /// </summary>
-        public uint Sector { get; }
+        public uint SectorId { get; }
 
         internal VServerGateBox(XmlNode xml) : base(xml)
         {
-            Type = (GateType)Enum.Parse(typeof(GateType), xml.SelectSingleNode("m_eType").Attributes.GetNamedItem("value").Value, true);
-            NextSector = uint.Parse(xml.SelectSingleNode("m_iNextSectorID").Attributes.GetNamedItem("value").Value);
-            Sector = uint.Parse(xml.SelectSingleNode("m_iSectorID").Attributes.GetNamedItem("value").Value);
+            Type = xml.GetEnum<GateType>("m_eType");
+            NextSectorId = xml.GetUInt32("m_iNextSectorID");
+            SectorId = xml.GetUInt32("m_iSectorID");
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using Core.Systems.GameSystem.Extensions;
+using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 {
@@ -16,8 +17,8 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 
         internal VMazeEscapeBox(XmlNode xml) : base(xml)
         {
-            Field = uint.Parse(xml.SelectSingleNode("m_iField").Attributes.GetNamedItem("value").Value);
-            EventObject = uint.Parse(xml.SelectSingleNode("m_iEventObject").Attributes.GetNamedItem("value").Value);
+            Field = xml.GetUInt32("m_iField");
+            EventObject = xml.GetUInt32("m_iEventObject");
         }
     }
 }

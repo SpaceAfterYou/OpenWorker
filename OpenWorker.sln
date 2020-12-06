@@ -21,14 +21,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{C51907
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "TrinigyVisionEngine", "TrinigyVisionEngine\TrinigyVisionEngine.shproj", "{3821FD1A-8486-4905-9BFE-E60E5E1B0C30}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LangTest", "LangTest\LangTest.csproj", "{5E01E665-6CAD-4C80-B309-203CE7A84CE8}"
-EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		TrinigyVisionEngine\TrinigyVisionEngine.projitems*{3821fd1a-8486-4905-9bfe-e60e5e1b0c30}*SharedItemsImports = 13
-		Core\Core.projitems*{5e01e665-6cad-4c80-b309-203ce7a84ce8}*SharedItemsImports = 5
-		SoulWorker\SoulWorker.projitems*{5e01e665-6cad-4c80-b309-203ce7a84ce8}*SharedItemsImports = 5
-		TrinigyVisionEngine\TrinigyVisionEngine.projitems*{5e01e665-6cad-4c80-b309-203ce7a84ce8}*SharedItemsImports = 5
 		Core\Core.projitems*{75f460cb-d3b5-4b1e-8803-db0d22bb8466}*SharedItemsImports = 13
 		Core\Core.projitems*{9c229b8e-b343-4b38-bb3e-485a7297acea}*SharedItemsImports = 5
 		SoulWorker\SoulWorker.projitems*{9c229b8e-b343-4b38-bb3e-485a7297acea}*SharedItemsImports = 5
@@ -65,10 +60,6 @@ Global
 		{B6F409F5-58B2-4AFF-9B74-32D111E6017A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B6F409F5-58B2-4AFF-9B74-32D111E6017A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B6F409F5-58B2-4AFF-9B74-32D111E6017A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5E01E665-6CAD-4C80-B309-203CE7A84CE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5E01E665-6CAD-4C80-B309-203CE7A84CE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5E01E665-6CAD-4C80-B309-203CE7A84CE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5E01E665-6CAD-4C80-B309-203CE7A84CE8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

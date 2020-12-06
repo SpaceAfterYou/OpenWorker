@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
@@ -29,10 +30,10 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 
         internal VCheckMonsterSpawnBox(XmlNode xml) : base(xml)
         {
-            Type = (MonsterType)Enum.Parse(typeof(MonsterType), xml.SelectSingleNode("m_eType").Attributes.GetNamedItem("value").Value, true);
-            LoopCount = uint.Parse(xml.SelectSingleNode("m_iLoopCount").Attributes.GetNamedItem("value").Value);
-            EntityId = uint.Parse(xml.SelectSingleNode("m_iEntityID").Attributes.GetNamedItem("value").Value);
-            CheckBox = Enumerable.Range(1, 10).Select(id => uint.Parse(xml.SelectSingleNode($"m_iCheckBox_{id}").Attributes.GetNamedItem("value").Value)).ToArray();
+            Type = xml.GetEnum<MonsterType>("m_eType");
+            LoopCount = xml.GetUInt32("m_iLoopCount");
+            EntityId = xml.GetUInt32("m_iEntityID");
+            CheckBox = Enumerable.Range(0, 10).Select(id => xml.GetUInt32($"m_iCheckBox_{id}")).ToArray();
         }
     }
 }

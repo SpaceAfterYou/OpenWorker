@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
@@ -22,9 +23,9 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 
         internal VLuaFunctionBox(XmlNode xml) : base(xml)
         {
-            Type = (LuaFunctionType)Enum.Parse(typeof(LuaFunctionType), xml.SelectSingleNode("m_eType").Attributes.GetNamedItem("value").Value, false);
-            Function = xml.SelectSingleNode("m_szFunction").Attributes.GetNamedItem("value").Value;
-            CheckId = uint.Parse(xml.SelectSingleNode("m_iCheckID").Attributes.GetNamedItem("value").Value);
+            Type = xml.GetEnum<LuaFunctionType>("m_eType");
+            Function = xml.GetString("m_szFunction");
+            CheckId = xml.GetUInt32("m_iCheckID");
         }
     }
 }

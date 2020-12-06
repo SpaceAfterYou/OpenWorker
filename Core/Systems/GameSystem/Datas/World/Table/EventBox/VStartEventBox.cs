@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
@@ -10,9 +11,7 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
         /// </summary>
         public SpawnType SpawnType { get; }
 
-        internal VStartEventBox(XmlNode xml) : base(xml)
-        {
-            SpawnType = (SpawnType)Enum.Parse(typeof(SpawnType), xml.SelectSingleNode("m_eSpawnType").Attributes.GetNamedItem("value").Value, true);
-        }
+        internal VStartEventBox(XmlNode xml) : base(xml) =>
+            SpawnType = xml.GetEnum<SpawnType>("m_eSpawnType");
     }
 }

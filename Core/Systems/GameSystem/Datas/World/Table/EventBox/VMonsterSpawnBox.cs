@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
@@ -146,37 +147,34 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
         {
             Monsters = Enumerable
                 .Range(1, 10)
-                .Select(id => new VMonster(
-                    uint.Parse(xml.SelectSingleNode($"m_iMonsterID{id}").Attributes.GetNamedItem("value").Value),
-                    (MonsterSpawnType)Enum.Parse(typeof(MonsterSpawnType), xml.SelectSingleNode($"m_eType{id}").Attributes.GetNamedItem("value").Value, true),
-                    uint.Parse(xml.SelectSingleNode($"m_iChance{id}").Attributes.GetNamedItem("value").Value)))
+                .Select(id => new VMonster(xml.GetUInt32($"m_iMonsterID{id}"), xml.GetEnum<MonsterSpawnType>($"m_eType{id}"), xml.GetUInt32($"m_iChance{id}")))
                 .ToArray();
-            CreationPositionType = (CreationPositionType)Enum.Parse(typeof(CreationPositionType), xml.SelectSingleNode("m_eCreationPositionType").Attributes.GetNamedItem("value").Value, true);
-            MoveType = (MoveType)Enum.Parse(typeof(MoveType), xml.SelectSingleNode("m_eMoveType").Attributes.GetNamedItem("value").Value, true);
-            CreationCondition = (CreationConditionType)Enum.Parse(typeof(CreationConditionType), xml.SelectSingleNode("m_eCreationCondition").Attributes.GetNamedItem("value").Value, true);
-            CreationEffectFile = xml.SelectSingleNode("m_CreationEffectFile").Attributes.GetNamedItem("value").Value;
-            WaitCreationDelayTime = float.Parse(xml.SelectSingleNode("m_fWaitCreationDelayTime").Attributes.GetNamedItem("value").Value);
-            WaitCreationSequenceTime = float.Parse(xml.SelectSingleNode("m_fWaitCreationSequenceTime").Attributes.GetNamedItem("value").Value);
-            WaitCreationMaxWave = byte.Parse(xml.SelectSingleNode("m_iWaitCreationMaxWave").Attributes.GetNamedItem("value").Value);
-            MaxEntityCount = byte.Parse(xml.SelectSingleNode("m_iMaxEntityCount").Attributes.GetNamedItem("value").Value);
-            WaitCreationSequenceType = (WaitCreationSequenceType)Enum.Parse(typeof(WaitCreationSequenceType), xml.SelectSingleNode("m_eWaitCreationSequenceType").Attributes.GetNamedItem("value").Value, true);
-            Waypoint = uint.Parse(xml.SelectSingleNode("m_iWaypoint").Attributes.GetNamedItem("value").Value);
-            AggroGroup = ushort.Parse(xml.SelectSingleNode("m_iAggroGroupID").Attributes.GetNamedItem("value").Value);
-            AggroDistance = uint.Parse(xml.SelectSingleNode("m_iAggroDistance").Attributes.GetNamedItem("value").Value);
-            AggroMaxCount = ushort.Parse(xml.SelectSingleNode("m_iAggroMaxCount").Attributes.GetNamedItem("value").Value);
-            LookRatio = float.Parse(xml.SelectSingleNode("m_fLookRatio").Attributes.GetNamedItem("value").Value);
-            ShowSight = bool.Parse(xml.SelectSingleNode("m_bShowSight").Attributes.GetNamedItem("value").Value);
-            ObjectKey = xml.SelectSingleNode("m_szObjectKey").Attributes.GetNamedItem("value").Value;
-            ScriptType = (ScriptType)Enum.Parse(typeof(ScriptType), xml.SelectSingleNode("m_eScriptType").Attributes.GetNamedItem("value").Value, true);
-            CheckScriptHp = Enumerable.Range(1, 5).Select(id => byte.Parse(xml.SelectSingleNode($"m_iCheckScriptHP{id}").Attributes.GetNamedItem("value").Value)).ToArray();
-            Sector = ushort.Parse(xml.SelectSingleNode("m_iSectorID").Attributes.GetNamedItem("value").Value);
-            ChangeSpawnAction = xml.SelectSingleNode("m_ChangeSpawnAction").Attributes.GetNamedItem("value").Value;
-            ProtectionTarget = ushort.Parse(xml.SelectSingleNode("m_ProtectionTarget").Attributes.GetNamedItem("value").Value);
-            RespawnTime = float.Parse(xml.SelectSingleNode("m_RespawnTime").Attributes.GetNamedItem("value").Value);
-            Step = byte.Parse(xml.SelectSingleNode("m_iStep").Attributes.GetNamedItem("value").Value);
-            RespawnType = (RespawnType)Enum.Parse(typeof(RespawnType), xml.SelectSingleNode("m_eRespawnType").Attributes.GetNamedItem("value").Value, true);
-            RespawnCondition = uint.Parse(xml.SelectSingleNode("m_iRespawnCondition").Attributes.GetNamedItem("value").Value);
-            GroupId = uint.Parse(xml.SelectSingleNode("m_iGroupID").Attributes.GetNamedItem("value").Value);
+            CreationPositionType = xml.GetEnum<CreationPositionType>("m_eCreationPositionType");
+            MoveType = xml.GetEnum<MoveType>("m_eMoveType");
+            CreationCondition = xml.GetEnum<CreationConditionType>("m_eCreationCondition");
+            CreationEffectFile = xml.GetString("m_CreationEffectFile");
+            WaitCreationDelayTime = xml.GetSingle("m_fWaitCreationDelayTime");
+            WaitCreationSequenceTime = xml.GetSingle("m_fWaitCreationSequenceTime");
+            WaitCreationMaxWave = xml.GetByte("m_iWaitCreationMaxWave");
+            MaxEntityCount = xml.GetByte("m_iMaxEntityCount");
+            WaitCreationSequenceType = xml.GetEnum<WaitCreationSequenceType>("m_eWaitCreationSequenceType");
+            Waypoint = xml.GetUInt32("m_iWaypoint");
+            AggroGroup = xml.GetUInt16("m_iAggroGroupID");
+            AggroDistance = xml.GetUInt32("m_iAggroDistance");
+            AggroMaxCount = xml.GetUInt16("m_iAggroMaxCount");
+            LookRatio = xml.GetSingle("m_fLookRatio");
+            ShowSight = xml.GetBool("m_bShowSight");
+            ObjectKey = xml.GetString("m_szObjectKey");
+            ScriptType = xml.GetEnum<ScriptType>("m_eScriptType");
+            CheckScriptHp = Enumerable.Range(1, 5).Select(id => xml.GetByte($"m_iCheckScriptHP{id}")).ToArray();
+            Sector = xml.GetUInt16("m_iSectorID");
+            ChangeSpawnAction = xml.GetString("m_ChangeSpawnAction");
+            ProtectionTarget = xml.GetUInt16("m_ProtectionTarget");
+            RespawnTime = xml.GetSingle("m_RespawnTime");
+            Step = xml.GetByte("m_iStep");
+            RespawnType = xml.GetEnum<RespawnType>("m_eRespawnType");
+            RespawnCondition = xml.GetUInt32("m_iRespawnCondition");
+            GroupId = xml.GetUInt32("m_iGroupID");
         }
     }
 }

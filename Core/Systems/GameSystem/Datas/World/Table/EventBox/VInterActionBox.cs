@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using Core.Systems.GameSystem.Extensions;
+using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 {
@@ -16,8 +17,8 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 
         internal VInterActionBox(XmlNode xml) : base(xml)
         {
-            Interaction = uint.Parse(xml.SelectSingleNode("m_iInteractionID").Attributes.GetNamedItem("value").Value);
-            ObjectKey = xml.SelectSingleNode("m_sObjectKey").Attributes.GetNamedItem("value").Value;
+            Interaction = xml.GetUInt32("m_iInteractionID");
+            ObjectKey = xml.GetString("m_sObjectKey");
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
@@ -22,9 +23,9 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 
         internal VCommonPositionBox(XmlNode xml) : base(xml)
         {
-            EntityType = (EntityType)Enum.Parse(typeof(EntityType), xml.SelectSingleNode("m_eEntityType").Attributes.GetNamedItem("value").Value, true);
-            Entity = uint.Parse(xml.SelectSingleNode("m_iEntityID").Attributes.GetNamedItem("value").Value);
-            Group = uint.Parse(xml.SelectSingleNode("m_iGroup").Attributes.GetNamedItem("value").Value);
+            EntityType = xml.GetEnum<EntityType>("m_eEntityType");
+            Entity = xml.GetUInt32("m_iEntityID");
+            Group = xml.GetUInt32("m_iGroup");
         }
     }
 }

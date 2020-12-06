@@ -1,6 +1,6 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Drawing;
-using System.Linq;
 using System.Numerics;
 using System.Xml;
 
@@ -58,25 +58,15 @@ namespace Core.Systems.GameSystem.Datas.World.Table
 
         protected VEntity(XmlNode xml)
         {
-            Id = uint.Parse(xml.SelectSingleNode("m_ID").Attributes.GetNamedItem("value").Value);
-            GenerateId = uint.Parse(xml.SelectSingleNode("m_iGenerateID").Attributes.GetNamedItem("value").Value);
-            LayerBitmask = (LayerBitmask)Enum.Parse(typeof(LayerBitmask), xml.SelectSingleNode("iLayerBitmask").Attributes.GetNamedItem("value").Value, true);
-
-            float[] posTopLeft = xml.SelectSingleNode("m_vPosTopLeft").Attributes.GetNamedItem("value").Value.Split(',').Select(float.Parse).ToArray();
-            PosTopLeft = new Vector3(posTopLeft[0], posTopLeft[1], posTopLeft[2]);
-
-            float[] posBottomRight = xml.SelectSingleNode("m_vPosBottomRight").Attributes.GetNamedItem("value").Value.Split(',').Select(float.Parse).ToArray();
-            PosBottomRight = new Vector3(posBottomRight[0], posBottomRight[1], posBottomRight[2]);
-
-            Rotation = float.Parse(xml.SelectSingleNode("m_fRotation").Attributes.GetNamedItem("value").Value);
-
-            float[] size = xml.SelectSingleNode("m_vSize").Attributes.GetNamedItem("value").Value.Split(',').Select(float.Parse).ToArray();
-            Size = new Vector3(size[0], size[1], size[2]);
-
-            ShowCustomEntity = bool.Parse(xml.SelectSingleNode("m_bShowCustomEntity").Attributes.GetNamedItem("value").Value);
-
-            byte[] colorLdr = xml.SelectSingleNode("m_ColorLDR").Attributes.GetNamedItem("value").Value.Split(',').Select(byte.Parse).ToArray();
-            Color = Color.FromArgb(colorLdr[3], colorLdr[0], colorLdr[1], colorLdr[2]);
+            Id = xml.GetUInt32("m_ID");
+            GenerateId = xml.GetUInt32("m_iGenerateID");
+            LayerBitmask = xml.GetEnum<LayerBitmask>("iLayerBitmask");
+            PosTopLeft = xml.GetVector3("m_vPosTopLeft");
+            PosBottomRight = xml.GetVector3("m_vPosBottomRight");
+            Rotation = xml.GetSingle("m_fRotation");
+            Size = xml.GetVector3("m_vSize");
+            ShowCustomEntity = xml.GetBool("m_bShowCustomEntity");
+            Color = xml.GetColor("m_ColorLDR");
         }
     }
 }

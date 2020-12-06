@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -100,27 +101,24 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 
         internal VPortalBox(XmlNode xml) : base(xml)
         {
-            ShowGui = bool.Parse(xml.SelectSingleNode("m_bShowGUI").Attributes.GetNamedItem("value").Value);
-            Gui = uint.Parse(xml.SelectSingleNode("m_iGUI").Attributes.GetNamedItem("value").Value);
-            JumpType = (JumpType)Enum.Parse(typeof(JumpType), xml.SelectSingleNode("m_eJumpType").Attributes.GetNamedItem("value").Value, true);
-            JumpMap = uint.Parse(xml.SelectSingleNode("m_iJumpMap").Attributes.GetNamedItem("value").Value);
-            Jump = uint.Parse(xml.SelectSingleNode("m_iJump").Attributes.GetNamedItem("value").Value);
-            PortalState = (PortalState)Enum.Parse(typeof(PortalState), xml.SelectSingleNode("m_eEffectType").Attributes.GetNamedItem("value").Value, true);
-            DisableEffect = xml.SelectSingleNode("m_szDisableEffect").Attributes.GetNamedItem("value").Value;
-            EnableEffect = xml.SelectSingleNode("m_szEnableEffect").Attributes.GetNamedItem("value").Value;
-            UiString = uint.Parse(xml.SelectSingleNode("m_iUIString").Attributes.GetNamedItem("value").Value);
-            NextSector = uint.Parse(xml.SelectSingleNode("m_iNextSectorID").Attributes.GetNamedItem("value").Value);
-            CallScript = bool.Parse(xml.SelectSingleNode("m_bCallScript").Attributes.GetNamedItem("value").Value);
-            OpenEpisode = uint.Parse(xml.SelectSingleNode("m_uiOpenEpisode").Attributes.GetNamedItem("value").Value);
-            CompleteEpisode = uint.Parse(xml.SelectSingleNode("m_uiCompleteEpisode").Attributes.GetNamedItem("value").Value);
-            StringOffset = new Vector3(
-                float.Parse(xml.SelectSingleNode("m_fStringOffsetX").Attributes.GetNamedItem("value").Value),
-                float.Parse(xml.SelectSingleNode("m_fStringOffsetY").Attributes.GetNamedItem("value").Value),
-                float.Parse(xml.SelectSingleNode("m_fStringOffsetZ").Attributes.GetNamedItem("value").Value));
-            ClearSectorId = Enumerable.Range(1, 5).Select(id => uint.Parse(xml.SelectSingleNode($"m_iClearSectorID{id}").Attributes.GetNamedItem("value").Value)).ToArray();
-            ClearSectorChance = Enumerable.Range(1, 5).Select(id => float.Parse(xml.SelectSingleNode($"m_fClearSectorChance{id}").Attributes.GetNamedItem("value").Value)).ToArray();
-            MaxUserCount = uint.Parse(xml.SelectSingleNode("m_iMaxUserCount").Attributes.GetNamedItem("value").Value);
-            MaxTimeCount = uint.Parse(xml.SelectSingleNode("m_iMaxTimeCount").Attributes.GetNamedItem("value").Value);
+            ShowGui = xml.GetBool("m_bShowGUI");
+            Gui = xml.GetUInt32("m_iGUI");
+            JumpType = xml.GetEnum<JumpType>("m_eJumpType");
+            JumpMap = xml.GetUInt32("m_iJumpMap");
+            Jump = xml.GetUInt32("m_iJump");
+            PortalState = xml.GetEnum<PortalState>("m_eEffectType");
+            DisableEffect = xml.GetString("m_szDisableEffect");
+            EnableEffect = xml.GetString("m_szEnableEffect");
+            UiString = xml.GetUInt32("m_iUIString");
+            NextSector = xml.GetUInt32("m_iNextSectorID");
+            CallScript = xml.GetBool("m_bCallScript");
+            OpenEpisode = xml.GetUInt32("m_uiOpenEpisode");
+            CompleteEpisode = xml.GetUInt32("m_uiCompleteEpisode");
+            StringOffset = new(xml.GetSingle("m_fStringOffsetX"), xml.GetSingle("m_fStringOffsetY"), xml.GetSingle("m_fStringOffsetZ"));
+            ClearSectorId = Enumerable.Range(1, 5).Select(id => xml.GetUInt32($"m_iClearSectorID{id}")).ToArray();
+            ClearSectorChance = Enumerable.Range(1, 5).Select(id => xml.GetSingle($"m_fClearSectorChance{id}")).ToArray();
+            MaxUserCount = xml.GetUInt32("m_iMaxUserCount");
+            MaxTimeCount = xml.GetUInt32("m_iMaxTimeCount");
         }
     }
 }

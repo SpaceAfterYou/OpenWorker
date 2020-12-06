@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using Core.Systems.GameSystem.Extensions;
+using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventPoint
 {
@@ -21,9 +22,9 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventPoint
 
         internal VEscortPoint(XmlNode xml) : base(xml)
         {
-            Function = xml.SelectSingleNode("m_szFunction").Attributes.GetNamedItem("value").Value;
-            EnableEffectPath = xml.SelectSingleNode("m_sEnableEffectPath").Attributes.GetNamedItem("value").Value;
-            DisableEffectPath = xml.SelectSingleNode("m_sDisableEffectPath").Attributes.GetNamedItem("value").Value;
+            Function = xml.GetString("m_szFunction");
+            EnableEffectPath = xml.GetString("m_sEnableEffectPath");
+            DisableEffectPath = xml.GetString("m_sDisableEffectPath");
         }
     }
 }

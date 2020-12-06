@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using Core.Systems.GameSystem.Extensions;
+using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 {
@@ -9,9 +10,7 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
         /// </summary>
         public uint Sector { get; }
 
-        internal VSectorStartBox(XmlNode xml) : base(xml)
-        {
-            Sector = uint.Parse(xml.SelectSingleNode("m_nSectorID").Attributes.GetNamedItem("value").Value);
-        }
+        internal VSectorStartBox(XmlNode xml) : base(xml) =>
+            Sector = xml.GetUInt32("m_nSectorID");
     }
 }

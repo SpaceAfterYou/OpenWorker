@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using Core.Systems.GameSystem.Extensions;
+using System.Xml;
 
 namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 {
@@ -21,9 +22,9 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 
         internal VCheckSectorBox(XmlNode xml) : base(xml)
         {
-            CheckSector = uint.Parse(xml.SelectSingleNode("m_iCheckSector").Attributes.GetNamedItem("value").Value);
-            Lua = xml.SelectSingleNode("m_szLua").Attributes.GetNamedItem("value").Value;
-            CheckGate = uint.Parse(xml.SelectSingleNode("m_iCheckGate").Attributes.GetNamedItem("value").Value);
+            CheckSector = xml.GetUInt32("m_iCheckSector");
+            Lua = xml.GetString("m_szLua");
+            CheckGate = xml.GetUInt32("m_iCheckGate");
         }
     }
 }

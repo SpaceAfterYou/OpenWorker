@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Core.Systems.GameSystem.Datas.World.Table.Types;
+using Core.Systems.GameSystem.Extensions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
@@ -39,12 +40,12 @@ namespace Core.Systems.GameSystem.Datas.World.Table.EventBox
 
         internal VCheckEventSpawnBox(XmlNode xml) : base(xml)
         {
-            EventType = (EventType)Enum.Parse(typeof(EventType), xml.SelectSingleNode("m_eEvent_Type").Attributes.GetNamedItem("value").Value, false);
-            EventRate = float.Parse(xml.SelectSingleNode("m_fEvent_Rate").Attributes.GetNamedItem("value").Value);
-            EventDelayTime = float.Parse(xml.SelectSingleNode("m_fEvent_Delay_Time").Attributes.GetNamedItem("value").Value);
-            EventOperationId = uint.Parse(xml.SelectSingleNode("m_iEvent_Operation_ID").Attributes.GetNamedItem("value").Value);
-            EventTime = float.Parse(xml.SelectSingleNode("m_fEvent_Time").Attributes.GetNamedItem("value").Value);
-            SpawnBoxId = Enumerable.Range(1, 5).Select(id => uint.Parse(xml.SelectSingleNode($"m_iSpawn_Box_ID_{id}").Attributes.GetNamedItem("value").Value)).ToArray();
+            EventType = xml.GetEnum<EventType>("m_eEvent_Type");
+            EventRate = xml.GetSingle("m_fEvent_Rate");
+            EventDelayTime = xml.GetSingle("m_fEvent_Delay_Time");
+            EventOperationId = xml.GetUInt32("m_iEvent_Operation_ID");
+            EventTime = xml.GetSingle("m_fEvent_Time");
+            SpawnBoxId = Enumerable.Range(1, 6).Select(id => xml.GetUInt32($"m_iSpawn_Box_ID_{id}")).ToArray();
         }
     }
 }
