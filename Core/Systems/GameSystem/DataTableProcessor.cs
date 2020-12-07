@@ -1,6 +1,7 @@
 ﻿using Core.Systems.GameSystem.Datas.Bin;
 using Core.Systems.GameSystem.Datas.Bin.Table;
 using Core.Systems.GameSystem.Datas.Bin.Table.Entities;
+using Core.Systems.GameSystem.IO;
 using Microsoft.Extensions.Configuration;
 using SoulWorker.Types;
 

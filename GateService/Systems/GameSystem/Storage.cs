@@ -1,4 +1,5 @@
-﻿using Core.Systems.DatabaseSystem.Characters;
+﻿using Core;
+using Core.Systems.DatabaseSystem.Characters;
 using Core.Systems.DatabaseSystem.Storages;
 using Microsoft.EntityFrameworkCore;
 using SoulWorker.Types;

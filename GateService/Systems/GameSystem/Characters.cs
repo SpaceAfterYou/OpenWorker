@@ -1,4 +1,5 @@
-﻿using Core.Systems.DatabaseSystem.Characters;
+﻿using Core;
+using Core.Systems.DatabaseSystem.Characters;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -21,7 +22,7 @@ namespace GateService.Systems.GameSystem
             stopwatch.Start();
 
             using CharacterContext context = new();
-            foreach (var model in context.Characters.AsNoTracking().Where(c => c.AccountId == accountId && c.GateId == gateId))
+            foreach (CharacterModel model in context.Characters.AsNoTracking().Where(c => c.AccountId == accountId && c.GateId == gateId))
             {
                 this[model.SlotId] = new(model);
             }

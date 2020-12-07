@@ -43,7 +43,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ICustomizeSkinTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\IDistrictTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\IItemTable.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\VData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\IO\VData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\IO\VData12.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\IO\VData49.cs" />
     <Compile Include="..\Core\Systems\GameSystem\DataTableProcessor.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ICustomizeHairTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\BattleType.cs" />
