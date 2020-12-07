@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System.IO;
-using TrinigyVisionEngine.Vision.Runtime.Base.IO.Serialization;
 
 namespace Core.Systems.GameSystem.IO
 {

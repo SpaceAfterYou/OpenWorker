@@ -1,7 +1,7 @@
 ﻿using ICSharpCode.SharpZipLib.Zip;
 using System.IO;
 
-namespace TrinigyVisionEngine.Vision.Runtime.Base.IO.Serialization
+namespace Core.Systems.GameSystem.IO
 {
     public class VArchive : ZipFile
     {

@@ -35,6 +35,4 @@
   <Import Project="..\Core\Core.projitems" Label="Shared" />
 
   <Import Project="..\SoulWorker\SoulWorker.projitems" Label="Shared" />
-
-  <Import Project="..\TrinigyVisionEngine\TrinigyVisionEngine.projitems" Label="Shared" />
 </Project>

@@ -19,25 +19,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{1F
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{C5190777-E6BB-4984-A565-BF83EEA560BA}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "TrinigyVisionEngine", "TrinigyVisionEngine\TrinigyVisionEngine.shproj", "{3821FD1A-8486-4905-9BFE-E60E5E1B0C30}"
-EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		TrinigyVisionEngine\TrinigyVisionEngine.projitems*{3821fd1a-8486-4905-9bfe-e60e5e1b0c30}*SharedItemsImports = 13
 		Core\Core.projitems*{75f460cb-d3b5-4b1e-8803-db0d22bb8466}*SharedItemsImports = 13
 		Core\Core.projitems*{9c229b8e-b343-4b38-bb3e-485a7297acea}*SharedItemsImports = 5
 		SoulWorker\SoulWorker.projitems*{9c229b8e-b343-4b38-bb3e-485a7297acea}*SharedItemsImports = 5
-		TrinigyVisionEngine\TrinigyVisionEngine.projitems*{9c229b8e-b343-4b38-bb3e-485a7297acea}*SharedItemsImports = 5
 		Core\Core.projitems*{b3fdc7b7-5176-4aeb-977e-7f904aad7a61}*SharedItemsImports = 5
 		SoulWorker\SoulWorker.projitems*{b3fdc7b7-5176-4aeb-977e-7f904aad7a61}*SharedItemsImports = 5
-		TrinigyVisionEngine\TrinigyVisionEngine.projitems*{b3fdc7b7-5176-4aeb-977e-7f904aad7a61}*SharedItemsImports = 5
 		Core\Core.projitems*{b6f409f5-58b2-4aff-9b74-32d111e6017a}*SharedItemsImports = 5
 		SoulWorker\SoulWorker.projitems*{b6f409f5-58b2-4aff-9b74-32d111e6017a}*SharedItemsImports = 5
-		TrinigyVisionEngine\TrinigyVisionEngine.projitems*{b6f409f5-58b2-4aff-9b74-32d111e6017a}*SharedItemsImports = 5
 		SoulWorker\SoulWorker.projitems*{f48a867d-7f37-4df2-a0db-4c01bd32aa59}*SharedItemsImports = 13
 		Core\Core.projitems*{f8521a81-e8ef-4388-9917-55fd7f328dea}*SharedItemsImports = 5
 		SoulWorker\SoulWorker.projitems*{f8521a81-e8ef-4388-9917-55fd7f328dea}*SharedItemsImports = 5
-		TrinigyVisionEngine\TrinigyVisionEngine.projitems*{f8521a81-e8ef-4388-9917-55fd7f328dea}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,7 +63,6 @@ Global
 		{F48A867D-7F37-4DF2-A0DB-4C01BD32AA59} = {C5190777-E6BB-4984-A565-BF83EEA560BA}
 		{9C229B8E-B343-4B38-BB3E-485A7297ACEA} = {1FA7CB67-B280-487D-9CB5-4460A881BC26}
 		{B6F409F5-58B2-4AFF-9B74-32D111E6017A} = {1FA7CB67-B280-487D-9CB5-4460A881BC26}
-		{3821FD1A-8486-4905-9BFE-E60E5E1B0C30} = {C5190777-E6BB-4984-A565-BF83EEA560BA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F383596F-D1E6-48AD-9150-C1C27F5333B2}
