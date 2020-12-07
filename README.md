@@ -28,6 +28,8 @@ Apply migration with nuget console: `update-database -Context MigrationContext -
 
 #### Login Service
 
+Some conventions must be followed.
+
 _appsettings.json_
 
 ```json
