@@ -7,29 +7,22 @@ using System.Reflection;
 
 namespace Core.Systems.GameSystem.Datas.Bin
 {
-    internal static class TableReader<TId, TItem, TReturn>
+    internal static class TableReader<TId, TItem>
         where TId : IConvertible
         where TItem : ITableItemEntry<TId>
-        where TReturn : IReadOnlyList<TItem>
     {
-        internal static TReturn Read(VData12 data, string file)
+        internal static IReadOnlyDictionary<TId, TItem> Read(VData12 data, string file)
         {
-            TItem[] items = new TItem[(dynamic)GetStaticFieldValue("MaxValue")];
-
-            PropertyInfo[] properties = typeof(TItem).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            List<TItem> items = new(ushort.MaxValue);
 
             foreach (BinaryReader br in GetItems(data, file))
             {
-                TItem item = (TItem)Activator.CreateInstance(typeof(TItem), BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { br });
-                items[(dynamic)item.Id] = item;
+                TItem item = (TItem)Activator.CreateInstance(typeof(TItem), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { br }, null);
+                items.Add(item);
             }
 
-            TId maxId = items.Select(p => p.Id).Max();
-            return (dynamic)items[..((dynamic)maxId + 1)];
+            return items.ToDictionary(k => k.Id, v => v);
         }
-
-        private static TId GetStaticFieldValue(string name) =>
-            (TId)typeof(TId).GetField(name, BindingFlags.Public | BindingFlags.Static).GetValue(null);
 
         private static IEnumerable<BinaryReader> GetItems(VData12 data, string file)
         {

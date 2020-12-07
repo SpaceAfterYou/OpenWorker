@@ -530,3 +530,4 @@ appsettings.json
 appsettings.Development.json
 
 !Bin/
+/TestLang
