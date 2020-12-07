@@ -9,20 +9,23 @@ namespace Core.Systems.GameSystem
 {
     public class BinTableProcessor
     {
+        public IClassSelectInfoTable ReadClassSelectInfoTable() =>
+            TableReader<HeroType, ClassSelectInfoTableEntity, IClassSelectInfoTable>.Read(_data, "tb_ClassSelect_Info");
+
         public ICustomizeSkinTable ReadCustomizeSkinTable() =>
-            TableReader<HeroType, CustomizeSkinTableEntity>.Read(_data, "tb_Customize_Skin") as ICustomizeSkinTable;
+            TableReader<HeroType, CustomizeSkinTableEntity, ICustomizeSkinTable>.Read(_data, "tb_Customize_Skin");
 
         public ICustomizeEyesTable ReadCustomizeEyesTable() =>
-                TableReader<HeroType, CustomizeEyesTableEntity>.Read(_data, "tb_Customize_Eyes") as ICustomizeEyesTable;
+                TableReader<HeroType, CustomizeEyesTableEntity, ICustomizeEyesTable>.Read(_data, "tb_Customize_Eyes");
 
         public ICustomizeHairTable ReadCustomizeHairTable() =>
-            TableReader<HeroType, CustomizeHairTableEntity>.Read(_data, "tb_Customize_Hair") as ICustomizeHairTable;
+            TableReader<HeroType, CustomizeHairTableEntity, ICustomizeHairTable>.Read(_data, "tb_Customize_Hair");
 
         public IDistrictTable ReadDistrictTable() =>
-            TableReader<ushort, DistrictTableEntity>.Read(_data, "tb_district") as IDistrictTable;
+            TableReader<ushort, DistrictTableEntity, IDistrictTable>.Read(_data, "tb_district");
 
-        public IDistrictTable ReadItemTable() =>
-            TableReader<uint, ItemTableEntity>.Read(_data, "tb_item") as IDistrictTable;
+        public IItemTable ReadItemTable() =>
+            TableReader<uint, ItemTableEntity, IItemTable>.Read(_data, "tb_item");
 
         public BinTableProcessor(IConfiguration configuration) => _data = new(configuration);
 

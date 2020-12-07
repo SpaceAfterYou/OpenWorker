@@ -7,11 +7,12 @@ using System.Reflection;
 
 namespace Core.Systems.GameSystem.Datas.Bin
 {
-    internal static class TableReader<TId, TItem>
+    internal static class TableReader<TId, TItem, TReturn>
         where TId : IConvertible
         where TItem : ITableItemEntry<TId>
+        where TReturn : IReadOnlyList<TItem>
     {
-        internal static IReadOnlyList<TItem> Read(VData12 data, string file)
+        internal static TReturn Read(VData12 data, string file)
         {
             TItem[] items = new TItem[(dynamic)GetStaticFieldValue("MaxValue")];
 
@@ -24,7 +25,7 @@ namespace Core.Systems.GameSystem.Datas.Bin
             }
 
             TId maxId = items.Select(p => p.Id).Max();
-            return items[..((dynamic)maxId + 1)];
+            return (dynamic)items[..((dynamic)maxId + 1)];
         }
 
         private static TId GetStaticFieldValue(string name) =>
