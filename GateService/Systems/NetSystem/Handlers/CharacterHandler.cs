@@ -104,7 +104,7 @@ namespace GateService.Systems.NetSystem.Handlers
             ///* Nickname is busy */
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name)) { return; }
 
-            CustomizeHairTableEntity customizeHair = customizeHairTable.ElementAtOrDefault((int)request.Character.Main.Character);
+            CustomizeHairTableEntity customizeHair = customizeHairTable.ElementAtOrDefault((byte)request.Character.Main.Character);
             if (customizeHair is null)
             {
 #if !DEBUG

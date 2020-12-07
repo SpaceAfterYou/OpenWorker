@@ -8,8 +8,11 @@ namespace Core.Systems.GameSystem
 {
     public class BinTableProcessor
     {
+        public ICustomizeSkinTable ReadCustomizeSkinTable() =>
+            TableReader<HeroType, CustomizeSkinTableEntity>.Read(_data, "tb_Customize_Skin") as ICustomizeSkinTable;
+
         public ICustomizeEyesTable ReadCustomizeEyesTable() =>
-            TableReader<HeroType, CustomizeHairTableEntity>.Read(_data, "tb_Customize_Eyes") as ICustomizeEyesTable;
+                TableReader<HeroType, CustomizeEyesTableEntity>.Read(_data, "tb_Customize_Eyes") as ICustomizeEyesTable;
 
         public ICustomizeHairTable ReadCustomizeHairTable() =>
             TableReader<HeroType, CustomizeHairTableEntity>.Read(_data, "tb_Customize_Hair") as ICustomizeHairTable;

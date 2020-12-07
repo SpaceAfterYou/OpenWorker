@@ -21,6 +21,6 @@ namespace GateService
                 .AddSingleton<Gate>()
                 .AddSingleton<Tables>()
                 .AddTransient<Session>()
-                .AddTables());
+                .AddTables(hostContext.Configuration));
     }
 }

@@ -6,9 +6,8 @@ namespace GateService.Systems.ServiceSystem.Extensions
 {
     internal static class ServiceCollectionExtension
     {
-        internal static IServiceCollection AddTables(this IServiceCollection services)
+        internal static IServiceCollection AddTables(this IServiceCollection services, IConfiguration configuration)
         {
-            IConfiguration configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
             BinTableProcessor BtProcessor = new(configuration);
 
             return services
