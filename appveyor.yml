@@ -1,3 +1,4 @@
+test: off
 before_build:
   - nuget restore
   - touch Core.Test/appsettings.json
