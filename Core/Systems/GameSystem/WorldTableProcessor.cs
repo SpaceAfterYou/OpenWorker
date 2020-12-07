@@ -2,21 +2,24 @@
 using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Xml;
-using TrinigyVisionEngine.Vision.Runtime.Base.IO.Serialization;
 
 namespace Core.Systems.GameSystem
 {
-    public class WorldTableProcessor
+    public sealed class WorldTableProcessor
     {
-        public static VRoot Read(IConfiguration configuration, string file)
+        public VRoot Read(string file)
         {
-            using var archive = new VArchive(Path.Join(configuration["Game:Dir"], "data49"));
-            using var stream = archive[file].OpenReader();
+            using Stream stream = _data.GetInputStream(_data.GetEntry(file));
 
             XmlDocument xml = new();
             xml.Load(stream);
 
             return new(xml.DocumentElement);
         }
+
+        public WorldTableProcessor(IConfiguration configuration) =>
+            _data = new(configuration);
+
+        private readonly VData49 _data;
     }
 }

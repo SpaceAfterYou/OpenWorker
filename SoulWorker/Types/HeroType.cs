@@ -1,6 +1,6 @@
 ﻿namespace SoulWorker.Types
 {
-    public enum HeroType
+    public enum HeroType : byte
 
     {
         Haru = 1,

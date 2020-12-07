@@ -24,7 +24,7 @@ namespace GateService.Systems.GameSystem
 
         private static IReadOnlyList<Item> GetItems(ItemContext context, CharacterModel model, StorageType type)
         {
-            Item[] items = Enumerable.Repeat<Item>(null, SoulWorker.Constants.FashionRows).ToArray();
+            Item[] items = Enumerable.Repeat<Item>(null, Constants.FashionRows).ToArray();
 
             foreach (var item in context.Items.AsNoTracking().Where(c => c.CharacterId == model.Id && c.StorageType == type))
             {

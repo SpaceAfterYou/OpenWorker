@@ -1,31 +1,19 @@
-﻿using Ionic.Zip;
-using System;
+﻿using ICSharpCode.SharpZipLib.Zip;
 using System.IO;
 
 namespace TrinigyVisionEngine.Vision.Runtime.Base.IO.Serialization
 {
-    public class VArchive : IDisposable
+    public class VArchive : ZipFile
     {
-        public ZipEntry this[string filename] => _zipEntries[filename];
+        public VArchive(string path, string password = null) : base(GetFile(path), false) =>
+            Password = password;
 
-        public VArchive(string path, string password = null)
+        private static MemoryStream GetFile(string path)
         {
             byte[] data = File.ReadAllBytes(path);
-
             Exchange(ref data);
 
-            _memoryStream = new(data);
-
-            _zipEntries = ZipFile.Read(_memoryStream);
-            _zipEntries.Password = password;
-        }
-
-        public void Dispose()
-        {
-            _zipEntries.Dispose();
-            _memoryStream.Dispose();
-
-            GC.SuppressFinalize(this);
+            return new(data);
         }
 
         private static void Exchange(ref byte[] raw)
@@ -35,8 +23,5 @@ namespace TrinigyVisionEngine.Vision.Runtime.Base.IO.Serialization
                 raw[q] ^= 0x55;
             }
         }
-
-        private readonly ZipFile _zipEntries;
-        private readonly MemoryStream _memoryStream;
     }
 }

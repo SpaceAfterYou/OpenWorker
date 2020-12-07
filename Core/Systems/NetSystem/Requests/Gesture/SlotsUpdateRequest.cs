@@ -20,7 +20,7 @@ namespace Core.Systems.NetSystem.Requests.Gesture
 
         public SlotsUpdateRequest(BinaryReader br) =>
             Slots = Enumerable
-                .Range(0, SoulWorker.Constants.GesturesCount)
+                .Range(0, Constants.GesturesCount)
                 .Select(id => new SlotsUpdateSlotRequest(id, br.ReadUInt32()));
     }
 }

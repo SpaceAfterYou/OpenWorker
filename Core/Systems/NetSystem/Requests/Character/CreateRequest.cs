@@ -198,7 +198,7 @@ namespace Core.Systems.NetSystem.Requests.Character
 
         public CreateCharacterCosmetic(BinaryReader br)
         {
-            Fashion = Enumerable.Range(0, SoulWorker.Constants.FashionRows).Select(_ => new CreateCharacterFashion(br)).ToArray();
+            Fashion = Enumerable.Range(0, Constants.FashionRows).Select(_ => new CreateCharacterFashion(br)).ToArray();
         }
     }
 

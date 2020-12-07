@@ -16,6 +16,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\CharacterPosts\CharacterPostModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Characters\CharacterContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Context.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Extensions\ServiceCollectionExtension.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Guilds\GuildContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\AccountPosts\AccountPostContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Items\ItemContext.cs" />
@@ -31,11 +32,18 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\Items\ItemModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Extensions\BinaryReaderExtension.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Convert.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\Entities\CustomizeEyesTableEntity.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\Entities\CustomizeHairTableEntity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\ITableItemEntry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\TableReader.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\CustomizeEyesTable.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\CustomizeHairTable.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ItemTable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\Entities\DistrictTableEntity.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\Entities\ItemTableEntity.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ICustomizeEyesTable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\IDistrictTable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\IItemTable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\VData.cs" />
+    <Compile Include="..\Core\Systems\GameSystem\DataTableProcessor.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ICustomizeHairTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\BattleType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\ClearType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\CreationConditionType.cs" />
@@ -149,9 +157,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\NetSystem\SwServer.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
-    <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\DatabaseSystem\CharacterPosts\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Attributes\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Auth\" />
   </ItemGroup>

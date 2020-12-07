@@ -32,6 +32,6 @@ namespace GateService.Systems.GameSystem
         }
 
         public static Character[] GetCharacterSlots() =>
-            Enumerable.Repeat<Character>(null, SoulWorker.Constants.CharactersCount).ToArray();
+            Enumerable.Repeat<Character>(null, Constants.CharactersCount).ToArray();
     }
 }

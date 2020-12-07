@@ -14,7 +14,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\GamePlugInSceneManager.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Game\World\" />
     <Folder Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Havok\Ai\" />
     <Folder Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Havok\Behavior\" />
     <Folder Include="$(MSBuildThisFileDirectory)Vision\Runtime\EnginePlugins\Havok\Physics\" />

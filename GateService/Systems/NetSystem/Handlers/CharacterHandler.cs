@@ -1,10 +1,12 @@
-﻿using Core.Systems.DatabaseSystem.Characters;
+﻿using Core;
+using Core.Systems.DatabaseSystem.Characters;
+using Core.Systems.GameSystem.Datas.Bin.Table;
+using Core.Systems.GameSystem.Datas.Bin.Table.Entities;
 using Core.Systems.NetSystem.Attributes;
 using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Permissions;
 using Core.Systems.NetSystem.Requests.Character;
 using GateService.Systems.GameSystem;
-using SoulWorker.Datas.DotDot.Bin.Tables;
 using SoulWorker.Types;
 using System;
 using System.Linq;
@@ -16,7 +18,7 @@ namespace GateService.Systems.NetSystem.Handlers
         [Handler(HandlerOpcode.CharacterChangeSlot, HandlerPermission.Authorized)]
         public static void ChangeSlot(Session session, ChangeSlotRequest request)
         {
-            if (1 > request.FirstSlot || request.FirstSlot > SoulWorker.Constants.CharactersSlotsCount)
+            if (1 > request.FirstSlot || request.FirstSlot > Constants.CharactersSlotsCount)
             {
 #if !DEBUG
                 session.Disconnect();
@@ -24,7 +26,7 @@ namespace GateService.Systems.NetSystem.Handlers
                 return;
             }
 
-            if (1 > request.SecondSlot || request.SecondSlot > SoulWorker.Constants.CharactersSlotsCount)
+            if (1 > request.SecondSlot || request.SecondSlot > Constants.CharactersSlotsCount)
             {
 #if !DEBUG
                 session.Disconnect();
@@ -66,15 +68,15 @@ namespace GateService.Systems.NetSystem.Handlers
         }
 
         [Handler(HandlerOpcode.CharacterCreate, HandlerPermission.Authorized)]
-        public static void Create(Session session, CreateRequest request, Gate gate, ICustomizeHairTable customizeHairTable)
+        public static void Create(Session session, CreateRequest request, Gate gate, ICustomizeHairTable customizeHairTable, ICustomizeEyesTable customizeEyesTable)
         {
             ///* Validate nickname */
-            if (request.Character.Main.Name.Length > SoulWorker.Constants.MaxCharacterNameLength)
+            if (request.Character.Main.Name.Length > Constants.MaxCharacterNameLength)
             {
                 return;
             }
 
-            if (request.Character.Main.Name.Length < SoulWorker.Constants.MinCharacterNameLength)
+            if (request.Character.Main.Name.Length < Constants.MinCharacterNameLength)
             {
                 return;
             }
@@ -102,7 +104,7 @@ namespace GateService.Systems.NetSystem.Handlers
             ///* Nickname is busy */
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name)) { return; }
 
-            CustomizeHairTable.Entry customizeHair = customizeHairTable.ElementAtOrDefault((int)request.Character.Main.Character);
+            CustomizeHairTableEntity customizeHair = customizeHairTable.ElementAtOrDefault((int)request.Character.Main.Character);
             if (customizeHair is null)
             {
 #if !DEBUG
@@ -117,10 +119,10 @@ namespace GateService.Systems.NetSystem.Handlers
             ///* Validate hair color */
             if (!customizeHair.Color.Contains(request.Character.Main.Appearance.Hair.Color)) { return; }
 
-            //var customizeEyes = CustomizeEyesTable.Instance[request.Character.Main.Character];
+            CustomizeEyesTableEntity customizeEyes = customizeEyesTable[request.Character.Main.Character];
 
             ///* Validate eyes color */
-            //if (!customizeEyes.Color.Contains(request.Character.Main.Appearance.EyeColor)) { return; }
+            if (!customizeEyes.Color.Contains(request.Character.Main.Appearance.EyeColor)) { return; }
 
             //var classInfo = ClassSelectInfoTable.Instance[request.Character.Main.Character];
             ///* TODO: Add default outfit */

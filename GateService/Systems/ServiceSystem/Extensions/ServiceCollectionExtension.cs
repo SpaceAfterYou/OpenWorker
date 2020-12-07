@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using TrinigyVisionEngine.Vision.Runtime.Base.IO.Serialization;
+﻿using Core.Systems.GameSystem;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GateService.Systems.ServiceSystem.Extensions
 {
@@ -7,9 +8,12 @@ namespace GateService.Systems.ServiceSystem.Extensions
     {
         internal static IServiceCollection AddTables(this IServiceCollection services)
         {
-            VArchive archive = new("", "");
+            IConfiguration configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
+            BinTableProcessor BtProcessor = new(configuration);
 
-            return services;
+            return services
+                .AddSingleton(BtProcessor.ReadCustomizeHairTable())
+                .AddSingleton(BtProcessor.ReadCustomizeEyesTable());
         }
     }
 }
