@@ -1,2 +1,6 @@
 before_build:
   - nuget restore
+  - touch Core.Test/appsettings.json
+  - touch DistrictService/appsettings.json
+  - touch GateService/appsettings.json
+  - touch LoginService/appsettings.json
