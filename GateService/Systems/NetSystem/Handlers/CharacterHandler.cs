@@ -138,7 +138,7 @@ namespace GateService.Systems.NetSystem.Handlers
                 return;
             }
 
-            // Find where placed id
+            // TODO: Find where placed id
             if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity characterInfo))
             {
 #if !DEBUG
@@ -158,16 +158,13 @@ namespace GateService.Systems.NetSystem.Handlers
 
             // TODO: Add default outfit to inventory
 
-            //var model = CreateCharacterHelper.CreateModel(account, request, gateInfo);
+            CharacterModel model = CreateModel(session, request, gate);
+            context.UseAndSave(c => c.Add(model));
 
-            //context.Add(model);
-            //context.SaveChanges();
+            Character character = new(model);
 
-            //var characters = session.GetComponent<CharacterSlots>();
-            //var character = new Datas.Character(model);
-
-            //characters[request.Slot].Character = character;
-            //characters.Last = character;
+            session.Characters[request.SlotId] = character;
+            session.Characters.LastSelected = character;
 
             session.SendCharactersList();
         }
@@ -178,15 +175,15 @@ namespace GateService.Systems.NetSystem.Handlers
             Character character = session.Characters.FirstOrDefault(character => character?.Id == request.Id);
             if (character is null) { return; }
 
-            using var context = new CharacterContext();
+            using CharacterContext context = new();
             context.Characters.Remove(new() { Id = request.Id });
             context.SaveChanges();
 
             session.Characters[character.SlotId] = null;
-            if (character.Id == session.Characters.LastSelectedId)
+            if (character.Id == session.Characters.LastSelected.Id)
             {
-                Character last = session.Characters.FirstOrDefault(character => character is not null);
-                if (last is not null) { session.Characters.LastSelectedId = last.Id; }
+                Character firstAvailableCharacter = session.Characters.FirstOrDefault(character => character is not null);
+                if (firstAvailableCharacter is not null) { session.Characters.LastSelected = firstAvailableCharacter; }
             }
 
             session.SendCharactersList();
@@ -206,7 +203,7 @@ namespace GateService.Systems.NetSystem.Handlers
             Character character = session.Characters.First(character => character?.Id == request.Id);
             if (character is null) { return; }
 
-            session.Characters.LastSelectedId = character.Id;
+            session.Characters.LastSelected = character;
             session.SendCharacterSelect(character, district);
         }
 
@@ -214,5 +211,60 @@ namespace GateService.Systems.NetSystem.Handlers
         public static void UpdateSpecialOptionList()
         {
         }
+
+        public static CharacterModel CreateModel(Session session, in CreateRequest request, Gate gate) =>
+            new()
+            {
+                AccountId = session.Account.Id,
+                GateId = gate.Id,
+                SlotId = request.SlotId,
+                Name = request.Character.Main.Name,
+                Hero = request.Character.Main.Hero,
+                Gesture = new uint[6] {
+                    (uint)((byte)request.Character.Main.Hero * 1000 + 0),
+                    (uint)((byte)request.Character.Main.Hero * 1000 + 1),
+                    (uint)((byte)request.Character.Main.Hero * 1000 + 2),
+                    (uint)((byte)request.Character.Main.Hero * 1000 + 3),
+                    (uint)((byte)request.Character.Main.Hero * 1000 + 4),
+                    (uint)((byte)request.Character.Main.Hero * 1000 + 5)
+                },
+                Appearance = new ApperanceModel()
+                {
+                    Hair = new()
+                    {
+                        Style = request.Character.Main.Appearance.Hair.Style,
+                        Color = request.Character.Main.Appearance.Hair.Color
+                    },
+                    EyeColor = request.Character.Main.Appearance.EyeColor,
+                    SkinColor = request.Character.Main.Appearance.SkinColor,
+                    EquippedHair = new()
+                    {
+                        Style = request.Character.Main.Appearance.EquippedHair.Style,
+                        Color = request.Character.Main.Appearance.EquippedHair.Color
+                    },
+                    EquippedEyeColor = request.Character.Main.Appearance.EquippedEyeColor,
+                    EquippedSkinColor = request.Character.Main.Appearance.EquippedSkinColor,
+                },
+                Place = new() { Position = new() { X = 10444.9951f, Y = 10179.7461f, Z = 100.325394f }, Rotation = 0, Location = 10003 },
+                LearnedSkill = Array.Empty<uint>(),
+                QuickSlot = Enumerable.Repeat<uint>(0, 6 * 3).ToArray(),
+                Storage = CreateStorageInfo(),
+                Energy = new EnergyModel() { Primary = 200, Extra = 0 },
+                Profile = new ProfileModel() { Status = ProfileStatusType.Rookie, About = "", Note = "" },
+                Title = new TitleModel() { Primary = 0, Secondary = 0 }
+            };
+
+        private static StorageModel[] CreateStorageInfo() => new StorageModel[]
+            {
+                new() { Type = StorageType.EquippedBattleFashion, Upgrades = 0 },
+                new() { Type = StorageType.EquippedViewFashion, Upgrades = 0 },
+                new() { Type = StorageType.EquippedGear, Upgrades = 0 },
+                new() { Type = StorageType.InventoryItems, Upgrades = 0 },
+                new() { Type = StorageType.InventoryFashion, Upgrades = 0 },
+                new() { Type = StorageType.InventoryExtra, Upgrades = 0 },
+                new() { Type = StorageType.BankItems, Upgrades = 0 },
+                new() { Type = StorageType.BankFashion, Upgrades = 0 },
+                new() { Type = StorageType.BankExtra, Upgrades = 0 },
+            };
     }
 }

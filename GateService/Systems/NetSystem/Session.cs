@@ -37,7 +37,7 @@ namespace GateService.Systems.NetSystem
             writer.Write((byte)Characters.Count);
             foreach (var character in Characters) { writer.Write(character); }
 
-            writer.Write(Characters.LastSelectedId);
+            writer.Write(Characters.LastSelected?.Id ?? uint.MaxValue);
             writer.Write((ushort)0);
             writer.Write((ulong)Characters.InitializeTime.TotalSeconds);
             writer.Write((uint)0);

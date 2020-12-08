@@ -15,20 +15,12 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
         public byte Unknown7 { get; }
         public string Unknown8 { get; }
         public string Unknown9 { get; }
-        public string Unknown10 { get; }
+        public string DialogueTalkImgPath { get; }
         public string Token { get; }
         public string Unknown12 { get; }
-        public string Unknown13 { get; }
-        public string Unknown14 { get; }
-        public uint Unknown15 { get; }
-        public uint Unknown16 { get; }
-        public uint Unknown17 { get; }
-        public uint Unknown18 { get; }
-        public uint Unknown19 { get; }
-        public uint Unknown20 { get; }
-        public uint Unknown21 { get; }
-        public uint Unknown22 { get; }
-        public uint Unknown23 { get; }
+        public string CutScenePath { get; }
+        public string GhostTalkImgPath { get; }
+        public IReadOnlyList<uint> DefaultGestureIds { get; }
         public ushort Unknown24 { get; }
         public ushort Unknown25 { get; }
         public uint DefaultWeaponId { get; }
@@ -92,20 +84,12 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
             Unknown7 = br.ReadByte();
             Unknown8 = br.ReadByteLengthUnicodeString();
             Unknown9 = br.ReadByteLengthUnicodeString();
-            Unknown10 = br.ReadByteLengthUnicodeString();
+            DialogueTalkImgPath = br.ReadByteLengthUnicodeString();
             Token = br.ReadByteLengthUnicodeString();
             Unknown12 = br.ReadByteLengthUnicodeString();
-            Unknown13 = br.ReadByteLengthUnicodeString();
-            Unknown14 = br.ReadByteLengthUnicodeString();
-            Unknown15 = br.ReadUInt32();
-            Unknown16 = br.ReadUInt32();
-            Unknown17 = br.ReadUInt32();
-            Unknown18 = br.ReadUInt32();
-            Unknown19 = br.ReadUInt32();
-            Unknown20 = br.ReadUInt32();
-            Unknown21 = br.ReadUInt32();
-            Unknown22 = br.ReadUInt32();
-            Unknown23 = br.ReadUInt32();
+            CutScenePath = br.ReadByteLengthUnicodeString();
+            GhostTalkImgPath = br.ReadByteLengthUnicodeString();
+            DefaultGestureIds = Enumerable.Repeat(0, DefaultGesturesCount).Select(_ => br.ReadUInt32()).ToArray();
             Unknown24 = br.ReadUInt16();
             Unknown25 = br.ReadUInt16();
             DefaultWeaponId = br.ReadUInt32();
@@ -166,6 +150,7 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
             Unknown90 = br.ReadByte();
         }
 
+        private const byte DefaultGesturesCount = 9;
         private const byte DefaultCostumesCount = 4;
     }
 }

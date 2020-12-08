@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace Core.Systems.DatabaseSystem
 {
@@ -10,6 +11,12 @@ namespace Core.Systems.DatabaseSystem
             {
                 optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=soulworker;Username=postgres;Password=postgres");
             }
+        }
+
+        public int UseAndSave(Action<Context> action)
+        {
+            action(this);
+            return SaveChanges();
         }
     }
 }

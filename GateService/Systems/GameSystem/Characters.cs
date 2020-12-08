@@ -11,7 +11,7 @@ namespace GateService.Systems.GameSystem
     public sealed class Characters : List<Character>
     {
         public TimeSpan InitializeTime { get; init; }
-        public uint LastSelectedId { get; set; }
+        public Character LastSelected { get; set; }
 
         public Characters(uint accountId, ushort gateId) : base(GetCharacterSlots())
         {
