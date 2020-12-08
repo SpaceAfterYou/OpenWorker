@@ -1,4 +1,5 @@
 using Core.Systems.GameSystem;
+using Core.Systems.LanSystem.Extensions;
 using DistrictService.Systems.GameSystem;
 using DistrictService.Systems.NetSystem;
 using DistrictService.Systems.NetSystem.Repositories;
@@ -20,6 +21,7 @@ namespace DistrictService
                 .AddSingleton<BinTable>()
                 .AddTransient<BinTableProcessor>()
                 .AddTransient<WorldTableProcessor>()
+                .AddRedis()
                 .AddTransient<Session>());
     }
 }

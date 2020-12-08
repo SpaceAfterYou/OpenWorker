@@ -24,8 +24,8 @@ namespace LoginService.Systems.NetSystem
         {
             using WriterPacket writer = new(ClientOpcode.GateConnect);
 
-            writer.WriteNumberLengthUtf8String(gate.EndPoint.Address.ToString());
-            writer.Write((ushort)gate.EndPoint.Port);
+            writer.WriteNumberLengthUtf8String(gate.Ip);
+            writer.Write(gate.Port);
 
             return SendAsync(writer) as Session;
         }
@@ -40,9 +40,9 @@ namespace LoginService.Systems.NetSystem
             foreach (PersonalGate info in infos)
             {
                 writer.Write(info.Gate.Id);
-                writer.Write((ushort)info.Gate.EndPoint.Port);
+                writer.Write(info.Gate.Port);
                 writer.WriteNumberLengthUtf8String(info.Gate.Name);
-                writer.WriteNumberLengthUtf8String(info.Gate.EndPoint.ToString());
+                writer.WriteNumberLengthUtf8String(info.Gate.Ip);
                 writer.Write(info.Gate.Status);
                 writer.Write((byte)0);
                 writer.Write((byte)0);

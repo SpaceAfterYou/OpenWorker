@@ -176,8 +176,7 @@ namespace GateService.Systems.NetSystem.Handlers
             if (character is null) { return; }
 
             using CharacterContext context = new();
-            context.Characters.Remove(new() { Id = request.Id });
-            context.SaveChanges();
+            context.UseAndSave(c => c.Remove<CharacterModel>(new() { Id = request.Id }));
 
             session.Characters[character.SlotId] = null;
             if (character.Id == session.Characters.LastSelected.Id)

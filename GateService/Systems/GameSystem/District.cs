@@ -1,12 +1,16 @@
 ﻿using Microsoft.Extensions.Configuration;
-using System.Net;
 
 namespace GateService.Systems.GameSystem
 {
-    public sealed class District : IPEndPoint
+    public sealed class District
     {
-        public District(IConfigurationSection section) :
-            base(IPAddress.Parse(section["Host:Ip"]), ushort.Parse(section["Host:Port"]))
-        { }
+        public string Ip { get; }
+        public ushort Port { get; }
+
+        public District(IConfigurationSection section)
+        {
+            Ip = section["Host:Ip"];
+            Port = ushort.Parse(section["Host:Port"]);
+        }
     }
 }

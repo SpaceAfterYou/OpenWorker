@@ -1,4 +1,6 @@
 using Core.Systems.NetSystem.Providers;
+using Core.Systems.LanSystem;
+using Core.Systems.LanSystem.Extensions;
 using LoginService.Systems.GameSystem;
 using LoginService.Systems.NetSystem;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +20,8 @@ namespace LoginService
                 .AddSingleton<Server>()
                 .AddSingleton<Gates>()
                 .AddSingleton<Options>()
+                .AddRedis()
+                .AddTransient<Runner>()
                 .AddTransient<Session>());
     }
 }

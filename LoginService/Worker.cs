@@ -1,3 +1,4 @@
+using Core.Systems.LanSystem;
 using LoginService.Systems.NetSystem;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,15 +12,17 @@ namespace LoginService
         private readonly ILogger<Worker> _logger;
         private readonly Server _server;
 
-        public Worker(ILogger<Worker> logger, Server server)
+        public Worker(ILogger<Worker> logger, Server server, Runner runner)
         {
             _logger = logger;
             _server = server;
+
+            runner.Run();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            var q = _server.Start();
+            _server.Start();
             return Task.CompletedTask;
         }
 

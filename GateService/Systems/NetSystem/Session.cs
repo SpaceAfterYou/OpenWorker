@@ -38,12 +38,12 @@ namespace GateService.Systems.NetSystem
             foreach (var character in Characters) { writer.Write(character); }
 
             writer.Write(Characters.LastSelected?.Id ?? uint.MaxValue);
-            writer.Write((ushort)0);
+            writer.Write(ushort.MinValue);
             writer.Write((ulong)Characters.InitializeTime.TotalSeconds);
-            writer.Write((uint)0);
+            writer.Write(uint.MinValue);
             writer.Write((ulong)1262271600); // dec/31/2009
             writer.Write((byte)17);
-            writer.Write((byte)0);
+            writer.Write(byte.MinValue);
 
             return SendAsync(writer) as Session;
         }
@@ -55,8 +55,8 @@ namespace GateService.Systems.NetSystem
             writer.Write(character.Id);
             writer.Write(Account.Id);
             writer.Write(new byte[28]);
-            writer.WriteNumberLengthUtf8String(district.Address.ToString());
-            writer.Write((ushort)district.Port);
+            writer.WriteNumberLengthUtf8String(district.Ip);
+            writer.Write(district.Port);
             writer.Write(character.Place);
             writer.Write(new byte[12]);
 
