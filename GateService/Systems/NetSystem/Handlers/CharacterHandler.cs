@@ -69,7 +69,7 @@ namespace GateService.Systems.NetSystem.Handlers
         [Handler(HandlerOpcode.CharacterCreate, HandlerPermission.Authorized)]
         public static void Create(Session session, CreateRequest request, Gate gate, BinTable binTable)
         {
-            ///* Validate nickname */
+            // Validate nickname
             if (request.Character.Main.Name.Length > Constants.MaxCharacterNameLength)
             {
                 return;
@@ -80,7 +80,7 @@ namespace GateService.Systems.NetSystem.Handlers
                 return;
             }
 
-            ///* Validate hero */
+            // Validate hero
             if (!Enum.IsDefined(typeof(HeroType), request.Character.Main.Hero))
             {
 #if !DEBUG
@@ -91,7 +91,7 @@ namespace GateService.Systems.NetSystem.Handlers
 
             using var context = new CharacterContext();
 
-            ///* Slot is busy, client error */
+            // Slot is busy, client error
             if (context.Characters.Any(c => c.SlotId == request.SlotId && c.AccountId == session.Account.Id))
             {
 #if !DEBUG
@@ -100,7 +100,7 @@ namespace GateService.Systems.NetSystem.Handlers
                 return;
             }
 
-            ///* Nickname is busy */
+            // Nickname is busy
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name)) { return; }
 
             if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity customizeHair))
@@ -111,10 +111,10 @@ namespace GateService.Systems.NetSystem.Handlers
                 return;
             }
 
-            ///* Validate hair style */
+            // Validate hair style
             if (!customizeHair.Style.Contains(request.Character.Main.Appearance.Hair.Style)) { return; }
 
-            ///* Validate hair color */
+            // Validate hair color
             if (!customizeHair.Color.Contains(request.Character.Main.Appearance.Hair.Color)) { return; }
 
             if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity customizeEyes))
@@ -125,16 +125,38 @@ namespace GateService.Systems.NetSystem.Handlers
                 return;
             }
 
-            ///* Validate eyes color */
+            // TODO: Check skin
+
+            // Validate eyes color
             if (!customizeEyes.Color.Contains(request.Character.Main.Appearance.EyeColor)) { return; }
 
-            //var classInfo = ClassSelectInfoTable.Instance[request.Character.Main.Character];
-            ///* TODO: Add default outfit */
+            if (!binTable.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity classInfo))
+            {
+#if !DEBUG
+                session.Disconnect();
+# endif
+                return;
+            }
 
-            //var info = CharacterInfoTable.Instance[(ushort)(1000 * (byte)request.Character.Main.Character)];
+            // Find where placed id
+            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity characterInfo))
+            {
+#if !DEBUG
+                session.Disconnect();
+# endif
+                return;
+            }
 
-            ///* Validate outfit */
-            //if (!info.DefaultCostume.Contains(request.Outfit)) { return; }
+            // Validate outfit
+            if (!characterInfo.DefaultCostumeIds.Contains(request.OutfitId))
+            {
+#if !DEBUG
+                session.Disconnect();
+# endif
+                return;
+            }
+
+            // TODO: Add default outfit to inventory
 
             //var model = CreateCharacterHelper.CreateModel(account, request, gateInfo);
 

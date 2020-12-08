@@ -8,14 +8,11 @@ namespace GateService.Systems.GameSystem
     internal sealed class BinTable
     {
         internal IReadOnlyDictionary<HeroType, ClassSelectInfoTableEntity> ClassSelectInfoTable { get; }
-
         internal IReadOnlyDictionary<HeroType, CustomizeSkinTableEntity> CustomizeSkinTable { get; }
-
         internal IReadOnlyDictionary<HeroType, CustomizeEyesTableEntity> CustomizeEyesTable { get; }
-
         internal IReadOnlyDictionary<HeroType, CustomizeHairTableEntity> CustomizeHairTable { get; }
-
         internal IReadOnlyDictionary<ushort, DistrictTableEntity> DistrictTable { get; }
+        internal IReadOnlyDictionary<ushort, CharacterInfoTableEntity> CharacterInfoTable { get; }
 
         public BinTable(BinTableProcessor binTableProcessor)
         {
@@ -24,6 +21,7 @@ namespace GateService.Systems.GameSystem
             CustomizeEyesTable = binTableProcessor.ReadCustomizeEyesTable();
             CustomizeHairTable = binTableProcessor.ReadCustomizeHairTable();
             DistrictTable = binTableProcessor.ReadDistrictTable();
+            CharacterInfoTable = binTableProcessor.ReadCharacterInfoTable();
         }
     }
 }

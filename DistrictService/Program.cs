@@ -19,6 +19,7 @@ namespace DistrictService
                 .AddSingleton<ChatCommandRepository>()
                 .AddSingleton<BinTable>()
                 .AddTransient<BinTableProcessor>()
+                .AddTransient<WorldTableProcessor>()
                 .AddTransient<Session>());
     }
 }

@@ -6,7 +6,7 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
-    public sealed class DistrictTableEntity : ITableItemEntry<KeyType>
+    public sealed class DistrictTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; init; }
         public ushort Unknown5 { get; init; }

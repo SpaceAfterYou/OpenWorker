@@ -9,7 +9,7 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
 {
     using KeyType = HeroType;
 
-    public sealed class CustomizeEyesTableEntity : ITableItemEntry<KeyType>
+    public sealed class CustomizeEyesTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public IReadOnlyList<uint> Unknown1 { get; }

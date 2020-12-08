@@ -10,7 +10,7 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
-    public sealed class ItemTableEntity : ITableItemEntry<KeyType>
+    public sealed class ItemTableEntity : ITableEntity<KeyType>
     {
         public readonly struct ItemStat
         {

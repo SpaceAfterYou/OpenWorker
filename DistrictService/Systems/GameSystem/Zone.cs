@@ -10,12 +10,10 @@ namespace DistrictService.Systems.GameSystem
         public VRoot Place { get; }
         public DistrictTableEntity Table { get; }
 
-        public Zone(IConfiguration configuration, BinTable binTable)
+        public Zone(IConfiguration configuration, BinTable binTable, WorldTableProcessor worldTableProcessor)
         {
             Table = binTable.DistrictTable[ushort.Parse(configuration["Zone:Id"])];
-
-            WorldTableProcessor wtp = new(configuration);
-            Place = wtp.Read(Table.Batch);
+            Place = worldTableProcessor.Read(Table.Batch);
         }
     }
 }

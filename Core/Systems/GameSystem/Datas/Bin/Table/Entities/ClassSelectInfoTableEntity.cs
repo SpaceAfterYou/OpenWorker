@@ -7,7 +7,7 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
 {
     using KeyType = HeroType;
 
-    public sealed class ClassSelectInfoTableEntity : ITableItemEntry<KeyType>
+    public sealed class ClassSelectInfoTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public string Unknown5 { get; }
@@ -17,12 +17,12 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
         public uint Unknown9 { get; }
         public uint Unknown10 { get; }
         public uint Unknown11 { get; }
-        public uint Unknown12 { get; }
+        public uint HandsFashionId { get; }
         public uint Unknown13 { get; }
-        public uint Outerwear { get; }
+        public uint OuterwearFashionId { get; }
         public uint Unknown15 { get; }
-        public uint Stockings { get; }
-        public uint Shoes { get; }
+        public uint StockingsFashionId { get; }
+        public uint ShoesFashionId { get; }
         public uint Unknown18 { get; }
         public uint Unknown19 { get; }
         public ushort Unknown20 { get; }
@@ -43,12 +43,12 @@ namespace Core.Systems.GameSystem.Datas.Bin.Table.Entities
             Unknown9 = br.ReadUInt32();
             Unknown10 = br.ReadUInt32();
             Unknown11 = br.ReadUInt32();
-            Unknown12 = br.ReadUInt32();
+            HandsFashionId = br.ReadUInt32();
             Unknown13 = br.ReadUInt32();
-            Outerwear = br.ReadUInt32();
+            OuterwearFashionId = br.ReadUInt32();
             Unknown15 = br.ReadUInt32();
-            Stockings = br.ReadUInt32();
-            Shoes = br.ReadUInt32();
+            StockingsFashionId = br.ReadUInt32();
+            ShoesFashionId = br.ReadUInt32();
             Unknown18 = br.ReadUInt32();
             Unknown19 = br.ReadUInt32();
             Unknown20 = br.ReadUInt16();

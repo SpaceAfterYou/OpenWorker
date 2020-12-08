@@ -9,7 +9,7 @@ namespace Core.Systems.GameSystem.Datas.Bin
 {
     internal static class TableReader<TId, TItem>
         where TId : IConvertible
-        where TItem : ITableItemEntry<TId>
+        where TItem : ITableEntity<TId>
     {
         internal static IReadOnlyDictionary<TId, TItem> Read(VData12 data, string file)
         {
