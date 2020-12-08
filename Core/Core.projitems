@@ -40,17 +40,12 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\Entities\CustomizeSkinTableEntity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\Entities\DistrictTableEntity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\Entities\ItemTableEntity.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\IClassSelectInfoTable.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ICustomizeEyesTable.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ICustomizeSkinTable.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\IDistrictTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\IItemTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\IO\VArchive.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\IO\VData.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\IO\VData12.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\IO\VData49.cs" />
     <Compile Include="..\Core\Systems\GameSystem\DataTableProcessor.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\Bin\Table\ICustomizeHairTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\BattleType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\ClearType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\CreationConditionType.cs" />

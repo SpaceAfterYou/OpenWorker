@@ -1,6 +1,5 @@
 ﻿using Core;
 using Core.Systems.DatabaseSystem.Characters;
-using Core.Systems.GameSystem.Datas.Bin.Table;
 using Core.Systems.GameSystem.Datas.Bin.Table.Entities;
 using Core.Systems.NetSystem.Attributes;
 using Core.Systems.NetSystem.Opcodes;
@@ -68,7 +67,7 @@ namespace GateService.Systems.NetSystem.Handlers
         }
 
         [Handler(HandlerOpcode.CharacterCreate, HandlerPermission.Authorized)]
-        public static void Create(Session session, CreateRequest request, Gate gate, ICustomizeHairTable customizeHairTable, ICustomizeEyesTable customizeEyesTable)
+        public static void Create(Session session, CreateRequest request, Gate gate, BinTable binTable)
         {
             ///* Validate nickname */
             if (request.Character.Main.Name.Length > Constants.MaxCharacterNameLength)
@@ -82,7 +81,7 @@ namespace GateService.Systems.NetSystem.Handlers
             }
 
             ///* Validate hero */
-            if (!Enum.IsDefined(typeof(HeroType), request.Character.Main.Character))
+            if (!Enum.IsDefined(typeof(HeroType), request.Character.Main.Hero))
             {
 #if !DEBUG
                 session.Disconnect();
@@ -104,8 +103,7 @@ namespace GateService.Systems.NetSystem.Handlers
             ///* Nickname is busy */
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name)) { return; }
 
-            CustomizeHairTableEntity customizeHair = customizeHairTable.ElementAtOrDefault((byte)request.Character.Main.Character);
-            if (customizeHair is null)
+            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity customizeHair))
             {
 #if !DEBUG
                 session.Disconnect();
@@ -119,7 +117,13 @@ namespace GateService.Systems.NetSystem.Handlers
             ///* Validate hair color */
             if (!customizeHair.Color.Contains(request.Character.Main.Appearance.Hair.Color)) { return; }
 
-            CustomizeEyesTableEntity customizeEyes = customizeEyesTable[request.Character.Main.Character];
+            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity customizeEyes))
+            {
+#if !DEBUG
+                session.Disconnect();
+# endif
+                return;
+            }
 
             ///* Validate eyes color */
             if (!customizeEyes.Color.Contains(request.Character.Main.Appearance.EyeColor)) { return; }

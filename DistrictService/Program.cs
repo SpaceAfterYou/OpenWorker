@@ -1,3 +1,5 @@
+using Core.Systems.GameSystem;
+using DistrictService.Systems.GameSystem;
 using DistrictService.Systems.NetSystem;
 using DistrictService.Systems.NetSystem.Repositories;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,8 @@ namespace DistrictService
                 .AddHostedService<Worker>()
                 .AddSingleton<Server>()
                 .AddSingleton<ChatCommandRepository>()
+                .AddSingleton<BinTable>()
+                .AddTransient<BinTableProcessor>()
                 .AddTransient<Session>());
     }
 }

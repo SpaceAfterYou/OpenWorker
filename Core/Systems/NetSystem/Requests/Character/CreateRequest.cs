@@ -168,7 +168,7 @@ namespace Core.Systems.NetSystem.Requests.Character
     {
         public int Id { get; }
         public string Name { get; }
-        public HeroType Character { get; }
+        public HeroType Hero { get; }
         public byte Advancement { get; }
         public uint Portrait { get; }
         public CreateCharacterAppearance Appearance { get; }
@@ -181,7 +181,7 @@ namespace Core.Systems.NetSystem.Requests.Character
         {
             Id = br.ReadInt32();
             Name = br.ReadNumberLengthUnicodeString();
-            Character = br.ReadHeroType();
+            Hero = br.ReadHeroType();
             Advancement = br.ReadByte();
             Portrait = br.ReadUInt32();
             Appearance = new CreateCharacterAppearance(br);

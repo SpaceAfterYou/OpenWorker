@@ -1,3 +1,4 @@
+using Core.Systems.GameSystem;
 using Core.Systems.NetSystem.Providers;
 using GateService.Systems.GameSystem;
 using GateService.Systems.NetSystem;
@@ -19,7 +20,8 @@ namespace GateService
                 .AddSingleton<Districts>()
                 .AddSingleton<Server>()
                 .AddSingleton<Gate>()
-                .AddSingleton<Tables>()
+                .AddSingleton<BinTable>()
+                .AddTransient<BinTableProcessor>()
                 .AddTransient<Session>()
                 .AddTables(hostContext.Configuration));
     }
