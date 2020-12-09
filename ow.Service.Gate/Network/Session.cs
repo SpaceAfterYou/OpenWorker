@@ -1,11 +1,12 @@
-﻿using ow.Service.Gate.Game;
-using ow.Service.Gate.Game.Extensions;
-using ow.Service.Gate.Game.Types;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;
+using ow.Service.Gate.Game;
+using ow.Service.Gate.Game.Extensions;
+using ow.Service.Gate.Game.Types;
 using System;
+using System.Linq;
 
 namespace ow.Service.Gate.Network
 {
@@ -33,8 +34,10 @@ namespace ow.Service.Gate.Network
         {
             using PacketWriter writer = new(ClientOpcode.CharactersList);
 
-            writer.Write((byte)Characters.Count);
-            foreach (var character in Characters) { writer.Write(character); }
+            Character[] characters = Characters.Where(c => c is not null).ToArray();
+
+            writer.Write((byte)characters.Length);
+            foreach (var character in characters) { writer.Write(character); }
 
             writer.Write(Characters.LastSelected?.Id ?? uint.MaxValue);
             writer.Write(ushort.MinValue);

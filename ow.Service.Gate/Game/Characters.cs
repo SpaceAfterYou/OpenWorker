@@ -16,7 +16,6 @@ namespace ow.Service.Gate.Game
         public Characters(uint accountId, ushort gateId) : base(GetCharacterSlots())
         {
             Debug.Assert(accountId != 0);
-            Debug.Assert(gateId != 0);
 
             Stopwatch stopwatch = new();
             stopwatch.Start();

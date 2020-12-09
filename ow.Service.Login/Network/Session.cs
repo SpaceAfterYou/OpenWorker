@@ -1,11 +1,12 @@
-﻿using ow.Service.Login.Game;
-using ow.Service.Login.Game.Extensions;
-using ow.Service.Login.Network.Extensions;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;
+using ow.Service.Login.Game;
+using ow.Service.Login.Game.Extensions;
+using ow.Service.Login.Network.Extensions;
 using System.Collections.Generic;
+using System.Text;
 
 namespace ow.Service.Login.Network
 {
@@ -84,7 +85,7 @@ namespace ow.Service.Login.Network
 
             writer.WriteLoginResponseType(ResponseType.Success);
             //writer.WriteNumberLengthUtf8String(mac);
-            writer.WriteNumberLengthUtf8String(mac);
+            writer.Write(Encoding.ASCII.GetBytes(mac));
 
             writer.Write(byte.MinValue);
             writer.WriteByteLengthUnicodeString(string.Empty);
@@ -108,7 +109,7 @@ namespace ow.Service.Login.Network
             writer.Write(_emptyAccountId);
 
             writer.WriteLoginResponseType(ResponseType.Failure);
-            writer.WriteNumberLengthUtf8String(_emptyMac);
+            writer.Write(Encoding.ASCII.GetBytes(_emptyMac));
 
             writer.Write(byte.MinValue);
             writer.WriteByteLengthUnicodeString(message);

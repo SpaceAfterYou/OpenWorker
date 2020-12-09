@@ -60,7 +60,7 @@ namespace ow.Framework.IO.Network
 
         public void WriteGateStatus(GateStatus value) => Write((byte)value);
 
-        public PacketWriter(ClientOpcode opcode) : base(new MemoryStream(ushort.MaxValue), null, false)
+        public PacketWriter(ClientOpcode opcode) : base(new MemoryStream(ushort.MaxValue), Encoding.ASCII, false)
         {
             /// Write SoulWorker magic bytes
             Write((byte)0x02);
