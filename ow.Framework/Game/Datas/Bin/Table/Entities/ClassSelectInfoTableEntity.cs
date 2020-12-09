@@ -1,5 +1,5 @@
-﻿using ow.Framework.Game.Ids;
-using ow.Framework.Extensions;
+﻿using ow.Framework.Extensions;
+using ow.Framework.Game.Ids;
 using System.IO;
 
 namespace ow.Framework.Game.Datas.Bin.Table.Entities
@@ -31,6 +31,9 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public string Unknown24 { get; }
         public string Unknown25 { get; }
         public string Unknown26 { get; }
+        public string Unknown27 { get; }
+        public string Unknown28 { get; }
+        public string Unknown29 { get; }
 
         internal ClassSelectInfoTableEntity(BinaryReader br)
         {
@@ -57,6 +60,9 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown24 = br.ReadByteLengthUnicodeString();
             Unknown25 = br.ReadByteLengthUnicodeString();
             Unknown26 = br.ReadByteLengthUnicodeString();
+            Unknown27 = br.ReadByteLengthUnicodeString();
+            Unknown28 = br.ReadByteLengthUnicodeString();
+            Unknown29 = br.ReadByteLengthUnicodeString();
         }
     }
 }

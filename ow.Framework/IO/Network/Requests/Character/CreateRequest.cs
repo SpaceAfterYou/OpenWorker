@@ -13,6 +13,8 @@ namespace ow.Framework.IO.Network.Requests.Character
         public CreateCharacter Character { get; }
         public byte SlotId { get; }
         private uint Unknown1 { get; }
+        private uint Unknown2 { get; }
+        public byte Unknown3 { get; }
         public uint OutfitId { get; }
 
         public CreateRequest(BinaryReader br)
@@ -20,6 +22,8 @@ namespace ow.Framework.IO.Network.Requests.Character
             Character = new CreateCharacter(br);
             SlotId = br.ReadByte();
             Unknown1 = br.ReadUInt32();
+            Unknown2 = br.ReadUInt32();
+            Unknown3 = br.ReadByte();
             OutfitId = br.ReadUInt32();
         }
     }
@@ -195,10 +199,8 @@ namespace ow.Framework.IO.Network.Requests.Character
     {
         public IReadOnlyList<CreateCharacterFashion> Fashion { get; }
 
-        public CreateCharacterCosmetic(BinaryReader br)
-        {
-            Fashion = Enumerable.Range(0, Defines.FashionRows).Select(_ => new CreateCharacterFashion(br)).ToArray();
-        }
+        public CreateCharacterCosmetic(BinaryReader br) =>
+            Fashion = Enumerable.Repeat(0, Defines.FashionRows).Select(_ => new CreateCharacterFashion(br)).ToArray();
     }
 
     public readonly struct CreateCharacterMeta

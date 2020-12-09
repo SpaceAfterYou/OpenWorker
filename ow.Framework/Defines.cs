@@ -4,7 +4,7 @@
     {
         public const byte MaxChannelSessions = 96;
         public const byte Channels = 32;
-        public const byte FashionRows = 13;
+        public const byte FashionRows = 14;
         public const byte ClothesWithBoochesCount = 5;
         public const byte BoochesPerItem = 3;
         public const byte StatsPerItem = 5;

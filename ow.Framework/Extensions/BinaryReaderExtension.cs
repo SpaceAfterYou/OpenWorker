@@ -14,8 +14,12 @@ namespace ow.Framework.Extensions
         public static string ReadByteLengthUnicodeString(this BinaryReader br) =>
             Encoding.Unicode.GetString(br.ReadBytes(br.ReadUInt16() * 2));
 
-        public static string ReadNumberLengthUtf8String(this BinaryReader br) =>
-            Encoding.UTF8.GetString(br.ReadBytes(br.ReadUInt16()));
+        public static string ReadNumberLengthUtf8String(this BinaryReader br)
+        {
+            ushort length = br.ReadUInt16();
+            byte[] rawString = br.ReadBytes(length);
+            return Encoding.UTF8.GetString(rawString);
+        }
 
         public static Vector3 ReadVector3(this BinaryReader br) =>
             new(br.ReadSingle(), br.ReadSingle(), br.ReadSingle());

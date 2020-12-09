@@ -1,4 +1,5 @@
-﻿using ow.Framework.IO.Network;
+﻿using ow.Framework.Game.Types;
+using ow.Framework.IO.Network;
 using ow.Service.Gate.Game.Types;
 using System;
 using System.Linq;
@@ -32,10 +33,10 @@ namespace ow.Service.Gate.Game.Extensions
 
         private static void WriteCharacterWeaponData(this PacketWriter writer, Character value)
         {
-            if (value.Storage.EquippedGearStorage.Weapon is not null)
+            if (value.Storage.EquippedGearStorage[(int)EquippedGearSlotType.Weapon] is Item weapon)
             {
-                writer.Write(value.Storage.EquippedGearStorage.Weapon.UpgradeLevel);
-                writer.Write(value.Storage.EquippedGearStorage.Weapon.PrototypeId);
+                writer.Write(weapon.UpgradeLevel);
+                writer.Write(weapon.PrototypeId);
             }
             else
             {

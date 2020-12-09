@@ -88,6 +88,7 @@ namespace ow.Framework.Database.Characters
         [Key]
         [Required]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Column(TypeName = "SERIAL")]
         public uint Id { get; init; }
 
         [Required]

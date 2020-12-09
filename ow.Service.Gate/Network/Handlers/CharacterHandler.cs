@@ -85,9 +85,10 @@ namespace ow.Service.Gate.Network.Handlers
             if (!Enum.IsDefined(typeof(HeroId), request.Character.Main.Hero))
             {
 #if !DEBUG
-                session.Disconnect();
-#endif
+                throw new CreateCharacterException();
+#else
                 return;
+#endif
             }
 
             using var context = new CharacterContext();
@@ -96,9 +97,10 @@ namespace ow.Service.Gate.Network.Handlers
             if (context.Characters.Any(c => c.SlotId == request.SlotId && c.AccountId == session.Account.Id))
             {
 #if !DEBUG
-                session.Disconnect();
-# endif
+                throw new CreateCharacterException();
+#else
                 return;
+#endif
             }
 
             // Nickname is busy
@@ -107,9 +109,10 @@ namespace ow.Service.Gate.Network.Handlers
             if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity customizeHair))
             {
 #if !DEBUG
-                session.Disconnect();
-# endif
+                throw new CreateCharacterException();
+#else
                 return;
+#endif
             }
 
             // Validate hair style
@@ -121,9 +124,10 @@ namespace ow.Service.Gate.Network.Handlers
             if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity customizeEyes))
             {
 #if !DEBUG
-                session.Disconnect();
-# endif
+                throw new CreateCharacterException();
+#else
                 return;
+#endif
             }
 
             // TODO: Check skin
@@ -134,27 +138,30 @@ namespace ow.Service.Gate.Network.Handlers
             if (!binTable.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity classInfo))
             {
 #if !DEBUG
-                session.Disconnect();
-# endif
+                throw new CreateCharacterException();
+#else
                 return;
+#endif
             }
 
             // TODO: Find where placed id
             if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity characterInfo))
             {
 #if !DEBUG
-                session.Disconnect();
-# endif
+                throw new CreateCharacterException();
+#else
                 return;
+#endif
             }
 
             // Validate outfit
             if (!characterInfo.DefaultCostumeIds.Contains(request.OutfitId))
             {
 #if !DEBUG
-                session.Disconnect();
-# endif
+                throw new CreateCharacterException();
+#else
                 return;
+#endif
             }
 
             // TODO: Add default outfit to inventory

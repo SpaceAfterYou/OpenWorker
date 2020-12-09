@@ -84,7 +84,6 @@ namespace ow.Service.Login.Network
             writer.Write(accountId);
 
             writer.WriteLoginResponseType(ResponseType.Success);
-            //writer.WriteNumberLengthUtf8String(mac);
             writer.Write(Encoding.ASCII.GetBytes(mac));
 
             writer.Write(byte.MinValue);
