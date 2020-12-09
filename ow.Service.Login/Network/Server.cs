@@ -6,7 +6,7 @@ using System;
 
 namespace ow.Service.Login.Network
 {
-    public class Server : SwServer
+    public class Server : GameServer
     {
         public Server(IConfiguration configuration, IServiceProvider services) : base(configuration) =>
             _services = services;

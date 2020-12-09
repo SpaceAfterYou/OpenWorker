@@ -10,12 +10,12 @@ using System.Net.Sockets;
 
 namespace ow.Framework.IO.Network
 {
-    public class SwSession : TcpSession
+    public class GameSession : TcpSession
     {
         private readonly ILogger _logger;
         private readonly HandlerProvider _provider;
 
-        public SwSession(TcpServer server, HandlerProvider provider, ILogger logger) : base(server)
+        public GameSession(GameServer server, HandlerProvider provider, ILogger logger) : base(server)
         {
             _provider = provider;
             _logger = logger;
@@ -61,8 +61,6 @@ namespace ow.Framework.IO.Network
 #endif
                 return;
             }
-
-            base.OnReceived(buffer, offset, size);
         }
 
         private void ProcessPacket(byte[] raw)
@@ -78,7 +76,7 @@ namespace ow.Framework.IO.Network
             _provider[opcode].Invoke(this, br);
         }
 
-        public SwSession SendAsync(PacketWriter pw)
+        public GameSession SendAsync(PacketWriter pw)
         {
             if (!SendAsync(PacketUtils.Pack(pw), 0, pw.BaseStream.Length))
             {

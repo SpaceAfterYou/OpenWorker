@@ -6,7 +6,7 @@ using System;
 
 namespace ow.Service.Gate.Network
 {
-    public sealed class Server : SwServer
+    public sealed class Server : GameServer
     {
         public Server(IConfiguration configuration, IServiceProvider services) : base(configuration) =>
             _services = services;

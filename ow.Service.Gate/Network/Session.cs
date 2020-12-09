@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace ow.Service.Gate.Network
 {
-    public sealed class Session : SwSession
+    public sealed class Session : GameSession
     {
         public Account Account { get; set; }
         public Characters Characters { get; set; }

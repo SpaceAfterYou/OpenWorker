@@ -8,7 +8,7 @@ using ow.Framework.IO.Network.Requests.Chat;
 
 namespace ow.Service.District.Network
 {
-    public sealed class Session : SwSession
+    public sealed class Session : GameSession
     {
         public Channel Channel { get; set; }
         public Character Character { get; init; }

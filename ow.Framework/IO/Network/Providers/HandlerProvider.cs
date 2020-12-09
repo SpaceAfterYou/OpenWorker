@@ -12,7 +12,7 @@ using System.Reflection;
 
 namespace ow.Framework.IO.Network.Providers
 {
-    public delegate void Event(SwSession session, BinaryReader br);
+    public delegate void Event(GameSession session, BinaryReader br);
 
     public class HandlerProvider : List<Event>
     {
@@ -20,7 +20,7 @@ namespace ow.Framework.IO.Network.Providers
         {
         }
 
-        private static void Dummy(SwSession session, BinaryReader _)
+        private static void Dummy(GameSession session, BinaryReader _)
         {
 #if !DEBUG
             session.Disconnect();
@@ -51,7 +51,7 @@ namespace ow.Framework.IO.Network.Providers
 
         private static Event CreateEventHandler(IServiceProvider service, MethodInfo method)
         {
-            ParameterExpression session = Expression.Parameter(typeof(SwSession), "Session");
+            ParameterExpression session = Expression.Parameter(typeof(GameSession), "Session");
             ParameterExpression br = Expression.Parameter(typeof(BinaryReader), "BinaryReader");
 
             Expression[] arguments = method.GetParameters().Select(param =>
@@ -60,7 +60,7 @@ namespace ow.Framework.IO.Network.Providers
                 Debug.Assert(!param.IsIn);
 
                 // Session typed parameter
-                if (param.ParameterType.IsSubclassOf(typeof(SwSession)))
+                if (param.ParameterType.IsSubclassOf(typeof(GameSession)))
                 {
                     return Expression.Convert(session, param.ParameterType) as Expression;
                 }

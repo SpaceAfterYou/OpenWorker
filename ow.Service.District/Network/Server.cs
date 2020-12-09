@@ -3,7 +3,7 @@ using ow.Framework.IO.Network;
 
 namespace ow.Service.District.Network
 {
-    public class Server : SwServer
+    public class Server : GameServer
     {
         public ushort ZoneId { get; init; }
 

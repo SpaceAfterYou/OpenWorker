@@ -10,7 +10,7 @@ using System.Text;
 
 namespace ow.Service.Login.Network
 {
-    public sealed class Session : SwSession
+    public sealed class Session : GameSession
     {
         public Account Account { get; set; }
 
