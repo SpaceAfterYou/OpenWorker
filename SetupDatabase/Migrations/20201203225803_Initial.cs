@@ -1,5 +1,5 @@
-﻿using Core.Systems.DatabaseSystem.Characters;
-using Core.Systems.DatabaseSystem.Storages;
+﻿using ow.Framework.Database.Characters;
+using ow.Framework.Database.Storages;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace SetupDatabase.Migrations

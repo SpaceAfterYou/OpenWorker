@@ -1,10 +1,9 @@
-using Core.Systems.LanSystem;
-using Core.Systems.LanSystem.Extensions;
-using Core.Systems.NetSystem.Providers;
-using LoginService.Systems.GameSystem;
-using LoginService.Systems.NetSystem;
+using LoginService.Game;
+using LoginService.Network;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ow.Framework.IO.Lan.Extensions;
+using ow.Framework.IO.Network.Extensions;
 
 namespace LoginService
 {
@@ -16,13 +15,11 @@ namespace LoginService
             .CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
-                .AddSingleton<HandlerProvider>()
                 .AddSingleton<Server>()
                 .AddSingleton<Gates>()
                 .AddSingleton<Options>()
-                .AddRedis()
-                .AddTransient<Runner>()
-                .AddTransient<LanContext>()
-                .AddTransient<Session>());
+                .AddTransient<Session>()
+                .AddNetwork()
+                .AddLan());
     }
 }

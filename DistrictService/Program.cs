@@ -1,10 +1,11 @@
-using Core.Systems.GameSystem;
-using Core.Systems.LanSystem.Extensions;
-using DistrictService.Systems.GameSystem;
-using DistrictService.Systems.NetSystem;
-using DistrictService.Systems.NetSystem.Repositories;
+using DistrictService.Game;
+using DistrictService.Network;
+using DistrictService.Network.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ow.Framework.Game;
+using ow.Framework.IO.Lan.Extensions;
+using ow.Framework.IO.Network.Extensions;
 
 namespace DistrictService
 {
@@ -18,10 +19,11 @@ namespace DistrictService
                 .AddHostedService<Worker>()
                 .AddSingleton<Server>()
                 .AddSingleton<ChatCommandRepository>()
-                .AddSingleton<BinTable>()
-                .AddTransient<BinTableProcessor>()
-                .AddTransient<WorldTableProcessor>()
-                .AddRedis()
-                .AddTransient<Session>());
+                .AddTransient<BinTable>()
+                .AddSingleton<DataBinTable>()
+                .AddTransient<WorldTable>()
+                .AddTransient<Session>()
+                .AddNetwork()
+                .AddLan());
     }
 }

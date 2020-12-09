@@ -1,12 +1,10 @@
-using Core.Systems.GameSystem;
-using Core.Systems.LanSystem;
-using Core.Systems.LanSystem.Extensions;
-using Core.Systems.NetSystem.Providers;
-using GateService.Systems.GameSystem;
-using GateService.Systems.NetSystem;
-using GateService.Systems.ServiceSystem.Extensions;
+using GateService.Game;
+using GateService.Network;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ow.Framework.Game;
+using ow.Framework.IO.Lan.Extensions;
+using ow.Framework.IO.Network.Extensions;
 
 namespace GateService
 {
@@ -18,16 +16,14 @@ namespace GateService
             .CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
-                .AddSingleton<HandlerProvider>()
+                .AddTransient<BinTable>()
+                .AddSingleton<DataBinTable>()
                 .AddSingleton<Districts>()
                 .AddSingleton<Server>()
                 .AddSingleton<Gate>()
-                .AddSingleton<BinTable>()
-                .AddTransient<LanContext>()
-                .AddTransient<Runner>()
-                .AddTransient<BinTableProcessor>()
+                .AddSingleton<DataBinTable>()
                 .AddTransient<Session>()
-                .AddRedis()
-                .AddTables(hostContext.Configuration));
+                .AddNetwork()
+                .AddLan());
     }
 }

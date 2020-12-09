@@ -1,7 +1,9 @@
-using Core.Systems.LanSystem;
-using LoginService.Systems.NetSystem;
+using LoginService.Network;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ow.Framework.IO.Lan;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,17 +14,20 @@ namespace LoginService
         private readonly ILogger<Worker> _logger;
         private readonly Server _server;
 
-        public Worker(ILogger<Worker> logger, Server server, Runner runner)
+        public Worker(ILogger<Worker> logger, Server server, IServiceProvider service)
         {
             _logger = logger;
             _server = server;
 
-            runner.Run();
+            /// Activate LanContext
+            service.GetRequiredService<LanContext>();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _server.Start();
+            _logger.LogDebug($"Listen {_server.Endpoint}");
+
             return Task.CompletedTask;
         }
 

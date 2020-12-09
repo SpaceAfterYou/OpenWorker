@@ -11,18 +11,17 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)ChannelLoadStatus.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)StatId.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\CharacterPostType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\ChatType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\EnterGateWayType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Extensions\BinaryReaderExtension.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\EquippedGearSlotType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\GateStatusType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\GroupRoleType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\ItemStatType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\LogoutWayType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\ProfileStatusType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\ResponseType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Types\StorageType.cs" />
-    <Compile Include="..\SoulWorker\Types\HeroType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CharacterPostType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ChatType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EnterGateWayType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EquippedGearSlotType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GateStatus.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GroupRoleType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ItemStatType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LogoutWayType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ProfileStatusType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ResponseType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)StorageType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Hero.cs" />
   </ItemGroup>
 </Project>
