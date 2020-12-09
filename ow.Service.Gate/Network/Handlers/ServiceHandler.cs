@@ -23,7 +23,7 @@ namespace ow.Service.Gate.Network.Handlers
                 return;
             }
 
-            uint accountId = lan.GetAccountIdBySessionKey(request.SessionKey);
+            int accountId = lan.GetAccountIdBySessionKey(request.SessionKey);
             if (request.AccountId != accountId)
             {
 #if !DEBUG

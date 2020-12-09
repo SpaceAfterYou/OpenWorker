@@ -9,7 +9,7 @@ namespace ow.Framework.Database.Guilds
         [Key]
         [Required]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public uint Id { get; init; }
+        public int Id { get; init; }
 
         [Required]
         [MaxLength(12)]

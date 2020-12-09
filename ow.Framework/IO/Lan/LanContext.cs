@@ -15,7 +15,7 @@ namespace ow.Framework.IO.Lan
 {
     public class LanContext
     {
-        public ulong SetAccountIdBySessionKey(uint accountId)
+        public ulong SetAccountIdBySessionKey(int accountId)
         {
             ulong sessionKey = (ulong)DateTime.UtcNow.Ticks;
 
@@ -25,12 +25,12 @@ namespace ow.Framework.IO.Lan
             return sessionKey;
         }
 
-        public uint GetAccountIdBySessionKey(ulong sessionKey)
+        public int GetAccountIdBySessionKey(ulong sessionKey)
         {
             RedisValue value = _multiplexer.GetDatabase().HashGet("SessionKey", sessionKey.ToString());
             if (value.IsNullOrEmpty) throw new LanException();
 
-            return (uint)value;
+            return (int)value;
         }
 
         public LanContext(IServiceProvider service, ILogger<LanContext> logger, ConnectionMultiplexer multiplexer)

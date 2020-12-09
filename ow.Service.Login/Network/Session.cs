@@ -77,7 +77,7 @@ namespace ow.Service.Login.Network
             return SendAsync(writer) as Session;
         }
 
-        internal Session SendLogin(uint accountId, string mac, ulong sessionKey)
+        internal Session SendLogin(int accountId, string mac, ulong sessionKey)
         {
             using PacketWriter writer = new(ClientOpcode.LoginResult);
 

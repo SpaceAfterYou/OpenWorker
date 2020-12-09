@@ -21,6 +21,9 @@ namespace ow.Framework.Game
         public IReadOnlyDictionary<HeroId, CustomizeHairTableEntity> ReadCustomizeHairTable() =>
             TableReader<HeroId, CustomizeHairTableEntity>.Read(_data, "tb_Customize_Hair");
 
+        public IReadOnlyDictionary<HeroId, CustomizeInfoTableEntity> ReadCustomizeInfoTable() =>
+            TableReader<HeroId, CustomizeInfoTableEntity>.Read(_data, "tb_Customize_Info");
+
         public IReadOnlyDictionary<ushort, DistrictTableEntity> ReadDistrictTable() =>
             TableReader<ushort, DistrictTableEntity>.Read(_data, "tb_district");
 

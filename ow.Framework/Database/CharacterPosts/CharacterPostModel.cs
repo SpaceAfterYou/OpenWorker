@@ -10,12 +10,12 @@ namespace ow.Framework.Database.CharacterPosts
         [Key]
         [Required]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public uint Id { get; init; }
+        public int Id { get; init; }
 
         [Required]
-        public uint CharacterId { get; init; }
+        public int CharacterId { get; init; }
 
-        [ForeignKey("CharacterId")]
+        [ForeignKey(nameof(CharacterId))]
         public Characters.CharacterModel Character { get; init; }
 
         [Required]

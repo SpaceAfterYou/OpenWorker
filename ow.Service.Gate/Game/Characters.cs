@@ -13,7 +13,7 @@ namespace ow.Service.Gate.Game
         public TimeSpan InitializeTime { get; init; }
         public Character LastSelected { get; set; }
 
-        public Characters(uint accountId, ushort gateId) : base(GetCharacterSlots())
+        public Characters(int accountId, ushort gateId) : base(GetCharacterSlots())
         {
             Debug.Assert(accountId != 0);
 

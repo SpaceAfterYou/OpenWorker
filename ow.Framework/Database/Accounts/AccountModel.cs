@@ -12,7 +12,7 @@ namespace ow.Framework.Database.Accounts
         [Key]
         [Required]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public uint Id { get; init; }
+        public int Id { get; init; }
 
         [Required]
         public int LastSelectedCharacterId { get; init; } = -1;

@@ -1,10 +1,10 @@
-﻿using ow.Framework.Database.Characters;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
-using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace SetupDatabase.Migrations
 {
-    public partial class Initial : Microsoft.EntityFrameworkCore.Migrations.Migration
+    public partial class Initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

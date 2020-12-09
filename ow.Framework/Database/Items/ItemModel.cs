@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game.Ids;
+﻿using ow.Framework.Database.Characters;
+using ow.Framework.Game.Ids;
 using ow.Framework.Game.Types;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -23,17 +24,17 @@ namespace ow.Framework.Database.Storages
         [Key]
         [Required]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public uint Id { get; init; }
+        public int Id { get; init; }
 
         [Required]
-        public uint PrototypeId { get; init; }
+        public int PrototypeId { get; init; }
 
         [Required]
-        public uint CharacterId { get; init; }
+        public int CharacterId { get; init; }
 
         [Required]
         [ForeignKey(nameof(CharacterId))]
-        public Characters.CharacterModel Character { get; init; }
+        public CharacterModel Character { get; init; }
 
         [Required]
         public ushort SlotId { get; init; }

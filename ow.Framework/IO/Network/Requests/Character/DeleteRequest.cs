@@ -1,14 +1,13 @@
-﻿using System.IO;
-using ow.Framework.IO.Network.Attributes;
+﻿using ow.Framework.IO.Network.Attributes;
+using System.IO;
 
 namespace ow.Framework.IO.Network.Requests.Character
 {
     [Request]
     public readonly struct DeleteRequest
     {
-        public uint Id { get; }
+        public int Id { get; }
 
-        public DeleteRequest(BinaryReader br) =>
-            Id = br.ReadUInt32();
+        public DeleteRequest(BinaryReader br) => Id = br.ReadInt32();
     }
 }

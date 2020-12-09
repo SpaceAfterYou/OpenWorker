@@ -50,5 +50,11 @@ namespace ow.Framework.Tests.IO.GameFile
         {
             _binTableProcessor.ReadItemTable();
         }
+
+        [Fact]
+        public void ReadCustomizeInfoTable()
+        {
+            _binTableProcessor.ReadCustomizeInfoTable();
+        }
     }
 }

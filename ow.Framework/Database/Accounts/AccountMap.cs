@@ -12,7 +12,7 @@ namespace ow.Framework.Database.Accounts
             using var sham = new SHA512Managed();
             var password = sham.ComputeHash(Encoding.UTF8.GetBytes("qwe123"));
 
-            uint id = 1;
+            int id = 1;
 
             builder.HasData(
                 new AccountModel()

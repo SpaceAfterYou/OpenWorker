@@ -37,14 +37,22 @@ namespace ow.Service.Gate.Network
             Character[] characters = Characters.Where(c => c is not null).ToArray();
 
             writer.Write((byte)characters.Length);
-            foreach (var character in characters) { writer.Write(character); }
+            foreach (Character character in characters)
+                writer.Write(character);
 
-            writer.Write(Characters.LastSelected?.Id ?? uint.MaxValue);
-            writer.Write(ushort.MinValue);
+            if (characters.Length > 0 && Characters.LastSelected is null)
+                writer.Write(characters.First().Id);
+            else
+                writer.Write(Characters.LastSelected?.Id ?? -1);
+
+            writer.Write(byte.MinValue);
+            writer.Write((byte)1);
             writer.Write((ulong)Characters.InitializeTime.TotalSeconds);
             writer.Write(uint.MinValue);
             writer.Write((ulong)1262271600); // dec/31/2009
             writer.Write((byte)17);
+            writer.Write(byte.MinValue);
+            writer.Write(byte.MinValue);
             writer.Write(byte.MinValue);
 
             return SendAsync(writer) as Session;

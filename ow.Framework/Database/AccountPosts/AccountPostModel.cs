@@ -9,12 +9,12 @@ namespace ow.Framework.Database.AccouintPosts
         [Key]
         [Required]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public uint Id { get; init; }
+        public int Id { get; init; }
 
         [Required]
-        public uint AccountId { get; init; }
+        public int AccountId { get; init; }
 
-        [ForeignKey("AccountId")]
+        [ForeignKey(nameof(AccountId))]
         public Accounts.AccountModel Account { get; init; }
     }
 }

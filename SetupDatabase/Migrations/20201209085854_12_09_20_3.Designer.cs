@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SetupDatabase;
@@ -11,9 +12,10 @@ using ow.Framework.Database.Storages;
 namespace SetupDatabase.Migrations
 {
     [DbContext(typeof(MigrationContext))]
-    partial class MigrationContextModelSnapshot : ModelSnapshot
+    [Migration("20201209085854_12_09_20_3")]
+    partial class _12_09_20_3
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -169,7 +171,7 @@ namespace SetupDatabase.Migrations
                     b.Property<int>("GateId")
                         .HasColumnType("integer");
 
-                    b.Property<long[]>("GeturesIds")
+                    b.Property<long[]>("Gesture")
                         .IsRequired()
                         .HasColumnType("bigint[]");
 

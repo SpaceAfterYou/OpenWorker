@@ -7,7 +7,7 @@ using ow.Framework.Database.Characters;
 using ow.Framework.Database.Guilds;
 using ow.Framework.Database.Storages;
 
-namespace Migration.Contexts
+namespace SetupDatabase
 {
     public sealed class MigrationContext : BaseDbContext
     {

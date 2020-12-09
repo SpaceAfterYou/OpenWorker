@@ -4,7 +4,7 @@ namespace ow.Service.Gate.Game
 {
     public sealed class Item
     {
-        public uint PrototypeId { get; init; }
+        public int PrototypeId { get; init; }
         public uint UpgradeLevel { get; init; }
         public uint Color { get; init; }
 

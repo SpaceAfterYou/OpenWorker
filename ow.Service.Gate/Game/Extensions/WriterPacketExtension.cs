@@ -50,6 +50,19 @@ namespace ow.Service.Gate.Game.Extensions
 
         private static void WriteCharacterFashionData(this PacketWriter writer, Character value)
         {
+            void WriteFashionEntry(int prototypeId = -1, uint color = uint.MinValue)
+            {
+                writer.Write(-1);
+                writer.Write(-1);
+                writer.Write(prototypeId);
+                writer.Write(color);
+
+                writer.Write(-1);
+                writer.Write(-1);
+                writer.Write(-1);
+                writer.Write(uint.MinValue);
+            }
+
             foreach (var (view, battle) in value.Storage.EquippedViewFashionStorage.Zip(value.Storage.EquippedBattleFashionStorage, Tuple.Create))
             {
                 if (view is not null)
@@ -66,30 +79,18 @@ namespace ow.Service.Gate.Game.Extensions
 
                 WriteFashionEntry();
             }
-
-            void WriteFashionEntry(uint relationId = uint.MaxValue, uint fashionColor = uint.MinValue)
-            {
-                writer.Write(uint.MaxValue);
-                writer.Write(uint.MaxValue);
-                writer.Write(relationId);
-                writer.Write(fashionColor);
-                writer.Write(uint.MaxValue);
-                writer.Write(uint.MaxValue);
-                writer.Write(uint.MaxValue);
-                writer.Write(uint.MinValue);
-            }
         }
 
         private static void WriteCharacterMetaData(this PacketWriter writer, Character value)
         {
-            const uint currentHp = 100;
-            const uint maxHp = 100;
-            const uint currentSg = 100;
-            const uint maxSg = 100;
-            const uint maxStamina = 100;
-            const float moveSpeed = 100;
-            const float attackSpeed = 100;
-            const ushort primaryEnergy = 200;
+            const uint currentHp = 0;
+            const uint maxHp = 0;
+            const uint currentSg = 0;
+            const uint maxSg = 0;
+            const uint maxStamina = 0;
+            const float moveSpeed = 1.0f;
+            const float attackSpeed = 1.0f;
+            const ushort primaryEnergy = 0;
             const ushort extraEnergy = 0;
             const uint titlePrimary = 0;
             const uint titleSecondary = 0;
@@ -102,10 +103,10 @@ namespace ow.Service.Gate.Game.Extensions
             writer.Write(guildId);
             writer.WriteByteLengthUnicodeString(guildName);
             writer.Write(uint.MinValue); // 1 Unknown4
-            writer.Write(currentHp);
-            writer.Write(maxHp);
-            writer.Write(currentSg);
-            writer.Write(maxSg);
+            writer.Write(currentHp); // 2
+            writer.Write(maxHp); // 3
+            writer.Write(currentSg); // 4
+            writer.Write(maxSg); // 5
             writer.Write(uint.MinValue); // 6 Unknown1
             writer.Write(uint.MinValue); // 7 Unknown2
             writer.Write(uint.MinValue); // 8 Stamina???
@@ -118,25 +119,35 @@ namespace ow.Service.Gate.Game.Extensions
             writer.Write(byte.MinValue); // Unknown6
             writer.Write(primaryEnergy);
             writer.Write(extraEnergy);
+            writer.Write(uint.MinValue);
+            writer.Write(byte.MinValue);
+            writer.Write(byte.MinValue);
+            writer.Write(uint.MinValue);
+            writer.Write(ushort.MinValue);
             writer.Write(uint.MinValue); // 1
             writer.Write(uint.MinValue); // 2
-            writer.Write(uint.MinValue); // 3
-            writer.Write(uint.MinValue); // 4
-            writer.Write(byte.MinValue);
+            writer.Write(value.SlotId);
+            writer.Write(uint.MinValue);
             writer.Write(byte.MinValue);
             writer.Write(uint.MinValue);
         }
 
         private static void Write(this PacketWriter writer, Appearance value)
         {
-            writer.Write(ushort.MinValue); // 1
-            writer.Write(ushort.MinValue); // 1
-            writer.Write(value.Hair); // 2
-            writer.Write(value.EyeColor); // 3
-            writer.Write(value.SkinColor); // 3
-            writer.Write(value.EquippedHair); // 4
-            writer.Write(value.EquippedEyeColor); // 5
-            writer.Write(value.EquippedSkinColor); // 5
+            //writer.Write(ushort.MinValue); // 1
+            //writer.Write(ushort.MinValue); // 1
+            //writer.Write(value.Hair); // 2
+            //writer.Write(value.EyeColor); // 3
+            //writer.Write(value.SkinColor); // 3
+            //writer.Write(value.EquippedHair); // 4
+            //writer.Write(value.EquippedEyeColor); // 5
+            //writer.Write(value.EquippedSkinColor); // 5
+
+            writer.Write(0); // 1
+            writer.Write(0); // 2
+            writer.Write(0); // 3
+            writer.Write(0); // 4
+            writer.Write(0); // 5
         }
 
         private static void Write(this PacketWriter writer, Hair hair)

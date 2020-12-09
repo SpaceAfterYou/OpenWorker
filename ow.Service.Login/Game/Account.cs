@@ -4,7 +4,7 @@ namespace ow.Service.Login.Game
 {
     public sealed class Account
     {
-        public uint Id { get; init; }
+        public int Id { get; }
 
         public Account(AccountModel model) => Id = model.Id;
     }

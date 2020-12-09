@@ -4,7 +4,7 @@ namespace ow.Service.District.Game
 {
     public class Character
     {
-        public uint Id { get; init; }
+        public int Id { get; init; }
         public byte Level { get; set; }
         public Place Place { get; init; }
 

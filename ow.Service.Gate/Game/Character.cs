@@ -5,7 +5,7 @@ namespace ow.Service.Gate.Game
 {
     public sealed class Character
     {
-        public uint Id { get; init; }
+        public int Id { get; init; }
         public byte SlotId { get; init; }
         public byte Level { get; init; }
         public HeroId Hero { get; init; }

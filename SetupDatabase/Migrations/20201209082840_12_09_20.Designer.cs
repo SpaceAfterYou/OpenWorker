@@ -2,18 +2,19 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using SetupDatabase;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 
 namespace SetupDatabase.Migrations
 {
     [DbContext(typeof(MigrationContext))]
-    partial class MigrationContextModelSnapshot : ModelSnapshot
+    [Migration("20201209082840_12_09_20")]
+    partial class _12_09_20
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -23,13 +24,13 @@ namespace SetupDatabase.Migrations
 
             modelBuilder.Entity("ow.Framework.Database.AccouintPosts.AccountPostModel", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .UseIdentityByDefaultColumn();
+                        .HasColumnType("bigint")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
-                    b.Property<int>("AccountId")
-                        .HasColumnType("integer");
+                    b.Property<long>("AccountId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -40,10 +41,10 @@ namespace SetupDatabase.Migrations
 
             modelBuilder.Entity("ow.Framework.Database.Accounts.AccountModel", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .UseIdentityByDefaultColumn();
+                        .HasColumnType("bigint")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
                     b.Property<int>("LastSelectedCharacterId")
                         .HasColumnType("integer");
@@ -70,7 +71,7 @@ namespace SetupDatabase.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
+                            Id = 1L,
                             LastSelectedCharacterId = -1,
                             Nickname = "sawich",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
@@ -78,7 +79,7 @@ namespace SetupDatabase.Migrations
                         },
                         new
                         {
-                            Id = 2,
+                            Id = 2L,
                             LastSelectedCharacterId = -1,
                             Nickname = "Leeroy",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
@@ -86,7 +87,7 @@ namespace SetupDatabase.Migrations
                         },
                         new
                         {
-                            Id = 3,
+                            Id = 3L,
                             LastSelectedCharacterId = -1,
                             Nickname = "Tweekly",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
@@ -94,7 +95,7 @@ namespace SetupDatabase.Migrations
                         },
                         new
                         {
-                            Id = 4,
+                            Id = 4L,
                             LastSelectedCharacterId = -1,
                             Nickname = "Chelsea",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
@@ -102,7 +103,7 @@ namespace SetupDatabase.Migrations
                         },
                         new
                         {
-                            Id = 5,
+                            Id = 5L,
                             LastSelectedCharacterId = -1,
                             Nickname = "Dez",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
@@ -110,7 +111,7 @@ namespace SetupDatabase.Migrations
                         },
                         new
                         {
-                            Id = 6,
+                            Id = 6L,
                             LastSelectedCharacterId = -1,
                             Nickname = "Godo",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
@@ -120,13 +121,13 @@ namespace SetupDatabase.Migrations
 
             modelBuilder.Entity("ow.Framework.Database.CharacterPosts.CharacterPostModel", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .UseIdentityByDefaultColumn();
+                        .HasColumnType("bigint")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
                     b.Property<int>("CharacterId")
-                        .HasColumnType("integer");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Type")
                         .HasColumnType("integer");
@@ -142,11 +143,11 @@ namespace SetupDatabase.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .UseIdentityByDefaultColumn();
+                        .HasColumnType("INTEGER")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
-                    b.Property<int>("AccountId")
-                        .HasColumnType("integer");
+                    b.Property<long>("AccountId")
+                        .HasColumnType("bigint");
 
                     b.Property<byte>("Advancement")
                         .HasColumnType("smallint");
@@ -169,7 +170,7 @@ namespace SetupDatabase.Migrations
                     b.Property<int>("GateId")
                         .HasColumnType("integer");
 
-                    b.Property<long[]>("GeturesIds")
+                    b.Property<long[]>("Gesture")
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
@@ -206,6 +207,10 @@ namespace SetupDatabase.Migrations
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
+                    b.Property<long[]>("SkillSlot")
+                        .IsRequired()
+                        .HasColumnType("bigint[]");
+
                     b.Property<byte>("SlotId")
                         .HasColumnType("smallint");
 
@@ -229,10 +234,10 @@ namespace SetupDatabase.Migrations
 
             modelBuilder.Entity("ow.Framework.Database.Guilds.GuildModel", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .UseIdentityByDefaultColumn();
+                        .HasColumnType("bigint")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -251,17 +256,17 @@ namespace SetupDatabase.Migrations
 
             modelBuilder.Entity("ow.Framework.Database.Storages.ItemModel", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .UseIdentityByDefaultColumn();
+                        .HasColumnType("bigint")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
                     b.Property<string>("BroochSlots")
                         .IsRequired()
                         .HasColumnType("char(15)");
 
                     b.Property<int>("CharacterId")
-                        .HasColumnType("integer");
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("Color")
                         .HasColumnType("bigint");

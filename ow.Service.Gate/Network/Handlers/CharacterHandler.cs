@@ -227,14 +227,6 @@ namespace ow.Service.Gate.Network.Handlers
                 SlotId = request.SlotId,
                 Name = request.Character.Main.Name,
                 Hero = request.Character.Main.Hero,
-                Gesture = new uint[6] {
-                    (uint)((byte)request.Character.Main.Hero * 1000 + 0),
-                    (uint)((byte)request.Character.Main.Hero * 1000 + 1),
-                    (uint)((byte)request.Character.Main.Hero * 1000 + 2),
-                    (uint)((byte)request.Character.Main.Hero * 1000 + 3),
-                    (uint)((byte)request.Character.Main.Hero * 1000 + 4),
-                    (uint)((byte)request.Character.Main.Hero * 1000 + 5)
-                },
                 Appearance = new ApperanceModel()
                 {
                     Hair = new()
@@ -253,12 +245,15 @@ namespace ow.Service.Gate.Network.Handlers
                     EquippedSkinColor = request.Character.Main.Appearance.EquippedSkinColor,
                 },
                 Place = new() { Position = new() { X = 10444.9951f, Y = 10179.7461f, Z = 100.325394f }, Rotation = 0, Location = 10003 },
+                Storage = CreateStorageInfo(),
+                Bank = new(),
+                Inventory = new(),
                 LearnedSkill = Array.Empty<uint>(),
                 QuickSlot = Enumerable.Repeat<uint>(0, 6 * 3).ToArray(),
-                Storage = CreateStorageInfo(),
-                Energy = new EnergyModel() { Primary = 200, Extra = 0 },
-                Profile = new ProfileModel() { Status = ProfileStatusType.Rookie, About = "", Note = "" },
-                Title = new TitleModel() { Primary = 0, Secondary = 0 }
+                Energy = new(),
+                Title = new(),
+                Profile = new(),
+                GeturesIds = new uint[6]
             };
 
         private static StorageModel[] CreateStorageInfo() => new StorageModel[]

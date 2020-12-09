@@ -2,7 +2,7 @@
 
 namespace SetupDatabase.Migrations
 {
-    public partial class _12_8_20 : Microsoft.EntityFrameworkCore.Migrations.Migration
+    public partial class _12_8_20 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
