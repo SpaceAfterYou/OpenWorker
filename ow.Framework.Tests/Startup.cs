@@ -11,7 +11,7 @@ namespace ow.Framework.Tests
 
         public Startup() => ServiceProvider = new ServiceCollection()
             .AddSingleton(GetConfiguration())
-            .AddSingleton<BinTable>()
+            .AddSingleton<BinTableProcessor>()
             .BuildServiceProvider();
 
         private static IConfiguration GetConfiguration() => new ConfigurationBuilder()

@@ -7,12 +7,12 @@ namespace ow.Framework.Tests.IO.GameFile
     public class BinTableTest : IClassFixture<Startup>
     {
         private ServiceProvider _serviceProvider;
-        private BinTable _binTableProcessor;
+        private BinTableProcessor _binTableProcessor;
 
         public BinTableTest(Startup testSetup)
         {
             _serviceProvider = testSetup.ServiceProvider;
-            _binTableProcessor = _serviceProvider.GetRequiredService<BinTable>();
+            _binTableProcessor = _serviceProvider.GetRequiredService<BinTableProcessor>();
         }
 
         [Fact]

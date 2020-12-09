@@ -1,13 +1,13 @@
-﻿using ow.Framework.Game.Datas.Bin;
+﻿using Microsoft.Extensions.Configuration;
+using ow.Framework.Game.Datas.Bin;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
-using Microsoft.Extensions.Configuration;
 using ow.Framework.Game.Ids;
 using ow.Framework.IO.GameFile;
 using System.Collections.Generic;
 
 namespace ow.Framework.Game
 {
-    public class BinTable
+    public class BinTableProcessor
     {
         public IReadOnlyDictionary<HeroId, ClassSelectInfoTableEntity> ReadClassSelectInfoTable() =>
             TableReader<HeroId, ClassSelectInfoTableEntity>.Read(_data, "tb_ClassSelect_Info");
@@ -30,7 +30,7 @@ namespace ow.Framework.Game
         public IReadOnlyDictionary<ushort, CharacterInfoTableEntity> ReadCharacterInfoTable() =>
             TableReader<ushort, CharacterInfoTableEntity>.Read(_data, "tb_Character_Info");
 
-        public BinTable(IConfiguration configuration) => _data = new(configuration);
+        public BinTableProcessor(IConfiguration configuration) => _data = new(configuration);
 
         private readonly VData12 _data;
     }
