@@ -134,20 +134,14 @@ namespace ow.Service.Gate.Game.Extensions
 
         private static void Write(this PacketWriter writer, Appearance value)
         {
-            //writer.Write(ushort.MinValue); // 1
-            //writer.Write(ushort.MinValue); // 1
-            //writer.Write(value.Hair); // 2
-            //writer.Write(value.EyeColor); // 3
-            //writer.Write(value.SkinColor); // 3
-            //writer.Write(value.EquippedHair); // 4
-            //writer.Write(value.EquippedEyeColor); // 5
-            //writer.Write(value.EquippedSkinColor); // 5
-
-            writer.Write(0); // 1
-            writer.Write(0); // 2
-            writer.Write(0); // 3
-            writer.Write(0); // 4
-            writer.Write(0); // 5
+            writer.Write(ushort.MinValue); // 1
+            writer.Write(ushort.MinValue); // 1
+            writer.Write(value.Hair); // 2
+            writer.Write(value.EyeColor); // 3
+            writer.Write(value.SkinColor); // 3
+            writer.Write(value.EquippedHair); // 4
+            writer.Write(value.EquippedEyeColor); // 5
+            writer.Write(value.EquippedSkinColor); // 5
         }
 
         private static void Write(this PacketWriter writer, Hair hair)

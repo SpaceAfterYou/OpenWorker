@@ -18,15 +18,12 @@ namespace SetupDatabase
         public DbSet<AccountPostModel> AccountPost { get; set; }
         public DbSet<CharacterPostModel> CharacterPost { get; set; }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder
-                .ApplyConfiguration(new AccountMap())
-                .ApplyConfiguration(new CharacterMap())
-                .ApplyConfiguration(new GuildMap())
-                .ApplyConfiguration(new ItemMap())
-                .ApplyConfiguration(new AccountPostMap())
-                .ApplyConfiguration(new CharacterPostMap());
-        }
+        protected override void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder
+            .ApplyConfiguration(new AccountMap())
+            .ApplyConfiguration(new CharacterMap())
+            .ApplyConfiguration(new GuildMap())
+            .ApplyConfiguration(new ItemMap())
+            .ApplyConfiguration(new AccountPostMap())
+            .ApplyConfiguration(new CharacterPostMap());
     }
 }
