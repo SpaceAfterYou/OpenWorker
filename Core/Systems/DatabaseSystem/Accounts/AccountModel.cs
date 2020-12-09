@@ -6,7 +6,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Core.Systems.DatabaseSystem.Accounts
 {
     [Table("accounts")]
-    [Index("SessionKey")]
     [Index("Nickname", IsUnique = true)]
     public class AccountModel
     {
@@ -16,10 +15,7 @@ namespace Core.Systems.DatabaseSystem.Accounts
         public uint Id { get; init; }
 
         [Required]
-        public int LastSelectedCharacter { get; init; } = -1;
-
-        [Required]
-        public ulong SessionKey { get; set; } = 0;
+        public int LastSelectedCharacterId { get; init; } = -1;
 
         [Required]
         [MaxLength(24)]
@@ -27,10 +23,6 @@ namespace Core.Systems.DatabaseSystem.Accounts
 
         [Required]
         public byte[] Password { get; init; }
-
-        [Required]
-        [Column(TypeName = "CHAR(18)")]
-        public string Mac { get; set; } = "00-00-00-00-00-00";
 
         [Required]
         public ulong SoulCash { get; init; } = 0;

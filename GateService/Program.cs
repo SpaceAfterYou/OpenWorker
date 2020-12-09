@@ -1,6 +1,7 @@
 using Core.Systems.GameSystem;
-using Core.Systems.NetSystem.Providers;
+using Core.Systems.LanSystem;
 using Core.Systems.LanSystem.Extensions;
+using Core.Systems.NetSystem.Providers;
 using GateService.Systems.GameSystem;
 using GateService.Systems.NetSystem;
 using GateService.Systems.ServiceSystem.Extensions;
@@ -22,6 +23,8 @@ namespace GateService
                 .AddSingleton<Server>()
                 .AddSingleton<Gate>()
                 .AddSingleton<BinTable>()
+                .AddTransient<LanContext>()
+                .AddTransient<Runner>()
                 .AddTransient<BinTableProcessor>()
                 .AddTransient<Session>()
                 .AddRedis()

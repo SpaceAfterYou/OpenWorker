@@ -1,5 +1,4 @@
-﻿using Core.Systems.DatabaseSystem.Accounts;
-using Core.Systems.NetSystem;
+﻿using Core.Systems.NetSystem;
 using Core.Systems.NetSystem.Opcodes;
 using Core.Systems.NetSystem.Packets;
 using Core.Systems.NetSystem.Providers;
@@ -78,14 +77,15 @@ namespace LoginService.Systems.NetSystem
             return SendAsync(writer) as Session;
         }
 
-        internal Session SendLogin(AccountModel model)
+        internal Session SendLogin(uint accountId, string mac, ulong sessionKey)
         {
             using WriterPacket writer = new(ClientOpcode.LoginResult);
 
-            writer.Write(model.Id);
+            writer.Write(accountId);
 
             writer.Write(ResponseType.Success);
-            writer.WriteNumberLengthUtf8String(model.Mac);
+            //writer.WriteNumberLengthUtf8String(mac);
+            writer.WriteNumberLengthUtf8String(mac);
 
             writer.Write(byte.MinValue);
             writer.WriteByteLengthUnicodeString(string.Empty);
@@ -94,7 +94,7 @@ namespace LoginService.Systems.NetSystem
             writer.Write((byte)1);
             writer.WriteByteLengthUnicodeString(_unknownString);
 
-            writer.Write(model.SessionKey);
+            writer.Write(sessionKey);
             writer.Write(byte.MinValue);
             writer.Write(uint.MinValue);
             writer.Write(byte.MinValue);

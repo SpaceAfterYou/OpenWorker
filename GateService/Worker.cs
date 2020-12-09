@@ -1,3 +1,4 @@
+using Core.Systems.LanSystem;
 using GateService.Systems.NetSystem;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,10 +12,12 @@ namespace GateService
         private readonly ILogger<Worker> _logger;
         private readonly Server _server;
 
-        public Worker(Server server, ILogger<Worker> logger)
+        public Worker(Server server, ILogger<Worker> logger, Runner runner)
         {
             _logger = logger;
             _server = server;
+
+            runner.Run();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

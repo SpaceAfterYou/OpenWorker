@@ -16,7 +16,7 @@ namespace Core.Systems.GameSystem
             TableReader<HeroType, CustomizeSkinTableEntity>.Read(_data, "tb_Customize_Skin");
 
         public IReadOnlyDictionary<HeroType, CustomizeEyesTableEntity> ReadCustomizeEyesTable() =>
-                TableReader<HeroType, CustomizeEyesTableEntity>.Read(_data, "tb_Customize_Eyes");
+            TableReader<HeroType, CustomizeEyesTableEntity>.Read(_data, "tb_Customize_Eyes");
 
         public IReadOnlyDictionary<HeroType, CustomizeHairTableEntity> ReadCustomizeHairTable() =>
             TableReader<HeroType, CustomizeHairTableEntity>.Read(_data, "tb_Customize_Hair");

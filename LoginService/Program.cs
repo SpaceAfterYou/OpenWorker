@@ -1,6 +1,6 @@
-using Core.Systems.NetSystem.Providers;
 using Core.Systems.LanSystem;
 using Core.Systems.LanSystem.Extensions;
+using Core.Systems.NetSystem.Providers;
 using LoginService.Systems.GameSystem;
 using LoginService.Systems.NetSystem;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +22,7 @@ namespace LoginService
                 .AddSingleton<Options>()
                 .AddRedis()
                 .AddTransient<Runner>()
+                .AddTransient<LanContext>()
                 .AddTransient<Session>());
     }
 }

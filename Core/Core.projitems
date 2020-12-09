@@ -48,6 +48,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Systems\LanSystem\Attrubutes\RequestAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\LanSystem\Extensions\ServiceCollectionExtension.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\LanSystem\Attrubutes\HandlerAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Systems\LanSystem\LanContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\LanSystem\Runner.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Systems\LanSystem\Requests\UpdatePlayerCountRequest.cs" />
     <Compile Include="..\Core\Systems\GameSystem\DataTableProcessor.cs" />
@@ -168,7 +169,6 @@
     <Folder Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Attributes\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\GameSystem\Datas\World\Table\Types\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\NetSystem\Requests\Auth\" />
-    <Folder Include="$(MSBuildThisFileDirectory)Systems\LanSystem\" />
     <Folder Include="$(MSBuildThisFileDirectory)Systems\LanSystem\" />
   </ItemGroup>
 </Project>

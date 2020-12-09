@@ -89,8 +89,12 @@ namespace Core.Systems.NetSystem
 
         public SwSession SendAsync(WriterPacket pw)
         {
-            bool result = SendAsync(UtilsPacket.Pack(pw), 0, pw.Length);
-            Debug.Assert(result);
+            if (!SendAsync(UtilsPacket.Pack(pw), 0, pw.Length))
+            {
+#if !DEBUG
+                this.Disconnect();
+#endif // !DEBUG
+            }
 
             return this;
         }
