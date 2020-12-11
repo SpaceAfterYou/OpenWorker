@@ -21,7 +21,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (1 > request.FirstSlot || request.FirstSlot > Defines.CharactersSlotsCount)
             {
 #if !DEBUG
-                session.Disconnect();
+                throw new BadActionException();
 #endif
                 return;
             }
@@ -29,7 +29,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (1 > request.SecondSlot || request.SecondSlot > Defines.CharactersSlotsCount)
             {
 #if !DEBUG
-                session.Disconnect();
+                throw new BadActionException();
 #endif
                 return;
             }
@@ -37,7 +37,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (request.FirstSlot == request.SecondSlot)
             {
 #if !DEBUG
-                session.Disconnect();
+                throw new BadActionException();
 #endif
                 return;
             }
@@ -67,104 +67,116 @@ namespace ow.Service.Gate.Network.Handlers
             //SlotCharacterHelper.Change(second, slots[request.FirstSlot]);
         }
 
+        private static void ValidateHero(in CreateRequest request)
+        {
+            if (!Enum.IsDefined(typeof(HeroId), request.Character.Main.Hero))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
+        private static void ValidateHair(in CreateRequest request, BinTable binTable)
+        {
+            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity entity))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            if (!entity.Style.Contains(request.Character.Main.Appearance.Hair.Style))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
+        private static void ValidateEyes(in CreateRequest request, BinTable binTable)
+        {
+            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity entity))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            if (!entity.Color.Contains(request.Character.Main.Appearance.EyesColor))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
+        private static void ValidateSkin(in CreateRequest request, BinTable binTable)
+        {
+            if (!binTable.CustomizeSkinTable.TryGetValue(request.Character.Main.Hero, out CustomizeSkinTableEntity entity))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            if (!entity.Color.Contains(request.Character.Main.Appearance.SkinColor))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
+        private static void ValidateOutfit(in CreateRequest request, BinTable binTable)
+        {
+            ///
+            /// [ TODO ] Find where placed fucking id
+            ///
+
+            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity characterInfo))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
         [Handler(ServerOpcode.CharacterCreate, HandlerPermission.Authorized)]
         public static void Create(Session session, CreateRequest request, GateInfo gate, BinTable binTable)
         {
-            // Validate nickname
             if (request.Character.Main.Name.Length > Defines.MaxCharacterNameLength)
-            {
                 return;
-            }
 
             if (request.Character.Main.Name.Length < Defines.MinCharacterNameLength)
-            {
                 return;
-            }
 
-            // Validate hero
-            if (!Enum.IsDefined(typeof(HeroId), request.Character.Main.Hero))
-            {
-#if !DEBUG
-                throw new CreateCharacterException();
-#else
-                return;
-#endif
-            }
+            ValidateHero(request);
+            ValidateHair(request, binTable);
+            ValidateEyes(request, binTable);
+            ValidateSkin(request, binTable);
+            ValidateOutfit(request, binTable);
 
-            using var context = new CharacterContext();
+            using CharacterContext context = new();
 
-            // Slot is busy, client error
             if (context.Characters.Any(c => c.SlotId == request.SlotId && c.AccountId == session.Account.Id))
-            {
 #if !DEBUG
-                throw new CreateCharacterException();
+                throw new BadActionException();
 #else
                 return;
 #endif
-            }
 
-            // Nickname is busy
-            if (context.Characters.Any(c => c.Name == request.Character.Main.Name)) { return; }
-
-            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity customizeHair))
-            {
-#if !DEBUG
-                throw new CreateCharacterException();
-#else
+            if (context.Characters.Any(c => c.Name == request.Character.Main.Name))
                 return;
-#endif
-            }
-
-            // Validate hair style
-            if (!customizeHair.Style.Contains(request.Character.Main.Appearance.Hair.Style)) { return; }
-
-            // Validate hair color
-            if (!customizeHair.Color.Contains(request.Character.Main.Appearance.Hair.Color)) { return; }
-
-            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity customizeEyes))
-            {
-#if !DEBUG
-                throw new CreateCharacterException();
-#else
-                return;
-#endif
-            }
-
-            // TODO: Check skin
-
-            // Validate eyes color
-            if (!customizeEyes.Color.Contains(request.Character.Main.Appearance.EyeColor)) { return; }
 
             if (!binTable.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity classInfo))
-            {
 #if !DEBUG
-                throw new CreateCharacterException();
+                throw new BadActionException();
 #else
                 return;
 #endif
-            }
 
-            // TODO: Find where placed id
-            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity characterInfo))
-            {
-#if !DEBUG
-                throw new CreateCharacterException();
-#else
-                return;
-#endif
-            }
-
-            // Validate outfit
-            if (!characterInfo.DefaultCostumeIds.Contains(request.OutfitId))
-            {
-#if !DEBUG
-                throw new CreateCharacterException();
-#else
-                return;
-#endif
-            }
-
-            // TODO: Add default outfit to inventory
+            /// [ TODO ] Add default outfit to inventory
 
             CharacterModel model = CreateModel(session, request, gate);
             context.UseAndSave(c => c.Add(model));
@@ -234,14 +246,14 @@ namespace ow.Service.Gate.Network.Handlers
                         Style = request.Character.Main.Appearance.Hair.Style,
                         Color = request.Character.Main.Appearance.Hair.Color
                     },
-                    EyeColor = request.Character.Main.Appearance.EyeColor,
+                    EyeColor = request.Character.Main.Appearance.EyesColor,
                     SkinColor = request.Character.Main.Appearance.SkinColor,
                     EquippedHair = new()
                     {
                         Style = request.Character.Main.Appearance.EquippedHair.Style,
                         Color = request.Character.Main.Appearance.EquippedHair.Color
                     },
-                    EquippedEyeColor = request.Character.Main.Appearance.EquippedEyeColor,
+                    EquippedEyeColor = request.Character.Main.Appearance.EquippedEyesColor,
                     EquippedSkinColor = request.Character.Main.Appearance.EquippedSkinColor,
                 },
                 Place = new() { Position = new() { X = 10444.9951f, Y = 10179.7461f, Z = 100.325394f }, Rotation = 0, Location = 10003 },

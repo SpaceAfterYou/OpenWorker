@@ -85,7 +85,7 @@ namespace ow.Framework.IO.Network
             Write((ushort)BaseStream.Length);
 
             /// Get and return RAW buffer
-            return ((MemoryStream)base.BaseStream).GetBuffer();
+            return ((MemoryStream)BaseStream).GetBuffer();
         }
     }
 }

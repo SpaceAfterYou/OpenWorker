@@ -29,7 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Network\Extensions\" />
     <Folder Include="Lan\" />
   </ItemGroup>
 

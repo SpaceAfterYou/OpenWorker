@@ -42,10 +42,10 @@ namespace ow.Framework.IO.Network.Requests.Character
         private ushort Unknown1 { get; }
         private ushort Unknown2 { get; }
         public CreateCharacterHair Hair { get; }
-        public ushort EyeColor { get; }
+        public ushort EyesColor { get; }
         public ushort SkinColor { get; }
         public CreateCharacterHair EquippedHair { get; }
-        public ushort EquippedEyeColor { get; }
+        public ushort EquippedEyesColor { get; }
         public ushort EquippedSkinColor { get; }
 
         public CreateCharacterAppearance(BinaryReader br)
@@ -53,10 +53,10 @@ namespace ow.Framework.IO.Network.Requests.Character
             Unknown1 = br.ReadUInt16();
             Unknown2 = br.ReadUInt16();
             Hair = new CreateCharacterHair(br);
-            EyeColor = br.ReadUInt16();
+            EyesColor = br.ReadUInt16();
             SkinColor = br.ReadUInt16();
             EquippedHair = new CreateCharacterHair(br);
-            EquippedEyeColor = br.ReadUInt16();
+            EquippedEyesColor = br.ReadUInt16();
             EquippedSkinColor = br.ReadUInt16();
         }
     };

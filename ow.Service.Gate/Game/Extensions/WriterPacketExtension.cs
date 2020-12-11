@@ -41,11 +41,11 @@ namespace ow.Service.Gate.Game.Extensions
             else
             {
                 writer.Write(byte.MinValue);
-                writer.Write(uint.MaxValue);
+                writer.Write(uint.MinValue);
             }
 
             writer.Write(byte.MinValue);
-            writer.Write(uint.MaxValue);
+            writer.Write(-1);
         }
 
         private static void WriteCharacterFashionData(this PacketWriter writer, Character value)
@@ -107,29 +107,28 @@ namespace ow.Service.Gate.Game.Extensions
             writer.Write(maxHp); // 3
             writer.Write(currentSg); // 4
             writer.Write(maxSg); // 5
-            writer.Write(uint.MinValue); // 6 Unknown1
-            writer.Write(uint.MinValue); // 7 Unknown2
+            writer.Write(uint.MinValue); // 6
+            writer.Write(uint.MinValue); // 7
             writer.Write(uint.MinValue); // 8 Stamina???
             writer.Write(maxStamina); // 9 Max Stamina
-            writer.Write(uint.MinValue); // 10 Unknown4
-            writer.Write(uint.MinValue); // 11 Unknown5
+            writer.Write(uint.MinValue); // 10
+            writer.Write(uint.MinValue); // 11
             writer.Write(moveSpeed);
             writer.Write(attackSpeed);
-            writer.Write(ushort.MinValue); // Unknown5
-            writer.Write(byte.MinValue); // Unknown6
+            writer.Write(uint.MinValue); // 00 00 00 00
+            // writer.Write(uint.MinValue); // 00 00 00 00
             writer.Write(primaryEnergy);
             writer.Write(extraEnergy);
-            writer.Write(uint.MinValue);
-            writer.Write(byte.MinValue);
-            writer.Write(byte.MinValue);
-            writer.Write(uint.MinValue);
-            writer.Write(ushort.MinValue);
-            writer.Write(uint.MinValue); // 1
-            writer.Write(uint.MinValue); // 2
-            writer.Write(value.SlotId);
-            writer.Write(uint.MinValue);
-            writer.Write(byte.MinValue);
-            writer.Write(uint.MinValue);
+            writer.Write(byte.MinValue); // 00
+            writer.Write(byte.MinValue); // 08
+            writer.Write(uint.MinValue); // 95 36 68 3B
+            writer.Write(ushort.MinValue); // 00 00
+            writer.Write(uint.MinValue); // 00 00 00 00
+            writer.Write(uint.MinValue); // 00 00 00 00
+            writer.Write(value.SlotId); // 01
+            writer.Write(uint.MinValue); // 00 00 00 00
+            writer.Write(byte.MinValue); // 00
+            writer.Write(uint.MinValue); // 00 00 00 00
         }
 
         private static void Write(this PacketWriter writer, Appearance value)
