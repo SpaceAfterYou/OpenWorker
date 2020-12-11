@@ -16,6 +16,7 @@
         OptionLoad = 0x0231,
 
         CharacterDelete = 0x0302,
+        CharacterMakrAsFavorite = 0x030F,
         CharactersList = 0x0312,
         CharacterSelect = 0x0314,
         WorldEnter = 0x0322,

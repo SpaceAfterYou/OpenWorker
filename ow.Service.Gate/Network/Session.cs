@@ -3,8 +3,8 @@ using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;
 using ow.Service.Gate.Game;
-using ow.Service.Gate.Game.Extensions;
 using ow.Service.Gate.Game.Types;
+using ow.Service.Gate.Network.Extensions;
 using System;
 using System.Linq;
 
@@ -26,6 +26,22 @@ namespace ow.Service.Gate.Network
 
             writer.Write(GateEnterResultType.Success);
             writer.Write(Account.Id);
+
+            return SendAsync(writer) as Session;
+        }
+
+        internal Session SendFavoriteCharacter(Character character)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterMakrAsFavorite);
+
+            writer.Write(Account.Id);
+            writer.Write(character.Id);
+            writer.Write(ushort.MinValue);
+            writer.WriteByteLengthUnicodeString(character.Name);
+            writer.Write(character.PortraitId);
+            writer.Write(uint.MinValue);
+            writer.Write(uint.MinValue);
+            writer.Write(uint.MinValue);
 
             return SendAsync(writer) as Session;
         }

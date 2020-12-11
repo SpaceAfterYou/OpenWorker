@@ -1,10 +1,11 @@
 ﻿using ow.Framework.Game.Types;
 using ow.Framework.IO.Network;
+using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Types;
 using System;
 using System.Linq;
 
-namespace ow.Service.Gate.Game.Extensions
+namespace ow.Service.Gate.Network.Extensions
 {
     public static class PacketWriterExtension
     {
