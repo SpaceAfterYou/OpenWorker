@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game.Ids;
+﻿using ow.Framework.Game;
+using ow.Framework.Game.Ids;
 using ow.Framework.Game.Statuses;
 using ow.Framework.Game.Types;
 using ow.Framework.IO.Network.Opcodes;
@@ -46,6 +47,9 @@ namespace ow.Framework.IO.Network
             Write(value.X);
             Write(value.Y);
         }
+
+        public void WriteNpcVisability(NpcVisablity value) =>
+            Write((byte)value);
 
         public void WriteVector3(in Vector3 value)
         {

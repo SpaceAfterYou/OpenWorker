@@ -7,8 +7,8 @@ namespace ow.Service.District.Game
 {
     public class Zone
     {
-        public VRoot Place { get; }
         public DistrictTableEntity Table { get; }
+        public VRoot Place { get; }
 
         public Zone(IConfiguration configuration, BinTable binTable, WorldTable worldTableProcessor)
         {

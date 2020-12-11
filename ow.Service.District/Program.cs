@@ -1,11 +1,11 @@
-using ow.Service.District.Game;
-using ow.Service.District.Network;
-using ow.Service.District.Network.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Extensions;
+using ow.Service.District.Game;
+using ow.Service.District.Network;
+using ow.Service.District.Network.Repositories;
 
 namespace ow.Service.District
 {
@@ -21,6 +21,7 @@ namespace ow.Service.District
                 .AddSingleton<ChatCommandRepository>()
                 .AddTransient<BinTableProcessor>()
                 .AddSingleton<BinTable>()
+                .AddSingleton<IReadOnlyCachedNpcs, CachedNpcs>()
                 .AddTransient<WorldTable>()
                 .AddTransient<Session>()
                 .AddNetwork()

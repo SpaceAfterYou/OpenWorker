@@ -26,7 +26,7 @@ namespace ow.Service.Login.Network
             writer.WriteNumberLengthUtf8String(gate.Ip);
             writer.Write(gate.Port);
 
-            return SendAsync(writer) as Session;
+            return (Session)SendAsync(writer) ;
         }
 
         internal Session SendGateList(IReadOnlyList<PersonalGate> infos)
@@ -51,7 +51,7 @@ namespace ow.Service.Login.Network
                 writer.Write(info.CharactersCount);
             }
 
-            return SendAsync(writer) as Session;
+            return (Session)SendAsync(writer) ;
         }
 
         internal Session SendOptionLoad(Options options)
@@ -74,7 +74,7 @@ namespace ow.Service.Login.Network
             writer.Write(options.Option13);
             writer.Write(options.Option14);
 
-            return SendAsync(writer) as Session;
+            return (Session)SendAsync(writer) ;
         }
 
         internal Session SendLogin(int accountId, string mac, ulong sessionKey)
@@ -98,7 +98,7 @@ namespace ow.Service.Login.Network
             writer.Write(uint.MinValue);
             writer.Write(byte.MinValue);
 
-            return SendAsync(writer) as Session;
+            return (Session)SendAsync(writer) ;
         }
 
         internal Session SendLogin(TableMessageId code, string message = "")
@@ -122,7 +122,7 @@ namespace ow.Service.Login.Network
             writer.Write(uint.MinValue);
             writer.Write(byte.MinValue);
 
-            return SendAsync(writer) as Session;
+            return (Session)SendAsync(writer) ;
         }
 
         private static readonly uint _emptyAccountId = uint.MaxValue;
