@@ -18,6 +18,9 @@ namespace ow.Framework.Database.Accounts
         public int LastSelectedCharacterId { get; init; } = -1;
 
         [Required]
+        public int FavoriteCharacterId { get; init; } = -1;
+
+        [Required]
         [MaxLength(24)]
         public string Nickname { get; init; }
 

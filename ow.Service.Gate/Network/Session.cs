@@ -30,15 +30,15 @@ namespace ow.Service.Gate.Network
             return SendAsync(writer) as Session;
         }
 
-        internal Session SendFavoriteCharacter(Character character)
+        internal Session SendFavoriteCharacter()
         {
             using PacketWriter writer = new(ClientOpcode.CharacterMakrAsFavorite);
 
             writer.Write(Account.Id);
-            writer.Write(character.Id);
+            writer.Write(Characters.Favorite.Id);
             writer.Write(ushort.MinValue);
-            writer.WriteByteLengthUnicodeString(character.Name);
-            writer.Write(character.PortraitId);
+            writer.WriteByteLengthUnicodeString(Characters.Favorite.Name);
+            writer.Write(Characters.Favorite.PortraitId);
             writer.Write(uint.MinValue);
             writer.Write(uint.MinValue);
             writer.Write(uint.MinValue);

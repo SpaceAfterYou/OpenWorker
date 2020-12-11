@@ -19,38 +19,32 @@ namespace ow.Service.Gate.Network.Handlers
         public static void ChangeSlot(Session session, ChangeSlotRequest request)
         {
             if (1 > request.FirstSlot || request.FirstSlot > Defines.CharactersSlotsCount)
-            {
 #if !DEBUG
                 throw new BadActionException();
 #endif
                 return;
-            }
 
             if (1 > request.SecondSlot || request.SecondSlot > Defines.CharactersSlotsCount)
-            {
 #if !DEBUG
                 throw new BadActionException();
 #endif
                 return;
-            }
 
             if (request.FirstSlot == request.SecondSlot)
-            {
 #if !DEBUG
                 throw new BadActionException();
 #endif
                 return;
-            }
 
             //var first = slots.FirstOrDefault(slot => slot.Id == request.FirstSlot);
             //var second = slots.FirstOrDefault(slot => slot.Id == request.SecondSlot);
 
             ///* No characters found */
             //if (first is null && second is null)
-            //{
-            //    session.Disconnect();
-            //    return;
-            //}
+            //#if !DEBUG
+            //                throw new BadActionException();
+            //#endif
+            //            return;
 
             //if (second is not null && first is not null)
             //{
@@ -192,18 +186,25 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterDelete, HandlerPermission.Authorized)]
         public static void Delete(Session session, DeleteRequest request)
         {
-            Character character = session.Characters.FirstOrDefault(character => character?.Id == request.Id);
-            if (character is null) { return; }
+            Character character = session.Characters.Find(character => character?.Id == request.Id);
+
+            if (character is null)
+                return;
 
             using CharacterContext context = new();
             context.UseAndSave(c => c.Remove<CharacterModel>(new() { Id = request.Id }));
 
             session.Characters[character.SlotId] = null;
-            if (character.Id == session.Characters.LastSelected.Id)
+            if (character.Id == session.Characters?.LastSelected.Id)
             {
-                Character firstAvailableCharacter = session.Characters.FirstOrDefault(character => character is not null);
-                if (firstAvailableCharacter is not null) { session.Characters.LastSelected = firstAvailableCharacter; }
+                Character firstAvailableCharacter = session.Characters.Find(character => character is not null);
+
+                if (firstAvailableCharacter is not null)
+                    session.Characters.LastSelected = firstAvailableCharacter;
             }
+
+            if (character.Id == session.Characters?.Favorite.Id)
+                session.Characters.Favorite = null;
 
             session.SendCharactersList();
         }
@@ -214,13 +215,28 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterMarkFavorite, HandlerPermission.Authorized)]
         public static void MarkFavorite(Session session, MarkFavoriteRequest request)
         {
+            Character character = session.Characters.Find(c => c?.Id == request.CharacterId);
+            if (character is null)
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            session.Characters.Favorite = character;
+            session.SendFavoriteCharacter();
         }
 
         [Handler(ServerOpcode.CharacterSelect, HandlerPermission.Authorized)]
         public static void Select(Session session, SelectRequest request, District district)
         {
-            Character character = session.Characters.First(character => character?.Id == request.Id);
-            if (character is null) { return; }
+            Character character = session.Characters.Find(character => character?.Id == request.Id);
+            if (character is null)
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
 
             session.Characters.LastSelected = character;
             session.SendCharacterSelect(character, district);

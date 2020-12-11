@@ -12,6 +12,7 @@ namespace ow.Service.Gate.Game
     {
         public TimeSpan InitializeTime { get; init; }
         public Character LastSelected { get; set; }
+        public Character Favorite { get; set; }
 
         public Characters(int accountId, ushort gateId) : base(GetCharacterSlots())
         {
