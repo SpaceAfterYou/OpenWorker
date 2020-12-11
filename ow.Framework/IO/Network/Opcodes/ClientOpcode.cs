@@ -22,6 +22,7 @@
         WorldEnter = 0x0322,
         CharacterTitleLoad = 0x0323,
         CharacterTitleUpdate = 0x0325,
+        CharacterChangeBackground = 0x032C,
         CharacterDbLoadSync = 0x0330,
         CharacterInfo = 0x0332,
         CharacterStatsUpdate = 0x0334,

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
@@ -13,7 +14,7 @@ namespace ow.Service.Gate.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(Session session, EnterRequest request, GateInfo gate, LanContext lan)
+        public static void Enter(Session session, EnterRequest request, GateInfo gate, LanContext lan, BinTable binTable)
         {
             if (gate.Id != request.GateId)
             {
@@ -44,7 +45,10 @@ namespace ow.Service.Gate.Network.Handlers
             }
 
             session.Account = new(model);
-            session.Characters = new(request.AccountId, request.GateId);
+            session.Characters = new(model, request.GateId);
+
+            if (binTable.CharacterBackgroundTable.TryGetValue(model.CharacterBackgroundId, out CharacterBackgroundTableEntity entity))
+                session.Background = entity;
 
             session.SendGateEnterResult().SendCurrentDate();
         }

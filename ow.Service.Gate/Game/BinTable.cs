@@ -13,6 +13,7 @@ namespace ow.Service.Gate.Game
         internal IReadOnlyDictionary<HeroId, CustomizeHairTableEntity> CustomizeHairTable { get; }
         internal IReadOnlyDictionary<ushort, DistrictTableEntity> DistrictTable { get; }
         internal IReadOnlyDictionary<ushort, CharacterInfoTableEntity> CharacterInfoTable { get; }
+        internal IReadOnlyDictionary<uint, CharacterBackgroundTableEntity> CharacterBackgroundTable { get; }
 
         public BinTable(BinTableProcessor binTable)
         {
@@ -22,6 +23,7 @@ namespace ow.Service.Gate.Game
             CustomizeHairTable = binTable.ReadCustomizeHairTable();
             DistrictTable = binTable.ReadDistrictTable();
             CharacterInfoTable = binTable.ReadCharacterInfoTable();
+            CharacterBackgroundTable = binTable.ReadCharacterBackgroundTable();
         }
     }
 }

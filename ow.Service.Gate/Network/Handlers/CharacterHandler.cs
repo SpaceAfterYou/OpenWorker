@@ -61,81 +61,6 @@ namespace ow.Service.Gate.Network.Handlers
             //SlotCharacterHelper.Change(second, slots[request.FirstSlot]);
         }
 
-        private static void ValidateHero(in CreateRequest request)
-        {
-            if (!Enum.IsDefined(typeof(HeroId), request.Character.Main.Hero))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        private static void ValidateHair(in CreateRequest request, BinTable binTable)
-        {
-            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity entity))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-
-            if (!entity.Style.Contains(request.Character.Main.Appearance.Hair.Style))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        private static void ValidateEyes(in CreateRequest request, BinTable binTable)
-        {
-            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity entity))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-
-            if (!entity.Color.Contains(request.Character.Main.Appearance.EyesColor))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        private static void ValidateSkin(in CreateRequest request, BinTable binTable)
-        {
-            if (!binTable.CustomizeSkinTable.TryGetValue(request.Character.Main.Hero, out CustomizeSkinTableEntity entity))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-
-            if (!entity.Color.Contains(request.Character.Main.Appearance.SkinColor))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        private static void ValidateOutfit(in CreateRequest request, BinTable binTable)
-        {
-            ///
-            /// [ TODO ] Find where placed fucking id
-            ///
-
-            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity characterInfo))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
         [Handler(ServerOpcode.CharacterCreate, HandlerPermission.Authorized)]
         public static void Create(Session session, CreateRequest request, GateInfo gate, BinTable binTable)
         {
@@ -245,6 +170,95 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
         public static void UpdateSpecialOptionList()
         {
+        }
+
+        [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
+        public static void ChangeBackground(Session session, ChangeBackgroundRequest request, BinTable binTable)
+        {
+            if (!binTable.CharacterBackgroundTable.TryGetValue(request.BackgroundId, out CharacterBackgroundTableEntity entity))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            session.Background = entity;
+            session.SendCharacterBackground();
+        }
+
+        private static void ValidateHero(in CreateRequest request)
+        {
+            if (!Enum.IsDefined(typeof(HeroId), request.Character.Main.Hero))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
+        private static void ValidateHair(in CreateRequest request, BinTable binTable)
+        {
+            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity entity))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            if (!entity.Style.Contains(request.Character.Main.Appearance.Hair.Style))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
+        private static void ValidateEyes(in CreateRequest request, BinTable binTable)
+        {
+            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity entity))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            if (!entity.Color.Contains(request.Character.Main.Appearance.EyesColor))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
+        private static void ValidateSkin(in CreateRequest request, BinTable binTable)
+        {
+            if (!binTable.CustomizeSkinTable.TryGetValue(request.Character.Main.Hero, out CustomizeSkinTableEntity entity))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            if (!entity.Color.Contains(request.Character.Main.Appearance.SkinColor))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+        }
+
+        private static void ValidateOutfit(in CreateRequest request, BinTable binTable)
+        {
+            ///
+            /// [ TODO ] Find where placed fucking id
+            ///
+
+            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity characterInfo))
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
         }
 
         public static CharacterModel CreateModel(Session session, in CreateRequest request, GateInfo gate) =>

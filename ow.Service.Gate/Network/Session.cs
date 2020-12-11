@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;
@@ -14,6 +15,7 @@ namespace ow.Service.Gate.Network
     {
         public Account Account { get; set; }
         public Characters Characters { get; set; }
+        public CharacterBackgroundTableEntity Background { get; set; }
 
         public Session(Server server, HandlerProvider provider, ILogger<Session> logger) :
             base(server, provider, logger)
@@ -70,6 +72,17 @@ namespace ow.Service.Gate.Network
             writer.Write(byte.MinValue);
             writer.Write(byte.MinValue);
             writer.Write(byte.MinValue);
+
+            return SendAsync(writer) as Session;
+        }
+
+        internal Session SendCharacterBackground()
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterChangeBackground);
+
+            writer.Write(Account.Id);
+            writer.Write(Background.Id);
+            writer.Write(uint.MinValue);
 
             return SendAsync(writer) as Session;
         }

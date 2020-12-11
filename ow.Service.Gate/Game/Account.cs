@@ -6,6 +6,7 @@ namespace ow.Service.Gate.Game
     {
         public int Id { get; init; }
 
-        public Account(AccountModel model) => Id = model.Id;
+        public Account(AccountModel model) =>
+            Id = model.Id;
     }
 }

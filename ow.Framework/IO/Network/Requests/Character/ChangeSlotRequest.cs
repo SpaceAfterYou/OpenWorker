@@ -1,5 +1,5 @@
-﻿using System.IO;
-using ow.Framework.IO.Network.Attributes;
+﻿using ow.Framework.IO.Network.Attributes;
+using System.IO;
 
 namespace ow.Framework.IO.Network.Requests.Character
 {
