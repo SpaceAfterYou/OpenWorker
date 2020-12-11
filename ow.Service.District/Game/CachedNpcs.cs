@@ -13,6 +13,9 @@ namespace ow.Service.District.Game
         IReadOnlyCachedNpc IReadOnlyList<IReadOnlyCachedNpc>.this[int index] =>
             base[index];
 
+        IEnumerator<IReadOnlyCachedNpc> IEnumerable<IReadOnlyCachedNpc>.GetEnumerator() =>
+            GetEnumerator();
+
         public CachedNpcs(Zone zone) : base(GetNpcs(zone.Place))
         {
         }
@@ -36,11 +39,6 @@ namespace ow.Service.District.Game
                 GetRandomValue(box.PosTopLeft.Y, box.PosBottomRight.Y),
                 GetRandomValue(box.PosTopLeft.Z, box.PosBottomRight.Z)
             );
-        }
-
-        IEnumerator<IReadOnlyCachedNpc> IEnumerable<IReadOnlyCachedNpc>.GetEnumerator()
-        {
-            throw new NotImplementedException();
         }
     }
 }
