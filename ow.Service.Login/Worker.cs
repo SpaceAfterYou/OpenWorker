@@ -14,7 +14,7 @@ namespace ow.Service.Login
         private readonly ILogger<Worker> _logger;
         private readonly GameServer _server;
 
-        public Worker(ILogger<Worker> logger, GameServer server, IServiceProvider service)
+        public Worker(GameServer server, ILogger<Worker> logger, IServiceProvider service)
         {
             _logger = logger;
             _server = server;

@@ -1,5 +1,6 @@
 ﻿using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas.Bin.Table;
+using ow.Framework.Game.Storage;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Service.Gate.Game;
@@ -50,8 +51,10 @@ namespace ow.Service.Gate.Network.Extensions
             EntityCharacter[] existsCharacters = characters.Where(c => c is not null).ToArray();
 
             writer.Write((byte)existsCharacters.Length);
+
+            IStorage storage = session.Entity.Get<IStorage>();
             foreach (EntityCharacter character in existsCharacters)
-                writer.Write(character);
+                writer.Write(character, storage);
 
             writer.Write(characters.LastSelected is null ? (existsCharacters.FirstOrDefault()?.Id ?? -1) : (characters.LastSelected?.Id ?? -1));
             writer.Write(byte.MinValue);
