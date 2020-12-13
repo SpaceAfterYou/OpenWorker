@@ -1,3 +1,4 @@
+using DefaultEcs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Game;
@@ -20,6 +21,7 @@ namespace ow.Service.Login
                 .AddSingleton<GatesInstances>()
                 .AddSingleton<OptionsStatuses>()
                 .AddTransient<GameSession>()
+                .AddSingleton<World>()
                 .AddNetwork()
                 .AddLan());
     }

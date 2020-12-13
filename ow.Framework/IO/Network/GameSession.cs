@@ -14,11 +14,11 @@ namespace ow.Framework.IO.Network
     public sealed partial class GameSession : TcpSession
     {
         public Entity Entity { get; }
-        private readonly ILogger _logger;
+        private readonly ILogger<GameSession> _logger;
 
         private readonly HandlerProvider _provider;
 
-        public GameSession(GameServer server, HandlerProvider provider, World entities, ILogger logger) : base(server)
+        public GameSession(GameServer server, HandlerProvider provider, World entities, ILogger<GameSession> logger) : base(server)
         {
             Entity = entities.CreateEntity();
 
