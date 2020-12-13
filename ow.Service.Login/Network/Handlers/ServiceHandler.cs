@@ -1,11 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
 using ow.Framework.IO.Lan;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Auth;
 using ow.Service.Login.Game;
+using ow.Service.Login.Network.Extensions;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -15,23 +17,21 @@ namespace ow.Service.Login.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.AuthEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(Session session, EnterRequest request, LanContext lan)
+        public static void Enter(GameSession session, EnterRequest request, LanContext lan)
         {
-            AccountModel model = GetAccount(request.Nickname, request.Password, request.Mac);
+            AccountModel model = GetAccount(request.Nickname, request.Password);
             if (model is null)
             {
-                // TODO: Not Work
-                session.SendLogin(TableMessageId.LoginFailed);
+                // TODO: Not work. Message not showing.
+                session.SendLogin(TableMessage.LoginFailed);
                 return;
             }
 
-            ulong sessionKey = lan.SetAccountIdBySessionKey(model.Id);
-
-            session.Account = new(model);
-            session.SendLogin(model.Id, request.Mac, sessionKey);
+            session.Entity.Set(new Account(model));
+            session.SendLogin(model.Id, request.Mac, lan.SetAccountIdBySessionKey(model.Id));
         }
 
-        private static AccountModel GetAccount(string nickname, string password, string mac)
+        private static AccountModel GetAccount(string nickname, string password)
         {
             byte[] hash = GetPasswordHash(password);
             using AccountContext context = new();

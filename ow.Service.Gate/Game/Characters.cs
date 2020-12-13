@@ -15,7 +15,7 @@ namespace ow.Service.Gate.Game
         public Character LastSelected { get; set; }
         public Character Favorite { get; set; }
 
-        public Characters(AccountModel accountModel, ushort gateId, BinTables binTable) : base(GetCharacterSlots())
+        public Characters(AccountModel accountModel, ushort gateId, BinTables tables) : base(GetCharacterSlots())
         {
             Stopwatch stopwatch = new();
             stopwatch.Start();
@@ -23,17 +23,17 @@ namespace ow.Service.Gate.Game
             using CharacterContext context = new();
 
             foreach (CharacterModel model in context.Characters.AsNoTracking().Where(c => c.AccountId == accountModel.Id && c.GateId == gateId))
-                this[model.SlotId] = new(model, binTable);
+                this[model.SlotId] = new(model, tables);
 
             stopwatch.Stop();
 
             InitializeTime = stopwatch.Elapsed;
 
-            if (accountModel.LastSelectedCharacterId != -1)
-                LastSelected = Find(c => c.Id == accountModel.LastSelectedCharacterId);
+            if (accountModel.LastSelectedCharacter != -1)
+                LastSelected = Find(c => c.Entity.Id == accountModel.LastSelectedCharacter);
 
-            if (accountModel.FavoriteCharacterId != -1)
-                Favorite = Find(c => c.Id == accountModel.FavoriteCharacterId);
+            if (accountModel.FavoriteCharacter != -1)
+                Favorite = Find(c => c.Entity.Id == accountModel.FavoriteCharacter);
         }
 
         public static Character[] GetCharacterSlots() =>

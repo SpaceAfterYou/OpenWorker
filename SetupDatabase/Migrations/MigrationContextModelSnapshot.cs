@@ -45,13 +45,13 @@ namespace SetupDatabase.Migrations
                         .HasColumnType("integer")
                         .UseIdentityByDefaultColumn();
 
-                    b.Property<long>("CharacterBackgroundId")
+                    b.Property<long>("CharacterBackground")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("FavoriteCharacterId")
+                    b.Property<int>("FavoriteCharacter")
                         .HasColumnType("integer");
 
-                    b.Property<int>("LastSelectedCharacterId")
+                    b.Property<int>("LastSelectedCharacter")
                         .HasColumnType("integer");
 
                     b.Property<string>("Nickname")
@@ -77,9 +77,9 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 1,
-                            CharacterBackgroundId = 0L,
-                            FavoriteCharacterId = -1,
-                            LastSelectedCharacterId = -1,
+                            CharacterBackground = 0L,
+                            FavoriteCharacter = -1,
+                            LastSelectedCharacter = -1,
                             Nickname = "sawich",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SoulCash = 0m
@@ -87,9 +87,9 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 2,
-                            CharacterBackgroundId = 0L,
-                            FavoriteCharacterId = -1,
-                            LastSelectedCharacterId = -1,
+                            CharacterBackground = 0L,
+                            FavoriteCharacter = -1,
+                            LastSelectedCharacter = -1,
                             Nickname = "Leeroy",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SoulCash = 0m
@@ -97,9 +97,9 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 3,
-                            CharacterBackgroundId = 0L,
-                            FavoriteCharacterId = -1,
-                            LastSelectedCharacterId = -1,
+                            CharacterBackground = 0L,
+                            FavoriteCharacter = -1,
+                            LastSelectedCharacter = -1,
                             Nickname = "Tweekly",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SoulCash = 0m
@@ -107,9 +107,9 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 4,
-                            CharacterBackgroundId = 0L,
-                            FavoriteCharacterId = -1,
-                            LastSelectedCharacterId = -1,
+                            CharacterBackground = 0L,
+                            FavoriteCharacter = -1,
+                            LastSelectedCharacter = -1,
                             Nickname = "Chelsea",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SoulCash = 0m
@@ -117,9 +117,9 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 5,
-                            CharacterBackgroundId = 0L,
-                            FavoriteCharacterId = -1,
-                            LastSelectedCharacterId = -1,
+                            CharacterBackground = 0L,
+                            FavoriteCharacter = -1,
+                            LastSelectedCharacter = -1,
                             Nickname = "Dez",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SoulCash = 0m
@@ -127,9 +127,9 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 6,
-                            CharacterBackgroundId = 0L,
-                            FavoriteCharacterId = -1,
-                            LastSelectedCharacterId = -1,
+                            CharacterBackground = 0L,
+                            FavoriteCharacter = -1,
+                            LastSelectedCharacter = -1,
                             Nickname = "Godo",
                             Password = new byte[] { 85, 165, 86, 15, 55, 213, 63, 202, 45, 212, 222, 16, 50, 189, 195, 225, 180, 162, 114, 124, 92, 175, 112, 216, 10, 215, 203, 48, 247, 21, 175, 175, 228, 21, 179, 235, 218, 60, 112, 218, 130, 134, 115, 78, 84, 169, 234, 143, 2, 230, 79, 161, 26, 114, 50, 30, 54, 112, 179, 90, 221, 191, 60, 250 },
                             SoulCash = 0m
@@ -169,7 +169,7 @@ namespace SetupDatabase.Migrations
                     b.Property<byte>("Advancement")
                         .HasColumnType("smallint");
 
-                    b.Property<ApperanceModel>("Appearance")
+                    b.Property<AppearanceModel>("Appearance")
                         .IsRequired()
                         .HasColumnType("jsonb");
 

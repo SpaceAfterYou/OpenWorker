@@ -1,18 +1,21 @@
-﻿using ow.Service.District.Network.Repositories;
+﻿using ow.Framework.Game.Enums;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Chat;
-using ow.Framework.Game.Enums;
+using ow.Service.District.Game;
+using ow.Service.District.Network.Repositories;
 
 namespace ow.Service.District.Network.Handlers
 {
     internal static class ChatHandler
     {
         [Handler(ServerOpcode.ChatReceiveMessage, HandlerPermission.Authorized)]
-        public static void Receive(Session session, ReceiveRequest request, ChatCommandRepository commands)
+        public static void Receive(GameSession session, ReceiveRequest request, ChatCommandRepository commands)
         {
-            if (request.Message.Length == 0) { return; }
+            if (request.Message.Length == 0)
+                return;
 
             if (request.Message.StartsWith('!'))
             {
@@ -28,7 +31,7 @@ namespace ow.Service.District.Network.Handlers
                 return;
             }
 
-            session.Channel.BroadcastChatMessage(session, request);
+            session.Entity.Get<Dimension>().BroadcastChatMessage(session, request);
         }
     }
 }

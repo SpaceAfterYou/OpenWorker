@@ -1,11 +1,11 @@
-﻿namespace ow.Framework.Game.Storage
+﻿using System;
+
+namespace ow.Framework.Game.Storage
 {
     public interface IStorage
     {
-        public IViewFashionStorage EquippedViewFashionStorage { get; }
-
-        public IEquipableBattleFashionStorage EquippedBattleFashionStorage { get; }
-
-        public IEquipableGearStorage EquippedGearStorage { get; }
+        public EquipableBattleFashionStorage EquippedBattleFashionStorage { get => throw new NotImplementedException(); }
+        public EquipableViewFashionStorage EquippedViewFashionStorage { get => throw new NotImplementedException(); }
+        public EquipableGearStorage EquippedGearStorage { get => throw new NotImplementedException(); }
     }
 }

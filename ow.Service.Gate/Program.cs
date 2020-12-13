@@ -1,10 +1,11 @@
+using DefaultEcs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Extensions;
 using ow.Service.Gate.Game;
-using ow.Service.Gate.Network;
 
 namespace ow.Service.Gate
 {
@@ -18,10 +19,11 @@ namespace ow.Service.Gate
                 .AddHostedService<Worker>()
                 .AddTransient<BinTable>()
                 .AddSingleton<BinTables>()
-                .AddSingleton<Districts>()
-                .AddSingleton<Server>()
+                .AddSingleton<DistrictsInstances>()
+                .AddSingleton<GameServer>()
                 .AddSingleton<GateInfo>()
-                .AddTransient<Session>()
+                .AddTransient<GameSession>()
+                .AddSingleton<World>()
                 .AddNetwork()
                 .AddLan());
     }

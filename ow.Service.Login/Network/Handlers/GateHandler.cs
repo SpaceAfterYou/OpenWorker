@@ -1,10 +1,13 @@
-﻿using ow.Framework.Database.Characters;
+﻿using Microsoft.EntityFrameworkCore;
+using ow.Framework.Database.Characters;
+using ow.Framework.Game;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests;
 using ow.Service.Login.Game;
-using Microsoft.EntityFrameworkCore;
+using ow.Service.Login.Network.Extensions;
 using System.Linq;
 
 namespace ow.Service.Login.Network.Handlers
@@ -12,12 +15,12 @@ namespace ow.Service.Login.Network.Handlers
     internal static class GateHandler
     {
         [Handler(ServerOpcode.GateList, HandlerPermission.Authorized)]
-        public static void GetList(Session session, GatesInstances gates, Options options) => session
-            .SendGateList(GetPersonalGates(session.Account, gates))
-            .SendOptionLoad(options);
+        public static void GetList(GameSession session, GatesInstances gates, OptionsStatuses options) => session
+            .SendGateList(GetPersonalGates(session.Entity.Get<Account>(), gates))
+            .SendGameOptions(options);
 
         [Handler(ServerOpcode.GateConnect, HandlerPermission.Authorized)]
-        public static void Connect(Session session, ConnectRequest request, GatesInstances gates) =>
+        public static void Connect(GameSession session, ConnectRequest request, GatesInstances gates) =>
             session.SendGateConnect(gates[request.GateId]);
 
         private static PersonalGate[] GetPersonalGates(Account account, GatesInstances gates)

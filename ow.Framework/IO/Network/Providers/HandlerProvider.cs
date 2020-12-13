@@ -60,10 +60,8 @@ namespace ow.Framework.IO.Network.Providers
                 Debug.Assert(!param.IsIn);
 
                 // Session typed parameter
-                if (param.ParameterType.IsSubclassOf(typeof(GameSession)))
-                {
+                if (param.ParameterType == typeof(GameSession))
                     return Expression.Convert(session, param.ParameterType) as Expression;
-                }
 
                 // Packet structure parameter
                 if (param.ParameterType.IsDefined(typeof(RequestAttribute)))
@@ -83,6 +81,7 @@ namespace ow.Framework.IO.Network.Providers
 
                 MethodCallExpression call = Expression.Call(null, getServiceMethod, innerService, Expression.Constant(param.ParameterType));
                 UnaryExpression conv = Expression.Convert(call, param.ParameterType);
+
                 return conv;
             }).ToArray();
 

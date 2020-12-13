@@ -93,15 +93,15 @@ namespace ow.Service.Gate.Network.Helpers
 #endif
         }
 
-        public static CharacterModel CreateModel(Session session, CreateRequest request, GateInfo gate, BinTables binTable) =>
+        public static CharacterModel CreateModel(Account account, CreateRequest request, GateInfo gate, BinTables binTable) =>
             new()
             {
-                AccountId = session.Account.Id,
+                AccountId = account.Id,
                 GateId = gate.Id,
                 SlotId = request.SlotId,
                 Name = request.Character.Main.Name,
                 Hero = request.Character.Main.Hero,
-                Appearance = new ApperanceModel()
+                Appearance = new AppearanceModel()
                 {
                     Hair = new()
                     {

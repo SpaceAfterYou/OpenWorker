@@ -8,14 +8,8 @@ using System.Numerics;
 
 namespace ow.Service.District.Game
 {
-    public sealed class CachedNpcs : List<CachedNpc>, IReadOnlyCachedNpcs
+    public sealed class CachedNpcs : List<CachedNpc>
     {
-        IReadOnlyCachedNpc IReadOnlyList<IReadOnlyCachedNpc>.this[int index] =>
-            base[index];
-
-        IEnumerator<IReadOnlyCachedNpc> IEnumerable<IReadOnlyCachedNpc>.GetEnumerator() =>
-            GetEnumerator();
-
         public CachedNpcs(Zone zone) : base(GetNpcs(zone.Place))
         {
         }
@@ -23,7 +17,8 @@ namespace ow.Service.District.Game
         private static IEnumerable<CachedNpc> GetNpcs(VRoot root) => root.EventBox.MonsterSpawns
             .Select(c => c.Monsters
                 .Where(m => m.Id != 0 && m.Type == MonsterSpawnType.Npc)
-                .Select(m => new CachedNpc(m.Id, GetPosition(c), c.Rotation, c.Waypoint))).SelectMany(i => i);
+                .Select(m => new CachedNpc(m.Id, GetPosition(c), c.Rotation, c.Waypoint)))
+            .SelectMany(i => i);
 
         private static float GetRandomValue(float min, float max) =>
             (float)(new Random().NextDouble() * (max - min) + min);

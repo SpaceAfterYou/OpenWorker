@@ -73,7 +73,7 @@ namespace SetupDatabase.Migrations
                     PortraitId = table.Column<long>(type: "bigint", nullable: false),
                     Advancement = table.Column<byte>(type: "smallint", nullable: false),
                     Gesture = table.Column<long[]>(type: "bigint[]", nullable: false),
-                    Appearance = table.Column<ApperanceModel>(type: "jsonb", nullable: false),
+                    Appearance = table.Column<AppearanceModel>(type: "jsonb", nullable: false),
                     Place = table.Column<PlaceModel>(type: "jsonb", nullable: false),
                     LearnedSkill = table.Column<long[]>(type: "bigint[]", nullable: false),
                     QuickSlot = table.Column<long[]>(type: "bigint[]", nullable: false),

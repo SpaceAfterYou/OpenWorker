@@ -2,6 +2,10 @@
 {
     internal static class ServiceHandler
     {
+        //public Channel Channel { get; set; }
+        //public Character Character { get; init; }
+        //public Profile Profile { get; init; }
+
         //[Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
         //public static void Enter(Session session, EnterRequest request, IBoosterRepository boosters, IDayEventBoosterRepository dayEventBoosterRepository, IChannelRepository channels)
         //{

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using DefaultEcs;
+using Microsoft.Extensions.Logging;
 using NetCoreServer;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;
@@ -10,13 +11,17 @@ using System.Net.Sockets;
 
 namespace ow.Framework.IO.Network
 {
-    public class GameSession : TcpSession
+    public sealed partial class GameSession : TcpSession
     {
-        private readonly ILogger _logger;
+        public Entity Entity { get; }
+        private readonly ILogger<GameSession> _logger;
+
         private readonly HandlerProvider _provider;
 
-        public GameSession(GameServer server, HandlerProvider provider, ILogger logger) : base(server)
+        public GameSession(GameServer server, HandlerProvider provider, World entities, ILogger<GameSession> logger) : base(server)
         {
+            Entity = entities.CreateEntity();
+
             _provider = provider;
             _logger = logger;
         }

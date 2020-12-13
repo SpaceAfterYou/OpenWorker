@@ -1,9 +1,11 @@
-using ow.Service.Login.Game;
-using ow.Service.Login.Network;
+using DefaultEcs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Extensions;
+using ow.Service.Login.Game;
 
 namespace ow.Service.Login
 {
@@ -15,10 +17,11 @@ namespace ow.Service.Login
             .CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
-                .AddSingleton<Server>()
+                .AddSingleton<GameServer>()
                 .AddSingleton<GatesInstances>()
-                .AddSingleton<Options>()
-                .AddTransient<Session>()
+                .AddSingleton<OptionsStatuses>()
+                .AddTransient<GameSession>()
+                .AddSingleton<World>()
                 .AddNetwork()
                 .AddLan());
     }

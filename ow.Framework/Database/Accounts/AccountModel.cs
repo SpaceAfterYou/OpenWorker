@@ -15,13 +15,13 @@ namespace ow.Framework.Database.Accounts
         public int Id { get; init; }
 
         [Required]
-        public int LastSelectedCharacterId { get; init; } = -1;
+        public int LastSelectedCharacter { get; init; } = -1;
 
         [Required]
-        public int FavoriteCharacterId { get; init; } = -1;
+        public int FavoriteCharacter { get; init; } = -1;
 
         [Required]
-        public uint CharacterBackgroundId { get; init; } = 0;
+        public uint CharacterBackground { get; init; }
 
         [Required]
         [MaxLength(24)]
@@ -31,6 +31,6 @@ namespace ow.Framework.Database.Accounts
         public byte[] Password { get; init; }
 
         [Required]
-        public ulong SoulCash { get; init; } = 0;
+        public ulong SoulCash { get; init; }
     }
 }

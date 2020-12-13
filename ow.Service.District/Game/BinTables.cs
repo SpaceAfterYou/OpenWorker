@@ -5,19 +5,19 @@ using System.Collections.Generic;
 
 namespace ow.Service.District.Game
 {
-    public sealed class BinTables
+    public sealed class BinTables : IBinTables
     {
-        internal IReadOnlyDictionary<Hero, ICustomizeSkinTableEntity> CustomizeSkinTable { get; }
-        internal IReadOnlyDictionary<Hero, ICustomizeEyesTableEntity> CustomizeEyesTable { get; }
-        internal IReadOnlyDictionary<Hero, ICustomizeHairTableEntity> CustomizeHairTable { get; }
-        internal IReadOnlyDictionary<ushort, IDistrictTableEntity> DistrictTable { get; }
+        public IReadOnlyDictionary<Hero, ICustomizeSkinTableEntity> CustomizeSkinTable { get; }
+        public IReadOnlyDictionary<Hero, ICustomizeEyesTableEntity> CustomizeEyesTable { get; }
+        public IReadOnlyDictionary<Hero, ICustomizeHairTableEntity> CustomizeHairTable { get; }
+        public IReadOnlyDictionary<ushort, IDistrictTableEntity> DistrictTable { get; }
 
-        public BinTables(BinTable binTableProcessor)
+        public BinTables(BinTable tables)
         {
-            CustomizeSkinTable = binTableProcessor.ReadCustomizeSkinTable();
-            CustomizeEyesTable = binTableProcessor.ReadCustomizeEyesTable();
-            CustomizeHairTable = binTableProcessor.ReadCustomizeHairTable();
-            DistrictTable = binTableProcessor.ReadDistrictTable();
+            CustomizeSkinTable = tables.ReadCustomizeSkinTable();
+            CustomizeEyesTable = tables.ReadCustomizeEyesTable();
+            CustomizeHairTable = tables.ReadCustomizeHairTable();
+            DistrictTable = tables.ReadDistrictTable();
         }
     }
 }

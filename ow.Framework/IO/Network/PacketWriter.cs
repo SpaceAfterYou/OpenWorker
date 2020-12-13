@@ -1,6 +1,6 @@
 ﻿using ow.Framework.Game.Character;
 using ow.Framework.Game.Enums;
-using ow.Framework.Game.Storage.Item;
+using ow.Framework.Game.Storage;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.Utils;
 using System;
@@ -13,15 +13,17 @@ namespace ow.Framework.IO.Network
 {
     public sealed class PacketWriter : BinaryWriter
     {
-        public void Write(ICharacter value)
+        public void WriteOptionStatus(OptionStatus value) => Write((ushort)value);
+
+        public void Write(EntityCharacter value, IStorage storage)
         {
             WriteCharacterMainData(value);
-            WriteCharacterWeaponData(value);
-            WriteCharacterFashionData(value);
+            WriteCharacterWeaponData(storage);
+            WriteCharacterFashionData(storage);
             WriteCharacterMetaData(value);
         }
 
-        private void WriteCharacterMainData(ICharacter value)
+        private void WriteCharacterMainData(EntityCharacter value)
         {
             Write(value.Id);
             WriteByteLengthUnicodeString(value.Name);
@@ -33,9 +35,9 @@ namespace ow.Framework.IO.Network
             Write(new byte[10]);
         }
 
-        private void WriteCharacterWeaponData(ICharacter value)
+        private void WriteCharacterWeaponData(IStorage storage)
         {
-            if (value.Storage.EquippedGearStorage.Weapon is IItemStorage weapon)
+            if (storage.EquippedGearStorage.Weapon is ItemStorage weapon)
             {
                 Write(weapon.UpgradeLevel);
                 Write(weapon.PrototypeId);
@@ -50,7 +52,7 @@ namespace ow.Framework.IO.Network
             Write(-1);
         }
 
-        private void WriteCharacterFashionData(ICharacter value)
+        private void WriteCharacterFashionData(IStorage storage)
         {
             static void WriteFashionEntry(PacketWriter writer, int prototypeId = -1, uint color = uint.MinValue)
             {
@@ -65,7 +67,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue);
             }
 
-            foreach (var (view, battle) in value.Storage.EquippedViewFashionStorage.Zip(value.Storage.EquippedBattleFashionStorage, Tuple.Create))
+            foreach (var (view, battle) in storage.EquippedViewFashionStorage.Zip(storage.EquippedBattleFashionStorage, Tuple.Create))
             {
                 if (view is not null)
                 {
@@ -83,7 +85,7 @@ namespace ow.Framework.IO.Network
             }
         }
 
-        private void WriteCharacterMetaData(ICharacter value)
+        private void WriteCharacterMetaData(EntityCharacter value)
         {
             const uint currentHp = 0;
             const uint maxHp = 0;
@@ -132,13 +134,13 @@ namespace ow.Framework.IO.Network
             Write(uint.MinValue); // 00 00 00 00
         }
 
-        private void Write(ICharacterHair hair)
+        private void Write(HairCharacter hair)
         {
             Write(hair.Style);
             Write(hair.Color);
         }
 
-        private void Write(ICharacterAppearance value)
+        private void Write(AppearanceCharacter value)
         {
             Write(ushort.MinValue); // 1
             Write(ushort.MinValue); // 1

@@ -2,9 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Extensions;
 using ow.Service.District.Game;
-using ow.Service.District.Network;
 using ow.Service.District.Network.Repositories;
 
 namespace ow.Service.District
@@ -17,13 +17,13 @@ namespace ow.Service.District
             .CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
-                .AddSingleton<Server>()
+                .AddSingleton<GameServer>()
                 .AddSingleton<ChatCommandRepository>()
                 .AddTransient<BinTable>()
                 .AddSingleton<BinTables>()
-                .AddSingleton<IReadOnlyCachedNpcs, CachedNpcs>()
+                .AddSingleton<CachedNpcs>()
                 .AddTransient<WorldTables>()
-                .AddTransient<Session>()
+                .AddTransient<GameSession>()
                 .AddNetwork()
                 .AddLan());
     }
