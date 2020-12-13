@@ -21,7 +21,7 @@ namespace ow.Service.Gate.Network.Helpers
 #endif
         }
 
-        internal static void ValidateHair(in CreateRequest request, IBinTables binTable)
+        internal static void ValidateHair(in CreateRequest request, BinTables binTable)
         {
             if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out ICustomizeHairTableEntity entity))
 #if !DEBUG
@@ -38,7 +38,7 @@ namespace ow.Service.Gate.Network.Helpers
 #endif
         }
 
-        internal static void ValidateEyes(in CreateRequest request, IBinTables binTable)
+        internal static void ValidateEyes(in CreateRequest request, BinTables binTable)
         {
             if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out ICustomizeEyesTableEntity entity))
 #if !DEBUG
@@ -55,7 +55,7 @@ namespace ow.Service.Gate.Network.Helpers
 #endif
         }
 
-        internal static void ValidateSkin(in CreateRequest request, IBinTables binTable)
+        internal static void ValidateSkin(in CreateRequest request, BinTables binTable)
         {
             if (!binTable.CustomizeSkinTable.TryGetValue(request.Character.Main.Hero, out ICustomizeSkinTableEntity entity))
 #if !DEBUG
@@ -72,7 +72,7 @@ namespace ow.Service.Gate.Network.Helpers
 #endif
         }
 
-        internal static void ValidateOutfit(in CreateRequest request, IBinTables binTable)
+        internal static void ValidateOutfit(in CreateRequest request, BinTables binTable)
         {
             ///
             /// [ TODO ] Find where placed fucking id
@@ -93,7 +93,7 @@ namespace ow.Service.Gate.Network.Helpers
 #endif
         }
 
-        public static CharacterModel CreateModel(Account account, CreateRequest request, GateInfo gate, IBinTables binTable) =>
+        public static CharacterModel CreateModel(Account account, CreateRequest request, GateInfo gate, BinTables binTable) =>
             new()
             {
                 AccountId = account.Id,
