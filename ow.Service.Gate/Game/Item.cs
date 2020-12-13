@@ -4,7 +4,7 @@ using System;
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Item : IReadOnlyItem
+    public sealed class Item : IItem
     {
         public int PrototypeId { get; }
         public byte UpgradeLevel { get; }

@@ -12,6 +12,7 @@ namespace ow.Framework.Game
         byte Advancement { get; }
         public IPhotoItemTableEntity Photo { get; }
         string Name { get; }
+        ICharacterAppearance Appearance { get; }
         IStorage Storage { get; }
     }
 }

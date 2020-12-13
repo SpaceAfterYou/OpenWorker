@@ -14,7 +14,7 @@ namespace ow.Service.Gate.Game
         public Hero Hero { get; }
         public byte Advancement { get; }
         public IPhotoItemTableEntity Photo { get; }
-        public Appearance Appearance { get; }
+        public ICharacterAppearance Appearance { get; }
         public string Name { get; }
         public IStorage Storage { get; }
         public Place Place { get; }
@@ -32,7 +32,7 @@ namespace ow.Service.Gate.Game
             else
                 Photo = binTable.PhotoItemTable.Values.First(c => c.Hero == Hero && c.Unknown14 == 1);
 
-            Appearance = new(model.Appearance);
+            Appearance = new Appearance(model.Appearance);
             Name = model.Name;
             Storage = new Storage(model);
             Place = new(model.Place);

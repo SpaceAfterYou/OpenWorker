@@ -2,7 +2,7 @@
 
 namespace ow.Framework.Game
 {
-    public interface IReadOnlyItems : IReadOnlyList<IReadOnlyItem>
+    public interface IReadOnlyItems : IReadOnlyList<IItem>
     {
     }
 }
