@@ -8,14 +8,8 @@ using System.Numerics;
 
 namespace ow.Service.District.Game
 {
-    public sealed class CachedNpcs : List<CachedNpc>, IReadOnlyCachedNpcs
+    public sealed class CachedNpcs : List<CachedNpc>
     {
-        IReadOnlyCachedNpc IReadOnlyList<IReadOnlyCachedNpc>.this[int index] =>
-            base[index];
-
-        IEnumerator<IReadOnlyCachedNpc> IEnumerable<IReadOnlyCachedNpc>.GetEnumerator() =>
-            GetEnumerator();
-
         public CachedNpcs(Zone zone) : base(GetNpcs(zone.Place))
         {
         }

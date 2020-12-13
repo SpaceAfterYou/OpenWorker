@@ -21,7 +21,7 @@ namespace ow.Service.District
                 .AddSingleton<ChatCommandRepository>()
                 .AddTransient<BinTable>()
                 .AddSingleton<BinTables>()
-                .AddSingleton<IReadOnlyCachedNpcs, CachedNpcs>()
+                .AddSingleton<CachedNpcs>()
                 .AddTransient<WorldTables>()
                 .AddTransient<Session>()
                 .AddNetwork()
