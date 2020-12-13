@@ -1,10 +1,10 @@
 ﻿using ow.Framework.Database.Storages;
-using ow.Framework.Game;
+using ow.Framework.Game.Storage.Item;
 using System;
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Item : IItem
+    public sealed class Item : IItemStorage
     {
         public int PrototypeId { get; }
         public byte UpgradeLevel { get; }

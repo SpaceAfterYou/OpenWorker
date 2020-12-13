@@ -1,4 +1,4 @@
-﻿namespace ow.Framework.Game
+﻿namespace ow.Framework.Game.Character
 {
     public interface ICharacterHair
     {

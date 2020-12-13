@@ -1,6 +1,6 @@
-﻿namespace ow.Framework.Game
+﻿namespace ow.Framework.Game.Storage.Item
 {
-    public interface IItem
+    public interface IItemStorage
     {
         int Id { get; }
         int PrototypeId { get; }

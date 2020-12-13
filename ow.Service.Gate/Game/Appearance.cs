@@ -1,5 +1,5 @@
 ﻿using ow.Framework.Database.Characters;
-using ow.Framework.Game;
+using ow.Framework.Game.Character;
 
 namespace ow.Service.Gate.Game
 {

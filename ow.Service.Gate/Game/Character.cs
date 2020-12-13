@@ -1,7 +1,8 @@
 ﻿using ow.Framework.Database.Characters;
-using ow.Framework.Game;
+using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Enums;
+using ow.Framework.Game.Storage;
 using System.Linq;
 
 namespace ow.Service.Gate.Game

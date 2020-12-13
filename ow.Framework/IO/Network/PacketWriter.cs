@@ -1,5 +1,6 @@
-﻿using ow.Framework.Game;
+﻿using ow.Framework.Game.Character;
 using ow.Framework.Game.Enums;
+using ow.Framework.Game.Storage.Item;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.Utils;
 using System;
@@ -34,7 +35,7 @@ namespace ow.Framework.IO.Network
 
         private void WriteCharacterWeaponData(ICharacter value)
         {
-            if (value.Storage.EquippedGearStorage.Weapon is IItem weapon)
+            if (value.Storage.EquippedGearStorage.Weapon is IItemStorage weapon)
             {
                 Write(weapon.UpgradeLevel);
                 Write(weapon.PrototypeId);

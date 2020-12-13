@@ -1,7 +1,8 @@
 ﻿using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Enums;
+using ow.Framework.Game.Storage;
 
-namespace ow.Framework.Game
+namespace ow.Framework.Game.Character
 {
     public interface ICharacter
     {
@@ -14,5 +15,6 @@ namespace ow.Framework.Game
         string Name { get; }
         ICharacterAppearance Appearance { get; }
         IStorage Storage { get; }
+        ICharacterStats Stats { get; }
     }
 }

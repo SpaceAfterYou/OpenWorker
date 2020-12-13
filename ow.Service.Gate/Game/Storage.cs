@@ -2,8 +2,8 @@
 using ow.Framework;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
-using ow.Framework.Game;
 using ow.Framework.Game.Enums;
+using ow.Framework.Game.Storage;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -11,11 +11,11 @@ namespace ow.Service.Gate.Game
 {
     public sealed class Storage : IStorage
     {
-        public IReadOnlyEquipableViewFashionStorage EquippedViewFashionStorage { get; }
+        public IViewFashionStorage EquippedViewFashionStorage { get; }
 
-        public IReadOnlyEquipableBattleFashionStorage EquippedBattleFashionStorage { get; }
+        public IEquipableBattleFashionStorage EquippedBattleFashionStorage { get; }
 
-        public IReadOnlyEquipableGearStorage EquippedGearStorage { get; }
+        public IEquipableGearStorage EquippedGearStorage { get; }
 
         public Storage(CharacterModel model)
         {
