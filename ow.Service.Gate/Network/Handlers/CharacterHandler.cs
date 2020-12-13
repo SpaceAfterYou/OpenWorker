@@ -1,6 +1,5 @@
 ﻿using ow.Framework;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
@@ -102,7 +101,7 @@ namespace ow.Service.Gate.Network.Handlers
             CharacterModel model = CharacterCreateHelper.CreateModel(account, request, gate, tables);
             context.UseAndSave(c => c.Add(model));
 
-            EntityCharacter character = new(model, tables);
+            Character character = new(model, tables);
 
             Characters characters = session.Entity.Get<Characters>();
             characters[request.SlotId] = character;
@@ -115,7 +114,7 @@ namespace ow.Service.Gate.Network.Handlers
         public static void Delete(GameSession session, DeleteRequest request)
         {
             Characters characters = session.Entity.Get<Characters>();
-            EntityCharacter character = characters.Find(character => character?.Id == request.Id);
+            Character character = characters.Find(character => character?.Entity.Id == request.Id);
 
             if (character is null)
                 return;
@@ -123,12 +122,12 @@ namespace ow.Service.Gate.Network.Handlers
             using CharacterContext context = new();
             context.UseAndSave(c => c.Remove<CharacterModel>(new() { Id = request.Id }));
 
-            characters[character.Slot] = null;
+            characters[character.Entity.Slot] = null;
 
-            if (character.Id == characters.LastSelected?.Id)
+            if (character.Entity.Id == characters.LastSelected?.Entity.Id)
                 characters.LastSelected = characters.Find(character => character is not null);
 
-            if (character.Id == characters.Favorite?.Id)
+            if (character.Entity.Id == characters.Favorite?.Entity.Id)
                 characters.Favorite = null;
 
             session.SendCharactersList();
@@ -141,7 +140,7 @@ namespace ow.Service.Gate.Network.Handlers
         public static void MarkFavorite(GameSession session, MarkFavoriteRequest request)
         {
             Characters characters = session.Entity.Get<Characters>();
-            EntityCharacter character = characters.Find(c => c?.Id == request.CharacterId);
+            Character character = characters.Find(c => c?.Entity.Id == request.CharacterId);
             if (character is null)
 #if !DEBUG
                 throw new BadActionException();
@@ -157,7 +156,7 @@ namespace ow.Service.Gate.Network.Handlers
         public static void Select(GameSession session, SelectRequest request, DistrictInstance district)
         {
             Characters characters = session.Entity.Get<Characters>();
-            EntityCharacter character = characters.Find(character => character?.Id == request.Id);
+            Character character = characters.Find(character => character?.Entity.Id == request.Id);
             if (character is null)
 #if !DEBUG
                 throw new BadActionException();

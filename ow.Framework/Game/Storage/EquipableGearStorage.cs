@@ -1,6 +1,5 @@
 ﻿using ow.Framework.Game.Enums;
-using System;
-using System.Linq;
+using System.Collections.Generic;
 
 namespace ow.Framework.Game.Storage
 {
@@ -18,7 +17,7 @@ namespace ow.Framework.Game.Storage
         public ItemStorage Ring2 => this[(int)EquippedGearSlot.Ring2];
         public ItemStorage Weapon => this[(int)EquippedGearSlot.Weapon];
 
-        public EquipableGearStorage() : base(Enumerable.Repeat<ItemStorage>(null, (int)Enum.GetValues(typeof(EquippedGearSlot)).Cast<EquippedGearSlot>().Max()))
+        public EquipableGearStorage(IReadOnlyList<ItemStorage> values) : base(values)
         {
         }
     }

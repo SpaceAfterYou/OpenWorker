@@ -1,39 +1,37 @@
-﻿//using Microsoft.EntityFrameworkCore;
-//using ow.Framework;
-//using ow.Framework.Database.Characters;
-//using ow.Framework.Database.Storages;
-//using ow.Framework.Game.Enums;
-//using ow.Framework.Game.Storage;
-//using System.Collections.Generic;
-//using System.Linq;
+﻿using Microsoft.EntityFrameworkCore;
+using ow.Framework;
+using ow.Framework.Database.Characters;
+using ow.Framework.Database.Storages;
+using ow.Framework.Game.Enums;
+using ow.Framework.Game.Storage;
+using System.Collections.Generic;
+using System.Linq;
 
-//namespace ow.Service.Gate.Game
-//{
-//    public sealed class Storage : IStorage
-//    {
-//        public IViewFashionStorage EquippedViewFashionStorage { get; }
+namespace ow.Service.Gate.Game
+{
+    public sealed class Storage : IStorage
+    {
+        public EquipableBattleFashionStorage EquippedBattleFashionStorage { get; }
+        public EquipableViewFashionStorage EquippedViewFashionStorage { get; }
+        public EquipableGearStorage EquippedGearStorage { get; }
 
-//        public IEquipableBattleFashionStorage EquippedBattleFashionStorage { get; }
+        public Storage(CharacterModel model)
+        {
+            using ItemContext context = new();
 
-//        public IEquipableGearStorage EquippedGearStorage { get; }
+            EquippedBattleFashionStorage = new(GetItems(context, model, StorageType.EquippedBattleFashion));
+            EquippedViewFashionStorage = new(GetItems(context, model, StorageType.EquippedViewFashion));
+            EquippedGearStorage = new(GetItems(context, model, StorageType.EquippedGear));
+        }
 
-//        public Storage(CharacterModel model)
-//        {
-//            using ItemContext context = new();
+        private static IReadOnlyList<ItemStorage> GetItems(ItemContext context, CharacterModel model, StorageType type)
+        {
+            ItemStorage[] items = Enumerable.Repeat<ItemStorage>(null, Defines.FashionRows).ToArray();
 
-//            EquippedBattleFashionStorage = new EquipableStorage(GetItems(context, model, StorageType.EquippedBattleFashion));
-//            EquippedViewFashionStorage = new EquipableStorage(GetItems(context, model, StorageType.EquippedViewFashion));
-//            EquippedGearStorage = new EquipableStorage(GetItems(context, model, StorageType.EquippedGear));
-//        }
+            foreach (ItemModel item in context.Items.AsNoTracking().Where(c => c.CharacterId == model.Id && c.StorageType == type))
+                items[item.SlotId] = new(item);
 
-//        private static IReadOnlyList<Item> GetItems(ItemContext context, CharacterModel model, StorageType type)
-//        {
-//            Item[] items = Enumerable.Repeat<Item>(null, Defines.FashionRows).ToArray();
-
-//            foreach (ItemModel item in context.Items.AsNoTracking().Where(c => c.CharacterId == model.Id && c.StorageType == type))
-//                items[item.SlotId] = new(item);
-
-//            return items;
-//        }
-//    }
-//}
+            return items;
+        }
+    }
+}
