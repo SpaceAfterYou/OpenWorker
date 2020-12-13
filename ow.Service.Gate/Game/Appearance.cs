@@ -3,10 +3,10 @@ using ow.Framework.Game.Character;
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Appearance : ICharacterAppearance
+    public sealed class Appearance : AppearanceCharacter
     {
-        ICharacterHair ICharacterAppearance.Hair => Hair;
-        ICharacterHair ICharacterAppearance.EquippedHair => Hair;
+        HairCharacter AppearanceCharacter.Hair => Hair;
+        HairCharacter AppearanceCharacter.EquippedHair => Hair;
 
         public Hair Hair { get; init; }
         public ushort EyeColor { get; init; }
@@ -15,7 +15,7 @@ namespace ow.Service.Gate.Game
         public ushort EquippedEyeColor { get; init; }
         public ushort EquippedSkinColor { get; init; }
 
-        public Appearance(ApperanceModel model)
+        public Appearance(AppearanceModel model)
         {
             Hair = new Hair(model.Hair);
             EyeColor = model.EyeColor;

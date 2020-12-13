@@ -18,7 +18,7 @@ namespace ow.Service.Gate
                 .AddHostedService<Worker>()
                 .AddTransient<BinTable>()
                 .AddSingleton<BinTables>()
-                .AddSingleton<Districts>()
+                .AddSingleton<DistrictsInstances>()
                 .AddSingleton<Server>()
                 .AddSingleton<GateInfo>()
                 .AddTransient<Session>()

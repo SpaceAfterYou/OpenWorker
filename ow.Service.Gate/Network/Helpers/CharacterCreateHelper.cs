@@ -101,7 +101,7 @@ namespace ow.Service.Gate.Network.Helpers
                 SlotId = request.SlotId,
                 Name = request.Character.Main.Name,
                 Hero = request.Character.Main.Hero,
-                Appearance = new ApperanceModel()
+                Appearance = new AppearanceModel()
                 {
                     Hair = new()
                     {

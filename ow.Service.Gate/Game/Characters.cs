@@ -2,6 +2,7 @@
 using ow.Framework;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
+using ow.Framework.Game.Character;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,11 +10,11 @@ using System.Linq;
 
 namespace ow.Service.Gate.Game
 {
-    internal sealed class Characters : List<Character>
+    internal sealed class Characters : List<EntityCharacter>
     {
         public TimeSpan InitializeTime { get; init; }
-        public Character LastSelected { get; set; }
-        public Character Favorite { get; set; }
+        public EntityCharacter LastSelected { get; set; }
+        public EntityCharacter Favorite { get; set; }
 
         public Characters(AccountModel accountModel, ushort gateId, BinTables binTable) : base(GetCharacterSlots())
         {
@@ -29,14 +30,14 @@ namespace ow.Service.Gate.Game
 
             InitializeTime = stopwatch.Elapsed;
 
-            if (accountModel.LastSelectedCharacterId != -1)
-                LastSelected = Find(c => c.Id == accountModel.LastSelectedCharacterId);
+            if (accountModel.LastSelectedCharacter != -1)
+                LastSelected = Find(c => c.Id == accountModel.LastSelectedCharacter);
 
-            if (accountModel.FavoriteCharacterId != -1)
-                Favorite = Find(c => c.Id == accountModel.FavoriteCharacterId);
+            if (accountModel.FavoriteCharacter != -1)
+                Favorite = Find(c => c.Id == accountModel.FavoriteCharacter);
         }
 
-        public static Character[] GetCharacterSlots() =>
-            Enumerable.Repeat<Character>(null, Defines.CharactersCount).ToArray();
+        public static EntityCharacter[] GetCharacterSlots() =>
+            Enumerable.Repeat<EntityCharacter>(null, Defines.CharactersCount).ToArray();
     }
 }

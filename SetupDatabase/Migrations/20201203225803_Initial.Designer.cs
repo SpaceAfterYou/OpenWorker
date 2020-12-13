@@ -173,7 +173,7 @@ namespace SetupDatabase.Migrations
                     b.Property<byte>("Advancement")
                         .HasColumnType("smallint");
 
-                    b.Property<ApperanceModel>("Appearance")
+                    b.Property<AppearanceModel>("Appearance")
                         .IsRequired()
                         .HasColumnType("jsonb");
 

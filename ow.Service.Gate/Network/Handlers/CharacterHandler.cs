@@ -1,11 +1,13 @@
 ﻿using ow.Framework;
 using ow.Framework.Database.Characters;
 using ow.Framework.Game.Datas.Bin.Table;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Service.Gate.Game;
+using ow.Service.Gate.Network.Extensions;
 using ow.Service.Gate.Network.Helpers;
 using System.Linq;
 
@@ -14,7 +16,7 @@ namespace ow.Service.Gate.Network.Handlers
     internal static class CharacterHandler
     {
         [Handler(ServerOpcode.CharacterChangeSlot, HandlerPermission.Authorized)]
-        public static void ChangeSlot(Session session, ChangeSlotRequest request)
+        public static void ChangeSlot(GameSession session, ChangeSlotRequest request)
         {
             if (1 > request.FirstSlot || request.FirstSlot > Defines.CharactersSlotsCount)
 #if !DEBUG
@@ -60,7 +62,7 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterCreate, HandlerPermission.Authorized)]
-        public static void Create(Session session, CreateRequest request, GateInfo gate, BinTables binTable)
+        public static void Create(GameSession session, CreateRequest request, GateInfo gate, BinTables binTable)
         {
             if (request.Character.Main.Name.Length > Defines.MaxCharacterNameLength)
                 return;
@@ -107,7 +109,7 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterDelete, HandlerPermission.Authorized)]
-        public static void Delete(Session session, DeleteRequest request)
+        public static void Delete(GameSession session, DeleteRequest request)
         {
             Character character = session.Characters.Find(character => character?.Id == request.Id);
 
@@ -129,10 +131,10 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterList, HandlerPermission.Authorized)]
-        public static void GetList(Session session) => session.SendCharactersList();
+        public static void GetList(GameSession session) => session.SendCharactersList();
 
         [Handler(ServerOpcode.CharacterMarkFavorite, HandlerPermission.Authorized)]
-        public static void MarkFavorite(Session session, MarkFavoriteRequest request)
+        public static void MarkFavorite(GameSession session, MarkFavoriteRequest request)
         {
             Character character = session.Characters.Find(c => c?.Id == request.CharacterId);
             if (character is null)
@@ -147,7 +149,7 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterSelect, HandlerPermission.Authorized)]
-        public static void Select(Session session, SelectRequest request, District district)
+        public static void Select(GameSession session, SelectRequest request, DistrictInstance district)
         {
             Character character = session.Characters.Find(character => character?.Id == request.Id);
             if (character is null)
@@ -167,7 +169,7 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterChangeBackground, HandlerPermission.Authorized)]
-        public static void ChangeBackground(Session session, ChangeBackgroundRequest request, BinTables binTable)
+        public static void ChangeBackground(GameSession session, ChangeBackgroundRequest request, BinTables binTable)
         {
             if (!binTable.CharacterBackgroundTable.TryGetValue(request.BackgroundId, out ICharacterBackgroundTableEntity entity))
 #if !DEBUG
@@ -176,8 +178,8 @@ namespace ow.Service.Gate.Network.Handlers
                 return;
 #endif
 
-            session.Background = entity;
-            session.SendCharacterBackground();
+            session.Entity.Set(entity);
+            session.SendCharacterBackground(entity);
         }
     }
 }

@@ -1,35 +1,26 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using ow.Framework.Game;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
-using ow.Framework.IO.Network.Providers;
 using ow.Service.Login.Game;
-using ow.Service.Login.Game.Extensions;
-using ow.Service.Login.Network.Extensions;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ow.Service.Login.Network
+namespace ow.Service.Login.Network.Extensions
 {
-    public sealed class Session : GameSession
+    public static class GameSessionExtension
     {
-        public Account Account { get; set; }
-
-        public Session(Server server, HandlerProvider provider, ILogger<Session> logger) :
-            base(server, provider, logger)
-        {
-        }
-
-        internal Session SendGateConnect(GateInstance gate)
+        public static GameSession SendGateConnect(this GameSession session, GateInstance gate)
         {
             using PacketWriter writer = new(ClientOpcode.GateConnect);
 
             writer.WriteNumberLengthUtf8String(gate.Ip);
             writer.Write(gate.Port);
 
-            return (Session)SendAsync(writer) ;
+            return session.SendAsync(writer);
         }
 
-        internal Session SendGateList(IReadOnlyList<PersonalGate> infos)
+        public static GameSession SendGateList(this GameSession session, IReadOnlyList<PersonalGate> infos)
         {
             using PacketWriter writer = new(ClientOpcode.GateList);
 
@@ -51,33 +42,22 @@ namespace ow.Service.Login.Network
                 writer.Write(info.CharactersCount);
             }
 
-            return (Session)SendAsync(writer) ;
+            return session.SendAsync(writer);
         }
 
-        internal Session SendOptionLoad(Options options)
+        public static GameSession SendGameOptions(this GameSession session, OptionsStatuses options)
         {
             using PacketWriter writer = new(ClientOpcode.OptionLoad);
 
             writer.Write(new byte[64]);
-            writer.Write(options.LoginBonus);
-            writer.Write(options.SecondaryPassword);
-            writer.Write(options.PremiumShop);
-            writer.Write(options.Option4);
-            writer.Write(options.Option5);
-            writer.Write(options.Option6);
-            writer.Write(options.Option7);
-            writer.Write(options.Option8);
-            writer.Write(options.Option9);
-            writer.Write(options.Option10);
-            writer.Write(options.Option11);
-            writer.Write(options.Option12);
-            writer.Write(options.Option13);
-            writer.Write(options.Option14);
 
-            return (Session)SendAsync(writer) ;
+            foreach (OptionStatus option in options)
+                writer.WriteOptionStatus(option);
+
+            return session.SendAsync(writer);
         }
 
-        internal Session SendLogin(int accountId, string mac, ulong sessionKey)
+        public static GameSession SendLogin(this GameSession session, int accountId, string mac, ulong sessionKey)
         {
             using PacketWriter writer = new(ClientOpcode.LoginResult);
 
@@ -88,7 +68,7 @@ namespace ow.Service.Login.Network
 
             writer.Write(byte.MinValue);
             writer.WriteByteLengthUnicodeString(string.Empty);
-            writer.Write(TableMessageId.None);
+            writer.Write(TableMessage.None);
 
             writer.Write((byte)1);
             writer.WriteByteLengthUnicodeString(_unknownString);
@@ -98,10 +78,10 @@ namespace ow.Service.Login.Network
             writer.Write(uint.MinValue);
             writer.Write(byte.MinValue);
 
-            return (Session)SendAsync(writer) ;
+            return session.SendAsync(writer);
         }
 
-        internal Session SendLogin(TableMessageId code, string message = "")
+        public static GameSession SendLogin(this GameSession session, TableMessage code, string message = "")
         {
             using PacketWriter writer = new(ClientOpcode.LoginResult);
 
@@ -122,7 +102,7 @@ namespace ow.Service.Login.Network
             writer.Write(uint.MinValue);
             writer.Write(byte.MinValue);
 
-            return (Session)SendAsync(writer) ;
+            return session.SendAsync(writer);
         }
 
         private static readonly uint _emptyAccountId = uint.MaxValue;

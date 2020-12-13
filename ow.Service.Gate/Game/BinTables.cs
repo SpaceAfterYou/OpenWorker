@@ -5,16 +5,16 @@ using System.Collections.Generic;
 
 namespace ow.Service.Gate.Game
 {
-    internal sealed class BinTables
+    internal sealed class BinTables : IBinTables
     {
-        internal IReadOnlyDictionary<Hero, IClassSelectInfoTableEntity> ClassSelectInfoTable { get; }
-        internal IReadOnlyDictionary<Hero, ICustomizeSkinTableEntity> CustomizeSkinTable { get; }
-        internal IReadOnlyDictionary<Hero, ICustomizeEyesTableEntity> CustomizeEyesTable { get; }
-        internal IReadOnlyDictionary<Hero, ICustomizeHairTableEntity> CustomizeHairTable { get; }
-        internal IReadOnlyDictionary<ushort, IDistrictTableEntity> DistrictTable { get; }
-        internal IReadOnlyDictionary<ushort, ICharacterInfoTableEntity> CharacterInfoTable { get; }
-        internal IReadOnlyDictionary<uint, ICharacterBackgroundTableEntity> CharacterBackgroundTable { get; }
-        internal IReadOnlyDictionary<uint, IPhotoItemTableEntity> PhotoItemTable { get; }
+        public IReadOnlyDictionary<Hero, IClassSelectInfoTableEntity> ClassSelectInfoTable { get; }
+        public IReadOnlyDictionary<Hero, ICustomizeSkinTableEntity> CustomizeSkinTable { get; }
+        public IReadOnlyDictionary<Hero, ICustomizeEyesTableEntity> CustomizeEyesTable { get; }
+        public IReadOnlyDictionary<Hero, ICustomizeHairTableEntity> CustomizeHairTable { get; }
+        public IReadOnlyDictionary<ushort, IDistrictTableEntity> DistrictTable { get; }
+        public IReadOnlyDictionary<ushort, ICharacterInfoTableEntity> CharacterInfoTable { get; }
+        public IReadOnlyDictionary<uint, ICharacterBackgroundTableEntity> CharacterBackgroundTable { get; }
+        public IReadOnlyDictionary<uint, IPhotoItemTableEntity> PhotoItemTable { get; }
 
         public BinTables(BinTable processor)
         {

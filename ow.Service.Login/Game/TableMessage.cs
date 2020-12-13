@@ -3,7 +3,7 @@
     /// <summary>
     /// Field Ids from datas/data12.v/../bin/Tables/tb_UI_String.res
     /// </summary>
-    public enum TableMessageId : uint
+    public enum TableMessage : uint
     {
         None,
         LoginFailed = 50104,

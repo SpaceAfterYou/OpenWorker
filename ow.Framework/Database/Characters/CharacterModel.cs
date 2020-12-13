@@ -28,7 +28,7 @@ namespace ow.Framework.Database.Characters
         public ushort Color { get; set; }
     }
 
-    public sealed class ApperanceModel
+    public sealed class AppearanceModel
     {
         public HairModel Hair { get; set; }
         public ushort EyeColor { get; set; }
@@ -134,7 +134,7 @@ namespace ow.Framework.Database.Characters
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public ApperanceModel Appearance { get; set; }
+        public AppearanceModel Appearance { get; set; }
 
         [Required]
         [Column(TypeName = "jsonb")]

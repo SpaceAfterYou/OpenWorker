@@ -1,5 +1,5 @@
 ﻿using ow.Framework.Database.Storages;
-using ow.Framework.Game.Storage.Item;
+using ow.Framework.Game.Storage.ItemStorage;
 using System;
 
 namespace ow.Service.Gate.Game
