@@ -19,6 +19,7 @@ namespace ow.Service.Gate.Game
         public string Name { get; }
         public IStorage Storage { get; }
         public Place Place { get; }
+        public ICharacterStats Stats { get; }
 
         internal Character(CharacterModel model, BinTables binTable)
         {
