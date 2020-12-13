@@ -34,7 +34,7 @@ namespace ow.Framework.IO.Network
 
         private void WriteCharacterWeaponData(ICharacter value)
         {
-            if (value.Storage.EquippedGearStorage[(int)EquippedGearSlot.Weapon] is IItem weapon)
+            if (value.Storage.EquippedGearStorage.Weapon is IItem weapon)
             {
                 Write(weapon.UpgradeLevel);
                 Write(weapon.PrototypeId);
