@@ -2,9 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Extensions;
 using ow.Service.Gate.Game;
-using ow.Service.Gate.Network;
 
 namespace ow.Service.Gate
 {
@@ -19,9 +19,9 @@ namespace ow.Service.Gate
                 .AddTransient<BinTable>()
                 .AddSingleton<BinTables>()
                 .AddSingleton<DistrictsInstances>()
-                .AddSingleton<Server>()
+                .AddSingleton<GameServer>()
                 .AddSingleton<GateInfo>()
-                .AddTransient<Session>()
+                .AddTransient<GameSession>()
                 .AddNetwork()
                 .AddLan());
     }
