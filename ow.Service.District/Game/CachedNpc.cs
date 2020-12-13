@@ -2,7 +2,7 @@
 
 namespace ow.Service.District.Game
 {
-    public sealed class CachedNpc : IReadOnlyCachedNpc
+    public sealed class CachedNpc
     {
         public uint Id { get; }
         public Vector3 Position { get; }

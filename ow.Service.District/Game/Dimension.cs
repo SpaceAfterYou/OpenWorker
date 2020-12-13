@@ -1,6 +1,6 @@
-﻿using ow.Service.District.Game.Items;
-using ow.Service.District.Network;
-using ow.Framework;
+﻿using ow.Framework;
+using ow.Framework.Game.Character;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
@@ -8,18 +8,18 @@ using ow.Framework.IO.Network.Requests.Chat;
 using ow.Framework.IO.Network.Requests.Gesture;
 using ow.Framework.IO.Network.Requests.Movement;
 using ow.Framework.Utils;
+using ow.Service.District.Game.Items;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using ow.Framework.Game.Enums;
 
 namespace ow.Service.District.Game
 {
-    public sealed class Channel
+    public sealed class Dimension
     {
         public ushort Id { get; }
-        public IReadOnlyDictionary<Guid, Session> Sessions => InternalSessions;
+        public IReadOnlyDictionary<Guid, GameSession> Sessions => InternalSessions;
 
         public ChannelLoadStatus Status => InternalSessions.Count switch
         {
@@ -29,37 +29,37 @@ namespace ow.Service.District.Game
             _ => ChannelLoadStatus.Low
         };
 
-        public bool TryJoin(Session session)
+        public bool TryJoin(GameSession session)
         {
             if (InternalSessions.Count >= Defines.MaxChannelSessions || !InternalSessions.TryAdd(session.Id, session))
-            {
                 return false;
-            }
 
-            session.Channel = this;
+            session.Entity.Set(this);
             BroadcastCharacterIn(session);
 
             return true;
         }
 
-        public void Leave(Session session)
+        public void Leave(GameSession session)
         {
             InternalSessions.Remove(session.Id);
             BroadcastCharacterOut(session);
         }
 
-        public Channel(ushort id) => Id = id;
+        public Dimension(ushort id) => Id = id;
 
         #region Broadcast Channel
 
-        public void BroadcastChatMessage(Session session, in ReceiveRequest request) =>
+        public void BroadcastChatMessage(GameSession session, in ReceiveRequest request) =>
             BroadcastChatMessage(session, request.Type, request.Message);
 
-        public void BroadcastChatMessage(Session session, ChatType type, string message)
+        public void BroadcastChatMessage(GameSession session, ChatType type, string message)
         {
             using PacketWriter writer = new(ClientOpcode.ChatMessage);
 
-            writer.Write(session.Character.Id);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
             writer.WriteChatType(type);
             writer.WriteByteLengthUnicodeString(message);
 
@@ -70,21 +70,24 @@ namespace ow.Service.District.Game
 
         #region Broadcast Character
 
-        public void BroadcastCharacterSetLevel(Session session)
+        public void BroadcastCharacterSetLevel(GameSession session)
         {
             using PacketWriter writer = new(ClientOpcode.ChatMessage);
 
-            writer.Write(session.Character.Id);
-            writer.Write(session.Character.Level);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+            writer.Write(character.Level);
 
             BroadcastAsync(writer);
         }
 
-        public void BroadcastCharacterToggleWeapon(Session session, in ToggleWeaponRequest request)
+        public void BroadcastCharacterToggleWeapon(GameSession session, in ToggleWeaponRequest request)
         {
             using PacketWriter writer = new(ClientOpcode.ChatMessage);
 
-            writer.Write(session.Character.Id);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
             writer.WriteVector3(request.Position);
             writer.Write(request.Rotation);
             writer.Write(request.Toggle);
@@ -93,17 +96,18 @@ namespace ow.Service.District.Game
             BroadcastAsync(writer);
         }
 
-        private Session BroadcastCharacterIn(Session session)
+        private GameSession BroadcastCharacterIn(GameSession session)
         { return session; } // => SendAsync(Responses.Character.InInfoResponse.Create(session));
 
-        private void BroadcastCharacterOut(params Session[] sessions)
+        private void BroadcastCharacterOut(params GameSession[] sessions)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterOutInfo);
 
             writer.Write((byte)sessions.Length);
-            foreach (var item in sessions)
+            foreach (var session in sessions)
             {
-                writer.Write(item.Character.Id);
+                EntityCharacter character = session.Entity.Get<EntityCharacter>();
+                writer.Write(character.Id);
             }
 
             BroadcastAsync(writer);
@@ -113,11 +117,13 @@ namespace ow.Service.District.Game
 
         #region Broadcast Gesture
 
-        public void BroadcastGestureDo(Session session, in DoRequest request)
+        public void BroadcastGestureDo(GameSession session, in DoRequest request)
         {
             using PacketWriter writer = new(ClientOpcode.GestureDo);
 
-            writer.Write(session.Character.Id);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
             writer.Write(request.GestureId);
             writer.WriteVector3(request.Position);
             writer.Write(request.Unknown1);
@@ -130,10 +136,10 @@ namespace ow.Service.District.Game
 
         #region Broadcast Storage
 
-        public void BroadcastItemUpgradeResponse(Session session, BaseItem item)
+        public void BroadcastItemUpgradeResponse(GameSession session, BaseItem item)
         { }
 
-        public void BroadcastItemMove(Session session, params BaseItem[] slots)
+        public void BroadcastItemMove(GameSession session, params BaseItem[] slots)
         {
             // var size
             //     = sizeof(uint) /* Count */
@@ -157,11 +163,13 @@ namespace ow.Service.District.Game
 
         #region Broadcast Movement
 
-        public void BroadcastMovementMove(Session session, in MoveRequest request)
+        public void BroadcastMovementMove(GameSession session, in MoveRequest request)
         {
             using PacketWriter writer = new(ClientOpcode.MovementStop);
 
-            writer.Write(session.Character.Id);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
             writer.Write(request.Unknown1);
             writer.WriteVector3(request.Position);
             writer.Write(request.Rotation);
@@ -174,11 +182,13 @@ namespace ow.Service.District.Game
             BroadcastAsync(writer);
         }
 
-        public void BroadcastMovementStop(Session session, in StopRequest request)
+        public void BroadcastMovementStop(GameSession session, in StopRequest request)
         {
             using PacketWriter writer = new(ClientOpcode.MovementStop);
 
-            writer.Write(session.Character.Id);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
             writer.Write(request.Unknown1);
             writer.WriteVector3(request.Position);
             writer.Write(request.Rotation);
@@ -188,11 +198,13 @@ namespace ow.Service.District.Game
             BroadcastAsync(writer);
         }
 
-        public void BroadcastMovementJump(Session session, in JumpRequest request)
+        public void BroadcastMovementJump(GameSession session, in JumpRequest request)
         {
             using PacketWriter writer = new(ClientOpcode.MovementJump);
 
-            writer.Write(session.Character.Id);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
             writer.Write(request.Unknown1);
             writer.Write(request.Unknown2);
             writer.Write(request.Location);
@@ -206,11 +218,12 @@ namespace ow.Service.District.Game
             BroadcastAsync(writer);
         }
 
-        public void BroadcastLoopMotionEnd(Session session)
+        public void BroadcastLoopMotionEnd(GameSession session)
         {
             using PacketWriter writer = new(ClientOpcode.MovementJump);
 
-            writer.Write(session.Character.Id);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
 
             BroadcastAsync(writer);
         }
@@ -220,23 +233,23 @@ namespace ow.Service.District.Game
         private void BroadcastAsync(PacketWriter writer)
         {
             byte[] packet = PacketUtils.Pack(writer);
-            foreach (Session session in InternalSessions.Values)
+            foreach (GameSession session in InternalSessions.Values)
             {
                 bool result = session.SendAsync(packet, 0, writer.BaseStream.Length);
                 Debug.Assert(result);
             }
         }
 
-        private void BroadcastExceptAsync(Session except, PacketWriter writer)
+        private void BroadcastExceptAsync(GameSession except, PacketWriter writer)
         {
             byte[] packet = PacketUtils.Pack(writer);
-            foreach (Session session in InternalSessions.Values.Where(s => s.Id != except.Id))
+            foreach (GameSession session in InternalSessions.Values.Where(s => s.Id != except.Id))
             {
                 bool result = session.SendAsync(packet, 0, writer.BaseStream.Length);
                 Debug.Assert(result);
             }
         }
 
-        private Dictionary<Guid, Session> InternalSessions { get; } = new();
+        private Dictionary<Guid, GameSession> InternalSessions { get; } = new();
     }
 }
