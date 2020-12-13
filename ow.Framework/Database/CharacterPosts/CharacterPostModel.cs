@@ -1,4 +1,4 @@
-﻿using ow.Framework.Game.Types;
+﻿using ow.Framework.Game.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 

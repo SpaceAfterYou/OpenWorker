@@ -2,25 +2,28 @@
 using ow.Framework;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
-using ow.Framework.Game.Types;
+using ow.Framework.Game;
+using ow.Framework.Game.Enums;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Storage
+    public sealed class Storage : IStorage
     {
-        public IReadOnlyList<Item> EquippedBattleFashionStorage { get; init; }
-        public IReadOnlyList<Item> EquippedViewFashionStorage { get; init; }
-        public IReadOnlyList<Item> EquippedGearStorage { get; init; }
+        public IReadOnlyEquipableViewFashionStorage EquippedViewFashionStorage { get; }
+
+        public IReadOnlyEquipableBattleFashionStorage EquippedBattleFashionStorage { get; }
+
+        public IReadOnlyEquipableGearStorage EquippedGearStorage { get; }
 
         public Storage(CharacterModel model)
         {
             using ItemContext context = new();
 
-            EquippedBattleFashionStorage = GetItems(context, model, StorageType.EquippedBattleFashion);
-            EquippedViewFashionStorage = GetItems(context, model, StorageType.EquippedViewFashion);
-            EquippedGearStorage = GetItems(context, model, StorageType.EquippedGear);
+            EquippedBattleFashionStorage = new EquipableStorage(GetItems(context, model, StorageType.EquippedBattleFashion));
+            EquippedViewFashionStorage = new EquipableStorage(GetItems(context, model, StorageType.EquippedViewFashion));
+            EquippedGearStorage = new EquipableStorage(GetItems(context, model, StorageType.EquippedGear));
         }
 
         private static IReadOnlyList<Item> GetItems(ItemContext context, CharacterModel model, StorageType type)

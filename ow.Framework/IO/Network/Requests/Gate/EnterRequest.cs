@@ -1,5 +1,5 @@
 ﻿using ow.Framework.Extensions;
-using ow.Framework.Game.Types;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Attributes;
 using System.IO;
 
@@ -11,7 +11,7 @@ namespace ow.Framework.IO.Network.Requests.Gate
         public int AccountId { get; }
         public ushort GateId { get; }
         public ulong SessionKey { get; }
-        public EnterGateWayType Way { get; }
+        public EnterGateWay Way { get; }
 
         public EnterRequest(BinaryReader br)
         {

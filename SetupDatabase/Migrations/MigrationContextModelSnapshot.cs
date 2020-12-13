@@ -45,6 +45,9 @@ namespace SetupDatabase.Migrations
                         .HasColumnType("integer")
                         .UseIdentityByDefaultColumn();
 
+                    b.Property<long>("CharacterBackgroundId")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("FavoriteCharacterId")
                         .HasColumnType("integer");
 
@@ -74,6 +77,7 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 1,
+                            CharacterBackgroundId = 0L,
                             FavoriteCharacterId = -1,
                             LastSelectedCharacterId = -1,
                             Nickname = "sawich",
@@ -83,6 +87,7 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 2,
+                            CharacterBackgroundId = 0L,
                             FavoriteCharacterId = -1,
                             LastSelectedCharacterId = -1,
                             Nickname = "Leeroy",
@@ -92,6 +97,7 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 3,
+                            CharacterBackgroundId = 0L,
                             FavoriteCharacterId = -1,
                             LastSelectedCharacterId = -1,
                             Nickname = "Tweekly",
@@ -101,6 +107,7 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 4,
+                            CharacterBackgroundId = 0L,
                             FavoriteCharacterId = -1,
                             LastSelectedCharacterId = -1,
                             Nickname = "Chelsea",
@@ -110,6 +117,7 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 5,
+                            CharacterBackgroundId = 0L,
                             FavoriteCharacterId = -1,
                             LastSelectedCharacterId = -1,
                             Nickname = "Dez",
@@ -119,6 +127,7 @@ namespace SetupDatabase.Migrations
                         new
                         {
                             Id = 6,
+                            CharacterBackgroundId = 0L,
                             FavoriteCharacterId = -1,
                             LastSelectedCharacterId = -1,
                             Nickname = "Godo",
@@ -200,12 +209,12 @@ namespace SetupDatabase.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<long>("PhotoId")
+                        .HasColumnType("bigint");
+
                     b.Property<PlaceModel>("Place")
                         .IsRequired()
                         .HasColumnType("jsonb");
-
-                    b.Property<long>("PortraitId")
-                        .HasColumnType("bigint");
 
                     b.Property<ProfileModel>("Profile")
                         .IsRequired()

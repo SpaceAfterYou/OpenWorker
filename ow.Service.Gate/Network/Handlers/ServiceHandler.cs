@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
+using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
@@ -14,40 +14,34 @@ namespace ow.Service.Gate.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(Session session, EnterRequest request, GateInfo gate, LanContext lan, BinTable binTable)
+        public static void Enter(Session session, EnterRequest request, GateInfo gate, LanContext lan, BinTables binTable)
         {
             if (gate.Id != request.GateId)
-            {
 #if !DEBUG
-                session.Disconnect();
+                throw new BadActionException();
 #endif
                 return;
-            }
 
             int accountId = lan.GetAccountIdBySessionKey(request.SessionKey);
             if (request.AccountId != accountId)
-            {
 #if !DEBUG
-                session.Disconnect();
+                throw new BadActionException();
 #endif
                 return;
-            }
 
             using AccountContext context = new();
 
             AccountModel model = context.Accounts.AsNoTracking().FirstOrDefault(c => c.Id == request.AccountId);
             if (model is null)
-            {
 #if !DEBUG
-                session.Disconnect();
+                throw new BadActionException();
 #endif
                 return;
-            }
 
             session.Account = new(model);
-            session.Characters = new(model, request.GateId);
+            session.Characters = new(model, request.GateId, binTable);
 
-            if (binTable.CharacterBackgroundTable.TryGetValue(model.CharacterBackgroundId, out CharacterBackgroundTableEntity entity))
+            if (binTable.CharacterBackgroundTable.TryGetValue(model.CharacterBackgroundId, out ICharacterBackgroundTableEntity entity))
                 session.Background = entity;
 
             session.SendGateEnterResult().SendCurrentDate();

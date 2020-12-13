@@ -1,9 +1,9 @@
 ﻿using ow.Service.District.Network.Repositories;
-using ow.Framework.Game.Types;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Chat;
+using ow.Framework.Game.Enums;
 
 namespace ow.Service.District.Network.Handlers
 {

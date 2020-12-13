@@ -1,14 +1,13 @@
 ﻿using ow.Framework.Extensions;
-using ow.Framework.Game.Ids;
+using ow.Framework.Game.Enums;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
-    using KeyType = HeroId;
+    using KeyType = Hero;
 
-    public sealed class CustomizeInfoTableEntity : ITableEntity<KeyType>
+    internal sealed class CustomizeInfoTableEntity : ICustomizeInfoTableEntity
     {
         public KeyType Id { get; }
         public byte Unknown1 { get; }
@@ -18,11 +17,11 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 
         internal CustomizeInfoTableEntity(BinaryReader br)
         {
-            Id = br.ReadHeroId();
+            Id = br.ReadHero();
             Unknown1 = br.ReadByte();
-            Unknown2 = Enumerable.Repeat(0, ItemsCount).Select((e) => br.ReadByte()).ToArray();
-            Unknown3 = Enumerable.Repeat(0, ItemsCount).Select((e) => br.ReadByte()).ToArray();
-            Unknown4 = Enumerable.Repeat(0, ItemsCount).Select((e) => br.ReadByteLengthUnicodeString()).ToArray();
+            Unknown2 = br.ReadByteArray(ItemsCount);
+            Unknown3 = br.ReadByteArray(ItemsCount);
+            Unknown4 = br.ReadByteLengthUnicodeStringArray(ItemsCount);
         }
 
         private const byte ItemsCount = 5;

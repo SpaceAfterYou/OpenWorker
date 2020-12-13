@@ -9,13 +9,13 @@ using System.Linq;
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Characters : List<Character>
+    internal sealed class Characters : List<Character>
     {
         public TimeSpan InitializeTime { get; init; }
         public Character LastSelected { get; set; }
         public Character Favorite { get; set; }
 
-        public Characters(AccountModel accountModel, ushort gateId) : base(GetCharacterSlots())
+        public Characters(AccountModel accountModel, ushort gateId, BinTables binTable) : base(GetCharacterSlots())
         {
             Stopwatch stopwatch = new();
             stopwatch.Start();
@@ -23,7 +23,7 @@ namespace ow.Service.Gate.Game
             using CharacterContext context = new();
 
             foreach (CharacterModel model in context.Characters.AsNoTracking().Where(c => c.AccountId == accountModel.Id && c.GateId == gateId))
-                this[model.SlotId] = new(model);
+                this[model.SlotId] = new(model, binTable);
 
             stopwatch.Stop();
 

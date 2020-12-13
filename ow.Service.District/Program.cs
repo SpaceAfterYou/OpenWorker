@@ -19,10 +19,10 @@ namespace ow.Service.District
                 .AddHostedService<Worker>()
                 .AddSingleton<Server>()
                 .AddSingleton<ChatCommandRepository>()
-                .AddTransient<BinTableProcessor>()
-                .AddSingleton<BinTable>()
+                .AddTransient<BinTable>()
+                .AddSingleton<BinTables>()
                 .AddSingleton<IReadOnlyCachedNpcs, CachedNpcs>()
-                .AddTransient<WorldTable>()
+                .AddTransient<WorldTables>()
                 .AddTransient<Session>()
                 .AddNetwork()
                 .AddLan());

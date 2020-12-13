@@ -1,6 +1,5 @@
-﻿using ow.Framework;
-using ow.Framework.Game.Ids;
-using ow.Framework.Extensions;
+﻿using ow.Framework.Extensions;
+using ow.Framework.Game.Enums;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,16 +9,8 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
-    public sealed class ItemTableEntity : ITableEntity<KeyType>
+    public sealed class ItemTableEntity : IItemTableEntity
     {
-        public readonly struct ItemStat
-        {
-            public uint Id { get; }
-            public int Value { get; }
-
-            internal ItemStat(uint id, int value) => (Id, Value) = (id, value);
-        }
-
         public KeyType Id { get; }
         public uint ClassifyId { get; }
         public byte Unknown7 { get; }
@@ -35,7 +26,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public uint Unknown17 { get; }
         public uint Info { get; }
         public ushort MinLevel { get; }
-        public HeroId Hero { get; }
+        public Hero Hero { get; }
         public byte Unknown21 { get; }
         public byte Unknown22 { get; }
         public byte Unknown23 { get; }
@@ -54,7 +45,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public byte Unknown36 { get; }
         public byte Unknown37 { get; }
         public byte Unknown38 { get; }
-        public IReadOnlyList<ItemStat> Stats { get; }
+        public IReadOnlyList<IItemTableEntityStat> Stats { get; }
         public uint Unknown49 { get; }
         public uint Unknown50 { get; }
         public uint Unknown51 { get; }
@@ -97,7 +88,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown17 = br.ReadUInt32();
             Info = br.ReadUInt32();
             MinLevel = br.ReadUInt16();
-            Hero = br.ReadHeroId();
+            Hero = br.ReadHero();
             Unknown21 = br.ReadByte();
             Unknown22 = br.ReadByte();
             Unknown23 = br.ReadByte();
@@ -143,10 +134,10 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Package = br.ReadUInt32();
         }
 
-        private static ItemStat[] ReadStats(BinaryReader br) => Enumerable
+        private static IItemTableEntityStat[] ReadStats(BinaryReader br) => Enumerable
             .Repeat(0, Defines.StatsPerItem)
             .Select(_ => br.ReadUInt32())
-            .Select(id => new ItemStat(id, br.ReadInt32()))
+            .Select<KeyType, IItemTableEntityStat>(id => new ItemTableEntityStat(id, br.ReadInt32()))
             .ToArray();
     }
 }

@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game.Types;
+﻿using ow.Framework.Game;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Types;
@@ -7,9 +8,9 @@ using System.Linq;
 
 namespace ow.Service.Gate.Network.Extensions
 {
-    public static class PacketWriterExtension
+    internal static class PacketWriterExtension
     {
-        public static void Write(this PacketWriter writer, Character value)
+        internal static void Write(this PacketWriter writer, Character value)
         {
             writer.WriteCharacterMainData(value);
             writer.WriteCharacterWeaponData(value);
@@ -17,7 +18,7 @@ namespace ow.Service.Gate.Network.Extensions
             writer.WriteCharacterMetaData(value);
         }
 
-        public static void Write(this PacketWriter writer, GateEnterResultType value) =>
+        internal static void Write(this PacketWriter writer, GateEnterResultType value) =>
             writer.Write((byte)value);
 
         private static void WriteCharacterMainData(this PacketWriter writer, Character value)
@@ -26,7 +27,7 @@ namespace ow.Service.Gate.Network.Extensions
             writer.WriteByteLengthUnicodeString(value.Name);
             writer.WriteHeroId(value.Hero);
             writer.Write(value.Advancement);
-            writer.Write(value.PortraitId);
+            writer.Write(value.Photo.Id);
             writer.Write(value.Appearance);
             writer.Write(value.Level);
             writer.Write(new byte[10]);
@@ -34,7 +35,7 @@ namespace ow.Service.Gate.Network.Extensions
 
         private static void WriteCharacterWeaponData(this PacketWriter writer, Character value)
         {
-            if (value.Storage.EquippedGearStorage[(int)EquippedGearSlotType.Weapon] is Item weapon)
+            if (value.Storage.EquippedGearStorage[(int)EquippedGearSlot.Weapon] is Item weapon)
             {
                 writer.Write(weapon.UpgradeLevel);
                 writer.Write(weapon.PrototypeId);
@@ -49,7 +50,7 @@ namespace ow.Service.Gate.Network.Extensions
             writer.Write(-1);
         }
 
-        private static void WriteCharacterFashionData(this PacketWriter writer, Character value)
+        private static void WriteCharacterFashionData(this PacketWriter writer, ICharacter value)
         {
             void WriteFashionEntry(int prototypeId = -1, uint color = uint.MinValue)
             {
@@ -82,7 +83,7 @@ namespace ow.Service.Gate.Network.Extensions
             }
         }
 
-        private static void WriteCharacterMetaData(this PacketWriter writer, Character value)
+        private static void WriteCharacterMetaData(this PacketWriter writer, ICharacter value)
         {
             const uint currentHp = 0;
             const uint maxHp = 0;
@@ -126,13 +127,13 @@ namespace ow.Service.Gate.Network.Extensions
             writer.Write(ushort.MinValue); // 00 00
             writer.Write(uint.MinValue); // 00 00 00 00
             writer.Write(uint.MinValue); // 00 00 00 00
-            writer.Write(value.SlotId); // 01
+            writer.Write(value.Slot); // 01
             writer.Write(uint.MinValue); // 00 00 00 00
             writer.Write(byte.MinValue); // 00
             writer.Write(uint.MinValue); // 00 00 00 00
         }
 
-        private static void Write(this PacketWriter writer, Appearance value)
+        private static void Write(this PacketWriter writer, ICharacterAppearance value)
         {
             writer.Write(ushort.MinValue); // 1
             writer.Write(ushort.MinValue); // 1
@@ -144,13 +145,13 @@ namespace ow.Service.Gate.Network.Extensions
             writer.Write(value.EquippedSkinColor); // 5
         }
 
-        private static void Write(this PacketWriter writer, Hair hair)
+        private static void Write(this PacketWriter writer, ICharacterHair hair)
         {
             writer.Write(hair.Style);
             writer.Write(hair.Color);
         }
 
-        public static void Write(this PacketWriter writer, Place value)
+        internal static void Write(this PacketWriter writer, Place value)
         {
             writer.Write(value.Location);
             writer.Write((ulong)0);

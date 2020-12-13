@@ -6,24 +6,24 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
-    public sealed class DistrictTableEntity : ITableEntity<KeyType>
+    internal sealed class DistrictTableEntity : IDistrictTableEntity
     {
-        public KeyType Id { get; init; }
-        public ushort Unknown5 { get; init; }
-        public ushort Unknown6 { get; init; }
-        public ushort Unknown7 { get; init; }
-        public string Unknown8 { get; init; }
-        public string Batch { get; init; }
-        public ushort Unknown10 { get; init; }
-        public uint Unknown11 { get; init; }
-        public uint Unknown12 { get; init; }
-        public string Bgm { get; init; }
-        public string Bg { get; init; }
-        public byte Unknown15 { get; init; }
-        public byte Unknown16 { get; init; }
-        public string Map { get; init; }
-        public byte Unknown18 { get; init; }
-        public byte Unknown19 { get; init; }
+        public KeyType Id { get; }
+        public ushort Unknown5 { get; }
+        public ushort Unknown6 { get; }
+        public ushort Unknown7 { get; }
+        public string Unknown8 { get; }
+        public string Batch { get; }
+        public ushort Unknown10 { get; }
+        public uint Unknown11 { get; }
+        public uint Unknown12 { get; }
+        public string Bgm { get; }
+        public string Bg { get; }
+        public byte Unknown15 { get; }
+        public byte Unknown16 { get; }
+        public string Map { get; }
+        public byte Unknown18 { get; }
+        public byte Unknown19 { get; }
 
         internal DistrictTableEntity(BinaryReader br)
         {

@@ -1,7 +1,4 @@
-﻿using ow.Framework.Game;
-using ow.Framework.Game.Ids;
-using ow.Framework.Game.Statuses;
-using ow.Framework.Game.Types;
+﻿using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.Utils;
 using System.IO;
@@ -60,7 +57,7 @@ namespace ow.Framework.IO.Network
 
         public void WriteChatType(ChatType value) => Write((uint)value);
 
-        public void WriteHeroId(HeroId value) => Write((byte)value);
+        public void WriteHeroId(Hero value) => Write((byte)value);
 
         public void WriteGateStatus(GateStatus value) => Write((byte)value);
 

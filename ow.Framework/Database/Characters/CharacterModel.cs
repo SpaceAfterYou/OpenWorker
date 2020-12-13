@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
-using ow.Framework.Game.Ids;
+using ow.Framework.Game.Enums;
 using ow.Framework.Game.Types;
 using System;
 using System.ComponentModel.DataAnnotations;
@@ -10,9 +10,9 @@ namespace ow.Framework.Database.Characters
 {
     public sealed class ProfileModel
     {
-        public ProfileStatusType Status { get; set; } = ProfileStatusType.Rookie;
-        public string About { get; set; } = "";
-        public string Note { get; set; } = "";
+        public ProfileStatus Status { get; set; } = ProfileStatus.Rookie;
+        public string About { get; set; } = string.Empty;
+        public string Note { get; set; } = string.Empty;
     }
 
     public sealed class StorageModel
@@ -58,28 +58,28 @@ namespace ow.Framework.Database.Characters
     {
         public ushort Primary { get; set; } = 200;
 
-        public ushort Extra { get; set; } = 0;
+        public ushort Extra { get; set; }
     }
 
     public sealed class TitleModel
     {
-        public uint Primary { get; set; } = 0;
+        public uint Primary { get; set; }
 
-        public uint Secondary { get; set; } = 0;
+        public uint Secondary { get; set; }
     }
 
     public sealed class InventoryModel
     {
-        public ulong Ether { get; set; } = 0;
+        public ulong Ether { get; set; }
 
-        public ulong BattlePoints { get; set; } = 0;
+        public ulong BattlePoints { get; set; }
 
-        public ulong Zenny { get; set; } = 0;
+        public ulong Zenny { get; set; }
     }
 
     public sealed class BankModel
     {
-        public ulong Zenny { get; set; } = 0;
+        public ulong Zenny { get; set; }
     }
 
     [Table("characters")]
@@ -107,13 +107,13 @@ namespace ow.Framework.Database.Characters
         public string Name { get; set; }
 
         [Required]
-        public HeroId Hero { get; set; }
+        public Hero Hero { get; set; }
 
         [Required]
         public byte Level { get; set; } = 1;
 
         [Required]
-        public ulong Exp { get; set; } = 0;
+        public ulong Exp { get; set; }
 
         [Required]
         [Column(TypeName = "jsonb")]
@@ -127,10 +127,10 @@ namespace ow.Framework.Database.Characters
         public uint[] GeturesIds { get; set; }
 
         [Required]
-        public uint PortraitId { get; set; } = 0;
+        public uint PhotoId { get; set; }
 
         [Required]
-        public byte Advancement { get; set; } = 0;
+        public byte Advancement { get; set; }
 
         [Required]
         [Column(TypeName = "jsonb")]

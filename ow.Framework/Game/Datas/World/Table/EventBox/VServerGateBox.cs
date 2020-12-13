@@ -14,18 +14,18 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
         /// <summary>
         ///
         /// </summary>
-        public uint NextSectorId { get; }
+        public uint NextSector { get; }
 
         /// <summary>
         ///
         /// </summary>
-        public uint SectorId { get; }
+        public uint Sector { get; }
 
         internal VServerGateBox(XmlNode xml) : base(xml)
         {
             Type = xml.GetEnum<GateType>("m_eType");
-            NextSectorId = xml.GetUInt32("m_iNextSectorID");
-            SectorId = xml.GetUInt32("m_iSectorID");
+            NextSector = xml.GetUInt32("m_iNextSectorID");
+            Sector = xml.GetUInt32("m_iSectorID");
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using ow.Framework.Extensions;
-using ow.Framework.Game.Ids;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Attributes;
 using System.Collections.Generic;
 using System.IO;
@@ -171,7 +171,7 @@ namespace ow.Framework.IO.Network.Requests.Character
     {
         public int Id { get; }
         public string Name { get; }
-        public HeroId Hero { get; }
+        public Hero Hero { get; }
         public byte Advancement { get; }
         public uint Portrait { get; }
         public CreateCharacterAppearance Appearance { get; }
@@ -184,7 +184,7 @@ namespace ow.Framework.IO.Network.Requests.Character
         {
             Id = br.ReadInt32();
             Name = br.ReadNumberLengthUnicodeString();
-            Hero = br.ReadHeroId();
+            Hero = br.ReadHero();
             Advancement = br.ReadByte();
             Portrait = br.ReadUInt32();
             Appearance = new CreateCharacterAppearance(br);

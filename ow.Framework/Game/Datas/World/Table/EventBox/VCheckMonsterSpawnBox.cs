@@ -21,19 +21,19 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
         /// <summary>
         /// Target ID to work with this box to collide (as CheckType and find the target in combination)
         /// </summary>
-        public uint EntityId { get; }
+        public uint Entity { get; }
 
         /// <summary>
         ///
         /// </summary>
-        public IReadOnlyList<uint> CheckBox { get; }
+        public IReadOnlyList<uint> CheckBoxes { get; }
 
         internal VCheckMonsterSpawnBox(XmlNode xml) : base(xml)
         {
             Type = xml.GetEnum<MonsterType>("m_eType");
             LoopCount = xml.GetUInt32("m_iLoopCount");
-            EntityId = xml.GetUInt32("m_iEntityID");
-            CheckBox = Enumerable.Range(0, 10).Select(id => xml.GetUInt32($"m_iCheckBox_{id}")).ToArray();
+            Entity = xml.GetUInt32("m_iEntityID");
+            CheckBoxes = Enumerable.Range(0, 10).Select(id => xml.GetUInt32($"m_iCheckBox_{id}")).ToArray();
         }
     }
 }

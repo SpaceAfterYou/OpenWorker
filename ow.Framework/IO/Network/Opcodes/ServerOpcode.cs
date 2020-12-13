@@ -20,6 +20,7 @@
         CharacterSelect = 0x0313,
         CharacterInfo = 0x0331,
         DistrictEnter = 0x0321,
+        CharacterChangeBackground = 0x032C,
         CharacterSpecialOptionUpdateList = 0x0347,
         CharacterTitleLoad = 0x0323,
         CharacterTitleUpdate = 0x0325,

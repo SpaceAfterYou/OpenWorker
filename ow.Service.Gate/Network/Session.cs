@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
+using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;
@@ -13,9 +13,9 @@ namespace ow.Service.Gate.Network
 {
     public sealed class Session : GameSession
     {
-        public Account Account { get; set; }
-        public Characters Characters { get; set; }
-        public CharacterBackgroundTableEntity Background { get; set; }
+        internal Account Account { get; set; }
+        internal Characters Characters { get; set; }
+        internal ICharacterBackgroundTableEntity Background { get; set; }
 
         public Session(Server server, HandlerProvider provider, ILogger<Session> logger) :
             base(server, provider, logger)
@@ -29,7 +29,7 @@ namespace ow.Service.Gate.Network
             writer.Write(GateEnterResultType.Success);
             writer.Write(Account.Id);
 
-            return (Session)SendAsync(writer) ;
+            return (Session)SendAsync(writer);
         }
 
         internal Session SendFavoriteCharacter()
@@ -40,12 +40,12 @@ namespace ow.Service.Gate.Network
             writer.Write(Characters.Favorite.Id);
             writer.Write(ushort.MinValue);
             writer.WriteByteLengthUnicodeString(Characters.Favorite.Name);
-            writer.Write(Characters.Favorite.PortraitId);
+            writer.Write(Characters.Favorite.Photo.Id);
             writer.Write(uint.MinValue);
             writer.Write(uint.MinValue);
             writer.Write(uint.MinValue);
 
-            return (Session)SendAsync(writer) ;
+            return (Session)SendAsync(writer);
         }
 
         internal Session SendCharactersList()
@@ -73,7 +73,7 @@ namespace ow.Service.Gate.Network
             writer.Write(byte.MinValue);
             writer.Write(byte.MinValue);
 
-            return (Session)SendAsync(writer) ;
+            return (Session)SendAsync(writer);
         }
 
         internal Session SendCharacterBackground()
@@ -84,7 +84,7 @@ namespace ow.Service.Gate.Network
             writer.Write(Background.Id);
             writer.Write(uint.MinValue);
 
-            return (Session)SendAsync(writer) ;
+            return (Session)SendAsync(writer);
         }
 
         internal Session SendCharacterSelect(Character character, District district)
@@ -99,7 +99,7 @@ namespace ow.Service.Gate.Network
             writer.Write(character.Place);
             writer.Write(new byte[12]);
 
-            return (Session)SendAsync(writer) ;
+            return (Session)SendAsync(writer);
         }
 
         internal Session SendCurrentDate()
@@ -117,7 +117,7 @@ namespace ow.Service.Gate.Network
             writer.Write((ushort)dateTime.Second);
             writer.Write(Convert.ToUInt16(TimeZoneInfo.Local.IsDaylightSavingTime(dateTime)));
 
-            return (Session)SendAsync(writer) ;
+            return (Session)SendAsync(writer);
         }
     }
 }

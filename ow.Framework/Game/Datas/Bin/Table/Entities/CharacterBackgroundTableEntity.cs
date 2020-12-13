@@ -6,7 +6,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
-    public sealed class CharacterBackgroundTableEntity : ITableEntity<KeyType>
+    internal sealed class CharacterBackgroundTableEntity : ICharacterBackgroundTableEntity
     {
         public KeyType Id { get; }
         public ushort Unknown1 { get; }
@@ -22,7 +22,5 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown3 = br.ReadUInt16();
             Unknown4 = br.ReadByteLengthUnicodeString();
         }
-
-        private const byte ItemsCount = 10;
     }
 }

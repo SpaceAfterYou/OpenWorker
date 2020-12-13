@@ -26,7 +26,7 @@ namespace ow.Framework.Game.Datas.World.Table.EventPoint
         /// <summary>
         ///
         /// </summary>
-        public IReadOnlyList<uint> NextPoint { get; }
+        public IReadOnlyList<uint> NextPoints { get; }
 
         /// <summary>
         ///
@@ -53,7 +53,7 @@ namespace ow.Framework.Game.Datas.World.Table.EventPoint
             Type = xml.GetEnum<PointType>("m_eType");
             BattleType = xml.GetEnum<BattleType>("m_eBattleType");
             BeforePoint = xml.GetUInt32("m_iBeforePoint");
-            NextPoint = Enumerable.Range(1, 4).Select(id => xml.GetUInt32($"m_iNextPoint{(id > 1 ? id : "")}")).ToArray();
+            NextPoints = Enumerable.Range(1, 4).Select(id => xml.GetUInt32($"m_iNextPoint{(id > 1 ? id : "")}")).ToArray();
             IdleAction = xml.GetString("m_szIdleAction");
             IdleActionRatio = xml.GetUInt32("m_uiIdleActionRatio");
             DelayTime = xml.GetUInt32("m_uiDelayTime");

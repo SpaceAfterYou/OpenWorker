@@ -21,7 +21,7 @@ namespace ow.Framework.IO.Network.Requests.Gesture
 
         public SlotsUpdateRequest(BinaryReader br) =>
             Slots = Enumerable
-                .Range(0, Defines.GesturesCount)
+                .Range(0, Defines.QuickSlotsCount)
                 .Select(id => new SlotsUpdateSlotRequest(id, br.ReadUInt32()));
     }
 }

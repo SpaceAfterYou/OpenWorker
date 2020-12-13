@@ -1,8 +1,6 @@
 ﻿using ow.Service.District.Game.Items;
 using ow.Service.District.Network;
 using ow.Framework;
-using ow.Framework.Game.Statuses;
-using ow.Framework.Game.Types;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
@@ -14,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using ow.Framework.Game.Enums;
 
 namespace ow.Service.District.Game
 {

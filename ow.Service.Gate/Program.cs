@@ -16,8 +16,8 @@ namespace ow.Service.Gate
             .CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
-                .AddTransient<BinTableProcessor>()
-                .AddSingleton<BinTable>()
+                .AddTransient<BinTable>()
+                .AddSingleton<BinTables>()
                 .AddSingleton<Districts>()
                 .AddSingleton<Server>()
                 .AddSingleton<GateInfo>()

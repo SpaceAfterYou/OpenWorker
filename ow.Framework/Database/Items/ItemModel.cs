@@ -1,6 +1,5 @@
 ﻿using ow.Framework.Database.Characters;
-using ow.Framework.Game.Ids;
-using ow.Framework.Game.Types;
+using ow.Framework.Game.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 

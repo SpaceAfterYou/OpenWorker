@@ -1,16 +1,13 @@
 ﻿using ow.Framework.Database.Characters;
+using ow.Framework.Game;
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Hair
+    public sealed class Hair : ICharacterHair
     {
-        public ushort Style { get; init; }
-        public ushort Color { get; init; }
+        public ushort Style { get; }
+        public ushort Color { get; }
 
-        public Hair(HairModel model)
-        {
-            Style = model.Style;
-            Color = model.Color;
-        }
+        public Hair(HairModel model) => (Style, Color) = (model.Style, model.Color);
     }
 }

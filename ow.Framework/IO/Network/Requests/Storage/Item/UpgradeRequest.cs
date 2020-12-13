@@ -1,5 +1,5 @@
 ﻿using ow.Framework.Extensions;
-using ow.Framework.Game.Types;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Attributes;
 using System.IO;
 

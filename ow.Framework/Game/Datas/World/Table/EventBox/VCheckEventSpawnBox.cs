@@ -26,7 +26,7 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
         /// <summary>
         /// Operation of the event file
         /// </summary>
-        public float EventOperationId { get; }
+        public uint EventOperation { get; }
 
         /// <summary>
         /// The event timeout, ms(1seconds = 1000ms)
@@ -36,16 +36,16 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
         /// <summary>
         /// Spawn Box ID
         /// </summary>
-        public IReadOnlyList<uint> SpawnBoxId { get; }
+        public IReadOnlyList<uint> SpawnBoxes { get; }
 
         internal VCheckEventSpawnBox(XmlNode xml) : base(xml)
         {
             EventType = xml.GetEnum<EventType>("m_eEvent_Type");
             EventRate = xml.GetSingle("m_fEvent_Rate");
             EventDelayTime = xml.GetSingle("m_fEvent_Delay_Time");
-            EventOperationId = xml.GetUInt32("m_iEvent_Operation_ID");
+            EventOperation = xml.GetUInt32("m_iEvent_Operation_ID");
             EventTime = xml.GetSingle("m_fEvent_Time");
-            SpawnBoxId = Enumerable.Range(1, 6).Select(id => xml.GetUInt32($"m_iSpawn_Box_ID_{id}")).ToArray();
+            SpawnBoxes = Enumerable.Range(1, 6).Select(id => xml.GetUInt32($"m_iSpawn_Box_ID_{id}")).ToArray();
         }
     }
 }

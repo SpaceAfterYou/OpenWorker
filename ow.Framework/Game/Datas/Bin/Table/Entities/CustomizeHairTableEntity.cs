@@ -1,14 +1,13 @@
 ﻿using ow.Framework.Extensions;
-using ow.Framework.Game.Ids;
+using ow.Framework.Game.Enums;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
-    using KeyType = HeroId;
+    using KeyType = Hero;
 
-    public sealed class CustomizeHairTableEntity : ITableEntity<KeyType>
+    internal sealed class CustomizeHairTableEntity : ICustomizeHairTableEntity
     {
         public KeyType Id { get; }
         public IReadOnlyList<uint> Unknown1 { get; }
@@ -19,12 +18,12 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 
         internal CustomizeHairTableEntity(BinaryReader br)
         {
-            Id = br.ReadHeroId();
-            Unknown1 = Enumerable.Repeat(0, ItemsCount).Select((e) => br.ReadUInt32()).ToArray();
-            Style = Enumerable.Repeat(0, ItemsCount).Select((e) => br.ReadUInt32()).ToArray();
-            Unknown2 = Enumerable.Repeat(0, ItemsCount).Select((e) => br.ReadUInt32()).ToArray();
-            Icons = Enumerable.Repeat(0, ItemsCount).Select((e) => br.ReadByteLengthUnicodeString()).ToArray();
-            Color = Enumerable.Repeat(0, ItemsCount).Select((e) => br.ReadUInt32()).ToArray();
+            Id = br.ReadHero();
+            Unknown1 = br.ReadUInt32Array(ItemsCount);
+            Style = br.ReadUInt32Array(ItemsCount);
+            Unknown2 = br.ReadUInt32Array(ItemsCount);
+            Icons = br.ReadByteLengthUnicodeStringArray(ItemsCount);
+            Color = br.ReadUInt32Array(ItemsCount);
         }
 
         private const byte ItemsCount = 10;

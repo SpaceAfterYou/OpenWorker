@@ -2,13 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
-    public sealed class CharacterInfoTableEntity : ITableEntity<KeyType>
+    internal sealed class CharacterInfoTableEntity : ICharacterInfoTableEntity
     {
         public KeyType Id { get; }
         public ushort Unknown6 { get; }
@@ -20,11 +19,11 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public string Unknown12 { get; }
         public string CutScenePath { get; }
         public string GhostTalkImgPath { get; }
-        public IReadOnlyList<uint> DefaultGestureIds { get; }
+        public IReadOnlyList<uint> Unknown13 { get; }
         public ushort Unknown24 { get; }
         public ushort Unknown25 { get; }
-        public uint DefaultWeaponId { get; }
-        public IReadOnlyList<uint> DefaultCostumeIds { get; }
+        public uint DefaultWeapon { get; }
+        public IReadOnlyList<uint> DefaultOutfits { get; }
         public uint Unknown31 { get; }
         public short Unknown32 { get; }
         public short Unknown33 { get; }
@@ -59,9 +58,9 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public ushort Unknown62 { get; }
         public ushort Unknown63 { get; }
         public ushort Unknown64 { get; }
-        public IReadOnlyList<uint> DefaultPassiveSkillIds { get; }
-        public IReadOnlyList<uint> DefaultActiveSkillIds { get; }
-        public IReadOnlyList<uint> DefaultGenericSkillIds { get; }
+        public IReadOnlyList<uint> DefaultPassiveSkill { get; }
+        public IReadOnlyList<uint> DefaultActiveSkill { get; }
+        public IReadOnlyList<uint> DefaultGenericSkill { get; }
         public uint Unknown77 { get; }
         public uint Unknown78 { get; }
         public uint Unknown79 { get; }
@@ -89,11 +88,11 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown12 = br.ReadByteLengthUnicodeString();
             CutScenePath = br.ReadByteLengthUnicodeString();
             GhostTalkImgPath = br.ReadByteLengthUnicodeString();
-            DefaultGestureIds = Enumerable.Repeat(0, DefaultGesturesCount).Select(_ => br.ReadUInt32()).ToArray();
+            Unknown13 = br.ReadUInt32Array(DefaultGesturesCount);
             Unknown24 = br.ReadUInt16();
             Unknown25 = br.ReadUInt16();
-            DefaultWeaponId = br.ReadUInt32();
-            DefaultCostumeIds = Enumerable.Repeat(0, DefaultCostumesCount).Select(_ => br.ReadUInt32()).ToArray();
+            DefaultWeapon = br.ReadUInt32();
+            DefaultOutfits = br.ReadUInt32Array(DefaultCostumesCount);
             Unknown31 = br.ReadUInt32();
             Unknown32 = br.ReadInt16();
             Unknown33 = br.ReadInt16();
@@ -128,12 +127,9 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown62 = br.ReadUInt16();
             Unknown63 = br.ReadUInt16();
             Unknown64 = br.ReadUInt16();
-            DefaultPassiveSkillIds = Enumerable.Repeat(0, 6).Select(_ => br.ReadUInt32()).ToArray();
-            DefaultActiveSkillIds = Enumerable.Repeat(0, 3).Select(_ => br.ReadUInt32()).ToArray();
-
-            // 1. Evade, 2. Resurection, 3. ... (IDK)
-            DefaultGenericSkillIds = Enumerable.Repeat(0, 3).Select(_ => br.ReadUInt32()).ToArray();
-
+            DefaultPassiveSkill = br.ReadUInt32Array(DefaultPassiveSkillCount);
+            DefaultActiveSkill = br.ReadUInt32Array(DefaultActiveSkillCount);
+            DefaultGenericSkill = br.ReadUInt32Array(DefaultGenericSkillCount);
             Unknown77 = br.ReadUInt32();
             Unknown78 = br.ReadUInt32();
             Unknown79 = br.ReadUInt32();
@@ -152,5 +148,8 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 
         private const byte DefaultGesturesCount = 9;
         private const byte DefaultCostumesCount = 4;
+        private const byte DefaultPassiveSkillCount = 6;
+        private const byte DefaultActiveSkillCount = 3;
+        private const byte DefaultGenericSkillCount = 3;
     }
 }

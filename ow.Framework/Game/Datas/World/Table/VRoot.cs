@@ -1,11 +1,13 @@
-﻿using System.Xml;
+﻿using ow.Framework.Game.Datas.World.Table.EventBox;
+using ow.Framework.Game.Datas.World.Table.EventPoint;
+using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table
 {
     public sealed class VRoot
     {
-        public EventBox.VEntities EventBox { get; }
-        public EventPoint.VEntities EventPoint { get; }
+        public VEventBox EventBox { get; }
+        public VEventPoint EventPoint { get; }
 
         internal VRoot(XmlNode xml)
         {

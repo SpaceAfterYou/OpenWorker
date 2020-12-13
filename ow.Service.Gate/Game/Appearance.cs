@@ -1,9 +1,13 @@
 ﻿using ow.Framework.Database.Characters;
+using ow.Framework.Game;
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Appearance
+    public sealed class Appearance : ICharacterAppearance
     {
+        ICharacterHair ICharacterAppearance.Hair => Hair;
+        ICharacterHair ICharacterAppearance.EquippedHair => Hair;
+
         public Hair Hair { get; init; }
         public ushort EyeColor { get; init; }
         public ushort SkinColor { get; init; }

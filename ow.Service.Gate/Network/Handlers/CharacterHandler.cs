@@ -1,14 +1,12 @@
 ﻿using ow.Framework;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Ids;
-using ow.Framework.Game.Types;
+using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Service.Gate.Game;
-using System;
+using ow.Service.Gate.Network.Helpers;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Handlers
@@ -62,7 +60,7 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterCreate, HandlerPermission.Authorized)]
-        public static void Create(Session session, CreateRequest request, GateInfo gate, BinTable binTable)
+        public static void Create(Session session, CreateRequest request, GateInfo gate, BinTables binTable)
         {
             if (request.Character.Main.Name.Length > Defines.MaxCharacterNameLength)
                 return;
@@ -70,11 +68,11 @@ namespace ow.Service.Gate.Network.Handlers
             if (request.Character.Main.Name.Length < Defines.MinCharacterNameLength)
                 return;
 
-            ValidateHero(request);
-            ValidateHair(request, binTable);
-            ValidateEyes(request, binTable);
-            ValidateSkin(request, binTable);
-            ValidateOutfit(request, binTable);
+            CharacterCreateHelper.ValidateHero(request);
+            CharacterCreateHelper.ValidateHair(request, binTable);
+            CharacterCreateHelper.ValidateEyes(request, binTable);
+            CharacterCreateHelper.ValidateSkin(request, binTable);
+            CharacterCreateHelper.ValidateOutfit(request, binTable);
 
             using CharacterContext context = new();
 
@@ -88,19 +86,19 @@ namespace ow.Service.Gate.Network.Handlers
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name))
                 return;
 
-            if (!binTable.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity classInfo))
+            if (!binTable.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out IClassSelectInfoTableEntity classInfo))
 #if !DEBUG
                 throw new BadActionException();
 #else
                 return;
 #endif
 
-            /// [ TODO ] Add default outfit to inventory
+            /// [ TODO ] Add default items to inventory
 
-            CharacterModel model = CreateModel(session, request, gate);
+            CharacterModel model = CharacterCreateHelper.CreateModel(session, request, gate, binTable);
             context.UseAndSave(c => c.Add(model));
 
-            Character character = new(model);
+            Character character = new(model, binTable);
 
             session.Characters[request.SlotId] = character;
             session.Characters.LastSelected = character;
@@ -119,16 +117,12 @@ namespace ow.Service.Gate.Network.Handlers
             using CharacterContext context = new();
             context.UseAndSave(c => c.Remove<CharacterModel>(new() { Id = request.Id }));
 
-            session.Characters[character.SlotId] = null;
-            if (character.Id == session.Characters?.LastSelected.Id)
-            {
-                Character firstAvailableCharacter = session.Characters.Find(character => character is not null);
+            session.Characters[character.Slot] = null;
 
-                if (firstAvailableCharacter is not null)
-                    session.Characters.LastSelected = firstAvailableCharacter;
-            }
+            if (character.Id == session.Characters.LastSelected?.Id)
+                session.Characters.LastSelected = session.Characters.Find(character => character is not null);
 
-            if (character.Id == session.Characters?.Favorite.Id)
+            if (character.Id == session.Characters.Favorite?.Id)
                 session.Characters.Favorite = null;
 
             session.SendCharactersList();
@@ -172,10 +166,10 @@ namespace ow.Service.Gate.Network.Handlers
         {
         }
 
-        [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
-        public static void ChangeBackground(Session session, ChangeBackgroundRequest request, BinTable binTable)
+        [Handler(ServerOpcode.CharacterChangeBackground, HandlerPermission.Authorized)]
+        public static void ChangeBackground(Session session, ChangeBackgroundRequest request, BinTables binTable)
         {
-            if (!binTable.CharacterBackgroundTable.TryGetValue(request.BackgroundId, out CharacterBackgroundTableEntity entity))
+            if (!binTable.CharacterBackgroundTable.TryGetValue(request.BackgroundId, out ICharacterBackgroundTableEntity entity))
 #if !DEBUG
                 throw new BadActionException();
 #else
@@ -185,130 +179,5 @@ namespace ow.Service.Gate.Network.Handlers
             session.Background = entity;
             session.SendCharacterBackground();
         }
-
-        private static void ValidateHero(in CreateRequest request)
-        {
-            if (!Enum.IsDefined(typeof(HeroId), request.Character.Main.Hero))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        private static void ValidateHair(in CreateRequest request, BinTable binTable)
-        {
-            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity entity))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-
-            if (!entity.Style.Contains(request.Character.Main.Appearance.Hair.Style))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        private static void ValidateEyes(in CreateRequest request, BinTable binTable)
-        {
-            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity entity))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-
-            if (!entity.Color.Contains(request.Character.Main.Appearance.EyesColor))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        private static void ValidateSkin(in CreateRequest request, BinTable binTable)
-        {
-            if (!binTable.CustomizeSkinTable.TryGetValue(request.Character.Main.Hero, out CustomizeSkinTableEntity entity))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-
-            if (!entity.Color.Contains(request.Character.Main.Appearance.SkinColor))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        private static void ValidateOutfit(in CreateRequest request, BinTable binTable)
-        {
-            ///
-            /// [ TODO ] Find where placed fucking id
-            ///
-
-            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity characterInfo))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-        }
-
-        public static CharacterModel CreateModel(Session session, in CreateRequest request, GateInfo gate) =>
-            new()
-            {
-                AccountId = session.Account.Id,
-                GateId = gate.Id,
-                SlotId = request.SlotId,
-                Name = request.Character.Main.Name,
-                Hero = request.Character.Main.Hero,
-                Appearance = new ApperanceModel()
-                {
-                    Hair = new()
-                    {
-                        Style = request.Character.Main.Appearance.Hair.Style,
-                        Color = request.Character.Main.Appearance.Hair.Color
-                    },
-                    EyeColor = request.Character.Main.Appearance.EyesColor,
-                    SkinColor = request.Character.Main.Appearance.SkinColor,
-                    EquippedHair = new()
-                    {
-                        Style = request.Character.Main.Appearance.EquippedHair.Style,
-                        Color = request.Character.Main.Appearance.EquippedHair.Color
-                    },
-                    EquippedEyeColor = request.Character.Main.Appearance.EquippedEyesColor,
-                    EquippedSkinColor = request.Character.Main.Appearance.EquippedSkinColor,
-                },
-                Place = new() { Position = new() { X = 10444.9951f, Y = 10179.7461f, Z = 100.325394f }, Rotation = 0, Location = 10003 },
-                Storage = CreateStorageInfo(),
-                Bank = new(),
-                Inventory = new(),
-                LearnedSkill = Array.Empty<uint>(),
-                QuickSlot = Enumerable.Repeat<uint>(0, 6 * 3).ToArray(),
-                Energy = new(),
-                Title = new(),
-                Profile = new(),
-                GeturesIds = new uint[6]
-            };
-
-        private static StorageModel[] CreateStorageInfo() => new StorageModel[]
-            {
-                new() { Type = StorageType.EquippedBattleFashion, Upgrades = 0 },
-                new() { Type = StorageType.EquippedViewFashion, Upgrades = 0 },
-                new() { Type = StorageType.EquippedGear, Upgrades = 0 },
-                new() { Type = StorageType.InventoryItems, Upgrades = 0 },
-                new() { Type = StorageType.InventoryFashion, Upgrades = 0 },
-                new() { Type = StorageType.InventoryExtra, Upgrades = 0 },
-                new() { Type = StorageType.BankItems, Upgrades = 0 },
-                new() { Type = StorageType.BankFashion, Upgrades = 0 },
-                new() { Type = StorageType.BankExtra, Upgrades = 0 },
-            };
     }
 }

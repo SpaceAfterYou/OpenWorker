@@ -1,7 +1,7 @@
 using ow.Framework.IO.Network.Attributes;
-using ow.Framework.Game.Types;
 using ow.Framework.Extensions;
 using System.IO;
+using ow.Framework.Game.Enums;
 
 namespace ow.Framework.IO.Network.Requests.Chat
 {

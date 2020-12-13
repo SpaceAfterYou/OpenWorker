@@ -1,32 +1,40 @@
 ﻿using ow.Framework.Database.Characters;
-using ow.Framework.Game.Ids;
+using ow.Framework.Game;
+using ow.Framework.Game.Datas.Bin.Table;
+using ow.Framework.Game.Enums;
+using System.Linq;
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Character
+    internal sealed class Character : ICharacter
     {
-        public int Id { get; init; }
-        public byte SlotId { get; init; }
-        public byte Level { get; init; }
-        public HeroId Hero { get; init; }
-        public byte Advancement { get; init; }
-        public uint PortraitId { get; init; }
-        public Appearance Appearance { get; init; }
-        public string Name { get; init; }
-        public Storage Storage { get; init; }
-        public Place Place { get; init; }
+        public int Id { get; }
+        public byte Slot { get; }
+        public byte Level { get; }
+        public Hero Hero { get; }
+        public byte Advancement { get; }
+        public IPhotoItemTableEntity Photo { get; }
+        public Appearance Appearance { get; }
+        public string Name { get; }
+        public IStorage Storage { get; }
+        public Place Place { get; }
 
-        public Character(CharacterModel model)
+        internal Character(CharacterModel model, BinTables binTable)
         {
             Id = model.Id;
-            SlotId = model.SlotId;
+            Slot = model.SlotId;
             Level = model.Level;
             Hero = model.Hero;
             Advancement = model.Advancement;
-            PortraitId = model.PortraitId;
+
+            if (binTable.PhotoItemTable.TryGetValue(model.PhotoId, out IPhotoItemTableEntity entity))
+                Photo = entity;
+            else
+                Photo = binTable.PhotoItemTable.Values.First(c => c.Hero == Hero && c.Unknown14 == 1);
+
             Appearance = new(model.Appearance);
             Name = model.Name;
-            Storage = new(model);
+            Storage = new Storage(model);
             Place = new(model.Place);
         }
     }

@@ -1,12 +1,12 @@
 ﻿using ow.Framework.Extensions;
-using ow.Framework.Game.Ids;
+using ow.Framework.Game.Enums;
 using System.IO;
 
 namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
-    using KeyType = HeroId;
+    using KeyType = Hero;
 
-    public sealed class ClassSelectInfoTableEntity : ITableEntity<KeyType>
+    internal sealed class ClassSelectInfoTableEntity : IClassSelectInfoTableEntity
     {
         public KeyType Id { get; }
         public string Unknown5 { get; }
@@ -37,7 +37,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 
         internal ClassSelectInfoTableEntity(BinaryReader br)
         {
-            Id = br.ReadHeroId();
+            Id = br.ReadHero();
             Unknown5 = br.ReadByteLengthUnicodeString();
             Unknown6 = br.ReadByteLengthUnicodeString();
             Unknown7 = br.ReadUInt32();

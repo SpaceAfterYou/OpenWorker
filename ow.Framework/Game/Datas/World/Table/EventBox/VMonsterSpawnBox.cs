@@ -101,7 +101,7 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
         /// <summary>
         /// if Scene script call type is HP, the event box being run. HP(100 = 100%).
         /// </summary>
-        public IReadOnlyList<byte> CheckScriptHp { get; }
+        public IReadOnlyList<byte> CheckScriptHps { get; }
 
         /// <summary>
         /// ID of the associated sectors(auto editable)
@@ -166,7 +166,7 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
             ShowSight = xml.GetBool("m_bShowSight");
             ObjectKey = xml.GetString("m_szObjectKey");
             ScriptType = xml.GetEnum<ScriptType>("m_eScriptType");
-            CheckScriptHp = Enumerable.Range(1, 5).Select(id => xml.GetByte($"m_iCheckScriptHP{id}")).ToArray();
+            CheckScriptHps = Enumerable.Range(1, 5).Select(id => xml.GetByte($"m_iCheckScriptHP{id}")).ToArray();
             Sector = xml.GetUInt16("m_iSectorID");
             ChangeSpawnAction = xml.GetString("m_ChangeSpawnAction");
             ProtectionTarget = xml.GetUInt16("m_ProtectionTarget");

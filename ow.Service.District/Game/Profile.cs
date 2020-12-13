@@ -5,7 +5,7 @@ namespace ow.Service.District.Game
 {
     public sealed class Profile
     {
-        public ProfileStatusType Status { get; set; }
+        public ProfileStatus Status { get; set; }
         public string About { get; set; }
         public string Note { get; set; }
 

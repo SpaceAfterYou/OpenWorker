@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using ow.Framework.Game;
-using ow.Framework.Game.Types;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;

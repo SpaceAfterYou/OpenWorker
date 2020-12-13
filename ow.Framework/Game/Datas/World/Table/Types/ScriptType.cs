@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Xml.Serialization;
 
 namespace ow.Framework.Game.Datas.World.Table.Types
 {
@@ -7,6 +8,8 @@ namespace ow.Framework.Game.Datas.World.Table.Types
     {
         None,
         Spawn,
-        HP
+
+        [XmlEnum("HP")]
+        Hp
     }
 }

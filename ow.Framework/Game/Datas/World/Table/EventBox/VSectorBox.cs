@@ -56,7 +56,7 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
         /// <summary>
         /// Sectors within the monster kill ratio step
         /// </summary>
-        public IReadOnlyList<byte> ConditionKillRatioStep { get; }
+        public IReadOnlyList<byte> ConditionKillRatioSteps { get; }
 
         internal VSectorBox(XmlNode xml) : base(xml)
         {
@@ -69,7 +69,7 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
             ExitType = xml.GetEnum<SectorExitType>("m_iSectorExitType");
             Exit = xml.GetUInt32("m_iSectorExitID");
             RelativeSector = xml.GetUInt32("m_iRelativeSectorID");
-            ConditionKillRatioStep = Enumerable.Range(1, 5).Select(id => xml.GetByte($"m_iConditionKillRatio_{id}Step")).ToArray();
+            ConditionKillRatioSteps = Enumerable.Range(1, 5).Select(id => xml.GetByte($"m_iConditionKillRatio_{id}Step")).ToArray();
         }
     }
 }

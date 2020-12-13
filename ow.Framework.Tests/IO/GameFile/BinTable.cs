@@ -6,10 +6,10 @@ namespace ow.Framework.Tests.IO.GameFile
 {
     public sealed class BinTableTest : IClassFixture<Startup>
     {
-        private readonly BinTableProcessor _binTableProcessor;
+        private readonly BinTable _binTableProcessor;
 
         public BinTableTest(Startup testSetup) =>
-            _binTableProcessor = testSetup.ServiceProvider.GetRequiredService<BinTableProcessor>();
+            _binTableProcessor = testSetup.ServiceProvider.GetRequiredService<BinTable>();
 
         [Fact]
         public void ReadClassSelectInfoTable() =>
@@ -38,5 +38,13 @@ namespace ow.Framework.Tests.IO.GameFile
         [Fact]
         public void ReadCustomizeInfoTable() =>
             _binTableProcessor.ReadCustomizeInfoTable();
+
+        [Fact]
+        public void ReadPhotoItemTable() =>
+            _binTableProcessor.ReadPhotoItemTable();
+
+        [Fact]
+        public void ReadGestureTable() =>
+            _binTableProcessor.ReadGestureTable();
     }
 }

@@ -82,12 +82,12 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
         /// <summary>
         /// ClearSector Id
         /// </summary>
-        public IReadOnlyList<uint> ClearSectorId { get; }
+        public IReadOnlyList<uint> ClearSectors { get; }
 
         /// <summary>
         /// ClearSector Chance
         /// </summary>
-        public IReadOnlyList<float> ClearSectorChance { get; }
+        public IReadOnlyList<float> ClearSectorChances { get; }
 
         /// <summary>
         /// MaxUserCount
@@ -115,8 +115,8 @@ namespace ow.Framework.Game.Datas.World.Table.EventBox
             OpenEpisode = xml.GetUInt32("m_uiOpenEpisode");
             CompleteEpisode = xml.GetUInt32("m_uiCompleteEpisode");
             StringOffset = new(xml.GetSingle("m_fStringOffsetX"), xml.GetSingle("m_fStringOffsetY"), xml.GetSingle("m_fStringOffsetZ"));
-            ClearSectorId = Enumerable.Range(1, 5).Select(id => xml.GetUInt32($"m_iClearSectorID{id}")).ToArray();
-            ClearSectorChance = Enumerable.Range(1, 5).Select(id => xml.GetSingle($"m_fClearSectorChance{id}")).ToArray();
+            ClearSectors = Enumerable.Range(1, 5).Select(id => xml.GetUInt32($"m_iClearSectorID{id}")).ToArray();
+            ClearSectorChances = Enumerable.Range(1, 5).Select(id => xml.GetSingle($"m_fClearSectorChance{id}")).ToArray();
             MaxUserCount = xml.GetUInt32("m_iMaxUserCount");
             MaxTimeCount = xml.GetUInt32("m_iMaxTimeCount");
         }
