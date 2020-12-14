@@ -1,3 +1,4 @@
+using DefaultEcs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Game;
@@ -24,6 +25,7 @@ namespace ow.Service.District
                 .AddSingleton<CachedNpcs>()
                 .AddTransient<WorldTables>()
                 .AddTransient<GameSession>()
+                .AddSingleton<World>()
                 .AddNetwork()
                 .AddLan());
     }
