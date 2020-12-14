@@ -2,7 +2,6 @@
 using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas;
 using ow.Framework.Game.Enums;
-using ow.Framework.Game.Storage;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
@@ -109,7 +108,7 @@ namespace ow.Service.District.Game
         {
             using PacketWriter writer = new(ClientOpcode.CharacterInInfo);
 
-            writer.WriteCharacter(session.Entity.Get<EntityCharacter>(), session.Entity.Get<IStorage>());
+            writer.WriteCharacter(session);
             writer.WritePlace(session.Entity.Get<Place>());
 
             BroadcastExceptAsync(writer, session);

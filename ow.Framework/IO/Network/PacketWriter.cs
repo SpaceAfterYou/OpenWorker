@@ -1,5 +1,7 @@
-﻿using ow.Framework.Game.Character;
+﻿using DefaultEcs;
+using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas;
+using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.Game.Storage;
 using ow.Framework.IO.Network.Opcodes;
@@ -26,12 +28,17 @@ namespace ow.Framework.IO.Network
             Write((float)0);
         }
 
-        public void WriteCharacter(EntityCharacter value, IStorage storage)
+        public void WriteCharacter(Entity entity)
         {
-            WriteCharacterMain(value);
+            EntityCharacter character = entity.Get<EntityCharacter>();
+            WriteCharacterMain(character);
+
+            IStorage storage = entity.Get<IStorage>();
             WriteCharacterWeapon(storage);
             WriteCharacterFashion(storage);
-            WriteCharacterMeta(value);
+
+            StatsEntity stats = entity.Get<StatsEntity>();
+            WriteCharacterMeta(character, stats);
         }
 
         private void WriteCharacterMain(EntityCharacter value)
@@ -96,15 +103,8 @@ namespace ow.Framework.IO.Network
             }
         }
 
-        private void WriteCharacterMeta(EntityCharacter value)
+        private void WriteCharacterMeta(EntityCharacter value, StatsEntity stats)
         {
-            const uint currentHp = 0;
-            const uint maxHp = 0;
-            const uint currentSg = 0;
-            const uint maxSg = 0;
-            const uint maxStamina = 0;
-            const float moveSpeed = 1.0f;
-            const float attackSpeed = 1.0f;
             const ushort primaryEnergy = 0;
             const ushort extraEnergy = 0;
             const uint titlePrimary = 0;
@@ -118,18 +118,18 @@ namespace ow.Framework.IO.Network
             Write(guildId);
             WriteByteLengthUnicodeString(guildName);
             Write(uint.MinValue); // 1 Unknown4
-            Write(currentHp); // 2
-            Write(maxHp); // 3
-            Write(currentSg); // 4
-            Write(maxSg); // 5
+            Write((uint)stats.CurrentHp.Value); // 2
+            Write((uint)stats.MaxHp.Value); // 3
+            Write((uint)stats.CurrentSg.Value); // 4
+            Write((uint)stats.MaxSg.Value); // 5
             Write(uint.MinValue); // 6
             Write(uint.MinValue); // 7
             Write(uint.MinValue); // 8 Stamina???
-            Write(maxStamina); // 9 Max Stamina
+            Write((uint)stats.Stamina.Value); // 9 Max Stamina
             Write(uint.MinValue); // 10
             Write(uint.MinValue); // 11
-            Write(moveSpeed);
-            Write(attackSpeed);
+            Write(stats.MoveSpeed.Value);
+            Write(stats.AttackSpeed.Value);
             Write(uint.MinValue); // 00 00 00 00
             Write(primaryEnergy);
             Write(extraEnergy);
@@ -244,3 +244,5 @@ namespace ow.Framework.IO.Network
         }
     }
 }
+
+// https://youtu.be/9MKouooyOnY

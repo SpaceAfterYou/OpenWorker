@@ -14,9 +14,12 @@ namespace ow.Framework.IO.Network
     public sealed partial class GameSession : TcpSession
     {
         public Entity Entity { get; }
-        private readonly ILogger<GameSession> _logger;
 
+        private readonly ILogger<GameSession> _logger;
         private readonly HandlerProvider _provider;
+
+        public static implicit operator Entity(GameSession session) =>
+            session.Entity;
 
         public GameSession SendAsync(PacketWriter pw)
         {
