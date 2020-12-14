@@ -1,5 +1,5 @@
-﻿using ow.Framework.IO.Network;
-using ow.Service.Gate.Game;
+﻿using ow.Framework.Game.Datas;
+using ow.Framework.IO.Network;
 using ow.Service.Gate.Game.Enums;
 
 namespace ow.Service.Gate.Network.Extensions

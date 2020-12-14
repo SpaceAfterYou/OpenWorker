@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game.Datas.Bin.Table.Entities;
+﻿using ow.Framework.Game.Datas;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Service.Gate.Game;
@@ -51,7 +52,7 @@ namespace ow.Service.Gate.Network.Extensions
             writer.Write((byte)existsCharacters.Length);
 
             foreach (Character character in existsCharacters)
-                writer.Write(character.Entity, character.Storage);
+                writer.WriteCharacter(character.Entity, character.Storage);
 
             writer.Write(characters.LastSelected is null ? (existsCharacters.FirstOrDefault()?.Entity.Id ?? -1) : (characters.LastSelected?.Entity.Id ?? -1));
             writer.Write(byte.MinValue);
@@ -94,7 +95,7 @@ namespace ow.Service.Gate.Network.Extensions
             writer.Write(district.Port);
 
             Place place = session.Entity.Get<Place>();
-            writer.Write(place);
+            writer.WritePlace(place);
 
             writer.Write(new byte[12]);
 

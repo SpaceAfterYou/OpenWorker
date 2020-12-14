@@ -1,7 +1,7 @@
 ﻿using ow.Framework.Database.Characters;
 using System.Numerics;
 
-namespace ow.Service.Gate.Game
+namespace ow.Framework.Game.Datas
 {
     public sealed class Place
     {

@@ -1,4 +1,5 @@
 ﻿using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
 using ow.Framework.Game.Enums;
 using ow.Framework.Game.Storage;
 using ow.Framework.IO.Network.Opcodes;
@@ -15,15 +16,25 @@ namespace ow.Framework.IO.Network
     {
         public void WriteOptionStatus(OptionStatus value) => Write((ushort)value);
 
-        public void Write(EntityCharacter value, IStorage storage)
+        public void WritePlace(Place place)
         {
-            WriteCharacterMainData(value);
-            WriteCharacterWeaponData(storage);
-            WriteCharacterFashionData(storage);
-            WriteCharacterMetaData(value);
+            Write(place.Location);
+            Write((ulong)0);
+            WriteVector3(place.Position);
+            Write(place.Rotation);
+            Write((float)0);
+            Write((float)0);
         }
 
-        private void WriteCharacterMainData(EntityCharacter value)
+        public void WriteCharacter(EntityCharacter value, IStorage storage)
+        {
+            WriteCharacterMain(value);
+            WriteCharacterWeapon(storage);
+            WriteCharacterFashion(storage);
+            WriteCharacterMeta(value);
+        }
+
+        private void WriteCharacterMain(EntityCharacter value)
         {
             Write(value.Id);
             WriteByteLengthUnicodeString(value.Name);
@@ -35,7 +46,7 @@ namespace ow.Framework.IO.Network
             Write(new byte[10]);
         }
 
-        private void WriteCharacterWeaponData(IStorage storage)
+        private void WriteCharacterWeapon(IStorage storage)
         {
             if (storage.EquippedGearStorage.Weapon is ItemStorage weapon)
             {
@@ -52,7 +63,7 @@ namespace ow.Framework.IO.Network
             Write(-1);
         }
 
-        private void WriteCharacterFashionData(IStorage storage)
+        private void WriteCharacterFashion(IStorage storage)
         {
             static void WriteFashionEntry(PacketWriter writer, int prototypeId = -1, uint color = uint.MinValue)
             {
@@ -85,7 +96,7 @@ namespace ow.Framework.IO.Network
             }
         }
 
-        private void WriteCharacterMetaData(EntityCharacter value)
+        private void WriteCharacterMeta(EntityCharacter value)
         {
             const uint currentHp = 0;
             const uint maxHp = 0;

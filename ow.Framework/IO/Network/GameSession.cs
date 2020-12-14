@@ -18,6 +18,18 @@ namespace ow.Framework.IO.Network
 
         private readonly HandlerProvider _provider;
 
+        public GameSession SendAsync(PacketWriter pw)
+        {
+            if (!SendAsync(PacketUtils.Pack(pw), 0, pw.BaseStream.Length))
+#if !DEBUG
+                throw new NetworkException();
+#else
+                Debug.Assert(false);
+#endif // !DEBUG
+
+            return this;
+        }
+
         public GameSession(GameServer server, HandlerProvider provider, World entities, ILogger<GameSession> logger) : base(server)
         {
             Entity = entities.CreateEntity();
@@ -79,20 +91,6 @@ namespace ow.Framework.IO.Network
             DebugLogOpcode(opcode);
 
             _provider[opcode].Invoke(this, br);
-        }
-
-        public GameSession SendAsync(PacketWriter pw)
-        {
-            if (!SendAsync(PacketUtils.Pack(pw), 0, pw.BaseStream.Length))
-            {
-#if !DEBUG
-                throw new NetworkException();
-#else
-                Debug.Assert(false);
-#endif // !DEBUG
-            }
-
-            return this;
         }
 
         [Conditional("DEBUG")]
