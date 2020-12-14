@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ow.Framework.Database.AccouintPosts
 {
     [Table("account_posts")]
-    public sealed class AccountPostModel
+    public class AccountPostModel
     {
         [Key]
         [Required]
@@ -15,6 +15,6 @@ namespace ow.Framework.Database.AccouintPosts
         public int AccountId { get; init; }
 
         [ForeignKey(nameof(AccountId))]
-        public Accounts.AccountModel Account { get; init; }
+        public virtual Accounts.AccountModel Account { get; init; }
     }
 }
