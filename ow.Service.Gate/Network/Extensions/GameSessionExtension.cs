@@ -1,4 +1,4 @@
-﻿using ow.Framework.Game.Datas.Bin.Table;
+﻿using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Service.Gate.Game;
@@ -67,7 +67,7 @@ namespace ow.Service.Gate.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendCharacterBackground(this GameSession session, ICharacterBackgroundTableEntity entity)
+        internal static GameSession SendCharacterBackground(this GameSession session, CharacterBackgroundTableEntity entity)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterChangeBackground);
 

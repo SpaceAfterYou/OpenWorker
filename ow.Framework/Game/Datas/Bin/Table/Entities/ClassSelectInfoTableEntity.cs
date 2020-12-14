@@ -6,7 +6,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = Hero;
 
-    internal sealed class ClassSelectInfoTableEntity : IClassSelectInfoTableEntity
+    public sealed record ClassSelectInfoTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public string Unknown5 { get; }

@@ -7,7 +7,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
-    internal sealed class PhotoItemTableEntity : IPhotoItemTableEntity
+    public sealed record PhotoItemTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public uint Unknown1 { get; }

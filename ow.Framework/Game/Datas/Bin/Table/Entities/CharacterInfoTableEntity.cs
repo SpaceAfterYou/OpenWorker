@@ -7,7 +7,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
-    internal sealed class CharacterInfoTableEntity : ICharacterInfoTableEntity
+    public sealed record CharacterInfoTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public ushort Unknown6 { get; }

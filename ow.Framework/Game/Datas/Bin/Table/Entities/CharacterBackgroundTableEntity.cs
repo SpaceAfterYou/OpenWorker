@@ -6,7 +6,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
-    internal sealed class CharacterBackgroundTableEntity : ICharacterBackgroundTableEntity
+    public sealed record CharacterBackgroundTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public ushort Unknown1 { get; }

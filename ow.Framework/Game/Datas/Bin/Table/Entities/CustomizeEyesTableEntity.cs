@@ -7,7 +7,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = Hero;
 
-    internal sealed class CustomizeEyesTableEntity : ICustomizeEyesTableEntity
+    public sealed record CustomizeEyesTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public IReadOnlyList<uint> Unknown1 { get; }

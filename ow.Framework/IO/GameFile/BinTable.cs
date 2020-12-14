@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using ow.Framework.Game.Datas.Bin;
-using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.GameFile;
@@ -16,43 +15,43 @@ namespace ow.Framework.Game
     {
         private readonly VData12 _data;
 
-        public IReadOnlyDictionary<Hero, IClassSelectInfoTableEntity> ReadClassSelectInfoTable() =>
-            Read<Hero, ClassSelectInfoTableEntity, IClassSelectInfoTableEntity>(_data, "tb_ClassSelect_Info");
+        public IReadOnlyDictionary<Hero, ClassSelectInfoTableEntity> ReadClassSelectInfoTable() =>
+            Read<Hero, ClassSelectInfoTableEntity>(_data, "tb_ClassSelect_Info");
 
-        public IReadOnlyDictionary<Hero, ICustomizeSkinTableEntity> ReadCustomizeSkinTable() =>
-            Read<Hero, CustomizeSkinTableEntity, ICustomizeSkinTableEntity>(_data, "tb_Customize_Skin");
+        public IReadOnlyDictionary<Hero, CustomizeSkinTableEntity> ReadCustomizeSkinTable() =>
+            Read<Hero, CustomizeSkinTableEntity>(_data, "tb_Customize_Skin");
 
-        public IReadOnlyDictionary<Hero, ICustomizeEyesTableEntity> ReadCustomizeEyesTable() =>
-            Read<Hero, CustomizeEyesTableEntity, ICustomizeEyesTableEntity>(_data, "tb_Customize_Eyes");
+        public IReadOnlyDictionary<Hero, CustomizeEyesTableEntity> ReadCustomizeEyesTable() =>
+            Read<Hero, CustomizeEyesTableEntity>(_data, "tb_Customize_Eyes");
 
-        public IReadOnlyDictionary<Hero, ICustomizeHairTableEntity> ReadCustomizeHairTable() =>
-            Read<Hero, CustomizeHairTableEntity, ICustomizeHairTableEntity>(_data, "tb_Customize_Hair");
+        public IReadOnlyDictionary<Hero, CustomizeHairTableEntity> ReadCustomizeHairTable() =>
+            Read<Hero, CustomizeHairTableEntity>(_data, "tb_Customize_Hair");
 
-        public IReadOnlyDictionary<Hero, ICustomizeInfoTableEntity> ReadCustomizeInfoTable() =>
-            Read<Hero, CustomizeInfoTableEntity, ICustomizeInfoTableEntity>(_data, "tb_Customize_Info");
+        public IReadOnlyDictionary<Hero, CustomizeInfoTableEntity> ReadCustomizeInfoTable() =>
+            Read<Hero, CustomizeInfoTableEntity>(_data, "tb_Customize_Info");
 
-        public IReadOnlyDictionary<uint, ICharacterBackgroundTableEntity> ReadCharacterBackgroundTable() =>
-            Read<uint, CharacterBackgroundTableEntity, ICharacterBackgroundTableEntity>(_data, "tb_Character_Background");
+        public IReadOnlyDictionary<uint, CharacterBackgroundTableEntity> ReadCharacterBackgroundTable() =>
+            Read<uint, CharacterBackgroundTableEntity>(_data, "tb_Character_Background");
 
-        public IReadOnlyDictionary<ushort, IDistrictTableEntity> ReadDistrictTable() =>
-            Read<ushort, DistrictTableEntity, IDistrictTableEntity>(_data, "tb_district");
+        public IReadOnlyDictionary<ushort, DistrictTableEntity> ReadDistrictTable() =>
+            Read<ushort, DistrictTableEntity>(_data, "tb_district");
 
-        public IReadOnlyDictionary<uint, IItemTableEntity> ReadItemTable() =>
-            Read<uint, ItemTableEntity, IItemTableEntity>(_data, "tb_item");
+        public IReadOnlyDictionary<uint, ItemTableEntity> ReadItemTable() =>
+            Read<uint, ItemTableEntity>(_data, "tb_item");
 
-        public IReadOnlyDictionary<ushort, ICharacterInfoTableEntity> ReadCharacterInfoTable() =>
-            Read<ushort, CharacterInfoTableEntity, ICharacterInfoTableEntity>(_data, "tb_Character_Info");
+        public IReadOnlyDictionary<ushort, CharacterInfoTableEntity> ReadCharacterInfoTable() =>
+            Read<ushort, CharacterInfoTableEntity>(_data, "tb_Character_Info");
 
-        public IReadOnlyDictionary<uint, IPhotoItemTableEntity> ReadPhotoItemTable() =>
-            Read<uint, PhotoItemTableEntity, IPhotoItemTableEntity>(_data, "tb_Photo_Item");
+        public IReadOnlyDictionary<uint, PhotoItemTableEntity> ReadPhotoItemTable() =>
+            Read<uint, PhotoItemTableEntity>(_data, "tb_Photo_Item");
 
-        public IReadOnlyDictionary<ushort, IGestureTableEntity> ReadGestureTable() =>
-            Read<ushort, GestureTableEntity, IGestureTableEntity>(_data, "tb_Gesture");
+        public IReadOnlyDictionary<ushort, GestureTableEntity> ReadGestureTable() =>
+            Read<ushort, GestureTableEntity>(_data, "tb_Gesture");
 
         public BinTable(IConfiguration configuration) => _data = new(configuration);
 
-        internal static IReadOnlyDictionary<TId, TItemInterface> Read<TId, TItem, TItemInterface>(VData12 data, string file) where TId : IConvertible where TItem : ITableEntity<TId> where TItemInterface : class, ITableEntity<TId> => GetEntries(data, file)
-            .Select(br => (TItemInterface)Activator.CreateInstance(typeof(TItem), BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { br }, null))
+        internal static IReadOnlyDictionary<TId, TItem> Read<TId, TItem>(VData12 data, string file) where TId : IConvertible where TItem : ITableEntity<TId> => GetEntries(data, file)
+            .Select(br => (TItem)Activator.CreateInstance(typeof(TItem), BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { br }, null))
             .ToDictionary(k => k.Id, v => v);
 
         private static IEnumerable<BinaryReader> GetEntries(VData12 data, string file)

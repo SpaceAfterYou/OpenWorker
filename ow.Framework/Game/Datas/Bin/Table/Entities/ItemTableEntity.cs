@@ -9,7 +9,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
-    public sealed class ItemTableEntity : IItemTableEntity
+    public sealed record ItemTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public uint ClassifyId { get; }
@@ -45,7 +45,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public byte Unknown36 { get; }
         public byte Unknown37 { get; }
         public byte Unknown38 { get; }
-        public IReadOnlyList<IItemTableEntityStat> Stats { get; }
+        public IReadOnlyList<ItemTableEntityStat> Stats { get; }
         public uint Unknown49 { get; }
         public uint Unknown50 { get; }
         public uint Unknown51 { get; }
@@ -134,10 +134,10 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Package = br.ReadUInt32();
         }
 
-        private static IItemTableEntityStat[] ReadStats(BinaryReader br) => Enumerable
+        private static ItemTableEntityStat[] ReadStats(BinaryReader br) => Enumerable
             .Repeat(0, Defines.StatsPerItem)
             .Select(_ => br.ReadUInt32())
-            .Select<KeyType, IItemTableEntityStat>(id => new ItemTableEntityStat(id, br.ReadInt32()))
+            .Select<KeyType, ItemTableEntityStat>(id => new ItemTableEntityStat(id, br.ReadInt32()))
             .ToArray();
     }
 }
