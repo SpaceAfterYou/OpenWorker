@@ -49,9 +49,28 @@ namespace ow.Service.District.Network
 
         internal static GameSession SendCharacterOtherInfos(this GameSession session)
         {
-            using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
+            return session;
 
-            return session.SendAsync(writer);
+            //using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
+
+            //Dimension dimension = session.Entity.Get<Dimension>();
+
+            //writer.Write((short)channel.Sessions.Count);
+            //foreach (var s in channel.Sessions.Values)
+            //{
+            //    var character = s.GetComponent<Character>();
+            //    writer.WriteMainData(character);
+
+            //    var equipped = s.GetComponent<EquippedStorage>();
+            //    writer.WriteWeaponData(equipped);
+            //    writer.WriteFashionData(equipped);
+
+            //    var stats = s.GetComponent<Stats>();
+            //    writer.WriteMetaData(character, stats);
+            //    writer.Write(character.WorldPosition);
+            //}
+
+            //return session.SendAsync(writer);
         }
 
         #endregion Send Characters

@@ -16,6 +16,6 @@ namespace ow.Service.District.Network.Handlers
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
         public static void ToggleWeapon(GameSession session, ToggleWeaponRequest request) => session
-            .SendCharacterToggleWeapon(request);
+            .SendToggleWeapon(request);
     }
 }
