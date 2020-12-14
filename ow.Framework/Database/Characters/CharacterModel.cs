@@ -84,7 +84,7 @@ namespace ow.Framework.Database.Characters
 
     [Table("characters")]
     [Index("Name", IsUnique = true)]
-    public sealed class CharacterModel
+    public class CharacterModel
     {
         [Key]
         [Required]
@@ -95,7 +95,7 @@ namespace ow.Framework.Database.Characters
         public int AccountId { get; set; }
 
         [ForeignKey(nameof(AccountId))]
-        public AccountModel Account { get; set; }
+        public virtual AccountModel Account { get; set; }
 
         [Required]
         public ushort GateId { get; set; }

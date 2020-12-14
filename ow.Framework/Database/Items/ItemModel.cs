@@ -33,7 +33,7 @@ namespace ow.Framework.Database.Storages
 
         [Required]
         [ForeignKey(nameof(CharacterId))]
-        public CharacterModel Character { get; init; }
+        public virtual CharacterModel Character { get; init; }
 
         [Required]
         public ushort SlotId { get; init; }
