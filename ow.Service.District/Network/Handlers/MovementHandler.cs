@@ -1,4 +1,5 @@
-﻿using ow.Framework.IO.Network;
+﻿using ow.Framework.Game.Datas;
+using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
