@@ -1,6 +1,6 @@
 ﻿using ow.Framework;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game.Datas.Bin.Table;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
@@ -79,7 +79,7 @@ namespace ow.Service.Gate.Network.Handlers
             using CharacterContext context = new();
 
             Account account = session.Entity.Get<Account>();
-            if (context.Characters.Any(c => c.SlotId == request.SlotId && c.AccountId == account.Id))
+            if (context.Characters.Any(c => c.Slot == request.SlotId && c.AccountId == account.Id))
 #if !DEBUG
                 throw new BadActionException();
 #else
@@ -89,7 +89,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name))
                 return;
 
-            if (!tables.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out IClassSelectInfoTableEntity classInfo))
+            if (!tables.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity classInfo))
 #if !DEBUG
                 throw new BadActionException();
 #else
@@ -176,7 +176,7 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterChangeBackground, HandlerPermission.Authorized)]
         public static void ChangeBackground(GameSession session, ChangeBackgroundRequest request, BinTables binTable)
         {
-            if (!binTable.CharacterBackgroundTable.TryGetValue(request.BackgroundId, out ICharacterBackgroundTableEntity entity))
+            if (!binTable.CharacterBackgroundTable.TryGetValue(request.BackgroundId, out CharacterBackgroundTableEntity entity))
 #if !DEBUG
                 throw new BadActionException();
 #else

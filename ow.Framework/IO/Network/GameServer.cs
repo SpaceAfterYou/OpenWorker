@@ -6,7 +6,7 @@ using System.Net;
 
 namespace ow.Framework.IO.Network
 {
-    public class GameServer : TcpServer
+    public sealed class GameServer : TcpServer
     {
         private readonly IServiceProvider _services;
 

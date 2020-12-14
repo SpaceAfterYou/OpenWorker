@@ -3,7 +3,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VMazeEscapeBox : VEntity
+    public sealed record VMazeEscapeBox : VEntity
     {
         /// <summary>
         /// Field ID

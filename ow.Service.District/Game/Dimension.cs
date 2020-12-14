@@ -1,6 +1,8 @@
 ﻿using ow.Framework;
 using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
 using ow.Framework.Game.Enums;
+using ow.Framework.Game.Storage;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
@@ -10,6 +12,7 @@ using ow.Framework.IO.Network.Requests.Movement;
 using ow.Framework.Utils;
 using ow.Service.District.Game.Items;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -19,9 +22,12 @@ namespace ow.Service.District.Game
     public sealed class Dimension
     {
         public ushort Id { get; }
-        public IReadOnlyDictionary<Guid, GameSession> Sessions => InternalSessions;
+        public IReadOnlyDictionary<Guid, GameSession> Sessions => _internalSessions;
 
-        public ChannelLoadStatus Status => InternalSessions.Count switch
+        private readonly ConcurrentDictionary<Guid, GameSession> _internalSessions = new();
+        private readonly object _sessionsLock = new();
+
+        public ChannelLoadStatus Status => _internalSessions.Count switch
         {
             > 64 => ChannelLoadStatus.Full,
             > 48 => ChannelLoadStatus.High,
@@ -31,8 +37,11 @@ namespace ow.Service.District.Game
 
         public bool TryJoin(GameSession session)
         {
-            if (InternalSessions.Count >= Defines.MaxChannelSessions || !InternalSessions.TryAdd(session.Id, session))
-                return false;
+            lock (_sessionsLock)
+            {
+                if (_internalSessions.Count >= Defines.MaxChannelSessions || !_internalSessions.TryAdd(session.Id, session))
+                    return false;
+            }
 
             session.Entity.Set(this);
             BroadcastCharacterIn(session);
@@ -42,8 +51,8 @@ namespace ow.Service.District.Game
 
         public void Leave(GameSession session)
         {
-            InternalSessions.Remove(session.Id);
-            BroadcastCharacterOut(session);
+            if (_internalSessions.TryRemove(session.Id, out GameSession _))
+                BroadcastCharactersOut(session);
         }
 
         public Dimension(ushort id) => Id = id;
@@ -96,10 +105,17 @@ namespace ow.Service.District.Game
             BroadcastAsync(writer);
         }
 
-        private GameSession BroadcastCharacterIn(GameSession session)
-        { return session; } // => SendAsync(Responses.Character.InInfoResponse.Create(session));
+        private void BroadcastCharacterIn(GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterInInfo);
 
-        private void BroadcastCharacterOut(params GameSession[] sessions)
+            writer.WriteCharacter(session.Entity.Get<EntityCharacter>(), session.Entity.Get<IStorage>());
+            writer.WritePlace(session.Entity.Get<Place>());
+
+            BroadcastExceptAsync(writer, session);
+        }
+
+        private void BroadcastCharactersOut(params GameSession[] sessions)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterOutInfo);
 
@@ -110,7 +126,7 @@ namespace ow.Service.District.Game
                 writer.Write(character.Id);
             }
 
-            BroadcastAsync(writer);
+            BroadcastExceptAsync(writer, sessions);
         }
 
         #endregion Broadcast Character
@@ -230,26 +246,34 @@ namespace ow.Service.District.Game
 
         #endregion Broadcast Movement
 
-        private void BroadcastAsync(PacketWriter writer)
+        private void BroadcastAsync(PacketWriter writer) =>
+            BroadcastAsync(_internalSessions, writer);
+
+        private void BroadcastExceptAsync(PacketWriter writer, GameSession except) =>
+            BroadcastAsync(_internalSessions.Where(pair => except.Id != pair.Key), writer);
+
+        private void BroadcastExceptAsync(PacketWriter writer, params GameSession[] except) =>
+            BroadcastAsync(_internalSessions.Where(pair => !except.Any(session => session.Id == pair.Key)), writer);
+
+        private static void BroadcastAsync(IEnumerable<KeyValuePair<Guid, GameSession>> pairs, PacketWriter writer)
         {
-            byte[] packet = PacketUtils.Pack(writer);
-            foreach (GameSession session in InternalSessions.Values)
-            {
-                bool result = session.SendAsync(packet, 0, writer.BaseStream.Length);
-                Debug.Assert(result);
-            }
+            byte[] packet = GetRawPacket(writer);
+            foreach (var (_, session) in pairs)
+                SendAsync(session, writer, packet);
         }
 
-        private void BroadcastExceptAsync(GameSession except, PacketWriter writer)
+        private static void SendAsync(GameSession session, PacketWriter writer, byte[] packet)
         {
-            byte[] packet = PacketUtils.Pack(writer);
-            foreach (GameSession session in InternalSessions.Values.Where(s => s.Id != except.Id))
-            {
-                bool result = session.SendAsync(packet, 0, writer.BaseStream.Length);
-                Debug.Assert(result);
-            }
+            if (!session.SendAsync(packet, 0, writer.BaseStream.Length))
+#if !DEBUG
+                throw new NetworkException();
+#else
+                Debug.Assert(false);
+#endif // !DEBUG
         }
 
-        private Dictionary<Guid, GameSession> InternalSessions { get; } = new();
+        private static byte[] GetRawPacket(PacketWriter writer) => PacketUtils.Pack(writer);
     }
 }
+
+// https://youtu.be/7mosZiponDg

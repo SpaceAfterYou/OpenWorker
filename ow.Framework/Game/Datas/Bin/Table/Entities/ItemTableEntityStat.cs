@@ -1,6 +1,6 @@
 ﻿namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
-    internal readonly struct ItemTableEntityStat : IItemTableEntityStat
+    public readonly struct ItemTableEntityStat
     {
         public uint Id { get; }
         public int Value { get; }

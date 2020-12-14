@@ -2,7 +2,7 @@
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VMonster
+    public sealed record VMonster
     {
         /// <summary>
         /// Monster ID

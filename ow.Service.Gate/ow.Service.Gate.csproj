@@ -9,6 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Lan\**" />
+    <Content Remove="Lan\**" />
+    <EmbeddedResource Remove="Lan\**" />
+    <None Remove="Lan\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="5.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="5.0.1" />
@@ -26,10 +33,6 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="5.0.1" />
     <PackageReference Include="SharpZipLib" Version="1.3.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.2.4" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Lan\" />
   </ItemGroup>
 
   <ItemGroup>

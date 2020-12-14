@@ -4,7 +4,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VStartEventBox : VEntity
+    public sealed record VStartEventBox : VEntity
     {
         /// <summary>
         ///

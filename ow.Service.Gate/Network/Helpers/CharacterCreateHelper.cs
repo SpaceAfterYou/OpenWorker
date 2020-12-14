@@ -1,6 +1,6 @@
 ﻿using ow.Framework;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game.Datas.Bin.Table;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Service.Gate.Game;
@@ -23,7 +23,7 @@ namespace ow.Service.Gate.Network.Helpers
 
         internal static void ValidateHair(in CreateRequest request, BinTables binTable)
         {
-            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out ICustomizeHairTableEntity entity))
+            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity entity))
 #if !DEBUG
                 throw new BadActionException();
 #else
@@ -40,7 +40,7 @@ namespace ow.Service.Gate.Network.Helpers
 
         internal static void ValidateEyes(in CreateRequest request, BinTables binTable)
         {
-            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out ICustomizeEyesTableEntity entity))
+            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity entity))
 #if !DEBUG
                 throw new BadActionException();
 #else
@@ -57,7 +57,7 @@ namespace ow.Service.Gate.Network.Helpers
 
         internal static void ValidateSkin(in CreateRequest request, BinTables binTable)
         {
-            if (!binTable.CustomizeSkinTable.TryGetValue(request.Character.Main.Hero, out ICustomizeSkinTableEntity entity))
+            if (!binTable.CustomizeSkinTable.TryGetValue(request.Character.Main.Hero, out CustomizeSkinTableEntity entity))
 #if !DEBUG
                 throw new BadActionException();
 #else
@@ -78,7 +78,7 @@ namespace ow.Service.Gate.Network.Helpers
             /// [ TODO ] Find where placed fucking id
             ///
 
-            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out ICharacterInfoTableEntity entity))
+            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity entity))
 #if !DEBUG
                 throw new BadActionException();
 #else
@@ -97,8 +97,8 @@ namespace ow.Service.Gate.Network.Helpers
             new()
             {
                 AccountId = account.Id,
-                GateId = gate.Id,
-                SlotId = request.SlotId,
+                Gate = gate.Id,
+                Slot = request.SlotId,
                 Name = request.Character.Main.Name,
                 Hero = request.Character.Main.Hero,
                 Appearance = new AppearanceModel()
@@ -127,8 +127,8 @@ namespace ow.Service.Gate.Network.Helpers
                 Energy = new(),
                 Title = new(),
                 Profile = new(),
-                GeturesIds = new uint[Defines.QuickSlotsCount],
-                PhotoId = binTable.PhotoItemTable.Values.First(c => c.Hero == request.Character.Main.Hero && c.Unknown14 == 1).Id
+                Getures = new uint[Defines.QuickSlotsCount],
+                Photo = binTable.PhotoItemTable.Values.First(c => c.Hero == request.Character.Main.Hero && c.Unknown14 == 1).Id
             };
 
         internal static StorageModel[] CreateStorageInfo() => new StorageModel[]

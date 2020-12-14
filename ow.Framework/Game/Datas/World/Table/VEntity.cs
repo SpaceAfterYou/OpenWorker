@@ -9,7 +9,7 @@ namespace ow.Framework.Game.Datas.World.Table
     /// <summary>
     /// Base Entity
     /// </summary>
-    public abstract class VEntity
+    public abstract record VEntity
     {
         /// <summary>
         /// Event Object ID

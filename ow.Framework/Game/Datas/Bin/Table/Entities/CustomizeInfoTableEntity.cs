@@ -7,7 +7,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = Hero;
 
-    internal sealed class CustomizeInfoTableEntity : ICustomizeInfoTableEntity
+    public sealed record CustomizeInfoTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public byte Unknown1 { get; }

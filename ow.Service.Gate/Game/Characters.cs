@@ -22,8 +22,8 @@ namespace ow.Service.Gate.Game
 
             using CharacterContext context = new();
 
-            foreach (CharacterModel model in context.Characters.AsNoTracking().Where(c => c.AccountId == accountModel.Id && c.GateId == gateId))
-                this[model.SlotId] = new(model, tables);
+            foreach (CharacterModel model in context.Characters.AsNoTracking().Where(c => c.AccountId == accountModel.Id && c.Gate == gateId))
+                this[model.Slot] = new(model, tables);
 
             stopwatch.Stop();
 

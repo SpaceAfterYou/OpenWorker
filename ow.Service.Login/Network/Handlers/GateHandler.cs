@@ -33,7 +33,7 @@ namespace ow.Service.Login.Network.Handlers
             new(gate, (byte)GetCharactersCount(context, account, gate));
 
         private static int GetCharactersCount(CharacterContext context, Account account, GateInstance gate) => context.Characters
-            .Where(character => character.AccountId == account.Id && character.GateId == gate.Id)
+            .Where(character => character.AccountId == account.Id && character.Gate == gate.Id)
             .AsNoTracking()
             .Count();
     }

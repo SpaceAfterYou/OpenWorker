@@ -3,7 +3,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VInterActionBox : VEntity
+    public sealed record VInterActionBox : VEntity
     {
         /// <summary>
         /// Interactive table ID

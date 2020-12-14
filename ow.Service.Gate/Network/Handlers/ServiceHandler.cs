@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
-using ow.Framework.Game.Datas.Bin.Table;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
@@ -42,7 +42,7 @@ namespace ow.Service.Gate.Network.Handlers
             session.Entity.Set<Account>(new(model));
             session.Entity.Set<Characters>(new(model, request.GateId, binTable));
 
-            if (binTable.CharacterBackgroundTable.TryGetValue(model.CharacterBackground, out ICharacterBackgroundTableEntity entity))
+            if (binTable.CharacterBackgroundTable.TryGetValue(model.CharacterBackground, out CharacterBackgroundTableEntity entity))
                 session.Entity.Set(entity);
             else
                 session.Entity.Set(binTable.CharacterBackgroundTable.Values.First());

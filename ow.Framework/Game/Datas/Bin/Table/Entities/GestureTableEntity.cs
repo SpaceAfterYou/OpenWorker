@@ -7,7 +7,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
-    internal class GestureTableEntity : IGestureTableEntity
+    public sealed record GestureTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public Hero Hero { get; }

@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game.Enums;
+﻿using ow.Framework.Database.Characters;
+using ow.Framework.Game.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -16,7 +17,7 @@ namespace ow.Framework.Database.CharacterPosts
         public int CharacterId { get; init; }
 
         [ForeignKey(nameof(CharacterId))]
-        public virtual Characters.CharacterModel Character { get; init; }
+        public virtual CharacterModel Character { get; init; }
 
         [Required]
         public CharacterPostType Type { get; init; }

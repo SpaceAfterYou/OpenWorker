@@ -6,7 +6,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
-    internal sealed class DistrictTableEntity : IDistrictTableEntity
+    public sealed record DistrictTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
         public ushort Unknown5 { get; }
