@@ -12,7 +12,7 @@ namespace ow.Service.District.Network
     {
         #region Send Characters
 
-        internal static GameSession SendToggleWeapon(this GameSession session, in ToggleWeaponRequest request)
+        internal static GameSession SendCharacterToggleWeapon(this GameSession session, in ToggleWeaponRequest request)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterToggleWeapon);
 
