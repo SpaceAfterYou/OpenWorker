@@ -2,6 +2,7 @@
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
+using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Service.District.Game;
 
@@ -10,6 +11,19 @@ namespace ow.Service.District.Network
     public static class GameSessionExtension
     {
         #region Send Characters
+
+        internal static GameSession SendToggleWeapon(this GameSession session, in ToggleWeaponRequest request)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterToggleWeapon);
+
+            writer.Write(request.CharacterId);
+            writer.Write(request.Position);
+            writer.Write(request.Rotation);
+            writer.Write(request.Toggle);
+            writer.Write(request.Undefined1);
+
+            return session.SendAsync(writer);
+        }
 
         internal static GameSession SendNpcOtherInfos(this GameSession session, CachedNpcs npcs)
         {
