@@ -7,15 +7,15 @@ namespace ow.Framework.Game.Storage
     {
         public ItemStorage this[EquippedGearSlot index] => this[(int)index];
 
-        public ItemStorage Head => this[(int)EquippedGearSlot.Head];
-        public ItemStorage Shoulderguard => this[(int)EquippedGearSlot.Shoulderguard];
-        public ItemStorage Chest => this[(int)EquippedGearSlot.Chest];
-        public ItemStorage Leg => this[(int)EquippedGearSlot.Leg];
-        public ItemStorage Earrings => this[(int)EquippedGearSlot.Earrings];
-        public ItemStorage Talisma => this[(int)EquippedGearSlot.Talisman];
-        public ItemStorage Ring1 => this[(int)EquippedGearSlot.Ring1];
-        public ItemStorage Ring2 => this[(int)EquippedGearSlot.Ring2];
-        public ItemStorage Weapon => this[(int)EquippedGearSlot.Weapon];
+        public ItemStorage Head => this[EquippedGearSlot.Head];
+        public ItemStorage Shoulderguard => this[EquippedGearSlot.Shoulderguard];
+        public ItemStorage Chest => this[EquippedGearSlot.Chest];
+        public ItemStorage Leg => this[EquippedGearSlot.Leg];
+        public ItemStorage Earrings => this[EquippedGearSlot.Earrings];
+        public ItemStorage Talisma => this[EquippedGearSlot.Talisman];
+        public ItemStorage Ring1 => this[EquippedGearSlot.Ring1];
+        public ItemStorage Ring2 => this[EquippedGearSlot.Ring2];
+        public ItemStorage Weapon => this[EquippedGearSlot.Weapon];
 
         public EquipableGearStorage(IReadOnlyList<ItemStorage> values) : base(values)
         {
