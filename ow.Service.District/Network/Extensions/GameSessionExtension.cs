@@ -31,17 +31,16 @@ namespace ow.Service.District.Network
 
             writer.Write((ushort)npcs.Count);
 
-            uint serverId = 0;
             foreach (CachedNpc npc in npcs)
             {
-                writer.Write(serverId++);
+                writer.Write(npc.Id);
                 writer.WriteVector3(npc.Position);
                 writer.Write(npc.Rotation);
                 writer.Write(uint.MinValue);
                 writer.Write(npc.Waypoint);
                 writer.Write(uint.MinValue);
                 writer.WriteNpcVisability(NpcVisablity.Visible);
-                writer.Write(npc.Id);
+                writer.Write(npc.MobId);
             }
 
             return session.SendAsync(writer);

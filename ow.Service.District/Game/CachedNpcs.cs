@@ -14,10 +14,10 @@ namespace ow.Service.District.Game
         {
         }
 
-        private static IEnumerable<CachedNpc> GetNpcs(VRoot root) => root.EventBox.MonsterSpawns
+        private static IEnumerable<CachedNpc> GetNpcs(VRoot root, uint id = 0) => root.EventBox.MonsterSpawns
             .Select(c => c.Monsters
                 .Where(m => m.Id != 0 && m.Type == MonsterSpawnType.Npc)
-                .Select(m => new CachedNpc(m.Id, GetPosition(c), c.Rotation, c.Waypoint)))
+                .Select(m => new CachedNpc(id++, m.Id, GetPosition(c), c.Rotation, c.Waypoint)))
             .SelectMany(i => i);
 
         private static float GetRandomValue(float min, float max) =>
