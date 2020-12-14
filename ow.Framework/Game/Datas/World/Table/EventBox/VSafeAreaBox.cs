@@ -2,7 +2,7 @@
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VSafeAreaBox : VEntity
+    public sealed record VSafeAreaBox : VEntity
     {
         internal VSafeAreaBox(XmlNode xml) : base(xml)
         {

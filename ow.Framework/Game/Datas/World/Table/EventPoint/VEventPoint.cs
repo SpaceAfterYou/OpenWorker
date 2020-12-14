@@ -4,7 +4,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventPoint
 {
-    public sealed class VEventPoint
+    public sealed record VEventPoint
     {
         public IReadOnlyList<VWayPoint> WayPoints { get; }
         public IReadOnlyList<VEscortPoint> EscortPoints { get; }

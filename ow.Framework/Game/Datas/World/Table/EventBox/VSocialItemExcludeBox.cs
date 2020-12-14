@@ -2,7 +2,7 @@
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VSocialItemExcludeBox : VEntity
+    public sealed record VSocialItemExcludeBox : VEntity
     {
         internal VSocialItemExcludeBox(XmlNode xml) : base(xml)
         {

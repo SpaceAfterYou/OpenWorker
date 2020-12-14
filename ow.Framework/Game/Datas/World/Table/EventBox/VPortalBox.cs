@@ -7,7 +7,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VPortalBox : VEntity
+    public sealed record VPortalBox : VEntity
     {
         /// <summary>
         /// Visible of GUI(True or False)

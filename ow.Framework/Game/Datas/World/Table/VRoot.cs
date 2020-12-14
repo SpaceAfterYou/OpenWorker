@@ -4,7 +4,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table
 {
-    public sealed class VRoot
+    public sealed record VRoot
     {
         public VEventBox EventBox { get; }
         public VEventPoint EventPoint { get; }

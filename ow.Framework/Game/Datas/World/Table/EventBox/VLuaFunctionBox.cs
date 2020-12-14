@@ -4,7 +4,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VLuaFunctionBox : VEntity
+    public sealed record VLuaFunctionBox : VEntity
     {
         /// <summary>
         /// Type of Target

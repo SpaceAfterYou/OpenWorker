@@ -3,7 +3,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VQuestMoveCheckBox : VEntity
+    public sealed record VQuestMoveCheckBox : VEntity
     {
         /// <summary>
         ///

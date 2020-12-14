@@ -3,7 +3,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventPoint
 {
-    public sealed class VEscortPoint : VPoint
+    public sealed record VEscortPoint : VPoint
     {
         /// <summary>
         ///

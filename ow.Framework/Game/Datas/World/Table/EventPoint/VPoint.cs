@@ -6,7 +6,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventPoint
 {
-    public abstract class VPoint : VEntity
+    public abstract record VPoint : VEntity
     {
         /// <summary>
         ///

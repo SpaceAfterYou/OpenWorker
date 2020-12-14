@@ -3,7 +3,7 @@ using System.Xml;
 
 namespace ow.Framework.Game.Datas.World.Table.EventBox
 {
-    public sealed class VSectorStartBox : VEntity
+    public sealed record VSectorStartBox : VEntity
     {
         /// <summary>
         ///
