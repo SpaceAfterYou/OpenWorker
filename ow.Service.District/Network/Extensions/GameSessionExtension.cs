@@ -17,10 +17,10 @@ namespace ow.Service.District.Network
             using PacketWriter writer = new(ClientOpcode.CharacterToggleWeapon);
 
             writer.Write(request.CharacterId);
-            writer.Write(request.Position);
+            writer.WriteVector3(request.Position);
             writer.Write(request.Rotation);
             writer.Write(request.Toggle);
-            writer.Write(request.Undefined1);
+            writer.Write(request.Unknown1);
 
             return session.SendAsync(writer);
         }
