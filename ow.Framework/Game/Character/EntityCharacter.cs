@@ -20,7 +20,7 @@ namespace ow.Framework.Game.Character
         public EntityCharacter(CharacterModel model, IBinTables tables)
         {
             Id = model.Id;
-            Slot = model.SlotId;
+            Slot = model.Slot;
             Level = model.Level;
             Hero = model.Hero;
             Advancement = model.Advancement;
@@ -30,7 +30,7 @@ namespace ow.Framework.Game.Character
         }
 
         private static PhotoItemTableEntity GetPhoto(CharacterModel model, IBinTables tables) =>
-            tables.PhotoItemTable.TryGetValue(model.PhotoId, out PhotoItemTableEntity entity)
+            tables.PhotoItemTable.TryGetValue(model.Photo, out PhotoItemTableEntity entity)
                 ? entity
                 : tables.PhotoItemTable.Values.First(c => c.Hero == model.Hero && c.Unknown14 == 1);
     }

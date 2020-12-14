@@ -23,10 +23,10 @@ namespace ow.Framework.Database.Characters
         public virtual AccountModel Account { get; set; }
 
         [Required]
-        public ushort GateId { get; set; }
+        public ushort Gate { get; set; }
 
         [Required]
-        public byte SlotId { get; set; }
+        public byte Slot { get; set; }
 
         [Required]
         public string Name { get; set; }
@@ -49,10 +49,10 @@ namespace ow.Framework.Database.Characters
         public BankModel Bank { get; set; }
 
         [Required]
-        public uint[] GeturesIds { get; set; }
+        public uint[] Getures { get; set; }
 
         [Required]
-        public uint PhotoId { get; set; }
+        public uint Photo { get; set; }
 
         [Required]
         public byte Advancement { get; set; }

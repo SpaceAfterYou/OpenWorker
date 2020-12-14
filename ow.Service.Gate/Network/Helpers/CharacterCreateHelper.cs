@@ -97,8 +97,8 @@ namespace ow.Service.Gate.Network.Helpers
             new()
             {
                 AccountId = account.Id,
-                GateId = gate.Id,
-                SlotId = request.SlotId,
+                Gate = gate.Id,
+                Slot = request.SlotId,
                 Name = request.Character.Main.Name,
                 Hero = request.Character.Main.Hero,
                 Appearance = new AppearanceModel()
@@ -127,8 +127,8 @@ namespace ow.Service.Gate.Network.Helpers
                 Energy = new(),
                 Title = new(),
                 Profile = new(),
-                GeturesIds = new uint[Defines.QuickSlotsCount],
-                PhotoId = binTable.PhotoItemTable.Values.First(c => c.Hero == request.Character.Main.Hero && c.Unknown14 == 1).Id
+                Getures = new uint[Defines.QuickSlotsCount],
+                Photo = binTable.PhotoItemTable.Values.First(c => c.Hero == request.Character.Main.Hero && c.Unknown14 == 1).Id
             };
 
         internal static StorageModel[] CreateStorageInfo() => new StorageModel[]

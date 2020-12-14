@@ -79,7 +79,7 @@ namespace ow.Service.Gate.Network.Handlers
             using CharacterContext context = new();
 
             Account account = session.Entity.Get<Account>();
-            if (context.Characters.Any(c => c.SlotId == request.SlotId && c.AccountId == account.Id))
+            if (context.Characters.Any(c => c.Slot == request.SlotId && c.AccountId == account.Id))
 #if !DEBUG
                 throw new BadActionException();
 #else
