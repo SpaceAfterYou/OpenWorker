@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ow.Framework.Database.CharacterPosts
 {
     [Table("character_posts")]
-    public sealed class CharacterPostModel
+    public class CharacterPostModel
     {
         [Key]
         [Required]
@@ -16,7 +16,7 @@ namespace ow.Framework.Database.CharacterPosts
         public int CharacterId { get; init; }
 
         [ForeignKey(nameof(CharacterId))]
-        public Characters.CharacterModel Character { get; init; }
+        public virtual Characters.CharacterModel Character { get; init; }
 
         [Required]
         public CharacterPostType Type { get; init; }
