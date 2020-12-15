@@ -49,5 +49,8 @@ namespace ow.Framework.Extensions
 
         public static EnterGateWay ReadEnterGateWayType(this BinaryReader br) =>
             (EnterGateWay)br.ReadByte();
+
+        public static ItemClassifyType ReadItemClassifyType(this BinaryReader br) =>
+            (ItemClassifyType)br.ReadByte();
     }
 }

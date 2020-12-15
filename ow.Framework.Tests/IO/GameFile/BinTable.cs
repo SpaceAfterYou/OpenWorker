@@ -46,5 +46,13 @@ namespace ow.Framework.Tests.IO.GameFile
         [Fact]
         public void ReadGestureTable() =>
             _binTableProcessor.ReadGestureTable();
+
+        [Fact]
+        public void ReadItemClassifyTable() =>
+            _binTableProcessor.ReadItemClassifyTable();
+
+        [Fact]
+        public void ReadItemScriptTable() =>
+            _binTableProcessor.ReadItemScriptTable();
     }
 }

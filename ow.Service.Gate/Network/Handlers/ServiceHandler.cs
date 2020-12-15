@@ -40,7 +40,7 @@ namespace ow.Service.Gate.Network.Handlers
                 return;
 
             session.Entity.Set<Account>(new(model));
-            session.Entity.Set<Characters>(new(model, request.GateId, binTable));
+            session.Entity.Set<Characters>(new(model, request.GateId, binTable, new()));
 
             if (binTable.CharacterBackgroundTable.TryGetValue(model.CharacterBackground, out CharacterBackgroundTableEntity entity))
                 session.Entity.Set(entity);

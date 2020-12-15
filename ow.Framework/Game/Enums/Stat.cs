@@ -3,8 +3,8 @@
     public enum Stat : byte
     {
         Unknown0 = 0,
-        CurrentHP = 1,
-        CurrentSG = 2,
+        CurrentHp = 1,
+        CurrentSg = 2,
         Unknown3 = 3,
         Unknown4 = 4,
         Unknown5 = 5,
@@ -12,9 +12,9 @@
         Unknown7 = 7,
         Unknown8 = 8,
         Unknown9 = 9,
-        MaxHP = 10,
+        MaxHp = 10,
         Unknown11 = 11,
-        MaxSG = 12,
+        MaxSg = 12,
         Unknown12 = 12,
         Unknown13 = 13,
         Stamina = 14,

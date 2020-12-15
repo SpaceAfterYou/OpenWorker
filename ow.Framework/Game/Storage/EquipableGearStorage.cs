@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game.Enums;
+﻿using ow.Framework.Database.Storages;
+using ow.Framework.Game.Enums;
 using System.Collections.Generic;
 
 namespace ow.Framework.Game.Storage
@@ -17,8 +18,10 @@ namespace ow.Framework.Game.Storage
         public ItemStorage Ring2 => this[EquippedGearSlot.Ring2];
         public ItemStorage Weapon => this[EquippedGearSlot.Weapon];
 
-        public EquipableGearStorage(IReadOnlyList<ItemStorage> values) : base(values)
+        public EquipableGearStorage(IEnumerable<ItemModel> values) : base(values, MaxCapacity)
         {
         }
+
+        public const ushort MaxCapacity = 10;
     }
 }

@@ -1,4 +1,6 @@
-﻿using ow.Framework.Game.Datas;
+﻿using DefaultEcs;
+using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
@@ -31,10 +33,10 @@ namespace ow.Service.Gate.Network.Extensions
             writer.Write(account.Id);
 
             Characters characters = session.Entity.Get<Characters>();
-            writer.Write(characters.Favorite.Entity.Id);
+            writer.Write(characters.Favorite.Id);
             writer.Write(ushort.MinValue);
-            writer.WriteByteLengthUnicodeString(characters.Favorite.Entity.Name);
-            writer.Write(characters.Favorite.Entity.Photo.Id);
+            writer.WriteByteLengthUnicodeString(characters.Favorite.Name);
+            writer.Write(characters.Favorite.Photo.Id);
             writer.Write(uint.MinValue);
             writer.Write(uint.MinValue);
             writer.Write(uint.MinValue);
@@ -47,14 +49,13 @@ namespace ow.Service.Gate.Network.Extensions
             using PacketWriter writer = new(ClientOpcode.CharactersList);
 
             Characters characters = session.Entity.Get<Characters>();
-            Character[] existsCharacters = characters.Where(c => c is not null).ToArray();
+            Entity[] entities = characters.Where(c => c.Has<EntityCharacter>()).ToArray();
 
-            writer.Write((byte)existsCharacters.Length);
+            writer.Write((byte)entities.Length);
+            foreach (Entity entity in entities)
+                writer.WriteCharacter(entity);
 
-            foreach (Character character in existsCharacters)
-                writer.WriteCharacter(character.Entity, character.Storage);
-
-            writer.Write(characters.LastSelected is null ? (existsCharacters.FirstOrDefault()?.Entity.Id ?? -1) : (characters.LastSelected?.Entity.Id ?? -1));
+            writer.Write(characters.LastSelected?.Id ?? -1);
             writer.Write(byte.MinValue);
             writer.Write((byte)1);
             writer.Write((ulong)characters.InitializeTime.TotalSeconds);
@@ -68,24 +69,26 @@ namespace ow.Service.Gate.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendCharacterBackground(this GameSession session, CharacterBackgroundTableEntity entity)
+        internal static GameSession SendCharacterBackground(this GameSession session)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterChangeBackground);
 
             Account account = session.Entity.Get<Account>();
             writer.Write(account.Id);
 
-            writer.Write(entity.Id);
+            CharacterBackgroundTableEntity background = session.Entity.Get<CharacterBackgroundTableEntity>();
+            writer.Write(background.Id);
+
             writer.Write(uint.MinValue);
 
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendCharacterSelect(this GameSession session, Character character, DistrictInstance district)
+        internal static GameSession SendCharacterSelect(this GameSession session, DistrictInstance district)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterSelect);
 
-            writer.Write(character.Entity.Id);
+            writer.Write(session.Entity.Get<Characters>().LastSelected.Id);
 
             Account account = session.Entity.Get<Account>();
             writer.Write(account.Id);
