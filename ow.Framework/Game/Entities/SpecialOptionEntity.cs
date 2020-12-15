@@ -6,7 +6,5 @@ namespace ow.Framework.Game.Entities
     {
         public SpecialOption Id { get; init; }
         public float Value { get; set; }
-
-        public SpecialOptionEntity(SpecialOption id, float value) => (Id, Value) = (id, value);
     }
 }
