@@ -88,6 +88,6 @@ namespace ow.Service.Gate.Game
         }
 
         private static Entity[] GetCharacterSlots(World _entities) =>
-            Enumerable.Repeat(_entities.CreateEntity(), Defines.CharactersCount).ToArray();
+            Enumerable.Repeat(0, Defines.CharactersCount).Select(_ => _entities.CreateEntity()).ToArray();
     }
 }
