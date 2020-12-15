@@ -33,11 +33,11 @@ namespace ow.Framework.IO.Network
             EntityCharacter character = entity.Get<EntityCharacter>();
             WriteCharacterMain(character);
 
-            IStorage storage = entity.Get<IStorage>();
+            IStorageEntity storage = entity.Get<IStorageEntity>();
             WriteCharacterWeapon(storage);
             WriteCharacterFashion(storage);
 
-            StatsEntity stats = entity.Get<StatsEntity>();
+            IStatsEntity stats = entity.Get<IStatsEntity>();
             WriteCharacterMeta(character, stats);
         }
 
@@ -53,7 +53,7 @@ namespace ow.Framework.IO.Network
             Write(new byte[10]);
         }
 
-        private void WriteCharacterWeapon(IStorage storage)
+        private void WriteCharacterWeapon(IStorageEntity storage)
         {
             if (storage.EquippedGearStorage.Weapon is ItemStorage weapon)
             {
@@ -70,7 +70,7 @@ namespace ow.Framework.IO.Network
             Write(-1);
         }
 
-        private void WriteCharacterFashion(IStorage storage)
+        private void WriteCharacterFashion(IStorageEntity storage)
         {
             static void WriteFashionEntry(PacketWriter writer, int prototypeId = -1, uint color = uint.MinValue)
             {
@@ -103,7 +103,7 @@ namespace ow.Framework.IO.Network
             }
         }
 
-        private void WriteCharacterMeta(EntityCharacter value, StatsEntity stats)
+        private void WriteCharacterMeta(EntityCharacter value, IStatsEntity stats)
         {
             const ushort primaryEnergy = 0;
             const ushort extraEnergy = 0;

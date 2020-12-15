@@ -3,8 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using ow.Framework;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
+using ow.Framework.Exceptions;
 using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Entities;
+using ow.Framework.Game.Storage;
+using ow.Service.Gate.Game.Entities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,12 +19,51 @@ namespace ow.Service.Gate.Game
     internal sealed class Characters : List<Entity>, IDisposable
     {
         public TimeSpan InitializeTime { get; init; }
-        public Entity LastSelected { get; set; }
-        public Entity Favorite { get; set; }
+        public EntityCharacter LastSelected { get; set; }
+        public EntityCharacter Favorite { get; set; }
 
         private readonly World _entities = new();
 
         public void Dispose() => _entities.Dispose();
+
+        public EntityCharacter Select(int id)
+        {
+            int slot = FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == id);
+            if (slot != -1) throw new BadActionException();
+
+            return LastSelected = this[slot].Get<EntityCharacter>();
+        }
+
+        public void Remove(int id)
+        {
+            int slot = FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == id);
+            if (slot != -1)
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            EntityCharacter character = this[slot].Get<EntityCharacter>();
+
+            if (LastSelected != null && character.Id == LastSelected.Id)
+            {
+                int index = FindIndex(c => c.Has<EntityCharacter>());
+                if (index != -1) LastSelected = this[index].Get<EntityCharacter>();
+            }
+
+            if (character.Id == Favorite?.Id) Favorite = null;
+
+            this[slot].Dispose();
+            this[slot] = _entities.CreateEntity();
+        }
+
+        public void Create(CharacterModel model, IBinTables tables)
+        {
+            this[model.Slot].Set(LastSelected = new(model, tables));
+            this[model.Slot].Set<IStatsEntity>(new GateStatsEntity());
+            this[model.Slot].Set<IStorageEntity>(new GateStorageEntity());
+        }
 
         public Characters(AccountModel accountModel, ushort gateId, BinTables tables, World entities) : base(GetCharacterSlots(entities))
         {
@@ -34,14 +77,21 @@ namespace ow.Service.Gate.Game
             foreach (CharacterModel model in GetCharacterModels(accountModel, gateId))
             {
                 this[model.Slot].Set<EntityCharacter>(new(model, tables));
-                this[model.Slot].Set<IStatsEntity>(new StatsEntity());
+                this[model.Slot].Set<IStatsEntity>(new GateStatsEntity());
+                this[model.Slot].Set<IStorageEntity>(new GateStorageEntity(model));
             }
 
             if (accountModel.LastSelectedCharacter != -1)
-                LastSelected = Find(c => c.Get<EntityCharacter>().Id == accountModel.LastSelectedCharacter);
+            {
+                int index = FindIndex(c => c.Get<EntityCharacter>().Id == accountModel.LastSelectedCharacter);
+                if (index != -1) LastSelected = this[index].Get<EntityCharacter>();
+            }
 
             if (accountModel.FavoriteCharacter != -1)
-                Favorite = Find(c => c.Get<EntityCharacter>().Id == accountModel.FavoriteCharacter);
+            {
+                int index = FindIndex(c => c.Get<EntityCharacter>().Id == accountModel.FavoriteCharacter);
+                if (index != -1) Favorite = this[index].Get<EntityCharacter>();
+            }
 
             stopwatch.Stop();
             InitializeTime = stopwatch.Elapsed;

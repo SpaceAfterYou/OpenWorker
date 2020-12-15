@@ -1,6 +1,6 @@
 ﻿using ow.Framework.Game.Enums;
 
-namespace ow.Framework.Game.Character
+namespace ow.Framework.Game.Entities
 {
     public sealed class StatEntity
     {

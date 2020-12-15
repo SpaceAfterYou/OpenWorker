@@ -36,7 +36,7 @@ namespace ow.Framework.Database.Storages
         public virtual CharacterModel Character { get; init; }
 
         [Required]
-        public ushort SlotId { get; init; }
+        public ushort Slot { get; init; }
 
         [Required]
         public StorageType StorageType { get; init; }

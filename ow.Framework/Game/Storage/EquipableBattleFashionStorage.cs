@@ -1,11 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using ow.Framework.Database.Storages;
+using System.Collections.Generic;
 
 namespace ow.Framework.Game.Storage
 {
     public sealed class EquipableBattleFashionStorage : BaseStorage
     {
-        public EquipableBattleFashionStorage(IReadOnlyList<ItemStorage> values) : base(values)
+        public EquipableBattleFashionStorage(IEnumerable<ItemModel> values) : base(values, MaxCapacity)
         {
         }
+
+        public const ushort MaxCapacity = 13;
     }
 }
