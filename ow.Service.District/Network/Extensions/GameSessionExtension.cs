@@ -88,7 +88,14 @@ namespace ow.Service.District.Network
 
         internal static GameSession SendCharacterGestureLoad(this GameSession session)
         {
-            return session;
+            using PacketWriter writer = new(ClientOpcode.GestureLoad);
+
+            Gestures gestures = session.Entity.Get<Gestures>();
+
+            foreach (uint gesture in gestures)
+                writer.Write(gesture);
+
+            return session.SendAsync(writer);
         }
 
         internal static GameSession SendCharacterPostInfo(this GameSession session)
