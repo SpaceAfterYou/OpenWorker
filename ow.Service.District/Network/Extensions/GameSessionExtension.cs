@@ -70,7 +70,7 @@ namespace ow.Service.District.Network
                 writer.Write((ushort)stat.Id);
             }
 
-            return session;
+            return session.SendAsync(writer);
         }
 
         internal static GameSession SendCharacterProfileInfo(this GameSession session)
