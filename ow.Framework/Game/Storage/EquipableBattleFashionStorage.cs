@@ -9,6 +9,6 @@ namespace ow.Framework.Game.Storage
         {
         }
 
-        public const ushort MaxCapacity = 13;
+        public const ushort MaxCapacity = 14;
     }
 }

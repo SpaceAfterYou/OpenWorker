@@ -181,7 +181,7 @@ namespace ow.Service.Gate.Network.Handlers
 #endif
 
             session.Entity.Set(entity);
-            session.SendCharacterBackground(entity);
+            session.SendCharacterBackground();
         }
     }
 }

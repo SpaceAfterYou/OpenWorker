@@ -52,7 +52,6 @@ namespace ow.Service.Gate.Network.Extensions
             Entity[] entities = characters.Where(c => c.Has<EntityCharacter>()).ToArray();
 
             writer.Write((byte)entities.Length);
-
             foreach (Entity entity in entities)
                 writer.WriteCharacter(entity);
 
@@ -70,14 +69,16 @@ namespace ow.Service.Gate.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendCharacterBackground(this GameSession session, CharacterBackgroundTableEntity entity)
+        internal static GameSession SendCharacterBackground(this GameSession session)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterChangeBackground);
 
             Account account = session.Entity.Get<Account>();
             writer.Write(account.Id);
 
-            writer.Write(entity.Id);
+            CharacterBackgroundTableEntity background = session.Entity.Get<CharacterBackgroundTableEntity>();
+            writer.Write(background.Id);
+
             writer.Write(uint.MinValue);
 
             return session.SendAsync(writer);
