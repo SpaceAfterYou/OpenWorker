@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace ow.Framework.Game.Entities
 {
-    public sealed class SpecialOptionEntity : List<SpecialOptionEntity>
+    public sealed class SpecialOptionsEntity : List<SpecialOptionEntity>
     {
         public SpecialOptionEntity this[SpecialOption index] => this[(int)index];
 
@@ -31,7 +31,7 @@ namespace ow.Framework.Game.Entities
         public SpecialOptionEntity Unknown20 => this[SpecialOption.Unknown20];
         public SpecialOptionEntity OnKillEffectRecoveryHp => this[SpecialOption.OnKillEffectRecoveryHp];
 
-        public SpecialOptionEntity() : base(Enumerable.Range(0, typeof(Stat).GetEnumValues().Cast<byte>().Max()).Select(id => new SpecialOptionEntity { Id = (SpecialOption)id, Value = 0.0f }))
+        public SpecialOptionsEntity() : base(Enumerable.Range(0, typeof(Stat).GetEnumValues().Cast<byte>().Max()).Select(id => new SpecialOptionEntity { Id = (SpecialOption)id, Value = 0.0f }))
         {
         }
     }
