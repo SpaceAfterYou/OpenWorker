@@ -21,6 +21,14 @@ namespace ow.Framework.IO.Network
         public static implicit operator Entity(GameSession session) =>
             session.Entity;
 
+        protected override void Dispose(bool disposingManagedResources)
+        {
+            if (disposingManagedResources)
+                Entity.Dispose();
+
+            base.Dispose(disposingManagedResources);
+        }
+
         public GameSession SendAsync(PacketWriter pw)
         {
             if (!SendAsync(PacketUtils.Pack(pw), 0, pw.BaseStream.Length))
