@@ -1,5 +1,4 @@
-﻿using ow.Framework.Game.Character;
-using ow.Framework.Game.Enums;
+﻿using ow.Framework.Game.Enums;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -88,7 +87,7 @@ namespace ow.Framework.Game.Entities
         public float ManicBalanceDamage => this[Stat.ManicBalanceDamage];
         public float ManicBalanceResistance => this[Stat.ManicBalanceResistance];
 
-        public StatsEntity() : base(Enumerable.Range(0, typeof(Stat).GetEnumValues().Cast<byte>().Max()).Select(id => new float { Id = (Stat)id, Value = 0.0f }))
+        public StatsEntity() : base(Enumerable.Range(0, typeof(Stat).GetEnumValues().Cast<byte>().Max()).Select(id => 0.0f))
         {
         }
     }
