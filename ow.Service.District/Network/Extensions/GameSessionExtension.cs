@@ -1,4 +1,5 @@
 ﻿using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
@@ -6,6 +7,7 @@ using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Service.District.Game;
+using System.Linq;
 
 namespace ow.Service.District.Network
 {
@@ -105,28 +107,23 @@ namespace ow.Service.District.Network
 
         internal static GameSession SendCharacterOtherInfos(this GameSession session)
         {
-            return session;
+            using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
 
-            //using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
+            Dimension dimension = session.Entity.Get<Dimension>();
 
-            //Dimension dimension = session.Entity.Get<Dimension>();
+            /// (.Values) will make copy all sessions in channel
+            GameSession[] sessions = dimension.Sessions.Values.ToArray();
 
-            //writer.Write((short)channel.Sessions.Count);
-            //foreach (var s in channel.Sessions.Values)
-            //{
-            //    var character = s.GetComponent<Character>();
-            //    writer.WriteMainData(character);
+            writer.Write((short)sessions.Length);
+            foreach (GameSession member in sessions)
+            {
+                writer.WriteCharacter(member);
 
-            //    var equipped = s.GetComponent<EquippedStorage>();
-            //    writer.WriteWeaponData(equipped);
-            //    writer.WriteFashionData(equipped);
+                Place place = member.Entity.Get<Place>();
+                writer.WritePlace(place);
+            }
 
-            //    var stats = s.GetComponent<Stats>();
-            //    writer.WriteMetaData(character, stats);
-            //    writer.Write(character.WorldPosition);
-            //}
-
-            //return session.SendAsync(writer);
+            return session.SendAsync(writer);
         }
 
         #endregion Send Characters
