@@ -8,28 +8,28 @@ namespace ow.Framework.Game.Entities
     {
         public SpecialOptionEntity this[SpecialOption index] => this[(int)index];
 
-        public SpecialOptionEntity ShorterCooldown => this[(int)SpecialOption.ShorterCooldown];
-        public SpecialOptionEntity AdditionalDamagePvP => this[(int)SpecialOption.AdditionalDamagePvP];
-        public SpecialOptionEntity ReducedDamagePvP => this[(int)SpecialOption.ReducedDamagePvP];
-        public SpecialOptionEntity AdditionalDamageGeneralMobs => this[(int)SpecialOption.AdditionalDamageGeneralMobs];
-        public SpecialOptionEntity AdditionalDamageBossNamedMobs => this[(int)SpecialOption.AdditionalDamageBossNamedMobs];
-        public SpecialOptionEntity Unknown5 => this[(int)SpecialOption.Unknown5];
-        public SpecialOptionEntity Unknown6 => this[(int)SpecialOption.Unknown6];
-        public SpecialOptionEntity AdditionalDamageAerialAttacks => this[(int)SpecialOption.AdditionalDamageAerialAttacks];
-        public SpecialOptionEntity AdditionalDamageCapsized => this[(int)SpecialOption.AdditionalDamageCapsized];
-        public SpecialOptionEntity ReducedDamageGeneralMobs => this[(int)SpecialOption.ReducedDamageGeneralMobs];
-        public SpecialOptionEntity ReducedDamageBossNamedMobs => this[(int)SpecialOption.ReducedDamageBossNamedMobs];
-        public SpecialOptionEntity Unknown11 => this[(int)SpecialOption.Unknown11];
-        public SpecialOptionEntity Unknown12 => this[(int)SpecialOption.Unknown12];
-        public SpecialOptionEntity SuperArmourBreak => this[(int)SpecialOption.SuperArmourBreak];
-        public SpecialOptionEntity SgCostReduction => this[(int)SpecialOption.SgCostReduction];
-        public SpecialOptionEntity ExpFromEnemy => this[(int)SpecialOption.ExpFromEnemy];
-        public SpecialOptionEntity ZennyFromEnemy => this[(int)SpecialOption.ZennyFromEnemy];
-        public SpecialOptionEntity SoulVaporGain => this[(int)SpecialOption.SoulVaporGain];
-        public SpecialOptionEntity Unknown18 => this[(int)SpecialOption.Unknown18];
-        public SpecialOptionEntity Unknown19 => this[(int)SpecialOption.Unknown19];
-        public SpecialOptionEntity Unknown20 => this[(int)SpecialOption.Unknown20];
-        public SpecialOptionEntity OnKillEffectRecoveryHp => this[(int)SpecialOption.OnKillEffectRecoveryHp];
+        public SpecialOptionEntity ShorterCooldown => this[SpecialOption.ShorterCooldown];
+        public SpecialOptionEntity AdditionalDamagePvP => this[SpecialOption.AdditionalDamagePvP];
+        public SpecialOptionEntity ReducedDamagePvP => this[SpecialOption.ReducedDamagePvP];
+        public SpecialOptionEntity AdditionalDamageGeneralMobs => this[SpecialOption.AdditionalDamageGeneralMobs];
+        public SpecialOptionEntity AdditionalDamageBossNamedMobs => this[SpecialOption.AdditionalDamageBossNamedMobs];
+        public SpecialOptionEntity Unknown5 => this[SpecialOption.Unknown5];
+        public SpecialOptionEntity Unknown6 => this[SpecialOption.Unknown6];
+        public SpecialOptionEntity AdditionalDamageAerialAttacks => this[SpecialOption.AdditionalDamageAerialAttacks];
+        public SpecialOptionEntity AdditionalDamageCapsized => this[SpecialOption.AdditionalDamageCapsized];
+        public SpecialOptionEntity ReducedDamageGeneralMobs => this[SpecialOption.ReducedDamageGeneralMobs];
+        public SpecialOptionEntity ReducedDamageBossNamedMobs => this[SpecialOption.ReducedDamageBossNamedMobs];
+        public SpecialOptionEntity Unknown11 => this[SpecialOption.Unknown11];
+        public SpecialOptionEntity Unknown12 => this[SpecialOption.Unknown12];
+        public SpecialOptionEntity SuperArmourBreak => this[SpecialOption.SuperArmourBreak];
+        public SpecialOptionEntity SgCostReduction => this[SpecialOption.SgCostReduction];
+        public SpecialOptionEntity ExpFromEnemy => this[SpecialOption.ExpFromEnemy];
+        public SpecialOptionEntity ZennyFromEnemy => this[SpecialOption.ZennyFromEnemy];
+        public SpecialOptionEntity SoulVaporGain => this[SpecialOption.SoulVaporGain];
+        public SpecialOptionEntity Unknown18 => this[SpecialOption.Unknown18];
+        public SpecialOptionEntity Unknown19 => this[SpecialOption.Unknown19];
+        public SpecialOptionEntity Unknown20 => this[SpecialOption.Unknown20];
+        public SpecialOptionEntity OnKillEffectRecoveryHp => this[SpecialOption.OnKillEffectRecoveryHp];
 
         public SpecialOptionEntity() : base(Enumerable.Range(0, typeof(Stat).GetEnumValues().Cast<byte>().Max()).Select(id => new SpecialOptionEntity { Id = (SpecialOption)id, Value = 0.0f }))
         {
