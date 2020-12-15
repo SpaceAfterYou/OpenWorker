@@ -75,7 +75,15 @@ namespace ow.Service.District.Network
 
         internal static GameSession SendCharacterProfileInfo(this GameSession session)
         {
-            return session;
+            using PacketWriter writer = new(ClientOpcode.CharacterProfileInfo);
+
+            ProfileEntity profile = session.Entity.Get<ProfileEntity>();
+
+            writer.WriteProfileStatus(profile.Status);
+            writer.WriteByteLengthUnicodeString(profile.About);
+            writer.WriteByteLengthUnicodeString(profile.Note);
+
+            return session.SendAsync(writer);
         }
 
         internal static GameSession SendCharacterGestureLoad(this GameSession session)
