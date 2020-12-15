@@ -16,7 +16,7 @@ namespace ow.Utils.GenerateItemsForView
             string gamePath = args.ElementAt(0);
             string outPath = args.ElementAt(1);
 
-            BinTable table = new(GetConfiguration());
+            using BinTable table = new(GetConfiguration());
 
             IReadOnlyDictionary<uint, ItemTableEntity> itemsTable = table.ReadItemTable();
             IReadOnlyDictionary<uint, ItemClassifyTableEntity> itemClassifyTable = table.ReadItemClassifyTable();
