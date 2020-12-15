@@ -1,4 +1,5 @@
 ﻿using ow.Framework.Game.Character;
+using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
@@ -44,6 +45,47 @@ namespace ow.Service.District.Network
             }
 
             return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendCharacterInfo(this GameSession session)
+        {
+            return session;
+        }
+
+        internal static GameSession SendCharacterStatsUpdate(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterStatsUpdate);
+
+            writer.Write((byte)0);
+
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
+            IStatsEntity stats = session.Entity.Get<IStatsEntity>();
+            writer.Write((byte)stats.Count);
+
+            foreach (StatEntity stat in stats)
+            {
+                writer.Write(stat.Value);
+                writer.Write((ushort)stat.Id);
+            }
+
+            return session;
+        }
+
+        internal static GameSession SendCharacterProfileInfo(this GameSession session)
+        {
+            return session;
+        }
+
+        internal static GameSession SendCharacterGestureLoad(this GameSession session)
+        {
+            return session;
+        }
+
+        internal static GameSession SendCharacterPostInfo(this GameSession session)
+        {
+            return session;
         }
 
         internal static GameSession SendCharacterOtherInfos(this GameSession session)
