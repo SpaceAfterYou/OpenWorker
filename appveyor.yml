@@ -5,3 +5,4 @@ before_build:
   - touch ow.Service.District/appsettings.json
   - touch ow.Service.Gate/appsettings.json
   - touch ow.Service.Login/appsettings.json
+  - touch ow.Utils.GenerateItemsForView/appsettings.json
