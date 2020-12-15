@@ -25,7 +25,7 @@ namespace ow.Utils.GenerateItemsForView
             var data = itemsTable.Values
                 .Select(i =>
                 {
-                    if (itemScriptTable.TryGetValue(i.Id, out var script))
+                    if (itemScriptTable.TryGetValue(i.Id, out ItemScriptTableEntity script))
                     {
                         return new
                         {

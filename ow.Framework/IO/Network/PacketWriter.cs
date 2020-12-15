@@ -4,6 +4,7 @@ using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.Game.Storage;
+using ow.Framework.Game.Types;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.Utils;
 using System;
@@ -214,6 +215,8 @@ namespace ow.Framework.IO.Network
         public void WriteHeroId(Hero value) => Write((byte)value);
 
         public void WriteGateStatus(GateStatus value) => Write((byte)value);
+
+        public void WriteProfileStatus(ProfileStatus value) => Write((byte)value);
 
         public PacketWriter(ClientOpcode opcode) : base(new MemoryStream(ushort.MaxValue), Encoding.ASCII, false)
         {

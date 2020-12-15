@@ -14,6 +14,14 @@ namespace ow.Service.District.Network.Handlers
             .SendCharacterOtherInfos()
             .SendNpcOtherInfos(npcs);
 
+        [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
+        public static void GetInfo(GameSession session, CachedNpcs npcs) => session
+            .SendCharacterInfo()
+            .SendCharacterStatsUpdate()
+            .SendCharacterProfileInfo()
+            .SendCharacterGestureLoad()
+            .SendCharacterPostInfo();
+
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
         public static void ToggleWeapon(GameSession session, ToggleWeaponRequest request) => session
             .SendCharacterToggleWeapon(request);

@@ -16,7 +16,7 @@ namespace ow.Service.Gate.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, GateInfo gate, LanContext lan, BinTables binTable)
+        public static void Enter(GameSession session, EnterRequest request, GateInfo gate, LanContext lan, BinTables tables)
         {
             if (gate.Id != request.GateId)
 #if !DEBUG
@@ -40,14 +40,14 @@ namespace ow.Service.Gate.Network.Handlers
                 return;
 
             session.Entity.Set<Account>(new(model));
-            session.Entity.Set<Characters>(new(model, request.GateId, binTable, new()));
-
-            if (binTable.CharacterBackgroundTable.TryGetValue(model.CharacterBackground, out CharacterBackgroundTableEntity entity))
-                session.Entity.Set(entity);
-            else
-                session.Entity.Set(binTable.CharacterBackgroundTable.Values.First());
+            session.Entity.Set<Characters>(new(model, request.GateId, tables, new()));
+            session.Entity.Set(GetBackground(model, tables));
 
             session.SendGateEnterResult().SendCurrentDate();
         }
+
+        private static CharacterBackgroundTableEntity GetBackground(AccountModel model, BinTables tables) => tables.CharacterBackgroundTable.TryGetValue(model.CharacterBackground, out CharacterBackgroundTableEntity entity)
+            ? entity
+            : tables.CharacterBackgroundTable.Values.First();
     }
 }

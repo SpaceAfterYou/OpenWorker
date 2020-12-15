@@ -1,10 +1,13 @@
 ﻿using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
+using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Service.District.Game;
+using System.Linq;
 
 namespace ow.Service.District.Network
 {
@@ -46,30 +49,81 @@ namespace ow.Service.District.Network
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendCharacterOtherInfos(this GameSession session)
+        internal static GameSession SendCharacterInfo(this GameSession session)
         {
             return session;
+        }
 
-            //using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
+        internal static GameSession SendCharacterStatsUpdate(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterStatsUpdate);
 
-            //Dimension dimension = session.Entity.Get<Dimension>();
+            writer.Write((byte)0);
 
-            //writer.Write((short)channel.Sessions.Count);
-            //foreach (var s in channel.Sessions.Values)
-            //{
-            //    var character = s.GetComponent<Character>();
-            //    writer.WriteMainData(character);
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
 
-            //    var equipped = s.GetComponent<EquippedStorage>();
-            //    writer.WriteWeaponData(equipped);
-            //    writer.WriteFashionData(equipped);
+            IStatsEntity stats = session.Entity.Get<IStatsEntity>();
+            writer.Write((byte)stats.Count);
 
-            //    var stats = s.GetComponent<Stats>();
-            //    writer.WriteMetaData(character, stats);
-            //    writer.Write(character.WorldPosition);
-            //}
+            foreach (StatEntity stat in stats)
+            {
+                writer.Write(stat.Value);
+                writer.Write((ushort)stat.Id);
+            }
 
-            //return session.SendAsync(writer);
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendCharacterProfileInfo(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterProfileInfo);
+
+            ProfileEntity profile = session.Entity.Get<ProfileEntity>();
+
+            writer.WriteProfileStatus(profile.Status);
+            writer.WriteByteLengthUnicodeString(profile.About);
+            writer.WriteByteLengthUnicodeString(profile.Note);
+
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendCharacterGestureLoad(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.GestureLoad);
+
+            Gestures gestures = session.Entity.Get<Gestures>();
+
+            foreach (uint gesture in gestures)
+                writer.Write(gesture);
+
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendCharacterPostInfo(this GameSession session)
+        {
+            return session;
+        }
+
+        internal static GameSession SendCharacterOtherInfos(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
+
+            Dimension dimension = session.Entity.Get<Dimension>();
+
+            /// (.Values) will make copy all sessions in channel
+            GameSession[] sessions = dimension.Sessions.Values.ToArray();
+
+            writer.Write((short)sessions.Length);
+            foreach (GameSession member in sessions)
+            {
+                writer.WriteCharacter(member);
+
+                Place place = member.Entity.Get<Place>();
+                writer.WritePlace(place);
+            }
+
+            return session.SendAsync(writer);
         }
 
         #endregion Send Characters
