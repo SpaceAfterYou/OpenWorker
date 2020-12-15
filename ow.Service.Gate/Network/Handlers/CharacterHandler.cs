@@ -112,7 +112,15 @@ namespace ow.Service.Gate.Network.Handlers
         public static void Delete(GameSession session, DeleteRequest request)
         {
             Characters characters = session.Entity.Get<Characters>();
-            characters.Remove(request.Id);
+            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
+            if (slot != -1)
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            characters.Remove(slot);
 
             using CharacterContext context = new();
             context.UseAndSave(c => c.Remove<CharacterModel>(new() { Id = request.Id }));
@@ -128,17 +136,15 @@ namespace ow.Service.Gate.Network.Handlers
         {
             Characters characters = session.Entity.Get<Characters>();
 
-            int index = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (index != -1)
+            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
+            if (slot != -1)
 #if !DEBUG
                 throw new BadActionException();
 #else
                 return;
 #endif
 
-            EntityCharacter character = characters[index].Get<EntityCharacter>();
-
-            characters.Favorite = character;
+            characters.Favorite = characters[slot].Get<EntityCharacter>();
             session.SendFavoriteCharacter();
         }
 
@@ -146,7 +152,17 @@ namespace ow.Service.Gate.Network.Handlers
         public static void Select(GameSession session, SelectRequest request, DistrictInstance district)
         {
             Characters characters = session.Entity.Get<Characters>();
-            session.SendCharacterSelect(characters.Select(request.Id), district);
+
+            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
+            if (slot != -1)
+#if !DEBUG
+                throw new BadActionException();
+#else
+                return;
+#endif
+
+            characters.LastSelected = characters[slot].Get<EntityCharacter>();
+            session.SendCharacterSelect(district);
         }
 
         [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]

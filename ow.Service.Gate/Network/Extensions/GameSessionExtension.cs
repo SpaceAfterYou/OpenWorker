@@ -83,11 +83,11 @@ namespace ow.Service.Gate.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendCharacterSelect(this GameSession session, EntityCharacter character, DistrictInstance district)
+        internal static GameSession SendCharacterSelect(this GameSession session, DistrictInstance district)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterSelect);
 
-            writer.Write(character.Id);
+            writer.Write(session.Entity.Get<Characters>().LastSelected.Id);
 
             Account account = session.Entity.Get<Account>();
             writer.Write(account.Id);

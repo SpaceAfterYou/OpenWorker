@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using ow.Framework;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
-using ow.Framework.Exceptions;
 using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Entities;
@@ -26,26 +25,9 @@ namespace ow.Service.Gate.Game
 
         public void Dispose() => _entities.Dispose();
 
-        public EntityCharacter Select(int id)
+        public void Remove(int slot)
         {
-            int slot = FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == id);
-            if (slot != -1) throw new BadActionException();
-
-            return LastSelected = this[slot].Get<EntityCharacter>();
-        }
-
-        public void Remove(int id)
-        {
-            int slot = FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == id);
-            if (slot != -1)
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
-
             EntityCharacter character = this[slot].Get<EntityCharacter>();
-
             if (LastSelected != null && character.Id == LastSelected.Id)
             {
                 int index = FindIndex(c => c.Has<EntityCharacter>());
