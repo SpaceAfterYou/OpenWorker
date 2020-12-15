@@ -12,7 +12,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
     public sealed record ItemTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
-        public uint ClassifyId { get; }
+        public uint Classify { get; }
         public byte Unknown7 { get; }
         public byte MaxSlots { get; }
         public ushort Unknown9 { get; }
@@ -74,7 +74,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         internal ItemTableEntity(BinaryReader br)
         {
             Id = br.ReadUInt32();
-            ClassifyId = br.ReadUInt32();
+            Classify = br.ReadUInt32();
             Unknown7 = br.ReadByte();
             MaxSlots = br.ReadByte();
             Unknown9 = br.ReadUInt16();

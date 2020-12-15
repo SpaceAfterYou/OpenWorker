@@ -39,6 +39,12 @@ namespace ow.Framework.Game
         public IReadOnlyDictionary<uint, ItemTableEntity> ReadItemTable() =>
             Read<uint, ItemTableEntity>(_data, "tb_item");
 
+        public IReadOnlyDictionary<uint, ItemClassifyTableEntity> ReadItemClassifyTable() =>
+            Read<uint, ItemClassifyTableEntity>(_data, "tb_Item_Classify");
+
+        public IReadOnlyDictionary<uint, ItemScriptTableEntity> ReadItemScriptTable() =>
+            Read<uint, ItemScriptTableEntity>(_data, "tb_item_script");
+
         public IReadOnlyDictionary<ushort, CharacterInfoTableEntity> ReadCharacterInfoTable() =>
             Read<ushort, CharacterInfoTableEntity>(_data, "tb_Character_Info");
 
