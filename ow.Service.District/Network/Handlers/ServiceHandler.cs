@@ -43,7 +43,7 @@ namespace ow.Service.District.Network.Handlers
                 session.Entity.Set(new StatsEntity());
                 session.Entity.Set(new SpecialOptionsEntity());
                 session.Entity.Set(new GesturesEntity(model));
-                session.Entity.Set(new Place(model.Place));
+                session.Entity.Set(new Place(model.Place, tables));
             }
 
             if (!dimensions.Join(session))

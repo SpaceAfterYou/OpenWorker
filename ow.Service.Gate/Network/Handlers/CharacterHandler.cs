@@ -9,6 +9,7 @@ using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.Utils;
 using ow.Service.Gate.Game;
+using ow.Service.Gate.Game.Repository;
 using ow.Service.Gate.Network.Extensions;
 using ow.Service.Gate.Network.Helpers;
 using System.Linq;
@@ -121,7 +122,7 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterSelect, HandlerPermission.Authorized)]
-        public static void Select(GameSession session, SelectRequest request, DistrictInstance district)
+        public static void Select(GameSession session, SelectRequest request, DistrictRepository districts)
         {
             Characters characters = session.Entity.Get<Characters>();
 
@@ -129,7 +130,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (slot != -1) NetworkUtils.DropSession();
 
             characters.LastSelected = characters[slot].Get<EntityCharacter>();
-            session.SendCharacterSelect(district);
+            session.SendCharacterSelect(districts);
         }
 
         [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]

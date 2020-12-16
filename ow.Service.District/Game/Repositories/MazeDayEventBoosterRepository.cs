@@ -10,6 +10,6 @@ namespace ow.Service.District.Game.Repositories
         { }
 
         private static IEnumerable<MazeDayEventBooster> GetItems(Zone zone, IBinTables binTables) =>
-            binTables.MazeInfoTable.Values.Where(c => c.District == zone.Id).Select(c => new MazeDayEventBooster(0, c));
+            binTables.MazeInfoTable.Values.Where(c => c.District == zone.District.Id).Select(c => new MazeDayEventBooster(0, c));
     }
 }

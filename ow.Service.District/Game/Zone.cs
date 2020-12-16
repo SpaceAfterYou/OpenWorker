@@ -7,15 +7,14 @@ namespace ow.Service.District.Game
 {
     public sealed record Zone
     {
-        internal ushort Id { get; }
-        internal DistrictTableEntity Table { get; }
+        internal DistrictTableEntity District { get; }
         internal VRoot Place { get; }
 
         public Zone(IConfiguration configuration, BinTables binTable, WorldTables worldTable)
         {
-            Id = ushort.Parse(configuration["Zone:Id"]);
-            Table = binTable.DistrictTable[Id];
-            Place = worldTable.Read(Table.Batch);
+            ushort id = ushort.Parse(configuration["Zone:Id"]);
+            District = binTable.DistrictTable[id];
+            Place = worldTable.Read(District.Batch);
         }
     }
 }

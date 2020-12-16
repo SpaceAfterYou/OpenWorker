@@ -21,7 +21,7 @@ namespace ow.Framework.IO.Network
 
         public void WritePlace(Place place)
         {
-            Write(place.Location);
+            Write(place.District.Id);
             Write((ulong)0);
             WriteVector3(place.Position);
             Write(place.Rotation);

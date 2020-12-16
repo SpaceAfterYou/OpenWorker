@@ -6,6 +6,7 @@ using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Enums;
+using ow.Service.Gate.Game.Repository;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Extensions
@@ -83,20 +84,24 @@ namespace ow.Service.Gate.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendCharacterSelect(this GameSession session, DistrictInstance district)
+        internal static GameSession SendCharacterSelect(this GameSession session, DistrictRepository districts)
         {
             using PacketWriter writer = new(ClientOpcode.CharacterSelect);
 
-            writer.Write(session.Entity.Get<Characters>().LastSelected.Id);
+            Characters characters = session.Entity.Get<Characters>();
+            writer.Write(characters.LastSelected.Id);
 
             Account account = session.Entity.Get<Account>();
             writer.Write(account.Id);
 
+            Place place = session.Entity.Get<Place>();
+
             writer.Write(new byte[28]);
+
+            DistrictInstance district = districts[place.District.Id];
             writer.WriteNumberLengthUtf8String(district.Ip);
             writer.Write(district.Port);
 
-            Place place = session.Entity.Get<Place>();
             writer.WritePlace(place);
 
             writer.Write(new byte[12]);
