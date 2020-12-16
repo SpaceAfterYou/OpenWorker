@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Extensions;
 using ow.Service.Gate.Game;
+using ow.Service.Gate.Game.Repository;
 
 namespace ow.Service.Gate
 {
@@ -15,7 +16,7 @@ namespace ow.Service.Gate
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
                 .AddSingleton<BinTables>()
-                .AddSingleton<DistrictsInstances>()
+                .AddSingleton<DistrictRepository>()
                 .AddSingleton<GateInfo>()
                 .AddFramework()
                 .AddLan());

@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ow.Service.Gate.Game
+namespace ow.Service.Gate.Game.Repository
 {
-    public sealed class DistrictsInstances : Dictionary<ushort, DistrictInstance>
+    public sealed class DistrictRepository : Dictionary<ushort, DistrictInstance>
     {
-        public DistrictsInstances(IConfiguration configuration) : base(GetDistricts(configuration))
+        public DistrictRepository(IConfiguration configuration) : base(GetDistricts(configuration))
         {
         }
 
