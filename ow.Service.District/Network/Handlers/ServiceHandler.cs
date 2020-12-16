@@ -25,7 +25,7 @@ namespace ow.Service.District.Network.Handlers
         //public Profile Profile { get; init; }
 
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, IBoosterRepository boosters, MazeDayEventBoosterRepository dayEventBoosterRepository, DimensionRepository dimensions, LanContext lan, IBinTables tables)
+        public static void Enter(GameSession session, EnterRequest request, BoosterRepository boosterRepository, MazeDayEventBoosterRepository dayEventBoosterRepository, DimensionRepository dimensions, LanContext lan, IBinTables tables)
         {
             if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
@@ -57,7 +57,7 @@ namespace ow.Service.District.Network.Handlers
                 .SendMazeDayEventBoosters(dayEventBoosterRepository)
                 .SendWorldVersion()
                 .SendWorldEnter()
-                .SendAddBoosters(boosters)
+                .SendAddBoosters(boosterRepository)
                 //eSUB_CMD_POST_ACCOUNT_RECV
                 //.SendAttendanceRewardLoad()
                 //.SendAttendancePlayTimeInit()

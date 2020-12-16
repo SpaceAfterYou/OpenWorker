@@ -212,8 +212,19 @@ namespace ow.Service.District.Network
 
         #region Send Boosters
 
-        internal static GameSession SendAddBoosters(this GameSession session)
+        internal static GameSession SendAddBoosters(this GameSession session, BoosterRepository repository)
         {
+            using PacketWriter writer = new(ClientOpcode.BoosterAdd);
+
+            foreach (var (index, booster) in repository)
+            {
+                writer.Write(SystemDefinition.AddBoosterSize, ClientOpcode.BoosterAdd);
+                writer.Write(index);
+                writer.Write(booster.Relation.Id);
+                writer.Write(Math.Max((ulong)(booster.EndDate - DateTimeOffset.Now).TotalSeconds, 0UL));
+            }
+
+            return session.SendAsync(writer);
         }
 
         #endregion Send Boosters

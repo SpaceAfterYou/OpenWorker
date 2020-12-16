@@ -8,14 +8,6 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
-    public readonly struct BoosterTableEntityStat
-    {
-        public ushort Id { get; }
-        public float Value { get; }
-
-        internal BoosterTableEntityStat(ushort id, float value) => (Id, Value) = (id, value);
-    }
-
     public sealed record BoosterTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }

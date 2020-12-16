@@ -30,5 +30,7 @@ namespace ow.Framework.Game.Datas.Bin.Table
         IReadOnlyDictionary<ushort, GestureTableEntity> GestureTable { get => throw new NotImplementedException(); }
 
         IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfoTable { get => throw new NotImplementedException(); }
+
+        IReadOnlyDictionary<ushort, BoosterTableEntity> BoosterTable { get => throw new NotImplementedException(); }
     }
 }
