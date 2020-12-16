@@ -18,7 +18,7 @@ namespace ow.Service.District.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
-        public static void GetInfo(GameSession session, CachedNpcs npcs) => session
+        public static void GetInfo(GameSession session) => session
             .SendCharacterInfo()
             .SendCharacterStatsUpdate()
             .SendCharacterProfileInfo()
