@@ -5,7 +5,7 @@ using ow.Framework.Game.Datas.World.Table;
 
 namespace ow.Service.District.Game
 {
-    internal sealed record Zone
+    public sealed record Zone
     {
         internal ushort Id { get; }
         internal DistrictTableEntity Table { get; }

@@ -11,7 +11,6 @@ using ow.Service.District.Game;
 using ow.Service.District.Game.Entities;
 using ow.Service.District.Game.Enums;
 using ow.Service.District.Game.Repositories;
-using System;
 
 namespace ow.Service.District.Network
 {
@@ -178,24 +177,6 @@ namespace ow.Service.District.Network
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendServiceCurrentDate(this GameSession session)
-        {
-            using PacketWriter writer = new(ClientOpcode.CurrentDate);
-
-            DateTimeOffset dateTime = DateTimeOffset.Now;
-
-            writer.Write(dateTime.ToUnixTimeSeconds());
-            writer.Write((ushort)dateTime.Year);
-            writer.Write((ushort)dateTime.Month);
-            writer.Write((ushort)dateTime.Day);
-            writer.Write((ushort)dateTime.Hour);
-            writer.Write((ushort)dateTime.Minute);
-            writer.Write((ushort)dateTime.Second);
-            writer.Write(Convert.ToUInt16(TimeZoneInfo.Local.IsDaylightSavingTime(dateTime)));
-
-            return session.SendAsync(writer);
-        }
-
         #endregion Send Service
 
         #region Send World
@@ -228,5 +209,13 @@ namespace ow.Service.District.Network
         }
 
         #endregion Send World
+
+        #region Send Boosters
+
+        internal static GameSession SendAddBoosters(this GameSession session)
+        {
+        }
+
+        #endregion Send Boosters
     }
 }

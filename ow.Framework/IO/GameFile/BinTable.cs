@@ -57,6 +57,9 @@ namespace ow.Framework.Game
         public IReadOnlyDictionary<ushort, MazeInfoTableEntity> ReadMazeInfoTable() =>
             Read<ushort, MazeInfoTableEntity>(_data, "tb_Maze_Info");
 
+        public IReadOnlyDictionary<ushort, BoosterTableEntity> ReadBoosterTable() =>
+            Read<ushort, BoosterTableEntity>(_data, "tb_Booster");
+
         public BinTable(IConfiguration configuration) => _data = new(configuration);
 
         internal static IReadOnlyDictionary<TId, TItem> Read<TId, TItem>(VData12 data, string file) where TId : IConvertible where TItem : ITableEntity<TId> => GetEntries(data, file)

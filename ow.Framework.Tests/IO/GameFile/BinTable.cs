@@ -46,5 +46,8 @@ namespace ow.Framework.Tests.IO.GameFile
 
         [Fact]
         public void ReadMazeInfoTable() => _tables.ReadMazeInfoTable();
+
+        [Fact]
+        public void ReadBoosterTable() => _tables.ReadBoosterTable();
     }
 }

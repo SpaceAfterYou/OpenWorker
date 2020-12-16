@@ -33,7 +33,7 @@ namespace ow.Service.Gate.Network.Handlers
             session.Entity.Set<Characters>(new(model, request.GateId, tables, new()));
             session.Entity.Set(GetBackground(model, tables));
 
-            session.SendGateEnterResult().SendCurrentDate();
+            session.SendGateEnterResult().SendServiceCurrentDate();
         }
 
         private static CharacterBackgroundTableEntity GetBackground(AccountModel model, BinTables tables) => tables.CharacterBackgroundTable.TryGetValue(model.CharacterBackground, out CharacterBackgroundTableEntity entity)
