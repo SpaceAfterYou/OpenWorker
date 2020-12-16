@@ -27,7 +27,7 @@ namespace ow.Service.Gate.Game
         public void Remove(int slot)
         {
             EntityCharacter character = this[slot].Get<EntityCharacter>();
-            if (LastSelected != null && character.Id == LastSelected.Id)
+            if (LastSelected is null || character.Id == LastSelected.Id)
             {
                 int index = FindIndex(c => c.Has<EntityCharacter>());
                 if (index != -1) LastSelected = this[index].Get<EntityCharacter>();

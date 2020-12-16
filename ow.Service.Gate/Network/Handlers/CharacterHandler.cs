@@ -96,7 +96,7 @@ namespace ow.Service.Gate.Network.Handlers
             Characters characters = session.Entity.Get<Characters>();
 
             int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1) NetworkUtils.DropSession();
+            if (slot == -1) NetworkUtils.DropSession();
 
             characters.Remove(slot);
 
@@ -115,7 +115,7 @@ namespace ow.Service.Gate.Network.Handlers
             Characters characters = session.Entity.Get<Characters>();
 
             int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1) NetworkUtils.DropSession();
+            if (slot == -1) NetworkUtils.DropSession();
 
             characters.Favorite = characters[slot].Get<EntityCharacter>();
             session.SendFavoriteCharacter();
@@ -127,7 +127,7 @@ namespace ow.Service.Gate.Network.Handlers
             Characters characters = session.Entity.Get<Characters>();
 
             int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1) NetworkUtils.DropSession();
+            if (slot == -1) NetworkUtils.DropSession();
 
             characters.LastSelected = characters[slot].Get<EntityCharacter>();
             session.SendCharacterSelect(districts);
