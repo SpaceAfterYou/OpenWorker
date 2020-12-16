@@ -11,6 +11,9 @@ namespace ow.Framework.Extensions
         public static uint[] ReadUInt32Array(this BinaryReader br, byte count) =>
             Enumerable.Repeat(0, count).Select(_ => br.ReadUInt32()).ToArray();
 
+        public static float[] ReadSingleArray(this BinaryReader br, byte count) =>
+            Enumerable.Repeat(0, count).Select(_ => br.ReadSingle()).ToArray();
+
         public static byte[] ReadByteArray(this BinaryReader br, byte count) =>
             Enumerable.Repeat(0, count).Select(_ => br.ReadByte()).ToArray();
 

@@ -1,18 +1,29 @@
 ﻿using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
+using ow.Framework.IO.Network.Requests.Server;
 using ow.Service.District.Game;
+using ow.Service.District.Game.Entities;
 using ow.Service.District.Game.Enums;
+using ow.Service.District.Game.Repositories;
+using System;
 
 namespace ow.Service.District.Network
 {
     public static class GameSessionExtension
     {
         #region Send Characters
+
+        internal static GameSession SendCharacterDbLoadSync(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterDbLoadSync);
+            return session.SendAsync(writer);
+        }
 
         internal static GameSession SendCharacterToggleWeapon(this GameSession session, in ToggleWeaponRequest request)
         {
@@ -27,7 +38,7 @@ namespace ow.Service.District.Network
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendNpcOtherInfos(this GameSession session, CachedNpcs npcs)
+        internal static GameSession SendNpcOtherInfos(this GameSession session, CachedNpcRepository npcs)
         {
             using PacketWriter writer = new(ClientOpcode.NpcOtherInfos);
 
@@ -126,9 +137,36 @@ namespace ow.Service.District.Network
 
         #endregion Send Chat
 
+        #region Send Maze
+
+        internal static GameSession SendMazeDayEventBoosters(this GameSession session, MazeDayEventBoosterRepository boosters)
+        {
+            using PacketWriter writer = new(ClientOpcode.EventDayEventBoosterList);
+
+            writer.Write((ushort)boosters.Count);
+            foreach (var booster in boosters)
+            {
+                writer.Write(booster.Maze.Id);
+                writer.Write(booster.Id);
+            }
+
+            return session.SendAsync(writer);
+        }
+
+        #endregion Send Maze
+
         #region Send Service
 
-        internal static GameSession SendServerLogOut(this GameSession session, GateInstance gate)
+        internal static GameSession SendServiceHeartbeat(this GameSession session, in HeartbeatRequest request)
+        {
+            using PacketWriter writer = new(ClientOpcode.Heartbeat);
+
+            writer.Write(request.Tick);
+
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendServiceLogOut(this GameSession session, GateInstance gate)
         {
             using PacketWriter writer = new(ClientOpcode.LogOut);
 
@@ -147,5 +185,66 @@ namespace ow.Service.District.Network
         }
 
         #endregion Send Service
+
+        #region Send World
+
+        internal static GameSession SendWorldEnter(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.WorldEnter);
+
+            writer.Write(uint.MinValue);
+            writer.WriteCanWorldConnect(CanWorldConnect.Yes);
+
+            Place place = session.Entity.Get<Place>();
+            writer.WritePlace(place);
+
+            writer.Write(byte.MinValue);
+
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendWorldVersion(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.WorldVersion);
+
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+
+            return session.SendAsync(writer);
+        }
+
+        #endregion Send World
+
+        #region Send Boosters
+
+        internal static GameSession SendBoosterRemove(this GameSession session, byte id)
+        {
+            using PacketWriter writer = new(ClientOpcode.BoosterRemove);
+
+            writer.Write(id);
+
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SenBoosterAdd(this GameSession session, BoosterRepository boosters)
+        {
+            byte id = 0; /// TODO: unique id? sequence id?
+            foreach (Booster booster in boosters)
+            {
+                using PacketWriter writer = new(ClientOpcode.BoosterAdd);
+
+                writer.Write(id++);
+                writer.Write(booster.Prototype.Id);
+                writer.Write(Math.Max((ulong)(booster.End - DateTimeOffset.Now).TotalSeconds, 0UL));
+
+                session.SendAsync(writer);
+            }
+
+            return session;
+        }
+
+        #endregion Send Boosters
     }
 }

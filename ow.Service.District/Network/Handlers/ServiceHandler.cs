@@ -1,4 +1,10 @@
-﻿using ow.Framework.Game.Character;
+﻿using ow.Framework.Database.Accounts;
+using ow.Framework.Database.Characters;
+using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
+using ow.Framework.Game.Datas.Bin.Table;
+using ow.Framework.Game.Entities;
+using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
@@ -6,6 +12,9 @@ using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Server;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
+using ow.Service.District.Game.Entities;
+using ow.Service.District.Game.Repositories;
+using System.Linq;
 
 namespace ow.Service.District.Network.Handlers
 {
@@ -15,53 +24,70 @@ namespace ow.Service.District.Network.Handlers
         //public Character Character { get; init; }
         //public Profile Profile { get; init; }
 
-        //[Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        //public static void Enter(Session session, EnterRequest request, IBoosterRepository boosters, IDayEventBoosterRepository dayEventBoosterRepository, IChannelRepository channels)
-        //{
-        //    var accountModel = await DistrictEnterHelper.GetAccountModel(request.AccountId, request.SessionKey);
-        //    session.SetComponent(new Account(accountModel));
+        [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
+        public static void Enter(GameSession session, EnterRequest request, BoosterRepository boosters, MazeDayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, IBinTables tables)
+        {
+            if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
+                NetworkUtils.DropSession();
 
-        //    var characterModel = await DistrictEnterHelper.GetCharacterModel(request.CharacterId, request.AccountId);
+            {
+                AccountModel model = GetAccountModel(request.AccountId);
+                session.Entity.Set(new AccountEntity(model));
+            }
 
-        //    var character = new Character(characterModel);
-        //    session
-        //        .SetComponent(character)
-        //            .SetComponent(new Profile(characterModel))
-        //            .SetComponent(new Stats())
-        //            .SetComponent(new SpecialOptions())
-        //            .SetComponent(new Gestures(characterModel));
+            {
+                CharacterModel model = GetCharacterModel(request.CharacterId, request.AccountId);
 
-        //    DistrictEnterHelper.CreateStorages(session, accountModel, characterModel);
+                session.Entity.Set(new EntityCharacter(model, tables));
+                session.Entity.Set(new ProfileEntity(model.Profile));
+                session.Entity.Set(new StatsEntity());
+                session.Entity.Set(new SpecialOptionsEntity());
+                session.Entity.Set(new GesturesEntity(model));
+                session.Entity.Set(new Place(model.Place));
+            }
 
-        //    //Hub.SendSessionConnect(session, character);
+            if (!dimensions.Join(session))
+            {
+                session.Disconnect();
+                return;
+            }
 
-        //    channels.JoinToFirstAvailable(session);
+            session
+                .SendServiceCurrentDate()
+                .SendMazeDayEventBoosters(dayEventBoosters)
+                .SendWorldVersion()
+                .SendWorldEnter()
+                .SenBoosterAdd(boosters)
+                //eSUB_CMD_POST_ACCOUNT_RECV
+                //.SendAttendanceRewardLoad()
+                //.SendAttendancePlayTimeInit()
+                //receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
+                //receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
+                //receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
+                //.SendInfiniteTowerLoadInfo()
+                //receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
+                //.SendAttendanceReward()
+                //.SendAttendanceContinueReward()
+                // receive_eSUB_CMD_FRIEND_LOAD
+                // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
+                .SendCharacterDbLoadSync();
+        }
 
-        //    session
-        //        .ReTarget<AuthorizedGroupAttribute>()
-        //        .SendCurrentDate()
-        //        .SendWorldVersion()
-        //        .SendDayEventBoosterList(dayEventBoosterRepository)
-        //        .SendWorldEnter()
-        //        .SendAddBoosters(boosters)
-        //        //eSUB_CMD_POST_ACCOUNT_RECV
-        //        //.SendAttendanceRewardLoad()
-        //        //.SendAttendancePlayTimeInit()
-        //        //receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
-        //        //receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
-        //        //receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
-        //        //.SendInfiniteTowerLoadInfo()
-        //        //receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
-        //        //.SendAttendanceReward()
-        //        //.SendAttendanceContinueReward()
-        //        // receive_eSUB_CMD_FRIEND_LOAD
-        //        // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
-        //        .SendCharacterDbLoadSync();
-        //}
+        public static AccountModel GetAccountModel(int id)
+        {
+            using AccountContext context = new();
+            return context.Accounts.First(c => c.Id == id);
+        }
 
-        //[Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
-        //public static void Heartbeat(Session session, HeartbeatRequest request) =>
-        //session.SendServerHeartbeat(request);
+        public static CharacterModel GetCharacterModel(int id, int account)
+        {
+            using CharacterContext context = new();
+            return context.Characters.First(c => c.Id == id && c.AccountId == account);
+        }
+
+        [Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
+        public static void Heartbeat(GameSession session, HeartbeatRequest request) =>
+            session.SendServiceHeartbeat(request);
 
         [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
         public static void LogOut(GameSession session, LogoutRequest request, GateInstance gate)
@@ -78,7 +104,7 @@ namespace ow.Service.District.Network.Handlers
             if (session.Entity.Get<EntityCharacter>().Id != request.CharacterId)
                 NetworkUtils.DropSession();
 
-            session.SendServerLogOut(gate);
+            session.SendServiceLogOut(gate);
         }
     }
 }

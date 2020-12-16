@@ -12,47 +12,42 @@ namespace ow.Framework.Tests.IO.GameFile
             _tables = testSetup.ServiceProvider.GetRequiredService<BinTable>();
 
         [Fact]
-        public void ReadClassSelectInfoTable() =>
-            _tables.ReadClassSelectInfoTable();
+        public void ReadClassSelectInfoTable() => _tables.ReadClassSelectInfoTable();
 
         [Fact]
-        public void ReadCustomizeEyesTable() =>
-            _tables.ReadCustomizeEyesTable();
+        public void ReadCustomizeEyesTable() => _tables.ReadCustomizeEyesTable();
 
         [Fact]
-        public void ReadCustomizeHairTable() =>
-            _tables.ReadCustomizeHairTable();
+        public void ReadCustomizeHairTable() => _tables.ReadCustomizeHairTable();
 
         [Fact]
-        public void ReadCustomizeSkinTable() =>
-            _tables.ReadCustomizeSkinTable();
+        public void ReadCustomizeSkinTable() => _tables.ReadCustomizeSkinTable();
 
         [Fact]
-        public void ReadDistrictTable() =>
-            _tables.ReadDistrictTable();
+        public void ReadDistrictTable() => _tables.ReadDistrictTable();
 
         [Fact]
-        public void ReadItemTable() =>
-            _tables.ReadItemTable();
+        public void ReadItemTable() => _tables.ReadItemTable();
 
         [Fact]
-        public void ReadCustomizeInfoTable() =>
-            _tables.ReadCustomizeInfoTable();
+        public void ReadCustomizeInfoTable() => _tables.ReadCustomizeInfoTable();
 
         [Fact]
-        public void ReadPhotoItemTable() =>
-            _tables.ReadPhotoItemTable();
+        public void ReadPhotoItemTable() => _tables.ReadPhotoItemTable();
 
         [Fact]
-        public void ReadGestureTable() =>
-            _tables.ReadGestureTable();
+        public void ReadGestureTable() => _tables.ReadGestureTable();
 
         [Fact]
-        public void ReadItemClassifyTable() =>
-            _tables.ReadItemClassifyTable();
+        public void ReadItemClassifyTable() => _tables.ReadItemClassifyTable();
 
         [Fact]
-        public void ReadItemScriptTable() =>
-            _tables.ReadItemScriptTable();
+        public void ReadItemScriptTable() => _tables.ReadItemScriptTable();
+
+        [Fact]
+        public void ReadMazeInfoTable() => _tables.ReadMazeInfoTable();
+
+        [Fact]
+        public void ReadBoosterTable() => _tables.ReadBoosterTable();
     }
 }

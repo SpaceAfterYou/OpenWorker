@@ -6,7 +6,7 @@ using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Gesture;
-using ow.Service.District.Game;
+using ow.Service.District.Game.Entities;
 
 namespace ow.Service.District.Network.Handlers
 {

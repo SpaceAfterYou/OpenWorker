@@ -8,9 +8,9 @@ using System.Text;
 
 namespace ow.Service.Login.Network.Extensions
 {
-    public static class GameSessionExtension
+    internal static class GameSessionExtension
     {
-        public static GameSession SendGateConnect(this GameSession session, GateInstance gate)
+        internal static GameSession SendGateConnect(this GameSession session, GateInstance gate)
         {
             using PacketWriter writer = new(ClientOpcode.GateConnect);
 
@@ -20,7 +20,7 @@ namespace ow.Service.Login.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        public static GameSession SendGateList(this GameSession session, IReadOnlyList<PersonalGate> infos)
+        internal static GameSession SendGateList(this GameSession session, IReadOnlyList<PersonalGate> infos)
         {
             using PacketWriter writer = new(ClientOpcode.GateList);
 
@@ -45,7 +45,7 @@ namespace ow.Service.Login.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        public static GameSession SendGameOptions(this GameSession session, OptionsStatuses options)
+        internal static GameSession SendGameOptions(this GameSession session, OptionsStatuses options)
         {
             using PacketWriter writer = new(ClientOpcode.OptionLoad);
 
@@ -57,7 +57,7 @@ namespace ow.Service.Login.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        public static GameSession SendLogin(this GameSession session, int accountId, string mac, ulong sessionKey)
+        internal static GameSession SendLogin(this GameSession session, int accountId, string mac, ulong sessionKey)
         {
             using PacketWriter writer = new(ClientOpcode.LoginResult);
 
@@ -81,7 +81,7 @@ namespace ow.Service.Login.Network.Extensions
             return session.SendAsync(writer);
         }
 
-        public static GameSession SendLogin(this GameSession session, TableMessage code, string message = "")
+        internal static GameSession SendLogin(this GameSession session, TableMessage code, string message = "")
         {
             using PacketWriter writer = new(ClientOpcode.LoginResult);
 

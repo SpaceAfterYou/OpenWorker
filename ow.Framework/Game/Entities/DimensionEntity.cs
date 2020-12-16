@@ -30,7 +30,7 @@ namespace ow.Framework.Game.Entities
 
         public DimensionEntity(ushort id) => Id = id;
 
-        internal bool TryJoin(GameSession session)
+        public bool TryJoin(GameSession session)
         {
             lock (_sessionsLock)
             {

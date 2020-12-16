@@ -12,7 +12,7 @@ using System.Net.Sockets;
 
 namespace ow.Framework.IO.Network
 {
-    public sealed partial class GameSession : TcpSession
+    public sealed class GameSession : TcpSession
     {
         public Entity Entity { get; }
 
@@ -22,16 +22,27 @@ namespace ow.Framework.IO.Network
         public static implicit operator Entity(GameSession session) =>
             session.Entity;
 
-        protected override void Dispose(bool disposingManagedResources)
+        #region Send Service
+
+        public GameSession SendServiceCurrentDate()
         {
-            if (Entity.Has<DimensionMemberEntity>())
-                Entity.Get<DimensionMemberEntity>().Leave();
+            using PacketWriter writer = new(ClientOpcode.CurrentDate);
 
-            if (disposingManagedResources)
-                Entity.Dispose();
+            DateTimeOffset dateTime = DateTimeOffset.Now;
 
-            base.Dispose(disposingManagedResources);
+            writer.Write(dateTime.ToUnixTimeSeconds());
+            writer.Write((ushort)dateTime.Year);
+            writer.Write((ushort)dateTime.Month);
+            writer.Write((ushort)dateTime.Day);
+            writer.Write((ushort)dateTime.Hour);
+            writer.Write((ushort)dateTime.Minute);
+            writer.Write((ushort)dateTime.Second);
+            writer.Write(Convert.ToUInt16(TimeZoneInfo.Local.IsDaylightSavingTime(dateTime)));
+
+            return SendAsync(writer);
         }
+
+        #endregion Send Service
 
         public GameSession SendAsync(PacketWriter pw)
         {
@@ -51,6 +62,17 @@ namespace ow.Framework.IO.Network
 
             _provider = provider;
             _logger = logger;
+        }
+
+        protected override void Dispose(bool disposingManagedResources)
+        {
+            if (Entity.Has<DimensionMemberEntity>())
+                Entity.Get<DimensionMemberEntity>().Leave();
+
+            if (disposingManagedResources)
+                Entity.Dispose();
+
+            base.Dispose(disposingManagedResources);
         }
 
         protected override void OnDisconnected() =>

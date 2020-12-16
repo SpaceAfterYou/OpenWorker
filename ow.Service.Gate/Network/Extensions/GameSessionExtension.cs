@@ -6,7 +6,6 @@ using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Enums;
-using System;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Extensions
@@ -101,24 +100,6 @@ namespace ow.Service.Gate.Network.Extensions
             writer.WritePlace(place);
 
             writer.Write(new byte[12]);
-
-            return session.SendAsync(writer);
-        }
-
-        internal static GameSession SendCurrentDate(this GameSession session)
-        {
-            using PacketWriter writer = new(ClientOpcode.CurrentDate);
-
-            DateTimeOffset dateTime = DateTimeOffset.Now;
-
-            writer.Write(dateTime.ToUnixTimeSeconds());
-            writer.Write((ushort)dateTime.Year);
-            writer.Write((ushort)dateTime.Month);
-            writer.Write((ushort)dateTime.Day);
-            writer.Write((ushort)dateTime.Hour);
-            writer.Write((ushort)dateTime.Minute);
-            writer.Write((ushort)dateTime.Second);
-            writer.Write(Convert.ToUInt16(TimeZoneInfo.Local.IsDaylightSavingTime(dateTime)));
 
             return session.SendAsync(writer);
         }

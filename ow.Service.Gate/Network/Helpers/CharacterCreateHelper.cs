@@ -92,7 +92,7 @@ namespace ow.Service.Gate.Network.Helpers
                 Energy = new(),
                 Title = new(),
                 Profile = new(),
-                Getures = new uint[Defines.QuickSlotsCount],
+                Gestures = new uint[Defines.QuickSlotsCount],
                 Photo = binTable.PhotoItemTable.Values.First(c => c.Hero == request.Character.Main.Hero && c.Unknown14 == 1).Id
             };
 

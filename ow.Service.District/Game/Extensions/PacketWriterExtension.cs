@@ -11,5 +11,8 @@ namespace ow.Service.District.Game
 
         internal static void WriteLogoutWay(this PacketWriter writer, LogoutWay value) =>
             writer.Write((byte)value);
+
+        internal static void WriteCanWorldConnect(this PacketWriter writer, CanWorldConnect value) =>
+            writer.Write((byte)value);
     }
 }

@@ -5,14 +5,16 @@ using ow.Framework.Game.Datas.World.Table;
 
 namespace ow.Service.District.Game
 {
-    public class Zone
+    public sealed record Zone
     {
-        public DistrictTableEntity Table { get; }
-        public VRoot Place { get; }
+        internal ushort Id { get; }
+        internal DistrictTableEntity Table { get; }
+        internal VRoot Place { get; }
 
         public Zone(IConfiguration configuration, BinTables binTable, WorldTables worldTable)
         {
-            Table = binTable.DistrictTable[ushort.Parse(configuration["Zone:Id"])];
+            Id = ushort.Parse(configuration["Zone:Id"]);
+            Table = binTable.DistrictTable[Id];
             Place = worldTable.Read(Table.Batch);
         }
     }
