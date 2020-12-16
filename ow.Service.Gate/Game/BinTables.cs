@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game;
+﻿using Microsoft.Extensions.Configuration;
+using ow.Framework.Game;
 using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
@@ -17,16 +18,18 @@ namespace ow.Service.Gate.Game
         public IReadOnlyDictionary<uint, CharacterBackgroundTableEntity> CharacterBackgroundTable { get; }
         public IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItemTable { get; }
 
-        public BinTables(BinTable processor)
+        public BinTables(IConfiguration configuration)
         {
-            ClassSelectInfoTable = processor.ReadClassSelectInfoTable();
-            CustomizeSkinTable = processor.ReadCustomizeSkinTable();
-            CustomizeEyesTable = processor.ReadCustomizeEyesTable();
-            CustomizeHairTable = processor.ReadCustomizeHairTable();
-            DistrictTable = processor.ReadDistrictTable();
-            CharacterInfoTable = processor.ReadCharacterInfoTable();
-            CharacterBackgroundTable = processor.ReadCharacterBackgroundTable();
-            PhotoItemTable = processor.ReadPhotoItemTable();
+            using BinTable tables = new(configuration);
+
+            ClassSelectInfoTable = tables.ReadClassSelectInfoTable();
+            CustomizeSkinTable = tables.ReadCustomizeSkinTable();
+            CustomizeEyesTable = tables.ReadCustomizeEyesTable();
+            CustomizeHairTable = tables.ReadCustomizeHairTable();
+            DistrictTable = tables.ReadDistrictTable();
+            CharacterInfoTable = tables.ReadCharacterInfoTable();
+            CharacterBackgroundTable = tables.ReadCharacterBackgroundTable();
+            PhotoItemTable = tables.ReadPhotoItemTable();
         }
     }
 }

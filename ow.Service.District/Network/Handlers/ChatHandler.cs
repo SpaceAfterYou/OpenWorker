@@ -1,10 +1,10 @@
-﻿using ow.Framework.Game.Enums;
+﻿using ow.Framework.Game.Entities;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Chat;
-using ow.Service.District.Game;
 using ow.Service.District.Network.Repositories;
 
 namespace ow.Service.District.Network.Handlers
@@ -31,7 +31,7 @@ namespace ow.Service.District.Network.Handlers
                 return;
             }
 
-            session.Entity.Get<Dimension>().BroadcastChatMessage(session, request);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastChatMessage(request);
         }
     }
 }

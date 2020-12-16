@@ -1,5 +1,6 @@
 ﻿using ow.Framework.Database.Characters;
 using ow.Framework.Game.Character;
+using ow.Framework.Game.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
@@ -12,13 +13,13 @@ namespace ow.Service.District.Network.Handlers
     internal static class GestureHandler
     {
         [Handler(ServerOpcode.GestureDo, HandlerPermission.Authorized)]
-        public static void GetOthers(GameSession session, DoRequest request) => session.Entity.Get<Dimension>()
-            .BroadcastGestureDo(session, request);
+        public static void GetOthers(GameSession session, DoRequest request) => session.Entity.Get<DimensionMemberEntity>()
+            .BroadcastGestureDo(request);
 
         [Handler(ServerOpcode.GestureUpdateSlots, HandlerPermission.Authorized)]
         public static void UpdateSlots(GameSession session, SlotsUpdateRequest request)
         {
-            Gestures gestures = session.Entity.Get<Gestures>();
+            GesturesEntity gestures = session.Entity.Get<GesturesEntity>();
 
             foreach (SlotsUpdateSlotRequest gesture in request.Values)
                 gestures[gesture.Id] = gesture.Value;

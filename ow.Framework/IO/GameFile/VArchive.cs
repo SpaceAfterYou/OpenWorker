@@ -12,7 +12,6 @@ namespace ow.Framework.IO.GameFile
         {
             byte[] data = File.ReadAllBytes(path);
             Exchange(ref data);
-
             return new(data);
         }
 

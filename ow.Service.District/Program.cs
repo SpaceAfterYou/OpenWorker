@@ -17,7 +17,7 @@ namespace ow.Service.District
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
                 .AddSingleton<ChatCommandRepository>()
-                .AddTransient<BinTable>()
+                .AddSingleton<Dimensions>()
                 .AddSingleton<BinTables>()
                 .AddSingleton<CachedNpcs>()
                 .AddTransient<WorldTables>()

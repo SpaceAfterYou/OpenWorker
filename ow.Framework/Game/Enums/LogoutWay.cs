@@ -2,5 +2,7 @@
 {
     public enum LogoutWay
     {
+        AuthService = 0,
+        GateService = 1,
     }
 }

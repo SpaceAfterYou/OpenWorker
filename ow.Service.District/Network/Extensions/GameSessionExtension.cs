@@ -1,5 +1,4 @@
 ﻿using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
@@ -7,7 +6,7 @@ using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Service.District.Game;
-using System.Linq;
+using ow.Service.District.Game.Enums;
 
 namespace ow.Service.District.Network
 {
@@ -92,7 +91,7 @@ namespace ow.Service.District.Network
         {
             using PacketWriter writer = new(ClientOpcode.GestureLoad);
 
-            Gestures gestures = session.Entity.Get<Gestures>();
+            GesturesEntity gestures = session.Entity.Get<GesturesEntity>();
 
             foreach (uint gesture in gestures)
                 writer.Write(gesture);
@@ -103,27 +102,6 @@ namespace ow.Service.District.Network
         internal static GameSession SendCharacterPostInfo(this GameSession session)
         {
             return session;
-        }
-
-        internal static GameSession SendCharacterOtherInfos(this GameSession session)
-        {
-            using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
-
-            Dimension dimension = session.Entity.Get<Dimension>();
-
-            /// (.Values) will make copy all sessions in channel
-            GameSession[] sessions = dimension.Sessions.Values.ToArray();
-
-            writer.Write((short)sessions.Length);
-            foreach (GameSession member in sessions)
-            {
-                writer.WriteCharacter(member);
-
-                Place place = member.Entity.Get<Place>();
-                writer.WritePlace(place);
-            }
-
-            return session.SendAsync(writer);
         }
 
         #endregion Send Characters
@@ -147,5 +125,27 @@ namespace ow.Service.District.Network
         }
 
         #endregion Send Chat
+
+        #region Send Service
+
+        internal static GameSession SendServerLogOut(this GameSession session, GateInstance gate)
+        {
+            using PacketWriter writer = new(ClientOpcode.LogOut);
+
+            AccountEntity account = session.Entity.Get<AccountEntity>();
+            writer.Write(account.Id);
+
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
+            writer.WriteNumberLengthUtf8String(gate.Ip);
+            writer.Write(gate.Port);
+            writer.WriteLogoutWay(LogoutWay.GateService);
+            writer.WriteCanLogOutConnect(CanLogOutConnect.Yes);
+
+            return session.SendAsync(writer);
+        }
+
+        #endregion Send Service
     }
 }

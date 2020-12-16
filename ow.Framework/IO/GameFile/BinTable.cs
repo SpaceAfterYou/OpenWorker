@@ -11,7 +11,7 @@ using System.Reflection;
 
 namespace ow.Framework.Game
 {
-    public class BinTable
+    public class BinTable : IDisposable
     {
         private readonly VData12 _data;
 
@@ -66,6 +66,12 @@ namespace ow.Framework.Game
 
             for (uint q = 0, count = br.ReadUInt32(); q < count; ++q)
                 yield return br;
+        }
+
+        void IDisposable.Dispose()
+        {
+            ((IDisposable)_data).Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

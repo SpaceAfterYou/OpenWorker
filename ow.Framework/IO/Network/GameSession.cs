@@ -1,6 +1,7 @@
 ﻿using DefaultEcs;
 using Microsoft.Extensions.Logging;
 using NetCoreServer;
+using ow.Framework.Game.Entities;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;
 using ow.Framework.Utils;
@@ -23,6 +24,9 @@ namespace ow.Framework.IO.Network
 
         protected override void Dispose(bool disposingManagedResources)
         {
+            if (Entity.Has<DimensionMemberEntity>())
+                Entity.Get<DimensionMemberEntity>().Leave();
+
             if (disposingManagedResources)
                 Entity.Dispose();
 

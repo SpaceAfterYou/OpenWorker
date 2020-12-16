@@ -7,6 +7,7 @@ using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Character;
+using ow.Framework.Utils;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Network.Extensions;
 using ow.Service.Gate.Network.Helpers;
@@ -20,32 +21,20 @@ namespace ow.Service.Gate.Network.Handlers
         public static void ChangeSlot(GameSession session, ChangeSlotRequest request)
         {
             if (1 > request.FirstSlot || request.FirstSlot > Defines.CharactersSlotsCount)
-#if !DEBUG
-                throw new BadActionException();
-#endif
-                return;
+                NetworkUtils.DropSession();
 
             if (1 > request.SecondSlot || request.SecondSlot > Defines.CharactersSlotsCount)
-#if !DEBUG
-                throw new BadActionException();
-#endif
-                return;
+                NetworkUtils.DropSession();
 
             if (request.FirstSlot == request.SecondSlot)
-#if !DEBUG
-                throw new BadActionException();
-#endif
-                return;
+                NetworkUtils.DropSession();
 
             //var first = slots.FirstOrDefault(slot => slot.Id == request.FirstSlot);
             //var second = slots.FirstOrDefault(slot => slot.Id == request.SecondSlot);
 
             ///* No characters found */
             //if (first is null && second is null)
-            //#if !DEBUG
-            //                throw new BadActionException();
-            //#endif
-            //            return;
+            //    NetworkUtils.DropSession();
 
             //if (second is not null && first is not null)
             //{
@@ -81,21 +70,13 @@ namespace ow.Service.Gate.Network.Handlers
 
             Account account = session.Entity.Get<Account>();
             if (context.Characters.Any(c => c.Slot == request.SlotId && c.AccountId == account.Id))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
+                NetworkUtils.DropSession();
 
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name))
                 return;
 
             if (!tables.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity classInfo))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
+                NetworkUtils.DropSession();
 
             /// [ TODO ] Add default items to inventory
 
@@ -112,13 +93,9 @@ namespace ow.Service.Gate.Network.Handlers
         public static void Delete(GameSession session, DeleteRequest request)
         {
             Characters characters = session.Entity.Get<Characters>();
+
             int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1)
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
+            if (slot != -1) NetworkUtils.DropSession();
 
             characters.Remove(slot);
 
@@ -137,12 +114,7 @@ namespace ow.Service.Gate.Network.Handlers
             Characters characters = session.Entity.Get<Characters>();
 
             int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1)
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
+            if (slot != -1) NetworkUtils.DropSession();
 
             characters.Favorite = characters[slot].Get<EntityCharacter>();
             session.SendFavoriteCharacter();
@@ -154,12 +126,7 @@ namespace ow.Service.Gate.Network.Handlers
             Characters characters = session.Entity.Get<Characters>();
 
             int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1)
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
+            if (slot != -1) NetworkUtils.DropSession();
 
             characters.LastSelected = characters[slot].Get<EntityCharacter>();
             session.SendCharacterSelect(district);
@@ -174,11 +141,7 @@ namespace ow.Service.Gate.Network.Handlers
         public static void ChangeBackground(GameSession session, ChangeBackgroundRequest request, BinTables binTable)
         {
             if (!binTable.CharacterBackgroundTable.TryGetValue(request.BackgroundId, out CharacterBackgroundTableEntity entity))
-#if !DEBUG
-                throw new BadActionException();
-#else
-                return;
-#endif
+                NetworkUtils.DropSession();
 
             session.Entity.Set(entity);
             session.SendCharacterBackground();

@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game;
+﻿using Microsoft.Extensions.Configuration;
+using ow.Framework.Game;
 using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
@@ -13,8 +14,10 @@ namespace ow.Service.District.Game
         public IReadOnlyDictionary<Hero, CustomizeHairTableEntity> CustomizeHairTable { get; }
         public IReadOnlyDictionary<ushort, DistrictTableEntity> DistrictTable { get; }
 
-        public BinTables(BinTable tables)
+        public BinTables(IConfiguration configuration)
         {
+            using BinTable tables = new(configuration);
+
             CustomizeSkinTable = tables.ReadCustomizeSkinTable();
             CustomizeEyesTable = tables.ReadCustomizeEyesTable();
             CustomizeHairTable = tables.ReadCustomizeHairTable();

@@ -6,53 +6,53 @@ namespace ow.Framework.Tests.IO.GameFile
 {
     public sealed class BinTableTest : IClassFixture<Startup>
     {
-        private readonly BinTable _binTableProcessor;
+        private readonly BinTable _tables;
 
         public BinTableTest(Startup testSetup) =>
-            _binTableProcessor = testSetup.ServiceProvider.GetRequiredService<BinTable>();
+            _tables = testSetup.ServiceProvider.GetRequiredService<BinTable>();
 
         [Fact]
         public void ReadClassSelectInfoTable() =>
-            _binTableProcessor.ReadClassSelectInfoTable();
+            _tables.ReadClassSelectInfoTable();
 
         [Fact]
         public void ReadCustomizeEyesTable() =>
-            _binTableProcessor.ReadCustomizeEyesTable();
+            _tables.ReadCustomizeEyesTable();
 
         [Fact]
         public void ReadCustomizeHairTable() =>
-            _binTableProcessor.ReadCustomizeHairTable();
+            _tables.ReadCustomizeHairTable();
 
         [Fact]
         public void ReadCustomizeSkinTable() =>
-            _binTableProcessor.ReadCustomizeSkinTable();
+            _tables.ReadCustomizeSkinTable();
 
         [Fact]
         public void ReadDistrictTable() =>
-            _binTableProcessor.ReadDistrictTable();
+            _tables.ReadDistrictTable();
 
         [Fact]
         public void ReadItemTable() =>
-            _binTableProcessor.ReadItemTable();
+            _tables.ReadItemTable();
 
         [Fact]
         public void ReadCustomizeInfoTable() =>
-            _binTableProcessor.ReadCustomizeInfoTable();
+            _tables.ReadCustomizeInfoTable();
 
         [Fact]
         public void ReadPhotoItemTable() =>
-            _binTableProcessor.ReadPhotoItemTable();
+            _tables.ReadPhotoItemTable();
 
         [Fact]
         public void ReadGestureTable() =>
-            _binTableProcessor.ReadGestureTable();
+            _tables.ReadGestureTable();
 
         [Fact]
         public void ReadItemClassifyTable() =>
-            _binTableProcessor.ReadItemClassifyTable();
+            _tables.ReadItemClassifyTable();
 
         [Fact]
         public void ReadItemScriptTable() =>
-            _binTableProcessor.ReadItemScriptTable();
+            _tables.ReadItemScriptTable();
     }
 }

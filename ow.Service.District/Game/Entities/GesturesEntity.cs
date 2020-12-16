@@ -2,7 +2,7 @@
 
 namespace ow.Service.District.Game
 {
-    internal sealed class Gestures : List<uint>
+    internal sealed class GesturesEntity : List<uint>
     {
     }
 }

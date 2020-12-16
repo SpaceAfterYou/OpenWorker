@@ -24,7 +24,7 @@
         CharacterSpecialOptionUpdateList = 0x0347,
         CharacterTitleLoad = 0x0323,
         CharacterTitleUpdate = 0x0325,
-        LogOut = 0x0360,
+        DistrictLogOut = 0x0360,
 
         OthersInfo = 0x0406,
         Disconnect = 0x0419,

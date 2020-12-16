@@ -1,4 +1,13 @@
-﻿namespace ow.Service.District.Network.Handlers
+﻿using ow.Framework.Game.Character;
+using ow.Framework.IO.Network;
+using ow.Framework.IO.Network.Attributes;
+using ow.Framework.IO.Network.Opcodes;
+using ow.Framework.IO.Network.Permissions;
+using ow.Framework.IO.Network.Requests.Server;
+using ow.Framework.Utils;
+using ow.Service.District.Game;
+
+namespace ow.Service.District.Network.Handlers
 {
     internal static class ServiceHandler
     {
@@ -54,22 +63,22 @@
         //public static void Heartbeat(Session session, HeartbeatRequest request) =>
         //session.SendServerHeartbeat(request);
 
-        //[Handler(ServerOpcode.LogOut, HandlerPermission.Authorized)]
-        //public static void LogOut(Session session, LogoutRequest request, GateConnection connection)
-        //{
-        //    var account = session.GetComponent<Account>();
-        //    if (account.Id != request.AccountId)
-        //    {
-        //        return;
-        //    }
+        [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
+        public static void LogOut(GameSession session, LogoutRequest request, GateInstance gate)
+        {
+            if (!session.Entity.Has<AccountEntity>())
+                NetworkUtils.DropSession();
 
-        //    var character = session.GetComponent<Character>();
-        //    if (character.Id != request.CharacterId)
-        //    {
-        //        return;
-        //    }
+            if (session.Entity.Get<AccountEntity>().Id != request.AccountId)
+                NetworkUtils.DropSession();
 
-        //    session.SendServerLogOut(account, character, connection);
-        //}
+            if (!session.Entity.Has<EntityCharacter>())
+                NetworkUtils.DropSession();
+
+            if (session.Entity.Get<EntityCharacter>().Id != request.CharacterId)
+                NetworkUtils.DropSession();
+
+            session.SendServerLogOut(gate);
+        }
     }
 }

@@ -1,10 +1,10 @@
 ﻿using ow.Framework.Game.Datas;
+using ow.Framework.Game.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Movement;
-using ow.Service.District.Game;
 
 namespace ow.Service.District.Network.Handlers
 {
@@ -17,12 +17,12 @@ namespace ow.Service.District.Network.Handlers
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 
-            session.Entity.Get<Dimension>().BroadcastMovementJump(session, request);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementJump(request);
         }
 
         [Handler(ServerOpcode.MovementLoopMotionEnd, HandlerPermission.Authorized)]
         public static void LoopMotionEndBroadcast(GameSession session) =>
-            session.Entity.Get<Dimension>().BroadcastLoopMotionEnd(session);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastLoopMotionEnd(session);
 
         [Handler(ServerOpcode.MovementMove, HandlerPermission.Authorized)]
         public static void Move(GameSession session, MoveRequest request)
@@ -31,7 +31,7 @@ namespace ow.Service.District.Network.Handlers
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 
-            session.Entity.Get<Dimension>().BroadcastMovementMove(session, request);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementMove(request);
         }
 
         [Handler(ServerOpcode.MovementStopBt, HandlerPermission.Authorized)]
@@ -41,7 +41,7 @@ namespace ow.Service.District.Network.Handlers
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 
-            session.Entity.Get<Dimension>().BroadcastMovementStop(session, request);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementStop(request);
         }
     }
 }
