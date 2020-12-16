@@ -7,7 +7,7 @@ namespace ow.Framework.IO.Network.Requests.Server
     public readonly struct EnterRequest
     {
         public int AccountId { get; } // 6D 38 08 00
-        public uint CharacterId { get; } // EF 02 2F 00
+        public int CharacterId { get; } // EF 02 2F 00
         private short Unknown1 { get; } // 65 00
         private byte Unknown2 { get; } // 00
         private byte Unknown3 { get; } // 01 - Channel???
@@ -19,7 +19,7 @@ namespace ow.Framework.IO.Network.Requests.Server
         public EnterRequest(BinaryReader br)
         {
             AccountId = br.ReadInt32();
-            CharacterId = br.ReadUInt32();
+            CharacterId = br.ReadInt32();
             Unknown1 = br.ReadInt16();
             Unknown2 = br.ReadByte();
             Unknown3 = br.ReadByte();

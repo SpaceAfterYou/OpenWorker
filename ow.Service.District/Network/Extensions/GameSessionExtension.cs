@@ -158,6 +158,18 @@ namespace ow.Service.District.Network
             return session.SendAsync(writer);
         }
 
+        internal static GameSession SendServiceWorldVersion(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.WorldVersion);
+
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+
+            return session.SendAsync(writer);
+        }
+
         internal static GameSession SendServiceCurrentDate(this GameSession session)
         {
             using PacketWriter writer = new(ClientOpcode.CurrentDate);

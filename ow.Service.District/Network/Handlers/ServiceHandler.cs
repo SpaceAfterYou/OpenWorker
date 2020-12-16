@@ -1,6 +1,9 @@
-﻿using ow.Framework.Game.Character;
+﻿using ow.Framework.Database.Accounts;
+using ow.Framework.Database.Characters;
+using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Entities;
+using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
@@ -9,6 +12,7 @@ using ow.Framework.IO.Network.Requests.Server;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Entities;
+using System.Linq;
 
 namespace ow.Service.District.Network.Handlers
 {
@@ -19,20 +23,23 @@ namespace ow.Service.District.Network.Handlers
         //public Profile Profile { get; init; }
 
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, IBoosterRepository boosters, IDayEventBoosterRepository dayEventBoosterRepository, IChannelRepository channels, IBinTables tables)
+        public static void Enter(GameSession session, EnterRequest request, IBoosterRepository boosters, IDayEventBoosterRepository dayEventBoosterRepository, IChannelRepository channels, LanContext lan, IBinTables tables)
         {
-            var accountModel = await DistrictEnterHelper.GetAccountModel(request.AccountId, request.SessionKey);
-            session.SetComponent(new Account(accountModel));
+            if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
+                NetworkUtils.DropSession();
 
-            var characterModel = await DistrictEnterHelper.GetCharacterModel(request.CharacterId, request.AccountId);
+            AccountModel accountModel = GetAccountModel(request.AccountId);
+            session.Entity.Set(new AccountEntity(accountModel));
+
+            CharacterModel characterModel = GetCharacterModel(request.CharacterId, request.AccountId);
 
             session.Entity.Set(new EntityCharacter(characterModel, tables));
-            session.Entity.Set(new ProfileEntity(characterModel));
+            session.Entity.Set(new ProfileEntity(characterModel.Profile));
             session.Entity.Set(new StatsEntity());
             session.Entity.Set(new SpecialOptionsEntity());
             session.Entity.Set(new GesturesEntity(characterModel));
 
-            DistrictEnterHelper.CreateStorages(session, accountModel, characterModel);
+            //DistrictEnterHelper.CreateStorages(session, accountModel, characterModel);
 
             //Hub.SendSessionConnect(session, character);
 
@@ -40,7 +47,7 @@ namespace ow.Service.District.Network.Handlers
 
             session
                 .SendServiceCurrentDate()
-                .SendWorldVersion()
+                .SendServiceWorldVersion()
                 .SendDayEventBoosterList(dayEventBoosterRepository)
                 .SendWorldEnter()
                 .SendAddBoosters(boosters)
@@ -57,6 +64,18 @@ namespace ow.Service.District.Network.Handlers
                 // receive_eSUB_CMD_FRIEND_LOAD
                 // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
                 .SendCharacterDbLoadSync();
+        }
+
+        public static AccountModel GetAccountModel(int id)
+        {
+            using AccountContext context = new();
+            return context.Accounts.First(c => c.Id == id);
+        }
+
+        public static CharacterModel GetCharacterModel(int id, int account)
+        {
+            using CharacterContext context = new();
+            return context.Characters.First(c => c.Id == id && c.AccountId == account);
         }
 
         [Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
