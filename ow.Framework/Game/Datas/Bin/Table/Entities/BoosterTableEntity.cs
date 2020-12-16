@@ -75,6 +75,6 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown42 = br.ReadUInt32();
         }
 
-        private const byte ItemsCount = 7;
+        private const byte ItemsCount = 8;
     }
 }

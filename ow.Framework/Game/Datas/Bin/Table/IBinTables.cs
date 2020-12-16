@@ -34,3 +34,5 @@ namespace ow.Framework.Game.Datas.Bin.Table
         IReadOnlyDictionary<ushort, BoosterTableEntity> BoosterTable { get => throw new NotImplementedException(); }
     }
 }
+
+/// https://youtu.be/tcmq8483LKg
