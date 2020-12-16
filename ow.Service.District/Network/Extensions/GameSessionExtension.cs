@@ -109,7 +109,7 @@ namespace ow.Service.District.Network
         {
             using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
 
-            Dimension dimension = session.Entity.Get<Dimension>();
+            DimensionEntity dimension = session.Entity.Get<DimensionEntity>();
 
             /// (.Values) will make copy all sessions in channel
             GameSession[] sessions = dimension.Sessions.Values.ToArray();
