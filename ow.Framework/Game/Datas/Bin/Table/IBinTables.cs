@@ -28,5 +28,7 @@ namespace ow.Framework.Game.Datas.Bin.Table
         IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItemTable { get => throw new NotImplementedException(); }
 
         IReadOnlyDictionary<ushort, GestureTableEntity> GestureTable { get => throw new NotImplementedException(); }
+
+        IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfoTable { get => throw new NotImplementedException(); }
     }
 }

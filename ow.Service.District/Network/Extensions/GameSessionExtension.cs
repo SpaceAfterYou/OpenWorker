@@ -30,7 +30,7 @@ namespace ow.Service.District.Network
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendNpcOtherInfos(this GameSession session, CachedNpcs npcs)
+        internal static GameSession SendNpcOtherInfos(this GameSession session, CachedNpcRepository npcs)
         {
             using PacketWriter writer = new(ClientOpcode.NpcOtherInfos);
 
@@ -154,6 +154,20 @@ namespace ow.Service.District.Network
             writer.Write(gate.Port);
             writer.WriteLogoutWay(LogoutWay.GateService);
             writer.WriteCanLogOutConnect(CanLogOutConnect.Yes);
+
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendServiceDayEventBoosters(this GameSession session, DayEventBoosterRepository boosters)
+        {
+            using PacketWriter writer = new(ClientOpcode.EventDayEventBoosterList);
+
+            writer.Write((ushort)boosters.Count);
+            foreach (var booster in boosters)
+            {
+                writer.Write(booster.Maze);
+                writer.Write(booster.Id);
+            }
 
             return session.SendAsync(writer);
         }

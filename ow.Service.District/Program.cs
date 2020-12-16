@@ -4,6 +4,7 @@ using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Extensions;
 using ow.Service.District.Game;
+using ow.Service.District.Game.Repositories;
 using ow.Service.District.Network.Repositories;
 
 namespace ow.Service.District
@@ -17,9 +18,9 @@ namespace ow.Service.District
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
                 .AddSingleton<ChatCommandRepository>()
-                .AddSingleton<Dimensions>()
+                .AddSingleton<DimensionRepository>()
                 .AddSingleton<BinTables>()
-                .AddSingleton<CachedNpcs>()
+                .AddSingleton<CachedNpcRepository>()
                 .AddTransient<WorldTables>()
                 .AddFramework()
                 .AddLan());

@@ -3,11 +3,11 @@ using ow.Framework.Game.Entities;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ow.Service.District.Game
+namespace ow.Service.District.Game.Repositories
 {
-    internal class Dimensions : Dictionary<ushort, DimensionEntity>
+    internal class DimensionRepository : Dictionary<ushort, DimensionEntity>
     {
-        public Dimensions(IConfiguration configuration) : base(GetDimensions(configuration))
+        public DimensionRepository(IConfiguration configuration) : base(GetDimensions(configuration))
         {
         }
 

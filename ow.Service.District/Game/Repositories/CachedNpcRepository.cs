@@ -8,9 +8,9 @@ using System.Numerics;
 
 namespace ow.Service.District.Game
 {
-    public sealed class CachedNpcs : List<CachedNpc>
+    public sealed class CachedNpcRepository : List<CachedNpc>
     {
-        public CachedNpcs(Zone zone) : base(GetNpcs(zone.Place))
+        public CachedNpcRepository(Zone zone) : base(GetNpcs(zone.Place))
         {
         }
 

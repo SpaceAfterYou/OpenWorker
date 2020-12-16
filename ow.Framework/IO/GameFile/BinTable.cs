@@ -54,6 +54,9 @@ namespace ow.Framework.Game
         public IReadOnlyDictionary<ushort, GestureTableEntity> ReadGestureTable() =>
             Read<ushort, GestureTableEntity>(_data, "tb_Gesture");
 
+        public IReadOnlyDictionary<ushort, MazeInfoTableEntity> ReadMazeInfoTable() =>
+            Read<ushort, MazeInfoTableEntity>(_data, "tb_Maze_Info");
+
         public BinTable(IConfiguration configuration) => _data = new(configuration);
 
         internal static IReadOnlyDictionary<TId, TItem> Read<TId, TItem>(VData12 data, string file) where TId : IConvertible where TItem : ITableEntity<TId> => GetEntries(data, file)

@@ -16,7 +16,7 @@ namespace ow.Service.District.Network.Handlers
             .SendCharacterSpecialOptionUpdateList(request);
 
         [Handler(ServerOpcode.OthersInfo, HandlerPermission.Authorized)]
-        public static void GetOthers(GameSession session, CachedNpcs npcs) => session
+        public static void GetOthers(GameSession session, CachedNpcRepository npcs) => session
             .SendNpcOtherInfos(npcs).Entity.Get<DimensionMemberEntity>()
             .SendCharacterOtherInfos();
 
