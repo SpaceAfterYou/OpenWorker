@@ -1,6 +1,7 @@
 ﻿using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
 using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Entities;
 using ow.Framework.IO.Lan;
@@ -12,6 +13,7 @@ using ow.Framework.IO.Network.Requests.Server;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Entities;
+using ow.Service.District.Game.Repositories;
 using System.Linq;
 
 namespace ow.Service.District.Network.Handlers
@@ -23,32 +25,37 @@ namespace ow.Service.District.Network.Handlers
         //public Profile Profile { get; init; }
 
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, IBoosterRepository boosters, IDayEventBoosterRepository dayEventBoosterRepository, IChannelRepository channels, LanContext lan, IBinTables tables)
+        public static void Enter(GameSession session, EnterRequest request, IBoosterRepository boosters, MazeDayEventBoosterRepository dayEventBoosterRepository, DimensionRepository dimensions, LanContext lan, IBinTables tables)
         {
             if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
 
-            AccountModel accountModel = GetAccountModel(request.AccountId);
-            session.Entity.Set(new AccountEntity(accountModel));
+            {
+                AccountModel model = GetAccountModel(request.AccountId);
+                session.Entity.Set(new AccountEntity(model));
+            }
 
-            CharacterModel characterModel = GetCharacterModel(request.CharacterId, request.AccountId);
+            {
+                CharacterModel model = GetCharacterModel(request.CharacterId, request.AccountId);
 
-            session.Entity.Set(new EntityCharacter(characterModel, tables));
-            session.Entity.Set(new ProfileEntity(characterModel.Profile));
-            session.Entity.Set(new StatsEntity());
-            session.Entity.Set(new SpecialOptionsEntity());
-            session.Entity.Set(new GesturesEntity(characterModel));
+                session.Entity.Set(new EntityCharacter(model, tables));
+                session.Entity.Set(new ProfileEntity(model.Profile));
+                session.Entity.Set(new StatsEntity());
+                session.Entity.Set(new SpecialOptionsEntity());
+                session.Entity.Set(new GesturesEntity(model));
+                session.Entity.Set(new Place(model.Place));
+            }
 
-            //DistrictEnterHelper.CreateStorages(session, accountModel, characterModel);
-
-            //Hub.SendSessionConnect(session, character);
-
-            channels.JoinToFirstAvailable(session);
+            if (!dimensions.Join(session))
+            {
+                session.Disconnect();
+                return;
+            }
 
             session
                 .SendServiceCurrentDate()
-                .SendServiceWorldVersion()
-                .SendDayEventBoosterList(dayEventBoosterRepository)
+                .SendMazeDayEventBoosters(dayEventBoosterRepository)
+                .SendWorldVersion()
                 .SendWorldEnter()
                 .SendAddBoosters(boosters)
                 //eSUB_CMD_POST_ACCOUNT_RECV

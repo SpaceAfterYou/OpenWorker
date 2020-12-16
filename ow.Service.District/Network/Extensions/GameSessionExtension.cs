@@ -1,4 +1,5 @@
 ﻿using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
@@ -9,6 +10,7 @@ using ow.Framework.IO.Network.Requests.Server;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Entities;
 using ow.Service.District.Game.Enums;
+using ow.Service.District.Game.Repositories;
 using System;
 
 namespace ow.Service.District.Network
@@ -129,6 +131,24 @@ namespace ow.Service.District.Network
 
         #endregion Send Chat
 
+        #region Send Maze
+
+        internal static GameSession SendMazeDayEventBoosters(this GameSession session, MazeDayEventBoosterRepository boosters)
+        {
+            using PacketWriter writer = new(ClientOpcode.EventDayEventBoosterList);
+
+            writer.Write((ushort)boosters.Count);
+            foreach (var booster in boosters)
+            {
+                writer.Write(booster.Maze.Id);
+                writer.Write(booster.Id);
+            }
+
+            return session.SendAsync(writer);
+        }
+
+        #endregion Send Maze
+
         #region Send Service
 
         internal static GameSession SendServiceHeartbeat(this GameSession session, in HeartbeatRequest request)
@@ -158,32 +178,6 @@ namespace ow.Service.District.Network
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendServiceDayEventBoosters(this GameSession session, DayEventBoosterRepository boosters)
-        {
-            using PacketWriter writer = new(ClientOpcode.EventDayEventBoosterList);
-
-            writer.Write((ushort)boosters.Count);
-            foreach (var booster in boosters)
-            {
-                writer.Write(booster.Maze);
-                writer.Write(booster.Id);
-            }
-
-            return session.SendAsync(writer);
-        }
-
-        internal static GameSession SendServiceWorldVersion(this GameSession session)
-        {
-            using PacketWriter writer = new(ClientOpcode.WorldVersion);
-
-            writer.Write(0);
-            writer.Write(0);
-            writer.Write(0);
-            writer.Write(0);
-
-            return session.SendAsync(writer);
-        }
-
         internal static GameSession SendServiceCurrentDate(this GameSession session)
         {
             using PacketWriter writer = new(ClientOpcode.CurrentDate);
@@ -203,5 +197,36 @@ namespace ow.Service.District.Network
         }
 
         #endregion Send Service
+
+        #region Send World
+
+        internal static GameSession SendWorldEnter(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.WorldEnter);
+
+            writer.Write(uint.MinValue); /* Unknown */
+            writer.Write((byte)1); /* Result */
+
+            Place place = session.Entity.Get<Place>();
+            writer.WritePlace(place);
+
+            writer.Write(byte.MinValue);
+
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendWorldVersion(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.WorldVersion);
+
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+
+            return session.SendAsync(writer);
+        }
+
+        #endregion Send World
     }
 }

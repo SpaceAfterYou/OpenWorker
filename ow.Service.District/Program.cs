@@ -20,6 +20,7 @@ namespace ow.Service.District
                 .AddSingleton<ChatCommandRepository>()
                 .AddSingleton<DimensionRepository>()
                 .AddSingleton<BinTables>()
+                .AddSingleton<MazeDayEventBoosterRepository>()
                 .AddSingleton<CachedNpcRepository>()
                 .AddTransient<WorldTables>()
                 .AddFramework()
