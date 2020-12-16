@@ -1,7 +1,7 @@
 ﻿using ow.Framework.Database.Characters;
 using ow.Framework.Game.Types;
 
-namespace ow.Service.District.Game
+namespace ow.Framework.Game.Entities
 {
     public sealed class ProfileEntity
     {

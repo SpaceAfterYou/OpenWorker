@@ -49,7 +49,7 @@ namespace ow.Framework.Database.Characters
         public BankModel Bank { get; set; }
 
         [Required]
-        public uint[] Getures { get; set; }
+        public uint[] Gestures { get; set; }
 
         [Required]
         public uint Photo { get; set; }

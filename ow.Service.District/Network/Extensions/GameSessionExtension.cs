@@ -7,6 +7,7 @@ using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Framework.IO.Network.Requests.Server;
 using ow.Service.District.Game;
+using ow.Service.District.Game.Entities;
 using ow.Service.District.Game.Enums;
 
 namespace ow.Service.District.Network
