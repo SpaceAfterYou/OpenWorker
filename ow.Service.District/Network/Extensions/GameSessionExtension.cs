@@ -204,8 +204,8 @@ namespace ow.Service.District.Network
         {
             using PacketWriter writer = new(ClientOpcode.WorldEnter);
 
-            writer.Write(uint.MinValue); /* Unknown */
-            writer.Write((byte)1); /* Result */
+            writer.Write(uint.MinValue);
+            writer.WriteCanWorldConnect(CanWorldConnect.Yes);
 
             Place place = session.Entity.Get<Place>();
             writer.WritePlace(place);
