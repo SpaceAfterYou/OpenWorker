@@ -6,6 +6,7 @@ using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Service.District.Game;
+using ow.Service.District.Game.Enums;
 
 namespace ow.Service.District.Network
 {
@@ -124,5 +125,27 @@ namespace ow.Service.District.Network
         }
 
         #endregion Send Chat
+
+        #region Send Service
+
+        internal static GameSession SendServerLogOut(this GameSession session, GateInstance gate)
+        {
+            using PacketWriter writer = new(ClientOpcode.LogOut);
+
+            AccountEntity account = session.Entity.Get<AccountEntity>();
+            writer.Write(account.Id);
+
+            EntityCharacter character = session.Entity.Get<EntityCharacter>();
+            writer.Write(character.Id);
+
+            writer.WriteNumberLengthUtf8String(gate.Ip);
+            writer.Write(gate.Port);
+            writer.WriteLogoutWay(LogoutWay.GateService);
+            writer.WriteCanLogOutConnect(CanLogOutConnect.Yes);
+
+            return session.SendAsync(writer);
+        }
+
+        #endregion Send Service
     }
 }
