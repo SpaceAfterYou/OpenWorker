@@ -58,7 +58,7 @@ namespace ow.Service.Gate.Network.Helpers
                 NetworkUtils.DropSession();
         }
 
-        public static CharacterModel CreateModel(Account account, CreateRequest request, GateInfo gate, BinTables binTable) =>
+        public static CharacterModel CreateModel(Account account, CreateRequest request, GateInstance gate, BinTables binTable) =>
             new()
             {
                 AccountId = account.Id,

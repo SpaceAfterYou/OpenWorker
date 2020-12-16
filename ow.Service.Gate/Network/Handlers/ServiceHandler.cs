@@ -17,7 +17,7 @@ namespace ow.Service.Gate.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, GateInfo gate, LanContext lan, BinTables tables)
+        public static void Enter(GameSession session, EnterRequest request, GateInstance gate, LanContext lan, BinTables tables)
         {
             if (gate.Id != request.GateId) NetworkUtils.DropSession();
 

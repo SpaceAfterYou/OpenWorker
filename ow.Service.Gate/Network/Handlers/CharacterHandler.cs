@@ -52,7 +52,7 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterCreate, HandlerPermission.Authorized)]
-        public static void Create(GameSession session, CreateRequest request, GateInfo gate, BinTables tables)
+        public static void Create(GameSession session, CreateRequest request, GateInstance gate, BinTables tables)
         {
             if (request.Character.Main.Name.Length > Defines.MaxCharacterNameLength)
                 return;

@@ -17,7 +17,7 @@ namespace ow.Service.Gate
                 .AddHostedService<Worker>()
                 .AddSingleton<BinTables>()
                 .AddSingleton<DistrictRepository>()
-                .AddSingleton<GateInfo>()
+                .AddSingleton<GateInstance>()
                 .AddFramework()
                 .AddLan());
     }
