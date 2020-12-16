@@ -9,6 +9,7 @@ using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Gate;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Network.Extensions;
+using System.Diagnostics;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Handlers
@@ -22,13 +23,13 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #endif
-                return;
+                Debug.Assert(false);
 
             if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
 #if !DEBUG
                 throw new BadActionException();
 #endif
-                return;
+                Debug.Assert(false);
 
             using AccountContext context = new();
 
@@ -37,7 +38,7 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #endif
-                return;
+                Debug.Assert(false);
 
             session.Entity.Set<Account>(new(model));
             session.Entity.Set<Characters>(new(model, request.GateId, tables, new()));

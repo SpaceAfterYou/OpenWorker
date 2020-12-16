@@ -5,6 +5,7 @@ using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Service.Gate.Game;
 using System;
+using System.Diagnostics;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Helpers
@@ -17,7 +18,7 @@ namespace ow.Service.Gate.Network.Helpers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
         }
 
@@ -27,14 +28,14 @@ namespace ow.Service.Gate.Network.Helpers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             if (request.Character.Main.Appearance.Hair.Style == 0 || !entity.Style.Contains(request.Character.Main.Appearance.Hair.Style))
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
         }
 
@@ -44,14 +45,14 @@ namespace ow.Service.Gate.Network.Helpers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             if (request.Character.Main.Appearance.EyesColor == 0 || !entity.Color.Contains(request.Character.Main.Appearance.EyesColor))
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
         }
 
@@ -61,14 +62,14 @@ namespace ow.Service.Gate.Network.Helpers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             if (request.Character.Main.Appearance.SkinColor == 0 || !entity.Color.Contains(request.Character.Main.Appearance.SkinColor))
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
         }
 
@@ -82,14 +83,14 @@ namespace ow.Service.Gate.Network.Helpers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             if (request.OutfitId == 0 || !entity.DefaultOutfits.Contains(request.OutfitId))
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
         }
 

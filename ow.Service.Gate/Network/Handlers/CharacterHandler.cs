@@ -10,6 +10,7 @@ using ow.Framework.IO.Network.Requests.Character;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Network.Extensions;
 using ow.Service.Gate.Network.Helpers;
+using System.Diagnostics;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Handlers
@@ -23,19 +24,19 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #endif
-                return;
+                Debug.Assert(false);
 
             if (1 > request.SecondSlot || request.SecondSlot > Defines.CharactersSlotsCount)
 #if !DEBUG
                 throw new BadActionException();
 #endif
-                return;
+                Debug.Assert(false);
 
             if (request.FirstSlot == request.SecondSlot)
 #if !DEBUG
                 throw new BadActionException();
 #endif
-                return;
+                Debug.Assert(false);
 
             //var first = slots.FirstOrDefault(slot => slot.Id == request.FirstSlot);
             //var second = slots.FirstOrDefault(slot => slot.Id == request.SecondSlot);
@@ -45,7 +46,7 @@ namespace ow.Service.Gate.Network.Handlers
             //#if !DEBUG
             //                throw new BadActionException();
             //#endif
-            //            return;
+            //                Debug.Assert(false);
 
             //if (second is not null && first is not null)
             //{
@@ -84,7 +85,7 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name))
@@ -94,7 +95,7 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             /// [ TODO ] Add default items to inventory
@@ -117,7 +118,7 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             characters.Remove(slot);
@@ -141,7 +142,7 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             characters.Favorite = characters[slot].Get<EntityCharacter>();
@@ -158,7 +159,7 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             characters.LastSelected = characters[slot].Get<EntityCharacter>();
@@ -177,7 +178,7 @@ namespace ow.Service.Gate.Network.Handlers
 #if !DEBUG
                 throw new BadActionException();
 #else
-                return;
+                Debug.Assert(false);
 #endif
 
             session.Entity.Set(entity);
