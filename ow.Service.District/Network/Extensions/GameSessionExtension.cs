@@ -9,6 +9,7 @@ using ow.Framework.IO.Network.Requests.Server;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Entities;
 using ow.Service.District.Game.Enums;
+using System;
 
 namespace ow.Service.District.Network
 {
@@ -130,7 +131,7 @@ namespace ow.Service.District.Network
 
         #region Send Service
 
-        internal static GameSession SendServerHeartbeat(this GameSession session, in HeartbeatRequest request)
+        internal static GameSession SendServiceHeartbeat(this GameSession session, in HeartbeatRequest request)
         {
             using PacketWriter writer = new(ClientOpcode.Heartbeat);
 
@@ -139,7 +140,7 @@ namespace ow.Service.District.Network
             return session.SendAsync(writer);
         }
 
-        internal static GameSession SendServerLogOut(this GameSession session, GateInstance gate)
+        internal static GameSession SendServiceLogOut(this GameSession session, GateInstance gate)
         {
             using PacketWriter writer = new(ClientOpcode.LogOut);
 
@@ -153,6 +154,24 @@ namespace ow.Service.District.Network
             writer.Write(gate.Port);
             writer.WriteLogoutWay(LogoutWay.GateService);
             writer.WriteCanLogOutConnect(CanLogOutConnect.Yes);
+
+            return session.SendAsync(writer);
+        }
+
+        internal static GameSession SendServiceCurrentDate(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.CurrentDate);
+
+            DateTimeOffset dateTime = DateTimeOffset.Now;
+
+            writer.Write(dateTime.ToUnixTimeSeconds());
+            writer.Write((ushort)dateTime.Year);
+            writer.Write((ushort)dateTime.Month);
+            writer.Write((ushort)dateTime.Day);
+            writer.Write((ushort)dateTime.Hour);
+            writer.Write((ushort)dateTime.Minute);
+            writer.Write((ushort)dateTime.Second);
+            writer.Write(Convert.ToUInt16(TimeZoneInfo.Local.IsDaylightSavingTime(dateTime)));
 
             return session.SendAsync(writer);
         }

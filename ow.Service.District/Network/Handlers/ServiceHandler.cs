@@ -1,4 +1,5 @@
 ﻿using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
@@ -7,6 +8,7 @@ using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Server;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
+using ow.Service.District.Game.Entities;
 
 namespace ow.Service.District.Network.Handlers
 {
@@ -17,20 +19,18 @@ namespace ow.Service.District.Network.Handlers
         //public Profile Profile { get; init; }
 
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, IBoosterRepository boosters, IDayEventBoosterRepository dayEventBoosterRepository, IChannelRepository channels)
+        public static void Enter(GameSession session, EnterRequest request, IBoosterRepository boosters, IDayEventBoosterRepository dayEventBoosterRepository, IChannelRepository channels, IBinTables tables)
         {
             var accountModel = await DistrictEnterHelper.GetAccountModel(request.AccountId, request.SessionKey);
             session.SetComponent(new Account(accountModel));
 
             var characterModel = await DistrictEnterHelper.GetCharacterModel(request.CharacterId, request.AccountId);
 
-            var character = new Character(characterModel);
-            session
-                .SetComponent(character)
-                .SetComponent(new ProfileEntity(characterModel))
-                .SetComponent(new StatsEntity())
-                .SetComponent(new SpecialOptionsEntity())
-                .SetComponent(new GesturesEntity(characterModel));
+            session.Entity.Set(new EntityCharacter(characterModel, tables));
+            session.Entity.Set(new ProfileEntity(characterModel));
+            session.Entity.Set(new StatsEntity());
+            session.Entity.Set(new SpecialOptionsEntity());
+            session.Entity.Set(new GesturesEntity(characterModel));
 
             DistrictEnterHelper.CreateStorages(session, accountModel, characterModel);
 
@@ -39,8 +39,7 @@ namespace ow.Service.District.Network.Handlers
             channels.JoinToFirstAvailable(session);
 
             session
-                .ReTarget<AuthorizedGroupAttribute>()
-                .SendCurrentDate()
+                .SendServiceCurrentDate()
                 .SendWorldVersion()
                 .SendDayEventBoosterList(dayEventBoosterRepository)
                 .SendWorldEnter()
@@ -62,7 +61,7 @@ namespace ow.Service.District.Network.Handlers
 
         [Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
         public static void Heartbeat(GameSession session, HeartbeatRequest request) =>
-            session.SendServerHeartbeat(request);
+            session.SendServiceHeartbeat(request);
 
         [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
         public static void LogOut(GameSession session, LogoutRequest request, GateInstance gate)
@@ -79,7 +78,7 @@ namespace ow.Service.District.Network.Handlers
             if (session.Entity.Get<EntityCharacter>().Id != request.CharacterId)
                 NetworkUtils.DropSession();
 
-            session.SendServerLogOut(gate);
+            session.SendServiceLogOut(gate);
         }
     }
 }
