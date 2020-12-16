@@ -5,7 +5,6 @@ namespace ow.Service.Gate.Network.Extensions
 {
     internal static class PacketWriterExtension
     {
-        internal static void Write(this PacketWriter writer, GateEnterResult value) =>
-            writer.Write((byte)value);
+        internal static void Write(this PacketWriter writer, GateEnterResult value) => writer.Write((byte)value);
     }
 }

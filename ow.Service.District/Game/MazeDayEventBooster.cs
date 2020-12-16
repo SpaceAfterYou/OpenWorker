@@ -2,11 +2,11 @@
 
 namespace ow.Service.District.Game
 {
-    internal sealed record MazeDayEventBooster
+    public sealed record MazeDayEventBooster
     {
-        internal ushort Id { get; }
-        internal MazeInfoTableEntity Maze { get; }
+        public ushort Id { get; }
+        public MazeInfoTableEntity Maze { get; }
 
-        internal MazeDayEventBooster(ushort id, MazeInfoTableEntity maze) => (Id, Maze) = (id, maze);
+        public MazeDayEventBooster(ushort id, MazeInfoTableEntity maze) => (Id, Maze) = (id, maze);
     }
 }

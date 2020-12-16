@@ -10,7 +10,7 @@ namespace ow.Service.District.Game
 {
     public sealed class CachedNpcRepository : List<CachedNpc>
     {
-        public CachedNpcRepository(Zone zone) : base(GetNpcs(zone.Place))
+        public CachedNpcRepository(Instance zone) : base(GetNpcs(zone.Place))
         {
         }
 

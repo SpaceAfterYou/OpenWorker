@@ -5,12 +5,12 @@ using ow.Framework.Game.Datas.World.Table;
 
 namespace ow.Service.District.Game
 {
-    public sealed record Zone
+    public sealed record Instance
     {
         internal DistrictTableEntity District { get; }
         internal VRoot Place { get; }
 
-        public Zone(IConfiguration configuration, BinTables binTable, WorldTables worldTable)
+        public Instance(IConfiguration configuration, BinTables binTable, WorldTables worldTable)
         {
             ushort id = ushort.Parse(configuration["Zone:Id"]);
             District = binTable.DistrictTable[id];
