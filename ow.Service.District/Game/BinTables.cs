@@ -13,6 +13,8 @@ namespace ow.Service.District.Game
         public IReadOnlyDictionary<Hero, CustomizeEyesTableEntity> CustomizeEyesTable { get; }
         public IReadOnlyDictionary<Hero, CustomizeHairTableEntity> CustomizeHairTable { get; }
         public IReadOnlyDictionary<ushort, DistrictTableEntity> DistrictTable { get; }
+        public IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfoTable { get; }
+        public IReadOnlyDictionary<ushort, BoosterTableEntity> BoosterTable { get; }
 
         public BinTables(IConfiguration configuration)
         {
@@ -22,6 +24,8 @@ namespace ow.Service.District.Game
             CustomizeEyesTable = tables.ReadCustomizeEyesTable();
             CustomizeHairTable = tables.ReadCustomizeHairTable();
             DistrictTable = tables.ReadDistrictTable();
+            MazeInfoTable = tables.ReadMazeInfoTable();
+            BoosterTable = tables.ReadBoosterTable();
         }
     }
 }

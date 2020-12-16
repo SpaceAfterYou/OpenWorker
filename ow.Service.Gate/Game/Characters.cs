@@ -4,7 +4,6 @@ using ow.Framework;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Storage;
 using ow.Service.Gate.Game.Entities;
@@ -40,7 +39,7 @@ namespace ow.Service.Gate.Game
             this[slot] = _entities.CreateEntity();
         }
 
-        public void Create(CharacterModel model, IBinTables tables)
+        public void Create(CharacterModel model, BinTables tables)
         {
             this[model.Slot].Set(LastSelected = new(model, tables));
             this[model.Slot].Set<IStatsEntity>(new GateStatsEntity());

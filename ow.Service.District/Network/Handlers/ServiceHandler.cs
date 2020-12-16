@@ -2,7 +2,6 @@
 using ow.Framework.Database.Characters;
 using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas;
-using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Entities;
 using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network;
@@ -20,12 +19,8 @@ namespace ow.Service.District.Network.Handlers
 {
     internal static class ServiceHandler
     {
-        //public Channel Channel { get; set; }
-        //public Character Character { get; init; }
-        //public Profile Profile { get; init; }
-
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, BoosterRepository boosters, MazeDayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, IBinTables tables)
+        public static void Enter(GameSession session, EnterRequest request, BoosterRepository boosters, MazeDayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables)
         {
             if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
@@ -43,7 +38,7 @@ namespace ow.Service.District.Network.Handlers
                 session.Entity.Set(new StatsEntity());
                 session.Entity.Set(new SpecialOptionsEntity());
                 session.Entity.Set(new GesturesEntity(model));
-                session.Entity.Set(new Place(model.Place, tables));
+                session.Entity.Set(new PlaceEntity(model.Place, tables));
             }
 
             if (!dimensions.Join(session))

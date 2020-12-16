@@ -1,5 +1,4 @@
 ﻿using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
@@ -77,7 +76,7 @@ namespace ow.Framework.Game.Entities
             {
                 writer.WriteCharacter(member);
 
-                Place place = member.Entity.Get<Place>();
+                PlaceEntity place = member.Entity.Get<PlaceEntity>();
                 writer.WritePlace(place);
             }
 

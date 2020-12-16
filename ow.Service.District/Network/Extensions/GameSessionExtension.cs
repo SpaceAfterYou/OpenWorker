@@ -1,5 +1,4 @@
 ﻿using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
@@ -195,7 +194,7 @@ namespace ow.Service.District.Network
             writer.Write(uint.MinValue);
             writer.WriteCanWorldConnect(CanWorldConnect.Yes);
 
-            Place place = session.Entity.Get<Place>();
+            PlaceEntity place = session.Entity.Get<PlaceEntity>();
             writer.WritePlace(place);
 
             writer.Write(byte.MinValue);

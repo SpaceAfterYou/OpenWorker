@@ -1,7 +1,7 @@
 ﻿using DefaultEcs;
 using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
+using ow.Framework.Game.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Service.Gate.Game;
@@ -94,7 +94,7 @@ namespace ow.Service.Gate.Network.Extensions
             Account account = session.Entity.Get<Account>();
             writer.Write(account.Id);
 
-            Place place = session.Entity.Get<Place>();
+            PlaceEntity place = session.Entity.Get<PlaceEntity>();
 
             writer.Write(new byte[28]);
 

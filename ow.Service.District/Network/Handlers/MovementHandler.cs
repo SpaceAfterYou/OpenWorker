@@ -1,5 +1,4 @@
-﻿using ow.Framework.Game.Datas;
-using ow.Framework.Game.Entities;
+﻿using ow.Framework.Game.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
@@ -13,7 +12,7 @@ namespace ow.Service.District.Network.Handlers
         [Handler(ServerOpcode.MovementJump, HandlerPermission.Authorized)]
         public static void Jump(GameSession session, JumpRequest request)
         {
-            Place place = session.Entity.Get<Place>();
+            PlaceEntity place = session.Entity.Get<PlaceEntity>();
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 
@@ -27,7 +26,7 @@ namespace ow.Service.District.Network.Handlers
         [Handler(ServerOpcode.MovementMove, HandlerPermission.Authorized)]
         public static void Move(GameSession session, MoveRequest request)
         {
-            Place place = session.Entity.Get<Place>();
+            PlaceEntity place = session.Entity.Get<PlaceEntity>();
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 
@@ -37,7 +36,7 @@ namespace ow.Service.District.Network.Handlers
         [Handler(ServerOpcode.MovementStopBt, HandlerPermission.Authorized)]
         public static void Stop(GameSession session, StopRequest request)
         {
-            Place place = session.Entity.Get<Place>();
+            PlaceEntity place = session.Entity.Get<PlaceEntity>();
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 

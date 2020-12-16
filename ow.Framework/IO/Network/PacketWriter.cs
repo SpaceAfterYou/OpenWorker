@@ -1,6 +1,5 @@
 ﻿using DefaultEcs;
 using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.Game.Storage;
@@ -19,7 +18,7 @@ namespace ow.Framework.IO.Network
     {
         public void WriteOptionStatus(OptionStatus value) => Write((ushort)value);
 
-        public void WritePlace(Place place)
+        public void WritePlace(PlaceEntity place)
         {
             Write(place.District.Id);
             Write((ulong)0);

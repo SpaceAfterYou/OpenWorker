@@ -1,5 +1,4 @@
 ﻿using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
@@ -57,7 +56,7 @@ namespace ow.Framework.Game.Entities
             using PacketWriter writer = new(ClientOpcode.CharacterInInfo);
 
             writer.WriteCharacter(session);
-            writer.WritePlace(session.Entity.Get<Place>());
+            writer.WritePlace(session.Entity.Get<PlaceEntity>());
 
             BroadcastExceptAsync(writer, session);
         }
