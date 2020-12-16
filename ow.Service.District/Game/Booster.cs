@@ -5,9 +5,9 @@ namespace ow.Service.District.Game
 {
     public record Booster
     {
-        public BoosterTableEntity Value { get; }
+        public BoosterTableEntity Prototype { get; }
         public DateTimeOffset End { get; }
 
-        internal Booster(BoosterTableEntity value, DateTimeOffset end) => (Value, End) = (value, end);
+        internal Booster(BoosterTableEntity prototype, DateTimeOffset end) => (Prototype, End) = (prototype, end);
     }
 }

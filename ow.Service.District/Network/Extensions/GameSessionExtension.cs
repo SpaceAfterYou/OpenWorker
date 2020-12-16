@@ -11,12 +11,19 @@ using ow.Service.District.Game;
 using ow.Service.District.Game.Entities;
 using ow.Service.District.Game.Enums;
 using ow.Service.District.Game.Repositories;
+using System;
 
 namespace ow.Service.District.Network
 {
     public static class GameSessionExtension
     {
         #region Send Characters
+
+        internal static GameSession SendCharacterDbLoadSync(this GameSession session)
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterDbLoadSync);
+            return session.SendAsync(writer);
+        }
 
         internal static GameSession SendCharacterToggleWeapon(this GameSession session, in ToggleWeaponRequest request)
         {
@@ -212,19 +219,30 @@ namespace ow.Service.District.Network
 
         #region Send Boosters
 
-        internal static GameSession SendAddBoosters(this GameSession session, BoosterRepository repository)
+        internal static GameSession SendBoosterRemove(this GameSession session, byte id)
         {
-            using PacketWriter writer = new(ClientOpcode.BoosterAdd);
+            using PacketWriter writer = new(ClientOpcode.BoosterRemove);
 
-            foreach (var (index, booster) in repository)
-            {
-                writer.Write(SystemDefinition.AddBoosterSize, ClientOpcode.BoosterAdd);
-                writer.Write(index);
-                writer.Write(booster.Relation.Id);
-                writer.Write(Math.Max((ulong)(booster.EndDate - DateTimeOffset.Now).TotalSeconds, 0UL));
-            }
+            writer.Write(id);
 
             return session.SendAsync(writer);
+        }
+
+        internal static GameSession SenBoosterAdd(this GameSession session, BoosterRepository boosters)
+        {
+            byte id = 0; /// TODO: unique id? sequence id?
+            foreach (Booster booster in boosters)
+            {
+                using PacketWriter writer = new(ClientOpcode.BoosterAdd);
+
+                writer.Write(id++);
+                writer.Write(booster.Prototype.Id);
+                writer.Write(Math.Max((ulong)(booster.End - DateTimeOffset.Now).TotalSeconds, 0UL));
+
+                session.SendAsync(writer);
+            }
+
+            return session;
         }
 
         #endregion Send Boosters

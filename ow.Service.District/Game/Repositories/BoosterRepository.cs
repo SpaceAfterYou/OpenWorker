@@ -15,7 +15,7 @@ namespace ow.Service.District.Game.Repositories
         private static IEnumerable<Booster> GetItems(IBinTables tables, IConfiguration configuration) => configuration
             .GetSection("Boosters")
             .Get<IList<IConfigurationBooster>>()
-            .Select(c => new Booster(tables.BoosterTable[c.Id], new(DateTime.UtcNow.AddSeconds(c.Duration))));
+            .Select(c => new Booster(tables.BoosterTable[c.Id], new(DateTime.Now.AddSeconds(c.Duration))));
 
         private interface IConfigurationBooster
         {
