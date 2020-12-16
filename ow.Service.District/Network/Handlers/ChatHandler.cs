@@ -31,7 +31,7 @@ namespace ow.Service.District.Network.Handlers
                 return;
             }
 
-            session.Entity.Get<DimensionEntity>().BroadcastChatMessage(session, request);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastChatMessage(request);
         }
     }
 }

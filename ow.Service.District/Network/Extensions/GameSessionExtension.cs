@@ -1,5 +1,4 @@
 ﻿using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
@@ -7,7 +6,6 @@ using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Service.District.Game;
-using System.Linq;
 
 namespace ow.Service.District.Network
 {
@@ -103,27 +101,6 @@ namespace ow.Service.District.Network
         internal static GameSession SendCharacterPostInfo(this GameSession session)
         {
             return session;
-        }
-
-        internal static GameSession SendCharacterOtherInfos(this GameSession session)
-        {
-            using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
-
-            DimensionEntity dimension = session.Entity.Get<DimensionEntity>();
-
-            /// (.Values) will make copy all sessions in channel
-            GameSession[] sessions = dimension.Sessions.Values.ToArray();
-
-            writer.Write((short)sessions.Length);
-            foreach (GameSession member in sessions)
-            {
-                writer.WriteCharacter(member);
-
-                Place place = member.Entity.Get<Place>();
-                writer.WritePlace(place);
-            }
-
-            return session.SendAsync(writer);
         }
 
         #endregion Send Characters

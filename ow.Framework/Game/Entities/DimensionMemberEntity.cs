@@ -1,4 +1,5 @@
 ﻿using ow.Framework.Game.Character;
+using ow.Framework.Game.Datas;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
@@ -6,6 +7,7 @@ using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Framework.IO.Network.Requests.Gesture;
 using ow.Framework.IO.Network.Requests.Movement;
+using System.Linq;
 
 namespace ow.Framework.Game.Entities
 {
@@ -37,6 +39,25 @@ namespace ow.Framework.Game.Entities
         #endregion Broadcast Channel
 
         #region Broadcast Character
+
+        public void SendCharacterOtherInfos()
+        {
+            using PacketWriter writer = new(ClientOpcode.CharacterOtherInfos);
+
+            /// (.Values) will make copy all sessions in channel
+            GameSession[] sessions = _dimension.Sessions.Values.ToArray();
+
+            writer.Write((short)sessions.Length);
+            foreach (GameSession member in sessions.Where(s => s.Id != _session.Id))
+            {
+                writer.WriteCharacter(member);
+
+                Place place = member.Entity.Get<Place>();
+                writer.WritePlace(place);
+            }
+
+            _session.SendAsync(writer);
+        }
 
         public void BroadcastCharacterSetLevel(GameSession session)
         {

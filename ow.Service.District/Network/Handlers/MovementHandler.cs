@@ -17,12 +17,12 @@ namespace ow.Service.District.Network.Handlers
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 
-            session.Entity.Get<DimensionEntity>().BroadcastMovementJump(session, request);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementJump(request);
         }
 
         [Handler(ServerOpcode.MovementLoopMotionEnd, HandlerPermission.Authorized)]
         public static void LoopMotionEndBroadcast(GameSession session) =>
-            session.Entity.Get<DimensionEntity>().BroadcastLoopMotionEnd(session);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastLoopMotionEnd(session);
 
         [Handler(ServerOpcode.MovementMove, HandlerPermission.Authorized)]
         public static void Move(GameSession session, MoveRequest request)
@@ -31,7 +31,7 @@ namespace ow.Service.District.Network.Handlers
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 
-            session.Entity.Get<DimensionEntity>().BroadcastMovementMove(session, request);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementMove(request);
         }
 
         [Handler(ServerOpcode.MovementStopBt, HandlerPermission.Authorized)]
@@ -41,7 +41,7 @@ namespace ow.Service.District.Network.Handlers
             place.Position = request.Position;
             place.Rotation = request.Rotation;
 
-            session.Entity.Get<DimensionEntity>().BroadcastMovementStop(session, request);
+            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementStop(request);
         }
     }
 }

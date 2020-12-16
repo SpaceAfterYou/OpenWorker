@@ -13,8 +13,8 @@ namespace ow.Service.District.Network.Handlers
     internal static class GestureHandler
     {
         [Handler(ServerOpcode.GestureDo, HandlerPermission.Authorized)]
-        public static void GetOthers(GameSession session, DoRequest request) => session.Entity.Get<DimensionEntity>()
-            .BroadcastGestureDo(session, request);
+        public static void GetOthers(GameSession session, DoRequest request) => session.Entity.Get<DimensionMemberEntity>()
+            .BroadcastGestureDo(request);
 
         [Handler(ServerOpcode.GestureUpdateSlots, HandlerPermission.Authorized)]
         public static void UpdateSlots(GameSession session, SlotsUpdateRequest request)
