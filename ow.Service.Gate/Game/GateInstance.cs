@@ -2,9 +2,9 @@
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class GateInstance
+    public sealed record GateInstance
     {
-        public ushort Id { get; init; }
+        public ushort Id { get; }
 
         public GateInstance(IConfiguration configuration) => Id = ushort.Parse(configuration["Id"]);
     }

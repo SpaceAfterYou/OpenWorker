@@ -2,7 +2,7 @@
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class DistrictInstance
+    public sealed record DistrictInstance
     {
         public string Ip { get; }
         public ushort Port { get; }
