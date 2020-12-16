@@ -59,9 +59,9 @@ namespace ow.Service.District.Network.Handlers
         //        .SendCharacterDbLoadSync();
         //}
 
-        //[Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
-        //public static void Heartbeat(Session session, HeartbeatRequest request) =>
-        //session.SendServerHeartbeat(request);
+        [Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
+        public static void Heartbeat(GameSession session, HeartbeatRequest request) =>
+            session.SendServerHeartbeat(request);
 
         [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
         public static void LogOut(GameSession session, LogoutRequest request, GateInstance gate)

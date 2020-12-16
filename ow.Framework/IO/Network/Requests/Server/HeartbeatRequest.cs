@@ -1,5 +1,5 @@
-﻿using System.IO;
-using ow.Framework.IO.Network.Attributes;
+﻿using ow.Framework.IO.Network.Attributes;
+using System.IO;
 
 namespace ow.Framework.IO.Network.Requests.Server
 {
@@ -7,10 +7,10 @@ namespace ow.Framework.IO.Network.Requests.Server
     public readonly struct HeartbeatRequest
     {
         public ulong Tick { get; }
-        private ulong Unknown1 { get; }
-        private uint Unknown2 { get; }
+        private ulong _1 { get; }
+        private uint _2 { get; }
 
         public HeartbeatRequest(BinaryReader br)
-            => (Tick, Unknown1, Unknown2) = (br.ReadUInt64(), br.ReadUInt64(), br.ReadUInt32());
+            => (Tick, _1, _2) = (br.ReadUInt64(), br.ReadUInt64(), br.ReadUInt32());
     }
 }

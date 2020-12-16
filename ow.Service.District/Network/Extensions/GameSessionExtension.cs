@@ -5,6 +5,7 @@ using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
+using ow.Framework.IO.Network.Requests.Server;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Enums;
 
@@ -127,6 +128,15 @@ namespace ow.Service.District.Network
         #endregion Send Chat
 
         #region Send Service
+
+        internal static GameSession SendServerHeartbeat(this GameSession session, in HeartbeatRequest request)
+        {
+            using PacketWriter writer = new(ClientOpcode.Heartbeat);
+
+            writer.Write(request.Tick);
+
+            return session.SendAsync(writer);
+        }
 
         internal static GameSession SendServerLogOut(this GameSession session, GateInstance gate)
         {
