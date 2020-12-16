@@ -91,12 +91,12 @@ namespace ow.Framework.Game.Entities
         {
             byte[] packet = GetRawPacket(writer);
             foreach (var (_, session) in pairs)
-                SendAsync(session, writer, packet);
+                SendAsync(session, packet, writer.BaseStream.Length);
         }
 
-        private static void SendAsync(GameSession session, PacketWriter writer, byte[] packet)
+        private static void SendAsync(GameSession session, byte[] packet, long length)
         {
-            if (!session.SendAsync(packet, 0, writer.BaseStream.Length))
+            if (!session.SendAsync(packet, 0, length))
 #if !DEBUG
                 throw new NetworkException();
 #else
