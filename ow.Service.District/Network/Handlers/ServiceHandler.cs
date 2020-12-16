@@ -4,8 +4,8 @@ using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Server;
+using ow.Framework.Utils;
 using ow.Service.District.Game;
-using System.Diagnostics;
 
 namespace ow.Service.District.Network.Handlers
 {
@@ -67,34 +67,16 @@ namespace ow.Service.District.Network.Handlers
         public static void LogOut(GameSession session, LogoutRequest request, GateInstance gate)
         {
             if (!session.Entity.Has<AccountEntity>())
-#if !DEBUG
-                throw new BadActionException();
-#else
-                Debug.Assert(false);
-#endif
+                NetworkUtils.DropSession();
 
             if (session.Entity.Get<AccountEntity>().Id != request.AccountId)
-
-#if !DEBUG
-                throw new BadActionException();
-#else
-                Debug.Assert(false);
-#endif
+                NetworkUtils.DropSession();
 
             if (!session.Entity.Has<EntityCharacter>())
-#if !DEBUG
-                throw new BadActionException();
-#else
-                Debug.Assert(false);
-#endif
+                NetworkUtils.DropSession();
 
             if (session.Entity.Get<EntityCharacter>().Id != request.CharacterId)
-
-#if !DEBUG
-                throw new BadActionException();
-#else
-                Debug.Assert(false);
-#endif
+                NetworkUtils.DropSession();
 
             session.SendServerLogOut(gate);
         }

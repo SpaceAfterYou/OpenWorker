@@ -7,9 +7,9 @@ using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests.Gate;
+using ow.Framework.Utils;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Network.Extensions;
-using System.Diagnostics;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Handlers
@@ -19,26 +19,15 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
         public static void Enter(GameSession session, EnterRequest request, GateInfo gate, LanContext lan, BinTables tables)
         {
-            if (gate.Id != request.GateId)
-#if !DEBUG
-                throw new BadActionException();
-#endif
-                Debug.Assert(false);
+            if (gate.Id != request.GateId) NetworkUtils.DropSession();
 
             if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
-#if !DEBUG
-                throw new BadActionException();
-#endif
-                Debug.Assert(false);
+                NetworkUtils.DropSession();
 
             using AccountContext context = new();
 
             AccountModel model = context.Accounts.AsNoTracking().FirstOrDefault(c => c.Id == request.AccountId);
-            if (model is null)
-#if !DEBUG
-                throw new BadActionException();
-#endif
-                Debug.Assert(false);
+            if (model is null) NetworkUtils.DropSession();
 
             session.Entity.Set<Account>(new(model));
             session.Entity.Set<Characters>(new(model, request.GateId, tables, new()));
