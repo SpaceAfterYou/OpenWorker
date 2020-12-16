@@ -19,7 +19,7 @@ namespace ow.Service.District.Network.Handlers
         [Handler(ServerOpcode.GestureUpdateSlots, HandlerPermission.Authorized)]
         public static void UpdateSlots(GameSession session, SlotsUpdateRequest request)
         {
-            Gestures gestures = session.Entity.Get<Gestures>();
+            GesturesEntity gestures = session.Entity.Get<GesturesEntity>();
 
             foreach (SlotsUpdateSlotRequest gesture in request.Values)
                 gestures[gesture.Id] = gesture.Value;

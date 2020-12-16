@@ -90,7 +90,7 @@ namespace ow.Service.District.Network
         {
             using PacketWriter writer = new(ClientOpcode.GestureLoad);
 
-            Gestures gestures = session.Entity.Get<Gestures>();
+            GesturesEntity gestures = session.Entity.Get<GesturesEntity>();
 
             foreach (uint gesture in gestures)
                 writer.Write(gesture);
