@@ -7,6 +7,7 @@ using ow.Framework.IO.Network.Requests.Character;
 using ow.Framework.IO.Network.Requests.Chat;
 using ow.Framework.IO.Network.Requests.Gesture;
 using ow.Framework.IO.Network.Requests.Movement;
+using ow.Framework.IO.Network.Requests.SpecialOption;
 using System.Linq;
 
 namespace ow.Framework.Game.Entities
@@ -19,6 +20,30 @@ namespace ow.Framework.Game.Entities
         public void Leave() => _dimension.Leave(_session);
 
         #region Broadcast Channel
+
+        public void SendCharacterSpecialOptionUpdateList(UpdateListRequest request)
+        {
+            foreach (var (_, session) in _dimension.Sessions)
+            {
+                EntityCharacter character = session.Entity.Get<EntityCharacter>();
+                if (character.Id != request.CharacterId) continue;
+
+                using PacketWriter writer = new(ClientOpcode.CharacterSpecialOptionUpdateList);
+
+                writer.Write(character.Id);
+
+                SpecialOptionsEntity options = session.Entity.Get<SpecialOptionsEntity>();
+                writer.Write((byte)options.Count);
+
+                foreach (SpecialOptionEntity option in options)
+                {
+                    writer.WriteSpecialOption(option.Id);
+                    writer.Write(option.Value);
+                }
+
+                break;
+            }
+        }
 
         public void BroadcastChatMessage(in ReceiveRequest request) =>
             BroadcastChatMessage(request.Type, request.Message);

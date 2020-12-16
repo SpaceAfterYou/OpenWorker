@@ -63,7 +63,7 @@ namespace ow.Service.District.Network.Handlers
         //public static void Heartbeat(Session session, HeartbeatRequest request) =>
         //session.SendServerHeartbeat(request);
 
-        [Handler(ServerOpcode.LogOut, HandlerPermission.Authorized)]
+        [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
         public static void LogOut(GameSession session, LogoutRequest request, GateInstance gate)
         {
             if (!session.Entity.Has<AccountEntity>())

@@ -210,6 +210,8 @@ namespace ow.Framework.IO.Network
             Write(value.Z);
         }
 
+        public void WriteSpecialOption(SpecialOption value) => Write((byte)value);
+
         public void WriteChatType(ChatType value) => Write((uint)value);
 
         public void WriteHeroId(Hero value) => Write((byte)value);
