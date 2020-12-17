@@ -1,6 +1,6 @@
 ﻿using ow.Framework.Database.Characters;
-using ow.Framework.Game.Character;
-using ow.Framework.Game.Entities;
+using ow.Framework.FS.Character;
+using ow.Framework.FS.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;

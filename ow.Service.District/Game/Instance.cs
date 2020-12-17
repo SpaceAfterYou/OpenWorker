@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Datas.World.Table;
+using ow.Framework.IO.File.World;
 
 namespace ow.Service.District.Game
 {
@@ -10,11 +10,11 @@ namespace ow.Service.District.Game
         internal DistrictTableEntity District { get; }
         internal VRoot Place { get; }
 
-        public Instance(IConfiguration configuration, BinTables binTable, WorldTables worldTable)
+        public Instance(IConfiguration configuration, BinTables binTable, WorldTable worldTable)
         {
             ushort id = ushort.Parse(configuration["Zone:Id"]);
             District = binTable.DistrictTable[id];
-            Place = worldTable.Read(District.Batch);
+            Place = worldTable.ReadBatch(District.Batch);
         }
     }
 }

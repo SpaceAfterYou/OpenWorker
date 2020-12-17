@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Xml;
 using System.Xml.Serialization;
 
-namespace ow.Framework.Game.Extensions
+namespace ow.Framework.IO.File.Extensions
 {
     internal static class XmlNodeExtension
     {

@@ -1,6 +1,6 @@
 ﻿using ow.Framework.Database.Characters;
 
-namespace ow.Framework.Game.Character
+namespace ow.Framework.FS.Character
 {
     public sealed class AppearanceCharacter
     {

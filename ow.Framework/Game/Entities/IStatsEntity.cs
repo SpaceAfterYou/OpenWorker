@@ -1,8 +1,8 @@
-﻿using ow.Framework.Game.Enums;
+﻿using ow.Framework.FS.Enums;
 using System;
 using System.Collections.Generic;
 
-namespace ow.Framework.Game.Entities
+namespace ow.Framework.FS.Entities
 {
     public interface IStatsEntity : IReadOnlyList<StatEntity>
     {

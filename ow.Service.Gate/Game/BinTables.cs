@@ -1,8 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game;
-using ow.Framework.Game.Datas.Bin.Table;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Enums;
+using ow.Framework.FS.Datas.Bin.Table;
+using ow.Framework.FS.Datas.Bin.Table.Entities;
+using ow.Framework.FS.Enums;
+using ow.Framework.File.FS.Bin;
 using System.Collections.Generic;
 
 namespace ow.Service.Gate.Game

@@ -1,7 +1,7 @@
 ﻿using ow.Framework.Database.Storages;
 using System.Collections.Generic;
 
-namespace ow.Framework.Game.Storage
+namespace ow.Framework.FS.Storage
 {
     public sealed class EquipableBattleFashionStorage : BaseStorage
     {

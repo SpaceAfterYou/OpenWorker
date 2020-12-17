@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
-using ow.Framework.Game.Enums;
-using ow.Framework.Game.Storage;
+using ow.Framework.FS.Enums;
+using ow.Framework.FS.Storage;
 using System.Collections.Generic;
 using System.Linq;
 

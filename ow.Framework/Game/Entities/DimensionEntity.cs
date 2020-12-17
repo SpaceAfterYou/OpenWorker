@@ -1,5 +1,5 @@
-﻿using ow.Framework.Game.Character;
-using ow.Framework.Game.Enums;
+﻿using ow.Framework.FS.Character;
+using ow.Framework.FS.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.Utils;
@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace ow.Framework.Game.Entities
+namespace ow.Framework.FS.Entities
 {
     public sealed class DimensionEntity
     {

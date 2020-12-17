@@ -1,7 +1,7 @@
 ﻿using DefaultEcs;
-using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Entities;
+using ow.Framework.FS.Character;
+using ow.Framework.FS.Datas.Bin.Table.Entities;
+using ow.Framework.FS.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Service.Gate.Game;

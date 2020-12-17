@@ -2,9 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game.Character;
-using ow.Framework.Game.Entities;
-using ow.Framework.Game.Storage;
+using ow.Framework.FS.Character;
+using ow.Framework.FS.Entities;
+using ow.Framework.FS.Storage;
 using ow.Framework.Utils;
 using ow.Service.Gate.Game.Entities;
 using System;

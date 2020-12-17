@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game.Entities;
+using ow.Framework.FS.Entities;
 using ow.Framework.IO.Network;
 using System.Collections.Generic;
 using System.Linq;

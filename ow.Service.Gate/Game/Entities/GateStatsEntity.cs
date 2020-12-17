@@ -1,5 +1,5 @@
-﻿using ow.Framework.Game.Entities;
-using ow.Framework.Game.Enums;
+﻿using ow.Framework.FS.Entities;
+using ow.Framework.FS.Enums;
 using System.Collections;
 using System.Collections.Generic;
 

@@ -1,7 +1,7 @@
 ﻿using DefaultEcs;
 using Microsoft.Extensions.Logging;
 using NetCoreServer;
-using ow.Framework.Game.Entities;
+using ow.Framework.FS.Entities;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Providers;
 using ow.Framework.Utils;

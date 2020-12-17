@@ -1,4 +1,4 @@
-﻿namespace ow.Framework.Game.Enums
+﻿namespace ow.Framework.FS.Enums
 {
     public enum ItemStatId
     {

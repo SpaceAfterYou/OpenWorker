@@ -1,4 +1,4 @@
-﻿using ow.Framework.Game.Datas.Bin.Table.Entities;
+﻿using ow.Framework.FS.Datas.Bin.Table.Entities;
 
 namespace ow.Service.District.Game
 {

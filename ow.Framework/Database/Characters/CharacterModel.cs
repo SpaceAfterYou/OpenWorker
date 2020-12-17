@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
-using ow.Framework.Game.Enums;
+using ow.Framework.FS.Enums;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;

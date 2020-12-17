@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ow.Framework.Game.Storage
+namespace ow.Framework.FS.Storage
 {
     public interface IStorageEntity
     {

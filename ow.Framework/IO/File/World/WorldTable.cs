@@ -1,14 +1,15 @@
 ﻿using Microsoft.Extensions.Configuration;
 using ow.Framework.Game.Datas.World.Table;
-using ow.Framework.IO.GameFile;
 using System.IO;
 using System.Xml;
 
-namespace ow.Framework.Game
+namespace ow.Framework.IO.File.World
 {
-    public sealed class WorldTables
+    public sealed class WorldTable
     {
-        public VRoot Read(string file)
+        private readonly WorldFile _data;
+
+        public VRoot ReadBatch(string file)
         {
             using Stream stream = _data.GetInputStream(_data.GetEntry($"World/Table/{file}.vbatch"));
 
@@ -18,9 +19,6 @@ namespace ow.Framework.Game
             return new(xml.DocumentElement);
         }
 
-        public WorldTables(IConfiguration configuration) =>
-            _data = new(configuration);
-
-        private readonly VData49 _data;
+        public WorldTable(IConfiguration configuration) => _data = new(configuration);
     }
 }

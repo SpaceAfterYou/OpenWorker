@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
+using ow.Framework.IO.File.Bin;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;

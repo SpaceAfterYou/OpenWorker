@@ -1,6 +1,6 @@
 ﻿using ow.Framework.Database.Storages;
 
-namespace ow.Framework.Game.Storage
+namespace ow.Framework.FS.Storage
 {
     public sealed class ItemStorage
     {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ow.Framework.Game.Storage
+namespace ow.Framework.FS.Storage
 {
     public abstract class BaseStorage : List<ItemStorage>
     {

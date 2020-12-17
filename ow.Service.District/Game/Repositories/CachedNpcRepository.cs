@@ -1,6 +1,6 @@
-﻿using ow.Framework.Game.Datas.World.Table;
-using ow.Framework.Game.Datas.World.Table.EventBox;
-using ow.Framework.Game.Datas.World.Table.Types;
+﻿using ow.Framework.FS.Datas.World.Table;
+using ow.Framework.FS.Datas.World.Table.EventBox;
+using ow.Framework.FS.Datas.World.Table.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;

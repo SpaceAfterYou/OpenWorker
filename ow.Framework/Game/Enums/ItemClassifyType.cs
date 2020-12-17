@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ow.Framework.Game.Enums
+namespace ow.Framework.FS.Enums
 {
     [Flags]
     public enum ItemClassifyType

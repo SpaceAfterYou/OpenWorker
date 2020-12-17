@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using ow.Framework.Game;
+using ow.Framework.IO.File.World;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Extensions;
 using ow.Service.District.Game;
@@ -24,7 +24,7 @@ namespace ow.Service.District
                 .AddSingleton<DayEventBoosterRepository>()
                 .AddSingleton<BoosterRepository>()
                 .AddSingleton<CachedNpcRepository>()
-                .AddTransient<WorldTables>()
+                .AddTransient<WorldTable>()
                 .AddFramework()
                 .AddLan());
     }

@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using ow.Framework.Game;
+using ow.Framework.IO.File.Bin;
 using Xunit;
 
 namespace ow.Framework.Tests.IO.GameFile

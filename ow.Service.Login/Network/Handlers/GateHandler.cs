@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game;
+using ow.Framework.FS;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;

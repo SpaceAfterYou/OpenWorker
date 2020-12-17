@@ -1,5 +1,5 @@
-﻿using ow.Framework.Game.Entities;
-using ow.Framework.Game.Enums;
+﻿using ow.Framework.FS.Entities;
+using ow.Framework.FS.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;

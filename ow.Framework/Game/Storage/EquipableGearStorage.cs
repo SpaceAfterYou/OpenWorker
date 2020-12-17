@@ -1,8 +1,8 @@
 ﻿using ow.Framework.Database.Storages;
-using ow.Framework.Game.Enums;
+using ow.Framework.FS.Enums;
 using System.Collections.Generic;
 
-namespace ow.Framework.Game.Storage
+namespace ow.Framework.FS.Storage
 {
     public class EquipableGearStorage : BaseStorage
     {

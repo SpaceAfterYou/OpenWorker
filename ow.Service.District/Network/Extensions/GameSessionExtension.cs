@@ -1,6 +1,6 @@
-﻿using ow.Framework.Game.Character;
-using ow.Framework.Game.Entities;
-using ow.Framework.Game.Enums;
+﻿using ow.Framework.FS.Character;
+using ow.Framework.FS.Entities;
+using ow.Framework.FS.Enums;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests.Character;

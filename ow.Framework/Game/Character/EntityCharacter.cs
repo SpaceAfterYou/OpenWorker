@@ -1,10 +1,10 @@
 ﻿using ow.Framework.Database.Characters;
-using ow.Framework.Game.Datas.Bin.Table;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Enums;
+using ow.Framework.FS.Datas.Bin.Table;
+using ow.Framework.FS.Datas.Bin.Table.Entities;
+using ow.Framework.FS.Enums;
 using System.Linq;
 
-namespace ow.Framework.Game.Character
+namespace ow.Framework.FS.Character
 {
     public sealed class EntityCharacter
     {
