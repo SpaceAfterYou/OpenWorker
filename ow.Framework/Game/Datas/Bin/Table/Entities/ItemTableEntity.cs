@@ -145,7 +145,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         private static Stat[] ReadStats(BinaryReader br) => Enumerable
             .Repeat(0, Defines.StatsPerItem)
             .Select(_ => br.ReadUInt32())
-            .Select<KeyType, Stat>(id => new Stat(id, br.ReadInt32()))
+            .Select(id => new Stat(id, br.ReadInt32()))
             .ToArray();
     }
 }
