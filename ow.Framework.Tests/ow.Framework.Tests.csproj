@@ -56,4 +56,8 @@
   <ItemGroup>
     <ProjectReference Include="..\ow.Framework\ow.Framework.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="IO\File\World\" />
+  </ItemGroup>
 </Project>

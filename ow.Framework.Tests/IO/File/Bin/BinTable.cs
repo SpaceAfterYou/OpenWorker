@@ -2,7 +2,7 @@
 using ow.Framework.IO.File.Bin;
 using Xunit;
 
-namespace ow.Framework.Tests.IO.GameFile
+namespace ow.Framework.Tests.IO.File.Bin
 {
     public sealed class BinTableTest : IClassFixture<Startup>
     {
