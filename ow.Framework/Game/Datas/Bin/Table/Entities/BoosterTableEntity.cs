@@ -10,6 +10,14 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 
     public sealed record BoosterTableEntity : ITableEntity<KeyType>
     {
+        public readonly struct Stat
+        {
+            public ushort Id { get; }
+            public float Value { get; }
+
+            internal Stat(ushort id, float value) => (Id, Value) = (id, value);
+        }
+
         public KeyType Id { get; }
         public ushort Unknown7 { get; }
         public byte Unknown8 { get; }
@@ -28,7 +36,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public byte Unknown21 { get; }
         public byte Unknown22 { get; }
         public byte Unknown23 { get; }
-        public IReadOnlyList<BoosterTableEntityStat> Stats { get; }
+        public IReadOnlyList<Stat> Stats { get; }
         public float Unknown24 { get; }
         public float Unknown25 { get; }
         public float Unknown26 { get; }
@@ -69,7 +77,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown21 = br.ReadByte();
             Unknown22 = br.ReadByte();
             Unknown23 = br.ReadByte();
-            Stats = br.ReadSingleArray(ItemsCount).Select(c => new BoosterTableEntityStat(br.ReadUInt16(), c)).ToArray();
+            Stats = br.ReadSingleArray(ItemsCount).Select(c => new Stat(br.ReadUInt16(), c)).ToArray();
             Unknown40 = br.ReadUInt16();
             Unknown41 = br.ReadByte();
             Unknown42 = br.ReadUInt32();
