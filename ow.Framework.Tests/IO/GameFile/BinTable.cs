@@ -33,16 +33,22 @@ namespace ow.Framework.Tests.IO.GameFile
         public void ReadCustomizeInfoTable() => _tables.ReadCustomizeInfoTable();
 
         [Fact]
-        public void ReadPhotoItemTable() => _tables.ReadPhotoItemTable();
-
-        [Fact]
-        public void ReadGestureTable() => _tables.ReadGestureTable();
+        public void ReadCharacterBackgroundTable() => _tables.ReadCharacterBackgroundTable();
 
         [Fact]
         public void ReadItemClassifyTable() => _tables.ReadItemClassifyTable();
 
         [Fact]
         public void ReadItemScriptTable() => _tables.ReadItemScriptTable();
+
+        [Fact]
+        public void ReadCharacterInfoTable() => _tables.ReadCharacterInfoTable();
+
+        [Fact]
+        public void ReadPhotoItemTable() => _tables.ReadPhotoItemTable();
+
+        [Fact]
+        public void ReadGestureTable() => _tables.ReadGestureTable();
 
         [Fact]
         public void ReadMazeInfoTable() => _tables.ReadMazeInfoTable();

@@ -11,7 +11,7 @@ using System.Reflection;
 
 namespace ow.Framework.Game
 {
-    public class BinTable : IDisposable
+    public sealed class BinTable : IDisposable
     {
         private readonly VData12 _data;
 
