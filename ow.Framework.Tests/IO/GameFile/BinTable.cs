@@ -8,8 +8,7 @@ namespace ow.Framework.Tests.IO.GameFile
     {
         private readonly BinTable _tables;
 
-        public BinTableTest(Startup testSetup) =>
-            _tables = testSetup.ServiceProvider.GetRequiredService<BinTable>();
+        public BinTableTest(Startup testSetup) => _tables = testSetup.ServiceProvider.GetRequiredService<BinTable>();
 
         [Fact]
         public void ReadClassSelectInfoTable() => _tables.ReadClassSelectInfoTable();
