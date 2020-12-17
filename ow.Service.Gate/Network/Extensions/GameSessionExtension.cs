@@ -7,7 +7,6 @@ using ow.Framework.IO.Network.Opcodes;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Enums;
 using ow.Service.Gate.Game.Repository;
-using System.Linq;
 
 namespace ow.Service.Gate.Network.Extensions
 {
@@ -33,10 +32,12 @@ namespace ow.Service.Gate.Network.Extensions
             writer.Write(account.Id);
 
             Characters characters = session.Entity.Get<Characters>();
-            writer.Write(characters.Favorite.Id);
+
+            EntityCharacter character = characters.Favorite.Value.Get<EntityCharacter>();
+            writer.Write(character.Id);
             writer.Write(ushort.MinValue);
-            writer.WriteByteLengthUnicodeString(characters.Favorite.Name);
-            writer.Write(characters.Favorite.Photo.Id);
+            writer.WriteByteLengthUnicodeString(character.Name);
+            writer.Write(character.Photo.Id);
             writer.Write(uint.MinValue);
             writer.Write(uint.MinValue);
             writer.Write(uint.MinValue);
@@ -49,13 +50,12 @@ namespace ow.Service.Gate.Network.Extensions
             using PacketWriter writer = new(ClientOpcode.CharactersList);
 
             Characters characters = session.Entity.Get<Characters>();
-            Entity[] entities = characters.Where(c => c.Has<EntityCharacter>()).ToArray();
 
-            writer.Write((byte)entities.Length);
-            foreach (Entity entity in entities)
+            writer.Write((byte)characters.Count);
+            foreach (Entity entity in characters.Values)
                 writer.WriteCharacter(entity);
 
-            writer.Write(characters.LastSelected?.Id ?? -1);
+            writer.Write(characters.LastSelected?.Get<EntityCharacter>().Id ?? -1);
             writer.Write(byte.MinValue);
             writer.Write((byte)1);
             writer.Write((ulong)characters.InitializeTime.TotalSeconds);
@@ -89,14 +89,15 @@ namespace ow.Service.Gate.Network.Extensions
             using PacketWriter writer = new(ClientOpcode.CharacterSelect);
 
             Characters characters = session.Entity.Get<Characters>();
-            writer.Write(characters.LastSelected.Id);
+
+            EntityCharacter character = characters.LastSelected.Value.Get<EntityCharacter>();
+            writer.Write(character.Id);
 
             Account account = session.Entity.Get<Account>();
             writer.Write(account.Id);
-
-            PlaceEntity place = session.Entity.Get<PlaceEntity>();
-
             writer.Write(new byte[28]);
+
+            PlaceEntity place = characters.LastSelected.Value.Get<PlaceEntity>();
 
             DistrictInstance district = districts[place.District.Id];
             writer.WriteNumberLengthUtf8String(district.Ip);

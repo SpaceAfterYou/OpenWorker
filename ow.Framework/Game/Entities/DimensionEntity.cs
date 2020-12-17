@@ -67,10 +67,7 @@ namespace ow.Framework.Game.Entities
 
             writer.Write((byte)sessions.Length);
             foreach (var session in sessions)
-            {
-                EntityCharacter character = session.Entity.Get<EntityCharacter>();
-                writer.Write(character.Id);
-            }
+                writer.Write(session.Entity.Get<EntityCharacter>().Id);
 
             BroadcastExceptAsync(writer, sessions);
         }

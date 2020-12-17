@@ -1,6 +1,6 @@
-﻿using ow.Framework;
+﻿using DefaultEcs;
+using ow.Framework;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
@@ -29,6 +29,9 @@ namespace ow.Service.Gate.Network.Handlers
 
             if (request.FirstSlot == request.SecondSlot)
                 NetworkUtils.DropSession();
+
+            //Characters characters = session.Entity.Get<Characters>();
+            //characters.Values.First
 
             //var first = slots.FirstOrDefault(slot => slot.Id == request.FirstSlot);
             //var second = slots.FirstOrDefault(slot => slot.Id == request.SecondSlot);
@@ -94,11 +97,12 @@ namespace ow.Service.Gate.Network.Handlers
         public static void Delete(GameSession session, DeleteRequest request)
         {
             Characters characters = session.Entity.Get<Characters>();
+            characters.Delete(request.Id);
 
-            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot == -1) NetworkUtils.DropSession();
+            //int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
+            //if (slot == -1) NetworkUtils.DropSession();
 
-            characters.Remove(slot);
+            //characters.Remove(slot);
 
             using CharacterContext context = new();
             context.UseAndSave(c => c.Remove<CharacterModel>(new() { Id = request.Id }));
@@ -114,10 +118,10 @@ namespace ow.Service.Gate.Network.Handlers
         {
             Characters characters = session.Entity.Get<Characters>();
 
-            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot == -1) NetworkUtils.DropSession();
+            if (!characters.TryGetValue(request.Id, out Entity entity))
+                NetworkUtils.DropSession();
 
-            characters.Favorite = characters[slot].Get<EntityCharacter>();
+            characters.Favorite = entity;
             session.SendFavoriteCharacter();
         }
 
@@ -126,10 +130,10 @@ namespace ow.Service.Gate.Network.Handlers
         {
             Characters characters = session.Entity.Get<Characters>();
 
-            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot == -1) NetworkUtils.DropSession();
+            if (!characters.TryGetValue(request.Id, out Entity entity))
+                NetworkUtils.DropSession();
 
-            characters.LastSelected = characters[slot].Get<EntityCharacter>();
+            characters.LastSelected = entity;
             session.SendCharacterSelect(districts);
         }
 

@@ -1,7 +1,6 @@
 ﻿using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
 using ow.Framework.Game.Entities;
 using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network;
@@ -20,7 +19,7 @@ namespace ow.Service.District.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, BoosterRepository boosters, MazeDayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables)
+        public static void Enter(GameSession session, EnterRequest request, BoosterRepository boosters, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables)
         {
             if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
@@ -49,7 +48,7 @@ namespace ow.Service.District.Network.Handlers
 
             session
                 .SendServiceCurrentDate()
-                .SendMazeDayEventBoosters(dayEventBoosters)
+                .SendDayEventBoosters(dayEventBoosters)
                 .SendWorldVersion()
                 .SendWorldEnter()
                 .SenBoosterAdd(boosters)

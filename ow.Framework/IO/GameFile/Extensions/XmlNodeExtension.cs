@@ -50,7 +50,7 @@ namespace ow.Framework.Game.Extensions
             string enumName = xml.GetString(xpath);
             if (Enum.TryParse(type, enumName, false, out object result)) { return (T)result; }
 
-            enumName = type.GetFields().First(f => f.GetCustomAttribute<XmlEnumAttribute>().Name == enumName).Name;
+            enumName = type.GetFields().First(f => f.GetCustomAttribute<XmlEnumAttribute>()?.Name == enumName).Name;
             return (T)Enum.Parse(type, enumName, false);
         }
     }

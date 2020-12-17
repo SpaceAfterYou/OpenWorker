@@ -19,15 +19,15 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
         public static void Enter(GameSession session, EnterRequest request, GateInstance gate, LanContext lan, BinTables tables)
         {
-            if (gate.Id != request.GateId) NetworkUtils.DropSession();
+            if (gate.Id != request.GateId)
+                NetworkUtils.DropSession();
 
             if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
 
             using AccountContext context = new();
 
-            AccountModel model = context.Accounts.AsNoTracking().FirstOrDefault(c => c.Id == request.AccountId);
-            if (model is null) NetworkUtils.DropSession();
+            AccountModel model = context.Accounts.AsNoTracking().First(c => c.Id == request.AccountId);
 
             session.Entity.Set<Account>(new(model));
             session.Entity.Set<Characters>(new(model, request.GateId, tables, new()));

@@ -138,7 +138,7 @@ namespace ow.Service.District.Network
 
         #region Send Maze
 
-        internal static GameSession SendMazeDayEventBoosters(this GameSession session, MazeDayEventBoosterRepository boosters)
+        internal static GameSession SendDayEventBoosters(this GameSession session, DayEventBoosterRepository boosters)
         {
             using PacketWriter writer = new(ClientOpcode.EventDayEventBoosterList);
 
