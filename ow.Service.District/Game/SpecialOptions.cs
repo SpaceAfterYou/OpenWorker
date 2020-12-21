@@ -37,7 +37,7 @@ namespace ow.Service.District.Game
         public Entity Unknown20 => this[SpecialOption.Unknown20];
         public Entity OnKillEffectRecoveryHp => this[SpecialOption.OnKillEffectRecoveryHp];
 
-        public SpecialOptions() : base(Enumerable.Range(0, typeof(CharacterStat).GetEnumValues().Cast<byte>().Max()).Select(id => new Entity { Id = (SpecialOption)id, Value = 0.0f }))
+        public SpecialOptions() : base(Enumerable.Range(0, typeof(SpecialOption).GetEnumValues().Cast<byte>().Max()).Select(id => new Entity { Id = (SpecialOption)id, Value = 0.0f }))
         {
         }
     }

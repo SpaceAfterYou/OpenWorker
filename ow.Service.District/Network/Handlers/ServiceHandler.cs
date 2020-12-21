@@ -38,10 +38,7 @@ namespace ow.Service.District.Network.Handlers
             }
 
             if (!dimensions.Join(session))
-            {
-                session.Disconnect();
-                return;
-            }
+                NetworkUtils.DropSession();
 
             session
                 .SendAsync(new ServiceCurrentDataResponse())
