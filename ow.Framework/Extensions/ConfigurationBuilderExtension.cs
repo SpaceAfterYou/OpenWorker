@@ -11,8 +11,8 @@ namespace ow.Framework.Extensions
             builder.Sources.Clear();
 
             return builder
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddJsonFile("commonsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true)
                 .SetBasePath(AppContext.BaseDirectory);
         }
