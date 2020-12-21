@@ -191,6 +191,12 @@ namespace ow.Service.Gate.Network.Handlers
             {
                 AccountId = session.Account.Id,
                 CharacterId = character!.Id,
+                Place = new()
+                {
+                    Location = character.Place.District,
+                    Position = character.Place.Postion,
+                    Rotation = character.Place.Rotation
+                },
                 EndPoint = new()
                 {
                     Ip = district!.Ip,
