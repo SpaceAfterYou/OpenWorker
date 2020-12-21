@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace ow.Service.District.Network
 {
-    internal sealed class Session : GameSession
+    public sealed class Session : GameSession
     {
         internal Account Account { get; set; } = default!;
         internal Character Character { get; set; } = default!;
@@ -15,9 +15,9 @@ namespace ow.Service.District.Network
         internal Storages Storages { get; set; } = default!;
         internal SpecialOptions SpecialOptions { get; set; } = default!;
         internal IReadOnlyList<uint> Gestures { get; set; } = default!;
-        public Stats Stats { get; internal set; } = default!;
+        internal Stats Stats { get; set; } = default!;
 
-        internal Session(Server server, HandlerProvider provider, ILogger<Session> logger) : base(server, provider, logger)
+        public Session(Server server, HandlerProvider provider, ILogger<Session> logger) : base(server, provider, logger)
         {
         }
     }

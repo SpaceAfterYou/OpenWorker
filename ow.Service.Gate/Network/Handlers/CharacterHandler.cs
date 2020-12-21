@@ -181,7 +181,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (!session.Characters.TryGetValue(request.Id, out Character? character))
                 NetworkUtils.DropSession();
 
-            if (!districts.TryGetValue(character!.Place.District.Id, out DistrictRepository.Entity? district))
+            if (!districts.TryGetValue(character!.Place.District, out DistrictRepository.Entity? district))
                 NetworkUtils.DropSession();
 
             session.Characters.LastSelected = character;
@@ -191,6 +191,12 @@ namespace ow.Service.Gate.Network.Handlers
             {
                 AccountId = session.Account.Id,
                 CharacterId = character!.Id,
+                Place = new()
+                {
+                    Location = character.Place.District,
+                    Position = character.Place.Postion,
+                    Rotation = character.Place.Rotation
+                },
                 EndPoint = new()
                 {
                     Ip = district!.Ip,
@@ -207,15 +213,15 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterChangeBackground, HandlerPermission.Authorized)]
         public static void ChangeBackground(Session session, CharacterChangeBackgroundRequest request, BinTables binTable)
         {
-            if (!binTable.CharacterBackground.TryGetValue(request.BackgroundId, out CharacterBackgroundTableEntity? background))
+            if (!binTable.CharacterBackground.ContainsKey(request.BackgroundId))
                 NetworkUtils.DropSession();
 
-            session.Background = background!;
+            session.Background = request.BackgroundId;
 
             session.SendAsync(new GateCharacterChangeBackgroundResponse()
             {
                 AccountId = session.Account.Id,
-                BackgroundId = session.Background.Id
+                BackgroundId = session.Background
             });
         }
     }

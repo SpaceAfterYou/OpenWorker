@@ -93,7 +93,7 @@ namespace ow.Service.Gate.Network.Helpers
                 Title = new(),
                 Profile = new(),
                 Gestures = new uint[Defines.QuickSlotsCount],
-                Photo = binTable.PhotoItem.Values.First(c => c.Hero == request.Character.Main.Hero && c.Unknown14 == 1).Id
+                Photo = binTable.PhotoItem.Values.First(c => c.Hero == request.Character.Main.Hero && c.PromotionInfo == 1).Id
             };
 
         internal static StorageModel[] CreateStorageInfo() => new StorageModel[]

@@ -12,7 +12,6 @@ namespace ow.Service.Gate.Game
         internal IReadOnlyDictionary<Hero, CustomizeSkinTableEntity> CustomizeSkin { get; }
         internal IReadOnlyDictionary<Hero, CustomizeEyesTableEntity> CustomizeEyes { get; }
         internal IReadOnlyDictionary<Hero, CustomizeHairTableEntity> CustomizeHair { get; }
-        internal IReadOnlyDictionary<ushort, DistrictTableEntity> District { get; }
         internal IReadOnlyDictionary<ushort, CharacterInfoTableEntity> CharacterInfo { get; }
         internal IReadOnlyDictionary<uint, CharacterBackgroundTableEntity> CharacterBackground { get; }
         internal IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItem { get; }
@@ -25,7 +24,6 @@ namespace ow.Service.Gate.Game
             CustomizeSkin = tables.ReadCustomizeSkinTable();
             CustomizeEyes = tables.ReadCustomizeEyesTable();
             CustomizeHair = tables.ReadCustomizeHairTable();
-            District = tables.ReadDistrictTable();
             CharacterInfo = tables.ReadCharacterInfoTable();
             CharacterBackground = tables.ReadCharacterBackgroundTable();
             PhotoItem = tables.ReadPhotoItemTable();

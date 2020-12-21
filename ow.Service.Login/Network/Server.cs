@@ -8,7 +8,7 @@ namespace ow.Service.Login.Network
 {
     public sealed class Server : GameServer
     {
-        public Server(IServiceProvider services, IConfiguration configuration) : base(services, configuration)
+        public Server(IServiceProvider services, IConfiguration configuration) : base(services, configuration.GetSection("Auth"))
         {
         }
 

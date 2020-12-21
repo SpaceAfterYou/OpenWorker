@@ -23,7 +23,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public string Unknown11 { get; }
         public string Unknown12 { get; }
         public Hero Hero { get; }
-        public byte Unknown14 { get; }
+        public byte PromotionInfo { get; }
 
         internal PhotoItemTableEntity(BinaryReader br)
         {
@@ -41,7 +41,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown11 = br.ReadByteLengthUnicodeString();
             Unknown12 = br.ReadByteLengthUnicodeString();
             Hero = br.ReadHero();
-            Unknown14 = br.ReadByte();
+            PromotionInfo = br.ReadByte();
         }
     }
 }

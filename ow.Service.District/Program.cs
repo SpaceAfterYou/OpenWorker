@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ow.Framework.Extensions;
 using ow.Framework.IO.File.World;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Extensions;
@@ -16,6 +17,8 @@ namespace ow.Service.District
 
         internal static IHostBuilder CreateHostBuilder(string[] args) => Host
             .CreateDefaultBuilder(args)
+            .ConfigureAppConfiguration((hostingContext, config) => config
+                .AddFramework(hostingContext))
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
                 .AddSingleton<ChatCommandRepository>()

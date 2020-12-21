@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network.Attributes;
@@ -32,15 +31,11 @@ namespace ow.Service.Gate.Network.Handlers
 
                 session.Account = new(model);
                 session.Characters = new(model, request.Gate, tables);
-                session.Background = GetBackground(model, tables);
+                session.Background = model.CharacterBackground;
             }
 
             session.SendAsync(new GateEnterResponse() { AccountId = request.Account, Result = GateEnterResult.Success });
             session.SendAsync(new ServiceCurrentDataResponse());
         }
-
-        private static CharacterBackgroundTableEntity GetBackground(AccountModel model, BinTables tables) => tables.CharacterBackground.TryGetValue(model.CharacterBackground, out CharacterBackgroundTableEntity? entity)
-            ? entity!
-            : tables.CharacterBackground.Values.First();
     }
 }

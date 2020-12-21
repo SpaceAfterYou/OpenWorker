@@ -2,9 +2,7 @@
 using ow.Framework;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
-using ow.Framework.Utils;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -33,16 +31,13 @@ namespace ow.Service.Gate.Game
         {
             internal Vector3 Postion { get; init; }
             internal float Rotation { get; init; }
-            internal DistrictTableEntity District { get; init; }
+            internal ushort District { get; init; }
 
             internal PlaceInfo(PlaceModel model, BinTables tables)
             {
-                if (!tables.District.TryGetValue(model.Location, out DistrictTableEntity? district))
-                    NetworkUtils.DropSession();
-
                 Postion = new Vector3(model.Position.X, model.Position.Y, model.Position.Z);
                 Rotation = model.Rotation;
-                District = district!;
+                District = model.Location;
             }
         }
 

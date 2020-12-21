@@ -32,7 +32,7 @@ Some conventions must be followed.
 
 _appsettings.json_
 
-```json
+```jsonc
 {
   ...
   // Must match with gate appsettings.json (see below)
