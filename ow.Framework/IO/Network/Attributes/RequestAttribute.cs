@@ -2,7 +2,7 @@
 
 namespace ow.Framework.IO.Network.Attributes
 {
-    [AttributeUsage(AttributeTargets.Struct)]
+    [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
     internal class RequestAttribute : Attribute
     {
     }

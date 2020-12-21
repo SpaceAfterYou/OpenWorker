@@ -1,5 +1,5 @@
 ﻿using ow.Framework.Game.Datas.World.Table.Types;
-using ow.Framework.Game.Extensions;
+using ow.Framework.IO.File.Extensions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;

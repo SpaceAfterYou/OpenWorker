@@ -17,7 +17,7 @@ namespace ow.Framework.Database.CharacterPosts
         public int CharacterId { get; init; }
 
         [ForeignKey(nameof(CharacterId))]
-        public virtual CharacterModel Character { get; init; }
+        public virtual CharacterModel Character { get; init; } = default!;
 
         [Required]
         public CharacterPostType Type { get; init; }

@@ -1,10 +1,9 @@
-﻿using ow.Framework.Game.Entities;
-using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network;
+﻿using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests.Chat;
+using ow.Framework.IO.Network.Requests;
+using ow.Framework.IO.Network.Responses;
 using ow.Service.District.Network.Repositories;
 
 namespace ow.Service.District.Network.Handlers
@@ -12,7 +11,7 @@ namespace ow.Service.District.Network.Handlers
     internal static class ChatHandler
     {
         [Handler(ServerOpcode.ChatReceiveMessage, HandlerPermission.Authorized)]
-        public static void Receive(GameSession session, ReceiveRequest request, ChatCommandRepository commands)
+        internal static void Receive(Session session, ChatReceiveRequest request, ChatCommandRepository commands)
         {
             if (request.Message.Length == 0)
                 return;
@@ -23,15 +22,27 @@ namespace ow.Service.District.Network.Handlers
                 if (commands.TryGetValue(msg[0], out var command))
                 {
                     command(session, msg);
-                    session.SendChatMessage(ChatType.System, "Command executed");
+
+                    session.SendAsync(new ChatResponse()
+                    {
+                        Character = session.Character.Id,
+                        Chat = ChatType.System,
+                        Message = "Command executed"
+                    });
+
                     return;
                 }
 
-                session.SendChatMessage(ChatType.Red, "Command not found");
+                session.SendAsync(new ChatResponse()
+                {
+                    Character = session.Character.Id,
+                    Chat = ChatType.Red,
+                    Message = "Command not found"
+                });
                 return;
             }
 
-            session.Entity.Get<DimensionMemberEntity>().BroadcastChatMessage(request);
+            session.Dimension.BroadcastAsync(request);
         }
     }
 }

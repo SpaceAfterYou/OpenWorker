@@ -4,6 +4,6 @@ namespace ow.Framework.Database.Accounts
 {
     public sealed class AccountContext : BaseDbContext
     {
-        public DbSet<AccountModel> Accounts { set; get; }
+        public DbSet<AccountModel> Accounts { set; get; } = default!;
     }
 }

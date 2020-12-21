@@ -1,24 +1,75 @@
 ﻿using ow.Framework;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game.Character;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests.Character;
+using ow.Framework.IO.Network.Requests;
+using ow.Framework.IO.Network.Responses;
+using ow.Framework.IO.Network.Responses.Shared;
 using ow.Framework.Utils;
 using ow.Service.Gate.Game;
-using ow.Service.Gate.Network.Extensions;
+using ow.Service.Gate.Game.Repository;
 using ow.Service.Gate.Network.Helpers;
 using System.Linq;
+
+using static ow.Framework.IO.Network.Responses.Shared.CharacterShared.EquippedItemsInfo;
 
 namespace ow.Service.Gate.Network.Handlers
 {
     internal static class CharacterHandler
     {
+        private static void SendCharactersListAsync(Session session) =>
+            session.SendAsync(new GateCharacterListResponse()
+            {
+                LastSelected = session.Characters.LastSelected?.Id ?? -1,
+                InitializeTime = (ulong)session.Characters.InitializeTime.TotalSeconds,
+                Characters = session.Characters.Values.Select(c => new CharacterShared()
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Advancement = c.Advancement,
+                    Hero = c.Hero,
+                    Slot = c.Slot,
+                    Level = c.Level,
+                    Photo = c.Photo,
+                    Stats = new()
+                    {
+                        AttackSpeed = 1.0f,
+                        MoveSpeed = 1.0f,
+                    },
+                    Appearance = new()
+                    {
+                        EquippedEyeColor = c.Appearance.EquippedEyeColor,
+                        EquippedHair = new()
+                        {
+                            Color = c.Appearance.EquippedHair.Color,
+                            Style = c.Appearance.EquippedHair.Style,
+                        },
+                        Hair = new()
+                        {
+                            Style = c.Appearance.Hair.Style,
+                            Color = c.Appearance.Hair.Color,
+                        },
+                        EquippedSkinColor = c.Appearance.EquippedSkinColor,
+                        EyeColor = c.Appearance.EyeColor,
+                        SkinColor = c.Appearance.SkinColor,
+                    },
+                    WeaponItem = new()
+                    {
+                        PrototypeId = c.Storages.EquippedGearWeapon.PrototypeId,
+                        UpgradeLevel = c.Storages.EquippedGearWeapon.UpgradeLevel,
+                    },
+                    EquippedItems = new()
+                    {
+                        Battle = c.Storages.EquippedBattleFashion.Select(s => new ItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
+                        View = c.Storages.EquippedViewFashion.Select(s => new ItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
+                    }
+                }).ToArray(),
+            });
+
         [Handler(ServerOpcode.CharacterChangeSlot, HandlerPermission.Authorized)]
-        public static void ChangeSlot(GameSession session, ChangeSlotRequest request)
+        public static void ChangeSlot(Session session, CharacterChangeSlotRequest request)
         {
             if (1 > request.FirstSlot || request.FirstSlot > Defines.CharactersSlotsCount)
                 NetworkUtils.DropSession();
@@ -29,30 +80,30 @@ namespace ow.Service.Gate.Network.Handlers
             if (request.FirstSlot == request.SecondSlot)
                 NetworkUtils.DropSession();
 
-            //var first = slots.FirstOrDefault(slot => slot.Id == request.FirstSlot);
-            //var second = slots.FirstOrDefault(slot => slot.Id == request.SecondSlot);
+            Character? first = session.Characters.Values.FirstOrDefault(c => c.Slot == request.FirstSlot);
+            Character? second = session.Characters.Values.FirstOrDefault(c => c.Slot == request.SecondSlot);
 
-            ///* No characters found */
-            //if (first is null && second is null)
-            //    NetworkUtils.DropSession();
+            using CharacterContext context = new();
 
-            //if (second is not null && first is not null)
-            //{
-            //    SlotCharacterHelper.Swap(first, second);
-            //    return;
-            //}
+            if (first is not null)
+            {
+                first.Slot = request.FirstSlot;
+                context.Update(new { first.Id, first.Slot });
+            }
 
-            //if (first is not null)
-            //{
-            //    SlotCharacterHelper.Change(first, slots[request.SecondSlot]);
-            //    return;
-            //}
+            if (second is not null)
+            {
+                second.Slot = request.SecondSlot;
+                context.Update(new { second.Id, second.Slot });
+            }
 
-            //SlotCharacterHelper.Change(second, slots[request.FirstSlot]);
+            context.SaveChanges();
+
+            SendCharactersListAsync(session);
         }
 
         [Handler(ServerOpcode.CharacterCreate, HandlerPermission.Authorized)]
-        public static void Create(GameSession session, CreateRequest request, GateInfo gate, BinTables tables)
+        public static void Create(Session session, CharacterCreateRequest request, GateInstance gate, BinTables tables)
         {
             if (request.Character.Main.Name.Length > Defines.MaxCharacterNameLength)
                 return;
@@ -68,68 +119,84 @@ namespace ow.Service.Gate.Network.Handlers
 
             using CharacterContext context = new();
 
-            Account account = session.Entity.Get<Account>();
-            if (context.Characters.Any(c => c.Slot == request.SlotId && c.AccountId == account.Id))
+            if (context.Characters.Any(c => c.Slot == request.Slot && c.AccountId == session.Account.Id))
                 NetworkUtils.DropSession();
 
             if (context.Characters.Any(c => c.Name == request.Character.Main.Name))
                 return;
 
-            if (!tables.ClassSelectInfoTable.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity classInfo))
+            if (!tables.ClassSelectInfo.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity? classInfo))
                 NetworkUtils.DropSession();
 
             /// [ TODO ] Add default items to inventory
 
-            CharacterModel model = CharacterCreateHelper.CreateModel(account, request, gate, tables);
+            CharacterModel model = CharacterCreateHelper.CreateModel(session.Account, request, gate, tables);
             context.UseAndSave(c => c.Add(model));
 
-            Characters characters = session.Entity.Get<Characters>();
-            characters.Create(model, tables);
+            if (!session.Characters.TryAdd(model.Id, session.Characters.LastSelected = new(model, tables)))
+                NetworkUtils.DropSession();
 
-            session.SendCharactersList();
+            SendCharactersListAsync(session);
         }
 
         [Handler(ServerOpcode.CharacterDelete, HandlerPermission.Authorized)]
-        public static void Delete(GameSession session, DeleteRequest request)
+        public static void Delete(Session session, CharacterDeleteRequest request)
         {
-            Characters characters = session.Entity.Get<Characters>();
+            if (!session.Characters.Remove(request.Id, out Character _))
+                NetworkUtils.DropSession();
 
-            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1) NetworkUtils.DropSession();
+            if (session.Characters.LastSelected?.Id == request.Id)
+                session.Characters.LastSelected = null;
 
-            characters.Remove(slot);
+            if (request.Id == session.Characters.Favorite?.Id)
+                session.Characters.Favorite = null;
 
             using CharacterContext context = new();
             context.UseAndSave(c => c.Remove<CharacterModel>(new() { Id = request.Id }));
 
-            session.SendCharactersList();
+            SendCharactersListAsync(session);
         }
 
         [Handler(ServerOpcode.CharacterList, HandlerPermission.Authorized)]
-        public static void GetList(GameSession session) => session.SendCharactersList();
+        public static void GetList(Session session) => SendCharactersListAsync(session);
 
         [Handler(ServerOpcode.CharacterMarkFavorite, HandlerPermission.Authorized)]
-        public static void MarkFavorite(GameSession session, MarkFavoriteRequest request)
+        public static void MarkFavorite(Session session, CharacterMarkFavoriteRequest request)
         {
-            Characters characters = session.Entity.Get<Characters>();
+            if (!session.Characters.TryGetValue(request.Id, out Character? character))
+                NetworkUtils.DropSession();
 
-            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1) NetworkUtils.DropSession();
-
-            characters.Favorite = characters[slot].Get<EntityCharacter>();
-            session.SendFavoriteCharacter();
+            session.SendAsync(new GateCharacterMarkAsFavoriteResponse()
+            {
+                AccountId = session.Account.Id,
+                CharacterId = character!.Id,
+                CharacterName = character!.Name,
+                PhotoId = character!.Photo
+            });
         }
 
         [Handler(ServerOpcode.CharacterSelect, HandlerPermission.Authorized)]
-        public static void Select(GameSession session, SelectRequest request, DistrictInstance district)
+        public static void Select(Session session, CharacterSelectRequest request, DistrictRepository districts)
         {
-            Characters characters = session.Entity.Get<Characters>();
+            if (!session.Characters.TryGetValue(request.Id, out Character? character))
+                NetworkUtils.DropSession();
 
-            int slot = characters.FindIndex(c => c.Has<EntityCharacter>() && c.Get<EntityCharacter>().Id == request.Id);
-            if (slot != -1) NetworkUtils.DropSession();
+            if (!districts.TryGetValue(character!.Place.District.Id, out DistrictRepository.Entity? district))
+                NetworkUtils.DropSession();
 
-            characters.LastSelected = characters[slot].Get<EntityCharacter>();
-            session.SendCharacterSelect(district);
+            session.Characters.LastSelected = character;
+
+            session.SendAsync(new ServiceCurrentDataResponse());
+            session.SendAsync(new GateCharacterSelectResponse()
+            {
+                AccountId = session.Account.Id,
+                CharacterId = character!.Id,
+                EndPoint = new()
+                {
+                    Ip = district!.Ip,
+                    Port = district!.Port
+                }
+            });
         }
 
         [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
@@ -138,13 +205,18 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         [Handler(ServerOpcode.CharacterChangeBackground, HandlerPermission.Authorized)]
-        public static void ChangeBackground(GameSession session, ChangeBackgroundRequest request, BinTables binTable)
+        public static void ChangeBackground(Session session, CharacterChangeBackgroundRequest request, BinTables binTable)
         {
-            if (!binTable.CharacterBackgroundTable.TryGetValue(request.BackgroundId, out CharacterBackgroundTableEntity entity))
+            if (!binTable.CharacterBackground.TryGetValue(request.BackgroundId, out CharacterBackgroundTableEntity? background))
                 NetworkUtils.DropSession();
 
-            session.Entity.Set(entity);
-            session.SendCharacterBackground();
+            session.Background = background!;
+
+            session.SendAsync(new GateCharacterChangeBackgroundResponse()
+            {
+                AccountId = session.Account.Id,
+                BackgroundId = session.Background.Id
+            });
         }
     }
 }

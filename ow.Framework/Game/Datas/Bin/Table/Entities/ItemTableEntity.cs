@@ -11,6 +11,24 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 
     public sealed record ItemTableEntity : ITableEntity<KeyType>
     {
+        public readonly struct Option
+        {
+            public byte Class { get; }
+            public uint Type { get; }
+            public int Value { get; }
+
+            internal Option(byte @class, uint id, int value) => (Class, Type, Value) = (@class, id, value);
+        }
+
+        public readonly struct Specification
+        {
+            public uint Min { get; }
+            public uint Max { get; }
+            public uint Magic { get; }
+
+            internal Specification(uint min, uint max, uint magic) => (Min, Max, Magic) = (min, max, magic);
+        }
+
         public KeyType Id { get; }
         public uint Classify { get; }
         public byte Unknown7 { get; }
@@ -20,7 +38,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public uint Unknown11 { get; }
         public uint Unknown12 { get; }
         public uint Unknown13 { get; }
-        public ushort MaxStackCount { get; }
+        public ushort StackMax { get; }
         public byte Unknown15 { get; }
         public uint Unknown16 { get; }
         public uint Unknown17 { get; }
@@ -31,21 +49,12 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public byte Unknown22 { get; }
         public byte Unknown23 { get; }
         public uint CostumeSet { get; }
-        public string BroochSlots { get; }
-        public byte Durability { get; }
-        public byte Unknown27 { get; }
-        public uint MinAttackDamange { get; }
-        public uint MaxAttackDamage { get; }
-        public uint Unknown30 { get; }
-        public uint MinDefence { get; }
-        public uint MaxDefence { get; }
-        public uint Unknown33 { get; }
-        public byte Unknown34 { get; }
-        public byte Unknown35 { get; }
-        public byte Unknown36 { get; }
-        public byte Unknown37 { get; }
-        public byte Unknown38 { get; }
-        public IReadOnlyList<ItemTableEntityStat> Stats { get; }
+        public string SlotDisable { get; }
+        public byte Endurance { get; }
+        public byte UseValue { get; }
+        public Specification AttackDamage { get; }
+        public Specification Defence { get; }
+        public IReadOnlyList<Option> Options { get; }
         public uint Unknown49 { get; }
         public uint Unknown50 { get; }
         public uint Unknown51 { get; }
@@ -82,7 +91,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown11 = br.ReadUInt32();
             Unknown12 = br.ReadUInt32();
             Unknown13 = br.ReadUInt32();
-            MaxStackCount = br.ReadUInt16();
+            StackMax = br.ReadUInt16();
             Unknown15 = br.ReadByte();
             Unknown16 = br.ReadUInt32();
             Unknown17 = br.ReadUInt32();
@@ -93,21 +102,12 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown22 = br.ReadByte();
             Unknown23 = br.ReadByte();
             CostumeSet = br.ReadUInt32();
-            BroochSlots = br.ReadByteLengthUnicodeString();
-            Durability = br.ReadByte();
-            Unknown27 = br.ReadByte();
-            MinAttackDamange = br.ReadUInt32();
-            MaxAttackDamage = br.ReadUInt32();
-            Unknown30 = br.ReadUInt32();
-            MinDefence = br.ReadUInt32();
-            MaxDefence = br.ReadUInt32();
-            Unknown33 = br.ReadUInt32();
-            Unknown34 = br.ReadByte();
-            Unknown35 = br.ReadByte();
-            Unknown36 = br.ReadByte();
-            Unknown37 = br.ReadByte();
-            Unknown38 = br.ReadByte();
-            Stats = ReadStats(br);
+            SlotDisable = br.ReadByteLengthUnicodeString();
+            Endurance = br.ReadByte();
+            UseValue = br.ReadByte();
+            AttackDamage = new(br.ReadUInt32(), br.ReadUInt32(), br.ReadUInt32());
+            Defence = new(br.ReadUInt32(), br.ReadUInt32(), br.ReadUInt32());
+            Options = ReadOptions(br);
             Unknown49 = br.ReadUInt32();
             Unknown50 = br.ReadUInt32();
             Unknown51 = br.ReadUInt32();
@@ -134,10 +134,23 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Package = br.ReadUInt32();
         }
 
-        private static ItemTableEntityStat[] ReadStats(BinaryReader br) => Enumerable
-            .Repeat(0, Defines.StatsPerItem)
-            .Select(_ => br.ReadUInt32())
-            .Select<KeyType, ItemTableEntityStat>(id => new ItemTableEntityStat(id, br.ReadInt32()))
-            .ToArray();
+        private static Option[] ReadOptions(BinaryReader br)
+        {
+            IEnumerable<byte> classes = br.ReadByteArray(Defines.StatsPerItem);
+            IEnumerable<uint> types = br.ReadUInt32Array(Defines.StatsPerItem);
+            IEnumerable<int> values = br.ReadInt32Array(Defines.StatsPerItem);
+
+            return GetItems(classes, types, values).Select(item => new Option(item.Item1, item.Item2, item.Item3)).ToArray();
+        }
+
+        private static IEnumerable<Tuple<T1, T2, T3>> GetItems<T1, T2, T3>(IEnumerable<T1> first, IEnumerable<T2> second, IEnumerable<T3> third)
+        {
+            IEnumerator<T1> e1 = first.GetEnumerator();
+            IEnumerator<T2> e2 = second.GetEnumerator();
+            IEnumerator<T3> e3 = third.GetEnumerator();
+
+            while (e1.MoveNext() && e2.MoveNext() && e3.MoveNext())
+                yield return Tuple.Create(e1.Current, e2.Current, e3.Current);
+        }
     }
 }

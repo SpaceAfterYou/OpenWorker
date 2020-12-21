@@ -1,27 +1,27 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game;
-using ow.Framework.Game.Datas.Bin.Table;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Enums;
+using ow.Framework.IO.File.Bin;
 using System.Collections.Generic;
 
 namespace ow.Service.District.Game
 {
-    public sealed class BinTables : IBinTables
+    internal sealed record BinTables
     {
-        public IReadOnlyDictionary<Hero, CustomizeSkinTableEntity> CustomizeSkinTable { get; }
-        public IReadOnlyDictionary<Hero, CustomizeEyesTableEntity> CustomizeEyesTable { get; }
-        public IReadOnlyDictionary<Hero, CustomizeHairTableEntity> CustomizeHairTable { get; }
-        public IReadOnlyDictionary<ushort, DistrictTableEntity> DistrictTable { get; }
+        internal IReadOnlyDictionary<ushort, DistrictTableEntity> District { get; }
+        internal IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfo { get; }
+        internal IReadOnlyDictionary<ushort, BoosterTableEntity> Booster { get; }
+        internal IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItem { get; }
+        internal IReadOnlyDictionary<ushort, GestureTableEntity> Gesture { get; }
 
         public BinTables(IConfiguration configuration)
         {
             using BinTable tables = new(configuration);
 
-            CustomizeSkinTable = tables.ReadCustomizeSkinTable();
-            CustomizeEyesTable = tables.ReadCustomizeEyesTable();
-            CustomizeHairTable = tables.ReadCustomizeHairTable();
-            DistrictTable = tables.ReadDistrictTable();
+            District = tables.ReadDistrictTable();
+            MazeInfo = tables.ReadMazeInfoTable();
+            Booster = tables.ReadBoosterTable();
+            PhotoItem = tables.ReadPhotoItemTable();
+            Gesture = tables.ReadGestureTable();
         }
     }
 }

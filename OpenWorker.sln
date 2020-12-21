@@ -21,7 +21,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ow.Framework.Tests", "ow.Fr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utils", "Utils", "{0DDD5060-75D6-4B1C-BACA-6BCAA5EF59DC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ow.Utils.GenerateItemsForView", "ow.Utils.GenerateItemsForView\ow.Utils.GenerateItemsForView.csproj", "{CCB5F90E-97FE-4E36-8CB4-A82760B523EC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ow.Utils.GenerateItemsForView", "ow.Utils.GenerateItemsForView\ow.Utils.GenerateItemsForView.csproj", "{CCB5F90E-97FE-4E36-8CB4-A82760B523EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

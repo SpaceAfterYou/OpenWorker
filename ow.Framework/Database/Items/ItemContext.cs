@@ -4,6 +4,6 @@ namespace ow.Framework.Database.Storages
 {
     public sealed class ItemContext : BaseDbContext
     {
-        public DbSet<ItemModel> Items { set; get; }
+        public DbSet<ItemModel> Items { set; get; } = default!;
     }
 }

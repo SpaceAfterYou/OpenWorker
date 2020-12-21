@@ -3,7 +3,8 @@ using Microsoft.Extensions.Hosting;
 using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Extensions;
-using ow.Service.Login.Game;
+using ow.Service.Login.Game.Repositories;
+using ow.Service.Login.Network;
 
 namespace ow.Service.Login
 {
@@ -15,8 +16,11 @@ namespace ow.Service.Login
             .CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
-                .AddSingleton<GatesInstances>()
-                .AddSingleton<OptionsStatuses>()
+                .AddSingleton<GateRepository>()
+                .AddSingleton<Server>()
+                .AddSingleton<Features>()
+                .AddTransient<Session>()
+                .AddTransient<Server>()
                 .AddFramework()
                 .AddLan());
     }

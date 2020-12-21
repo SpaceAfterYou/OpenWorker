@@ -18,6 +18,11 @@
         public const byte MinCharacterNameLength = 2;
         public const byte MaxCharacterNameLength = 12;
 
+        public const byte CubeQuickSlotCount = 4;
+
+        public const byte EquipableFashionStorageMaxCapacity = 14;
+        public const byte EquipableGearStorageMaxCapacity = 10;
+
         internal const byte PacketHeaderSize = 7;
         internal const byte PacketEncryptedHeaderSize = 5;
     }

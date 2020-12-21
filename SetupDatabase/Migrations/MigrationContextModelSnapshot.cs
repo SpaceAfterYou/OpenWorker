@@ -207,7 +207,8 @@ namespace SetupDatabase.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
 
                     b.Property<long>("Photo")
                         .HasColumnType("bigint");

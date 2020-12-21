@@ -1,11 +1,8 @@
-﻿using DefaultEcs;
-using ow.Framework.Game.Character;
-using ow.Framework.Game.Datas;
-using ow.Framework.Game.Entities;
+﻿using ow.Framework.Game;
 using ow.Framework.Game.Enums;
-using ow.Framework.Game.Storage;
 using ow.Framework.Game.Types;
 using ow.Framework.IO.Network.Opcodes;
+using ow.Framework.IO.Network.Responses.Shared;
 using ow.Framework.Utils;
 using System;
 using System.IO;
@@ -17,61 +14,57 @@ namespace ow.Framework.IO.Network
 {
     public sealed class PacketWriter : BinaryWriter
     {
-        public void WriteOptionStatus(OptionStatus value) => Write((ushort)value);
+        public void WriteOptionStatus(FeatureStatus value) => Write((ushort)value);
 
-        public void WritePlace(Place place)
+        public void WriteGateEnterResult(GateEnterResult value) => Write((byte)value);
+
+        public void WriteCharacterAdvancement(CharacterAdvancement value) => Write((byte)value);
+
+        public void WriteCharacterStat(CharacterStat value) => Write((ushort)value);
+
+        public void WriteDistrictLogOutStatus(DistrictLogOutStatus value) => Write((byte)value);
+
+        public void WriteDistrictLogOutWay(DistrictLogOutWay value) => Write((byte)value);
+
+        public void Write(PlaceShared value)
         {
-            Write(place.Location);
-            Write((ulong)0);
-            WriteVector3(place.Position);
-            Write(place.Rotation);
+            Write(value.Location);
+            Write(ulong.MinValue);
+            WriteVector3(value.Position);
+            Write(value.Rotation);
             Write((float)0);
             Write((float)0);
         }
 
-        public void WriteCharacter(Entity entity)
+        public void WriteCharacter(CharacterShared character)
         {
-            EntityCharacter character = entity.Get<EntityCharacter>();
             WriteCharacterMain(character);
-
-            IStorageEntity storage = entity.Get<IStorageEntity>();
-            WriteCharacterWeapon(storage);
-            WriteCharacterFashion(storage);
-
-            IStatsEntity stats = entity.Get<IStatsEntity>();
-            WriteCharacterMeta(character, stats);
+            WriteCharacterWeapon(character);
+            WriteCharacterFashion(character);
+            WriteCharacterMeta(character);
         }
 
-        private void WriteCharacterMain(EntityCharacter value)
+        private void WriteCharacterMain(CharacterShared value)
         {
             Write(value.Id);
             WriteByteLengthUnicodeString(value.Name);
             WriteHeroId(value.Hero);
-            Write(value.Advancement);
-            Write(value.Photo.Id);
+            WriteCharacterAdvancement(value.Advancement);
+            Write(value.Photo);
             Write(value.Appearance);
             Write(value.Level);
             Write(new byte[10]);
         }
 
-        private void WriteCharacterWeapon(IStorageEntity storage)
+        private void WriteCharacterWeapon(CharacterShared value)
         {
-            if (storage.EquippedGearStorage.Weapon is ItemStorage weapon)
-            {
-                Write(weapon.UpgradeLevel);
-                Write(weapon.PrototypeId);
-            }
-            else
-            {
-                Write(byte.MinValue);
-                Write(uint.MinValue);
-            }
-
+            Write(value.WeaponItem.UpgradeLevel);
+            Write(value.WeaponItem.PrototypeId);
             Write(byte.MinValue);
             Write(-1);
         }
 
-        private void WriteCharacterFashion(IStorageEntity storage)
+        private void WriteCharacterFashion(CharacterShared value)
         {
             static void WriteFashionEntry(PacketWriter writer, int prototypeId = -1, uint color = uint.MinValue)
             {
@@ -86,7 +79,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue);
             }
 
-            foreach (var (view, battle) in storage.EquippedViewFashionStorage.Zip(storage.EquippedBattleFashionStorage, Tuple.Create))
+            foreach ((CharacterShared.EquippedItemsInfo.ItemInfo? view, CharacterShared.EquippedItemsInfo.ItemInfo? battle) in value.EquippedItems.View.Zip(value.EquippedItems.Battle, Tuple.Create))
             {
                 if (view is not null)
                 {
@@ -104,7 +97,7 @@ namespace ow.Framework.IO.Network
             }
         }
 
-        private void WriteCharacterMeta(EntityCharacter value, IStatsEntity stats)
+        private void WriteCharacterMeta(CharacterShared value)
         {
             const ushort primaryEnergy = 0;
             const ushort extraEnergy = 0;
@@ -119,18 +112,18 @@ namespace ow.Framework.IO.Network
             Write(guildId);
             WriteByteLengthUnicodeString(guildName);
             Write(uint.MinValue); // 1 Unknown4
-            Write((uint)stats.CurrentHp.Value); // 2
-            Write((uint)stats.MaxHp.Value); // 3
-            Write((uint)stats.CurrentSg.Value); // 4
-            Write((uint)stats.MaxSg.Value); // 5
+            Write(value.Stats.CurrentHp); // 2
+            Write(value.Stats.MaxHp); // 3
+            Write(value.Stats.CurrentSg); // 4
+            Write(value.Stats.MaxSg); // 5
             Write(uint.MinValue); // 6
             Write(uint.MinValue); // 7
             Write(uint.MinValue); // 8 Stamina???
-            Write((uint)stats.Stamina.Value); // 9 Max Stamina
+            Write(value.Stats.MaxStamina); // 9 Max Stamina
             Write(uint.MinValue); // 10
             Write(uint.MinValue); // 11
-            Write(stats.MoveSpeed.Value);
-            Write(stats.AttackSpeed.Value);
+            Write(value.Stats.MoveSpeed);
+            Write(value.Stats.AttackSpeed);
             Write(uint.MinValue); // 00 00 00 00
             Write(primaryEnergy);
             Write(extraEnergy);
@@ -146,13 +139,13 @@ namespace ow.Framework.IO.Network
             Write(uint.MinValue); // 00 00 00 00
         }
 
-        private void Write(HairCharacter hair)
+        private void Write(CharacterShared.AppearanceInfo.HairInfo value)
         {
-            Write(hair.Style);
-            Write(hair.Color);
+            Write(value.Style);
+            Write(value.Color);
         }
 
-        private void Write(AppearanceCharacter value)
+        private void Write(CharacterShared.AppearanceInfo value)
         {
             Write(ushort.MinValue); // 1
             Write(ushort.MinValue); // 1
@@ -162,6 +155,16 @@ namespace ow.Framework.IO.Network
             Write(value.EquippedHair); // 4
             Write(value.EquippedEyeColor); // 5
             Write(value.EquippedSkinColor); // 5
+        }
+
+        public void WritePlace(PlaceShared value)
+        {
+            Write(value.Location);
+            Write((ulong)0);
+            WriteVector3(value.Position);
+            Write(value.Rotation);
+            Write((float)0); // armour gage
+            Write((float)0); // armour gage
         }
 
         public void WriteNumberLengthUtf8String(string str)
@@ -188,6 +191,9 @@ namespace ow.Framework.IO.Network
             Write(Encoding.Unicode.GetBytes(str));
         }
 
+        public void WriteDistrictConnectResult(DistrictConnectResult value) =>
+            Write((byte)value);
+
         public void WriteByteLengthUnicodeString(string str)
         {
             Write((ushort)(str.Length * 2));
@@ -209,6 +215,10 @@ namespace ow.Framework.IO.Network
             Write(value.Y);
             Write(value.Z);
         }
+
+        internal void WriteAuthLoginErrorMessageCode(AuthLoginErrorMessageCode value) => Write((uint)value);
+
+        internal void WriteAuthLoginStatus(AuthLoginStatus value) => Write((byte)value);
 
         public void WriteSpecialOption(SpecialOption value) => Write((byte)value);
 

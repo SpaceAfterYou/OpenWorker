@@ -1,17 +1,17 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ow.Framework.IO.Network;
+using ow.Service.District.Network;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace ow.Service.District
 {
-    public class Worker : IHostedService
+    internal class Worker : IHostedService
     {
         private readonly ILogger<Worker> _logger;
-        private readonly GameServer _server;
+        private readonly Server _server;
 
-        public Worker(GameServer server, ILogger<Worker> logger)
+        internal Worker(Server server, ILogger<Worker> logger)
         {
             _logger = logger;
             _server = server;

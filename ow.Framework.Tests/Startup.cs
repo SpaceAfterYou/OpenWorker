@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using ow.Framework.Game;
+using ow.Framework.IO.File.Bin;
 using System.IO;
 
 namespace ow.Framework.Tests

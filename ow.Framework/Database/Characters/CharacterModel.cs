@@ -20,7 +20,7 @@ namespace ow.Framework.Database.Characters
         public int AccountId { get; set; }
 
         [ForeignKey(nameof(AccountId))]
-        public virtual AccountModel Account { get; set; }
+        public virtual AccountModel Account { get; set; } = default!;
 
         [Required]
         public ushort Gate { get; set; }
@@ -29,7 +29,8 @@ namespace ow.Framework.Database.Characters
         public byte Slot { get; set; }
 
         [Required]
-        public string Name { get; set; }
+        [MaxLength(Defines.MaxCharacterNameLength)]
+        public string Name { get; set; } = default!;
 
         [Required]
         public Hero Hero { get; set; }
@@ -42,49 +43,50 @@ namespace ow.Framework.Database.Characters
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public InventoryModel Inventory { get; set; }
+        public InventoryModel Inventory { get; set; } = default!;
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public BankModel Bank { get; set; }
+        public BankModel Bank { get; set; } = default!;
 
         [Required]
-        public uint[] Gestures { get; set; }
+        public uint[] Gestures { get; set; } = default!;
 
         [Required]
         public uint Photo { get; set; }
 
         [Required]
-        public byte Advancement { get; set; }
+        public CharacterAdvancement Advancement { get; set; }
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public AppearanceModel Appearance { get; set; }
+        public AppearanceModel Appearance { get; set; } = default!;
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public PlaceModel Place { get; set; }
+        public PlaceModel Place { get; set; } = default!;
 
         [Required]
-        public uint[] LearnedSkill { get; set; }
+        public uint[] LearnedSkill { get; set; } = default!;
 
         [Required]
         public uint[] QuickSlot { get; set; }
+         = default!;
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public EnergyModel Energy { get; set; }
+        public EnergyModel Energy { get; set; } = default!;
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public TitleModel Title { get; set; }
+        public TitleModel Title { get; set; } = default!;
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public StorageModel[] Storage { get; set; }
+        public StorageModel[] Storage { get; set; } = default!;
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public ProfileModel Profile { get; set; }
+        public ProfileModel Profile { get; set; } = default!;
     }
 }
