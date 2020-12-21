@@ -18,8 +18,13 @@ namespace ow.Service.District.Game.Helpers
             Photo = session.Character.Photo,
             Stats = new()
             {
-                AttackSpeed = 1.0f,
-                MoveSpeed = 1.0f,
+                MaxStamina = (uint)session.Stats.Stamina.Value,
+                CurrentHp = (uint)session.Stats.MaxHp.Value,
+                MaxHp = (uint)session.Stats.MaxHp.Value,
+                CurrentSg = (uint)session.Stats.CurrentSg.Value,
+                MaxSg = (uint)session.Stats.MaxSg.Value,
+                AttackSpeed = session.Stats.AttackSpeed.Value,
+                MoveSpeed = session.Stats.MoveSpeed.Value,
             },
             Appearance = new()
             {
