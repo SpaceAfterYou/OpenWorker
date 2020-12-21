@@ -2,9 +2,9 @@
 
 namespace ow.Service.District.Network.Repositories
 {
-    internal delegate void ChatCommand(Session session, params string[] @params);
+    public delegate void ChatCommand(Session session, params string[] @params);
 
-    internal class ChatCommandRepository : Dictionary<string, ChatCommand>
+    public class ChatCommandRepository : Dictionary<string, ChatCommand>
     {
     }
 }

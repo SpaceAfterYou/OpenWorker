@@ -11,7 +11,7 @@ namespace ow.Service.District
         private readonly ILogger<Worker> _logger;
         private readonly Server _server;
 
-        internal Worker(Server server, ILogger<Worker> logger)
+        public Worker(Server server, ILogger<Worker> logger)
         {
             _logger = logger;
             _server = server;

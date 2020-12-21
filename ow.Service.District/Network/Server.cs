@@ -6,9 +6,9 @@ using System;
 
 namespace ow.Service.District.Network
 {
-    internal sealed class Server : GameServer
+    public sealed class Server : GameServer
     {
-        internal Server(IServiceProvider services, IConfiguration configuration) : base(services, configuration)
+        public Server(IServiceProvider services, IConfiguration configuration) : base(services, configuration)
         {
         }
 

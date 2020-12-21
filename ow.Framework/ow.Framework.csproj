@@ -15,7 +15,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="appsettings.json" />
+    <None Remove="commonsettings.Development.json" />
+    <None Remove="commonsettings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="commonsettings.Development.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="commonsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

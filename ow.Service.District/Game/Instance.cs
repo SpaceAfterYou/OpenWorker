@@ -10,7 +10,7 @@ namespace ow.Service.District.Game
         internal DistrictTableEntity Location { get; }
         internal VRoot Place { get; }
 
-        internal Instance(IConfiguration configuration, BinTables binTable, WorldTable worldTable)
+        public Instance(IConfiguration configuration, BinTables binTable, WorldTable worldTable)
         {
             ushort id = ushort.Parse(configuration["Zone:Id"]);
 
