@@ -29,6 +29,7 @@ namespace ow.Service.District
                 .AddSingleton<BoosterRepository>()
                 .AddSingleton<NpcRepository>()
                 .AddSingleton<Server>()
+                .AddSingleton<GateInstance>()
                 .AddTransient<WorldTable>()
                 .AddTransient<Session>()
                 .AddFramework()

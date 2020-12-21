@@ -5,28 +5,23 @@ using System.Linq;
 
 namespace ow.Service.Gate.Game.Repository
 {
-    internal sealed class DistrictRepository : Dictionary<ushort, DistrictRepository.Entity>
+    public sealed class DistrictRepository : Dictionary<ushort, DistrictRepository.Entity>
     {
-        internal sealed record Entity
+        public sealed record Entity
         {
             internal string Ip { get; }
             internal ushort Port { get; }
 
-            internal Entity(GateConfiguration.DistrictConfiguration configuration) => (Ip, Port) = (configuration.Host.Ip, configuration.Host.Port);
+            internal Entity(DistrictConfiguration configuration) => (Ip, Port) = (configuration.Host.Ip, configuration.Host.Port);
         }
 
-        public DistrictRepository(IConfiguration configuration) : base(GetDistricts(configuration))
+        public DistrictRepository(IConfiguration configuration, GateInstance instance) : base(GetDistricts(configuration, instance))
         {
         }
 
-        private static IEnumerable<KeyValuePair<ushort, Entity>> GetDistricts(IConfiguration configuration)
-        {
-            ushort id = ushort.Parse(configuration["Id"]);
-
-            return configuration
-                .GetSection("Gates").Get<IReadOnlyList<GateConfiguration>>()
-                .First(c => c.Id == id).Districts
-                .Select(s => KeyValuePair.Create(s.Location, new Entity(s)));
-        }
+        private static IEnumerable<KeyValuePair<ushort, Entity>> GetDistricts(IConfiguration configuration, GateInstance instance) => configuration
+            .GetSection("Districts").Get<IReadOnlyDictionary<string, DistrictConfiguration>>()
+            .Where(s => s.Value.Gate == instance.Id)
+            .Select(s => KeyValuePair.Create(s.Value.Location, new Entity(s.Value)));
     }
 }

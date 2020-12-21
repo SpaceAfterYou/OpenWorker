@@ -4,8 +4,6 @@ using NetCoreServer;
 using ow.Framework;
 using ow.Framework.IO.Network;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 
 namespace ow.Service.Gate.Network
@@ -18,16 +16,7 @@ namespace ow.Service.Gate.Network
 
         protected override TcpSession CreateSession() => Services.GetRequiredService<Session>();
 
-        private static IPEndPoint GetEndPoint(IConfiguration configuration)
-        {
-            ushort gateId = configuration.GetValue<ushort>("Gate");
-
-            GateConfiguration gate = configuration
-                .GetSection("Gates")
-                .Get<IReadOnlyList<GateConfiguration>>()
-                .First(s => s.Id == gateId);
-
-            return IPEndPoint.Parse($"{gate.Host}");
-        }
+        private static IPEndPoint GetEndPoint(IConfiguration configuration) =>
+            IPEndPoint.Parse($"{ configuration.GetSection($"Gates:{configuration["Id"]}").Get<GateConfiguration>().Host}");
     }
 }

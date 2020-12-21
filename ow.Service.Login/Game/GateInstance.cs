@@ -12,9 +12,9 @@ namespace ow.Service.Login.Game
         public ushort PlayersOnlineCount { get; set; }
         public GateStatus Status { get; }
 
-        public GateInstance(GateConfiguration configuration)
+        public GateInstance(ushort id, GateConfiguration configuration)
         {
-            Id = configuration.Id;
+            Id = id;
             Ip = configuration.Host.Ip;
             Port = configuration.Host.Port;
             Name = configuration.Name;

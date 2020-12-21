@@ -3,6 +3,7 @@ using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Requests;
 using ow.Service.District.Game.Helpers;
+using ow.Service.District.Game.Repositories;
 using ow.Service.District.Network;
 using System;
 using System.Linq;
@@ -15,7 +16,7 @@ namespace ow.Service.District.Game
 
     internal sealed class DimensionMember
     {
-        private readonly Dimension _dimension;
+        private readonly DimensionRepository.Entity _dimension;
         private readonly Session _session;
 
         internal void Leave() => _dimension.Leave(_session);
@@ -190,7 +191,7 @@ namespace ow.Service.District.Game
 
         #endregion Broadcast Movement
 
-        internal DimensionMember(Session session, Dimension dimension) => (_session, _dimension) = (session, dimension);
+        internal DimensionMember(Session session, DimensionRepository.Entity dimension) => (_session, _dimension) = (session, dimension);
     }
 }
 

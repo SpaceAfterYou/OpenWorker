@@ -7,6 +7,6 @@ namespace ow.Service.District.Game
         internal string Ip { get; }
         internal ushort Port { get; }
 
-        internal GateInstance(IConfiguration configuration) => (Ip, Port) = (configuration["Gate:Host:Ip"], ushort.Parse(configuration["Gate:Host:Port"]));
+        public GateInstance(IConfiguration configuration) => (Ip, Port) = (configuration[$"Gates:{configuration["Gate"]}:Host:Ip"], ushort.Parse(configuration[$"Gates:{configuration["Gate"]}:Host:Port"]));
     }
 }
