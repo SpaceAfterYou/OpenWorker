@@ -16,7 +16,7 @@ namespace ow.Service.Gate
         public static IHostBuilder CreateHostBuilder(string[] args) => Host
             .CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((hostingContext, config) => config
-                .AddFramework())
+                .AddFramework(hostingContext))
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
                 .AddSingleton<BinTables>()
