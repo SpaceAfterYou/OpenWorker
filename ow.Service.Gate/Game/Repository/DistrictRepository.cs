@@ -26,7 +26,7 @@ namespace ow.Service.Gate.Game.Repository
             return configuration
                 .GetSection("Gates").Get<IReadOnlyList<GateConfiguration>>()
                 .First(c => c.Id == id).Districts
-                .Select(s => KeyValuePair.Create(s.Host.Port, new Entity(s)));
+                .Select(s => KeyValuePair.Create(s.Location, new Entity(s)));
         }
     }
 }
