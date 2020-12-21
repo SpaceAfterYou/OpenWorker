@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Lan;
+using ow.Service.Login.Game.Repositories;
 using ow.Service.Login.Network;
 using System;
 using System.Threading;
@@ -14,7 +15,7 @@ namespace ow.Service.Login
         private readonly ILogger<Worker> _logger;
         private readonly Server _server;
 
-        public Worker(Server server, ILogger<Worker> logger, IServiceProvider service)
+        public Worker(Server server, ILogger<Worker> logger, IServiceProvider service, GateRepository s)
         {
             _logger = logger;
             _server = server;

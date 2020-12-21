@@ -207,15 +207,15 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterChangeBackground, HandlerPermission.Authorized)]
         public static void ChangeBackground(Session session, CharacterChangeBackgroundRequest request, BinTables binTable)
         {
-            if (!binTable.CharacterBackground.TryGetValue(request.BackgroundId, out CharacterBackgroundTableEntity? background))
+            if (!binTable.CharacterBackground.ContainsKey(request.BackgroundId))
                 NetworkUtils.DropSession();
 
-            session.Background = background!;
+            session.Background = request.BackgroundId;
 
             session.SendAsync(new GateCharacterChangeBackgroundResponse()
             {
                 AccountId = session.Account.Id,
-                BackgroundId = session.Background.Id
+                BackgroundId = session.Background
             });
         }
     }

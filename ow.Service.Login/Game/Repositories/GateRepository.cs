@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using ow.Framework;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -11,6 +12,6 @@ namespace ow.Service.Login.Game.Repositories
         }
 
         public static IEnumerable<GateInstance> GetGates(IConfiguration configuration) =>
-            configuration.GetSection("Gates").GetChildren().AsEnumerable().Select(c => new GateInstance(c));
+            configuration.GetSection("Gates").Get<IReadOnlyList<GateConfiguration>>().Select(c => new GateInstance(c));
     }
 }

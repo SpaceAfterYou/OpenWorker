@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using ow.Framework;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -11,17 +12,21 @@ namespace ow.Service.Gate.Game.Repository
             internal string Ip { get; }
             internal ushort Port { get; }
 
-            internal Entity(IConfigurationSection section) => (Ip, Port) = (section["Host:Ip"], ushort.Parse(section["Host:Port"]));
+            internal Entity(GateConfiguration.DistrictConfiguration configuration) => (Ip, Port) = (configuration.Host.Ip, configuration.Host.Port);
         }
 
         public DistrictRepository(IConfiguration configuration) : base(GetDistricts(configuration))
         {
         }
 
-        private static IEnumerable<KeyValuePair<ushort, Entity>> GetDistricts(IConfiguration configuration) => configuration
-            .GetSection("Districts")
-            .GetChildren()
-            .AsEnumerable()
-            .Select(c => KeyValuePair.Create(ushort.Parse(c["Id"]), new Entity(c)));
+        private static IEnumerable<KeyValuePair<ushort, Entity>> GetDistricts(IConfiguration configuration)
+        {
+            ushort id = ushort.Parse(configuration["Id"]);
+
+            return configuration
+                .GetSection("Gates").Get<IReadOnlyList<GateConfiguration>>()
+                .First(c => c.Id == id).Districts
+                .Select(s => KeyValuePair.Create(s.Host.Port, new Entity(s)));
+        }
     }
 }
