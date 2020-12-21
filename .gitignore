@@ -529,5 +529,8 @@ obj/
 appsettings.json
 appsettings.Development.json
 
+commonsettings.json
+commonsettings.Development.json
+
 !Bin/
 /TestLang
