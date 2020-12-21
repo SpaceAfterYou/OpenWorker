@@ -5,7 +5,7 @@ namespace ow.Framework.IO.File
 {
     public abstract class VisionZipFile : ZipFile
     {
-        protected VisionZipFile(string path, string password = null) : base(GetFile(path), false) => Password = password;
+        protected VisionZipFile(string path, string? password = null) : base(GetFile(path), false) => Password = password;
 
         private static MemoryStream GetFile(string path)
         {

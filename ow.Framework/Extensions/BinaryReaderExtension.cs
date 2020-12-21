@@ -1,4 +1,4 @@
-﻿using ow.Framework.FS.Enums;
+﻿using ow.Framework.Game.Enums;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -10,6 +10,12 @@ namespace ow.Framework.Extensions
     {
         public static uint[] ReadUInt32Array(this BinaryReader br, byte count) =>
             Enumerable.Repeat(0, count).Select(_ => br.ReadUInt32()).ToArray();
+
+        public static int[] ReadInt32Array(this BinaryReader br, byte count) =>
+            Enumerable.Repeat(0, count).Select(_ => br.ReadInt32()).ToArray();
+
+        public static ushort[] ReadUInt16Array(this BinaryReader br, byte count) =>
+            Enumerable.Repeat(0, count).Select(_ => br.ReadUInt16()).ToArray();
 
         public static float[] ReadSingleArray(this BinaryReader br, byte count) =>
             Enumerable.Repeat(0, count).Select(_ => br.ReadSingle()).ToArray();
@@ -41,8 +47,8 @@ namespace ow.Framework.Extensions
         public static ChatType ReadChatType(this BinaryReader br) =>
             (ChatType)br.ReadByte();
 
-        public static LogoutWay ReadLogoutWayType(this BinaryReader br) =>
-            (LogoutWay)br.ReadByte();
+        public static DistrictLogOutWay ReadLogoutWayType(this BinaryReader br) =>
+            (DistrictLogOutWay)br.ReadByte();
 
         public static StorageType ReadStorageType(this BinaryReader br) =>
             (StorageType)br.ReadByte();

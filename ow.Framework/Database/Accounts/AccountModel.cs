@@ -25,10 +25,10 @@ namespace ow.Framework.Database.Accounts
 
         [Required]
         [MaxLength(24)]
-        public string Nickname { get; init; }
+        public string Nickname { get; init; } = default!;
 
         [Required]
-        public byte[] Password { get; init; }
+        public byte[] Password { get; init; } = default!;
 
         [Required]
         public ulong SoulCash { get; init; }

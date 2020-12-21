@@ -50,7 +50,7 @@ namespace ow.Framework.IO.Lan
             foreach (MethodInfo method in methods)
             {
                 Handler handler = CreateEventHandler(service, method);
-                HandlerAttribute attribute = method.GetCustomAttribute<HandlerAttribute>();
+                HandlerAttribute attribute = method.GetCustomAttribute<HandlerAttribute>() ?? throw new ApplicationException();
 
                 logger.LogDebug($"Used EVENT ({attribute.Channel}) invoker on {method.DeclaringType?.FullName}.{method.Name}.");
 
@@ -76,7 +76,7 @@ namespace ow.Framework.IO.Lan
                 // Packet structure parameter
                 if (param.ParameterType.IsDefined(typeof(RequestAttribute)))
                 {
-                    ConstructorInfo constructor = param.ParameterType.GetConstructor(new[] { typeof(BinaryReader) });
+                    ConstructorInfo constructor = param.ParameterType.GetConstructor(new[] { typeof(BinaryReader) }) ?? throw new ApplicationException();
                     Debug.Assert(constructor is not null);
 
                     NewExpression @class = Expression.New(constructor, br);
@@ -86,7 +86,7 @@ namespace ow.Framework.IO.Lan
                 // Otherwise, get parameter from service collection
                 ConstantExpression innerService = Expression.Constant(service);
 
-                MethodInfo getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) });
+                MethodInfo getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) }) ?? throw new ApplicationException();
                 Debug.Assert(getServiceMethod is not null);
 
                 MethodCallExpression call = Expression.Call(null, getServiceMethod, innerService, Expression.Constant(param.ParameterType));

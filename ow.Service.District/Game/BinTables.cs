@@ -1,26 +1,27 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.FS.Datas.Bin.Table;
-using ow.Framework.FS.Datas.Bin.Table.Entities;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.File.Bin;
 using System.Collections.Generic;
 
 namespace ow.Service.District.Game
 {
-    public sealed class BinTables : IBinTables
+    internal sealed record BinTables
     {
-        public IReadOnlyDictionary<ushort, DistrictTableEntity> DistrictTable { get; }
-        public IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfoTable { get; }
-        public IReadOnlyDictionary<ushort, BoosterTableEntity> BoosterTable { get; }
-        public IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItemTable { get; }
+        internal IReadOnlyDictionary<ushort, DistrictTableEntity> District { get; }
+        internal IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfo { get; }
+        internal IReadOnlyDictionary<ushort, BoosterTableEntity> Booster { get; }
+        internal IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItem { get; }
+        internal IReadOnlyDictionary<ushort, GestureTableEntity> Gesture { get; }
 
         public BinTables(IConfiguration configuration)
         {
             using BinTable tables = new(configuration);
 
-            DistrictTable = tables.ReadDistrictTable();
-            MazeInfoTable = tables.ReadMazeInfoTable();
-            BoosterTable = tables.ReadBoosterTable();
-            PhotoItemTable = tables.ReadPhotoItemTable();
+            District = tables.ReadDistrictTable();
+            MazeInfo = tables.ReadMazeInfoTable();
+            Booster = tables.ReadBoosterTable();
+            PhotoItem = tables.ReadPhotoItemTable();
+            Gesture = tables.ReadGestureTable();
         }
     }
 }

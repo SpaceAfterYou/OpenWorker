@@ -1,13 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Lan;
-using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests.Auth;
-using ow.Service.Login.Game;
-using ow.Service.Login.Network.Extensions;
+using ow.Framework.IO.Network.Requests;
+using ow.Framework.IO.Network.Responses;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,21 +16,32 @@ namespace ow.Service.Login.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.AuthEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, LanContext lan)
+        public static void Enter(Session session, AuthEnterRequest request, LanContext lan)
         {
-            AccountModel model = GetAccount(request.Nickname, request.Password);
-            if (model is null)
+            if (GetAccount(request.Nickname, request.Password) is AccountModel model)
             {
-                // TODO: Not work. Message not showing.
-                session.SendLogin(TableMessage.LoginFailed);
-                return;
-            }
+                session.Account = new(model);
 
-            session.Entity.Set(new Account(model));
-            session.SendLogin(model.Id, request.Mac, lan.SetAccountIdBySessionKey(model.Id));
+                session.SendAsync(new AuthLoginResponse
+                {
+                    Mac = request.Mac,
+                    AccountId = model.Id,
+                    Response = AuthLoginStatus.Success,
+                    SessionKey = lan.SetAccountIdBySessionKey(model.Id),
+                });
+            }
+            else
+            {
+                // TODO: Not work. Message doesn't show.
+                session.SendAsync(new AuthLoginResponse
+                {
+                    Response = AuthLoginStatus.Failure,
+                    ErrorMessageCode = AuthLoginErrorMessageCode.WrongUsernameOrPassword
+                });
+            }
         }
 
-        private static AccountModel GetAccount(string nickname, string password)
+        private static AccountModel? GetAccount(string nickname, string password)
         {
             byte[] hash = GetPasswordHash(password);
             using AccountContext context = new();

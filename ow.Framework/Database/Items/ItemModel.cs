@@ -1,22 +1,10 @@
 ﻿using ow.Framework.Database.Characters;
-using ow.Framework.FS.Enums;
+using ow.Framework.Game.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ow.Framework.Database.Storages
 {
-    public sealed class StatModel
-    {
-        public ItemStatId Id { get; init; }
-        public int Value { get; init; }
-    }
-
-    public sealed class UpgradeModel
-    {
-        public byte UsedAttempts { get; init; }
-        public byte CurrentLevel { get; init; }
-    }
-
     [Table("items")]
     public class ItemModel
     {
@@ -33,7 +21,7 @@ namespace ow.Framework.Database.Storages
 
         [Required]
         [ForeignKey(nameof(CharacterId))]
-        public virtual CharacterModel Character { get; init; }
+        public virtual CharacterModel Character { get; init; } = default!;
 
         [Required]
         public ushort Slot { get; init; }
@@ -55,7 +43,7 @@ namespace ow.Framework.Database.Storages
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public UpgradeModel Upgrade { get; init; }
+        public UpgradeModel Upgrade { get; init; } = default!;
 
         [Required]
         public uint Color { get; init; }
@@ -65,11 +53,11 @@ namespace ow.Framework.Database.Storages
 
         [Required]
         [Column(TypeName = "jsonb")]
-        public StatModel[] Stats { get; init; }
+        public StatModel[] Stats { get; init; } = default!;
 
         [Required]
         [Column(TypeName = "char(15)")]
-        public string BroochSlots { get; init; }
+        public string BroochSlots { get; init; } = default!;
 
         [Required]
         public uint TagId { get; init; } = 0;

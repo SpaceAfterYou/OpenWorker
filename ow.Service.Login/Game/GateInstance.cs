@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.FS.Enums;
+using ow.Framework.Game.Enums;
 
 namespace ow.Service.Login.Game
 {

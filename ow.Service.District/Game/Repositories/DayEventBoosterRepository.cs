@@ -1,14 +1,24 @@
-﻿using System.Collections.Generic;
+﻿using ow.Framework.Game.Datas.Bin.Table.Entities;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ow.Service.District.Game.Repositories
 {
-    public class DayEventBoosterRepository : List<DayEventBooster>
+    internal class DayEventBoosterRepository : List<DayEventBoosterRepository.Entity>
     {
         public DayEventBoosterRepository(Instance zone, BinTables tables) : base(GetItems(zone, tables))
-        { }
+        {
+        }
 
-        private static IEnumerable<DayEventBooster> GetItems(Instance zone, BinTables binTables) =>
-            binTables.MazeInfoTable.Values.Where(c => c.District == zone.District.Id).Select(c => new DayEventBooster(0, c));
+        internal sealed record Entity
+        {
+            internal ushort Id { get; }
+            internal MazeInfoTableEntity Maze { get; }
+
+            internal Entity(ushort id, MazeInfoTableEntity maze) => (Id, Maze) = (id, maze);
+        }
+
+        private static IEnumerable<Entity> GetItems(Instance zone, BinTables tables) =>
+            tables.MazeInfo.Values.Where(s => s.District == zone.Location.Id).Select(c => new Entity(0, c));
     }
 }

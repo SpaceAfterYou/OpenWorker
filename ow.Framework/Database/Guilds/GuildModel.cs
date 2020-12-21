@@ -13,10 +13,10 @@ namespace ow.Framework.Database.Guilds
 
         [Required]
         [MaxLength(12)]
-        public string Name { get; init; }
+        public string Name { get; init; } = default!;
 
         [Required]
         [MaxLength(1024)]
-        public string Description { get; init; }
+        public string Description { get; init; } = default!;
     }
 }

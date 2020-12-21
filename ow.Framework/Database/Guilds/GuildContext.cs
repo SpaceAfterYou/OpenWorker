@@ -4,6 +4,6 @@ namespace ow.Framework.Database.Guilds
 {
     public sealed class GuildContext : BaseDbContext
     {
-        public DbSet<GuildModel> Guilds { set; get; }
+        public DbSet<GuildModel> Guilds { set; get; } = default!;
     }
 }

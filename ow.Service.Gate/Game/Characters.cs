@@ -1,12 +1,7 @@
-﻿using DefaultEcs;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
-using ow.Framework.FS.Character;
-using ow.Framework.FS.Entities;
-using ow.Framework.FS.Storage;
 using ow.Framework.Utils;
-using ow.Service.Gate.Game.Entities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,75 +9,31 @@ using System.Linq;
 
 namespace ow.Service.Gate.Game
 {
-    internal sealed class Characters : Dictionary<int, Entity>, IDisposable
+    internal sealed class Characters : Dictionary<int, Character>
     {
         public TimeSpan InitializeTime { get; }
-        public Entity? Favorite { get; set; }
-        public Entity? LastSelected { get; set; }
+        public Character? Favorite { get; set; }
+        public Character? LastSelected { get; set; }
 
-        private readonly World _entities = new();
-
-        public void Delete(int id)
+        public Characters(AccountModel accountModel, ushort gateId, BinTables tables)
         {
-            if (!Remove(id, out Entity entity))
-                NetworkUtils.DropSession();
-
-            try
-            {
-                if (LastSelected?.Get<EntityCharacter>().Id == id)
-                    LastSelected = Count > 0 ? this.First().Value : null;
-
-                if (id == Favorite?.Get<EntityCharacter>().Id)
-                    Favorite = null;
-            }
-            finally
-            {
-                entity.Dispose();
-            }
-        }
-
-        public void Create(CharacterModel model, BinTables tables)
-        {
-            Push(new(model, tables), new(model.Place, tables), new(), new());
-
-            LastSelected = this[model.Id];
-        }
-
-        public void Dispose() => _entities.Dispose();
-
-        public Characters(AccountModel accountModel, ushort gateId, BinTables tables, World entities)
-        {
-            _entities = entities;
-
             Stopwatch stopwatch = new();
             stopwatch.Start();
 
             using CharacterContext context = new();
 
             foreach (CharacterModel model in GetCharacterModels(accountModel, gateId))
-                Push(new(model, tables), new(model.Place, tables), new(), new(model));
+                if (!TryAdd(model.Id, new(model, tables)))
+                    NetworkUtils.DropSession();
 
-            if (accountModel.LastSelectedCharacter != -1 && TryGetValue(accountModel.LastSelectedCharacter, out Entity last))
+            if (accountModel.LastSelectedCharacter != -1 && TryGetValue(accountModel.LastSelectedCharacter, out Character? last))
                 LastSelected = last;
 
-            if (accountModel.FavoriteCharacter != -1 && TryGetValue(accountModel.FavoriteCharacter, out Entity favorite))
+            if (accountModel.FavoriteCharacter != -1 && TryGetValue(accountModel.FavoriteCharacter, out Character? favorite))
                 Favorite = favorite;
 
             stopwatch.Stop();
             InitializeTime = stopwatch.Elapsed;
-        }
-
-        private void Push(EntityCharacter character, PlaceEntity place, GateStatsEntity stats, GateStorageEntity storage)
-        {
-            Entity entity = _entities.CreateEntity();
-
-            entity.Set(character);
-            entity.Set(place);
-            entity.Set<IStatsEntity>(stats);
-            entity.Set<IStorageEntity>(storage);
-
-            if (!TryAdd(character.Id, entity))
-                NetworkUtils.DropSession();
         }
 
         private static IEnumerable<CharacterModel> GetCharacterModels(AccountModel accountModel, ushort gateId)

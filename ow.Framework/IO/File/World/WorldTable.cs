@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using ow.Framework.Game.Datas.World.Table;
+using System;
 using System.IO;
 using System.Xml;
 
@@ -16,7 +17,7 @@ namespace ow.Framework.IO.File.World
             XmlDocument xml = new();
             xml.Load(stream);
 
-            return new(xml.DocumentElement);
+            return new(xml.DocumentElement ?? throw new ApplicationException());
         }
 
         public WorldTable(IConfiguration configuration) => _data = new(configuration);

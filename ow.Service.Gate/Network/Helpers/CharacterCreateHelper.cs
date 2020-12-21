@@ -1,8 +1,8 @@
 ﻿using ow.Framework;
 using ow.Framework.Database.Characters;
-using ow.Framework.FS.Datas.Bin.Table.Entities;
-using ow.Framework.FS.Enums;
-using ow.Framework.IO.Network.Requests.Character;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
+using ow.Framework.Game.Enums;
+using ow.Framework.IO.Network.Requests;
 using ow.Framework.Utils;
 using ow.Service.Gate.Game;
 using System;
@@ -12,61 +12,61 @@ namespace ow.Service.Gate.Network.Helpers
 {
     internal static class CharacterCreateHelper
     {
-        internal static void ValidateHero(in CreateRequest request)
+        internal static void ValidateHero(in CharacterCreateRequest request)
         {
             if (request.Character.Main.Hero == Hero.None || !Enum.IsDefined(typeof(Hero), request.Character.Main.Hero))
                 NetworkUtils.DropSession();
         }
 
-        internal static void ValidateHair(in CreateRequest request, BinTables binTable)
+        internal static void ValidateHair(in CharacterCreateRequest request, BinTables binTable)
         {
-            if (!binTable.CustomizeHairTable.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity entity))
+            if (!binTable.CustomizeHair.TryGetValue(request.Character.Main.Hero, out CustomizeHairTableEntity? entity))
                 NetworkUtils.DropSession();
 
-            if (request.Character.Main.Appearance.Hair.Style == 0 || !entity.Style.Contains(request.Character.Main.Appearance.Hair.Style))
+            if (request.Character.Main.Appearance.Hair.Style == 0 || !entity!.Style.Contains(request.Character.Main.Appearance.Hair.Style))
                 NetworkUtils.DropSession();
         }
 
-        internal static void ValidateEyes(in CreateRequest request, BinTables binTable)
+        internal static void ValidateEyes(in CharacterCreateRequest request, BinTables binTable)
         {
-            if (!binTable.CustomizeEyesTable.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity entity))
+            if (!binTable.CustomizeEyes.TryGetValue(request.Character.Main.Hero, out CustomizeEyesTableEntity? entity))
                 NetworkUtils.DropSession();
 
-            if (request.Character.Main.Appearance.EyesColor == 0 || !entity.Color.Contains(request.Character.Main.Appearance.EyesColor))
+            if (request.Character.Main.Appearance.EyesColor == 0 || !entity!.Color.Contains(request.Character.Main.Appearance.EyesColor))
                 NetworkUtils.DropSession();
         }
 
-        internal static void ValidateSkin(in CreateRequest request, BinTables binTable)
+        internal static void ValidateSkin(in CharacterCreateRequest request, BinTables binTable)
         {
-            if (!binTable.CustomizeSkinTable.TryGetValue(request.Character.Main.Hero, out CustomizeSkinTableEntity entity))
+            if (!binTable.CustomizeSkin.TryGetValue(request.Character.Main.Hero, out CustomizeSkinTableEntity? entity))
                 NetworkUtils.DropSession();
 
-            if (request.Character.Main.Appearance.SkinColor == 0 || !entity.Color.Contains(request.Character.Main.Appearance.SkinColor))
+            if (request.Character.Main.Appearance.SkinColor == 0 || !entity!.Color.Contains(request.Character.Main.Appearance.SkinColor))
                 NetworkUtils.DropSession();
         }
 
-        internal static void ValidateOutfit(in CreateRequest request, BinTables binTable)
+        internal static void ValidateOutfit(in CharacterCreateRequest request, BinTables binTable)
         {
             ///
             /// [ TODO ] Find where placed fucking id
             ///
 
-            if (!binTable.CharacterInfoTable.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity entity))
+            if (!binTable.CharacterInfo.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity? entity))
                 NetworkUtils.DropSession();
 
-            if (request.OutfitId == 0 || !entity.DefaultOutfits.Contains(request.OutfitId))
+            if (request.Outfit == 0 || !entity!.DefaultOutfits.Contains(request.Outfit))
                 NetworkUtils.DropSession();
         }
 
-        public static CharacterModel CreateModel(Account account, CreateRequest request, GateInstance gate, BinTables binTable) =>
+        public static CharacterModel CreateModel(Account account, CharacterCreateRequest request, GateInstance gate, BinTables binTable) =>
             new()
             {
                 AccountId = account.Id,
                 Gate = gate.Id,
-                Slot = request.SlotId,
+                Slot = request.Slot,
                 Name = request.Character.Main.Name,
                 Hero = request.Character.Main.Hero,
-                Appearance = new AppearanceModel()
+                Appearance = new()
                 {
                     Hair = new()
                     {
@@ -93,7 +93,7 @@ namespace ow.Service.Gate.Network.Helpers
                 Title = new(),
                 Profile = new(),
                 Gestures = new uint[Defines.QuickSlotsCount],
-                Photo = binTable.PhotoItemTable.Values.First(c => c.Hero == request.Character.Main.Hero && c.Unknown14 == 1).Id
+                Photo = binTable.PhotoItem.Values.First(c => c.Hero == request.Character.Main.Hero && c.Unknown14 == 1).Id
             };
 
         internal static StorageModel[] CreateStorageInfo() => new StorageModel[]

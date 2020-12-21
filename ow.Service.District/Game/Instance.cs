@@ -5,16 +5,17 @@ using ow.Framework.IO.File.World;
 
 namespace ow.Service.District.Game
 {
-    public sealed record Instance
+    internal sealed record Instance
     {
-        internal DistrictTableEntity District { get; }
+        internal DistrictTableEntity Location { get; }
         internal VRoot Place { get; }
 
-        public Instance(IConfiguration configuration, BinTables binTable, WorldTable worldTable)
+        internal Instance(IConfiguration configuration, BinTables binTable, WorldTable worldTable)
         {
             ushort id = ushort.Parse(configuration["Zone:Id"]);
-            District = binTable.DistrictTable[id];
-            Place = worldTable.ReadBatch(District.Batch);
+
+            Location = binTable.District[id];
+            Place = worldTable.ReadBatch(Location.Batch);
         }
     }
 }

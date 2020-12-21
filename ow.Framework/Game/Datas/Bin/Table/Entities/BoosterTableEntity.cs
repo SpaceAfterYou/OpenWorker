@@ -8,79 +8,70 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
+    public static class MyFunkyExtensions
+    {
+        public static IEnumerable<TResult> Zip<T1, T2, T3, T4, TResult>(
+            this IEnumerable<T1> source,
+            IEnumerable<T2> second,
+            IEnumerable<T3> third,
+            IEnumerable<T4> fourth,
+            Func<T1, T2, T3, T4, TResult> func)
+        {
+            IEnumerator<T1> e1 = source.GetEnumerator();
+            IEnumerator<T2> e2 = second.GetEnumerator();
+            IEnumerator<T3> e3 = third.GetEnumerator();
+            IEnumerator<T4> e4 = fourth.GetEnumerator();
+
+            while (e1.MoveNext() && e2.MoveNext() && e3.MoveNext() && e4.MoveNext())
+                yield return func(e1.Current, e2.Current, e3.Current, e4.Current);
+        }
+    }
+
     public sealed record BoosterTableEntity : ITableEntity<KeyType>
     {
-        public readonly struct Stat
+        public readonly struct Effect
         {
-            public ushort Id { get; }
-            public float Value { get; }
+            public byte EffectType { get; }
+            public byte ApplyType { get; }
+            public float EffectValue { get; }
+            public ushort EffectString { get; }
 
-            internal Stat(ushort id, float value) => (Id, Value) = (id, value);
+            internal Effect(byte effectType, byte applyType, float effectValue, ushort effectString) => (EffectType, ApplyType, EffectValue, EffectString) = (effectType, applyType, effectValue, effectString);
         }
 
         public KeyType Id { get; }
-        public ushort Unknown7 { get; }
-        public byte Unknown8 { get; }
-        public byte Unknown9 { get; }
-        public byte Unknown10 { get; }
-        public byte Unknown11 { get; }
-        public byte Unknown12 { get; }
-        public byte Unknown13 { get; }
-        public byte Unknown14 { get; }
-        public byte Unknown15 { get; }
-        public byte Unknown16 { get; }
-        public byte Unknown17 { get; }
-        public byte Unknown18 { get; }
-        public byte Unknown19 { get; }
-        public byte Unknown20 { get; }
-        public byte Unknown21 { get; }
-        public byte Unknown22 { get; }
-        public byte Unknown23 { get; }
-        public IReadOnlyList<Stat> Stats { get; }
-        public float Unknown24 { get; }
-        public float Unknown25 { get; }
-        public float Unknown26 { get; }
-        public float Unknown27 { get; }
-        public float Unknown28 { get; }
-        public float Unknown29 { get; }
-        public float Unknown30 { get; }
-        public float Unknown31 { get; }
-        public ushort Unknown32 { get; }
-        public ushort Unknown33 { get; }
-        public ushort Unknown34 { get; }
-        public ushort Unknown35 { get; }
-        public ushort Unknown36 { get; }
-        public ushort Unknown37 { get; }
-        public ushort Unknown38 { get; }
-        public ushort Unknown39 { get; }
-        public ushort Unknown40 { get; }
-        public byte Unknown41 { get; }
-        public uint Unknown42 { get; }
+        public ushort Group { get; }
+        public IReadOnlyList<Effect> Effects { get; }
+        public ushort Info { get; }
+        public byte DecreaseCondition { get; }
+        public uint Time { get; }
 
         internal BoosterTableEntity(BinaryReader br)
         {
             Id = br.ReadUInt16();
-            Unknown7 = br.ReadUInt16();
-            Unknown8 = br.ReadByte();
-            Unknown9 = br.ReadByte();
-            Unknown10 = br.ReadByte();
-            Unknown11 = br.ReadByte();
-            Unknown12 = br.ReadByte();
-            Unknown13 = br.ReadByte();
-            Unknown14 = br.ReadByte();
-            Unknown15 = br.ReadByte();
-            Unknown16 = br.ReadByte();
-            Unknown17 = br.ReadByte();
-            Unknown18 = br.ReadByte();
-            Unknown19 = br.ReadByte();
-            Unknown20 = br.ReadByte();
-            Unknown21 = br.ReadByte();
-            Unknown22 = br.ReadByte();
-            Unknown23 = br.ReadByte();
-            Stats = br.ReadSingleArray(ItemsCount).Select(c => new Stat(br.ReadUInt16(), c)).ToArray();
-            Unknown40 = br.ReadUInt16();
-            Unknown41 = br.ReadByte();
-            Unknown42 = br.ReadUInt32();
+            Group = br.ReadUInt16();
+
+            IEnumerable<byte> effectTypes = br.ReadByteArray(ItemsCount);
+            IEnumerable<byte> applyTypes = br.ReadByteArray(ItemsCount);
+            IEnumerable<float> effectValues = br.ReadSingleArray(ItemsCount);
+            IEnumerable<ushort> effectStrings = br.ReadUInt16Array(ItemsCount);
+
+            Effects = GetItems(effectTypes, applyTypes, effectValues, effectStrings).Select(x => new Effect(x.Item1, x.Item2, x.Item3, x.Item4)).ToArray();
+
+            Info = br.ReadUInt16();
+            DecreaseCondition = br.ReadByte();
+            Time = br.ReadUInt32();
+        }
+
+        private static IEnumerable<Tuple<T1, T2, T3, T4>> GetItems<T1, T2, T3, T4>(IEnumerable<T1> first, IEnumerable<T2> second, IEnumerable<T3> third, IEnumerable<T4> fourth)
+        {
+            IEnumerator<T1> e1 = first.GetEnumerator();
+            IEnumerator<T2> e2 = second.GetEnumerator();
+            IEnumerator<T3> e3 = third.GetEnumerator();
+            IEnumerator<T4> e4 = fourth.GetEnumerator();
+
+            while (e1.MoveNext() && e2.MoveNext() && e3.MoveNext() && e4.MoveNext())
+                yield return Tuple.Create(e1.Current, e2.Current, e3.Current, e4.Current);
         }
 
         private const byte ItemsCount = 8;

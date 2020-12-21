@@ -15,6 +15,6 @@ namespace ow.Framework.Database.AccouintPosts
         public int AccountId { get; init; }
 
         [ForeignKey(nameof(AccountId))]
-        public virtual Accounts.AccountModel Account { get; init; }
+        public virtual Accounts.AccountModel Account { get; init; } = default!;
     }
 }

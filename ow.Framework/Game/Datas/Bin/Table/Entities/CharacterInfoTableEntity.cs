@@ -29,8 +29,8 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public short Unknown33 { get; }
         public short Unknown34 { get; }
         public short Unknown35 { get; }
-        public short Unknown36 { get; }
-        public byte Unknown37 { get; }
+        public short Maze { get; }
+        public byte SpawnBox { get; }
         public uint Unknown38 { get; }
         public uint Unknown39 { get; }
         public uint Unknown40 { get; }
@@ -98,8 +98,8 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown33 = br.ReadInt16();
             Unknown34 = br.ReadInt16();
             Unknown35 = br.ReadInt16();
-            Unknown36 = br.ReadInt16();
-            Unknown37 = br.ReadByte();
+            Maze = br.ReadInt16();
+            SpawnBox = br.ReadByte();
             Unknown38 = br.ReadUInt32();
             Unknown39 = br.ReadUInt32();
             Unknown40 = br.ReadUInt32();

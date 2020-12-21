@@ -62,7 +62,7 @@ namespace ow.Framework.IO.File.Bin
         public BinTable(IConfiguration configuration) => _data = new(configuration);
 
         internal static IReadOnlyDictionary<TId, TItem> Read<TId, TItem>(BinFile data, string file) where TId : IConvertible where TItem : ITableEntity<TId> => GetEntries(data, file)
-            .Select(br => (TItem)Activator.CreateInstance(typeof(TItem), BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { br }, null))
+            .Select(br => (TItem)(Activator.CreateInstance(typeof(TItem), BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { br }, null) ?? throw new ApplicationException()))
             .ToDictionary(k => k.Id, v => v);
 
         private static IEnumerable<BinaryReader> GetEntries(BinFile data, string file)

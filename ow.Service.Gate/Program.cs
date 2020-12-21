@@ -4,6 +4,7 @@ using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Extensions;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Repository;
+using ow.Service.Gate.Network;
 
 namespace ow.Service.Gate
 {
@@ -18,6 +19,8 @@ namespace ow.Service.Gate
                 .AddSingleton<BinTables>()
                 .AddSingleton<DistrictRepository>()
                 .AddSingleton<GateInstance>()
+                .AddTransient<Session>()
+                .AddTransient<Server>()
                 .AddFramework()
                 .AddLan());
     }

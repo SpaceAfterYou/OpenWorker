@@ -1,46 +1,40 @@
-﻿using ow.Framework.Game.Entities;
-using ow.Framework.IO.Network;
-using ow.Framework.IO.Network.Attributes;
+﻿using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests.Movement;
+using ow.Framework.IO.Network.Requests;
 
 namespace ow.Service.District.Network.Handlers
 {
     internal static class MovementHandler
     {
         [Handler(ServerOpcode.MovementJump, HandlerPermission.Authorized)]
-        public static void Jump(GameSession session, JumpRequest request)
+        internal static void Jump(Session session, MovementJumpRequest request)
         {
-            PlaceEntity place = session.Entity.Get<PlaceEntity>();
-            place.Position = request.Position;
-            place.Rotation = request.Rotation;
-
-            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementJump(request);
+            session.Character.Place.Position = request.Position;
+            session.Character.Place.Rotation = request.Rotation;
+            session.Dimension.BroadcastAsync(request);
         }
 
         [Handler(ServerOpcode.MovementLoopMotionEnd, HandlerPermission.Authorized)]
-        public static void LoopMotionEndBroadcast(GameSession session) =>
-            session.Entity.Get<DimensionMemberEntity>().BroadcastLoopMotionEnd(session);
+        internal static void LoopMotionEndBroadcast(Session session) =>
+            session.Dimension.BroadcastLoopMotionEnd();
 
         [Handler(ServerOpcode.MovementMove, HandlerPermission.Authorized)]
-        public static void Move(GameSession session, MoveRequest request)
+        internal static void Move(Session session, MovementMoveRequest request)
         {
-            PlaceEntity place = session.Entity.Get<PlaceEntity>();
-            place.Position = request.Position;
-            place.Rotation = request.Rotation;
+            session.Character.Place.Position = request.Position;
+            session.Character.Place.Rotation = request.Rotation;
 
-            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementMove(request);
+            session.Dimension.BroadcastAsync(request);
         }
 
         [Handler(ServerOpcode.MovementStopBt, HandlerPermission.Authorized)]
-        public static void Stop(GameSession session, StopRequest request)
+        internal static void Stop(Session session, MovementStopRequest request)
         {
-            PlaceEntity place = session.Entity.Get<PlaceEntity>();
-            place.Position = request.Position;
-            place.Rotation = request.Rotation;
+            session.Character.Place.Position = request.Position;
+            session.Character.Place.Rotation = request.Rotation;
 
-            session.Entity.Get<DimensionMemberEntity>().BroadcastMovementStop(request);
+            session.Dimension.BroadcastAsync(request);
         }
     }
 }

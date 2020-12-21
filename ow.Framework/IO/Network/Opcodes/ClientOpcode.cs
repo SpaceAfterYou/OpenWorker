@@ -16,7 +16,7 @@
         OptionLoad = 0x0231,
 
         CharacterDelete = 0x0302,
-        CharacterMakrAsFavorite = 0x030F,
+        CharacterMarkAsFavorite = 0x030F,
         CharactersList = 0x0312,
         CharacterSelect = 0x0314,
         WorldEnter = 0x0322,
@@ -26,7 +26,7 @@
         CharacterDbLoadSync = 0x0330,
         CharacterInfo = 0x0332,
         CharacterStatsUpdate = 0x0334,
-        CharacterLevelUp = 0x0336,
+        CharacterLevelSet = 0x0336,
         ChatReceivedExp = 0x0337,
         CharacterSpecialOptionUpdateList = 0x0347,
         CharacterOriginStatsUpdate = 0x0351,

@@ -2,11 +2,11 @@
 
 namespace ow.Service.Gate.Game
 {
-    public sealed class Account
+    internal sealed class Account
     {
-        public int Id { get; init; }
+        internal int Id { get; init; }
 
-        public Account(AccountModel model) =>
+        internal Account(AccountModel model) =>
             Id = model.Id;
     }
 }

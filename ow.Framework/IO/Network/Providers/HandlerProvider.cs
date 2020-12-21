@@ -39,7 +39,7 @@ namespace ow.Framework.IO.Network.Providers
             foreach (MethodInfo method in methods)
             {
                 Event handler = CreateEventHandler(service, method);
-                HandlerAttribute attribute = method.GetCustomAttribute<HandlerAttribute>();
+                HandlerAttribute attribute = method.GetCustomAttribute<HandlerAttribute>() ?? throw new ApplicationException();
 
                 logger.LogDebug($"Used EVENT ({attribute.Opcode}) invoker on {method.DeclaringType?.FullName}.{method.Name}.");
 
@@ -60,13 +60,13 @@ namespace ow.Framework.IO.Network.Providers
                 Debug.Assert(!param.IsIn);
 
                 // Session typed parameter
-                if (param.ParameterType == typeof(GameSession))
+                if (param.ParameterType == typeof(GameSession) || param.ParameterType?.BaseType == typeof(GameSession))
                     return Expression.Convert(session, param.ParameterType) as Expression;
 
                 // Packet structure parameter
-                if (param.ParameterType.IsDefined(typeof(RequestAttribute)))
+                if (param.ParameterType?.IsDefined(typeof(RequestAttribute)) ?? throw new ApplicationException())
                 {
-                    ConstructorInfo constructor = param.ParameterType.GetConstructor(new[] { typeof(BinaryReader) });
+                    ConstructorInfo constructor = param.ParameterType.GetConstructor(new[] { typeof(BinaryReader) }) ?? throw new ApplicationException();
                     Debug.Assert(constructor is not null);
 
                     NewExpression @class = Expression.New(constructor, br);
@@ -76,7 +76,7 @@ namespace ow.Framework.IO.Network.Providers
                 // Otherwise, get parameter from service collection
                 ConstantExpression innerService = Expression.Constant(service);
 
-                MethodInfo getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) });
+                MethodInfo getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) }) ?? throw new ApplicationException();
                 Debug.Assert(getServiceMethod is not null);
 
                 MethodCallExpression call = Expression.Call(null, getServiceMethod, innerService, Expression.Constant(param.ParameterType));

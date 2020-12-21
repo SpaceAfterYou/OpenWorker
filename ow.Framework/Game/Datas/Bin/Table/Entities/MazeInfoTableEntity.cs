@@ -9,7 +9,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
     public sealed record MazeInfoTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
-        public byte Unknown6 { get; }
+        public byte Type { get; }
         public ushort Unknown7 { get; }
         public byte Unknown8 { get; }
         public byte MinLevel { get; }
@@ -65,7 +65,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         internal MazeInfoTableEntity(BinaryReader br)
         {
             Id = br.ReadUInt16();
-            Unknown6 = br.ReadByte();
+            Type = br.ReadByte();
             Unknown7 = br.ReadUInt16();
             Unknown8 = br.ReadByte();
             MinLevel = br.ReadByte();

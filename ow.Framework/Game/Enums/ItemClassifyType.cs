@@ -1,9 +1,9 @@
 ﻿using System;
 
-namespace ow.Framework.FS.Enums
+namespace ow.Framework.Game.Enums
 {
     [Flags]
-    public enum ItemClassifyType
+    public enum ItemClassifyType : byte
     {
         Generic = 0,
         GearWeapon = 1,

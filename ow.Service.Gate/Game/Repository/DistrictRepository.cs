@@ -4,16 +4,24 @@ using System.Linq;
 
 namespace ow.Service.Gate.Game.Repository
 {
-    public sealed class DistrictRepository : Dictionary<ushort, DistrictInstance>
+    internal sealed class DistrictRepository : Dictionary<ushort, DistrictRepository.Entity>
     {
+        internal sealed record Entity
+        {
+            internal string Ip { get; }
+            internal ushort Port { get; }
+
+            internal Entity(IConfigurationSection section) => (Ip, Port) = (section["Host:Ip"], ushort.Parse(section["Host:Port"]));
+        }
+
         public DistrictRepository(IConfiguration configuration) : base(GetDistricts(configuration))
         {
         }
 
-        public static IEnumerable<KeyValuePair<ushort, DistrictInstance>> GetDistricts(IConfiguration configuration) => configuration
+        private static IEnumerable<KeyValuePair<ushort, Entity>> GetDistricts(IConfiguration configuration) => configuration
             .GetSection("Districts")
             .GetChildren()
             .AsEnumerable()
-            .Select(c => KeyValuePair.Create(ushort.Parse(c["Id"]), new DistrictInstance(c)));
+            .Select(c => KeyValuePair.Create(ushort.Parse(c["Id"]), new Entity(c)));
     }
 }

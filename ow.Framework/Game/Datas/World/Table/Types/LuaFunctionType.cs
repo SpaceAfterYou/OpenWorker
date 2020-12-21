@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Xml.Serialization;
 
-namespace ow.Framework.FS.Datas.World.Table.Types
+namespace ow.Framework.Game.Datas.World.Table.Types
 {
     [Flags]
     public enum LuaFunctionType

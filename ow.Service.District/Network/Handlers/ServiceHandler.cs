@@ -1,16 +1,14 @@
 ﻿using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
-using ow.Framework.Game.Character;
-using ow.Framework.Game.Entities;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Lan;
-using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Attributes;
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests.Server;
+using ow.Framework.IO.Network.Requests;
+using ow.Framework.IO.Network.Responses;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
-using ow.Service.District.Game.Entities;
 using ow.Service.District.Game.Repositories;
 using System.Linq;
 
@@ -19,25 +17,24 @@ namespace ow.Service.District.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(GameSession session, EnterRequest request, BoosterRepository boosters, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables)
+        internal static void Enter(Session session, DistrictEnterRequest request, Instance instance, BoosterRepository boosters, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables)
         {
-            if (request.AccountId != lan.GetAccountIdBySessionKey(request.SessionKey))
+            if (request.Account != lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
 
             {
-                AccountModel model = GetAccountModel(request.AccountId);
-                session.Entity.Set(new AccountEntity(model));
+                AccountModel model = GetAccountModel(request.Account);
+                session.Account = new(model);
             }
 
             {
-                CharacterModel model = GetCharacterModel(request.CharacterId, request.AccountId);
+                CharacterModel model = GetCharacterModel(request.Character, request.Account);
 
-                session.Entity.Set(new EntityCharacter(model, tables));
-                session.Entity.Set(new ProfileEntity(model.Profile));
-                session.Entity.Set(new StatsEntity());
-                session.Entity.Set(new SpecialOptionsEntity());
-                session.Entity.Set(new GesturesEntity(model));
-                session.Entity.Set(new PlaceEntity(model.Place, tables));
+                session.Character = new(model);
+                session.Profile = new(model.Profile);
+                session.Stats = new();
+                session.SpecialOptions = new();
+                session.Gestures = model.Gestures;
             }
 
             if (!dimensions.Join(session))
@@ -47,11 +44,26 @@ namespace ow.Service.District.Network.Handlers
             }
 
             session
-                .SendServiceCurrentDate()
-                .SendDayEventBoosters(dayEventBoosters)
-                .SendWorldVersion()
-                .SendWorldEnter()
-                .SenBoosterAdd(boosters)
+                .SendAsync(new ServiceCurrentDataResponse())
+                .SendAsync(new DayEventBoosterResponse()
+                {
+                    Values = dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
+                    {
+                        Id = s.Id,
+                        Maze = s.Maze.Id
+                    }).ToArray()
+                })
+                .SendAsync(new WorldVersionResponse())
+                .SendAsync(new DistrictEnterResponse()
+                {
+                    Place = new()
+                    {
+                        Location = instance.Location.Id,
+                        Position = session.Character.Place.Position,
+                        Rotation = session.Character.Place.Rotation,
+                    }
+                })
+                //.SenBoosterAdd(boosters)
                 //eSUB_CMD_POST_ACCOUNT_RECV
                 //.SendAttendanceRewardLoad()
                 //.SendAttendancePlayTimeInit()
@@ -67,38 +79,41 @@ namespace ow.Service.District.Network.Handlers
                 .SendCharacterDbLoadSync();
         }
 
-        public static AccountModel GetAccountModel(int id)
+        internal static AccountModel GetAccountModel(int id)
         {
             using AccountContext context = new();
             return context.Accounts.First(c => c.Id == id);
         }
 
-        public static CharacterModel GetCharacterModel(int id, int account)
+        internal static CharacterModel GetCharacterModel(int id, int account)
         {
             using CharacterContext context = new();
             return context.Characters.First(c => c.Id == id && c.AccountId == account);
         }
 
         [Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
-        public static void Heartbeat(GameSession session, HeartbeatRequest request) =>
-            session.SendServiceHeartbeat(request);
+        internal static void Heartbeat(Session session, ServiceHeartbeatRequest request) =>
+            session.SendAsync(request);
 
         [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
-        public static void LogOut(GameSession session, LogoutRequest request, GateInstance gate)
+        internal static void LogOut(Session session, DistrictLogoutRequest request, GateInstance gate)
         {
-            if (!session.Entity.Has<AccountEntity>())
+            if (session.Account.Id != request.Account)
                 NetworkUtils.DropSession();
 
-            if (session.Entity.Get<AccountEntity>().Id != request.AccountId)
+            if (session.Character.Id != request.Character)
                 NetworkUtils.DropSession();
 
-            if (!session.Entity.Has<EntityCharacter>())
+            if (request.Way != DistrictLogOutWay.GoToGateService)
                 NetworkUtils.DropSession();
 
-            if (session.Entity.Get<EntityCharacter>().Id != request.CharacterId)
-                NetworkUtils.DropSession();
-
-            session.SendServiceLogOut(gate);
+            session.SendAsync(new DistrictLogOutResponse()
+            {
+                Account = session.Account.Id,
+                Character = session.Character.Id,
+                Ip = gate.Ip,
+                Port = gate.Port,
+            });
         }
     }
 }
