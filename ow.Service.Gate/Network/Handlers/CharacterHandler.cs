@@ -181,7 +181,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (!session.Characters.TryGetValue(request.Id, out Character? character))
                 NetworkUtils.DropSession();
 
-            if (!districts.TryGetValue(character!.Place.District.Id, out DistrictRepository.Entity? district))
+            if (!districts.TryGetValue(character!.Place.District, out DistrictRepository.Entity? district))
                 NetworkUtils.DropSession();
 
             session.Characters.LastSelected = character;
