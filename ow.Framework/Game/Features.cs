@@ -25,20 +25,20 @@ namespace ow.Framework.Game
 
         public Features(IConfiguration config) : base(new FeatureStatus[]
         {
-            config.GetValue<FeatureStatus>("Options:LoginBonus"),
-            config.GetValue<FeatureStatus>("Options:SecondaryPassword"),
-            config.GetValue<FeatureStatus>("Options:PremiumShop"),
-            config.GetValue<FeatureStatus>("Options:Option4"),
-            config.GetValue<FeatureStatus>("Options:Option5"),
-            config.GetValue<FeatureStatus>("Options:Option6"),
-            config.GetValue<FeatureStatus>("Options:Option7"),
-            config.GetValue<FeatureStatus>("Options:Option8"),
-            config.GetValue<FeatureStatus>("Options:Option9"),
-            config.GetValue<FeatureStatus>("Options:Option10"),
-            config.GetValue<FeatureStatus>("Options:Option11"),
-            config.GetValue<FeatureStatus>("Options:Option12"),
-            config.GetValue<FeatureStatus>("Options:Option13"),
-            config.GetValue<FeatureStatus>("Options:Option14"),
+            config.GetValue<FeatureStatus>("Features:LoginBonus"),
+            config.GetValue<FeatureStatus>("Features:SecondaryPassword"),
+            config.GetValue<FeatureStatus>("Features:PremiumShop"),
+            config.GetValue<FeatureStatus>("Features:Feature4"),
+            config.GetValue<FeatureStatus>("Features:Feature5"),
+            config.GetValue<FeatureStatus>("Features:Feature6"),
+            config.GetValue<FeatureStatus>("Features:Feature7"),
+            config.GetValue<FeatureStatus>("Features:Feature8"),
+            config.GetValue<FeatureStatus>("Features:Feature9"),
+            config.GetValue<FeatureStatus>("Features:Feature10"),
+            config.GetValue<FeatureStatus>("Features:Feature11"),
+            config.GetValue<FeatureStatus>("Features:Feature12"),
+            config.GetValue<FeatureStatus>("Features:Feature13"),
+            config.GetValue<FeatureStatus>("Features:Feature14"),
         })
         {
         }

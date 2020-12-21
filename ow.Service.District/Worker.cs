@@ -20,8 +20,6 @@ namespace ow.Service.District
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _server.Start();
-            _logger.LogDebug($"Listen {_server.Endpoint}");
-
             return Task.CompletedTask;
         }
 

@@ -17,6 +17,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Remove="appsettings.example.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="appsettings.example.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="5.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="5.0.1" />
@@ -38,5 +46,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ow.Framework\ow.Framework.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>

@@ -26,8 +26,6 @@ namespace ow.Service.Gate
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _server.Start();
-            _logger.LogDebug($"Listen {_server.Endpoint}");
-
             return Task.CompletedTask;
         }
 

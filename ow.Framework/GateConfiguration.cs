@@ -8,6 +8,8 @@ namespace ow.Framework
         {
             public string Ip { get; init; } = default!;
             public ushort Port { get; init; } = default!;
+
+            public override string ToString() => $"{Ip}:{Port}";
         }
 
         public class DistrictConfiguration
