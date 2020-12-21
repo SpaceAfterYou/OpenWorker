@@ -8,16 +8,16 @@ namespace ow.Service.District.Network.Handlers
     internal static class CharacterHandler
     {
         //    [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
-        //    internal static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Entity.Get<DimensionMemberEntity>()
+        //    public static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Entity.Get<DimensionMemberEntity>()
         //        .SendCharacterSpecialOptionUpdateList(request);
 
         //    [Handler(ServerOpcode.OthersInfo, HandlerPermission.Authorized)]
-        //    internal static void GetOthers(Session session, NpcRepository npcs) => session
+        //    public static void GetOthers(Session session, NpcRepository npcs) => session
         //        .SendNpcOtherInfos(npcs).Entity.Get<DimensionMemberEntity>()
         //        .SendCharacterOtherInfos();
 
         //    [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
-        //    internal static void GetInfo(Session session) => session
+        //    public static void GetInfo(Session session) => session
         //        .SendCharacterInfo()
         //        .SendCharacterStatsUpdate()
         //        .SendCharacterProfileInfo()
@@ -25,7 +25,7 @@ namespace ow.Service.District.Network.Handlers
         //        .SendCharacterPostInfo();
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
-        internal static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session
+        public static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session
             .SendAsync(request);
     }
 }

@@ -17,7 +17,7 @@ namespace ow.Service.District.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        internal static void Enter(Session session, DistrictEnterRequest request, Instance instance, BoosterRepository boosters, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables)
+        public static void Enter(Session session, DistrictEnterRequest request, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan)
         {
             if (request.Account != lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
@@ -92,11 +92,11 @@ namespace ow.Service.District.Network.Handlers
         }
 
         [Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
-        internal static void Heartbeat(Session session, ServiceHeartbeatRequest request) =>
+        public static void Heartbeat(Session session, ServiceHeartbeatRequest request) =>
             session.SendAsync(request);
 
         [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
-        internal static void LogOut(Session session, DistrictLogoutRequest request, GateInstance gate)
+        public static void LogOut(Session session, DistrictLogoutRequest request, GateInstance gate)
         {
             if (session.Account.Id != request.Account)
                 NetworkUtils.DropSession();

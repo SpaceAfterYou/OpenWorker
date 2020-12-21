@@ -45,5 +45,3 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         }
     }
 }
-
-// https://youtu.be/l74Ot_2kuNs

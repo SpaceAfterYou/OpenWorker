@@ -12,11 +12,11 @@ namespace ow.Service.District.Network.Handlers
     internal static class GestureHandler
     {
         [Handler(ServerOpcode.GestureDo, HandlerPermission.Authorized)]
-        internal static void GetOthers(Session session, GestureDoRequest request) => session.Dimension
+        public static void GetOthers(Session session, GestureDoRequest request) => session.Dimension
             .BroadcastAsync(request);
 
         [Handler(ServerOpcode.GestureUpdateSlots, HandlerPermission.Authorized)]
-        internal static void UpdateSlots(Session session, GestureQuickSlotsUpdateRequest request, BinTables tables)
+        public static void UpdateSlots(Session session, GestureQuickSlotsUpdateRequest request, BinTables tables)
         {
             foreach (uint id in request.Values)
                 if (id != 0 && !tables.Gesture.ContainsKey((ushort)id))
