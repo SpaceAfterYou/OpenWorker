@@ -3,7 +3,7 @@
 namespace ow.Framework.Game.Enums
 {
     [Flags]
-    public enum ItemClassifyType : byte
+    public enum ItemClassifySlotType : byte
     {
         Generic = 0,
         GearWeapon = 1,
