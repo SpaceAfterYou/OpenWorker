@@ -11,7 +11,7 @@ namespace ow.Service.District.Network.Handlers
     internal static class ChatHandler
     {
         [Handler(ServerOpcode.ChatReceiveMessage, HandlerPermission.Authorized)]
-        internal static void Receive(Session session, ChatReceiveRequest request, ChatCommandRepository commands)
+        public static void Receive(Session session, ChatReceiveRequest request, ChatCommandRepository commands)
         {
             if (request.Message.Length == 0)
                 return;

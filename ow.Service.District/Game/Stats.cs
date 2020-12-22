@@ -93,7 +93,7 @@ namespace ow.Service.District.Game
         public Entity ManicBalanceDamage => this[CharacterStat.ManicBalanceDamage];
         public Entity ManicBalanceResistance => this[CharacterStat.ManicBalanceResistance];
 
-        public Stats() : base(Enumerable.Range(0, typeof(CharacterStat).GetEnumValues().Cast<byte>().Max()).Select(id => new Entity { Id = (CharacterStat)id, Value = 0.0f }))
+        public Stats() : base(Enumerable.Range(0, typeof(CharacterStat).GetEnumValues().Cast<ushort>().Max()).Select(id => new Entity { Id = (CharacterStat)id, Value = 0.0f }))
         {
         }
     }

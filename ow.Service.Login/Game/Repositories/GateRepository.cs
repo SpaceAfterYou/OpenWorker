@@ -12,6 +12,6 @@ namespace ow.Service.Login.Game.Repositories
         }
 
         public static IEnumerable<GateInstance> GetGates(IConfiguration configuration) =>
-            configuration.GetSection("Gates").Get<IReadOnlyList<GateConfiguration>>().Select(c => new GateInstance(c));
+            configuration.GetSection("Gates").Get<IReadOnlyDictionary<string, GateConfiguration>>().Select(c => new GateInstance(ushort.Parse(c.Key), c.Value));
     }
 }

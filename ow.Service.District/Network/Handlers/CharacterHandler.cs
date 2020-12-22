@@ -2,30 +2,38 @@
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests;
+using ow.Framework.IO.Network.Responses;
+using ow.Service.District.Game;
+using ow.Service.District.Game.Helpers;
 
 namespace ow.Service.District.Network.Handlers
 {
     internal static class CharacterHandler
     {
         //    [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
-        //    internal static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Entity.Get<DimensionMemberEntity>()
+        //    public static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Entity.Get<DimensionMemberEntity>()
         //        .SendCharacterSpecialOptionUpdateList(request);
 
         //    [Handler(ServerOpcode.OthersInfo, HandlerPermission.Authorized)]
-        //    internal static void GetOthers(Session session, NpcRepository npcs) => session
+        //    public static void GetOthers(Session session, NpcRepository npcs) => session
         //        .SendNpcOtherInfos(npcs).Entity.Get<DimensionMemberEntity>()
         //        .SendCharacterOtherInfos();
 
-        //    [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
-        //    internal static void GetInfo(Session session) => session
-        //        .SendCharacterInfo()
-        //        .SendCharacterStatsUpdate()
-        //        .SendCharacterProfileInfo()
-        //        .SendCharacterGestureLoad()
-        //        .SendCharacterPostInfo();
+        [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
+        public static void GetInfo(Session session, Instance instance) => session
+            .SendAsync(new CharacterInfoResponse()
+            {
+                Character = ResponseHelper.GetCharacter(session),
+                Place = ResponseHelper.GetPlace(session, instance)
+            });
+
+        //.SendCharacterStatsUpdate()
+        //.SendCharacterProfileInfo()
+        //.SendCharacterGestureLoad()
+        //.SendCharacterPostInfo();
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
-        internal static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session
+        public static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session
             .SendAsync(request);
     }
 }

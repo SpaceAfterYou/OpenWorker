@@ -42,7 +42,7 @@ namespace ow.Framework.Utils
         {
             Debug.Assert(size > 0);
             Debug.Assert(offset >= 0);
-            Debug.Assert(offset <= size);
+            Debug.Assert(offset <= encryptedBuffer.Length);
 
             for (int i = 0; i < size; ++i)
             {

@@ -12,9 +12,9 @@ namespace ow.Service.District.Game
 
         public Instance(IConfiguration configuration, BinTables binTable, WorldTable worldTable)
         {
-            ushort id = ushort.Parse(configuration["Zone:Id"]);
+            ushort location = ushort.Parse(configuration[$"Districts:{configuration["Id"]}:Location"]);
 
-            Location = binTable.District[id];
+            Location = binTable.District[location];
             Place = worldTable.ReadBatch(Location.Batch);
         }
     }

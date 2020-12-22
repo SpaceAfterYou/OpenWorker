@@ -79,7 +79,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue);
             }
 
-            foreach ((CharacterShared.EquippedItemsInfo.ItemInfo? view, CharacterShared.EquippedItemsInfo.ItemInfo? battle) in value.EquippedItems.View.Zip(value.EquippedItems.Battle, Tuple.Create))
+            foreach ((CharacterShared.EquippedItemsInfo.FashionItemInfo? view, CharacterShared.EquippedItemsInfo.FashionItemInfo? battle) in value.EquippedItems.View.Zip(value.EquippedItems.Battle, Tuple.Create))
             {
                 if (view is not null)
                 {

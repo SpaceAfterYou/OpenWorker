@@ -62,8 +62,8 @@ namespace ow.Service.Gate.Network.Handlers
                     },
                     EquippedItems = new()
                     {
-                        Battle = c.Storages.EquippedBattleFashion.Select(s => new ItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
-                        View = c.Storages.EquippedViewFashion.Select(s => new ItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
+                        Battle = c.Storages.EquippedBattleFashion.Select(s => s is null ? null : new FashionItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
+                        View = c.Storages.EquippedViewFashion.Select(s => s is null ? null : new FashionItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
                     }
                 }).ToArray(),
             });
@@ -80,8 +80,8 @@ namespace ow.Service.Gate.Network.Handlers
             if (request.FirstSlot == request.SecondSlot)
                 NetworkUtils.DropSession();
 
-            Character? first = session.Characters.Values.FirstOrDefault(c => c.Slot == request.FirstSlot);
-            Character? second = session.Characters.Values.FirstOrDefault(c => c.Slot == request.SecondSlot);
+            Characters.Entity? first = session.Characters.Values.FirstOrDefault(c => c.Slot == request.FirstSlot);
+            Characters.Entity? second = session.Characters.Values.FirstOrDefault(c => c.Slot == request.SecondSlot);
 
             using CharacterContext context = new();
 
@@ -142,7 +142,7 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterDelete, HandlerPermission.Authorized)]
         public static void Delete(Session session, CharacterDeleteRequest request)
         {
-            if (!session.Characters.Remove(request.Id, out Character _))
+            if (!session.Characters.Remove(request.Id, out Characters.Entity _))
                 NetworkUtils.DropSession();
 
             if (session.Characters.LastSelected?.Id == request.Id)
@@ -163,7 +163,7 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterMarkFavorite, HandlerPermission.Authorized)]
         public static void MarkFavorite(Session session, CharacterMarkFavoriteRequest request)
         {
-            if (!session.Characters.TryGetValue(request.Id, out Character? character))
+            if (!session.Characters.TryGetValue(request.Id, out Characters.Entity? character))
                 NetworkUtils.DropSession();
 
             session.SendAsync(new GateCharacterMarkAsFavoriteResponse()
@@ -178,7 +178,7 @@ namespace ow.Service.Gate.Network.Handlers
         [Handler(ServerOpcode.CharacterSelect, HandlerPermission.Authorized)]
         public static void Select(Session session, CharacterSelectRequest request, DistrictRepository districts)
         {
-            if (!session.Characters.TryGetValue(request.Id, out Character? character))
+            if (!session.Characters.TryGetValue(request.Id, out Characters.Entity? character))
                 NetworkUtils.DropSession();
 
             if (!districts.TryGetValue(character!.Place.District, out DistrictRepository.Entity? district))

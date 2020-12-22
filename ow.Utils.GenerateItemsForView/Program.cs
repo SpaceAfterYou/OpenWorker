@@ -30,7 +30,7 @@ namespace ow.Utils.GenerateItemsForView
                         return new
                         {
                             i.Id,
-                            itemClassifyTable[i.Classify].Type,
+                            Type=itemClassifyTable[i.Classify].SlotType,
                             script.Name,
                             script.Description,
                             Icon = $"GUI/{script.Icon}.png",
@@ -41,7 +41,7 @@ namespace ow.Utils.GenerateItemsForView
                     return new
                     {
                         i.Id,
-                        itemClassifyTable[i.Classify].Type,
+                        Type=itemClassifyTable[i.Classify].SlotType,
                         Name = "",
                         Description = "",
                         Icon = "",

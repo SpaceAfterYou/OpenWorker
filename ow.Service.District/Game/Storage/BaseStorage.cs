@@ -2,16 +2,24 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ow.Framework.Game.Storage
+namespace ow.Service.District.Game.Storage
 {
-    public abstract class BaseStorage : List<ItemStorage?>
+    internal abstract class BaseStorage : List<StorageItem?>
     {
-        public new byte Capacity { get; protected set; }
+        internal new byte Capacity { get; set; }
 
-        public BaseStorage(IEnumerable<ItemModel> models, ushort maxCapacity) : base(Enumerable.Repeat((ItemStorage?)null, maxCapacity))
+        internal BaseStorage(IEnumerable<ItemModel> models, BinTables tables, ushort maxCapacity) : base(GetItems(models, tables, maxCapacity))
         {
+        }
+
+        private static IEnumerable<StorageItem?> GetItems(IEnumerable<ItemModel> models, BinTables tables, ushort maxCapacity)
+        {
+            StorageItem?[] items = Enumerable.Repeat((StorageItem?)null, maxCapacity).ToArray();
+
             foreach (ItemModel model in models)
-                this[model.Slot] = new(model);
+                items[model.Slot] = new StorageItem(model, tables.Item[model.PrototypeId]);
+
+            return items;
         }
     }
 }

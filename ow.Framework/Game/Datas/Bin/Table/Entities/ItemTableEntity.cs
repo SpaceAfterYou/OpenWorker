@@ -29,6 +29,9 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             internal Specification(uint min, uint max, uint magic) => (Min, Max, Magic) = (min, max, magic);
         }
 
+        public static ItemTableEntity Empty => _empty;
+        private static readonly ItemTableEntity _empty = new();
+
         public KeyType Id { get; }
         public uint Classify { get; }
         public byte Unknown7 { get; }
@@ -132,6 +135,12 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown70 = br.ReadByte();
             Unknown71 = br.ReadUInt32();
             Package = br.ReadUInt32();
+        }
+
+        private ItemTableEntity()
+        {
+            SlotDisable = "0";
+            Options = Enumerable.Repeat(new Option(), Defines.StatsPerItem).ToArray();
         }
 
         private static Option[] ReadOptions(BinaryReader br)

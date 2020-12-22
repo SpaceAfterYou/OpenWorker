@@ -18,13 +18,13 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public ushort Unknown10 { get; }
         public byte Unknown11 { get; }
         public ushort Unknown12 { get; }
-        public byte Unknown13 { get; }
-        public byte Unknown14 { get; }
-        public ItemClassifyType Type { get; }
-        public byte Unknown16 { get; }
-        public byte Unknown17 { get; }
-        public byte Unknown18 { get; }
-        public byte Unknown19 { get; }
+        public byte GainType { get; }
+        public byte InvenType { get; }
+        public ItemClassifySlotType SlotType { get; }
+        public byte RepairType { get; }
+        public byte UseState { get; }
+        public byte UseType { get; }
+        public byte ConsumeType { get; }
         public ushort Unknown20 { get; }
         public ushort Socket { get; }
         public ushort Unknown22 { get; }
@@ -45,13 +45,13 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown10 = br.ReadUInt16();
             Unknown11 = br.ReadByte();
             Unknown12 = br.ReadUInt16();
-            Unknown13 = br.ReadByte();
-            Unknown14 = br.ReadByte();
-            Type = br.ReadItemClassifyType();
-            Unknown16 = br.ReadByte();
-            Unknown17 = br.ReadByte();
-            Unknown18 = br.ReadByte();
-            Unknown19 = br.ReadByte();
+            GainType = br.ReadByte();
+            InvenType = br.ReadByte();
+            SlotType = br.ReadItemClassifySlotType();
+            RepairType = br.ReadByte();
+            UseState = br.ReadByte();
+            UseType = br.ReadByte();
+            ConsumeType = br.ReadByte();
             Unknown20 = br.ReadUInt16();
             Socket = br.ReadUInt16();
             Unknown22 = br.ReadUInt16();
