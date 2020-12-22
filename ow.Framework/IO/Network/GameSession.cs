@@ -59,8 +59,10 @@ namespace ow.Framework.IO.Network
                 writer.WriteCharacter(value.Character);
                 writer.WritePlace(value.Place);
 
-                writer.Write(ulong.MinValue); // Exp
+                writer.Write(byte.MinValue); //
+                writer.Write(byte.MinValue); //
 
+                writer.Write(ulong.MinValue); // Exp
                 writer.Write(ulong.MinValue); // Zenny
                 writer.Write(byte.MinValue); //
                 writer.Write(byte.MinValue); //
@@ -70,13 +72,11 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue); // 4
                 writer.Write(uint.MinValue); // 5
                 writer.Write(uint.MinValue); // 6
-                writer.Write(uint.MinValue); // 7
+                writer.Write(ushort.MinValue); // 7
 
-                var hz = new byte[9] { (byte)'1', (byte)'3', (byte)'4', (byte)'0', (byte)'0', (byte)'6', (byte)'8', (byte)'9', (byte)'3' }; // maybe privacy
+                byte[] hz = new byte[9] { (byte)'1', (byte)'3', (byte)'4', (byte)'0', (byte)'0', (byte)'6', (byte)'8', (byte)'9', (byte)'3' }; // maybe privacy
                 writer.Write((ushort)hz.Length); // maybe privacy
                 writer.Write(hz);
-                writer.Write(uint.MinValue);
-                writer.Write(ushort.MinValue);
                 writer.Write(uint.MinValue); // 1
                 writer.Write(uint.MinValue); // 2
                 writer.Write(uint.MinValue); // 3
@@ -396,7 +396,7 @@ namespace ow.Framework.IO.Network
                     ms.Position += sizeof(ushort);
 
                     // Packet Length
-                    int length = br.ReadUInt16() - Defines.PacketEncryptedHeaderSize;
+                    int length = br.ReadUInt16() - Defines.PacketUnEncryptedHeaderSize;
 
                     // ???
                     ms.Position += sizeof(byte);

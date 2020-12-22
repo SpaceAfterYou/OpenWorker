@@ -23,7 +23,7 @@
         public const byte EquipableFashionStorageMaxCapacity = 14;
         public const byte EquipableGearStorageMaxCapacity = 10;
 
-        internal const byte PacketHeaderSize = 7;
-        internal const byte PacketEncryptedHeaderSize = 5;
+        public const byte PacketHeaderSize = 7;
+        public const byte PacketUnEncryptedHeaderSize = 5;
     }
 }

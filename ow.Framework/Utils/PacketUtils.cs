@@ -32,13 +32,13 @@ namespace ow.Framework.Utils
 
     public static partial class PacketUtils
     {
-        internal static void Exchange(ref byte[] encryptedBuffer) =>
+        public static void Exchange(ref byte[] encryptedBuffer) =>
             Exchange(ref encryptedBuffer, 0x0, encryptedBuffer.Length);
 
-        internal static void Exchange(ref byte[] encryptedBuffer, int offset) =>
+        public static void Exchange(ref byte[] encryptedBuffer, int offset) =>
             Exchange(ref encryptedBuffer, offset, encryptedBuffer.Length - offset);
 
-        internal static void Exchange(ref byte[] encryptedBuffer, int offset, int size)
+        public static void Exchange(ref byte[] encryptedBuffer, int offset, int size)
         {
             Debug.Assert(size > 0);
             Debug.Assert(offset >= 0);
@@ -61,7 +61,7 @@ namespace ow.Framework.Utils
         public static byte[] Pack(PacketWriter writer)
         {
             byte[] response = writer.GetBuffer();
-            Exchange(ref response, Defines.PacketEncryptedHeaderSize, (int)writer.BaseStream.Length - Defines.PacketEncryptedHeaderSize);
+            Exchange(ref response, Defines.PacketUnEncryptedHeaderSize, (int)writer.BaseStream.Length - Defines.PacketUnEncryptedHeaderSize);
 
             return response;
         }

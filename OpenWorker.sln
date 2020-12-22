@@ -23,6 +23,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utils", "Utils", "{0DDD5060
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ow.Utils.GenerateItemsForView", "ow.Utils.GenerateItemsForView\ow.Utils.GenerateItemsForView.csproj", "{CCB5F90E-97FE-4E36-8CB4-A82760B523EC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ow.Utils.Wireshark.JsonDumpDecode", "ow.Utils.Wireshark.JsonDumpDecode\ow.Utils.Wireshark.JsonDumpDecode.csproj", "{83280E70-E1D0-4D70-BA39-02F3208394FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,10 @@ Global
 		{CCB5F90E-97FE-4E36-8CB4-A82760B523EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CCB5F90E-97FE-4E36-8CB4-A82760B523EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CCB5F90E-97FE-4E36-8CB4-A82760B523EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83280E70-E1D0-4D70-BA39-02F3208394FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83280E70-E1D0-4D70-BA39-02F3208394FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83280E70-E1D0-4D70-BA39-02F3208394FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83280E70-E1D0-4D70-BA39-02F3208394FD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -67,6 +73,7 @@ Global
 		{B6F409F5-58B2-4AFF-9B74-32D111E6017A} = {1FA7CB67-B280-487D-9CB5-4460A881BC26}
 		{1D3F8F63-8536-4A58-BA98-AE70351EEA38} = {52FAC084-1821-4528-ADE3-284CCBCD8C76}
 		{CCB5F90E-97FE-4E36-8CB4-A82760B523EC} = {0DDD5060-75D6-4B1C-BACA-6BCAA5EF59DC}
+		{83280E70-E1D0-4D70-BA39-02F3208394FD} = {0DDD5060-75D6-4B1C-BACA-6BCAA5EF59DC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F383596F-D1E6-48AD-9150-C1C27F5333B2}
