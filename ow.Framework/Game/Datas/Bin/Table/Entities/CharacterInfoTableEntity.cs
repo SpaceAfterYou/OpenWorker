@@ -10,28 +10,36 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
     public sealed record CharacterInfoTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
-        public ushort Unknown6 { get; }
-        public byte Unknown7 { get; }
-        public string Unknown8 { get; }
-        public string Unknown9 { get; }
+        public ushort Unknown0 { get; }
+        public byte Unknown1 { get; }
+        public string Unknown2 { get; }
+        public string Unknown3 { get; }
         public string DialogueTalkImgPath { get; }
         public string Token { get; }
-        public string Unknown12 { get; }
+        public string Unknown4 { get; }
         public string CutScenePath { get; }
         public string GhostTalkImgPath { get; }
-        public IReadOnlyList<uint> Unknown13 { get; }
+        public uint Unknown5 { get; }
+        public uint Unknown6 { get; }
+        public uint Unknown7 { get; }
+        public uint Unknown8 { get; }
+        public uint Unknown9 { get; }
+        public uint Unknown10 { get; }
+        public uint Unknown11 { get; }
+        public uint Unknown12 { get; }
+        public uint Unknown13 { get; }
         public ushort Unknown24 { get; }
         public ushort Unknown25 { get; }
         public uint DefaultWeapon { get; }
         public IReadOnlyList<uint> DefaultOutfits { get; }
-        public uint Unknown31 { get; }
-        public short Unknown32 { get; }
-        public short Unknown33 { get; }
-        public short Unknown34 { get; }
-        public short Unknown35 { get; }
+        public uint ProvideItem { get; }
+        public short District { get; }
+        public short DistrictPositionX { get; }
+        public short DistrictPositionY { get; }
+        public short DistrictPositionZ { get; }
         public short Maze { get; }
-        public byte SpawnBox { get; }
-        public uint Unknown38 { get; }
+        public byte MazeSpawnBox { get; }
+        public uint StartQuest { get; }
         public uint Unknown39 { get; }
         public uint Unknown40 { get; }
         public ushort Unknown41 { get; }
@@ -58,9 +66,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public ushort Unknown62 { get; }
         public ushort Unknown63 { get; }
         public ushort Unknown64 { get; }
-        public IReadOnlyList<uint> DefaultPassiveSkill { get; }
-        public IReadOnlyList<uint> DefaultActiveSkill { get; }
-        public IReadOnlyList<uint> DefaultGenericSkill { get; }
+        public IReadOnlyList<uint> DefaultSkill { get; }
         public uint Unknown77 { get; }
         public uint Unknown78 { get; }
         public uint Unknown79 { get; }
@@ -79,28 +85,36 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         internal CharacterInfoTableEntity(BinaryReader br)
         {
             Id = br.ReadUInt16();
-            Unknown6 = br.ReadUInt16();
-            Unknown7 = br.ReadByte();
-            Unknown8 = br.ReadByteLengthUnicodeString();
-            Unknown9 = br.ReadByteLengthUnicodeString();
+            Unknown0 = br.ReadUInt16();
+            Unknown1 = br.ReadByte();
+            Unknown2 = br.ReadByteLengthUnicodeString();
+            Unknown3 = br.ReadByteLengthUnicodeString();
             DialogueTalkImgPath = br.ReadByteLengthUnicodeString();
             Token = br.ReadByteLengthUnicodeString();
-            Unknown12 = br.ReadByteLengthUnicodeString();
+            Unknown4 = br.ReadByteLengthUnicodeString();
             CutScenePath = br.ReadByteLengthUnicodeString();
             GhostTalkImgPath = br.ReadByteLengthUnicodeString();
-            Unknown13 = br.ReadUInt32Array(DefaultGesturesCount);
+            Unknown5 = br.ReadUInt32();
+            Unknown6 = br.ReadUInt32();
+            Unknown7 = br.ReadUInt32();
+            Unknown8 = br.ReadUInt32();
+            Unknown9 = br.ReadUInt32();
+            Unknown10 = br.ReadUInt32();
+            Unknown11 = br.ReadUInt32();
+            Unknown12 = br.ReadUInt32();
+            Unknown13 = br.ReadUInt32();
             Unknown24 = br.ReadUInt16();
             Unknown25 = br.ReadUInt16();
             DefaultWeapon = br.ReadUInt32();
             DefaultOutfits = br.ReadUInt32Array(DefaultCostumesCount);
-            Unknown31 = br.ReadUInt32();
-            Unknown32 = br.ReadInt16();
-            Unknown33 = br.ReadInt16();
-            Unknown34 = br.ReadInt16();
-            Unknown35 = br.ReadInt16();
+            ProvideItem = br.ReadUInt32();
+            District = br.ReadInt16();
+            DistrictPositionX = br.ReadInt16();
+            DistrictPositionY = br.ReadInt16();
+            DistrictPositionZ = br.ReadInt16();
             Maze = br.ReadInt16();
-            SpawnBox = br.ReadByte();
-            Unknown38 = br.ReadUInt32();
+            MazeSpawnBox = br.ReadByte();
+            StartQuest = br.ReadUInt32();
             Unknown39 = br.ReadUInt32();
             Unknown40 = br.ReadUInt32();
             Unknown41 = br.ReadUInt16();
@@ -127,17 +141,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown62 = br.ReadUInt16();
             Unknown63 = br.ReadUInt16();
             Unknown64 = br.ReadUInt16();
-            DefaultPassiveSkill = br.ReadUInt32Array(DefaultPassiveSkillCount);
-            DefaultActiveSkill = br.ReadUInt32Array(DefaultActiveSkillCount);
-            DefaultGenericSkill = br.ReadUInt32Array(DefaultGenericSkillCount);
-            Unknown77 = br.ReadUInt32();
-            Unknown78 = br.ReadUInt32();
-            Unknown79 = br.ReadUInt32();
-            Unknown80 = br.ReadUInt32();
-            Unknown81 = br.ReadUInt32();
-            Unknown82 = br.ReadUInt32();
-            Unknown83 = br.ReadUInt32();
-            Unknown84 = br.ReadUInt32();
+            DefaultSkill = br.ReadUInt32Array(DefaultPassiveSkillCount);
             Unknown85 = br.ReadUInt16();
             Unknown86 = br.ReadSingle();
             Unknown87 = br.ReadUInt32();
@@ -148,8 +152,6 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 
         private const byte DefaultGesturesCount = 9;
         private const byte DefaultCostumesCount = 4;
-        private const byte DefaultPassiveSkillCount = 6;
-        private const byte DefaultActiveSkillCount = 3;
-        private const byte DefaultGenericSkillCount = 3;
+        private const byte DefaultPassiveSkillCount = 20;
     }
 }
