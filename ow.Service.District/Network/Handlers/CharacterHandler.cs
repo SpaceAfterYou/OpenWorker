@@ -2,6 +2,9 @@
 using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests;
+using ow.Framework.IO.Network.Responses;
+using ow.Service.District.Game;
+using ow.Service.District.Game.Helpers;
 
 namespace ow.Service.District.Network.Handlers
 {
@@ -17,16 +20,19 @@ namespace ow.Service.District.Network.Handlers
         //        .SendCharacterOtherInfos();
 
         [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
-        public static void GetInfo(Session session) => session
-            .SendCharacterInfo()
+        public static void GetInfo(Session session, Instance instance) => session
+            .SendAsync(new CharacterInfoResponse()
+            {
+                Character = ResponseHelper.GetCharacter(session),
+                Place = ResponseHelper.GetPlace(session, instance)
+            });
+
         //.SendCharacterStatsUpdate()
         //.SendCharacterProfileInfo()
         //.SendCharacterGestureLoad()
         //.SendCharacterPostInfo();
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
-
-
         public static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session
             .SendAsync(request);
     }
