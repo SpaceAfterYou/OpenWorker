@@ -532,5 +532,7 @@ appsettings.Development.json
 commonsettings.json
 commonsettings.Development.json
 
+launchSettings.json
+
 !Bin/
 /TestLang

@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
-
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <UserSecretsId>dotnet-ow.Service.Login-B2A94EBA-7850-4FE7-85A7-488B765E440A</UserSecretsId>

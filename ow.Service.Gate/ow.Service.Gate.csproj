@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
-
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <UserSecretsId>dotnet-ow.Service.Gate-47C50A7D-B01E-45C9-AAD1-11D7711860A1</UserSecretsId>
