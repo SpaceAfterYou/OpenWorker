@@ -396,7 +396,7 @@ namespace ow.Framework.IO.Network
                     ms.Position += sizeof(ushort);
 
                     // Packet Length
-                    int length = br.ReadUInt16() - Defines.PacketEncryptedHeaderSize;
+                    int length = br.ReadUInt16() - Defines.PacketUnEncryptedHeaderSize;
 
                     // ???
                     ms.Position += sizeof(byte);

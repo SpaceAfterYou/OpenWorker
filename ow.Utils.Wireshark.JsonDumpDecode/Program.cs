@@ -1,4 +1,5 @@
-﻿using ow.Framework.IO.Network.Opcodes;
+﻿using ow.Framework;
+using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.Utils;
 using System;
 using System.IO;
@@ -26,20 +27,31 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
             foreach (JsonElement element in enumerator)
             {
                 if (!element.TryGetProperty("_source", out JsonElement source))
-                    continue;
+                    throw new ApplicationException();
 
                 if (!source.TryGetProperty("layers", out JsonElement layers))
-                    continue;
+                    throw new ApplicationException();
 
                 if (!layers.TryGetProperty("tcp", out JsonElement tcp))
-                    continue;
+                    throw new ApplicationException();
+
+                if (!layers.TryGetProperty("frame", out JsonElement frame))
+                    throw new ApplicationException();
+
+                if (!frame.TryGetProperty("frame.number", out JsonElement frameNumber))
+                    throw new ApplicationException();
+
+                Console.Write($"Process frame {frameNumber.GetString()}\n");
 
                 // part of packet
-                if (tcp.TryGetProperty("tcp.reassembled_in", out _))
+                if (tcp.TryGetProperty("tcp.reassembled_in", out JsonElement tcpReassembledIn))
+                {
+                    Console.Write($"skipped (reassembled in {tcpReassembledIn.GetString()})\n");
                     continue;
+                }
 
                 JsonElement payload;
-                if (layers.TryGetProperty("tcp.segments", out JsonElement tcpSegments) && layers.TryGetProperty("tcp.reassembled.data", out payload))
+                if (layers.TryGetProperty("tcp.segments", out JsonElement tcpSegments) && tcpSegments.TryGetProperty("tcp.reassembled.data", out payload))
                 { }
                 else if (!tcp.TryGetProperty("tcp.payload", out payload))
                     continue;
@@ -61,13 +73,20 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
 
                 while (streamMs.Position != streamMs.Length)
                 {
-                    if (streamBr.ReadByte() != 0x02 || streamBr.ReadByte() != 0x00)
+                    byte b1 = streamBr.ReadByte();
+                    byte b2 = streamBr.ReadByte();
+
+                    if (b1 != 0x02 || b2 != 0x00)
+                    {
+                        // Console.Write($"skipped part (bad magic)\n");
+                        // Break; ???
                         continue;
+                    }
 
                     ushort size = streamBr.ReadUInt16();
                     _ = streamBr.ReadByte();
 
-                    byte[] packet = streamBr.ReadBytes(size);
+                    byte[] packet = streamBr.ReadBytes(size - Defines.PacketUnEncryptedHeaderSize);
                     PacketUtils.Exchange(ref packet);
 
                     await using MemoryStream packetMs = new(packet);
@@ -89,8 +108,6 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
                     await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));// Convert.ToHexString(packet));
                 }
             }
-
-            Console.WriteLine("Hello World!");
         }
     }
 }
