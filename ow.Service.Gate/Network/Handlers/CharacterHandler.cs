@@ -62,8 +62,8 @@ namespace ow.Service.Gate.Network.Handlers
                     },
                     EquippedItems = new()
                     {
-                        Battle = c.Storages.EquippedBattleFashion.Select(s => new ItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
-                        View = c.Storages.EquippedViewFashion.Select(s => new ItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
+                        Battle = c.Storages.EquippedBattleFashion.Select(s => s is null ? null : new FashionItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
+                        View = c.Storages.EquippedViewFashion.Select(s => s is null ? null : new FashionItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
                     }
                 }).ToArray(),
             });

@@ -49,33 +49,26 @@ namespace ow.Service.Gate.Game
 
             internal sealed record StoragesInfos
             {
-                internal sealed class EquipableFashionStorage : List<EquipableFashionStorage.Item>
+                internal sealed class EquipableFashionStorage : List<EquipableFashionStorage.Item?>
                 {
                     internal sealed record Item
                     {
                         internal int PrototypeId { get; init; }
                         internal uint Color { get; init; }
-
-                        internal static Item Empty => _empty;
-
-                        private static readonly Item _empty = new()
-                        {
-                            PrototypeId = -1
-                        };
                     }
 
                     internal EquipableFashionStorage(IEnumerable<ItemModel> value) : base(GetItems(value))
                     {
                     }
 
-                    private static IEnumerable<Item> GetItems(IEnumerable<ItemModel> value)
+                    private static IEnumerable<Item?> GetItems(IEnumerable<ItemModel> value)
                     {
-                        Item[] items = Enumerable.Repeat(Item.Empty, Defines.EquipableFashionStorageMaxCapacity).ToArray();
+                        Item?[] items = Enumerable.Repeat((Item?)null, Defines.EquipableFashionStorageMaxCapacity).ToArray();
 
                         foreach (ItemModel model in value)
                             items[model.Slot] = new Item()
                             {
-                                PrototypeId = model.PrototypeId,
+                                PrototypeId = (int)model.PrototypeId,
                                 Color = model.Color
                             };
 
@@ -88,22 +81,22 @@ namespace ow.Service.Gate.Game
                     internal int PrototypeId { get; init; }
                     internal byte UpgradeLevel { get; init; }
 
-                    internal EquipableGearStorageItem()
-                    {
-                    }
-
-                    internal EquipableGearStorageItem(ItemModel model)
-                    {
-                        PrototypeId = model.PrototypeId;
-                        UpgradeLevel = model.Upgrade.CurrentLevel;
-                    }
-
                     internal static EquipableGearStorageItem Empty => _empty;
 
                     private static readonly EquipableGearStorageItem _empty = new()
                     {
                         PrototypeId = -1
                     };
+
+                    internal EquipableGearStorageItem()
+                    {
+                    }
+
+                    internal EquipableGearStorageItem(ItemModel model)
+                    {
+                        PrototypeId = (int)model.PrototypeId;
+                        UpgradeLevel = model.Upgrade.CurrentLevel;
+                    }
                 }
 
                 internal EquipableFashionStorage EquippedBattleFashion { get; }

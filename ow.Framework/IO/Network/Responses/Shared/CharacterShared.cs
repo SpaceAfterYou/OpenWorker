@@ -40,14 +40,14 @@ namespace ow.Framework.IO.Network.Responses.Shared
 
         public readonly struct EquippedItemsInfo
         {
-            public sealed record ItemInfo
+            public sealed record FashionItemInfo
             {
                 public int PrototypeId { get; init; }
                 public uint Color { get; init; }
             }
 
-            public IEnumerable<ItemInfo?> View { get; init; }
-            public IEnumerable<ItemInfo?> Battle { get; init; }
+            public IEnumerable<FashionItemInfo?> View { get; init; }
+            public IEnumerable<FashionItemInfo?> Battle { get; init; }
         }
 
         public int Id { get; init; }

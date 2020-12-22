@@ -1,7 +1,8 @@
 ﻿using ow.Framework.IO.Network.Responses.Shared;
+using ow.Service.District.Game.Storage;
 using ow.Service.District.Network;
 using System.Linq;
-
+using static ow.Framework.IO.Network.Responses.Shared.CharacterShared;
 using static ow.Framework.IO.Network.Responses.Shared.CharacterShared.EquippedItemsInfo;
 
 namespace ow.Service.District.Game.Helpers
@@ -43,17 +44,43 @@ namespace ow.Service.District.Game.Helpers
                 EyeColor = session.Character.Appearance.EyeColor,
                 SkinColor = session.Character.Appearance.SkinColor,
             },
-            WeaponItem = new()
-            {
-                PrototypeId = session.Storages.EquippedGear.Weapon.PrototypeId,
-                UpgradeLevel = session.Storages.EquippedGear.Weapon.UpgradeLevel,
-            },
+            WeaponItem = GetGearItemInfo(session.Storages.EquippedGear.Weapon),
             EquippedItems = new()
             {
-                Battle = session.Storages.EquippedBattleFashion.Select(s => new ItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
-                View = session.Storages.EquippedViewFashion.Select(s => new ItemInfo() { Color = s.Color, PrototypeId = s.PrototypeId }),
+                Battle = session.Storages.EquippedBattleFashion.Select(s => GetFashionItemInfo(s)),
+                View = session.Storages.EquippedViewFashion.Select(s => GetFashionItemInfo(s)),
             }
         };
+
+        private static GearItemInfo GetGearItemInfo(StorageItem? item)
+        {
+            if (item is not null)
+            {
+                return new()
+                {
+                    PrototypeId = (int)item.Prototype.Id,
+                    UpgradeLevel = item.Upgrade.CurrentLevel,
+                };
+            }
+
+            return _emptyGearItem;
+        }
+
+        private static FashionItemInfo? GetFashionItemInfo(StorageItem? item)
+        {
+            if (item is not null)
+            {
+                return new()
+                {
+                    PrototypeId = (int)item.Prototype.Id,
+                    Color = item.Color,
+                };
+            }
+
+            return null;
+        }
+
+        private static readonly GearItemInfo _emptyGearItem = new();
 
         internal static PlaceShared GetPlace(Session session, Instance instance) => new()
         {

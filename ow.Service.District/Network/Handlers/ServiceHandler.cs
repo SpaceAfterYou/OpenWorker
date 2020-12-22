@@ -17,7 +17,7 @@ namespace ow.Service.District.Network.Handlers
     internal static class ServiceHandler
     {
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(Session session, DistrictEnterRequest request, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan)
+        public static void Enter(Session session, DistrictEnterRequest request, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables)
         {
             if (request.Account != lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
@@ -35,6 +35,7 @@ namespace ow.Service.District.Network.Handlers
                 session.Stats = new();
                 session.SpecialOptions = new();
                 session.Gestures = model.Gestures;
+                session.Storages = new(model, tables);
             }
 
             if (!dimensions.Join(session))

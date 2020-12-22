@@ -16,15 +16,17 @@ namespace ow.Service.District.Network.Handlers
         //        .SendNpcOtherInfos(npcs).Entity.Get<DimensionMemberEntity>()
         //        .SendCharacterOtherInfos();
 
-        //    [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
-        //    public static void GetInfo(Session session) => session
-        //        .SendCharacterInfo()
-        //        .SendCharacterStatsUpdate()
-        //        .SendCharacterProfileInfo()
-        //        .SendCharacterGestureLoad()
-        //        .SendCharacterPostInfo();
+        [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
+        public static void GetInfo(Session session) => session
+            .SendCharacterInfo()
+        //.SendCharacterStatsUpdate()
+        //.SendCharacterProfileInfo()
+        //.SendCharacterGestureLoad()
+        //.SendCharacterPostInfo();
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
+
+
         public static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session
             .SendAsync(request);
     }

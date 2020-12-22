@@ -14,7 +14,7 @@ namespace ow.Framework.Database.Storages
         public int Id { get; init; }
 
         [Required]
-        public int PrototypeId { get; init; }
+        public uint PrototypeId { get; init; }
 
         [Required]
         public int CharacterId { get; init; }
