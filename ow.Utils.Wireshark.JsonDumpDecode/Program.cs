@@ -73,15 +73,9 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
 
                 while (streamMs.Position != streamMs.Length)
                 {
-                    byte b1 = streamBr.ReadByte();
-                    byte b2 = streamBr.ReadByte();
-
-                    if (b1 != 0x02 || b2 != 0x00)
-                    {
-                        // Console.Write($"skipped part (bad magic)\n");
-                        // Break; ???
+                    // packet may stick to another
+                    if (streamBr.ReadByte() != 0x02 || streamBr.ReadByte() != 0x00)
                         continue;
-                    }
 
                     ushort size = streamBr.ReadUInt16();
                     _ = streamBr.ReadByte();
@@ -105,7 +99,7 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
                         await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipSrc}] <--- [ {ipDst}]\n"));
                     }
 
-                    await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));// Convert.ToHexString(packet));
+                    await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));
                 }
             }
         }
