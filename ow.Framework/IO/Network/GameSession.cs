@@ -274,7 +274,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(new byte[28]);
                 writer.WriteNumberLengthUtf8String(value.EndPoint.Ip);
                 writer.Write(value.EndPoint.Port);
-                writer.Write(value.Place);
+                writer.WritePlace(value.Place);
                 writer.Write(new byte[12]);
             });
 

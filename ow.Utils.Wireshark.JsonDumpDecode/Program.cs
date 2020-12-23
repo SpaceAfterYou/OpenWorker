@@ -84,8 +84,12 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
                 if (!ip.TryGetProperty("ip.src_host", out JsonElement srcHost))
                     throw new ApplicationException();
 
+                if (!frame.TryGetProperty("frame.time_relative", out JsonElement timeRelativeElement))
+                    throw new ApplicationException();
+
                 string ipDst = dstHost.GetString();
                 string ipSrc = srcHost.GetString();
+                string timeRelative = timeRelativeElement.GetString();
 
                 await using MemoryStream streamMs = new(Convert.FromHexString(payload.GetString().Where(s => s != ':').ToArray()));
                 using BinaryReader streamBr = new(streamMs);
@@ -97,7 +101,7 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
                         continue;
 
                     ushort size = streamBr.ReadUInt16();
-                    _ = streamBr.ReadByte();
+                    byte unknown = streamBr.ReadByte();
 
                     byte[] packet = streamBr.ReadBytes(size - Defines.PacketUnEncryptedHeaderSize);
                     PacketUtils.Exchange(ref packet);
@@ -109,13 +113,13 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
 
                     if (clientIp == ipDst)
                     {
-                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($" [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] "));
-                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipDst}] ---> [{ipSrc}]\n"));
+                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($" [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] {timeRelative}: "));
+                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipSrc}] ---> [{ipDst}]\n"));
                     }
                     else
                     {
-                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($" [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] "));
-                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipSrc}] <--- [ {ipDst}]\n"));
+                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($" [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] {timeRelative}: "));
+                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipDst}] <--- [ {ipSrc}]\n"));
                     }
 
                     await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));
