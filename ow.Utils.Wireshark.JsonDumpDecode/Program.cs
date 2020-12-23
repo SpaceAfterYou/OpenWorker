@@ -10,6 +10,25 @@ using System.Threading.Tasks;
 
 namespace ow.Utils.Wireshark.JsonDumpDecode
 {
+    //
+    // USAGE
+    //
+    //   > ./executableFile wiresharkDump.json packets.txt 192.168.0.1
+    //
+    // WHERE
+    //
+    //   wiresharkDump.json
+    //      Write full path, as example: c:\wiresharkDump.json
+    //      Wireshark dump file (File > Export Packet Dissections > as JSON)
+    //
+    //   packets.txt
+    //      Write full path, as example: c:\packets.txt
+    //      Dump results (output)
+    //
+    //   192.168.0.1
+    //      You IP address (at the time of the game)
+    //
+
     internal class Program
     {
         private static async Task Main(string[] args)
