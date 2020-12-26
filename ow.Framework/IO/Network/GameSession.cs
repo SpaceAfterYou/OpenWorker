@@ -321,17 +321,16 @@ namespace ow.Framework.IO.Network
             {
                 writer.Write(value.AccountId);
 
-                writer.WriteAuthLoginStatus(value.Response);
-                writer.Write(Encoding.ASCII.GetBytes(value.Mac));
-
                 writer.Write(byte.MinValue);
-                writer.WriteByteLengthUnicodeString(string.Empty);
+
+                writer.Write(value.Response == AuthLoginStatus.Failure ? new byte[18] : Encoding.ASCII.GetBytes(value.Mac));
+
+                writer.WriteByteLengthUnicodeString(value.ErrorMessage);
                 writer.WriteAuthLoginErrorMessageCode(value.ErrorMessageCode);
+                writer.Write(byte.MinValue);
+                writer.WriteByteLengthUnicodeString(value.ErrorMessage);
+                writer.Write(value.Response == AuthLoginStatus.Failure ? 0 : value.SessionKey);
 
-                writer.Write((byte)1);
-                writer.WriteByteLengthUnicodeString("134006893");
-
-                writer.Write(value.SessionKey);
                 writer.Write(byte.MinValue);
                 writer.Write(uint.MinValue);
                 writer.Write(byte.MinValue);
