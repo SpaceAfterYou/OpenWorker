@@ -17,8 +17,8 @@ Just another server emulator for korean SoulWoker written in .NET 5.
 
 ### Database
 
-- Used **PostgreSQL** for storage.
-- Used **Redis** for cross-server messaging.
+- Uses **PostgreSQL** for storage.
+- Uses **Redis** for cross-server messaging.
 
 Apply migration with nuget console: `update-database -Context MigrationContext -Project SetupDatabase`
 
