@@ -29,7 +29,7 @@ namespace ow.Utils.FetchOnStoveClient
         public static async ValueTask<ClientFilesResult?> GetClientFiles(string host, ushort port)
         {
             GetLiveVersionResult? liveVersion = await GetLiveVersion();
-            using HttpRequestMessage request = new(HttpMethod.Get, liveVersion?.Value.LiveProjectUrl);
+            using HttpRequestMessage request = new(HttpMethod.Get, liveVersion?.Value?.LiveProjectUrl);
 
             using HttpClient http = new(new HttpClientHandler()
             {
