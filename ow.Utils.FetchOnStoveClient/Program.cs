@@ -66,6 +66,14 @@ namespace ow.Utils.FetchOnStoveClient
                             break;
                         }
 
+                    // X files - VCDIFF
+                    // https://github.com/hoytech/Vcdiff
+                    // https://github.com/jmacd/xdelta
+                    // Some links in response are broken and return 404 not found
+                    case 'X':
+
+                        break;
+
                     case 'F':
                         {
                             Downloads.Add(Task.Run(async () =>
@@ -75,8 +83,8 @@ namespace ow.Utils.FetchOnStoveClient
                                 string url = $"v{splittedLine[(byte)LineToken.Version]}/{splittedLine[(byte)LineToken.WebPath]}.{splittedLine[(byte)LineToken.WebExtension]}";
                                 string path = Path.Join(outputPath, splittedLine[(byte)LineToken.FilePath]);
 
-                                // var (left, top) = Console.GetCursorPosition();
-
+                                // conenction may lost
+                                // need the ability to download in parts
                                 while (true)
                                 {
                                     try
