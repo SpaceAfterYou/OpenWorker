@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <UserSecretsId>dotnet-ow.Service.Master-00E21975-99A1-4A78-9DBB-0FDBE2DDE67C</UserSecretsId>
-    <StartupObject>ow.Service.Login.Program</StartupObject>
+    <StartupObject>ow.Service.Master.Program</StartupObject>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest</AnalysisLevel>
     <Nullable>enable</Nullable>

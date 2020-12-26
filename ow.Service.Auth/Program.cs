@@ -4,10 +4,10 @@ using ow.Framework.Extensions;
 using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Extensions;
-using ow.Service.Login.Game.Repositories;
-using ow.Service.Login.Network;
+using ow.Service.Auth.Game.Repositories;
+using ow.Service.Auth.Network;
 
-namespace ow.Service.Login
+namespace ow.Service.Auth
 {
     public static class Program
     {

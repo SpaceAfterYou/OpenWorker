@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network;
 using ow.Framework.IO.Network.Providers;
-using ow.Service.Login.Game;
+using ow.Service.Auth.Game;
 
-namespace ow.Service.Login.Network
+namespace ow.Service.Auth.Network
 {
     public sealed class Session : GameSession
     {

@@ -11,7 +11,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ow.Service.Login.Network.Handlers
+namespace ow.Service.Auth.Network.Handlers
 {
     internal static class ServiceHandler
     {
