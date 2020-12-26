@@ -6,13 +6,8 @@
     public enum AuthLoginErrorMessageCode : uint
     {
         None,
-        LoginFailed = 50104,
-        WrongUsernameOrPassword = 50105,
-        TheIdYouEnteredIsAlreadyConnectedToTheServer = 50106,
-        AccountIsBlocked = 50109,
-        IpIsBlocked = 50110,
-
-        /// Forgot ID
-        // MacIsBlocked = 50110
+        WrongUsernameOrPassword = 1,
+        TheIdYouEnteredIsAlreadyConnectedToTheServer = 2,
+        WithErrorMessage = 3
     }
 }

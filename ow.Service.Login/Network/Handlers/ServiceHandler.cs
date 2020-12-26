@@ -32,7 +32,6 @@ namespace ow.Service.Login.Network.Handlers
             }
             else
             {
-                // TODO: Not work. Message doesn't show.
                 session.SendAsync(new AuthLoginResponse
                 {
                     Response = AuthLoginStatus.Failure,
