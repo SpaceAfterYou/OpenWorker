@@ -1,4 +1,5 @@
-﻿using ow.Framework.Extensions;
+﻿using ow.Framework.Attributes;
+using ow.Framework.Extensions;
 using ow.Framework.Game.Enums;
 using System.Collections.Generic;
 using System.IO;
@@ -7,6 +8,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = Hero;
 
+    [BinTable("tb_Customize_Skin")]
     public sealed record CustomizeSkinTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }

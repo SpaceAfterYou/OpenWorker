@@ -1,4 +1,5 @@
-﻿using ow.Framework.Extensions;
+﻿using ow.Framework.Attributes;
+using ow.Framework.Extensions;
 using ow.Framework.Game.Enums;
 using System;
 using System.Collections.Generic;
@@ -9,6 +10,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
+    [BinTable("tb_item")]
     public sealed record ItemTableEntity : ITableEntity<KeyType>
     {
         public readonly struct Option

@@ -125,6 +125,8 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
                     await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));
                 }
             }
+
+            Console.WriteLine("Hello World!");
         }
     }
 }

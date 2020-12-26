@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using ow.Framework.Attributes;
 using ow.Framework.Game.Datas.Bin;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
@@ -15,53 +16,53 @@ namespace ow.Framework.IO.File.Bin
         private readonly BinFile _data;
 
         public IReadOnlyDictionary<Hero, ClassSelectInfoTableEntity> ReadClassSelectInfoTable() =>
-            Read<Hero, ClassSelectInfoTableEntity>(_data, "tb_ClassSelect_Info");
+            Read<Hero, ClassSelectInfoTableEntity>(_data);
 
         public IReadOnlyDictionary<Hero, CustomizeSkinTableEntity> ReadCustomizeSkinTable() =>
-            Read<Hero, CustomizeSkinTableEntity>(_data, "tb_Customize_Skin");
+            Read<Hero, CustomizeSkinTableEntity>(_data);
 
         public IReadOnlyDictionary<Hero, CustomizeEyesTableEntity> ReadCustomizeEyesTable() =>
-            Read<Hero, CustomizeEyesTableEntity>(_data, "tb_Customize_Eyes");
+            Read<Hero, CustomizeEyesTableEntity>(_data);
 
         public IReadOnlyDictionary<Hero, CustomizeHairTableEntity> ReadCustomizeHairTable() =>
-            Read<Hero, CustomizeHairTableEntity>(_data, "tb_Customize_Hair");
+            Read<Hero, CustomizeHairTableEntity>(_data);
 
         public IReadOnlyDictionary<Hero, CustomizeInfoTableEntity> ReadCustomizeInfoTable() =>
-            Read<Hero, CustomizeInfoTableEntity>(_data, "tb_Customize_Info");
+            Read<Hero, CustomizeInfoTableEntity>(_data);
 
         public IReadOnlyDictionary<uint, CharacterBackgroundTableEntity> ReadCharacterBackgroundTable() =>
-            Read<uint, CharacterBackgroundTableEntity>(_data, "tb_Character_Background");
+            Read<uint, CharacterBackgroundTableEntity>(_data);
 
         public IReadOnlyDictionary<ushort, DistrictTableEntity> ReadDistrictTable() =>
-            Read<ushort, DistrictTableEntity>(_data, "tb_district");
+            Read<ushort, DistrictTableEntity>(_data);
 
         public IReadOnlyDictionary<uint, ItemTableEntity> ReadItemTable() =>
-            Read<uint, ItemTableEntity>(_data, "tb_item");
+            Read<uint, ItemTableEntity>(_data);
 
         public IReadOnlyDictionary<uint, ItemClassifyTableEntity> ReadItemClassifyTable() =>
-            Read<uint, ItemClassifyTableEntity>(_data, "tb_Item_Classify");
+            Read<uint, ItemClassifyTableEntity>(_data);
 
         public IReadOnlyDictionary<uint, ItemScriptTableEntity> ReadItemScriptTable() =>
-            Read<uint, ItemScriptTableEntity>(_data, "tb_item_script");
+            Read<uint, ItemScriptTableEntity>(_data);
 
         public IReadOnlyDictionary<ushort, CharacterInfoTableEntity> ReadCharacterInfoTable() =>
-            Read<ushort, CharacterInfoTableEntity>(_data, "tb_Character_Info");
+            Read<ushort, CharacterInfoTableEntity>(_data);
 
         public IReadOnlyDictionary<uint, PhotoItemTableEntity> ReadPhotoItemTable() =>
-            Read<uint, PhotoItemTableEntity>(_data, "tb_Photo_Item");
+            Read<uint, PhotoItemTableEntity>(_data);
 
         public IReadOnlyDictionary<ushort, GestureTableEntity> ReadGestureTable() =>
-            Read<ushort, GestureTableEntity>(_data, "tb_Gesture");
+            Read<ushort, GestureTableEntity>(_data);
 
         public IReadOnlyDictionary<ushort, MazeInfoTableEntity> ReadMazeInfoTable() =>
-            Read<ushort, MazeInfoTableEntity>(_data, "tb_Maze_Info");
+            Read<ushort, MazeInfoTableEntity>(_data);
 
         public IReadOnlyDictionary<ushort, BoosterTableEntity> ReadBoosterTable() =>
-            Read<ushort, BoosterTableEntity>(_data, "tb_Booster");
+            Read<ushort, BoosterTableEntity>(_data);
 
         public BinTable(IConfiguration configuration) => _data = new(configuration);
 
-        internal static IReadOnlyDictionary<TId, TItem> Read<TId, TItem>(BinFile data, string file) where TId : IConvertible where TItem : ITableEntity<TId> => GetEntries(data, file)
+        internal static IReadOnlyDictionary<TId, TItem> Read<TId, TItem>(BinFile data) where TId : IConvertible where TItem : ITableEntity<TId> => GetEntries(data, typeof(TItem).GetCustomAttribute<BinTableAttribute>()!.Name)
             .Select(br => (TItem)(Activator.CreateInstance(typeof(TItem), BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { br }, null) ?? throw new ApplicationException()))
             .ToDictionary(k => k.Id, v => v);
 
@@ -76,6 +77,7 @@ namespace ow.Framework.IO.File.Bin
         void IDisposable.Dispose()
         {
             ((IDisposable)_data).Dispose();
+
             GC.SuppressFinalize(this);
         }
     }

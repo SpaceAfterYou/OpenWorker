@@ -1,4 +1,5 @@
-﻿using ow.Framework.Extensions;
+﻿using ow.Framework.Attributes;
+using ow.Framework.Extensions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,6 +8,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
+    [BinTable("tb_Character_Info")]
     public sealed record CharacterInfoTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }

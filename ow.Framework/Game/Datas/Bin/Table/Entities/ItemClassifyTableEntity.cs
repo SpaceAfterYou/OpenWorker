@@ -1,4 +1,5 @@
-﻿using ow.Framework.Extensions;
+﻿using ow.Framework.Attributes;
+using ow.Framework.Extensions;
 using ow.Framework.Game.Enums;
 using System;
 using System.IO;
@@ -7,6 +8,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
+    [BinTable("tb_Item_Classify")]
     public sealed record ItemClassifyTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }
