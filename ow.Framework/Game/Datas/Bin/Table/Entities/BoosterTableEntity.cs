@@ -1,4 +1,5 @@
-﻿using ow.Framework.Extensions;
+﻿using ow.Framework.Attributes;
+using ow.Framework.Extensions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,25 +9,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt16;
 
-    public static class MyFunkyExtensions
-    {
-        public static IEnumerable<TResult> Zip<T1, T2, T3, T4, TResult>(
-            this IEnumerable<T1> source,
-            IEnumerable<T2> second,
-            IEnumerable<T3> third,
-            IEnumerable<T4> fourth,
-            Func<T1, T2, T3, T4, TResult> func)
-        {
-            IEnumerator<T1> e1 = source.GetEnumerator();
-            IEnumerator<T2> e2 = second.GetEnumerator();
-            IEnumerator<T3> e3 = third.GetEnumerator();
-            IEnumerator<T4> e4 = fourth.GetEnumerator();
-
-            while (e1.MoveNext() && e2.MoveNext() && e3.MoveNext() && e4.MoveNext())
-                yield return func(e1.Current, e2.Current, e3.Current, e4.Current);
-        }
-    }
-
+    [BinTable("tb_Booster")]
     public sealed record BoosterTableEntity : ITableEntity<KeyType>
     {
         public readonly struct Effect

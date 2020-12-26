@@ -1,6 +1,6 @@
 ﻿using ow.Framework.Database.Accounts;
 
-namespace ow.Service.Login.Game
+namespace ow.Service.Auth.Game
 {
     public sealed class Account
     {

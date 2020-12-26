@@ -1,4 +1,5 @@
-﻿using ow.Framework.Extensions;
+﻿using ow.Framework.Attributes;
+using ow.Framework.Extensions;
 using System;
 using System.IO;
 
@@ -6,6 +7,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = UInt32;
 
+    [BinTable("tb_item_script")]
     public sealed record ItemScriptTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }

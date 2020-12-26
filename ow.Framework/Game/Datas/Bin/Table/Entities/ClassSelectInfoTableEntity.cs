@@ -1,4 +1,5 @@
-﻿using ow.Framework.Extensions;
+﻿using ow.Framework.Attributes;
+using ow.Framework.Extensions;
 using ow.Framework.Game.Enums;
 using System.IO;
 
@@ -6,6 +7,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
 {
     using KeyType = Hero;
 
+    [BinTable("tb_ClassSelect_Info")]
     public sealed record ClassSelectInfoTableEntity : ITableEntity<KeyType>
     {
         public KeyType Id { get; }

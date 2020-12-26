@@ -6,11 +6,11 @@ using ow.Framework.IO.Network.Opcodes;
 using ow.Framework.IO.Network.Permissions;
 using ow.Framework.IO.Network.Requests;
 using ow.Framework.IO.Network.Responses;
-using ow.Service.Login.Game;
-using ow.Service.Login.Game.Repositories;
+using ow.Service.Auth.Game;
+using ow.Service.Auth.Game.Repositories;
 using System.Linq;
 
-namespace ow.Service.Login.Network.Handlers
+namespace ow.Service.Auth.Network.Handlers
 {
     internal static class GateHandler
     {

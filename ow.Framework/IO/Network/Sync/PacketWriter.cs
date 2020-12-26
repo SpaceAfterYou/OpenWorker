@@ -26,16 +26,6 @@ namespace ow.Framework.IO.Network
 
         public void WriteDistrictLogOutWay(DistrictLogOutWay value) => Write((byte)value);
 
-        public void Write(PlaceShared value)
-        {
-            Write(value.Location);
-            Write(ulong.MinValue);
-            WriteVector3(value.Position);
-            Write(value.Rotation);
-            Write((float)0);
-            Write((float)0);
-        }
-
         public void WriteCharacter(CharacterShared character)
         {
             WriteCharacterMain(character);

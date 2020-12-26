@@ -24,82 +24,43 @@ Apply migration with nuget console: `update-database -Context MigrationContext -
 
 ### Configuration
 
-# COPY AND RENAME appsettings.example.* to appsettings.* in every projects
-
-#### Login Service
-
-Some conventions must be followed.
-
-_appsettings.json_
+#### Project: ow.Framework
+rename **appsettings.Development.example.json** to **appsettings.Development.json**
+rename **commonsettings.example.json** to **commonsettings.json**
+#### Project: ow.Service.District
+rename **appsettings.example.json** to **appsettings.json**
 
 ```jsonc
 {
-  ...
-  // Must match with gate appsettings.json (see below)
-  "Gates": [
-    {
-      "Id": 0,
-      "Name": "Ashes of Memories",
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10010
-      }
-    },
-    {
-      "Id": 1,
-      "Name": "Ashes of Melodies",
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10020
-      }
-    },
-    ...
-    ...
-  ],
-  ...
+  /// "Gate" it's "gate id" from commonsettings.json
+  /// config["Gates"][0]
+  "Gate": 0,
+
+  /// ID from commonsettings.json
+  /// config["Districts"]["Rocco-01"]
+  "Id": "Rocco-01"
 }
 ```
 
-#### Gate Service
 
-_appsettings.json_
+#### Project: ow.Service.Gate
+rename **appsettings.example.json** to **appsettings.json**
 
-```json
+
+```jsonc
 {
-  "Id": 0,
-  "Name": "Ashes of Memories",
-  "Host": {
-    "Ip": "127.0.0.1",
-    "Port": 10010
-  },
-  ...
-}
-```
-####
-**Another instance**
-
-####
-
-_appsettings.json_
-
-```json
-{
-  "Id": 1,
-  "Name": "Ashes of Melodies",
-  "Host": {
-    "Ip": "127.0.0.1",
-    "Port": 10020
-  },
-  ...
+  /// ID from commonsettings.json
+  /// config["Gates"][0]
+  "Id": 0
 }
 ```
 
-### Start
+### Run
 
 Just build solution and launch output files.
 
 ## Services
 
-- ♿ _Login Service_ -- Server, where player select gate and enter credentials;
+- ♿ _Auth Service_ -- Server, where player select gate and enter credentials;
 - 🦀 _Gate Service_ -- Server, where player select/create/delete/etc character;
 - 🍟 _World Service_ -- In progress...

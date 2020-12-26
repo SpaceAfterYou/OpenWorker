@@ -10,6 +10,25 @@ using System.Threading.Tasks;
 
 namespace ow.Utils.Wireshark.JsonDumpDecode
 {
+    //
+    // USAGE
+    //
+    //   > ./executableFile wiresharkDump.json packets.txt 192.168.0.1
+    //
+    // WHERE
+    //
+    //   wiresharkDump.json
+    //      Write full path, as example: c:\wiresharkDump.json
+    //      Wireshark dump file (File > Export Packet Dissections > as JSON)
+    //
+    //   packets.txt
+    //      Write full path, as example: c:\packets.txt
+    //      Dump results (output)
+    //
+    //   192.168.0.1
+    //      You IP address (at the time of the game)
+    //
+
     internal class Program
     {
         private static async Task Main(string[] args)
@@ -65,26 +84,24 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
                 if (!ip.TryGetProperty("ip.src_host", out JsonElement srcHost))
                     throw new ApplicationException();
 
+                if (!frame.TryGetProperty("frame.time_relative", out JsonElement timeRelativeElement))
+                    throw new ApplicationException();
+
                 string ipDst = dstHost.GetString();
                 string ipSrc = srcHost.GetString();
+                string timeRelative = timeRelativeElement.GetString();
 
                 await using MemoryStream streamMs = new(Convert.FromHexString(payload.GetString().Where(s => s != ':').ToArray()));
                 using BinaryReader streamBr = new(streamMs);
 
                 while (streamMs.Position != streamMs.Length)
                 {
-                    byte b1 = streamBr.ReadByte();
-                    byte b2 = streamBr.ReadByte();
-
-                    if (b1 != 0x02 || b2 != 0x00)
-                    {
-                        // Console.Write($"skipped part (bad magic)\n");
-                        // Break; ???
+                    // packet may stick to another
+                    if (streamBr.ReadByte() != 0x02 || streamBr.ReadByte() != 0x00)
                         continue;
-                    }
 
                     ushort size = streamBr.ReadUInt16();
-                    _ = streamBr.ReadByte();
+                    byte unknown = streamBr.ReadByte();
 
                     byte[] packet = streamBr.ReadBytes(size - Defines.PacketUnEncryptedHeaderSize);
                     PacketUtils.Exchange(ref packet);
@@ -96,18 +113,20 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
 
                     if (clientIp == ipDst)
                     {
-                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($" [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] "));
-                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipDst}] ---> [{ipSrc}]\n"));
+                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($" [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] {timeRelative}: "));
+                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipSrc}] ---> [{ipDst}]\n"));
                     }
                     else
                     {
-                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($" [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] "));
-                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipSrc}] <--- [ {ipDst}]\n"));
+                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($" [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] {timeRelative}: "));
+                        await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"[{ipDst}] <--- [ {ipSrc}]\n"));
                     }
 
-                    await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));// Convert.ToHexString(packet));
+                    await outputFile.WriteAsync(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));
                 }
             }
+
+            Console.WriteLine("Hello World!");
         }
     }
 }

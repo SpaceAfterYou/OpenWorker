@@ -2,12 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Lan;
-using ow.Service.Login.Network;
+using ow.Service.Auth.Network;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ow.Service.Login
+namespace ow.Service.Auth
 {
     public class Worker : IHostedService
     {

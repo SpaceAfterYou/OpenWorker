@@ -72,7 +72,10 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue); // 4
                 writer.Write(uint.MinValue); // 5
                 writer.Write(uint.MinValue); // 6
-                writer.Write(ushort.MinValue); // 7
+                writer.Write(ushort.MinValue); //
+
+                writer.Write(uint.MinValue);
+                writer.Write(ushort.MinValue);
 
                 byte[] hz = new byte[9] { (byte)'1', (byte)'3', (byte)'4', (byte)'0', (byte)'0', (byte)'6', (byte)'8', (byte)'9', (byte)'3' }; // maybe privacy
                 writer.Write((ushort)hz.Length); // maybe privacy
@@ -274,7 +277,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(new byte[28]);
                 writer.WriteNumberLengthUtf8String(value.EndPoint.Ip);
                 writer.Write(value.EndPoint.Port);
-                writer.Write(value.Place);
+                writer.WritePlace(value.Place);
                 writer.Write(new byte[12]);
             });
 

@@ -4,7 +4,7 @@ using NetCoreServer;
 using ow.Framework.IO.Network;
 using System;
 
-namespace ow.Service.Login.Network
+namespace ow.Service.Auth.Network
 {
     public sealed class Server : GameServer
     {

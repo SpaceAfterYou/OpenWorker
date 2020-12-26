@@ -1,7 +1,7 @@
 ﻿using ow.Framework;
 using ow.Framework.Game.Enums;
 
-namespace ow.Service.Login.Game
+namespace ow.Service.Auth.Game
 {
     public sealed class GateInstance
     {
