@@ -25,9 +25,13 @@ Apply migration with nuget console: `update-database -Context MigrationContext -
 ### Configuration
 
 #### Project: ow.Framework
+
 rename **appsettings.Development.example.json** to **appsettings.Development.json**
+
 rename **commonsettings.example.json** to **commonsettings.json**
+
 #### Project: ow.Service.District
+
 rename **appsettings.example.json** to **appsettings.json**
 
 ```jsonc
