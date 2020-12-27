@@ -66,9 +66,11 @@ struct s_character {
     uint u7;
     float stats_max_move_speed;
     float stats_max_attack_speed;
-    uint u8;
+    ushort u8_1;
+    ubyte u8_2;
     ushort primary_energy;
     ushort extra_energy;
+    ubyte u8_3;
     byte u9;
     byte u10;
     uint u11;

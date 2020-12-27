@@ -117,9 +117,11 @@ namespace ow.Framework.IO.Network.Sync
             Write(uint.MinValue); // 11
             Write(value.Stats.MoveSpeed);
             Write(value.Stats.AttackSpeed);
-            Write(uint.MinValue); // 00 00 00 00
+            Write(ushort.MinValue);
+            Write(byte.MinValue);
             Write(primaryEnergy);
             Write(extraEnergy);
+            Write(byte.MinValue);
             Write(byte.MinValue); // 00
             Write(byte.MinValue); // 08
             Write(uint.MinValue); // 95 36 68 3B
