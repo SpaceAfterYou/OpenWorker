@@ -1,4 +1,4 @@
-﻿using ow.Framework.IO.Network.Opcodes;
+﻿using ow.Framework.IO.Network.Sync.Opcodes;
 
 namespace ow.Framework.Utils
 {

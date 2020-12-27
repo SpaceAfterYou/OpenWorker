@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ow.Framework.IO.Network.Attributes;
+using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.Utils;
 using System;
 using System.Collections.Generic;
@@ -10,9 +10,9 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace ow.Framework.IO.Network.Providers
+namespace ow.Framework.IO.Network.Sync.Providers
 {
-    public delegate void Event(GameSession session, BinaryReader br);
+    public delegate void Event(SyncSession session, BinaryReader br);
 
     public class HandlerProvider : List<Event>
     {
@@ -20,7 +20,7 @@ namespace ow.Framework.IO.Network.Providers
         {
         }
 
-        private static void Dummy(GameSession session, BinaryReader _)
+        private static void Dummy(SyncSession session, BinaryReader _)
         {
 #if !DEBUG
             session.Disconnect();
@@ -51,7 +51,7 @@ namespace ow.Framework.IO.Network.Providers
 
         private static Event CreateEventHandler(IServiceProvider service, MethodInfo method)
         {
-            ParameterExpression session = Expression.Parameter(typeof(GameSession), "Session");
+            ParameterExpression session = Expression.Parameter(typeof(SyncSession), "Session");
             ParameterExpression br = Expression.Parameter(typeof(BinaryReader), "BinaryReader");
 
             Expression[] arguments = method.GetParameters().Select(param =>
@@ -60,7 +60,7 @@ namespace ow.Framework.IO.Network.Providers
                 Debug.Assert(!param.IsIn);
 
                 // Session typed parameter
-                if (param.ParameterType == typeof(GameSession) || param.ParameterType?.BaseType == typeof(GameSession))
+                if (param.ParameterType == typeof(SyncSession) || param.ParameterType?.BaseType == typeof(SyncSession))
                     return Expression.Convert(session, param.ParameterType) as Expression;
 
                 // Packet structure parameter

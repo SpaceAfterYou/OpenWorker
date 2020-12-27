@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using ow.Framework.Extensions;
 using ow.Framework.IO.File.World;
 using ow.Framework.IO.Lan.Extensions;
-using ow.Framework.IO.Network.Extensions;
+using ow.Framework.IO.Network.Sync.Extensions;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
 using ow.Service.District.Network;

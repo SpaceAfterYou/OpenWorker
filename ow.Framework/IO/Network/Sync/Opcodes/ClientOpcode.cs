@@ -1,4 +1,4 @@
-﻿namespace ow.Framework.IO.Network.Opcodes
+﻿namespace ow.Framework.IO.Network.Sync.Opcodes
 {
     public enum ClientOpcode : ushort
     {

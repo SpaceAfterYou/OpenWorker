@@ -1,8 +1,8 @@
-﻿using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Opcodes;
+﻿using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Permissions;
 using System;
 
-namespace ow.Framework.IO.Network.Attributes
+namespace ow.Framework.IO.Network.Sync.Attributes
 {
     [AttributeUsage(AttributeTargets.Method)]
     public class HandlerAttribute : Attribute

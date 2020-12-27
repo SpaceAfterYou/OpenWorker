@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 
-namespace ow.Framework.IO.Network.Responses.Shared
+namespace ow.Framework.IO.Network.Sync.Responses.Shared
 {
     public sealed record PlaceShared
     {

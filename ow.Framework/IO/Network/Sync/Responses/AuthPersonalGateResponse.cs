@@ -1,7 +1,7 @@
 ﻿using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Responses.Shared;
+using ow.Framework.IO.Network.Sync.Responses.Shared;
 
-namespace ow.Framework.IO.Network.Responses
+namespace ow.Framework.IO.Network.Sync.Responses
 {
     public sealed record AuthPersonalGateResponse
     {

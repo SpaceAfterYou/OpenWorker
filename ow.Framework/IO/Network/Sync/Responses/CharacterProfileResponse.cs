@@ -1,6 +1,6 @@
 ﻿using ow.Framework.Game.Types;
 
-namespace ow.Framework.IO.Network.Responses
+namespace ow.Framework.IO.Network.Sync.Responses
 {
     public sealed record CharacterProfileResponse
     {

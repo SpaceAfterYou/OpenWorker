@@ -1,7 +1,7 @@
 ﻿using ow.Framework.Game.Enums;
 using System.Collections.Generic;
 
-namespace ow.Framework.IO.Network.Responses
+namespace ow.Framework.IO.Network.Sync.Responses
 {
     public sealed record CharacterStatsUpdateResponse
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ow.Framework.IO.Network.Attributes
+namespace ow.Framework.IO.Network.Sync.Attributes
 {
     [AttributeUsage(AttributeTargets.Method)]
     public class PermissionAttribute : Attribute

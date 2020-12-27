@@ -2,11 +2,12 @@
 using NetCoreServer;
 using ow.Framework.Game;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Opcodes;
-using ow.Framework.IO.Network.Providers;
-using ow.Framework.IO.Network.Requests;
-using ow.Framework.IO.Network.Responses;
-using ow.Framework.IO.Network.Responses.Shared;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync.Responses;
+using ow.Framework.IO.Network.Sync.Responses.Shared;
+using ow.Framework.IO.Network.Sync;
+using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Providers;
 using ow.Framework.Utils;
 using System;
 using System.Collections.Generic;
@@ -17,16 +18,16 @@ using System.Text;
 
 namespace ow.Framework.IO.Network
 {
-    public abstract partial class GameSession : TcpSession
+    public abstract partial class SyncSession : TcpSession
     {
         #region Send Characters
 
-        public GameSession SendCharacterDbLoadSync() =>
+        public SyncSession SendCharacterDbLoadSync() =>
             SendAsync(ClientOpcode.CharacterDbLoadSync, (PacketWriter writer) =>
             {
             });
 
-        public GameSession SendAsync(CharacterToggleWeaponRequest request) =>
+        public SyncSession SendAsync(CharacterToggleWeaponRequest request) =>
             SendAsync(ClientOpcode.CharacterToggleWeapon, (PacketWriter writer) =>
             {
                 writer.Write(request.CharacterId);
@@ -36,7 +37,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(request.Unknown1);
             });
 
-        public GameSession SendAsync(NpcOthersInfosResponse value) =>
+        public SyncSession SendAsync(NpcOthersInfosResponse value) =>
             SendAsync(ClientOpcode.NpcOtherInfos, (PacketWriter writer) =>
             {
                 writer.Write((ushort)value.Values.Count);
@@ -53,7 +54,7 @@ namespace ow.Framework.IO.Network
                 }
             });
 
-        public GameSession SendAsync(CharacterInfoResponse value) =>
+        public SyncSession SendAsync(CharacterInfoResponse value) =>
             SendAsync(ClientOpcode.CharacterInfo, (PacketWriter writer) =>
             {
                 writer.WriteCharacter(value.Character);
@@ -90,7 +91,7 @@ namespace ow.Framework.IO.Network
                 writer.Write((byte)1); //
             });
 
-        public GameSession SendAsync(CharacterStatsUpdateResponse value) =>
+        public SyncSession SendAsync(CharacterStatsUpdateResponse value) =>
             SendAsync(ClientOpcode.CharacterStatsUpdate, ((PacketWriter writer) =>
             {
                 writer.Write((byte)0);
@@ -105,7 +106,7 @@ namespace ow.Framework.IO.Network
                 }
             }));
 
-        public GameSession SendAsync(CharacterProfileResponse value) =>
+        public SyncSession SendAsync(CharacterProfileResponse value) =>
             SendAsync(ClientOpcode.CharacterProfileInfo, (PacketWriter writer) =>
             {
                 writer.WriteProfileStatus(value.Status);
@@ -113,14 +114,14 @@ namespace ow.Framework.IO.Network
                 writer.WriteByteLengthUnicodeString(value.Note);
             });
 
-        public GameSession SendAsync(GestureLoadResponse value) =>
+        public SyncSession SendAsync(GestureLoadResponse value) =>
             SendAsync(ClientOpcode.GestureLoad, (PacketWriter writer) =>
             {
                 foreach (uint gesture in value.Values)
                     writer.Write(gesture);
             });
 
-        public GameSession SendCharacterPostInfo() =>
+        public SyncSession SendCharacterPostInfo() =>
             SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
             {
             });
@@ -129,7 +130,7 @@ namespace ow.Framework.IO.Network
 
         #region Send Chat
 
-        public GameSession SendAsync(ChatResponse value) =>
+        public SyncSession SendAsync(ChatResponse value) =>
             SendAsync(ClientOpcode.ChatMessage, (PacketWriter writer) =>
             {
                 writer.Write(value.Character);
@@ -141,7 +142,7 @@ namespace ow.Framework.IO.Network
 
         #region Send Maze
 
-        public GameSession SendAsync(DayEventBoosterResponse value) =>
+        public SyncSession SendAsync(DayEventBoosterResponse value) =>
             SendAsync(ClientOpcode.EventDayEventBoosterList, (PacketWriter writer) =>
             {
                 writer.Write((ushort)value.Values.Count);
@@ -156,13 +157,13 @@ namespace ow.Framework.IO.Network
 
         #region Send Service
 
-        public GameSession SendAsync(ServiceHeartbeatRequest value) =>
+        public SyncSession SendAsync(ServiceHeartbeatRequest value) =>
             SendAsync(ClientOpcode.Heartbeat, (PacketWriter writer) =>
             {
                 writer.Write(value.Tick);
             });
 
-        public GameSession SendAsync(DistrictLogOutResponse value) =>
+        public SyncSession SendAsync(DistrictLogOutResponse value) =>
             SendAsync(ClientOpcode.LogOut, (PacketWriter writer) =>
             {
                 writer.Write(value.Account);
@@ -177,7 +178,7 @@ namespace ow.Framework.IO.Network
 
         #region Send World
 
-        public GameSession SendAsync(DistrictEnterResponse value) =>
+        public SyncSession SendAsync(DistrictEnterResponse value) =>
             SendAsync(ClientOpcode.WorldEnter, (PacketWriter writer) =>
             {
                 writer.Write(uint.MinValue);
@@ -186,7 +187,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(byte.MinValue);
             });
 
-        public GameSession SendAsync(WorldVersionResponse value) =>
+        public SyncSession SendAsync(WorldVersionResponse value) =>
             SendAsync(ClientOpcode.WorldVersion, (PacketWriter writer) =>
             {
                 writer.Write(value.Id);
@@ -199,13 +200,13 @@ namespace ow.Framework.IO.Network
 
         #region Send Boosters
 
-        public GameSession SendAsync(BoosterRemoveResponse value) =>
+        public SyncSession SendAsync(BoosterRemoveResponse value) =>
             SendAsync(ClientOpcode.BoosterRemove, (PacketWriter writer) =>
             {
                 writer.Write(value.Id);
             });
 
-        public GameSession SendAsync(BoosterAddResponse value) =>
+        public SyncSession SendAsync(BoosterAddResponse value) =>
             SendAsync(ClientOpcode.BoosterAdd, (PacketWriter writer) =>
             {
                 writer.Write(value.Id);
@@ -215,21 +216,21 @@ namespace ow.Framework.IO.Network
 
         #endregion Send Boosters
 
-        public GameSession SendAsync(GestureUpdateSlotsResponse value) =>
+        public SyncSession SendAsync(GestureUpdateSlotsResponse value) =>
             SendAsync(ClientOpcode.GestureUpdateSlots, (PacketWriter writer) =>
             {
                 foreach (uint id in value.Values)
                     writer.Write(id);
             });
 
-        public GameSession SendAsync(GateEnterResponse value) =>
+        public SyncSession SendAsync(GateEnterResponse value) =>
             SendAsync(ClientOpcode.GateEnter, (PacketWriter writer) =>
             {
                 writer.WriteGateEnterResult(value.Result);
                 writer.Write(value.AccountId);
             });
 
-        public GameSession SendAsync(GateCharacterMarkAsFavoriteResponse value) =>
+        public SyncSession SendAsync(GateCharacterMarkAsFavoriteResponse value) =>
             SendAsync(ClientOpcode.CharacterMarkAsFavorite, (PacketWriter writer) =>
             {
                 writer.Write(value.AccountId);
@@ -242,7 +243,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue);
             });
 
-        public GameSession SendAsync(GateCharacterListResponse value) =>
+        public SyncSession SendAsync(GateCharacterListResponse value) =>
             SendAsync(ClientOpcode.CharactersList, (PacketWriter writer) =>
             {
                 writer.Write((byte)value.Characters.Count);
@@ -261,7 +262,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(byte.MinValue);
             });
 
-        public GameSession SendAsync(GateCharacterChangeBackgroundResponse value) =>
+        public SyncSession SendAsync(GateCharacterChangeBackgroundResponse value) =>
             SendAsync(ClientOpcode.CharacterChangeBackground, (PacketWriter writer) =>
             {
                 writer.Write(value.AccountId);
@@ -269,7 +270,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue);
             });
 
-        public GameSession SendAsync(GateCharacterSelectResponse value) =>
+        public SyncSession SendAsync(GateCharacterSelectResponse value) =>
             SendAsync(ClientOpcode.CharacterSelect, (PacketWriter writer) =>
             {
                 writer.Write(value.CharacterId);
@@ -281,14 +282,14 @@ namespace ow.Framework.IO.Network
                 writer.Write(new byte[12]);
             });
 
-        public GameSession SendAsync(AuthGateConnectionEndPointResponse endPoint) =>
+        public SyncSession SendAsync(AuthGateConnectionEndPointResponse endPoint) =>
             SendAsync(ClientOpcode.GateConnect, (PacketWriter writer) =>
             {
                 writer.WriteNumberLengthUtf8String(endPoint.Ip);
                 writer.Write(endPoint.Port);
             });
 
-        public GameSession SendAsync(IReadOnlyList<AuthPersonalGateResponse> gates) =>
+        public SyncSession SendAsync(IReadOnlyList<AuthPersonalGateResponse> gates) =>
             SendAsync(ClientOpcode.GateList, (PacketWriter writer) =>
             {
                 writer.Write(byte.MinValue);
@@ -310,7 +311,7 @@ namespace ow.Framework.IO.Network
                 }
             });
 
-        public GameSession SendAsync(Features value) =>
+        public SyncSession SendAsync(Features value) =>
             SendAsync(ClientOpcode.OptionLoad, (PacketWriter writer) =>
             {
                 writer.Write(new byte[64]);
@@ -319,7 +320,7 @@ namespace ow.Framework.IO.Network
                     writer.WriteOptionStatus(option);
             });
 
-        public GameSession SendAsync(AuthLoginResponse value) =>
+        public SyncSession SendAsync(AuthLoginResponse value) =>
             SendAsync(ClientOpcode.LoginResult, (PacketWriter writer) =>
             {
                 writer.Write(value.AccountId);
@@ -339,7 +340,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(byte.MinValue);
             });
 
-        public GameSession SendAsync(ServiceCurrentDataResponse value) =>
+        public SyncSession SendAsync(ServiceCurrentDataResponse value) =>
             SendAsync(ClientOpcode.CurrentDate, (PacketWriter writer) =>
             {
                 writer.Write(value.UnixTimeSeconds);
@@ -353,12 +354,12 @@ namespace ow.Framework.IO.Network
             });
     }
 
-    public abstract partial class GameSession : TcpSession
+    public abstract partial class SyncSession : TcpSession
     {
         private readonly HandlerProvider _provider;
         private readonly ILogger _logger;
 
-        public GameSession SendAsync(ClientOpcode opcode, Action<PacketWriter> func)
+        public SyncSession SendAsync(ClientOpcode opcode, Action<PacketWriter> func)
         {
             using PacketWriter writer = new(opcode);
             func(writer);
@@ -373,7 +374,7 @@ namespace ow.Framework.IO.Network
             return this;
         }
 
-        protected GameSession(GameServer server, HandlerProvider provider, ILogger logger) : base(server) =>
+        protected SyncSession(SyncServer server, HandlerProvider provider, ILogger logger) : base(server) =>
             (_provider, _logger) = (provider, logger);
 
         protected override void OnDisconnected() =>

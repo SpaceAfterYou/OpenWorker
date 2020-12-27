@@ -1,4 +1,4 @@
-﻿namespace ow.Framework.IO.Network.Responses.Shared
+﻿namespace ow.Framework.IO.Network.Sync.Responses.Shared
 {
     public record EndPointShared
     {

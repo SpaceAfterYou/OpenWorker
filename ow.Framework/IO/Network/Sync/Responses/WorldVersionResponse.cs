@@ -1,4 +1,4 @@
-﻿namespace ow.Framework.IO.Network.Responses
+﻿namespace ow.Framework.IO.Network.Sync.Responses
 {
     public sealed record WorldVersionResponse
     {

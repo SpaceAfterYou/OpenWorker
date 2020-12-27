@@ -2,7 +2,7 @@
 using ow.Framework.Database.Characters;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Requests;
+using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.Utils;
 using ow.Service.Gate.Game;
 using System;

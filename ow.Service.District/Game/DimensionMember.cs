@@ -1,7 +1,8 @@
 ﻿using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
-using ow.Framework.IO.Network.Opcodes;
-using ow.Framework.IO.Network.Requests;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync;
+using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Service.District.Game.Helpers;
 using ow.Service.District.Game.Repositories;
 using ow.Service.District.Network;
@@ -26,7 +27,7 @@ namespace ow.Service.District.Game
         internal void BroadcastAsync(CharacterSpecialOptionListUpdateRequest request) =>
             _dimension.BroadcastAsync(ClientOpcode.CharacterSpecialOptionUpdateList, (PacketWriter writer) =>
             {
-                foreach ((Guid _, GameSession member) in _dimension.Sessions)
+                foreach ((Guid _, SyncSession member) in _dimension.Sessions)
                 {
                     if (member is Session session)
                     {

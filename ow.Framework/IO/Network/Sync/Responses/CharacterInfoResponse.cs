@@ -1,6 +1,6 @@
-﻿using ow.Framework.IO.Network.Responses.Shared;
+﻿using ow.Framework.IO.Network.Sync.Responses.Shared;
 
-namespace ow.Framework.IO.Network.Responses
+namespace ow.Framework.IO.Network.Sync.Responses
 {
     public record CharacterInfoResponse
     {

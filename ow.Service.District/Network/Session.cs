@@ -1,12 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network;
-using ow.Framework.IO.Network.Providers;
+using ow.Framework.IO.Network.Sync.Providers;
 using ow.Service.District.Game;
 using System.Collections.Generic;
 
 namespace ow.Service.District.Network
 {
-    public sealed class Session : GameSession
+    public sealed class Session : SyncSession
     {
         internal Account Account { get; set; } = default!;
         internal Character Character { get; set; } = default!;

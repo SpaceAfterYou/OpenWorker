@@ -1,19 +1,19 @@
 ﻿using ow.Framework;
 using ow.Framework.Database.Characters;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.IO.Network.Attributes;
-using ow.Framework.IO.Network.Opcodes;
-using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests;
-using ow.Framework.IO.Network.Responses;
-using ow.Framework.IO.Network.Responses.Shared;
+using ow.Framework.IO.Network.Sync.Attributes;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync.Responses;
+using ow.Framework.IO.Network.Sync.Responses.Shared;
+using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.Utils;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Repository;
 using ow.Service.Gate.Network.Helpers;
 using System.Linq;
 
-using static ow.Framework.IO.Network.Responses.Shared.CharacterShared.EquippedItemsInfo;
+using static ow.Framework.IO.Network.Sync.Responses.Shared.CharacterShared.EquippedItemsInfo;
 
 namespace ow.Service.Gate.Network.Handlers
 {
