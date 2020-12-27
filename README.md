@@ -32,7 +32,7 @@ Apply migration with nuget console: `update-database -Context MigrationContext -
 * setup data12.v password in commonsettings.json `config["Game"]["Datas"]["Passwords"]["Data12"]`
 * setup gamepath in commonsettings.json `config["Game"]["Dir"]`
 
-**currently server use only data12.v and data49.v files**
+**currently server use only data12.v and data49.v files**  
 path looks like: `config["Game"]["Dir"]["datas"]`
 
 #### Project: ow.Service.District
