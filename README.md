@@ -25,9 +25,18 @@ Apply migration with nuget console: `update-database -Context MigrationContext -
 ### Configuration
 
 #### Project: ow.Framework
-rename **appsettings.Development.example.json** to **appsettings.Development.json**
-rename **commonsettings.example.json** to **commonsettings.json**
+
+- rename **appsettings.Development.example.json** to **appsettings.Development.json**
+- rename **commonsettings.example.json** to **commonsettings.json**
+
+* setup data12.v password in commonsettings.json `config["Game"]["Datas"]["Passwords"]["Data12"]`
+* setup gamepath in commonsettings.json `config["Game"]["Dir"]`
+
+**currently server use only data12.v and data49.v files**
+path looks like: `config["Game"]["Dir"]["datas"]`
+
 #### Project: ow.Service.District
+
 rename **appsettings.example.json** to **appsettings.json**
 
 ```jsonc
@@ -42,10 +51,9 @@ rename **appsettings.example.json** to **appsettings.json**
 }
 ```
 
-
 #### Project: ow.Service.Gate
-rename **appsettings.example.json** to **appsettings.json**
 
+rename **appsettings.example.json** to **appsettings.json**
 
 ```jsonc
 {
