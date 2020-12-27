@@ -11,5 +11,6 @@
         Iris = 6,
         Chii = 7,
         Ephnel = 8,
+        Lee = 9
     }
 }
