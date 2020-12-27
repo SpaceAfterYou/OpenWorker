@@ -1,8 +1,9 @@
 ﻿using ow.Framework.Game;
 using ow.Framework.Game.Enums;
 using ow.Framework.Game.Types;
-using ow.Framework.IO.Network.Sync.Responses.Shared;
 using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Responses;
+using ow.Framework.IO.Network.Sync.Responses.Shared;
 using ow.Framework.Utils;
 using System;
 using System.IO;
@@ -25,6 +26,8 @@ namespace ow.Framework.IO.Network.Sync
         public void WriteDistrictLogOutStatus(DistrictLogOutStatus value) => Write((byte)value);
 
         public void WriteDistrictLogOutWay(DistrictLogOutWay value) => Write((byte)value);
+
+        public void WriteCharacterInfoResult(CharacterInfoResult value) => Write((byte)value);
 
         public void WriteCharacter(CharacterShared character)
         {

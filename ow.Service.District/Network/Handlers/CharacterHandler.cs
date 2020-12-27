@@ -1,8 +1,8 @@
-﻿using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Requests;
-using ow.Framework.IO.Network.Sync.Responses;
+﻿using ow.Framework.Game.Enums;
+using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
+using ow.Framework.IO.Network.Sync.Requests;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Helpers;
 
@@ -10,9 +10,9 @@ namespace ow.Service.District.Network.Handlers
 {
     internal static class CharacterHandler
     {
-        //    [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
-        //    public static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Entity.Get<DimensionMemberEntity>()
-        //        .SendCharacterSpecialOptionUpdateList(request);
+        [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
+        public static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Dimension
+            .BroadcastAsync(request);
 
         //    [Handler(ServerOpcode.OthersInfo, HandlerPermission.Authorized)]
         //    public static void GetOthers(Session session, NpcRepository npcs) => session
