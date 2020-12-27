@@ -33,7 +33,7 @@ Apply migration with nuget console: `update-database -Context MigrationContext -
 * setup gamepath in commonsettings.json `config["Game"]["Dir"]`
 
 **currently server use only data12.v and data49.v files**  
-path looks like: `config["Game"]["Dir"]["datas"]`
+path looks like: `your_entered_path/datas/data12|49.v`
 
 #### Project: ow.Service.District
 
