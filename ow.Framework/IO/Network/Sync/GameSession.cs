@@ -2,12 +2,12 @@
 using NetCoreServer;
 using ow.Framework.Game;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Sync.Requests;
-using ow.Framework.IO.Network.Sync.Responses;
-using ow.Framework.IO.Network.Sync.Responses.Shared;
 using ow.Framework.IO.Network.Sync;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Providers;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync.Responses;
+using ow.Framework.IO.Network.Sync.Responses.Shared;
 using ow.Framework.Utils;
 using System;
 using System.Collections.Generic;
@@ -326,14 +326,15 @@ namespace ow.Framework.IO.Network
                 writer.Write(value.AccountId);
 
                 writer.Write(byte.MinValue);
-
                 writer.Write(value.Response == AuthLoginStatus.Failure ? new byte[18] : Encoding.ASCII.GetBytes(value.Mac));
 
                 writer.WriteByteLengthUnicodeString(value.ErrorMessage);
                 writer.WriteAuthLoginErrorMessageCode(value.ErrorMessageCode);
+
+                writer.Write(byte.MinValue);
                 writer.Write(byte.MinValue);
                 writer.WriteByteLengthUnicodeString(value.ErrorMessage);
-                writer.Write(value.Response == AuthLoginStatus.Failure ? 0 : value.SessionKey);
+                writer.Write(value.SessionKey);
 
                 writer.Write(byte.MinValue);
                 writer.Write(uint.MinValue);
