@@ -74,13 +74,13 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue); // 5
                 writer.Write(uint.MinValue); // 6
                 writer.Write(ushort.MinValue); //
-
-                writer.Write(uint.MinValue);
-                writer.Write(ushort.MinValue);
+                writer.Write(byte.MinValue);
+                writer.Write(new byte[13]);
 
                 byte[] hz = new byte[9] { (byte)'1', (byte)'3', (byte)'4', (byte)'0', (byte)'0', (byte)'6', (byte)'8', (byte)'9', (byte)'3' }; // maybe privacy
                 writer.Write((ushort)hz.Length); // maybe privacy
                 writer.Write(hz);
+
                 writer.Write(uint.MinValue); // 1
                 writer.Write(uint.MinValue); // 2
                 writer.Write(uint.MinValue); // 3
@@ -88,7 +88,7 @@ namespace ow.Framework.IO.Network
                 writer.Write(uint.MinValue); // 5
                 writer.Write(ushort.MinValue); //
                 writer.Write(byte.MinValue); //
-                writer.Write((byte)1); //
+                writer.WriteCharacterInfoResult(value.Result); //
             });
 
         public SyncSession SendAsync(CharacterStatsUpdateResponse value) =>
