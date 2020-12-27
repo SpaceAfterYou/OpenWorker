@@ -1,5 +1,5 @@
 ﻿using ow.Framework;
-using ow.Framework.IO.Network.Opcodes;
+using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.Utils;
 using System;
 using System.IO;

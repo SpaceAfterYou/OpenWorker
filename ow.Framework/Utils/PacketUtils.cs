@@ -1,4 +1,4 @@
-﻿using ow.Framework.IO.Network;
+﻿using ow.Framework.IO.Network.Sync;
 using System.Collections.Generic;
 using System.Diagnostics;
 

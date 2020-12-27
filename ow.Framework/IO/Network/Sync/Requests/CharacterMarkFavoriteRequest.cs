@@ -1,8 +1,8 @@
-﻿using ow.Framework.IO.Network.Attributes;
+﻿using ow.Framework.IO.Network.Sync.Attributes;
 using System.Collections.Generic;
 using System.IO;
 
-namespace ow.Framework.IO.Network.Requests
+namespace ow.Framework.IO.Network.Sync.Requests
 {
     [Request]
     public readonly struct CharacterMarkFavoriteRequest

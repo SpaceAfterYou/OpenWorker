@@ -2,13 +2,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using NetCoreServer;
 using ow.Framework;
-using ow.Framework.IO.Network;
+using ow.Framework.IO.Network.Sync;
 using System;
 using System.Net;
 
 namespace ow.Service.Gate.Network
 {
-    public sealed class Server : GameServer
+    public sealed class Server : SyncServer
     {
         public Server(IServiceProvider services, IConfiguration configuration) : base(services, GetEndPoint(configuration))
         {

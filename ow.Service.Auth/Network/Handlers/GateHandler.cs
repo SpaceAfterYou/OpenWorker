@@ -1,11 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Characters;
 using ow.Framework.Game;
-using ow.Framework.IO.Network.Attributes;
-using ow.Framework.IO.Network.Opcodes;
-using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests;
-using ow.Framework.IO.Network.Responses;
+using ow.Framework.IO.Network.Sync.Attributes;
+using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Permissions;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync.Responses;
 using ow.Service.Auth.Game;
 using ow.Service.Auth.Game.Repositories;
 using System.Linq;
@@ -15,9 +15,9 @@ namespace ow.Service.Auth.Network.Handlers
     internal static class GateHandler
     {
         [Handler(ServerOpcode.GateList, HandlerPermission.Authorized)]
-        public static void GetList(Session session, GateRepository gates, Features options) => session
+        public static void GetList(Session session, GateRepository gates, Features features) => session
             .SendAsync(GetPersonalGates(session, gates))
-            .SendAsync(options);
+            .SendAsync(features);
 
         [Handler(ServerOpcode.GateConnect, HandlerPermission.Authorized)]
         public static void Connect(Session session, GateConnectRequest request, GateRepository gates) =>

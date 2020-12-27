@@ -17,8 +17,8 @@ Just another server emulator for korean SoulWoker written in .NET 5.
 
 ### Database
 
-- Used **PostgreSQL** for storage.
-- Used **Redis** for cross-server messaging.
+- Uses **PostgreSQL** for storage.
+- Uses **Redis** for cross-server messaging.
 
 Apply migration with nuget console: `update-database -Context MigrationContext -Project SetupDatabase`
 
@@ -26,9 +26,14 @@ Apply migration with nuget console: `update-database -Context MigrationContext -
 
 #### Project: ow.Framework
 
-rename **appsettings.Development.example.json** to **appsettings.Development.json**
+- rename **appsettings.Development.example.json** to **appsettings.Development.json**
+- rename **commonsettings.example.json** to **commonsettings.json**
 
-rename **commonsettings.example.json** to **commonsettings.json**
+* setup data12.v password in commonsettings.json `config["Game"]["Datas"]["Passwords"]["Data12"]`
+* setup gamepath in commonsettings.json `config["Game"]["Dir"]`
+
+**currently server use only data12.v and data49.v files**
+path looks like: `config["Game"]["Dir"]["datas"]`
 
 #### Project: ow.Service.District
 
@@ -46,10 +51,9 @@ rename **appsettings.example.json** to **appsettings.json**
 }
 ```
 
-
 #### Project: ow.Service.Gate
-rename **appsettings.example.json** to **appsettings.json**
 
+rename **appsettings.example.json** to **appsettings.json**
 
 ```jsonc
 {

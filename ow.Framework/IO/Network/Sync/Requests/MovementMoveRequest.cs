@@ -1,9 +1,9 @@
 using ow.Framework.Extensions;
-using ow.Framework.IO.Network.Attributes;
+using ow.Framework.IO.Network.Sync.Attributes;
 using System.IO;
 using System.Numerics;
 
-namespace ow.Framework.IO.Network.Requests
+namespace ow.Framework.IO.Network.Sync.Requests
 {
     [Request]
     public sealed record MovementMoveRequest

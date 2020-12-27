@@ -1,9 +1,9 @@
 ﻿using ow.Framework.Database.Characters;
-using ow.Framework.IO.Network.Attributes;
-using ow.Framework.IO.Network.Opcodes;
-using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests;
-using ow.Framework.IO.Network.Responses;
+using ow.Framework.IO.Network.Sync.Attributes;
+using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Permissions;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
 

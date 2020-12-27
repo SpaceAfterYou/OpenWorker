@@ -1,7 +1,8 @@
 ﻿using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network;
-using ow.Framework.IO.Network.Opcodes;
-using ow.Framework.IO.Network.Responses;
+using ow.Framework.IO.Network.Sync.Responses;
+using ow.Framework.IO.Network.Sync;
+using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.Utils;
 using System;
 using System.Collections.Concurrent;
@@ -14,9 +15,9 @@ namespace ow.Framework.Game
     public abstract class BaseDimension
     {
         public ushort Id { get; }
-        public IReadOnlyDictionary<Guid, GameSession> Sessions => _internalSessions;
+        public IReadOnlyDictionary<Guid, SyncSession> Sessions => _internalSessions;
 
-        private readonly ConcurrentDictionary<Guid, GameSession> _internalSessions = new();
+        private readonly ConcurrentDictionary<Guid, SyncSession> _internalSessions = new();
 
         public ChannelLoadStatus Status => _internalSessions.Count switch
         {
@@ -28,20 +29,20 @@ namespace ow.Framework.Game
 
         protected BaseDimension(ushort id) => Id = id;
 
-        protected bool Join(GameSession session) => _internalSessions.TryAdd(session.Id, session);
+        protected bool Join(SyncSession session) => _internalSessions.TryAdd(session.Id, session);
 
-        protected bool Leave(GameSession session) => _internalSessions.TryRemove(session.Id, out GameSession _);
+        protected bool Leave(SyncSession session) => _internalSessions.TryRemove(session.Id, out SyncSession _);
 
         #region Broadcast Character
 
-        protected void BroadcastAsync(GameSession session, DimensionBrodcastCharacterInResponse value) =>
+        protected void BroadcastAsync(SyncSession session, DimensionBrodcastCharacterInResponse value) =>
             BroadcastExceptAsync(ClientOpcode.CharacterInInfo, session, (PacketWriter writer) =>
             {
                 writer.WriteCharacter(value.Character);
                 writer.WritePlace(value.Place);
             });
 
-        protected void BroadcastAsync(GameSession session, DimensionBrodcastCharacterOutResponse value) =>
+        protected void BroadcastAsync(SyncSession session, DimensionBrodcastCharacterOutResponse value) =>
             BroadcastExceptAsync(ClientOpcode.CharacterOutInfo, session, (PacketWriter writer) =>
             {
                 writer.Write((byte)1); // length
@@ -58,7 +59,7 @@ namespace ow.Framework.Game
             BroadcastAsync(_internalSessions, writer);
         }
 
-        public void BroadcastExceptAsync(ClientOpcode opcode, GameSession except, Action<PacketWriter> func)
+        public void BroadcastExceptAsync(ClientOpcode opcode, SyncSession except, Action<PacketWriter> func)
         {
             using PacketWriter writer = new(opcode);
             func(writer);
@@ -66,14 +67,14 @@ namespace ow.Framework.Game
             BroadcastAsync(_internalSessions.Where(pair => except.Id != pair.Key), writer);
         }
 
-        private static void BroadcastAsync(IEnumerable<KeyValuePair<Guid, GameSession>> pairs, PacketWriter writer)
+        private static void BroadcastAsync(IEnumerable<KeyValuePair<Guid, SyncSession>> pairs, PacketWriter writer)
         {
             byte[] packet = GetRawPacket(writer);
-            foreach ((Guid _, GameSession session) in pairs)
+            foreach ((Guid _, SyncSession session) in pairs)
                 SendAsync(session, packet, writer.BaseStream.Length);
         }
 
-        private static void SendAsync(GameSession session, byte[] packet, long length)
+        private static void SendAsync(SyncSession session, byte[] packet, long length)
         {
             /// [ TODO ] Change checking
 

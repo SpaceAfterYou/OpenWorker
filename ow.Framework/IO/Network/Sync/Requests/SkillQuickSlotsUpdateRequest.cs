@@ -1,8 +1,8 @@
-﻿using ow.Framework.IO.Network.Attributes;
+﻿using ow.Framework.IO.Network.Sync.Attributes;
 using System.IO;
 using System.Linq;
 
-namespace ow.Framework.IO.Network.Requests
+namespace ow.Framework.IO.Network.Sync.Requests
 {
     [Request]
     public readonly struct SkillQuickSlotsUpdateRequest

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ow.Framework.IO.Network
+namespace ow.Framework.IO.Network.Sync
 {
     [Flags]
     public enum Permission

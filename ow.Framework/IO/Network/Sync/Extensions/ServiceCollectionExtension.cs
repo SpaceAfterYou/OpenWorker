@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using ow.Framework.IO.Network.Providers;
+using ow.Framework.IO.Network.Sync.Providers;
 
-namespace ow.Framework.IO.Network.Extensions
+namespace ow.Framework.IO.Network.Sync.Extensions
 {
     public static class ServiceCollectionExtension
     {

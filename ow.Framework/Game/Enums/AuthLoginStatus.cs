@@ -1,8 +1,8 @@
 ﻿namespace ow.Framework.Game.Enums
 {
-    public enum AuthLoginStatus
+    public enum AuthLoginStatus : byte
     {
-        Failure,
-        Success,
+        Failure = 0,
+        Success = 1,
     }
 }

@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Extensions;
 using ow.Framework.IO.Lan.Extensions;
-using ow.Framework.IO.Network.Extensions;
+using ow.Framework.IO.Network.Sync.Extensions;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Repository;
 using ow.Service.Gate.Network;

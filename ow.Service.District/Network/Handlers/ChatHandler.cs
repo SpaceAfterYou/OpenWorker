@@ -1,9 +1,9 @@
 ﻿using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Attributes;
-using ow.Framework.IO.Network.Opcodes;
-using ow.Framework.IO.Network.Permissions;
-using ow.Framework.IO.Network.Requests;
-using ow.Framework.IO.Network.Responses;
+using ow.Framework.IO.Network.Sync.Attributes;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync.Responses;
+using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Service.District.Network.Repositories;
 
 namespace ow.Service.District.Network.Handlers
