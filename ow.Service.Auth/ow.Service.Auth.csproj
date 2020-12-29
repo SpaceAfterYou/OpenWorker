@@ -31,8 +31,4 @@
   <ItemGroup>
     <ProjectReference Include="..\ow.Framework\ow.Framework.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Extensions\" />
-  </ItemGroup>
 </Project>
