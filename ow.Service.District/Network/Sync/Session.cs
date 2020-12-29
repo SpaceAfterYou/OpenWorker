@@ -4,7 +4,7 @@ using ow.Framework.IO.Network.Sync.Providers;
 using ow.Service.District.Game;
 using System.Collections.Generic;
 
-namespace ow.Service.District.Network
+namespace ow.Service.District.Network.Sync
 {
     public sealed class Session : SyncSession
     {

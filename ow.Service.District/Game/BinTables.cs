@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace ow.Service.District.Game
 {
-    internal sealed record BinTables
+    public sealed record BinTables
     {
         internal IReadOnlyDictionary<ushort, DistrictTableEntity> District { get; }
         internal IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfo { get; }

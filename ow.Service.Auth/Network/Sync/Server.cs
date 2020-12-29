@@ -4,7 +4,7 @@ using NetCoreServer;
 using ow.Framework.IO.Network.Sync;
 using System;
 
-namespace ow.Service.Auth.Network
+namespace ow.Service.Auth.Network.Sync
 {
     public sealed class Server : SyncServer
     {

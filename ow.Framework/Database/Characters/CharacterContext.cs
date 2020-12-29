@@ -5,5 +5,9 @@ namespace ow.Framework.Database.Characters
     public sealed class CharacterContext : BaseDbContext
     {
         public DbSet<CharacterModel> Characters { set; get; } = default!;
+
+        private CharacterContext()
+        {
+        }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using ow.Framework.IO.Network.Sync.Responses.Shared;
 using ow.Service.District.Game.Storage;
-using ow.Service.District.Network;
+using ow.Service.District.Network.Sync;
 using System.Linq;
 using static ow.Framework.IO.Network.Sync.Responses.Shared.CharacterShared;
 using static ow.Framework.IO.Network.Sync.Responses.Shared.CharacterShared.EquippedItemsInfo;

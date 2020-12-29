@@ -3,15 +3,15 @@ using ow.Framework;
 using ow.Framework.Game;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Service.District.Game.Helpers;
-using ow.Service.District.Network;
+using ow.Service.District.Network.Sync;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace ow.Service.District.Game.Repositories
 {
-    internal class DimensionRepository : Dictionary<ushort, DimensionRepository.Entity>
+    public class DimensionRepository : Dictionary<ushort, DimensionRepository.Entity>
     {
-        internal sealed class Entity : BaseDimension
+        public sealed class Entity : BaseDimension
         {
             private readonly object _joinLock = new();
             private readonly Instance _instance;

@@ -110,10 +110,8 @@ namespace ow.Service.Gate.Game
                     EquippedGearWeapon = EquipableGearStorageItem.Empty;
                 }
 
-                internal StoragesInfos(CharacterModel model)
+                internal StoragesInfos(CharacterModel model, ItemContext context)
                 {
-                    using ItemContext context = new();
-
                     EquippedBattleFashion = new(GetItems(context, model, StorageType.EquippedBattleFashion));
                     EquippedViewFashion = new(GetItems(context, model, StorageType.EquippedViewFashion));
 
@@ -144,12 +142,12 @@ namespace ow.Service.Gate.Game
             internal byte Level { get; init; }
             internal AppearanceInfo Appearance { get; init; }
 
-            internal Entity(CharacterModel model, BinTables tables)
+            internal Entity(CharacterModel model, BinTables tables, ItemContext context)
             {
                 Id = model.Id;
                 Name = model.Name;
                 Photo = model.Photo;
-                Storages = new(model);
+                Storages = new(model, context);
                 Place = new(model.Place, tables);
                 Slot = model.Slot;
                 Advancement = model.Advancement;
@@ -179,15 +177,13 @@ namespace ow.Service.Gate.Game
         public Entity? Favorite { get; set; }
         public Entity? LastSelected { get; set; }
 
-        public Characters(AccountModel accountModel, ushort gateId, BinTables tables)
+        public Characters(AccountModel accountModel, ushort gateId, BinTables tables, CharacterContext characterContext, ItemContext itemContext)
         {
             Stopwatch stopwatch = new();
             stopwatch.Start();
 
-            using CharacterContext context = new();
-
-            foreach (CharacterModel model in GetCharacterModels(accountModel, gateId))
-                if (!TryAdd(model.Id, new(model, tables)))
+            foreach (CharacterModel model in GetCharacterModels(accountModel, gateId, characterContext))
+                if (!TryAdd(model.Id, new(model, tables, itemContext)))
                     NetworkUtils.DropSession();
 
             if (accountModel.LastSelectedCharacter != -1 && TryGetValue(accountModel.LastSelectedCharacter, out Entity? last))
@@ -200,10 +196,8 @@ namespace ow.Service.Gate.Game
             InitializeTime = stopwatch.Elapsed;
         }
 
-        private static IEnumerable<CharacterModel> GetCharacterModels(AccountModel accountModel, ushort gateId)
+        private static IEnumerable<CharacterModel> GetCharacterModels(AccountModel accountModel, ushort gateId, CharacterContext context)
         {
-            using CharacterContext context = new();
-
             foreach (CharacterModel model in context.Characters.AsNoTracking().Where(c => c.AccountId == accountModel.Id && c.Gate == gateId))
                 yield return model;
         }

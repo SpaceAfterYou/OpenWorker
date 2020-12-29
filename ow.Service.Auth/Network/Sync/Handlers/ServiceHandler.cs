@@ -3,20 +3,21 @@ using ow.Framework.Database.Accounts;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Requests;
-using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync.Responses;
+using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ow.Service.Auth.Network.Handlers
+namespace ow.Service.Auth.Network.Sync.Handlers
 {
-    internal static class ServiceHandler
+    public sealed class ServiceHandler
     {
         [Handler(ServerOpcode.AuthEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(Session session, AuthEnterRequest request, LanContext lan)
+        public void Enter(Session session, AuthEnterRequest request)
         {
             if (GetAccount(request.Nickname, request.Password) is AccountModel model)
             {
@@ -27,7 +28,7 @@ namespace ow.Service.Auth.Network.Handlers
                     Mac = request.Mac,
                     AccountId = model.Id,
                     Response = AuthLoginStatus.Success,
-                    SessionKey = lan.SetAccountIdBySessionKey(model.Id),
+                    SessionKey = _lan.SetAccountIdBySessionKey(model.Id),
                 });
             }
             else
@@ -40,10 +41,10 @@ namespace ow.Service.Auth.Network.Handlers
             }
         }
 
-        private static AccountModel? GetAccount(string nickname, string password)
+        private AccountModel? GetAccount(string nickname, string password)
         {
             byte[] hash = GetPasswordHash(password);
-            using AccountContext context = new();
+            using AccountContext context = _accountFactory();
 
             return context.Accounts.AsNoTracking().FirstOrDefault(a => a.Nickname == nickname && a.Password == hash);
         }
@@ -53,5 +54,11 @@ namespace ow.Service.Auth.Network.Handlers
             using SHA512Managed sham = new();
             return sham.ComputeHash(Encoding.UTF8.GetBytes(password));
         }
+
+        public ServiceHandler(LanContext lan, Func<AccountContext> accountFactory) =>
+            (_lan, _accountFactory) = (lan, accountFactory);
+
+        private readonly Func<AccountContext> _accountFactory;
+        private readonly LanContext _lan;
     }
 }

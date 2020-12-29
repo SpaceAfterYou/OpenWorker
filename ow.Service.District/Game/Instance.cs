@@ -5,7 +5,7 @@ using ow.Framework.IO.File.World;
 
 namespace ow.Service.District.Game
 {
-    internal sealed record Instance
+    public sealed record Instance
     {
         internal DistrictTableEntity Location { get; }
         internal VRoot Place { get; }

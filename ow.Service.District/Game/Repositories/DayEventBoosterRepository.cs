@@ -4,13 +4,13 @@ using System.Linq;
 
 namespace ow.Service.District.Game.Repositories
 {
-    internal class DayEventBoosterRepository : List<DayEventBoosterRepository.Entity>
+    public sealed class DayEventBoosterRepository : List<DayEventBoosterRepository.Entity>
     {
         public DayEventBoosterRepository(Instance zone, BinTables tables) : base(GetItems(zone, tables))
         {
         }
 
-        internal sealed record Entity
+        public sealed record Entity
         {
             internal ushort Id { get; }
             internal MazeInfoTableEntity Maze { get; }
@@ -18,7 +18,8 @@ namespace ow.Service.District.Game.Repositories
             internal Entity(ushort id, MazeInfoTableEntity maze) => (Id, Maze) = (id, maze);
         }
 
-        private static IEnumerable<Entity> GetItems(Instance zone, BinTables tables) =>
-            tables.MazeInfo.Values.Where(s => s.District == zone.Location.Id).Select(c => new Entity(0, c));
+        private static IEnumerable<Entity> GetItems(Instance zone, BinTables tables) => tables.MazeInfo.Values
+            .Where(s => s.District == zone.Location.Id)
+            .Select(c => new Entity(0, c));
     }
 }

@@ -27,8 +27,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ow.Utils.Wireshark.JsonDump
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ow.Utils.FetchOnStoveClient", "ow.Utils.FetchOnStoveClient\ow.Utils.FetchOnStoveClient.csproj", "{6A09499C-5F06-495D-BED5-205E7DCFBED8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ow.Service.Master", "ow.Service.Master\ow.Service.Master.csproj", "{8A7A582C-0F9D-4FB7-B6A7-5793C4150E16}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,10 +69,6 @@ Global
 		{6A09499C-5F06-495D-BED5-205E7DCFBED8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6A09499C-5F06-495D-BED5-205E7DCFBED8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6A09499C-5F06-495D-BED5-205E7DCFBED8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8A7A582C-0F9D-4FB7-B6A7-5793C4150E16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8A7A582C-0F9D-4FB7-B6A7-5793C4150E16}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8A7A582C-0F9D-4FB7-B6A7-5793C4150E16}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8A7A582C-0F9D-4FB7-B6A7-5793C4150E16}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -87,7 +81,6 @@ Global
 		{CCB5F90E-97FE-4E36-8CB4-A82760B523EC} = {0DDD5060-75D6-4B1C-BACA-6BCAA5EF59DC}
 		{83280E70-E1D0-4D70-BA39-02F3208394FD} = {0DDD5060-75D6-4B1C-BACA-6BCAA5EF59DC}
 		{6A09499C-5F06-495D-BED5-205E7DCFBED8} = {0DDD5060-75D6-4B1C-BACA-6BCAA5EF59DC}
-		{8A7A582C-0F9D-4FB7-B6A7-5793C4150E16} = {1FA7CB67-B280-487D-9CB5-4460A881BC26}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F383596F-D1E6-48AD-9150-C1C27F5333B2}

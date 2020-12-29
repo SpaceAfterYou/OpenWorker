@@ -2,6 +2,10 @@
   "Redis": {
     "ConnectionString": "localhost"
   },
+  "Master": {
+    "Host": "127.0.0.1:56666",
+    "Password": ""
+  },
   "Game": {
     "Dir": "",
     "Datas": {

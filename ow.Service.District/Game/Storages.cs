@@ -14,10 +14,8 @@ namespace ow.Service.District.Game
         internal EquipableViewFashionStorage EquippedViewFashion { get; }
         internal EquipableGearStorage EquippedGear { get; }
 
-        internal Storages(CharacterModel model, BinTables tables)
+        internal Storages(CharacterModel model, BinTables tables, ItemContext context)
         {
-            using ItemContext context = new();
-
             EquippedBattleFashion = new(GetItems(context, model, StorageType.EquippedBattleFashion), tables);
             EquippedViewFashion = new(GetItems(context, model, StorageType.EquippedViewFashion), tables);
             EquippedGear = new(GetItems(context, model, StorageType.EquippedGear), tables);

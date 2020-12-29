@@ -13,7 +13,7 @@ using System.Reflection;
 
 namespace ow.Framework.IO.Lan
 {
-    public class LanContext
+    public class LanContext : IDisposable
     {
         public ulong SetAccountIdBySessionKey(int accountId)
         {
@@ -52,7 +52,7 @@ namespace ow.Framework.IO.Lan
                 Handler handler = CreateEventHandler(service, method);
                 HandlerAttribute attribute = method.GetCustomAttribute<HandlerAttribute>() ?? throw new ApplicationException();
 
-                logger.LogDebug($"Used EVENT ({attribute.Channel}) invoker on {method.DeclaringType?.FullName}.{method.Name}.");
+                logger.LogDebug($"Used LAN EVENT ({attribute.Channel}) invoker on {method.DeclaringType?.FullName}.{method.Name}.");
 
                 multiplexer.GetSubscriber().Subscribe(attribute.Channel, (channel, value) =>
                 {
@@ -96,6 +96,12 @@ namespace ow.Framework.IO.Lan
 
             MethodCallExpression caller = Expression.Call(null, method, arguments);
             return Expression.Lambda<Handler>(caller, br).Compile();
+        }
+
+        public void Dispose()
+        {
+            _multiplexer.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         private delegate void Handler(BinaryReader br);

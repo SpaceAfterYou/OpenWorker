@@ -1,25 +1,27 @@
 ﻿using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
+using ow.Framework.Database.Storages;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Requests;
-using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
+using ow.Framework.IO.Network.Sync.Requests;
+using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
+using System;
 using System.Linq;
 
-namespace ow.Service.District.Network.Handlers
+namespace ow.Service.District.Network.Sync.Handlers
 {
-    internal static class ServiceHandler
+    public sealed class ServiceHandler
     {
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
-        public static void Enter(Session session, DistrictEnterRequest request, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables)
+        public void Enter(Session session, DistrictEnterRequest request)
         {
-            if (request.Account != lan.GetAccountIdBySessionKey(request.SessionKey))
+            if (request.Account != _lan.GetAccountIdBySessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
 
             {
@@ -35,17 +37,19 @@ namespace ow.Service.District.Network.Handlers
                 session.Stats = new();
                 session.SpecialOptions = new();
                 session.Gestures = model.Gestures;
-                session.Storages = new(model, tables);
+
+                using ItemContext context = _itemFactory();
+                session.Storages = new(model, _tables, context);
             }
 
-            if (!dimensions.Join(session))
+            if (!_dimensions.Join(session))
                 NetworkUtils.DropSession();
 
             session
                 .SendAsync(new ServiceCurrentDataResponse())
                 .SendAsync(new DayEventBoosterResponse()
                 {
-                    Values = dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
+                    Values = _dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
                     {
                         Id = s.Id,
                         Maze = s.Maze.Id
@@ -56,7 +60,7 @@ namespace ow.Service.District.Network.Handlers
                 {
                     Place = new()
                     {
-                        Location = instance.Location.Id,
+                        Location = _instance.Location.Id,
                         Position = session.Character.Place.Position,
                         Rotation = session.Character.Place.Rotation,
                     }
@@ -77,15 +81,15 @@ namespace ow.Service.District.Network.Handlers
                 .SendCharacterDbLoadSync();
         }
 
-        internal static AccountModel GetAccountModel(int id)
+        private AccountModel GetAccountModel(int id)
         {
-            using AccountContext context = new();
+            using AccountContext context = _accountFactory();
             return context.Accounts.First(c => c.Id == id);
         }
 
-        internal static CharacterModel GetCharacterModel(int id, int account)
+        private CharacterModel GetCharacterModel(int id, int account)
         {
-            using CharacterContext context = new();
+            using CharacterContext context = _characterFactory();
             return context.Characters.First(c => c.Id == id && c.AccountId == account);
         }
 
@@ -94,7 +98,7 @@ namespace ow.Service.District.Network.Handlers
             session.SendAsync(request);
 
         [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
-        public static void LogOut(Session session, DistrictLogoutRequest request, GateInstance gate)
+        public void LogOut(Session session, DistrictLogoutRequest request)
         {
             if (session.Account.Id != request.Account)
                 NetworkUtils.DropSession();
@@ -109,9 +113,32 @@ namespace ow.Service.District.Network.Handlers
             {
                 Account = session.Account.Id,
                 Character = session.Character.Id,
-                Ip = gate.Ip,
-                Port = gate.Port,
+                Ip = _gate.Ip,
+                Port = _gate.Port,
             });
         }
+
+        public ServiceHandler(Func<ItemContext> itemFactory, Func<AccountContext> accountFactory, Func<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables, GateInstance gate)
+        {
+            _itemFactory = itemFactory;
+            _accountFactory = accountFactory;
+            _characterFactory = characterFactory;
+            _instance = instance;
+            _dayEventBoosters = dayEventBoosters;
+            _dimensions = dimensions;
+            _lan = lan;
+            _tables = tables;
+            _gate = gate;
+        }
+
+        private readonly Func<ItemContext> _itemFactory;
+        private readonly Func<AccountContext> _accountFactory;
+        private readonly Func<CharacterContext> _characterFactory;
+        private readonly Instance _instance;
+        private readonly DayEventBoosterRepository _dayEventBoosters;
+        private readonly DimensionRepository _dimensions;
+        private readonly LanContext _lan;
+        private readonly BinTables _tables;
+        private readonly GateInstance _gate;
     }
 }

@@ -1,9 +1,9 @@
 ﻿using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
+using ow.Framework.IO.Network.Sync.Requests;
 
-namespace ow.Service.District.Network.Handlers
+namespace ow.Service.District.Network.Sync.Handlers
 {
     internal static class MovementHandler
     {
