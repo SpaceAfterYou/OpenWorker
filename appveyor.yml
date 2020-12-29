@@ -1,13 +1,21 @@
 test: off
 before_build:
+  - mkdir -p ow.Framework\certificate
+  - touch ow.Framework\certificate\client.pfx
+  - touch ow.Framework\certificate\server.pfx
+
+  - mv ow.Framework\config\commonsettings.example.json ow.Framework\config\commonsettings.json
+  - mv ow.Framework\config\appsettings.Development.example.json ow.Framework\config\appsettings.Development.json
+
+  - mv ow.Framework.Tests\config\appsettings.example.json ow.Framework.Tests\config\appsettings.json
+
+  - mv ow.Service.District\config\appsettings.example.json ow.Service.District\config\appsettings.json
+
+  - mv ow.Service.Gate\config\appsettings.example.json ow.Service.Gate\config\appsettings.json
+
+  - mv ow.Utils.GenerateItemsForView\config\appsettings.example.json ow.Utils.GenerateItemsForView\config\appsettings.json
+
   - nuget restore
-  - touch ow.Framework/commonsettings.json
-  - touch ow.Framework/appsettings.Development.json
-  - touch ow.Framework.Tests/appsettings.json
-  - touch ow.Service.District/appsettings.json
-  - touch ow.Service.Gate/appsettings.json
-  - touch ow.Service.Auth/appsettings.json
-  - touch ow.Utils.GenerateItemsForView/appsettings.json
 
 environment:
   COVERALLS_REPO_TOKEN: 8fQ7xXPq37ZGZxwgKwvhbgXO+g29c7yEgzEwo0UNQkvQNCmh5IpHRmeIBRN+Cm4O

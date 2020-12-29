@@ -4,10 +4,11 @@ using ow.Framework.Extensions;
 using ow.Framework.IO.File.World;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Sync.Extensions;
+using ow.Service.District.Extensions;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
-using ow.Service.District.Network;
-using ow.Service.District.Network.Repositories;
+using ow.Service.District.Network.Sync;
+using ow.Service.District.Network.Sync.Repositories;
 
 namespace ow.Service.District
 {
@@ -17,9 +18,9 @@ namespace ow.Service.District
 
         internal static IHostBuilder CreateHostBuilder(string[] args) => Host
             .CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((hostingContext, config) => config
-                .AddFramework(hostingContext))
-            .ConfigureServices((hostContext, services) => services
+            .ConfigureAppConfiguration((context, config) => config
+                .AddFramework(context))
+            .ConfigureServices((context, services) => services
                 .AddHostedService<Worker>()
                 .AddSingleton<ChatCommandRepository>()
                 .AddSingleton<DimensionRepository>()
@@ -32,6 +33,10 @@ namespace ow.Service.District
                 .AddSingleton<GateInstance>()
                 .AddTransient<WorldTable>()
                 .AddTransient<Session>()
+                .AddAccountContext(context)
+                .AddCharacterContext(context)
+                .AddItemContext(context)
+                .AddHandlers()
                 .AddFramework()
                 .AddLan());
     }

@@ -5,9 +5,9 @@ using ow.Framework.IO.Network.Sync;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Service.District.Game.Helpers;
 using ow.Service.District.Game.Repositories;
-using ow.Service.District.Network;
 using System;
 using System.Linq;
+using ow.Service.District.Network.Sync;
 
 namespace ow.Service.District.Game
 {

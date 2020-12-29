@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace ow.Service.Gate.Game
 {
-    internal sealed record BinTables
+    public sealed record BinTables
     {
         internal IReadOnlyDictionary<Hero, ClassSelectInfoTableEntity> ClassSelectInfo { get; }
         internal IReadOnlyDictionary<Hero, CustomizeSkinTableEntity> CustomizeSkin { get; }

@@ -31,8 +31,10 @@ Apply migration with nuget console: `update-database -Context MigrationContext -
 
 * setup data12.v password in commonsettings.json `config["Game"]["Datas"]["Passwords"]["Data12"]`
 * setup gamepath in commonsettings.json `config["Game"]["Dir"]`
+* copy **.pfx** server and client certificates in to **certificate** dir
+* setup certeficates password in commonsettings.json `config["Master"]["Password"]`
 
-**currently server use only data12.v and data49.v files**  
+**currently server use only data12.v and data49.v files**
 path looks like: `your_entered_path/datas/data12|49.v`
 
 #### Project: ow.Service.District

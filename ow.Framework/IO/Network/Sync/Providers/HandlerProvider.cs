@@ -31,17 +31,37 @@ namespace ow.Framework.IO.Network.Sync.Providers
         {
             IEnumerable<MethodInfo> methods = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(assembly => assembly.GetTypes())
-                .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+                .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance))
                 .Where(type => type.IsDefined(typeof(HandlerAttribute)));
 
-            List<Event> handlers = Enumerable.Repeat((Event)Dummy, ushort.MaxValue).ToList();
+            List<Event> handlers = Enumerable.Repeat((Event)Dummy, GetMaxHandlersCount()).ToList();
+
+            Dictionary<Type, object?> instances = new(methods.Count());
 
             foreach (MethodInfo method in methods)
             {
-                Event handler = CreateEventHandler(service, method);
-                HandlerAttribute attribute = method.GetCustomAttribute<HandlerAttribute>() ?? throw new ApplicationException();
+                object? instance = null;
+                if (!method.IsStatic)
+                {
+                    if (method.DeclaringType is null)
+                        Debug.Assert(false, "Cannot determe class type");
 
-                logger.LogDebug($"Used EVENT ({attribute.Opcode}) invoker on {method.DeclaringType?.FullName}.{method.Name}.");
+                    if (!instances.TryGetValue(method.DeclaringType, out instance))
+                    {
+                        if (method.DeclaringType.IsAbstract && method.DeclaringType.IsSealed)
+                            Debug.Assert(false, "");
+
+                        instance = service.GetRequiredService(method.DeclaringType);
+                        instances.Add(method.DeclaringType, instance);
+                    }
+                }
+
+                Event handler = CreateEventHandler(instance, service, method);
+
+                HandlerAttribute? attribute = method.GetCustomAttribute<HandlerAttribute>();
+                Debug.Assert(attribute is not null);
+
+                logger.LogDebug($"Used SYNC EVENT ({attribute.Opcode}) invoker on {method.DeclaringType?.FullName}.{method.Name}.");
 
                 handlers[ConvertUtils.LeToBeUInt16((ushort)attribute.Opcode)] = handler;
             }
@@ -49,7 +69,7 @@ namespace ow.Framework.IO.Network.Sync.Providers
             return handlers;
         }
 
-        private static Event CreateEventHandler(IServiceProvider service, MethodInfo method)
+        private static Event CreateEventHandler(object? instance, IServiceProvider service, MethodInfo method)
         {
             ParameterExpression session = Expression.Parameter(typeof(SyncSession), "Session");
             ParameterExpression br = Expression.Parameter(typeof(BinaryReader), "BinaryReader");
@@ -58,15 +78,16 @@ namespace ow.Framework.IO.Network.Sync.Providers
             {
                 // In arguments not supported
                 Debug.Assert(!param.IsIn);
+                Debug.Assert(param.ParameterType is not null);
 
                 // Session typed parameter
                 if (param.ParameterType == typeof(SyncSession) || param.ParameterType?.BaseType == typeof(SyncSession))
                     return Expression.Convert(session, param.ParameterType) as Expression;
 
                 // Packet structure parameter
-                if (param.ParameterType?.IsDefined(typeof(RequestAttribute)) ?? throw new ApplicationException())
+                if (param.ParameterType!.IsDefined(typeof(RequestAttribute)))
                 {
-                    ConstructorInfo constructor = param.ParameterType.GetConstructor(new[] { typeof(BinaryReader) }) ?? throw new ApplicationException();
+                    ConstructorInfo? constructor = param.ParameterType.GetConstructor(new[] { typeof(BinaryReader) });
                     Debug.Assert(constructor is not null);
 
                     NewExpression @class = Expression.New(constructor, br);
@@ -76,17 +97,22 @@ namespace ow.Framework.IO.Network.Sync.Providers
                 // Otherwise, get parameter from service collection
                 ConstantExpression innerService = Expression.Constant(service);
 
-                MethodInfo getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) }) ?? throw new ApplicationException();
-                Debug.Assert(getServiceMethod is not null);
+                MethodInfo? methodGetRequiredService = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) });
+                Debug.Assert(methodGetRequiredService is not null);
 
-                MethodCallExpression call = Expression.Call(null, getServiceMethod, innerService, Expression.Constant(param.ParameterType));
+                MethodCallExpression call = Expression.Call(methodGetRequiredService, innerService, Expression.Constant(param.ParameterType));
                 UnaryExpression conv = Expression.Convert(call, param.ParameterType);
 
                 return conv;
             }).ToArray();
 
-            var caller = Expression.Call(null, method, arguments);
+            MethodCallExpression caller = Expression.Call(instance is null ? null : Expression.Constant(instance), method, arguments);
             return Expression.Lambda<Event>(caller, session, br).Compile();
         }
+
+        private static int GetMaxHandlersCount() => Convert.ToInt32(Enum
+            .GetUnderlyingType(typeof(Opcodes.ServerOpcode))?
+            .GetField("MaxValue", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)?
+            .GetRawConstantValue());
     }
 }

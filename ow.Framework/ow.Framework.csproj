@@ -6,23 +6,17 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
-    <Compile Remove="Game\Attributes\**" />
-    <EmbeddedResource Remove="Game\Attributes\**" />
-    <None Remove="Game\Attributes\**" />
+    <None Remove="config\appsettings.Development.example.json" />
+    <None Remove="config\appsettings.Development.json" />
+    <None Remove="config\commonsettings.example.json" />
+    <None Remove="config\commonsettings.json" />
   </ItemGroup>
-
   <ItemGroup>
-    <None Remove="appsettings.Development.json" />
-    <None Remove="commonsettings.json" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="appsettings.Development.json">
+    <Content Include="config\appsettings.Development.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="commonsettings.json">
+    <Content Include="config\commonsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -52,8 +46,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="appsettings.Development.example.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    <None Update="certificate\client.pfx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="certificate\server.pfx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 </Project>

@@ -4,8 +4,9 @@ using ow.Framework.Extensions;
 using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Sync.Extensions;
+using ow.Service.Auth.Extensions;
 using ow.Service.Auth.Game.Repositories;
-using ow.Service.Auth.Network;
+using ow.Service.Auth.Network.Sync;
 
 namespace ow.Service.Auth
 {
@@ -15,15 +16,18 @@ namespace ow.Service.Auth
 
         public static IHostBuilder CreateHostBuilder(string[] args) => Host
             .CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((hostingContext, config) => config
-                .AddFramework(hostingContext))
-            .ConfigureServices((hostContext, services) => services
+            .ConfigureAppConfiguration((context, config) => config
+                .AddFramework(context))
+            .ConfigureServices((context, services) => services
                 .AddHostedService<Worker>()
                 .AddSingleton<GateRepository>()
                 .AddSingleton<Server>()
                 .AddSingleton<Features>()
                 .AddTransient<Session>()
                 .AddTransient<Server>()
+                .AddHandlers()
+                .AddAccountContext(context)
+                .AddCharacterContext(context)
                 .AddFramework()
                 .AddLan());
     }

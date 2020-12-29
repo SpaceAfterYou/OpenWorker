@@ -13,13 +13,7 @@ namespace ow.Framework.IO.Network.Sync
 
         protected readonly IServiceProvider Services;
 
-        protected SyncServer(IServiceProvider services, IConfiguration configuration) : base(IPAddress.Parse(configuration["Host:Ip"]), int.Parse(configuration["Host:Port"])) =>
-            (_logger, Services) = (services.GetRequiredService<ILogger<SyncServer>>(), services);
-
-        protected SyncServer(IServiceProvider services, string ip, ushort port) : base(ip, port) =>
-            (_logger, Services) = (services.GetRequiredService<ILogger<SyncServer>>(), services);
-
-        protected SyncServer(IServiceProvider services, IPEndPoint endPoint) : base(endPoint) =>
+        protected SyncServer(IServiceProvider services, IConfiguration configuration) : base(IPEndPoint.Parse($"{configuration["Host:Ip"]}:{configuration["Host:Port"]}")) =>
             (_logger, Services) = (services.GetRequiredService<ILogger<SyncServer>>(), services);
 
         public override bool Start()

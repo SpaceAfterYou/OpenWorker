@@ -18,6 +18,10 @@ namespace SetupDatabase
         public DbSet<AccountPostModel> AccountPost { get; set; }
         public DbSet<CharacterPostModel> CharacterPost { get; set; }
 
+        public MigrationContext(DbContextOptions<MigrationContext> options) : base(options)
+        {
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder
             .ApplyConfiguration(new AccountMap())
             .ApplyConfiguration(new CharacterMap())

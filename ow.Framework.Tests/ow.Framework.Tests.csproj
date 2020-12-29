@@ -6,19 +6,8 @@
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-
   <ItemGroup>
-    <None Remove="appsettings.example.json" />
-    <None Remove="appsettings.json" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="appsettings.example.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <None Remove="config\appsettings.example.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,9 +43,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ow.Framework\ow.Framework.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="IO\File\World\" />
   </ItemGroup>
 </Project>

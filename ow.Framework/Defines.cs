@@ -9,7 +9,7 @@
         public const byte BoochesPerItem = 3;
         public const byte StatsPerItem = 5;
         public const byte PartyMembersCount = 4;
-        public const byte SquadMembersCount = 8;
+        public const byte PartyExMembersCount = 8;
         public const byte QuickSlotsCount = 6;
         public const byte SkillsInSequenceQuickSlotsCount = 3;
         public const byte SkillsInQuickSlotsCount = QuickSlotsCount * SkillsInSequenceQuickSlotsCount;

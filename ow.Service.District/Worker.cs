@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ow.Service.District.Network;
+using ow.Service.District.Network.Sync;
 using System.Threading;
 using System.Threading.Tasks;
 

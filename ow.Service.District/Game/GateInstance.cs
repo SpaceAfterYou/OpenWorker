@@ -2,7 +2,7 @@
 
 namespace ow.Service.District.Game
 {
-    internal sealed record GateInstance
+    public sealed record GateInstance
     {
         internal string Ip { get; }
         internal ushort Port { get; }
