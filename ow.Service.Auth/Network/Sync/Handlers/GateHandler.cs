@@ -23,7 +23,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
         public void Connect(Session session, GateConnectRequest request)
         {
             GateRepository.Entity? gate = _repository.FirstOrDefault(s => s.Id == request.Gate);
-            if (gate is null || gate.Status == GateStatus.Online)
+            if (gate is null || gate.Status == GateStatus.Offline)
                 return;
 
             session.SendAsync(new AuthGateConnectionEndPointResponse
