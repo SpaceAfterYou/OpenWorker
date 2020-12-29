@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using ow.Framework.IO.Network;
+using ow.Framework.IO.Network.Sync;
 using ow.Framework.IO.Network.Sync.Providers;
 using ow.Service.Auth.Game;
 

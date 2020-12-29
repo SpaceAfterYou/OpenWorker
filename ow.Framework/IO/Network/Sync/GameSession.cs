@@ -2,7 +2,6 @@
 using NetCoreServer;
 using ow.Framework.Game;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Sync;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Providers;
 using ow.Framework.IO.Network.Sync.Requests;
@@ -16,10 +15,20 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 
-namespace ow.Framework.IO.Network
+namespace ow.Framework.IO.Network.Sync
 {
     public abstract partial class SyncSession : TcpSession
     {
+        #region Send Characters
+
+        public SyncSession SendAsync(PartyDeleteResponse value) =>
+            SendAsync(ClientOpcode.PartyDelete, (PacketWriter writer) =>
+            {
+                writer.Write(value.Id);
+            });
+
+        #endregion Send Characters
+
         #region Send Characters
 
         public SyncSession SendCharacterDbLoadSync() =>
