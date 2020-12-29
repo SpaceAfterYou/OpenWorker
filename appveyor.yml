@@ -2,18 +2,18 @@ test: off
 before_build:
   - nuget restore
 
-  - mkdir ow.Framework/certificate
+  - mkdir ow.Framework\certificate
 
-  - touch ow.Framework/certificate/client.pfx
-  - touch ow.Framework/certificate/server.pfx
+  - touch ow.Framework\certificate\client.pfx
+  - touch ow.Framework\certificate\server.pfx
 
-  - touch ow.Framework/config/commonsettings.json
-  - touch ow.Framework/appsettings.config/Development.json
-  - touch ow.Framework.Tests/config/appsettings.json
-  - touch ow.Service.District/config/appsettings.json
-  - touch ow.Service.Gate/config/appsettings.json
-  - touch ow.Service.Auth/config/appsettings.json
-  - touch ow.Utils.GenerateItemsForView/config/appsettings.json
+  - touch ow.Framework\config\commonsettings.json
+  - touch ow.Framework\appsettings.config\Development.json
+  - touch ow.Framework.Tests\config\appsettings.json
+  - touch ow.Service.District\config\appsettings.json
+  - touch ow.Service.Gate\config\appsettings.json
+  - touch ow.Service.Auth\config\appsettings.json
+  - touch ow.Utils.GenerateItemsForView\config\appsettings.json
 
 environment:
   COVERALLS_REPO_TOKEN: 8fQ7xXPq37ZGZxwgKwvhbgXO+g29c7yEgzEwo0UNQkvQNCmh5IpHRmeIBRN+Cm4O
