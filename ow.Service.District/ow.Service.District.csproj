@@ -7,15 +7,20 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
-    <Content Remove="appsettings.example.json" />
+    <Content Remove="config\appsettings.example.json" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="config\appsettings.example.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
+    <None Remove="appsettings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="config\appsettings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="config\appsettings.example.json" />
   </ItemGroup>
 
   <ItemGroup>
