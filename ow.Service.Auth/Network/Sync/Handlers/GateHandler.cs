@@ -44,7 +44,6 @@ namespace ow.Service.Auth.Network.Sync.Handlers
         private AuthPersonalGateResponse[] GetPersonalInfo(Session session)
         {
             using CharacterContext context = _characterFactory();
-
             return _repository.Select(s => GetPersonalGate(context, session, s)).ToArray();
         }
 

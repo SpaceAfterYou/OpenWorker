@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ow.Framework.IO.Network.Sync.Providers;
 using ow.Service.District.Network.Sync;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +11,7 @@ namespace ow.Service.District
         private readonly ILogger<Worker> _logger;
         private readonly Server _server;
 
-        public Worker(Server server, ILogger<Worker> logger, HandlerProvider handlerProvider)
+        public Worker(Server server, ILogger<Worker> logger)
         {
             _logger = logger;
             _server = server;
