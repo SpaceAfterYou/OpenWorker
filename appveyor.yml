@@ -1,29 +1,21 @@
 test: off
 before_build:
-  - nuget restore
-
   - mkdir -p ow.Framework\certificate
   - touch ow.Framework\certificate\client.pfx
   - touch ow.Framework\certificate\server.pfx
 
-  - mkdir -p ow.Framework\config
-  - touch ow.Framework\config\commonsettings.json
-  - touch ow.Framework\config\appsettings.config.Development.json
+  - mv ow.Framework\config\commonsettings.example.json ow.Framework\config\commonsettings.json
+  - mv ow.Framework\config\appsettings.Development.example.json ow.Framework\config\appsettings.Development.json
 
-  - mkdir -p ow.Framework.Tests\config
-  - touch ow.Framework.Tests\config\appsettings.json
+  - mv ow.Framework.Tests\config\appsettings.example.json ow.Framework.Tests\config\appsettings.json
 
-  - mkdir -p ow.Service.District\config
-  - touch ow.Service.District\config\appsettings.json
+  - mv ow.Service.District\config\appsettings.example.json ow.Service.District\config\appsettings.json
 
-  - mkdir -p ow.Service.Gate\config
-  - touch ow.Service.Gate\config\appsettings.json
+  - mv ow.Service.Gate\config\appsettings.example.json ow.Service.Gate\config\appsettings.json
 
-  - mkdir -p ow.Service.Auth\config
-  - touch ow.Service.Auth\config\appsettings.json
+  - mv ow.Utils.GenerateItemsForView\config\appsettings.example.json ow.Utils.GenerateItemsForView\config\appsettings.json
 
-  - mkdir -p ow.Utils.GenerateItemsForView\config
-  - touch ow.Utils.GenerateItemsForView\config\appsettings.json
+  - nuget restore
 
 environment:
   COVERALLS_REPO_TOKEN: 8fQ7xXPq37ZGZxwgKwvhbgXO+g29c7yEgzEwo0UNQkvQNCmh5IpHRmeIBRN+Cm4O
