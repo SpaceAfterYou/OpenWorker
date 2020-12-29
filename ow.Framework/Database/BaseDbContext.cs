@@ -5,12 +5,8 @@ namespace ow.Framework.Database
 {
     public class BaseDbContext : DbContext
     {
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        protected BaseDbContext(DbContextOptions options) : base(options)
         {
-            if (!optionsBuilder.IsConfigured)
-            {
-                optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=soulworker;Username=postgres;Password=postgres");
-            }
         }
 
         public int UseAndSave(Action<BaseDbContext> action)

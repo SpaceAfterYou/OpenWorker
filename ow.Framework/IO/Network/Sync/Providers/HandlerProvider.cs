@@ -31,12 +31,12 @@ namespace ow.Framework.IO.Network.Sync.Providers
         {
             IEnumerable<MethodInfo> methods = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(assembly => assembly.GetTypes())
-                .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+                .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance))
                 .Where(type => type.IsDefined(typeof(HandlerAttribute)));
 
-            List<Event> handlers = Enumerable.Repeat((Event)Dummy, ushort.MaxValue).ToList();
+            List<Event> handlers = Enumerable.Repeat((Event)Dummy, GetMaxHandlersCount()).ToList();
 
-            Dictionary<Type, object?> instances = new();
+            Dictionary<Type, object?> instances = new(methods.Count());
 
             foreach (MethodInfo method in methods)
             {
@@ -100,14 +100,19 @@ namespace ow.Framework.IO.Network.Sync.Providers
                 MethodInfo? methodGetRequiredService = typeof(ServiceProviderServiceExtensions).GetMethod("GetRequiredService", new[] { typeof(IServiceProvider), typeof(Type) });
                 Debug.Assert(methodGetRequiredService is not null);
 
-                MethodCallExpression call = Expression.Call(Expression.Constant(instance), methodGetRequiredService, innerService, Expression.Constant(param.ParameterType));
+                MethodCallExpression call = Expression.Call(methodGetRequiredService, innerService, Expression.Constant(param.ParameterType));
                 UnaryExpression conv = Expression.Convert(call, param.ParameterType);
 
                 return conv;
             }).ToArray();
 
-            var caller = Expression.Call(method, arguments);
+            MethodCallExpression caller = Expression.Call(instance is null ? null : Expression.Constant(instance), method, arguments);
             return Expression.Lambda<Event>(caller, session, br).Compile();
         }
+
+        private static int GetMaxHandlersCount() => Convert.ToInt32(Enum
+            .GetUnderlyingType(typeof(Opcodes.ServerOpcode))?
+            .GetField("MaxValue", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)?
+            .GetRawConstantValue());
     }
 }

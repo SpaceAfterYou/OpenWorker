@@ -6,7 +6,7 @@ namespace ow.Framework.Database.Storages
     {
         public DbSet<ItemModel> Items { set; get; } = default!;
 
-        private ItemContext()
+        public ItemContext(DbContextOptions<ItemContext> options) : base(options)
         {
         }
     }

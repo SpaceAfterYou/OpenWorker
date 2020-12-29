@@ -6,7 +6,7 @@ namespace ow.Framework.Database.Characters
     {
         public DbSet<CharacterModel> Characters { set; get; } = default!;
 
-        private CharacterContext()
+        public CharacterContext(DbContextOptions<CharacterContext> options) : base(options)
         {
         }
     }

@@ -6,7 +6,7 @@ namespace ow.Framework.Database.Accounts
     {
         public DbSet<AccountModel> Accounts { set; get; } = default!;
 
-        private AccountContext()
+        public AccountContext(DbContextOptions<AccountContext> context) : base(context)
         {
         }
     }

@@ -1,14 +1,12 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using ow.Service.District.Network.Sync.Handlers;
+using ow.Service.Gate.Network.Handlers;
 
-namespace ow.Service.District.Extensions
+namespace ow.Service.Gate.Extensions
 {
     internal static class ServiceCollectionExtension
     {
         internal static IServiceCollection AddHandlers(this IServiceCollection service) => service
             .AddTransient<CharacterHandler>()
-            .AddTransient<ChatHandler>()
-            .AddTransient<GestureHandler>()
             .AddTransient<ServiceHandler>();
     }
 }

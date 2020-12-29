@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Lan;
-using ow.Framework.IO.Network.Sync.Providers;
 using ow.Service.Auth.Network.Sync;
 using System;
 using System.Threading;
@@ -15,7 +14,7 @@ namespace ow.Service.Auth
         private readonly ILogger<Worker> _logger;
         private readonly Server _server;
 
-        public Worker(Server server, ILogger<Worker> logger, IServiceProvider service, HandlerProvider handlerProvider)
+        public Worker(Server server, ILogger<Worker> logger, IServiceProvider service)
         {
             _logger = logger;
             _server = server;
