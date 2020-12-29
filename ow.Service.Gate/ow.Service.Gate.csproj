@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <UserSecretsId>dotnet-ow.Service.Gate-47C50A7D-B01E-45C9-AAD1-11D7711860A1</UserSecretsId>
@@ -7,22 +7,8 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
-    <Compile Remove="Lan\**" />
-    <Content Remove="Lan\**" />
-    <EmbeddedResource Remove="Lan\**" />
-    <None Remove="Lan\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="appsettings.json" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="config\appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Content Remove="config\appsettings.example.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -47,11 +33,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ow.Framework\ow.Framework.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Update="config\appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 </Project>
