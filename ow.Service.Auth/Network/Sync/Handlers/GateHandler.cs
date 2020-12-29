@@ -8,7 +8,6 @@ using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Service.Auth.Game.Repositories;
-using System;
 using System.Linq;
 
 namespace ow.Service.Auth.Network.Sync.Handlers
@@ -34,7 +33,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
             });
         }
 
-        public GateHandler(Features features, GateRepository repository, Func<CharacterContext> characterFactory)
+        public GateHandler(Features features, GateRepository repository, IDbContextFactory<CharacterContext> characterFactory)
         {
             _features = features;
             _repository = repository;
@@ -43,7 +42,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
 
         private AuthPersonalGateResponse[] GetPersonalInfo(Session session)
         {
-            using CharacterContext context = _characterFactory();
+            using CharacterContext context = _characterFactory.CreateDbContext();
             return _repository.Select(s => GetPersonalGate(context, session, s)).ToArray();
         }
 
@@ -71,6 +70,6 @@ namespace ow.Service.Auth.Network.Sync.Handlers
 
         private readonly Features _features;
         private readonly GateRepository _repository;
-        private readonly Func<CharacterContext> _characterFactory;
+        private readonly IDbContextFactory<CharacterContext> _characterFactory;
     }
 }

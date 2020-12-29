@@ -11,7 +11,6 @@ using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.Utils;
 using ow.Service.Gate.Game;
-using System;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Handlers
@@ -28,7 +27,7 @@ namespace ow.Service.Gate.Network.Handlers
                 NetworkUtils.DropSession();
 
             {
-                using AccountContext context = _accountFactory();
+                using AccountContext context = _accountFactory.CreateDbContext();
 
                 AccountModel model = context.Accounts.AsNoTracking().First(c => c.Id == request.Account);
 
@@ -43,13 +42,13 @@ namespace ow.Service.Gate.Network.Handlers
 
         private Characters GetCharacters(AccountModel model, ushort gate)
         {
-            using CharacterContext characterContext = _characterFactory();
-            using ItemContext itemContext = _itemFactory();
+            using CharacterContext characterContext = _characterFactory.CreateDbContext();
+            using ItemContext itemContext = _itemFactory.CreateDbContext();
 
             return new(model, gate, _tables, characterContext, itemContext);
         }
 
-        public ServiceHandler(GateInstance gate, LanContext lan, BinTables tables, Func<ItemContext> itemFactory, Func<AccountContext> accountFactory, Func<CharacterContext> characterFactory)
+        public ServiceHandler(GateInstance gate, LanContext lan, BinTables tables, IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory)
         {
             _gate = gate;
             _lan = lan;
@@ -62,8 +61,8 @@ namespace ow.Service.Gate.Network.Handlers
         private readonly GateInstance _gate;
         private readonly LanContext _lan;
         private readonly BinTables _tables;
-        private readonly Func<ItemContext> _itemFactory;
-        private readonly Func<AccountContext> _accountFactory;
-        private readonly Func<CharacterContext> _characterFactory;
+        private readonly IDbContextFactory<ItemContext> _itemFactory;
+        private readonly IDbContextFactory<AccountContext> _accountFactory;
+        private readonly IDbContextFactory<CharacterContext> _characterFactory;
     }
 }

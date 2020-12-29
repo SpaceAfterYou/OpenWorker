@@ -1,4 +1,5 @@
-﻿using ow.Framework;
+﻿using Microsoft.EntityFrameworkCore;
+using ow.Framework;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
@@ -12,7 +13,6 @@ using ow.Framework.Utils;
 using ow.Service.Gate.Game;
 using ow.Service.Gate.Game.Repository;
 using ow.Service.Gate.Network.Helpers;
-using System;
 using System.Linq;
 
 using static ow.Framework.IO.Network.Sync.Responses.Shared.CharacterShared.EquippedItemsInfo;
@@ -85,7 +85,7 @@ namespace ow.Service.Gate.Network.Handlers
             Characters.Entity? first = session.Characters.Values.FirstOrDefault(c => c.Slot == request.FirstSlot);
             Characters.Entity? second = session.Characters.Values.FirstOrDefault(c => c.Slot == request.SecondSlot);
 
-            using CharacterContext context = _characterFactory();
+            using CharacterContext context = _characterFactory.CreateDbContext();
 
             if (first is not null)
             {
@@ -119,7 +119,7 @@ namespace ow.Service.Gate.Network.Handlers
             CharacterCreateHelper.ValidateSkin(request, _tables);
             CharacterCreateHelper.ValidateOutfit(request, _tables);
 
-            using CharacterContext context = _characterFactory();
+            using CharacterContext context = _characterFactory.CreateDbContext();
 
             if (context.Characters.Any(c => c.Slot == request.Slot && c.AccountId == session.Account.Id))
                 NetworkUtils.DropSession();
@@ -153,7 +153,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (request.Id == session.Characters.Favorite?.Id)
                 session.Characters.Favorite = null;
 
-            using CharacterContext context = _characterFactory();
+            using CharacterContext context = _characterFactory.CreateDbContext();
             context.UseAndSave(c => c.Remove<CharacterModel>(new() { Id = request.Id }));
 
             SendCharactersListAsync(session);
@@ -227,7 +227,7 @@ namespace ow.Service.Gate.Network.Handlers
             });
         }
 
-        public CharacterHandler(Func<ItemContext> itemFactory, Func<CharacterContext> characterFactory, DistrictRepository districts, GateInstance gate, BinTables tables)
+        public CharacterHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<CharacterContext> characterFactory, DistrictRepository districts, GateInstance gate, BinTables tables)
         {
             _itemFactory = itemFactory;
             _characterFactory = characterFactory;
@@ -238,12 +238,12 @@ namespace ow.Service.Gate.Network.Handlers
 
         private Characters.Entity CreateEmptyCharacater(CharacterModel model)
         {
-            using ItemContext itemContext = _itemFactory();
+            using ItemContext itemContext = _itemFactory.CreateDbContext();
             return new(model, _tables, itemContext);
         }
 
-        private readonly Func<ItemContext> _itemFactory;
-        private readonly Func<CharacterContext> _characterFactory;
+        private readonly IDbContextFactory<ItemContext> _itemFactory;
+        private readonly IDbContextFactory<CharacterContext> _characterFactory;
         private readonly DistrictRepository _districts;
         private readonly GateInstance _gate;
         private readonly BinTables _tables;

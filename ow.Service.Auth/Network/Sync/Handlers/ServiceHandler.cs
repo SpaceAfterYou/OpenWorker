@@ -7,7 +7,6 @@ using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
-using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -44,7 +43,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
         private AccountModel? GetAccount(string nickname, string password)
         {
             byte[] hash = GetPasswordHash(password);
-            using AccountContext context = _accountFactory();
+            using AccountContext context = _accountFactory.CreateDbContext();
 
             return context.Accounts.AsNoTracking().FirstOrDefault(a => a.Nickname == nickname && a.Password == hash);
         }
@@ -55,10 +54,10 @@ namespace ow.Service.Auth.Network.Sync.Handlers
             return sham.ComputeHash(Encoding.UTF8.GetBytes(password));
         }
 
-        public ServiceHandler(LanContext lan, Func<AccountContext> accountFactory) =>
+        public ServiceHandler(LanContext lan, IDbContextFactory<AccountContext> accountFactory) =>
             (_lan, _accountFactory) = (lan, accountFactory);
 
-        private readonly Func<AccountContext> _accountFactory;
+        private readonly IDbContextFactory<AccountContext> _accountFactory;
         private readonly LanContext _lan;
     }
 }

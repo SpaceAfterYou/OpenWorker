@@ -1,4 +1,5 @@
-﻿using ow.Framework.Database.Accounts;
+﻿using Microsoft.EntityFrameworkCore;
+using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Enums;
@@ -11,7 +12,6 @@ using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
-using System;
 using System.Linq;
 
 namespace ow.Service.District.Network.Sync.Handlers
@@ -38,7 +38,7 @@ namespace ow.Service.District.Network.Sync.Handlers
                 session.SpecialOptions = new();
                 session.Gestures = model.Gestures;
 
-                using ItemContext context = _itemFactory();
+                using ItemContext context = _itemFactory.CreateDbContext();
                 session.Storages = new(model, _tables, context);
             }
 
@@ -83,13 +83,13 @@ namespace ow.Service.District.Network.Sync.Handlers
 
         private AccountModel GetAccountModel(int id)
         {
-            using AccountContext context = _accountFactory();
+            using AccountContext context = _accountFactory.CreateDbContext();
             return context.Accounts.First(c => c.Id == id);
         }
 
         private CharacterModel GetCharacterModel(int id, int account)
         {
-            using CharacterContext context = _characterFactory();
+            using CharacterContext context = _characterFactory.CreateDbContext();
             return context.Characters.First(c => c.Id == id && c.AccountId == account);
         }
 
@@ -118,7 +118,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             });
         }
 
-        public ServiceHandler(Func<ItemContext> itemFactory, Func<AccountContext> accountFactory, Func<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables, GateInstance gate)
+        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables, GateInstance gate)
         {
             _itemFactory = itemFactory;
             _accountFactory = accountFactory;
@@ -131,9 +131,9 @@ namespace ow.Service.District.Network.Sync.Handlers
             _gate = gate;
         }
 
-        private readonly Func<ItemContext> _itemFactory;
-        private readonly Func<AccountContext> _accountFactory;
-        private readonly Func<CharacterContext> _characterFactory;
+        private readonly IDbContextFactory<ItemContext> _itemFactory;
+        private readonly IDbContextFactory<AccountContext> _accountFactory;
+        private readonly IDbContextFactory<CharacterContext> _characterFactory;
         private readonly Instance _instance;
         private readonly DayEventBoosterRepository _dayEventBoosters;
         private readonly DimensionRepository _dimensions;

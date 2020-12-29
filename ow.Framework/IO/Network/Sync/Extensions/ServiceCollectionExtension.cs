@@ -25,8 +25,7 @@ namespace ow.Framework.IO.Network.Sync.Extensions
             .AddSingleton<HandlerProvider>();
 
         private static IServiceCollection AddContext<TContext>(this IServiceCollection services, HostBuilderContext context) where TContext : notnull, DbContext => services
-                .AddDbContextPool<TContext>(options => options
-                    .UseNpgsql(context.Configuration.GetConnectionString("PgsqlConnection"), b => b.EnableRetryOnFailure()))
-                .AddTransient<Func<TContext>>(s => s.GetRequiredService<TContext>);
+            .AddPooledDbContextFactory<TContext>(options => options
+                .UseNpgsql(context.Configuration.GetConnectionString("PgsqlConnection"), b => b.EnableRetryOnFailure()));
     }
 }

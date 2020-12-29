@@ -31,6 +31,6 @@ namespace ow.Framework.Database.Accounts
         public byte[] Password { get; init; } = default!;
 
         [Required]
-        public ulong SoulCash { get; init; }
+        public ulong SoulCash { get; set; }
     }
 }
