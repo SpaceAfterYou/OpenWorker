@@ -2,6 +2,8 @@ test: off
 before_build:
   - nuget restore
 
+  - mkdir ow.Framework/certificate
+
   - touch ow.Framework/certificate/client.pfx
   - touch ow.Framework/certificate/server.pfx
 
