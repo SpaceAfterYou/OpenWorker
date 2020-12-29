@@ -2,27 +2,27 @@ test: off
 before_build:
   - nuget restore
 
-  - mkdir ow.Framework\certificate -p
+  - mkdir -p ow.Framework\certificate
   - touch ow.Framework\certificate\client.pfx
   - touch ow.Framework\certificate\server.pfx
 
-  - mkdir ow.Framework\config -p
+  - mkdir -p ow.Framework\config
   - touch ow.Framework\config\commonsettings.json
   - touch ow.Framework\config\appsettings.config.Development.json
 
-  - mkdir ow.Framework.Tests\config -p
+  - mkdir -p ow.Framework.Tests\config
   - touch ow.Framework.Tests\config\appsettings.json
 
-  - mkdir ow.Service.District\config -p
+  - mkdir -p ow.Service.District\config
   - touch ow.Service.District\config\appsettings.json
 
-  - mkdir ow.Service.Gate\config -p
+  - mkdir -p ow.Service.Gate\config
   - touch ow.Service.Gate\config\appsettings.json
 
-  - mkdir ow.Service.Auth\config -p
+  - mkdir -p ow.Service.Auth\config
   - touch ow.Service.Auth\config\appsettings.json
 
-  - mkdir ow.Utils.GenerateItemsForView\config -p
+  - mkdir -p ow.Utils.GenerateItemsForView\config
   - touch ow.Utils.GenerateItemsForView\config\appsettings.json
 
 environment:
