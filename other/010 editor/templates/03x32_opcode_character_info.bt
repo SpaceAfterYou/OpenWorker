@@ -97,28 +97,23 @@ struct s_place {
 s_character character;
 s_place place;
 
-byte u1;
-byte u2;
-ulong exp;
-ulong zenny;
-byte u3;
-byte u4;
+uint64 exp;
+uint64 zenny;
+uint u1;
+uint u2;
+uint u3;
+uint u4;
 uint u5;
-uint u6;
-uint u7;
-uint u8;
-uint u9;
+uint64 aether;
+uint64 u6;
+
+ushort u7_length;
+char u7[u7_length];
+
+uint64 u8;
+uint64 u9;
 uint u10;
 ushort u11;
+
 byte u12;
-byte u13[13];
-ushort u14_length;
-char u14[u14_length];
-uint u15;
-uint u16;
-uint u17;
-uint u18;
-uint u19;
-ushort u20;
-byte u21;
 byte result;

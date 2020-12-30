@@ -10,9 +10,9 @@ namespace ow.Service.District.Network.Sync.Handlers
 {
     public sealed class CharacterHandler
     {
-        [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
-        public static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Dimension
-            .BroadcastAsync(request);
+        //[Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
+        //public static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Dimension
+        //    .BroadcastAsync(request);
 
         //    [Handler(ServerOpcode.OthersInfo, HandlerPermission.Authorized)]
         //    public static void GetOthers(Session session, NpcRepository npcs) => session
@@ -24,7 +24,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             .SendAsync(new CharacterInfoResponse()
             {
                 Character = ResponseHelper.GetCharacter(session),
-                Place = ResponseHelper.GetPlace(session, _instance)
+                Place = ResponseHelper.GetPlace(session, _instance),
             });
 
         //.SendCharacterStatsUpdate()

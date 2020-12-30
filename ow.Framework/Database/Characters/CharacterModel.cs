@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ow.Framework.Database.Characters
 {
     [Table("characters")]
-    [Index("Name", IsUnique = true)]
+    [Index(nameof(Name), IsUnique = true)]
     public class CharacterModel
     {
         [Key]

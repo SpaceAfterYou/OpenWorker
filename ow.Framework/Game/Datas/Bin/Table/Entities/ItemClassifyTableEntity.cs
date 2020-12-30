@@ -11,6 +11,22 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
     [BinTable("tb_Item_Classify")]
     public sealed record ItemClassifyTableEntity : ITableEntity<KeyType>
     {
+        public struct ActionInfo
+        {
+            public string Move { get; }
+            public string Drop { get; }
+            public string Equip { get; }
+            public string Unequip { get; }
+
+            internal ActionInfo(BinaryReader br)
+            {
+                Move = br.ReadByteLengthUnicodeString();
+                Drop = br.ReadByteLengthUnicodeString();
+                Equip = br.ReadByteLengthUnicodeString();
+                Unequip = br.ReadByteLengthUnicodeString();
+            }
+        }
+
         public KeyType Id { get; }
         public byte Unknown5 { get; }
         public ushort Unknown6 { get; }
@@ -21,7 +37,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public byte Unknown11 { get; }
         public ushort Unknown12 { get; }
         public byte GainType { get; }
-        public byte InvenType { get; }
+        public ItemClassifyInventoryType InventoryType { get; }
         public ItemClassifySlotType SlotType { get; }
         public byte RepairType { get; }
         public byte UseState { get; }
@@ -30,10 +46,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public ushort Unknown20 { get; }
         public ushort Socket { get; }
         public ushort Unknown22 { get; }
-        public string MoveAction { get; }
-        public string DropAction { get; }
-        public string EquipAction { get; }
-        public string UnequipAction { get; }
+        public ActionInfo Action { get; }
         public short Unknown27 { get; }
 
         internal ItemClassifyTableEntity(BinaryReader br)
@@ -48,7 +61,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown11 = br.ReadByte();
             Unknown12 = br.ReadUInt16();
             GainType = br.ReadByte();
-            InvenType = br.ReadByte();
+            InventoryType = br.ReadItemClassifyInventoryType();
             SlotType = br.ReadItemClassifySlotType();
             RepairType = br.ReadByte();
             UseState = br.ReadByte();
@@ -57,10 +70,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown20 = br.ReadUInt16();
             Socket = br.ReadUInt16();
             Unknown22 = br.ReadUInt16();
-            MoveAction = br.ReadByteLengthUnicodeString();
-            DropAction = br.ReadByteLengthUnicodeString();
-            EquipAction = br.ReadByteLengthUnicodeString();
-            UnequipAction = br.ReadByteLengthUnicodeString();
+            Action = new(br);
             Unknown27 = br.ReadInt16();
         }
     }

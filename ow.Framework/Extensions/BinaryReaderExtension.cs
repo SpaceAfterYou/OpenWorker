@@ -61,5 +61,8 @@ namespace ow.Framework.Extensions
 
         public static ItemClassifySlotType ReadItemClassifySlotType(this BinaryReader br) =>
             (ItemClassifySlotType)br.ReadByte();
+
+        public static ItemClassifyInventoryType ReadItemClassifyInventoryType(this BinaryReader br) =>
+            (ItemClassifyInventoryType)br.ReadByte();
     }
 }
