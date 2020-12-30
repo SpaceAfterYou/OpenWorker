@@ -71,6 +71,37 @@ Just build solution and launch output files.
 
 ## Services
 
-- ♿ _Auth Service_ -- Server, where player select gate and enter credentials;
-- 🦀 _Gate Service_ -- Server, where player select/create/delete/etc character;
-- 🍟 _World Service_ -- In progress...
+##### 💾 Auth Service
+
+- [x] Login
+- [x] Gate list
+- [x] Gate join request
+
+##### 🐤 Gate Service
+
+- [x] Join
+- [x] Change background _(without save)_
+- [x] Character
+
+  - [x] Create _(without default clothes)_
+  - [x] Delete _(without save)_
+  - [x] Change slot _(without save)_
+  - [x] Mark as favorite _(without save)_
+
+- [x] District join request
+- [ ] Prologue join request
+
+##### 👯 District Service
+
+- [ ] Join
+- [ ] Maze enter
+- [ ] Party / PartyEx _(Soul squad)_
+  - [ ] Join
+  - [ ] Leave
+  - [ ] Kick
+  - [ ] Pass master
+  - [ ] Maze enter
+
+##### 🐂 Maze Service
+
+- [ ] Hello, world
