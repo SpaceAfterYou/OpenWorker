@@ -168,6 +168,7 @@
         EventUseCouponCode = 0x2A22,
         RouletteMyInfo = 0x2A28,
         RouletteUse = 0x2A29,
+        BattlePassLoad = 0x2A30,
 
         ExchangeSearch = 0x2B01,
         ExchangePriceHistory = 0x2B02,

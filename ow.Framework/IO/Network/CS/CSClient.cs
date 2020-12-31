@@ -11,36 +11,43 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace ow.Framework.IO.Lan
+namespace ow.Framework.IO.Network.CS
 {
-    public class LanContext : IDisposable
+    internal enum Database : byte
     {
-        public ulong SetAccountIdBySessionKey(int accountId)
+        Generic = 0
+    }
+
+    public sealed class CSClient : IDisposable
+    {
+        public ulong RegisterSessionKey(int account)
         {
             ulong sessionKey = (ulong)DateTime.UtcNow.Ticks;
-
-            if (!_multiplexer.GetDatabase().HashSet("SessionKey", sessionKey.ToString(), accountId))
+            if (!_multiplexer.GetDatabase((int)Database.Generic).HashSet("SessionKey", sessionKey, account, When.NotExists))
                 throw new LanException();
 
             return sessionKey;
         }
 
-        public int GetAccountIdBySessionKey(ulong sessionKey)
+        public int GetSessionKey(ulong sessionKey)
         {
-            RedisValue value = _multiplexer.GetDatabase().HashGet("SessionKey", sessionKey.ToString());
-            if (value.IsNullOrEmpty) throw new LanException();
+            RedisValue value = _multiplexer.GetDatabase((int)Database.Generic).HashGet("SessionKey", sessionKey);
+            if (value.IsNullOrEmpty)
+                throw new LanException();
+
+            Debug.Assert(value.IsInteger);
 
             return (int)value;
         }
 
-        public LanContext(IServiceProvider service, ILogger<LanContext> logger, ConnectionMultiplexer multiplexer)
+        public CSClient(IServiceProvider service, ILogger<CSClient> logger, ConnectionMultiplexer multiplexer)
         {
             _multiplexer = multiplexer;
 
             RegisterHandlers(service, logger, multiplexer);
         }
 
-        private static void RegisterHandlers(IServiceProvider service, ILogger<LanContext> logger, ConnectionMultiplexer multiplexer)
+        private static void RegisterHandlers(IServiceProvider service, ILogger<CSClient> logger, ConnectionMultiplexer multiplexer)
         {
             IEnumerable<MethodInfo> methods = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(assembly => assembly.GetTypes())

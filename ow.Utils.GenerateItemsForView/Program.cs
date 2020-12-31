@@ -26,6 +26,7 @@ namespace ow.Utils.GenerateItemsForView
 
             IEnumerable<ItemClassifyInventoryType> inventoryTypes = itemClassifyTable.Values.Select(s => s.InventoryType).Distinct().OrderBy(s => s);
             IEnumerable<ItemClassifySlotType> slotTypes = itemClassifyTable.Values.Select(s => s.SlotType).Distinct().OrderBy(s => s);
+            IEnumerable<byte> gainTypes = itemClassifyTable.Values.Select(s => s.GainType).Distinct().OrderBy(s => s);
 
             var data = itemsTable.Values
                 .Select(i =>
@@ -39,6 +40,7 @@ namespace ow.Utils.GenerateItemsForView
                             i.Id,
                             classify.SlotType,
                             classify.InventoryType,
+                            classify.GainType,
                             script.Name,
                             script.Description,
                             Icon = $"GUI/{script.Icon}.png",
@@ -51,6 +53,7 @@ namespace ow.Utils.GenerateItemsForView
                         i.Id,
                         classify.SlotType,
                         classify.InventoryType,
+                        classify.GainType,
                         Name = "",
                         Description = "",
                         Icon = "",
@@ -67,7 +70,8 @@ namespace ow.Utils.GenerateItemsForView
             return Task.WhenAll(
                 File.WriteAllTextAsync(Path.Join(outDir, "data.json"), JsonSerializer.Serialize(data, options)),
                 File.WriteAllTextAsync(Path.Join(outDir, "inventoryTypes.json"), JsonSerializer.Serialize(inventoryTypes, options)),
-                File.WriteAllTextAsync(Path.Join(outDir, "slotTypes.json"), JsonSerializer.Serialize(slotTypes, options)));
+                File.WriteAllTextAsync(Path.Join(outDir, "slotTypes.json"), JsonSerializer.Serialize(slotTypes, options)),
+                File.WriteAllTextAsync(Path.Join(outDir, "gainTypes.json"), JsonSerializer.Serialize(gainTypes, options)));
         }
 
         private static IConfiguration GetConfiguration() => new ConfigurationBuilder()

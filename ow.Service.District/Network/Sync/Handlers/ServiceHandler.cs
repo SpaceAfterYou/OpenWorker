@@ -3,7 +3,7 @@ using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Lan;
+using ow.Framework.IO.Network.CS;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
@@ -21,7 +21,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
         public void Enter(Session session, DistrictEnterRequest request)
         {
-            if (request.Account != _lan.GetAccountIdBySessionKey(request.SessionKey))
+            if (request.Account != _lan.GetSessionKey(request.SessionKey))
                 NetworkUtils.DropSession();
 
             {
@@ -118,7 +118,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             });
         }
 
-        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables, GateInstance gate)
+        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, CSClient lan, BinTables tables, GateInstance gate)
         {
             _itemFactory = itemFactory;
             _accountFactory = accountFactory;
@@ -137,7 +137,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         private readonly Instance _instance;
         private readonly DayEventBoosterRepository _dayEventBoosters;
         private readonly DimensionRepository _dimensions;
-        private readonly LanContext _lan;
+        private readonly CSClient _lan;
         private readonly BinTables _tables;
         private readonly GateInstance _gate;
     }

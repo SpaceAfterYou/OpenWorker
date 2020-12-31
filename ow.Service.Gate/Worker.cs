@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ow.Framework.IO.Lan;
+using ow.Framework.IO.Network.CS;
 using ow.Service.Gate.Network;
 using System;
 using System.Threading;
@@ -20,7 +20,7 @@ namespace ow.Service.Gate
             _server = server;
 
             /// Activate LanContext
-            service.GetRequiredService<LanContext>();
+            service.GetRequiredService<CSClient>();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

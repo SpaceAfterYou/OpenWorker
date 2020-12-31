@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Lan;
+using ow.Framework.IO.Network.CS;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
@@ -27,7 +27,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
                     Mac = request.Mac,
                     AccountId = model.Id,
                     Response = AuthLoginStatus.Success,
-                    SessionKey = _lan.SetAccountIdBySessionKey(model.Id),
+                    SessionKey = _lan.RegisterSessionKey(model.Id),
                 });
             }
             else
@@ -54,10 +54,10 @@ namespace ow.Service.Auth.Network.Sync.Handlers
             return sham.ComputeHash(Encoding.UTF8.GetBytes(password));
         }
 
-        public ServiceHandler(LanContext lan, IDbContextFactory<AccountContext> accountFactory) =>
+        public ServiceHandler(CSClient lan, IDbContextFactory<AccountContext> accountFactory) =>
             (_lan, _accountFactory) = (lan, accountFactory);
 
         private readonly IDbContextFactory<AccountContext> _accountFactory;
-        private readonly LanContext _lan;
+        private readonly CSClient _lan;
     }
 }
