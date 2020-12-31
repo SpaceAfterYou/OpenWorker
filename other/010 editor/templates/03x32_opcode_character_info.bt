@@ -34,7 +34,6 @@ struct s_fashion {
 };
 
 struct s_character {
-    ushort opcode;
     uint id;
     ushort name_length;
     wchar_t name[name_length / 2];
@@ -94,6 +93,7 @@ struct s_place {
     float u3;
 };
 
+ushort opcode;
 s_character character;
 s_place place;
 

@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 
@@ -39,7 +40,7 @@ namespace ow.Framework.IO.Network.Sync
         public SyncSession SendAsync(CharacterToggleWeaponRequest request) =>
             SendAsync(ClientOpcode.CharacterToggleWeapon, (PacketWriter writer) =>
             {
-                writer.Write(request.CharacterId);
+                writer.Write(request.Character);
                 writer.WriteVector3(request.Position);
                 writer.Write(request.Rotation);
                 writer.Write(request.Toggle);
@@ -49,7 +50,7 @@ namespace ow.Framework.IO.Network.Sync
         public SyncSession SendAsync(NpcOthersInfosResponse value) =>
             SendAsync(ClientOpcode.NpcOtherInfos, (PacketWriter writer) =>
             {
-                writer.Write((ushort)value.Values.Count);
+                writer.Write((ushort)value.Values.Count());
                 foreach (NpcOthersInfosResponse.Entity entity in value.Values)
                 {
                     writer.Write(entity.Id);
@@ -140,7 +141,7 @@ namespace ow.Framework.IO.Network.Sync
 
         #region Send Chat
 
-        public SyncSession SendAsync(ChatResponse value) =>
+        public SyncSession SendAsync(ChatMessageResponse value) =>
             SendAsync(ClientOpcode.ChatMessage, (PacketWriter writer) =>
             {
                 writer.Write(value.Character);

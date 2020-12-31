@@ -23,7 +23,7 @@ namespace ow.Service.District.Network.Sync.Handlers
                 {
                     command(session, msg);
 
-                    session.SendAsync(new ChatResponse()
+                    session.SendAsync(new ChatMessageResponse()
                     {
                         Character = session.Character.Id,
                         Chat = ChatType.System,
@@ -33,7 +33,7 @@ namespace ow.Service.District.Network.Sync.Handlers
                     return;
                 }
 
-                session.SendAsync(new ChatResponse()
+                session.SendAsync(new ChatMessageResponse()
                 {
                     Character = session.Character.Id,
                     Chat = ChatType.Red,
@@ -43,7 +43,12 @@ namespace ow.Service.District.Network.Sync.Handlers
                 return;
             }
 
-            session.Dimension?.BroadcastAsync(request);
+            session.Dimension!.BroadcastAsync(new ChatMessageResponse()
+            {
+                Character = session.Character.Id,
+                Chat = ChatType.Red,
+                Message = "Command not found"
+            });
         }
 
         public ChatHandler(ChatCommandRepository commands) => _repository = commands;

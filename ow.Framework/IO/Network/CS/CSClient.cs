@@ -35,8 +35,6 @@ namespace ow.Framework.IO.Network.CS
             if (value.IsNullOrEmpty)
                 throw new LanException();
 
-            Debug.Assert(value.IsInteger);
-
             return (int)value;
         }
 

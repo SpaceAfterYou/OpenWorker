@@ -8,9 +8,9 @@ using System.Numerics;
 
 namespace ow.Service.District.Game
 {
-    internal sealed class NpcRepository : List<NpcRepository.Entity>
+    public sealed class NpcRepository : List<NpcRepository.Entity>
     {
-        internal sealed record Entity
+        public sealed record Entity
         {
             internal uint Id { get; }
             internal uint MobId { get; }
@@ -28,11 +28,11 @@ namespace ow.Service.District.Game
             }
         }
 
-        public NpcRepository(Instance zone) : base(GetNpcs(zone.Place))
+        public NpcRepository(Instance zone) : base(GetEntities(zone.Place))
         {
         }
 
-        private static IEnumerable<Entity> GetNpcs(VRoot root, uint id = 0) => root.EventBox.MonsterSpawns
+        private static IEnumerable<Entity> GetEntities(VRoot root, uint id = 0) => root.EventBox.MonsterSpawns
             .Select(c => c.Monsters
                 .Where(m => m.Id != 0 && m.Type == MonsterSpawnType.Npc)
                 .Select(m => new Entity(id++, m.Id, GetPosition(c), c.Rotation, c.Waypoint)))

@@ -14,7 +14,13 @@ namespace ow.Service.District.Network.Sync.Handlers
     {
         [Handler(ServerOpcode.GestureDo, HandlerPermission.Authorized)]
         public static void GetOthers(Session session, GestureDoRequest request) => session.Dimension?
-            .BroadcastAsync(request);
+            .BroadcastAsync(new CharacterGestureDo()
+            {
+                Character = session.Character.Id,
+                Gesture = request.Gesture,
+                Position = request.Position,
+                Rotation = request.Rotation
+            });
 
         [Handler(ServerOpcode.GestureUpdateSlots, HandlerPermission.Authorized)]
         public void UpdateSlots(Session session, GestureQuickSlotsUpdateRequest request)

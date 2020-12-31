@@ -45,40 +45,46 @@ namespace ow.Service.District.Network.Sync.Handlers
             if (!_dimensions.Join(session))
                 NetworkUtils.DropSession();
 
-            session
-                .SendAsync(new ServiceCurrentDataResponse())
-                .SendAsync(new DayEventBoosterResponse()
+            session.SendAsync(new ServiceCurrentDataResponse());
+            session.SendAsync(new DayEventBoosterResponse()
+            {
+                Values = _dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
                 {
-                    Values = _dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
-                    {
-                        Id = s.Id,
-                        Maze = s.Maze.Id
-                    }).ToArray()
-                })
-                .SendAsync(new WorldVersionResponse())
-                .SendAsync(new DistrictEnterResponse()
+                    Id = s.Id,
+                    Maze = s.Maze.Id
+                }).ToArray()
+            });
+
+            session.SendAsync(new WorldVersionResponse()
+            {
+                Id = 0,
+                Main = 1,
+                Sub = 837,
+                Data = 16888
+            });
+
+            session.SendAsync(new DistrictEnterResponse()
+            {
+                Place = new()
                 {
-                    Place = new()
-                    {
-                        Location = _instance.Location.Id,
-                        Position = session.Character.Place.Position,
-                        Rotation = session.Character.Place.Rotation,
-                    }
-                })
-                //.SenBoosterAdd(boosters)
-                //eSUB_CMD_POST_ACCOUNT_RECV
-                //.SendAttendanceRewardLoad()
-                //.SendAttendancePlayTimeInit()
-                //receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
-                //receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
-                //receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
-                //.SendInfiniteTowerLoadInfo()
-                //receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
-                //.SendAttendanceReward()
-                //.SendAttendanceContinueReward()
-                // receive_eSUB_CMD_FRIEND_LOAD
-                // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
-                .SendCharacterDbLoadSync();
+                    Location = _instance.Location.Id,
+                    Position = session.Character.Place.Position,
+                    Rotation = session.Character.Place.Rotation,
+                }
+            });
+            //.SenBoosterAdd(boosters)
+            //eSUB_CMD_POST_ACCOUNT_RECV
+            //.SendAttendanceRewardLoad()
+            //.SendAttendancePlayTimeInit()
+            //receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
+            //receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
+            //receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
+            //.SendInfiniteTowerLoadInfo()
+            //receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
+            //.SendAttendanceReward()
+            //.SendAttendanceContinueReward()
+            // receive_eSUB_CMD_FRIEND_LOAD
+            // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
         }
 
         private AccountModel GetAccountModel(int id)
