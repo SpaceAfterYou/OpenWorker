@@ -39,10 +39,11 @@ namespace ow.Service.District.Network.Sync.Handlers
                     Chat = ChatType.Red,
                     Message = "Command not found"
                 });
+
                 return;
             }
 
-            session.Dimension.BroadcastAsync(request);
+            session.Dimension?.BroadcastAsync(request);
         }
 
         public ChatHandler(ChatCommandRepository commands) => _repository = commands;

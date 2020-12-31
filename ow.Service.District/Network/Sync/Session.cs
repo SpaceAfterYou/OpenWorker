@@ -11,7 +11,7 @@ namespace ow.Service.District.Network.Sync
         internal Account Account { get; set; } = default!;
         internal Character Character { get; set; } = default!;
         internal Profile Profile { get; set; } = default!;
-        internal DimensionMember Dimension { get; set; } = default!;
+        internal DimensionMember? Dimension { get; set; } = default!;
         internal Storages Storages { get; set; } = default!;
         internal SpecialOptions SpecialOptions { get; set; } = default!;
         internal IReadOnlyList<uint> Gestures { get; set; } = default!;
@@ -19,6 +19,13 @@ namespace ow.Service.District.Network.Sync
 
         public Session(Server server, HandlerProvider provider, ILogger<Session> logger) : base(server, provider, logger)
         {
+        }
+
+        protected override void OnDisconnected()
+        {
+            Dimension?.Leave();
+
+            base.OnDisconnected();
         }
     }
 }

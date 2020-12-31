@@ -13,7 +13,7 @@ namespace ow.Service.District.Network.Sync.Handlers
     public sealed class GestureHandler
     {
         [Handler(ServerOpcode.GestureDo, HandlerPermission.Authorized)]
-        public static void GetOthers(Session session, GestureDoRequest request) => session.Dimension
+        public static void GetOthers(Session session, GestureDoRequest request) => session.Dimension?
             .BroadcastAsync(request);
 
         [Handler(ServerOpcode.GestureUpdateSlots, HandlerPermission.Authorized)]
