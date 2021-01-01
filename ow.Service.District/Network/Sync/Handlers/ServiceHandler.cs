@@ -71,7 +71,8 @@ namespace ow.Service.District.Network.Sync.Handlers
                     Position = session.Character.Place.Position,
                     Rotation = session.Character.Place.Rotation,
                 }
-            });
+            })
+            .SendCharacterDbLoadSync();
             //.SenBoosterAdd(boosters)
             //eSUB_CMD_POST_ACCOUNT_RECV
             //.SendAttendanceRewardLoad()

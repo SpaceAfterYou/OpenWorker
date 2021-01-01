@@ -36,7 +36,6 @@ namespace ow.Service.District.Network.Sync.Handlers
 
         [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
         public void GetInfo(Session session) => session
-            .SendCharacterDbLoadSync()
             .SendAsync(new CharacterInfoResponse()
             {
                 Character = ResponseHelper.GetCharacter(session),

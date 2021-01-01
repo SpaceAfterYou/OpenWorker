@@ -38,7 +38,7 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
             string clientIp = args.ElementAt(2);
 
             await using FileStream inputFile = new(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            await using FileStream outputFile = new(outputFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
+            await using FileStream outputFile = new(outputFilePath, FileMode.OpenOrCreate | FileMode.Truncate, FileAccess.Write, FileShare.Write);
 
             using JsonDocument json = await JsonDocument.ParseAsync(inputFile);
             using JsonElement.ArrayEnumerator enumerator = json.RootElement.EnumerateArray();
