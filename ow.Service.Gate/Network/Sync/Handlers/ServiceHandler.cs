@@ -3,7 +3,6 @@ using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.CS;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
@@ -11,6 +10,7 @@ using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.Utils;
 using ow.Service.Gate.Game;
+using ow.Service.Gate.Network.Relay;
 using System.Linq;
 
 namespace ow.Service.Gate.Network.Handlers
@@ -23,7 +23,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (_gate.Id != request.Gate)
                 NetworkUtils.DropSession();
 
-            if (request.Account != _lan.GetSessionKey(request.SessionKey))
+            if (_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
                 NetworkUtils.DropSession();
 
             {
@@ -48,10 +48,10 @@ namespace ow.Service.Gate.Network.Handlers
             return new(model, gate, _tables, characterContext, itemContext);
         }
 
-        public ServiceHandler(GateInstance gate, CSClient lan, BinTables tables, IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory)
+        public ServiceHandler(GateInstance gate, RelayClient relayClient, BinTables tables, IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory)
         {
             _gate = gate;
-            _lan = lan;
+            _relayClient = relayClient;
             _tables = tables;
             _itemFactory = itemFactory;
             _accountFactory = accountFactory;
@@ -59,7 +59,7 @@ namespace ow.Service.Gate.Network.Handlers
         }
 
         private readonly GateInstance _gate;
-        private readonly CSClient _lan;
+        private readonly RelayClient _relayClient;
         private readonly BinTables _tables;
         private readonly IDbContextFactory<ItemContext> _itemFactory;
         private readonly IDbContextFactory<AccountContext> _accountFactory;

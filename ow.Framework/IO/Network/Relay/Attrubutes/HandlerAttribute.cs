@@ -1,13 +1,9 @@
 ﻿using System;
 
-namespace ow.Framework.IO.Lan.Attrubutes
+namespace ow.Framework.IO.Network.Relay.Attrubutes
 {
-    [AttributeUsage(AttributeTargets.Method)]
+    [AttributeUsage(AttributeTargets.Class)]
     public sealed class HandlerAttribute : Attribute
     {
-        public string Channel { get; }
-
-        public HandlerAttribute(string channel) =>
-            Channel = channel;
     }
 }

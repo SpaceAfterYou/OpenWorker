@@ -3,7 +3,6 @@ using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.CS;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
@@ -12,6 +11,7 @@ using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
+using ow.Service.District.Network.Relay;
 using System.Linq;
 
 namespace ow.Service.District.Network.Sync.Handlers
@@ -21,7 +21,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
         public void Enter(Session session, DistrictEnterRequest request)
         {
-            if (request.Account != _lan.GetSessionKey(request.SessionKey))
+            if (_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
                 NetworkUtils.DropSession();
 
             {
@@ -125,7 +125,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             });
         }
 
-        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, CSClient lan, BinTables tables, GateInstance gate)
+        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, RelayClient relayClient, BinTables tables, GateInstance gate)
         {
             _itemFactory = itemFactory;
             _accountFactory = accountFactory;
@@ -133,7 +133,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             _instance = instance;
             _dayEventBoosters = dayEventBoosters;
             _dimensions = dimensions;
-            _lan = lan;
+            _relayClient = relayClient;
             _tables = tables;
             _gate = gate;
         }
@@ -144,7 +144,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         private readonly Instance _instance;
         private readonly DayEventBoosterRepository _dayEventBoosters;
         private readonly DimensionRepository _dimensions;
-        private readonly CSClient _lan;
+        private readonly RelayClient _relayClient;
         private readonly BinTables _tables;
         private readonly GateInstance _gate;
     }
