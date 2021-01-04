@@ -4,7 +4,6 @@ using ow.Framework.Extensions;
 using ow.Framework.Game;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Sync.Extensions;
-using ow.Service.Auth.Extensions;
 using ow.Service.Auth.Game.Repositories;
 using ow.Service.Auth.Network.Sync;
 
@@ -25,7 +24,6 @@ namespace ow.Service.Auth
                 .AddSingleton<Features>()
                 .AddTransient<Session>()
                 .AddTransient<Server>()
-                .AddHandlers()
                 .AddAccountContext(context)
                 .AddCharacterContext(context)
                 .AddFramework()

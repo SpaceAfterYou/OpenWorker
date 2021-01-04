@@ -1,0 +1,22 @@
+# .NET Core
+language: csharp
+mono: none
+dotnet: 5.0.101
+solution: OpenWorker.sln
+
+# OS environment
+dist: focal
+
+# Build matrix (OS, compiler)
+matrix:
+  include:
+    - name: "Linux"
+      os: linux
+    - name: "MacOS"
+      os: osx
+      osx_image: xcode12.2
+
+# Build scripts
+script:
+  - dotnet restore
+  - dotnet build

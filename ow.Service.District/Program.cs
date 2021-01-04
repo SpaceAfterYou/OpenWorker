@@ -4,7 +4,6 @@ using ow.Framework.Extensions;
 using ow.Framework.IO.File.World;
 using ow.Framework.IO.Lan.Extensions;
 using ow.Framework.IO.Network.Sync.Extensions;
-using ow.Service.District.Extensions;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
 using ow.Service.District.Network.Sync;
@@ -36,7 +35,6 @@ namespace ow.Service.District
                 .AddAccountContext(context)
                 .AddCharacterContext(context)
                 .AddItemContext(context)
-                .AddHandlers()
                 .AddFramework()
                 .AddLan());
     }
