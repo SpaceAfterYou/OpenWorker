@@ -1,3 +1,5 @@
+---
+
 test: off
 before_build:
   - mv ow.Framework\config\commonsettings.example.json ow.Framework\config\commonsettings.json

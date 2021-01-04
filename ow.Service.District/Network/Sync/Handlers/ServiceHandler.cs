@@ -18,10 +18,10 @@ namespace ow.Service.District.Network.Sync.Handlers
 {
     public sealed class ServiceHandler
     {
-        [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
+        [Handler(ServerOpcode.DistrictEnter, HandlerPermission.Anonymous)]
         public void Enter(Session session, DistrictEnterRequest request)
         {
-            if (_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
+            if (!_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
                 NetworkUtils.DropSession();
 
             {

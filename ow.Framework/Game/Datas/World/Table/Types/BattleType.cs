@@ -1,9 +1,6 @@
-﻿using System;
-
-namespace ow.Framework.Game.Datas.World.Table.Types
+﻿namespace ow.Framework.Game.Datas.World.Table.Types
 {
-    [Flags]
-    public enum BattleType
+    public enum BattleType : byte
     {
         None,
         Battle

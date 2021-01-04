@@ -1,9 +1,6 @@
-﻿using System;
-
-namespace ow.Framework.Game.Datas.World.Table.Types
+﻿namespace ow.Framework.Game.Datas.World.Table.Types
 {
-    [Flags]
-    public enum CreationPositionType
+    public enum CreationPositionType : byte
     {
         Center,
         Random,

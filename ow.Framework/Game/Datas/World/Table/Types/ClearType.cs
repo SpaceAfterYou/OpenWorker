@@ -1,10 +1,8 @@
-﻿using System;
-using System.Xml.Serialization;
+﻿using System.Xml.Serialization;
 
 namespace ow.Framework.Game.Datas.World.Table.Types
 {
-    [Flags]
-    public enum ClearType
+    public enum ClearType : byte
     {
         None,
         Kill,

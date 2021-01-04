@@ -17,7 +17,7 @@ namespace ow.Service.Gate.Network.Handlers
 {
     public sealed class ServiceHandler
     {
-        [Handler(ServerOpcode.GateEnter, HandlerPermission.UnAuthorized)]
+        [Handler(ServerOpcode.GateEnter, HandlerPermission.Anonymous)]
         public void Enter(Session session, GateEnterRequest request)
         {
             if (_gate.Id != request.Gate)

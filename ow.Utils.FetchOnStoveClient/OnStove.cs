@@ -26,14 +26,14 @@ namespace ow.Utils.FetchOnStoveClient
             return await response.Content.ReadFromJsonAsync<GetLiveVersionResult?>();
         }
 
-        public static async ValueTask<ClientFilesResult?> GetClientFiles(string host, ushort port)
+        public static async ValueTask<ClientFilesResult?> GetClientFiles(string? host, ushort port)
         {
             GetLiveVersionResult? liveVersion = await GetLiveVersion();
             using HttpRequestMessage request = new(HttpMethod.Get, liveVersion?.Value?.LiveProjectUrl);
 
             using HttpClient http = new(new HttpClientHandler()
             {
-                Proxy = new WebProxy(host, port)
+                Proxy = host is not null ? new WebProxy(host, port) : null
             }, true);
 
             using HttpResponseMessage response = (await http.SendAsync(request)).EnsureSuccessStatusCode();
