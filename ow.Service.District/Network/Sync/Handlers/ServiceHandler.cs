@@ -21,7 +21,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
         public void Enter(Session session, DistrictEnterRequest request)
         {
-            if (_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
+            if (!_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
                 NetworkUtils.DropSession();
 
             {
