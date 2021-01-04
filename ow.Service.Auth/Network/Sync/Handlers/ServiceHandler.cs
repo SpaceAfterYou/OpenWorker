@@ -1,12 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
+using ow.Service.Auth.Network.Relay;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -27,7 +27,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
                     Mac = request.Mac,
                     AccountId = model.Id,
                     Response = AuthLoginStatus.Success,
-                    SessionKey = _lan.SetAccountIdBySessionKey(model.Id),
+                    SessionKey = _relayClient.Session.Register(new() { Account = model.Id }).Key,
                 });
             }
             else
@@ -54,10 +54,10 @@ namespace ow.Service.Auth.Network.Sync.Handlers
             return sham.ComputeHash(Encoding.UTF8.GetBytes(password));
         }
 
-        public ServiceHandler(LanContext lan, IDbContextFactory<AccountContext> accountFactory) =>
-            (_lan, _accountFactory) = (lan, accountFactory);
+        public ServiceHandler(RelayClient relayClient, IDbContextFactory<AccountContext> accountFactory) =>
+            (_relayClient, _accountFactory) = (relayClient, accountFactory);
 
         private readonly IDbContextFactory<AccountContext> _accountFactory;
-        private readonly LanContext _lan;
+        private readonly RelayClient _relayClient;
     }
 }

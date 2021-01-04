@@ -8,7 +8,7 @@ namespace ow.Framework.IO.Network.Sync.Requests
     [Request]
     public sealed record CharacterToggleWeaponRequest
     {
-        public int CharacterId { get; }
+        public int Character { get; }
         public Vector3 Position { get; }
         public float Rotation { get; }
         public uint Toggle { get; }
@@ -16,7 +16,7 @@ namespace ow.Framework.IO.Network.Sync.Requests
 
         public CharacterToggleWeaponRequest(BinaryReader br)
         {
-            CharacterId = br.ReadInt32();
+            Character = br.ReadInt32();
             Position = br.ReadVector3();
             Rotation = br.ReadSingle();
             Toggle = br.ReadUInt32();

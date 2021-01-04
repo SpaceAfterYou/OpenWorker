@@ -14,6 +14,6 @@ namespace ow.Framework.IO.Network.Sync.Responses
             public uint NpcId { get; init; }
         }
 
-        public IReadOnlyList<Entity> Values { get; init; } = default!;
+        public IEnumerable<Entity> Values { get; init; } = default!;
     }
 }

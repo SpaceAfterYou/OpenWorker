@@ -1,9 +1,5 @@
 test: off
 before_build:
-  - mkdir -p ow.Framework\certificate
-  - touch ow.Framework\certificate\client.pfx
-  - touch ow.Framework\certificate\server.pfx
-
   - mv ow.Framework\config\commonsettings.example.json ow.Framework\config\commonsettings.json
   - mv ow.Framework\config\appsettings.Development.example.json ow.Framework\config\appsettings.Development.json
 
@@ -16,6 +12,3 @@ before_build:
   - mv ow.Utils.GenerateItemsForView\config\appsettings.example.json ow.Utils.GenerateItemsForView\config\appsettings.json
 
   - nuget restore
-
-environment:
-  COVERALLS_REPO_TOKEN: 8fQ7xXPq37ZGZxwgKwvhbgXO+g29c7yEgzEwo0UNQkvQNCmh5IpHRmeIBRN+Cm4O

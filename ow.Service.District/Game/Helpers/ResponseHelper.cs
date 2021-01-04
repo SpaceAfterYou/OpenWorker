@@ -49,7 +49,7 @@ namespace ow.Service.District.Game.Helpers
             {
                 Battle = session.Storages.EquippedBattleFashion.Select(s => GetFashionItemInfo(s)),
                 View = session.Storages.EquippedViewFashion.Select(s => GetFashionItemInfo(s)),
-            }
+            },
         };
 
         private static GearItemInfo GetGearItemInfo(StorageItem? item)

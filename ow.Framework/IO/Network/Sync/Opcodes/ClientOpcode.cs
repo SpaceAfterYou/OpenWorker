@@ -30,8 +30,10 @@
         ChatReceivedExp = 0x0337,
         CharacterSpecialOptionUpdateList = 0x0347,
         CharacterOriginStatsUpdate = 0x0351,
-        Undefined4 = 0x0354,
+
+        // Undefined4 = 0x0354,
         LogOut = 0x0360,
+
         LoadDistrictState = 0x0361,
         MazeEnterLimitCountLoad = 0x0362,
         CharacterEnergyUpdate = 0x0364,
@@ -55,16 +57,18 @@
         MovementJump = 0x0506,
         MovementStop = 0x0504,
         CharacterToggleWeapon = 0x0508,
-        MovementUndefined1 = 0x0511,
+
+        //MovementUndefined1 = 0x0511,
         MovementLoopMotionEnd = 0x0533,
+
         MovementMoveAttached = 0x0534,
         MovementMoveAttachedEnd = 0x0535,
 
         SkillUse = 0x0609,
         SkillUpgrade = 0x0671,
-        Undefined3 = 0x0673,
+        //Undefined3 = 0x0673,
 
-        Undefined0x0705 = 0x0705,
+        // Undefined0x0705 = 0x0705,
         ChatMessage = 0x0701,
 
         StorageInventoryItemsInfo = 0x0801,
@@ -100,8 +104,8 @@
         ItemNameChange = 0x0853,
         ItemSocketLoad = 0x0855,
         ItemBroachLoad = 0x0856,
-        Undefined1 = 0x0866,
-        Undefined2 = 0x0868,
+        // Undefined1 = 0x0866,
+        // Undefined2 = 0x0868,
 
         ShopCashBuyCountLoad = 0x0930,
 
@@ -168,6 +172,7 @@
         EventUseCouponCode = 0x2A22,
         RouletteMyInfo = 0x2A28,
         RouletteUse = 0x2A29,
+        BattlePassLoad = 0x2A30,
 
         ExchangeSearch = 0x2B01,
         ExchangePriceHistory = 0x2B02,
@@ -178,7 +183,7 @@
         ExchangeItemRecalc = 0x2B07,
         ExchangeMyList = 0x2B08,
 
-        BattleArenaUndefined1 = 0x3306,
+        // BattleArenaUndefined1 = 0x3306,
 
         ChannelInfo = 0xF101,
         ChannelSwitch = 0xF102,

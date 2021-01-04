@@ -124,13 +124,15 @@ namespace ow.Framework.IO.Network.Sync
             Write(byte.MinValue);
             Write(byte.MinValue); // 00
             Write(byte.MinValue); // 08
-            Write(uint.MinValue); // 95 36 68 3B
+            Write(1054592440); // 95 36 68 3B
+            //Write(uint.MinValue); // 95 36 68 3B
             Write(ushort.MinValue); // 00 00
             Write(uint.MinValue); // 00 00 00 00
             Write(uint.MinValue); // 00 00 00 00
-            Write(value.Slot); // 01
+            Write(value.Slot);
             Write(uint.MinValue); // 00 00 00 00
-            Write(byte.MinValue); // 00
+            //Write(byte.MinValue); // 00
+            Write((byte)1);
             Write(uint.MinValue); // 00 00 00 00
         }
 

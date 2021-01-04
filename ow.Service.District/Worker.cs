@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ow.Framework.Utils;
 using ow.Service.District.Network.Sync;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,8 @@ namespace ow.Service.District
         {
             _logger = logger;
             _server = server;
+
+            CommonUtils.PrintEnvironment(_logger);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

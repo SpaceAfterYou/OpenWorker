@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 
@@ -39,7 +40,7 @@ namespace ow.Framework.IO.Network.Sync
         public SyncSession SendAsync(CharacterToggleWeaponRequest request) =>
             SendAsync(ClientOpcode.CharacterToggleWeapon, (PacketWriter writer) =>
             {
-                writer.Write(request.CharacterId);
+                writer.Write(request.Character);
                 writer.WriteVector3(request.Position);
                 writer.Write(request.Rotation);
                 writer.Write(request.Toggle);
@@ -49,7 +50,7 @@ namespace ow.Framework.IO.Network.Sync
         public SyncSession SendAsync(NpcOthersInfosResponse value) =>
             SendAsync(ClientOpcode.NpcOtherInfos, (PacketWriter writer) =>
             {
-                writer.Write((ushort)value.Values.Count);
+                writer.Write((ushort)value.Values.Count());
                 foreach (NpcOthersInfosResponse.Entity entity in value.Values)
                 {
                     writer.Write(entity.Id);
@@ -69,39 +70,40 @@ namespace ow.Framework.IO.Network.Sync
                 writer.WriteCharacter(value.Character);
                 writer.WritePlace(value.Place);
 
-                writer.Write(byte.MinValue); //
-                writer.Write(byte.MinValue); //
-
                 writer.Write(ulong.MinValue); // Exp
                 writer.Write(ulong.MinValue); // Zenny
-                writer.Write(byte.MinValue); //
-                writer.Write(byte.MinValue); //
+
+                //writer.Write(uint.MinValue); // 1
+                //writer.Write(uint.MinValue); // 2
+                //writer.Write(uint.MinValue); // 3
+                //writer.Write(uint.MinValue); // 4
                 writer.Write(uint.MinValue); // 1
-                writer.Write(uint.MinValue); // 2
-                writer.Write(uint.MinValue); // 3
-                writer.Write(uint.MinValue); // 4
+                writer.Write(3758046911); // 2
+                writer.Write(473918745); // 3
+                writer.Write(75719); // 4
                 writer.Write(uint.MinValue); // 5
-                writer.Write(uint.MinValue); // 6
-                writer.Write(ushort.MinValue); //
-                writer.Write(byte.MinValue);
-                writer.Write(new byte[13]);
+
+                writer.Write(ulong.MinValue); // Aether
+                writer.Write(ulong.MinValue);
 
                 byte[] hz = new byte[9] { (byte)'1', (byte)'3', (byte)'4', (byte)'0', (byte)'0', (byte)'6', (byte)'8', (byte)'9', (byte)'3' }; // maybe privacy
-                writer.Write((ushort)hz.Length); // maybe privacy
+                writer.Write((ushort)hz.Length);
                 writer.Write(hz);
 
-                writer.Write(uint.MinValue); // 1
-                writer.Write(uint.MinValue); // 2
-                writer.Write(uint.MinValue); // 3
-                writer.Write(uint.MinValue); // 4
-                writer.Write(uint.MinValue); // 5
-                writer.Write(ushort.MinValue); //
-                writer.Write(byte.MinValue); //
-                writer.WriteCharacterInfoResult(value.Result); //
+                writer.Write(ulong.MinValue);
+                writer.Write(ulong.MinValue);
+                writer.Write(uint.MinValue);
+                writer.Write(ushort.MinValue);
+
+                writer.Write(byte.MinValue);
+                writer.WriteCharacterInfoResult(value.Result);
+
+                var w = ((MemoryStream)writer.BaseStream).ToArray();
+                // var q = ((MemoryStream)writer.BaseStream).GetBuffer();
             });
 
         public SyncSession SendAsync(CharacterStatsUpdateResponse value) =>
-            SendAsync(ClientOpcode.CharacterStatsUpdate, ((PacketWriter writer) =>
+            SendAsync(ClientOpcode.CharacterStatsUpdate, (PacketWriter writer) =>
             {
                 writer.Write((byte)0);
 
@@ -113,7 +115,7 @@ namespace ow.Framework.IO.Network.Sync
                     writer.Write(stat.Value);
                     writer.WriteCharacterStat(stat.Id);
                 }
-            }));
+            });
 
         public SyncSession SendAsync(CharacterProfileResponse value) =>
             SendAsync(ClientOpcode.CharacterProfileInfo, (PacketWriter writer) =>
@@ -139,7 +141,7 @@ namespace ow.Framework.IO.Network.Sync
 
         #region Send Chat
 
-        public SyncSession SendAsync(ChatResponse value) =>
+        public SyncSession SendAsync(ChatMessageResponse value) =>
             SendAsync(ClientOpcode.ChatMessage, (PacketWriter writer) =>
             {
                 writer.Write(value.Character);

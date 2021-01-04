@@ -11,7 +11,7 @@ namespace ow.Service.District.Game.Repositories
 {
     public class DimensionRepository : Dictionary<ushort, DimensionRepository.Entity>
     {
-        public sealed class Entity : BaseDimension
+        public sealed class Entity : BaseDimension<Session>
         {
             private readonly object _joinLock = new();
             private readonly Instance _instance;
@@ -35,7 +35,7 @@ namespace ow.Service.District.Game.Repositories
                 return true;
             }
 
-            internal void Leave(Session session)
+            internal new void Leave(Session session)
             {
                 if (base.Leave(session))
                     BroadcastAsync(session, new DimensionBrodcastCharacterOutResponse()

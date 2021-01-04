@@ -61,7 +61,7 @@ namespace ow.Framework.IO.Network.Sync.Providers
                 HandlerAttribute? attribute = method.GetCustomAttribute<HandlerAttribute>();
                 Debug.Assert(attribute is not null);
 
-                logger.LogDebug($"Used SYNC EVENT ({attribute.Opcode}) invoker on {method.DeclaringType?.FullName}.{method.Name}.");
+                logger.LogDebug($"Used SYNC EVENT ({attribute.Opcode}) invoker on {method.DeclaringType!.FullName}.{method.Name}.");
 
                 handlers[ConvertUtils.LeToBeUInt16((ushort)attribute.Opcode)] = handler;
             }

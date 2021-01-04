@@ -2,10 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Extensions;
 using ow.Framework.Game;
-using ow.Framework.IO.Lan.Extensions;
+using ow.Framework.IO.Network.Relay.Extensions;
 using ow.Framework.IO.Network.Sync.Extensions;
-using ow.Service.Auth.Extensions;
 using ow.Service.Auth.Game.Repositories;
+using ow.Service.Auth.Network.Relay;
 using ow.Service.Auth.Network.Sync;
 
 namespace ow.Service.Auth
@@ -17,18 +17,18 @@ namespace ow.Service.Auth
         public static IHostBuilder CreateHostBuilder(string[] args) => Host
             .CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((context, config) => config
-                .AddFramework(context))
+                .AddFrameworkConfig(context))
             .ConfigureServices((context, services) => services
+                .AddSyncHandlers()
                 .AddHostedService<Worker>()
                 .AddSingleton<GateRepository>()
-                .AddSingleton<Server>()
+                .AddSingleton<RelayClient>()
                 .AddSingleton<Features>()
                 .AddTransient<Session>()
-                .AddTransient<Server>()
-                .AddHandlers()
+                .AddSingleton<Server>()
                 .AddAccountContext(context)
                 .AddCharacterContext(context)
-                .AddFramework()
-                .AddLan());
+                .AddRelayChannel()
+                .AddRelayHandlers());
     }
 }

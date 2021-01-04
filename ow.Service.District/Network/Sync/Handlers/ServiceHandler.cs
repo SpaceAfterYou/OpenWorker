@@ -3,7 +3,6 @@ using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Lan;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
@@ -12,6 +11,7 @@ using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.Utils;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
+using ow.Service.District.Network.Relay;
 using System.Linq;
 
 namespace ow.Service.District.Network.Sync.Handlers
@@ -21,7 +21,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.UnAuthorized)]
         public void Enter(Session session, DistrictEnterRequest request)
         {
-            if (request.Account != _lan.GetAccountIdBySessionKey(request.SessionKey))
+            if (_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
                 NetworkUtils.DropSession();
 
             {
@@ -45,40 +45,47 @@ namespace ow.Service.District.Network.Sync.Handlers
             if (!_dimensions.Join(session))
                 NetworkUtils.DropSession();
 
-            session
-                .SendAsync(new ServiceCurrentDataResponse())
-                .SendAsync(new DayEventBoosterResponse()
+            session.SendAsync(new ServiceCurrentDataResponse());
+            session.SendAsync(new DayEventBoosterResponse()
+            {
+                Values = _dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
                 {
-                    Values = _dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
-                    {
-                        Id = s.Id,
-                        Maze = s.Maze.Id
-                    }).ToArray()
-                })
-                .SendAsync(new WorldVersionResponse())
-                .SendAsync(new DistrictEnterResponse()
+                    Id = s.Id,
+                    Maze = s.Maze.Id
+                }).ToArray()
+            });
+
+            session.SendAsync(new WorldVersionResponse()
+            {
+                Id = 0,
+                Main = 1,
+                Sub = 837,
+                Data = 16888
+            });
+
+            session.SendAsync(new DistrictEnterResponse()
+            {
+                Place = new()
                 {
-                    Place = new()
-                    {
-                        Location = _instance.Location.Id,
-                        Position = session.Character.Place.Position,
-                        Rotation = session.Character.Place.Rotation,
-                    }
-                })
-                //.SenBoosterAdd(boosters)
-                //eSUB_CMD_POST_ACCOUNT_RECV
-                //.SendAttendanceRewardLoad()
-                //.SendAttendancePlayTimeInit()
-                //receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
-                //receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
-                //receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
-                //.SendInfiniteTowerLoadInfo()
-                //receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
-                //.SendAttendanceReward()
-                //.SendAttendanceContinueReward()
-                // receive_eSUB_CMD_FRIEND_LOAD
-                // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
-                .SendCharacterDbLoadSync();
+                    Location = _instance.Location.Id,
+                    Position = session.Character.Place.Position,
+                    Rotation = session.Character.Place.Rotation,
+                }
+            })
+            .SendCharacterDbLoadSync();
+            //.SenBoosterAdd(boosters)
+            //eSUB_CMD_POST_ACCOUNT_RECV
+            //.SendAttendanceRewardLoad()
+            //.SendAttendancePlayTimeInit()
+            //receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
+            //receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
+            //receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
+            //.SendInfiniteTowerLoadInfo()
+            //receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
+            //.SendAttendanceReward()
+            //.SendAttendanceContinueReward()
+            // receive_eSUB_CMD_FRIEND_LOAD
+            // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
         }
 
         private AccountModel GetAccountModel(int id)
@@ -118,7 +125,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             });
         }
 
-        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, LanContext lan, BinTables tables, GateInstance gate)
+        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, DimensionRepository dimensions, RelayClient relayClient, BinTables tables, GateInstance gate)
         {
             _itemFactory = itemFactory;
             _accountFactory = accountFactory;
@@ -126,7 +133,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             _instance = instance;
             _dayEventBoosters = dayEventBoosters;
             _dimensions = dimensions;
-            _lan = lan;
+            _relayClient = relayClient;
             _tables = tables;
             _gate = gate;
         }
@@ -137,7 +144,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         private readonly Instance _instance;
         private readonly DayEventBoosterRepository _dayEventBoosters;
         private readonly DimensionRepository _dimensions;
-        private readonly LanContext _lan;
+        private readonly RelayClient _relayClient;
         private readonly BinTables _tables;
         private readonly GateInstance _gate;
     }
