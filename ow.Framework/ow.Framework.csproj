@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="certificate\client.pfx" />
+    <None Remove="certificate\server.pfx" />
     <None Remove="config\appsettings.Development.example.json" />
     <None Remove="config\appsettings.Development.json" />
     <None Remove="config\commonsettings.example.json" />
@@ -53,15 +55,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="certificate\client.pfx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="certificate\server.pfx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
+    <Folder Include="certificate\" />
     <Folder Include="IO\Network\Relay\Response\" />
   </ItemGroup>
 
