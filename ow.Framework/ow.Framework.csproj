@@ -56,7 +56,6 @@
 
   <ItemGroup>
     <Folder Include="certificate\" />
-    <Folder Include="IO\Network\Relay\Response\" />
   </ItemGroup>
 
   <ItemGroup>
