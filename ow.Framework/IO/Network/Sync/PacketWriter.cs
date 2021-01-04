@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game;
+﻿using Microsoft.Extensions.Logging;
+using ow.Framework.Game;
 using ow.Framework.Game.Enums;
 using ow.Framework.Game.Types;
 using ow.Framework.IO.Network.Sync.Opcodes;
@@ -124,15 +125,13 @@ namespace ow.Framework.IO.Network.Sync
             Write(byte.MinValue);
             Write(byte.MinValue); // 00
             Write(byte.MinValue); // 08
-            Write(1054592440); // 95 36 68 3B
-            //Write(uint.MinValue); // 95 36 68 3B
+            Write(uint.MinValue); // 95 36 68 3B
             Write(ushort.MinValue); // 00 00
             Write(uint.MinValue); // 00 00 00 00
             Write(uint.MinValue); // 00 00 00 00
             Write(value.Slot);
             Write(uint.MinValue); // 00 00 00 00
-            //Write(byte.MinValue); // 00
-            Write((byte)1);
+            Write(byte.MinValue); // 00
             Write(uint.MinValue); // 00 00 00 00
         }
 
@@ -227,8 +226,10 @@ namespace ow.Framework.IO.Network.Sync
 
         public void WriteProfileStatus(ProfileStatus value) => Write((byte)value);
 
-        public PacketWriter(ClientOpcode opcode) : base(new MemoryStream(ushort.MaxValue), Encoding.ASCII, false)
+        public PacketWriter(ClientOpcode opcode, ILogger logger) : base(new MemoryStream(ushort.MaxValue), Encoding.ASCII, false)
         {
+            logger.LogDebug($"Create packet: {opcode}");
+
             /// Write SoulWorker magic bytes
             Write((byte)0x02);
             Write((byte)0x00);

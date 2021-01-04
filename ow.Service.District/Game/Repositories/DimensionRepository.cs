@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using ow.Framework;
 using ow.Framework.Game;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -44,18 +45,18 @@ namespace ow.Service.District.Game.Repositories
                     });
             }
 
-            internal Entity(ushort id, Instance instance) : base(id) => _instance = instance;
+            internal Entity(ushort id, Instance instance, ILogger<Entity> logger) : base(id, logger) => _instance = instance;
         }
 
-        public DimensionRepository(IConfiguration configuration, Instance instance) : base(GetDimensions(configuration, instance))
+        public DimensionRepository(IConfiguration configuration, Instance instance, ILogger<Entity> logger) : base(GetDimensions(configuration, instance, logger))
         {
         }
 
         internal bool Join(Session session) => this.Any(dimension => dimension.Value.TryJoin(session));
 
-        private static Dictionary<ushort, Entity> GetDimensions(IConfiguration configuration, Instance instance) => Enumerable
+        private static Dictionary<ushort, Entity> GetDimensions(IConfiguration configuration, Instance instance, ILogger<Entity> logger) => Enumerable
             .Range(byte.Parse(configuration[$"Districts:{configuration["Id"]}:DimensionsOffset"]), byte.Parse(configuration["DistrictsDimensionsPerInstance"]))
-            .ToDictionary(k => (ushort)k, v => new Entity((ushort)v, instance));
+            .ToDictionary(k => (ushort)k, v => new Entity((ushort)v, instance, logger));
     }
 }
 

@@ -80,14 +80,10 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(ulong.MinValue); // Exp
                 writer.Write(ulong.MinValue); // Zenny
 
-                //writer.Write(uint.MinValue); // 1
-                //writer.Write(uint.MinValue); // 2
-                //writer.Write(uint.MinValue); // 3
-                //writer.Write(uint.MinValue); // 4
                 writer.Write(uint.MinValue); // 1
-                writer.Write(3758046911); // 2
-                writer.Write(473918745); // 3
-                writer.Write(75719); // 4
+                writer.Write(uint.MinValue); // 2
+                writer.Write(uint.MinValue); // 3
+                writer.Write(uint.MinValue); // 4
                 writer.Write(uint.MinValue); // 5
 
                 writer.Write(ulong.MinValue); // Aether
@@ -104,9 +100,6 @@ namespace ow.Framework.IO.Network.Sync
 
                 writer.Write(byte.MinValue);
                 writer.WriteCharacterInfoResult(value.Result);
-
-                var w = ((MemoryStream)writer.BaseStream).ToArray();
-                // var q = ((MemoryStream)writer.BaseStream).GetBuffer();
             });
 
         public SyncSession SendAsync(CharacterStatsUpdateResponse value) =>
@@ -133,7 +126,7 @@ namespace ow.Framework.IO.Network.Sync
             });
 
         public SyncSession SendAsync(CharacterPostInfoResponse value) =>
-            SendAsync(ClientOpcode.CharacterProfileInfo, (PacketWriter writer) =>
+            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
             {
                 writer.Write(ushort.MinValue);
                 writer.Write((ushort)value.Values.Count());
@@ -144,11 +137,6 @@ namespace ow.Framework.IO.Network.Sync
             {
                 foreach (uint gesture in value.Values)
                     writer.Write(gesture);
-            });
-
-        public SyncSession SendCharacterPostInfo() =>
-            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
-            {
             });
 
         #endregion Send Characters
@@ -387,7 +375,8 @@ namespace ow.Framework.IO.Network.Sync
 
         public SyncSession SendAsync(ClientOpcode opcode, Action<PacketWriter> func)
         {
-            using PacketWriter writer = new(opcode);
+            using PacketWriter writer = new(opcode, _logger);
+
             func(writer);
 
             if (!SendAsync(PacketUtils.Pack(writer), 0, writer.BaseStream.Length))
