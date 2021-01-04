@@ -132,6 +132,13 @@ namespace ow.Framework.IO.Network.Sync
                 writer.WriteByteLengthUnicodeString(value.Note);
             });
 
+        public SyncSession SendAsync(CharacterPostInfoResponse value) =>
+            SendAsync(ClientOpcode.CharacterProfileInfo, (PacketWriter writer) =>
+            {
+                writer.Write(ushort.MinValue);
+                writer.Write((ushort)value.Values.Count());
+            });
+
         public SyncSession SendAsync(GestureLoadResponse value) =>
             SendAsync(ClientOpcode.GestureLoad, (PacketWriter writer) =>
             {

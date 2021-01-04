@@ -5,6 +5,7 @@ using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Helpers;
+using System;
 using System.Linq;
 
 namespace ow.Service.District.Network.Sync.Handlers
@@ -49,6 +50,10 @@ namespace ow.Service.District.Network.Sync.Handlers
                 About = session.Profile.About,
                 Note = session.Profile.Note,
                 Status = session.Profile.Status,
+            })
+            .SendAsync(new CharacterPostInfoResponse()
+            {
+                Values = Array.Empty<object>()
             });
 
         //.SendCharacterStatsUpdate()
