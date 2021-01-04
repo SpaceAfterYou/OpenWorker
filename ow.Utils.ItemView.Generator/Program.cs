@@ -15,8 +15,7 @@ namespace ow.Utils.ItemView.Generator
     {
         public static Task Main(string[] args)
         {
-            string gameDir = args.ElementAt(0);
-            string outDir = args.ElementAt(1);
+            string outDir = args.ElementAt(0);
 
             using BinTable table = new(GetConfiguration());
 
