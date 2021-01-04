@@ -23,7 +23,7 @@ namespace ow.Service.Gate.Network.Handlers
             if (_gate.Id != request.Gate)
                 NetworkUtils.DropSession();
 
-            if (_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
+            if (!_relayClient.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
                 NetworkUtils.DropSession();
 
             {

@@ -25,6 +25,8 @@ namespace ow.Service.Relay.Network.Relay.Handlers
             _rand.GetBytes(buffer, 0, sizeof(ulong));
 
             ulong key = BitConverter.ToUInt64(buffer);
+            _logger.LogDebug($"Create session key: {key}");
+
             return Task.FromResult(new RegisterReply
             {
                 Key = _sessions.TryAdd(key, request.Account) ? key : ulong.MinValue
