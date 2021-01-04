@@ -9,7 +9,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace ow.Utils.GenerateItemsForView
+namespace ow.Utils.ItemView.Generator
 {
     public static class Program
     {

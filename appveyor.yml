@@ -11,6 +11,6 @@ before_build:
 
   - mv ow.Service.Gate\config\appsettings.example.json ow.Service.Gate\config\appsettings.json
 
-  - mv ow.Utils.GenerateItemsForView\config\appsettings.example.json ow.Utils.GenerateItemsForView\config\appsettings.json
+  - mv ow.Utils.ItemView.Generator\config\appsettings.example.json ow.Utils.ItemView.Generator\config\appsettings.json
 
   - nuget restore
