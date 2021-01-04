@@ -1,11 +1,8 @@
-﻿using System;
-
-namespace ow.Framework.Game.Enums
+﻿namespace ow.Framework.Game.Enums
 {
-    [Flags]
-    public enum DistrictLogOutWay
+    public enum DistrictLogOutWay : byte
     {
-        GoToAuthService = 0,
-        GoToGateService = 1,
+        GoToAuthService,
+        GoToGateService,
     }
 }

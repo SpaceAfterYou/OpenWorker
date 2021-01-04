@@ -15,7 +15,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
 {
     public sealed class ServiceHandler
     {
-        [Handler(ServerOpcode.AuthEnter, HandlerPermission.UnAuthorized)]
+        [Handler(ServerOpcode.AuthEnter, HandlerPermission.Anonymous)]
         public void Enter(Session session, AuthEnterRequest request)
         {
             if (GetAccount(request.Nickname, request.Password) is AccountModel model)

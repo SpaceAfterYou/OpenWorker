@@ -1,8 +1,5 @@
-﻿using System;
-
-namespace ow.Framework.Game.Enums
+﻿namespace ow.Framework.Game.Enums
 {
-    [Flags]
     public enum ItemClassifyInventoryType : byte
     {
         Generic = 0,
