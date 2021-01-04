@@ -6,7 +6,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ow.Utils.FetchOnStoveClient
@@ -31,15 +30,15 @@ namespace ow.Utils.FetchOnStoveClient
 
         private static async Task Main(string[] args)
         {
-            string host = args.ElementAt(0);
-            ushort port = ushort.Parse(args.ElementAt(1));
+            string? host = args.ElementAtOrDefault(0);
+            ushort port = ushort.Parse(args.ElementAtOrDefault(1) ?? "0");
 
-            // ClientFilesResult? files2 = await OnStove.GetClientFiles(host, port);
+            ClientFilesResult? files = await OnStove.GetClientFiles(host, port);
             //return;
 
             //await using FileStream fileStream = File.OpenRead(@"C:\Users\sawic\source\repos\OpenWorker\11_238.json");
-            await using FileStream fileStream = File.OpenRead(@"C:\Users\sawic\Desktop\11_1.json");
-            ClientFilesResult? files = await JsonSerializer.DeserializeAsync<ClientFilesResult>(fileStream);
+            //await using FileStream fileStream = File.OpenRead(@"C:\Users\sawic\Desktop\11_1.json");
+            //ClientFilesResult? files = await JsonSerializer.DeserializeAsync<ClientFilesResult>(fileStream);
 
             string outputPath = Path.Join(args.ElementAt(2), files?.RootFolder);
             Directory.CreateDirectory(outputPath);
@@ -83,7 +82,7 @@ namespace ow.Utils.FetchOnStoveClient
                                 string url = $"v{splittedLine[(byte)LineToken.Version]}/{splittedLine[(byte)LineToken.WebPath]}.{splittedLine[(byte)LineToken.WebExtension]}";
                                 string path = Path.Join(outputPath, splittedLine[(byte)LineToken.FilePath]);
 
-                                // conenction may lost
+                                // connection may lost
                                 // need the ability to download in parts
                                 while (true)
                                 {
@@ -114,7 +113,7 @@ namespace ow.Utils.FetchOnStoveClient
 
             Console.WriteLine("Wait downloads...");
 
-            await Task.WhenAll(Downloads);
+            await Task.WhenAll(Downloads).ConfigureAwait(false);
 
             Console.WriteLine("Hello World!");
         }
