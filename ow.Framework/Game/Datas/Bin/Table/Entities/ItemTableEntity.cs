@@ -40,19 +40,19 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public byte MaxSlots { get; }
         public ushort Unknown9 { get; }
         public uint SellPrice { get; }
-        public uint Unknown11 { get; }
-        public uint Unknown12 { get; }
-        public uint Unknown13 { get; }
+        public uint BuyPrice { get; }
+        public uint RecycleSellPrice { get; }
+        public uint RecycleBuyPrice { get; }
         public ushort StackMax { get; }
-        public byte Unknown15 { get; }
+        public byte BindType { get; }
         public uint Unknown16 { get; }
         public uint Unknown17 { get; }
         public uint Info { get; }
         public ushort MinLevel { get; }
         public Hero Hero { get; }
-        public byte Unknown21 { get; }
-        public byte Unknown22 { get; }
-        public byte Unknown23 { get; }
+        public byte LimitSellType { get; }
+        public byte SubType { get; }
+        public byte CostumeSetType { get; }
         public uint CostumeSet { get; }
         public string SlotDisable { get; }
         public byte Endurance { get; }
@@ -63,26 +63,26 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public uint Unknown49 { get; }
         public uint Unknown50 { get; }
         public uint Unknown51 { get; }
-        public ushort Unknown52 { get; }
-        public uint Unknown53 { get; }
-        public uint Unknown54 { get; }
-        public uint Unknown55 { get; }
-        public ushort Unknown56 { get; }
-        public uint Unknown57 { get; }
-        public ushort Unknown58 { get; }
-        public uint Unknown59 { get; }
-        public byte Unknown60 { get; }
-        public ushort Unknown61 { get; }
-        public uint Unknown62 { get; }
+        public ushort ItemReinforce { get; }
+        public uint ReinforceOption { get; }
+        public uint Title { get; }
+        public uint Evolution { get; }
+        public ushort Disassemble { get; }
+        public uint Furniture { get; }
+        public ushort CooltimeGroup { get; }
+        public uint CooltimeValue { get; }
+        public byte CooltimeSave { get; }
+        public ushort EffectType { get; }
+        public uint Effect { get; }
         public ushort Unknown63 { get; }
-        public byte Unknown64 { get; }
-        public byte Unknown65 { get; }
-        public uint Unknown66 { get; }
+        public byte ItemCash { get; }
+        public byte UsePeriodType { get; }
+        public uint UsePeriodValue { get; }
         public byte Unknown67 { get; }
         public uint Unknown68 { get; }
-        public byte Unknown69 { get; }
-        public byte Unknown70 { get; }
-        public uint Unknown71 { get; }
+        public byte SealingCnt { get; }
+        public byte BreakCnt { get; }
+        public uint SimilarGroup { get; }
         public uint Package { get; }
 
         internal ItemTableEntity(BinaryReader br)
@@ -93,19 +93,19 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             MaxSlots = br.ReadByte();
             Unknown9 = br.ReadUInt16();
             SellPrice = br.ReadUInt32();
-            Unknown11 = br.ReadUInt32();
-            Unknown12 = br.ReadUInt32();
-            Unknown13 = br.ReadUInt32();
+            BuyPrice = br.ReadUInt32();
+            RecycleSellPrice = br.ReadUInt32();
+            RecycleBuyPrice = br.ReadUInt32();
             StackMax = br.ReadUInt16();
-            Unknown15 = br.ReadByte();
+            BindType = br.ReadByte();
             Unknown16 = br.ReadUInt32();
             Unknown17 = br.ReadUInt32();
             Info = br.ReadUInt32();
             MinLevel = br.ReadUInt16();
             Hero = br.ReadHero();
-            Unknown21 = br.ReadByte();
-            Unknown22 = br.ReadByte();
-            Unknown23 = br.ReadByte();
+            LimitSellType = br.ReadByte();
+            SubType = br.ReadByte();
+            CostumeSetType = br.ReadByte();
             CostumeSet = br.ReadUInt32();
             SlotDisable = br.ReadByteLengthUnicodeString();
             Endurance = br.ReadByte();
@@ -116,26 +116,26 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown49 = br.ReadUInt32();
             Unknown50 = br.ReadUInt32();
             Unknown51 = br.ReadUInt32();
-            Unknown52 = br.ReadUInt16();
-            Unknown53 = br.ReadUInt32();
-            Unknown54 = br.ReadUInt32();
-            Unknown55 = br.ReadUInt32();
-            Unknown56 = br.ReadUInt16();
-            Unknown57 = br.ReadUInt32();
-            Unknown58 = br.ReadUInt16();
-            Unknown59 = br.ReadUInt32();
-            Unknown60 = br.ReadByte();
-            Unknown61 = br.ReadUInt16();
-            Unknown62 = br.ReadUInt32();
+            ItemReinforce = br.ReadUInt16();
+            ReinforceOption = br.ReadUInt32();
+            Title = br.ReadUInt32();
+            Evolution = br.ReadUInt32();
+            Disassemble = br.ReadUInt16();
+            Furniture = br.ReadUInt32();
+            CooltimeGroup = br.ReadUInt16();
+            CooltimeValue = br.ReadUInt32();
+            CooltimeSave = br.ReadByte();
+            EffectType = br.ReadUInt16();
+            Effect = br.ReadUInt32();
             Unknown63 = br.ReadUInt16();
-            Unknown64 = br.ReadByte();
-            Unknown65 = br.ReadByte();
-            Unknown66 = br.ReadUInt32();
+            ItemCash = br.ReadByte();
+            UsePeriodType = br.ReadByte();
+            UsePeriodValue = br.ReadUInt32();
             Unknown67 = br.ReadByte();
             Unknown68 = br.ReadUInt32();
-            Unknown69 = br.ReadByte();
-            Unknown70 = br.ReadByte();
-            Unknown71 = br.ReadUInt32();
+            SealingCnt = br.ReadByte();
+            BreakCnt = br.ReadByte();
+            SimilarGroup = br.ReadUInt32();
             Package = br.ReadUInt32();
         }
 

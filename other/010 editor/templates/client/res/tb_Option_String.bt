@@ -1,0 +1,11 @@
+struct tb_Option_String {
+    uint16 id;
+    byte u1;    
+    uint16 u2;
+    uint16 u3;
+    byte u4;    
+    byte u5;    
+};
+
+uint count;
+tb_Option_String data[count];

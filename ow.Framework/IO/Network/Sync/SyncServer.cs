@@ -18,7 +18,7 @@ namespace ow.Framework.IO.Network.Sync
 
         public override bool Start()
         {
-            _logger.LogDebug($"Listen {Endpoint}");
+            _logger.LogDebug($"Listen: {Endpoint}");
 
             return base.Start();
         }

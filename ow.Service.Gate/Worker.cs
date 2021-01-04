@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network.CS;
+using ow.Framework.Utils;
 using ow.Service.Gate.Network;
 using System;
 using System.Threading;
@@ -18,6 +19,8 @@ namespace ow.Service.Gate
         {
             _logger = logger;
             _server = server;
+
+            CommonUtils.PrintEnvironment(_logger);
 
             /// Activate LanContext
             service.GetRequiredService<CSClient>();
