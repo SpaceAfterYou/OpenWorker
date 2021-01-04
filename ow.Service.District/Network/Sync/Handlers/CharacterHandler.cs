@@ -44,7 +44,12 @@ namespace ow.Service.District.Network.Sync.Handlers
             {
                 Values = session.Gestures
             })
-            ;
+            .SendAsync(new CharacterProfileResponse()
+            {
+                About = session.Profile.About,
+                Note = session.Profile.Note,
+                Status = session.Profile.Status,
+            });
 
         //.SendCharacterStatsUpdate()
         //.SendCharacterProfileInfo()
