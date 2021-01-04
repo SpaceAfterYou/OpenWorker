@@ -1,5 +1,4 @@
-﻿using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Sync.Attributes;
+﻿using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
@@ -40,7 +39,12 @@ namespace ow.Service.District.Network.Sync.Handlers
             {
                 Character = ResponseHelper.GetCharacter(session),
                 Place = ResponseHelper.GetPlace(session, _instance),
-            });
+            })
+            .SendAsync(new GestureLoadResponse()
+            {
+                Values = session.Gestures
+            })
+            ;
 
         //.SendCharacterStatsUpdate()
         //.SendCharacterProfileInfo()

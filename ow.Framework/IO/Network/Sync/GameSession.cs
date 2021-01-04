@@ -64,6 +64,13 @@ namespace ow.Framework.IO.Network.Sync
                 }
             });
 
+        public SyncSession SendAsync(CharacterGestureLoad value) =>
+            SendAsync(ClientOpcode.GestureLoad, (PacketWriter writer) =>
+            {
+                foreach (uint gesture in value.Values)
+                    writer.Write(gesture);
+            });
+
         public SyncSession SendAsync(CharacterInfoResponse value) =>
             SendAsync(ClientOpcode.CharacterInfo, (PacketWriter writer) =>
             {
