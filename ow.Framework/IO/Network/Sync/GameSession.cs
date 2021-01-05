@@ -272,7 +272,7 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write((byte)1);
                 writer.Write(value.InitializeTime);
                 writer.Write(uint.MinValue);
-                writer.Write((ulong)1262271600); // dec/31/2009
+                writer.Write((ulong)1262271600); // dec/31/2009 | DOS DATE | IDK what a date
                 writer.Write((byte)17);
                 writer.Write(byte.MinValue);
                 writer.Write(byte.MinValue);

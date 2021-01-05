@@ -181,12 +181,17 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
 
                 while (ms.Position != ms.Length)
                 {
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine($"Process Deferred: [{ipDst}] - [{ipSrc}] : {i++}");
+                    // Console.ForegroundColor = ConsoleColor.Cyan;
+                    // Console.WriteLine($"Process Deferred: [{ipDst}] - [{ipSrc}] : {i++}");
 
                     // packet may stick to another
                     if (br.ReadByte() != 0x02 || br.ReadByte() != 0x00)
-                        throw new DecoderException();
+                        continue;
+
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine($"Process Deferred: [{ipDst}] - [{ipSrc}] : {i++}");
+
+                    //throw new DecoderException();
 
                     ushort size = br.ReadUInt16();
                     byte unknown = br.ReadByte();

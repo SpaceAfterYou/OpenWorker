@@ -1,0 +1,98 @@
+struct s_hair {
+    ushort style;
+    ushort color;
+};
+
+struct s_appearance {
+    ushort u1;
+    ushort u2;
+    s_hair hair;
+    ushort eye_color;
+    ushort skin_color;
+    s_hair equipped_hair;
+    ushort equipped_eye_color;
+    ushort equipped_skin_color;
+};
+
+struct s_weapon {
+    byte upgrade_level;
+    int prototype_id;
+    byte u1;
+    int u2;
+};
+
+struct s_fashion {
+    int u1;
+    int u2;
+    int prototype_id;
+    uint color;
+
+    int u3;
+    int u4;
+    int u5;
+    uint u6;
+};
+
+struct s_character {
+    uint id;
+    ushort name_length;
+    wchar_t name[name_length / 2];
+    ubyte hero;
+    ubyte advancement;
+    uint photo;
+    s_appearance appearance;
+    ubyte level;
+    byte unknown[10];
+    s_weapon weapon;
+    s_fashion fashions[14];
+
+    uint u1;
+    uint title_primary;
+    uint title_secondary;
+    uint guild_id;
+    ushort guild_name_length;
+    wchar_t guild_name[guild_name_length / 2];
+    uint u2;
+    uint stats_current_hp;
+    uint stats_max_hp;
+    uint stats_current_sg;
+    uint stats_max_sg;
+    uint u3;
+    uint u4;
+    uint u5;
+    uint stats_max_stamina;
+    uint u6;
+    uint u7;
+    float stats_max_move_speed;
+    float stats_max_attack_speed;
+    ushort u8_1;
+    ubyte u8_2;
+    ushort primary_energy;
+    ushort extra_energy;
+    ubyte u8_3;
+    byte u9;
+    byte u10;
+    uint u11;
+    ushort u12;
+    uint u13;
+    uint u14;
+    ubyte slot;
+    uint u15;
+    byte u16;
+    uint u17;
+};
+
+struct s_place {
+    ushort location;
+    uint64 u1;
+    float x;
+    float y;
+    float z;
+    float r;
+    float u2;
+    float u3;
+};
+
+ushort opcode;
+byte count;
+s_character characters[count];
