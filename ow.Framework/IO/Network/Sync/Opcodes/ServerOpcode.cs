@@ -59,6 +59,7 @@
         PostRecvDelete = 0x2007,
         PostSendDelete = 0x2006,
         PostSendBack = 0x2008,
+        PostInfo = 0x2010,
         PostSave = 0x2012,
         PostSaveList = 0x2013,
         PostAccountList = 0x2014,
