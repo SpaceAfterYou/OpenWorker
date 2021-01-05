@@ -20,6 +20,34 @@ namespace ow.Framework.IO.Network.Sync
 {
     public abstract partial class SyncSession : TcpSession
     {
+        #region Send Channel
+
+        public SyncSession SendAsync(ChannelInfoResponse value) =>
+            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
+            {
+                writer.Write(value.Location);
+
+                writer.Write((byte)value.Values.Count());
+                foreach (ChannelInfoResponse.Entity channel in value.Values)
+                {
+                    writer.Write(channel.Id);
+                    writer.WriteChannelLoadStatus(channel.Status);
+                }
+            });
+
+        #endregion Send Channel
+
+        #region Send Post
+
+        public SyncSession SendAsync(PostInfoResponse value) =>
+            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
+            {
+                writer.Write(ushort.MinValue);
+                writer.Write(value.Count);
+            });
+
+        #endregion Send Post
+
         #region Send Characters
 
         public SyncSession SendAsync(PartyDeleteResponse value) =>

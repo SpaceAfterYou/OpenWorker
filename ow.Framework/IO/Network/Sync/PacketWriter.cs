@@ -22,6 +22,8 @@ namespace ow.Framework.IO.Network.Sync
 
         public void WriteCharacterAdvancement(CharacterAdvancement value) => Write((byte)value);
 
+        public void WriteChannelLoadStatus(ChannelLoadStatus value) => Write((byte)value);
+
         public void WriteCharacterStat(CharacterStat value) => Write((ushort)value);
 
         public void WriteDistrictLogOutStatus(DistrictLogOutStatus value) => Write((byte)value);
