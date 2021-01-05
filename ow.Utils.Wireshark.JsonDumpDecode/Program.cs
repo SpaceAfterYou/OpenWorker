@@ -205,12 +205,12 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
 
                 if (clientIp == packet.Receiver)
                 {
-                    outputFile.Write(Encoding.ASCII.GetBytes($" [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] {packet.Time}: "));
+                    outputFile.Write(Encoding.ASCII.GetBytes($"{packet.Frame,4}   | [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] {packet.Time}: "));
                     outputFile.Write(Encoding.ASCII.GetBytes($"[{packet.Sender}] ---> [{packet.Receiver}]\n"));
                 }
                 else
                 {
-                    outputFile.Write(Encoding.ASCII.GetBytes($" [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] {packet.Time}: "));
+                    outputFile.Write(Encoding.ASCII.GetBytes($"{packet.Frame,4}   | [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] {packet.Time}: "));
                     outputFile.Write(Encoding.ASCII.GetBytes($"[{packet.Receiver}] <--- [ {packet.Sender}]\n"));
                 }
 

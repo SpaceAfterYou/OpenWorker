@@ -261,7 +261,7 @@ namespace ow.Framework.IO.Network.Sync
             });
 
         public SyncSession SendAsync(GateCharacterListResponse value) =>
-            SendAsync(ClientOpcode.CharactersList, (PacketWriter writer) =>
+            SendAsync(ClientOpcode.CharacterList, (PacketWriter writer) =>
             {
                 writer.Write((byte)value.Characters.Count);
                 foreach (CharacterShared character in value.Characters)
