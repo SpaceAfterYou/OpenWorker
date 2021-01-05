@@ -1,9 +1,11 @@
 struct tb_UI_String {
     uint id;
-    byte u1;    
-    ushort strLen;
-    wchar_t str[strLen];
+    ubyte u1;    
+    ushort len1;
+    wchar_t str1[len1];
 };
 
 uint count;
-tb_UI_String data[count];
+tb_UI_String data[count]<optimize=false>;
+ushort crc_len;
+char crc[crc_len];
