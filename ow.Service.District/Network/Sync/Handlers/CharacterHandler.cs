@@ -54,12 +54,12 @@ namespace ow.Service.District.Network.Sync.Handlers
             .SendAsync(new CharacterPostInfoResponse()
             {
                 Values = Array.Empty<object>()
+            })
+            .SendAsync(new CharacterStatsUpdateResponse()
+            {
+                Character = session.Character.Id,
+                Values = session.Stats.Select(s => new CharacterStatsUpdateResponse.Entity() { Id = s.Id, Value = s.Value })
             });
-
-        //.SendCharacterStatsUpdate()
-        //.SendCharacterProfileInfo()
-        //.SendCharacterGestureLoad()
-        //.SendCharacterPostInfo();
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
         public static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session

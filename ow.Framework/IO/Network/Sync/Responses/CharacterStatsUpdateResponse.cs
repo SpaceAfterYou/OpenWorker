@@ -12,6 +12,6 @@ namespace ow.Framework.IO.Network.Sync.Responses
         }
 
         public int Character { get; init; }
-        public IReadOnlyCollection<Entity> Values { get; init; } = default!;
+        public IEnumerable<Entity> Values { get; init; } = default!;
     }
 }

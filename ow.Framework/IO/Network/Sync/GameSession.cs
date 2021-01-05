@@ -108,7 +108,7 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write((byte)0);
 
                 writer.Write(value.Character);
-                writer.Write((byte)value.Values.Count);
+                writer.Write((byte)value.Values.Count());
 
                 foreach (CharacterStatsUpdateResponse.Entity stat in value.Values)
                 {
