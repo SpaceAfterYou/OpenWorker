@@ -100,6 +100,10 @@ namespace ow.Framework.IO.Network.Sync
 
                 writer.Write(byte.MinValue);
                 writer.WriteCharacterInfoResult(value.Result);
+
+                var q = ((MemoryStream)writer.BaseStream).ToArray();
+
+                System.IO.File.WriteAllBytes(@"Y:\soulworker-dev\swSniffer\wireshark\1\test.bin", q);
             });
 
         public SyncSession SendAsync(CharacterStatsUpdateResponse value) =>
@@ -350,6 +354,7 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(value.SessionKey);
 
                 writer.Write(byte.MinValue);
+                writer.Write(uint.MinValue);
                 writer.Write(uint.MinValue);
                 writer.Write(byte.MinValue);
             });
