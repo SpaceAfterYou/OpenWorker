@@ -17,7 +17,7 @@
 
         CharacterDelete = 0x0302,
         CharacterMarkAsFavorite = 0x030F,
-        CharactersList = 0x0312,
+        CharacterList = 0x0312,
         CharacterSelect = 0x0314,
         WorldEnter = 0x0322,
         CharacterTitleLoad = 0x0323,

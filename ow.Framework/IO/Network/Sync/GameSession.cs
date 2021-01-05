@@ -64,6 +64,13 @@ namespace ow.Framework.IO.Network.Sync
                 }
             });
 
+        public SyncSession SendAsync(CharacterGestureLoad value) =>
+            SendAsync(ClientOpcode.GestureLoad, (PacketWriter writer) =>
+            {
+                foreach (uint gesture in value.Values)
+                    writer.Write(gesture);
+            });
+
         public SyncSession SendAsync(CharacterInfoResponse value) =>
             SendAsync(ClientOpcode.CharacterInfo, (PacketWriter writer) =>
             {
@@ -73,14 +80,10 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(ulong.MinValue); // Exp
                 writer.Write(ulong.MinValue); // Zenny
 
-                //writer.Write(uint.MinValue); // 1
-                //writer.Write(uint.MinValue); // 2
-                //writer.Write(uint.MinValue); // 3
-                //writer.Write(uint.MinValue); // 4
                 writer.Write(uint.MinValue); // 1
-                writer.Write(3758046911); // 2
-                writer.Write(473918745); // 3
-                writer.Write(75719); // 4
+                writer.Write(uint.MinValue); // 2
+                writer.Write(uint.MinValue); // 3
+                writer.Write(uint.MinValue); // 4
                 writer.Write(uint.MinValue); // 5
 
                 writer.Write(ulong.MinValue); // Aether
@@ -98,8 +101,9 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(byte.MinValue);
                 writer.WriteCharacterInfoResult(value.Result);
 
-                var w = ((MemoryStream)writer.BaseStream).ToArray();
-                // var q = ((MemoryStream)writer.BaseStream).GetBuffer();
+                var q = ((MemoryStream)writer.BaseStream).ToArray();
+
+                System.IO.File.WriteAllBytes(@"Y:\soulworker-dev\swSniffer\wireshark\1\test.bin", q);
             });
 
         public SyncSession SendAsync(CharacterStatsUpdateResponse value) =>
@@ -108,7 +112,7 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write((byte)0);
 
                 writer.Write(value.Character);
-                writer.Write((byte)value.Values.Count);
+                writer.Write((byte)value.Values.Count());
 
                 foreach (CharacterStatsUpdateResponse.Entity stat in value.Values)
                 {
@@ -125,16 +129,18 @@ namespace ow.Framework.IO.Network.Sync
                 writer.WriteByteLengthUnicodeString(value.Note);
             });
 
+        public SyncSession SendAsync(CharacterPostInfoResponse value) =>
+            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
+            {
+                writer.Write(ushort.MinValue);
+                writer.Write((ushort)value.Values.Count());
+            });
+
         public SyncSession SendAsync(GestureLoadResponse value) =>
             SendAsync(ClientOpcode.GestureLoad, (PacketWriter writer) =>
             {
                 foreach (uint gesture in value.Values)
                     writer.Write(gesture);
-            });
-
-        public SyncSession SendCharacterPostInfo() =>
-            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
-            {
             });
 
         #endregion Send Characters
@@ -255,7 +261,7 @@ namespace ow.Framework.IO.Network.Sync
             });
 
         public SyncSession SendAsync(GateCharacterListResponse value) =>
-            SendAsync(ClientOpcode.CharactersList, (PacketWriter writer) =>
+            SendAsync(ClientOpcode.CharacterList, (PacketWriter writer) =>
             {
                 writer.Write((byte)value.Characters.Count);
                 foreach (CharacterShared character in value.Characters)
@@ -266,7 +272,7 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write((byte)1);
                 writer.Write(value.InitializeTime);
                 writer.Write(uint.MinValue);
-                writer.Write((ulong)1262271600); // dec/31/2009
+                writer.Write((ulong)1262271600); // dec/31/2009 | DOS DATE | IDK what a date
                 writer.Write((byte)17);
                 writer.Write(byte.MinValue);
                 writer.Write(byte.MinValue);
@@ -349,6 +355,7 @@ namespace ow.Framework.IO.Network.Sync
 
                 writer.Write(byte.MinValue);
                 writer.Write(uint.MinValue);
+                writer.Write(uint.MinValue);
                 writer.Write(byte.MinValue);
             });
 
@@ -373,7 +380,8 @@ namespace ow.Framework.IO.Network.Sync
 
         public SyncSession SendAsync(ClientOpcode opcode, Action<PacketWriter> func)
         {
-            using PacketWriter writer = new(opcode);
+            using PacketWriter writer = new(opcode, _logger);
+
             func(writer);
 
             if (!SendAsync(PacketUtils.Pack(writer), 0, writer.BaseStream.Length))

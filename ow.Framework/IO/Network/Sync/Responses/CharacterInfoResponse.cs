@@ -1,7 +1,6 @@
-﻿using ow.Framework.IO.Network.Sync.Responses;
-using ow.Framework.IO.Network.Sync.Responses.Shared;
+﻿using ow.Framework.IO.Network.Sync.Responses.Shared;
 
-namespace ow.Framework.Game.Enums
+namespace ow.Framework.IO.Network.Sync.Responses
 {
     public record CharacterInfoResponse
     {

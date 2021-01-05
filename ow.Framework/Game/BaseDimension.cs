@@ -1,4 +1,5 @@
-﻿using ow.Framework.Game.Enums;
+﻿using Microsoft.Extensions.Logging;
+using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Sync;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -16,6 +17,7 @@ namespace ow.Framework.Game
         public ushort Id { get; }
         public IReadOnlyDictionary<Guid, TSession> Sessions => _internalSessions;
 
+        private readonly ILogger _logger;
         private readonly ConcurrentDictionary<Guid, TSession> _internalSessions = new();
 
         public ChannelLoadStatus Status => _internalSessions.Count switch
@@ -26,7 +28,7 @@ namespace ow.Framework.Game
             _ => ChannelLoadStatus.Low
         };
 
-        protected BaseDimension(ushort id) => Id = id;
+        protected BaseDimension(ushort id, ILogger logger) => (Id, _logger) = (id, logger);
 
         protected bool Join(TSession session) => _internalSessions.TryAdd(session.Id, session);
 
@@ -44,7 +46,7 @@ namespace ow.Framework.Game
         protected void BroadcastAsync(TSession session, DimensionBrodcastCharacterOutResponse value) =>
             BroadcastExceptAsync(ClientOpcode.CharacterOutInfo, session, (PacketWriter writer) =>
             {
-                writer.Write((byte)1); // length
+                writer.Write((byte)1); // count
                 writer.Write(value.Id);
             });
 
@@ -52,7 +54,7 @@ namespace ow.Framework.Game
 
         public void BroadcastAsync(ClientOpcode opcode, Action<PacketWriter> func)
         {
-            using PacketWriter writer = new(opcode);
+            using PacketWriter writer = new(opcode, _logger);
             func(writer);
 
             BroadcastAsync(_internalSessions, writer);
@@ -60,7 +62,7 @@ namespace ow.Framework.Game
 
         public void BroadcastExceptAsync(ClientOpcode opcode, TSession except, Action<PacketWriter> func)
         {
-            using PacketWriter writer = new(opcode);
+            using PacketWriter writer = new(opcode, _logger);
             func(writer);
 
             BroadcastAsync(_internalSessions.Where(pair => except.Id != pair.Key), writer);

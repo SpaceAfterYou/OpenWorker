@@ -1,0 +1,16 @@
+ushort opcode;
+int account;
+byte u1;
+char mac[17];
+ushort len1;
+wchar_t str1[len1];
+uint error_code;
+byte u2;
+byte u3;
+ushort len2;
+wchar_t str2[len2 / 2];
+ulong session_key;
+byte u4;
+uint u5;
+uint u6;
+byte u7;

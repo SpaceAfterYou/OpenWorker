@@ -1,11 +1,11 @@
-﻿using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Sync.Attributes;
+﻿using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Helpers;
+using System;
 using System.Linq;
 
 namespace ow.Service.District.Network.Sync.Handlers
@@ -40,12 +40,26 @@ namespace ow.Service.District.Network.Sync.Handlers
             {
                 Character = ResponseHelper.GetCharacter(session),
                 Place = ResponseHelper.GetPlace(session, _instance),
+            })
+            .SendAsync(new GestureLoadResponse()
+            {
+                Values = session.Gestures
+            })
+            .SendAsync(new CharacterProfileResponse()
+            {
+                About = session.Profile.About,
+                Note = session.Profile.Note,
+                Status = session.Profile.Status,
+            })
+            .SendAsync(new CharacterPostInfoResponse()
+            {
+                Values = Array.Empty<object>()
+            })
+            .SendAsync(new CharacterStatsUpdateResponse()
+            {
+                Character = session.Character.Id,
+                Values = session.Stats.Select(s => new CharacterStatsUpdateResponse.Entity() { Id = s.Id, Value = s.Value })
             });
-
-        //.SendCharacterStatsUpdate()
-        //.SendCharacterProfileInfo()
-        //.SendCharacterGestureLoad()
-        //.SendCharacterPostInfo();
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
         public static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session

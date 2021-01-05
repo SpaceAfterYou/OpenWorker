@@ -1,0 +1,24 @@
+struct gate {
+    ushort id;
+    ushort port;
+    
+    ushort len_name;
+    char name[len_name];
+    
+    ushort len_ip;
+    char ip[len_ip];
+    
+    byte status;
+    byte u2;
+    byte u3;
+    byte u4;
+    ushort players_count;
+    ushort u5;
+    byte characters_count;
+};
+
+ushort opcode;
+byte u1;
+byte count;
+gate gates[count]<optimize=true>;
+

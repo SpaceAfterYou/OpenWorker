@@ -50,6 +50,9 @@ namespace ow.Framework.Utils
                 encryptedBuffer[offset + i] ^= KeyTable[key];
             }
         }
+
+        public static void Exchange(byte[] encryptedBuffer, int offset, int size) =>
+            Exchange(ref encryptedBuffer, offset, size);
     }
 
     #endregion Encypt/Decrypt

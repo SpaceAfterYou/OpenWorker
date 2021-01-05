@@ -9,14 +9,13 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace ow.Utils.GenerateItemsForView
+namespace ow.Utils.ItemView.Generator
 {
     public static class Program
     {
         public static Task Main(string[] args)
         {
-            string gameDir = args.ElementAt(0);
-            string outDir = args.ElementAt(1);
+            string outDir = args.ElementAt(0);
 
             using BinTable table = new(GetConfiguration());
 
