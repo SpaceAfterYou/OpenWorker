@@ -95,4 +95,11 @@ struct s_place {
 
 ushort opcode;
 byte count;
-s_character characters[count];
+s_character characters[count]<optimize=false>;
+int lastSelected;
+byte u1;
+byte u2;
+uint64 initTime;
+uint u3;
+uint64 u4;
+uint u5;
