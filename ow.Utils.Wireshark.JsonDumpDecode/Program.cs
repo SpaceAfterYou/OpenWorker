@@ -36,12 +36,42 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
         public static void ExtracteOpcode(ushort opcode)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"Extracted opcode: 0x{opcode:X4}\n");
+            Console.WriteLine($"Extracted Opcode: 0x{opcode:X4}");
+        }
+
+        public static void ProcessFrame(string id)
+        {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine($"Process Frame: {id}");
+        }
+
+        public static void Error(string text)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(text);
         }
     }
 
     public sealed class PacketDecoder
     {
+        public sealed record Packet
+        {
+            public long Frame { get; init; }
+            public string Time { get; init; }
+            public string Sender { get; init; }
+            public string Receiver { get; init; }
+            public byte[] Body { get; init; }
+        }
+
+        public sealed record RawPacket
+        {
+            public string Frame { get; init; }
+            public string RelativeTime { get; init; }
+            public string SrcIp { get; init; }
+            public string DstIp { get; init; }
+            public string Payload { get; init; }
+        }
+
         public void DoIt(string[] args)
         {
             string inputFilePath = args.ElementAt(0);
@@ -54,193 +84,139 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
             using JsonDocument json = JsonDocument.Parse(inputFile);
             using JsonElement.ArrayEnumerator enumerator = json.RootElement.EnumerateArray();
 
-            Dictionary<string, MemoryStream> deferred = new();
-
-            foreach (JsonElement element in enumerator)
-            {
-                if (!element.TryGetProperty("_source", out JsonElement source))
-                    throw new DecoderException();
-
-                if (!source.TryGetProperty("layers", out JsonElement layers))
-                    throw new DecoderException();
-
-                if (!layers.TryGetProperty("tcp", out JsonElement tcp))
-                    throw new DecoderException();
-
-                if (!layers.TryGetProperty("frame", out JsonElement frame))
-                    throw new DecoderException();
-
-                if (!frame.TryGetProperty("frame.number", out JsonElement frameNumber))
-                    throw new DecoderException();
-
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.Write($"Process frame {frameNumber.GetString()}\n");
-
-                // part of packet
-                if (tcp.TryGetProperty("tcp.reassembled_in", out JsonElement tcpReassembledIn))
+            IEnumerable<RawPacket> rawPackets = enumerator
+                .Select(element =>
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.Write($"skipped (reassembled in {tcpReassembledIn.GetString()})\n");
-                    continue;
-                }
-
-                if (layers.TryGetProperty("tcp.segments", out JsonElement tcpSegments) && tcpSegments.TryGetProperty("tcp.reassembled.data", out JsonElement payload))
-                { }
-                else if (!tcp.TryGetProperty("tcp.payload", out payload))
-                    continue;
-
-                if (!layers.TryGetProperty("ip", out JsonElement ip))
-                    throw new DecoderException();
-
-                if (!ip.TryGetProperty("ip.dst_host", out JsonElement dstHost))
-                    throw new DecoderException();
-
-                if (!ip.TryGetProperty("ip.src_host", out JsonElement srcHost))
-                    throw new DecoderException();
-
-                if (!frame.TryGetProperty("frame.time_relative", out JsonElement timeRelativeElement))
-                    throw new DecoderException();
-
-                string ipDst = dstHost.GetString();
-                string ipSrc = srcHost.GetString();
-                string timeRelative = timeRelativeElement.GetString();
-
-                using MemoryStream ms = new(Convert.FromHexString(payload.GetString().Where(s => s != ':').ToArray()));
-                using BinaryReader br = new(ms);
-
-                while (ms.Position != ms.Length)
-                {
-                    // packet may stick to another
-                    if (br.ReadByte() != 0x02 || br.ReadByte() != 0x00)
-                    {
-                        PushDeferred(frameNumber.GetString(), ipDst, ipSrc, ms, (int)(ms.Position - 2), (int)(ms.Length - ms.Position + 2));
-                        break;
-                    }
-
-                    ushort size = br.ReadUInt16();
-                    byte unknown = br.ReadByte();
-
-                    long l1 = (ms.Length - ms.Position);
-                    long l2 = (size - Defines.PacketUnEncryptedHeaderSize);
-                    if (l1 < l2)
-                    {
-                        PushDeferred(frameNumber.GetString(), ipDst, ipSrc, ms, (int)(ms.Position - Defines.PacketUnEncryptedHeaderSize), (int)(ms.Length - ms.Position + Defines.PacketUnEncryptedHeaderSize));
-                        break;
-                    }
-
-                    byte[] packet = br.ReadBytes(size - Defines.PacketUnEncryptedHeaderSize);
-                    if (packet.Length != (size - Defines.PacketUnEncryptedHeaderSize))
+                    if (!element.TryGetProperty("_source", out JsonElement source))
                         throw new DecoderException();
 
-                    PacketUtils.Exchange(ref packet);
-
-                    using MemoryStream packetMs = new(packet);
-                    using BinaryReader packetBr = new(packetMs);
-
-                    ushort rawOpcode = ConvertUtils.LeToBeUInt16(packetBr.ReadUInt16());
-
-                    Messages.ExtracteOpcode(rawOpcode);
-
-                    if (clientIp == ipDst)
-                    {
-                        outputFile.Write(Encoding.ASCII.GetBytes($" [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] {timeRelative}: "));
-                        outputFile.Write(Encoding.ASCII.GetBytes($"[{ipSrc}] ---> [{ipDst}]\n"));
-                    }
-                    else
-                    {
-                        outputFile.Write(Encoding.ASCII.GetBytes($" [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] {timeRelative}: "));
-                        outputFile.Write(Encoding.ASCII.GetBytes($"[{ipDst}] <--- [ {ipSrc}]\n"));
-                    }
-
-                    outputFile.Write(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));
-                }
-            }
-
-            ProcessDeferreds(clientIp, outputFile);
-        }
-
-        private void ProcessDeferreds(string clientIp, FileStream outputFile)
-        {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Process deferred");
-
-            foreach (var item in deferred)
-            {
-                string[] ips = item.Key.Split('-');
-                string ipDst = ips[0];
-                string ipSrc = ips[1];
-
-                using MemoryStream ms = item.Value;
-                using BinaryReader br = new(ms);
-
-                File.WriteAllBytes($@"Y:\soulworker-dev\swSniffer\wireshark\1\deferred\{item.Key}.bin", item.Value.ToArray());
-
-                ms.Position = 0;
-
-                int i = 0;
-
-                while (ms.Position != ms.Length)
-                {
-                    // Console.ForegroundColor = ConsoleColor.Cyan;
-                    // Console.WriteLine($"Process Deferred: [{ipDst}] - [{ipSrc}] : {i++}");
-
-                    // packet may stick to another
-                    if (br.ReadByte() != 0x02 || br.ReadByte() != 0x00)
-                        continue;
-
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine($"Process Deferred: [{ipDst}] - [{ipSrc}] : {i++}");
-
-                    //throw new DecoderException();
-
-                    ushort size = br.ReadUInt16();
-                    byte unknown = br.ReadByte();
-
-                    byte[] packet = br.ReadBytes(size - Defines.PacketUnEncryptedHeaderSize);
-                    if (packet.Length != (size - Defines.PacketUnEncryptedHeaderSize))
+                    if (!source.TryGetProperty("layers", out JsonElement layers))
                         throw new DecoderException();
 
-                    PacketUtils.Exchange(ref packet);
+                    if (!layers.TryGetProperty("tcp", out JsonElement tcp))
+                        throw new DecoderException();
 
-                    using MemoryStream packetMs = new(packet);
-                    using BinaryReader packetBr = new(packetMs);
+                    if (!layers.TryGetProperty("frame", out JsonElement frame))
+                        throw new DecoderException();
 
-                    ushort rawOpcode = ConvertUtils.LeToBeUInt16(packetBr.ReadUInt16());
-                    Messages.ExtracteOpcode(rawOpcode);
+                    if (!frame.TryGetProperty("frame.number", out JsonElement frameNumber))
+                        throw new DecoderException();
 
-                    if (clientIp == ipDst)
+                    string id = frameNumber.GetString();
+                    Messages.ProcessFrame(id);
+
+                    if (!layers.TryGetProperty("ip", out JsonElement ip))
+                        throw new DecoderException();
+
+                    if (!ip.TryGetProperty("ip.dst_host", out JsonElement dstHost))
+                        throw new DecoderException();
+
+                    if (!ip.TryGetProperty("ip.src_host", out JsonElement srcHost))
+                        throw new DecoderException();
+
+                    if (!frame.TryGetProperty("frame.time_relative", out JsonElement timeRelativeElement))
+                        throw new DecoderException();
+
+                    if (!tcp.TryGetProperty("tcp.payload", out JsonElement payload))
+                        return null;
+
+                    return new RawPacket()
                     {
-                        outputFile.Write(Encoding.ASCII.GetBytes($" [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] {0}: "));
-                        outputFile.Write(Encoding.ASCII.GetBytes($"[{ipSrc}] ---> [{ipDst}]\n"));
-                    }
-                    else
-                    {
-                        outputFile.Write(Encoding.ASCII.GetBytes($" [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] {0}: "));
-                        outputFile.Write(Encoding.ASCII.GetBytes($"[{ipDst}] <--- [ {ipSrc}]\n"));
-                    }
+                        Frame = id,
+                        DstIp = dstHost.GetString(),
+                        SrcIp = srcHost.GetString(),
+                        RelativeTime = timeRelativeElement.GetString(),
+                        Payload = payload.GetString()
+                    };
+                })
+                .Where(s => s is not null);
 
-                    outputFile.Write(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet).Replace('-', ' ')}\n\n"));
+            IEnumerable<string> keys = rawPackets.Select(s => $"{s.DstIp}-{s.SrcIp}").Distinct();
+
+            IEnumerable<IEnumerable<RawPacket>> splittedPackets = keys.Select(k =>
+            {
+                string[] ips = k.Split('-');
+                return rawPackets.Where(s => s.DstIp == ips[0] && s.SrcIp == ips[1]);
+            });
+
+            List<Packet> justPackets = new(rawPackets.Count());
+
+            foreach (var packets in splittedPackets)
+            {
+                using MemoryStream ms = new(ushort.MaxValue);
+                using BinaryReader br = new(ms);
+
+                foreach (var packet in packets)
+                {
+                    long currentPos = ms.Position;
+                    ms.Position = ms.Length;
+
+                    ms.Write(Convert.FromHexString(packet.Payload.Where(s => s != ':').ToArray()));
+                    ms.Position = currentPos;
+
+                    bool nf = false;
+                    while (ms.Position != ms.Length)
+                    {
+                        if (br.ReadByte() != 0x02 || br.ReadByte() != 0x00)
+                        {
+                            if (!nf)
+                            {
+                                nf = true;
+                                Messages.Error($"Magic not found [Frame: {packet.Frame}]");
+                            }
+                            continue;
+                        }
+
+                        nf = false;
+
+                        ushort size = br.ReadUInt16();
+                        byte unknown = br.ReadByte();
+
+                        if (size - Defines.PacketUnEncryptedHeaderSize > ms.Length - ms.Position)
+                        {
+                            ms.Position -= 5;
+                            break;
+                        }
+
+                        PacketUtils.Exchange(ms.GetBuffer(), (int)ms.Position, size - Defines.PacketUnEncryptedHeaderSize);
+
+                        justPackets.Add(new Packet()
+                        {
+                            Frame = long.Parse(packet.Frame),
+                            Receiver = packet.DstIp,
+                            Sender = packet.SrcIp,
+                            Time = packet.RelativeTime,
+                            Body = br.ReadBytes(size - Defines.PacketUnEncryptedHeaderSize)
+                        });
+                    }
                 }
             }
-        }
 
-        private void PushDeferred(string id, string dst, string src, MemoryStream ms, int offset, int limit)
-        {
-            Console.Write($"PushDeferred frame {id} [{dst}] - [{src}]\n");
+            justPackets.Sort((a, b) => a.Frame.CompareTo(b.Frame));
 
-            byte[] skipped = ms.ToArray().Skip(offset).Take(limit).ToArray();
-
-            string key = $"{dst}-{src}";
-            if (!deferred.TryGetValue(key, out MemoryStream skippedMs))
+            foreach (var packet in justPackets)
             {
-                skippedMs = new();
-                deferred.Add(key, skippedMs);
+                using MemoryStream ms = new(packet.Body);
+                using BinaryReader br = new(ms);
+
+                ushort rawOpcode = ConvertUtils.LeToBeUInt16(br.ReadUInt16());
+
+                Messages.ExtracteOpcode(rawOpcode);
+
+                if (clientIp == packet.Receiver)
+                {
+                    outputFile.Write(Encoding.ASCII.GetBytes($" [Client::{(Enum.IsDefined(typeof(ClientOpcode), rawOpcode) ? (ClientOpcode)rawOpcode : "???")}] {packet.Time}: "));
+                    outputFile.Write(Encoding.ASCII.GetBytes($"[{packet.Sender}] ---> [{packet.Receiver}]\n"));
+                }
+                else
+                {
+                    outputFile.Write(Encoding.ASCII.GetBytes($" [Server::{(Enum.IsDefined(typeof(ServerOpcode), rawOpcode) ? (ServerOpcode)rawOpcode : "???")}] {packet.Time}: "));
+                    outputFile.Write(Encoding.ASCII.GetBytes($"[{packet.Receiver}] <--- [ {packet.Sender}]\n"));
+                }
+
+                outputFile.Write(Encoding.ASCII.GetBytes($"{BitConverter.ToString(packet.Body).Replace('-', ' ')}\n\n"));
             }
-
-            skippedMs.Write(skipped);
         }
-
-        private readonly Dictionary<string, MemoryStream> deferred = new();
     }
 
     //
@@ -261,6 +237,18 @@ namespace ow.Utils.Wireshark.JsonDumpDecode
     //   192.168.0.1
     //      You IP address (at the time of the game)
     //
+    // NOTE
+    //   filter trash packet's like: (tcp.port eq 10200 or tcp.port eq 10100 or tcp.port eq 10000)
+    //
+    //      10000
+    //         auth server
+    //
+    //      10100
+    //         gate server
+    //
+    //      10200
+    //         Rocco Town server
+    //         1 - 10 channels
 
     internal class Program
     {
