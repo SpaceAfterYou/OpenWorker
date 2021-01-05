@@ -1,0 +1,45 @@
+local byte _columns = 11;
+local byte _rows = 3;
+
+struct skill 
+{
+    uint id;
+    uint modifier;
+};
+
+struct cell
+{
+    uint skillId;  
+};
+
+struct column
+{
+    ushort id;
+    cell cells[_rows]<optimize=false>;
+    uint u1;
+};
+
+ushort opcode;
+
+uint u1;
+ushort used_points;
+ushort available_points;
+uint u2;
+ushort u3;
+
+ushort skill_count;
+skill skills[skill_count]<optimize=false>;
+
+ushort count1;
+uint64 values1[count1]<optimize=false>;
+
+//uint u3;
+
+// byte column_count;
+//column columns[_columns]<optimize=false>;
+
+//uint u4;
+//uint u5;
+
+byte u100[237];
+column columns[_columns];

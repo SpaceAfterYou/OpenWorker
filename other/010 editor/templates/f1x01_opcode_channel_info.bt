@@ -1,0 +1,11 @@
+struct channel
+{
+    ushort id;
+    byte status;
+};
+
+ushort opcode;
+
+ushort district;
+byte count;
+channel channels[count];
