@@ -8,6 +8,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace ow.Framework.Game
 {
@@ -45,7 +46,7 @@ namespace ow.Framework.Game
         protected void BroadcastAsync(TSession session, DimensionBrodcastCharacterOutResponse value) =>
             BroadcastExceptAsync(ClientOpcode.CharacterOutInfo, session, (PacketWriter writer) =>
             {
-                writer.Write((byte)1); // length
+                writer.Write((byte)1); // count
                 writer.Write(value.Id);
             });
 
@@ -61,10 +62,10 @@ namespace ow.Framework.Game
 
         public void BroadcastExceptAsync(ClientOpcode opcode, TSession except, Action<PacketWriter> func)
         {
-            //using PacketWriter writer = new(opcode);
-            //func(writer);
+            using PacketWriter writer = new(opcode, _logger);
+            func(writer);
 
-            //BroadcastAsync(_internalSessions.Where(pair => except.Id != pair.Key), writer);
+            BroadcastAsync(_internalSessions.Where(pair => except.Id != pair.Key), writer);
         }
 
         private static void BroadcastAsync(IEnumerable<KeyValuePair<Guid, TSession>> pairs, PacketWriter writer)
