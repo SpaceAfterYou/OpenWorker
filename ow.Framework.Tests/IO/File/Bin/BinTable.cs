@@ -54,5 +54,8 @@ namespace ow.Framework.Tests.IO.File.Bin
 
         [Fact]
         public void ReadBoosterTable() => _tables.ReadBoosterTable();
+
+        [Fact]
+        public void ReadNpcTable() => _tables.ReadNpcTable();
     }
 }

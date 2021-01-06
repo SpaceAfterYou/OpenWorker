@@ -16,7 +16,7 @@ namespace ow.Framework.Tests
 
         private static IConfiguration GetConfiguration() => new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", false, true)
+            .AddJsonFile("config/appsettings.json", false, true)
             .Build();
     }
 }
