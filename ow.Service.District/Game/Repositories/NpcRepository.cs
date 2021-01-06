@@ -13,15 +13,15 @@ namespace ow.Service.District.Game
         public sealed record Entity
         {
             internal uint Id { get; }
-            internal uint MobId { get; }
+            internal uint CreatureId { get; }
             internal Vector3 Position { get; }
             internal float Rotation { get; }
             internal uint Waypoint { get; }
 
-            internal Entity(uint id, uint mobId, in Vector3 position, float rotation, uint waypoint)
+            internal Entity(uint id, uint creatureId, in Vector3 position, float rotation, uint waypoint)
             {
                 Id = id;
-                MobId = mobId;
+                CreatureId = creatureId;
                 Position = position;
                 Rotation = rotation;
                 Waypoint = waypoint;

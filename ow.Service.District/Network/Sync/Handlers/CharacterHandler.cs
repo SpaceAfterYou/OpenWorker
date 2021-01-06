@@ -24,7 +24,7 @@ namespace ow.Service.District.Network.Sync.Handlers
                 Values = _npcs.Select(s => new NpcOthersInfosResponse.Entity()
                 {
                     Id = s.Id,
-                    NpcId = s.MobId,
+                    CreatureId = s.CreatureId,
                     Position = s.Position,
                     Rotation = s.Rotation,
                     Waypoint = s.Waypoint
@@ -41,7 +41,13 @@ namespace ow.Service.District.Network.Sync.Handlers
                 Character = ResponseHelper.GetCharacter(session),
                 Place = ResponseHelper.GetPlace(session, _instance),
             })
-            .SendAsync(new GestureLoadResponse()
+            .SendAsync(new CharacterSkillInfoResponse()
+            {
+            })
+            .SendAsync(new InfiniteTowerLoadInfoResponse()
+            {
+            })
+            .SendAsync(new CharacterGestureLoadResponse()
             {
                 Values = session.Gestures
             })
