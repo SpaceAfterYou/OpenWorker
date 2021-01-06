@@ -112,13 +112,6 @@ namespace ow.Framework.IO.Network.Sync
                 }
             });
 
-        public SyncSession SendAsync(CharacterGestureLoadResponse value) =>
-            SendAsync(ClientOpcode.GestureLoad, (PacketWriter writer) =>
-            {
-                foreach (uint gesture in value.Values)
-                    writer.Write(gesture);
-            });
-
         public SyncSession SendAsync(CharacterInfoResponse value) =>
             SendAsync(ClientOpcode.CharacterInfo, (PacketWriter writer) =>
             {
@@ -184,7 +177,7 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write((ushort)value.Values.Count());
             });
 
-        public SyncSession SendAsync(GestureLoadResponse value) =>
+        public SyncSession SendAsync(CharacterGestureLoadResponse value) =>
             SendAsync(ClientOpcode.GestureLoad, (PacketWriter writer) =>
             {
                 foreach (uint gesture in value.Values)
