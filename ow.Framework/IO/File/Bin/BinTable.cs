@@ -60,6 +60,9 @@ namespace ow.Framework.IO.File.Bin
         public IReadOnlyDictionary<ushort, BoosterTableEntity> ReadBoosterTable() =>
             Read<ushort, BoosterTableEntity>(_data);
 
+        public IReadOnlyDictionary<uint, NpcTableEntity> ReadNpcTable() =>
+            Read<uint, NpcTableEntity>(_data);
+
         public BinTable(IConfiguration configuration) => _data = new(configuration);
 
         internal static IReadOnlyDictionary<TId, TItem> Read<TId, TItem>(BinFile data) where TId : IConvertible where TItem : ITableEntity<TId> => GetEntries(data, typeof(TItem).GetCustomAttribute<BinTableAttribute>()!.Name)
@@ -82,3 +85,5 @@ namespace ow.Framework.IO.File.Bin
         }
     }
 }
+
+// https://youtu.be/kOsodyjYfG8

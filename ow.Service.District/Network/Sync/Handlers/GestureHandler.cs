@@ -32,7 +32,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             using CharacterContext context = _characterRepository.CreateDbContext();
             context.UseAndSave(c => c.Update(new { session.Character.Id, Gestures = request.Values }));
 
-            session.SendAsync(new GestureUpdateSlotsResponse() { Values = request.Values });
+            session.SendAsync(new CharacterGestureUpdateSlotsResponse() { Values = request.Values });
         }
 
         public GestureHandler(BinTables tables, IDbContextFactory<CharacterContext> characterRepository) =>

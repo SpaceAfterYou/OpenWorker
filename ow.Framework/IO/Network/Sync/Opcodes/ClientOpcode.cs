@@ -65,6 +65,7 @@
         MovementMoveAttachedEnd = 0x0535,
 
         SkillUse = 0x0609,
+        SkillInfo = 0x0670,
         SkillUpgrade = 0x0671,
         //Undefined3 = 0x0673,
 

@@ -11,7 +11,7 @@ namespace ow.Framework.IO.Network.Sync.Responses
             public Vector3 Position { get; init; }
             public float Rotation { get; init; }
             public uint Waypoint { get; init; }
-            public uint NpcId { get; init; }
+            public uint CreatureId { get; init; }
         }
 
         public IEnumerable<Entity> Values { get; init; } = default!;
