@@ -1,10 +1,17 @@
 {
-  "Redis": {
-    "ConnectionString": "localhost"
+  "ConnectionStrings": {
+    "PgsqlConnection": "Host=localhost;Port=5432;Database=soulworker;Username=postgres;Password=postgres"
   },
-  "Master": {
-    "Host": "127.0.0.1:56666",
-    "Password": ""
+  "Relay": {
+    "Host": {
+      "Ip": "127.0.0.1",
+      "Port": 56666
+    },
+    "Certificate": {
+      "Server": "certificate/server.pfx",
+      "Client": "certificate/client.pfx",
+      "Password": "qwe123"
+    }
   },
   "Game": {
     "Dir": "",
@@ -36,83 +43,79 @@
     "Feature13": "Disabled",
     "Feature14": "Disabled"
   },
-  "DistrictChannelsPerInstance": 10,
-  "Gates": [
-    {
-      "Id": 1,
+  "DistrictsDimensionsPerInstance": 10,
+  "Districts": {
+    "Rocco-01": {
+      "Gate": 0,
+      "Location": 10003,
+      "DimensionsOffset": 0,
+      "Host": {
+        "Ip": "127.0.0.1",
+        "Port": 10103
+      }
+    },
+    "Candus-01": {
+      "Gate": 0,
+      "Location": 10021,
+      "DimensionsOffset": 0,
+      "Host": {
+        "Ip": "127.0.0.1",
+        "Port": 10121
+      }
+    },
+    "Grace-01": {
+      "Gate": 0,
+      "Location": 10031,
+      "DimensionsOffset": 0,
+      "Host": {
+        "Ip": "127.0.0.1",
+        "Port": 10131
+      }
+    },
+    "Ruin-01": {
+      "Gate": 0,
+      "Location": 10041,
+      "DimensionsOffset": 0,
+      "Host": {
+        "Ip": "127.0.0.1",
+        "Port": 10141
+      }
+    },
+    "GrassCover-01": {
+      "Gate": 0,
+      "Location": 10101,
+      "DimensionsOffset": 0,
+      "Host": {
+        "Ip": "127.0.0.1",
+        "Port": 10201
+      }
+    }
+  },
+  "Gates": {
+    "1": {
       "Name": "Ashes of Melodies",
       "Host": {
         "Ip": "127.0.0.1",
         "Port": 10020
       }
     },
-    {
-      "Id": 0,
+    "0": {
       "Name": "Ashes of Memories",
       "Host": {
         "Ip": "127.0.0.1",
         "Port": 10010
-      },
-      "Districts": [
-        {
-          "Id": "Rocco-01",
-          "Location": 10003,
-          "ChannelOffset": 0,
-          "Host": {
-            "Ip": "127.0.0.1",
-            "Port": 10103
-          }
-        },
-        {
-          "Id": "Candus-01",
-          "Location": 10021,
-          "ChannelOffset": 0,
-          "Host": {
-            "Ip": "127.0.0.1",
-            "Port": 10121
-          }
-        },
-        {
-          "Id": "Grace-01",
-          "Location": 10031,
-          "ChannelOffset": 0,
-          "Host": {
-            "Ip": "127.0.0.1",
-            "Port": 10131
-          }
-        },
-        {
-          "Id": "Ruin-01",
-          "Location": 10041,
-          "ChannelOffset": 0,
-          "Host": {
-            "Ip": "127.0.0.1",
-            "Port": 10141
-          }
-        },
-        {
-          "Id": "GrassCover-01",
-          "Location": 10101,
-          "ChannelOffset": 0,
-          "Host": {
-            "Ip": "127.0.0.1",
-            "Port": 10201
-          }
-        }
-      ]
+      }
     }
-  ],
+  },
   "Auth": {
     "Host": {
       "Ip": "127.0.0.1",
       "Port": 10000
     }
   },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft": "Warning",
-      "Microsoft.Hosting.Lifetime": "Information"
-    }
+  "LogLevel": {
+    "Default": "Information",
+    "Microsoft": "Warning",
+    "Microsoft.Hosting.Lifetime": "Information"
   }
 }
