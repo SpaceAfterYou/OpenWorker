@@ -1,0 +1,13 @@
+ushort opcode;
+
+uint u1;
+byte result;
+ushort location;
+uint64 u2;
+float x;
+float y;
+float z;
+float r;
+float u3;
+float u4;
+byte u5;

@@ -1,0 +1,5 @@
+ushort opcode;
+byte u1;
+
+ushort count;
+byte values[count];

@@ -51,6 +51,8 @@
         PartyAccept = 0x1202,
         PartyLeave = 0x1205,
 
+        QuestFail = 0x1511,
+
         PostSendList = 0x2001,
         PostRecvList = 0x2002,
         PostSend = 0x2003,
