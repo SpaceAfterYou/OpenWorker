@@ -3,7 +3,29 @@
     <TargetFramework>net5.0</TargetFramework>
     <AnalysisLevel>preview</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <OutputType>Exe</OutputType>
+    <StartupObject>SetupDatabase.Program</StartupObject>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.0-alpha.1.20417.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.0-alpha.1.20417.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="6.0.0-alpha.1.20417.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="6.0.0-alpha.1.20417.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.0-alpha.1.20417.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="6.0.0-alpha.1.20417.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.0-alpha.1.20417.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0-alpha.1.20420.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="5.0.2-ci.20210105T105531+sha.81cc79d36" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ow.Framework\ow.Framework.csproj" />
