@@ -20,15 +20,36 @@ namespace ow.Framework.IO.Network.Sync
 {
     public abstract partial class SyncSession : TcpSession
     {
-        //#region Send Battle Pass
+        //#region Send Boosters
 
-        //public SyncSession SendAsync(InfiniteTowerLoadInfoResponse value) =>
+        //public SyncSession SendAsync(BattlePassLoadResponse value) =>
         //    SendAsync(ClientOpcode.InfiniteTowerLoadInfo, (PacketWriter writer) =>
         //    {
-        //        writer.Write(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+        //        writer.Write(value.Id);
+        //        writer.Write(ushort.MinValue);
+        //        writer.Write(value.NextReward);
+        //        writer.Write(ulong.MinValue);
+        //        writer.Write(ulong.MinValue);
+        //        writer.Write(value.HavePoint);
+        //        writer.Write(byte.MinValue);
         //    });
 
-        //#endregion Send Battle Pass
+        //#endregion Send Boosters
+
+        #region Send Battle Pass
+
+        public SyncSession SendAsync(BattlePassLoadResponse value) =>
+            SendAsync(ClientOpcode.InfiniteTowerLoadInfo, (PacketWriter writer) =>
+            {
+                writer.Write(value.Id);
+                writer.Write(value.NextReward);
+                writer.Write(1607472000ul);
+                writer.Write(1610495999ul);
+                writer.Write(value.HavePoint);
+                writer.Write(byte.MinValue);
+            });
+
+        #endregion Send Battle Pass
 
         #region Send Infinite Tower
 
@@ -53,7 +74,7 @@ namespace ow.Framework.IO.Network.Sync
         #region Send Channel
 
         public SyncSession SendAsync(ChannelInfoResponse value) =>
-            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
+            SendAsync(ClientOpcode.ChannelInfo, (PacketWriter writer) =>
             {
                 writer.Write(value.Location);
 

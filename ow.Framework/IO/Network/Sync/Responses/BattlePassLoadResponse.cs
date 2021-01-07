@@ -2,5 +2,8 @@
 {
     public sealed record BattlePassLoadResponse
     {
+        public uint Id;
+        public byte NextReward;
+        public uint HavePoint;
     }
 }

@@ -13,6 +13,7 @@ namespace ow.Service.District.Game
         internal IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItem { get; }
         internal IReadOnlyDictionary<ushort, GestureTableEntity> Gesture { get; }
         internal IReadOnlyDictionary<uint, ItemTableEntity> Item { get; }
+        internal IReadOnlyDictionary<uint, PassInfoTableEntity> BattlePass { get; }
 
         public BinTables(IConfiguration configuration)
         {
@@ -24,6 +25,7 @@ namespace ow.Service.District.Game
             PhotoItem = tables.ReadPhotoItemTable();
             Gesture = tables.ReadGestureTable();
             Item = tables.ReadItemTable();
+            BattlePass = tables.ReadPassInfoTable();
         }
     }
 }
