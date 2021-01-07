@@ -2,6 +2,7 @@
 using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
+using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
@@ -46,15 +47,24 @@ namespace ow.Service.District.Network.Sync.Handlers
                 NetworkUtils.DropSession();
 
             session.SendAsync(new ServiceCurrentDataResponse());
-            session.SendAsync(new DistrictEnterResponse()
+            session.SendAsync(new WorldVersionResponse()
             {
-                Place = new()
-                {
-                    Location = _instance.Location.Id,
-                    Position = session.Character.Place.Position,
-                    Rotation = session.Character.Place.Rotation,
-                }
+                Id = 0,
+                Main = 1,
+                Sub = 837,
+                Data = 16888
             });
+
+            if (_tables.BattlePass.Count > 0)
+            {
+                PassInfoTableEntity entity = _tables.BattlePass.Values.First();
+                session.SendAsync(new BattlePassLoadResponse()
+                {
+                    Id = entity.Id,
+                    HavePoint = 200,
+                    NextReward = 2
+                });
+            }
 
             session.SendAsync(new DayEventBoosterResponse()
             {
@@ -65,28 +75,40 @@ namespace ow.Service.District.Network.Sync.Handlers
                 }).ToArray()
             });
 
-            session.SendAsync(new WorldVersionResponse()
+            // CharacterSuperArmorGage
+            // LOGLV 2 : 454.747 :: eSUB_CMD_BOOSTER_ADD 2
+
+            session.SendAsync(new DistrictEnterResponse()
             {
-                Id = 0,
-                Main = 1,
-                Sub = 837,
-                Data = 16888
+                Place = new()
+                {
+                    Location = _instance.Location.Id,
+                    Position = session.Character.Place.Position,
+                    Rotation = session.Character.Place.Rotation,
+                }
             });
 
+            //LOGLV 2 : 454.771 :: eSUB_CMD_POST_ACCOUNT_RECV
+
+            //LOGLV 2 : 454.771 :: receive_eSUB_CMD_EVENT_BATTLE_PASS_LOAD
+
+            //LOGLV 2 : 454.771 :: receive_eSUB_CMD_EVENT_ATTENDANCE_LOAD
+            // CharacterStatsUpdate
+            //LOGLV 2 : 454.806 :: receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
+            //LOGLV 2 : 454.806 :: receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
+            //LOGLV 2 : 454.806 :: eSUB_CMD_INFINITE_TOWER_LOAD_INFO
+            //LOGLV 2 : 454.806 :: receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
+            //LOGLV 2 : 454.806 :: receive_eSUB_CMD_EVENT_ATTENDANCE_PLAY_TIME_INIT
+            //LOGLV 2 : 454.830 :: receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
+            //LOGLV 2 : 454.830 :: receive_eSUB_CMD_EVENT_ATTENDANCE_REWARD
+            //LOGLV 2 : 454.830 :: receive_eSUB_CMD_EVENT_ATTENDANCE_CONTINUE_REWARD
+            //LOGLV 2 : 454.830 :: send_eSUB_CMD_CHARACTER_INFO_REQ
+            //LOGLV 2 : 454.830 :: receive_eSUB_CMD_CHARACTER_DB_LOAD_SYNC
+            //LOGLV 2 : 454.863 :: eSUB_CMD_POST_ACCOUNT_RECV
+            //LOGLV 2 : 454.863 :: eSUB_CMD_POST_ACCOUNT_RECV
+            //LOGLV 2 : 455.905 :: receive_eSUB_CMD_CHARACTER_INFO_RES
+
             session.SendCharacterDbLoadSync();
-            //.SenBoosterAdd(boosters)
-            //eSUB_CMD_POST_ACCOUNT_RECV
-            //.SendAttendanceRewardLoad()
-            //.SendAttendancePlayTimeInit()
-            //receive_eSUB_CMD_EXCHANGE_INTEREST_LIST
-            //receive_eSUB_CMD_EVENT_ROULETTE_MY_INFO
-            //receive_eSUB_CMD_ITEM_AKASHIC_GETINFO_LOAD
-            //.SendInfiniteTowerLoadInfo()
-            //receive_eSUB_CMD_ENTER_MAZE_LIMIT_COUNT_RESET
-            //.SendAttendanceReward()
-            //.SendAttendanceContinueReward()
-            // receive_eSUB_CMD_FRIEND_LOAD
-            // receive_eSUB_CMD_FRIEND_LOAD_BLOCKLIST
         }
 
         private AccountModel GetAccountModel(int id)
