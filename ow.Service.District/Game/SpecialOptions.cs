@@ -1,5 +1,6 @@
 ﻿using ow.Framework.Game.Enums;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace ow.Service.District.Game
@@ -37,8 +38,9 @@ namespace ow.Service.District.Game
         public Entity Unknown20 => this[SpecialOption.Unknown20];
         public Entity OnKillEffectRecoveryHp => this[SpecialOption.OnKillEffectRecoveryHp];
 
-        public SpecialOptions() : base(Enumerable.Range(0, typeof(SpecialOption).GetEnumValues().Cast<byte>().Max()).Select(id => new Entity { Id = (SpecialOption)id, Value = 0.0f }))
+        public SpecialOptions() : base(Enumerable.Range(0, typeof(SpecialOption).GetEnumValues().Cast<byte>().Max() + 1).Select(id => new Entity { Id = (SpecialOption)id, Value = 0.0f }))
         {
+            Debug.Assert(this.Last().Id == SpecialOption.OnKillEffectRecoveryHp);
         }
     }
 }

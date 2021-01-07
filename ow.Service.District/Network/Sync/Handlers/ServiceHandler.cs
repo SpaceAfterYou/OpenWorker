@@ -63,7 +63,7 @@ namespace ow.Service.District.Network.Sync.Handlers
                 {
                     Id = entity.Id,
                     HavePoint = 2000,
-                    NextReward = 0,
+                    NextReward = 3,
                     StartDate = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                     EndDate = DateTimeOffset.UtcNow.AddMonths(1).ToUnixTimeSeconds(),
                     IsPremium = 1

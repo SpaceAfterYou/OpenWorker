@@ -1,5 +1,6 @@
 ﻿using ow.Framework.Game.Enums;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace ow.Service.District.Game
@@ -93,8 +94,9 @@ namespace ow.Service.District.Game
         public Entity ManicBalanceDamage => this[CharacterStat.ManicBalanceDamage];
         public Entity ManicBalanceResistance => this[CharacterStat.ManicBalanceResistance];
 
-        public Stats() : base(Enumerable.Range(0, typeof(CharacterStat).GetEnumValues().Cast<ushort>().Max()).Select(id => new Entity { Id = (CharacterStat)id, Value = 100.0f }))
+        public Stats() : base(Enumerable.Range(0, typeof(CharacterStat).GetEnumValues().Cast<ushort>().Max() + 1).Select(id => new Entity { Id = (CharacterStat)id, Value = 100.0f }))
         {
+            Debug.Assert(this.Last().Id == CharacterStat.ManicBalanceResistance);
         }
     }
 }

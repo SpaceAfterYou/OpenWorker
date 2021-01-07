@@ -23,13 +23,16 @@ namespace ow.Framework.IO.Network.Sync.Requests
             public ColumnInfo(BinaryReader br)
             {
                 Id = br.ReadUInt16();
-                Sequence = Enumerable.Range(0, Defines.SkillsInSequenceQuickSlotsCount).Select(_ => new SlotInfo(br)).ToArray();
+                Sequence = Enumerable.Range(1, Defines.SkillsInSequenceQuickSlotsCount).Select(_ => new SlotInfo(br)).ToArray();
                 Unknown1 = br.ReadUInt32();
             }
         }
 
         public ColumnInfo[] Column { get; }
 
-        public SkillQuickSlotsUpdateRequest(BinaryReader br) => Column = Enumerable.Range(0, br.ReadByte()).Select(_ => new ColumnInfo(br)).ToArray();
+        public SkillQuickSlotsUpdateRequest(BinaryReader br) => Column = Enumerable
+            .Range(1, br.ReadByte())
+            .Select(_ => new ColumnInfo(br))
+            .ToArray();
     }
 }
