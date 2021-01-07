@@ -46,6 +46,16 @@ namespace ow.Service.District.Network.Sync.Handlers
                 NetworkUtils.DropSession();
 
             session.SendAsync(new ServiceCurrentDataResponse());
+            session.SendAsync(new DistrictEnterResponse()
+            {
+                Place = new()
+                {
+                    Location = _instance.Location.Id,
+                    Position = session.Character.Place.Position,
+                    Rotation = session.Character.Place.Rotation,
+                }
+            });
+
             session.SendAsync(new DayEventBoosterResponse()
             {
                 Values = _dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
@@ -63,16 +73,7 @@ namespace ow.Service.District.Network.Sync.Handlers
                 Data = 16888
             });
 
-            session.SendAsync(new DistrictEnterResponse()
-            {
-                Place = new()
-                {
-                    Location = _instance.Location.Id,
-                    Position = session.Character.Place.Position,
-                    Rotation = session.Character.Place.Rotation,
-                }
-            })
-            .SendCharacterDbLoadSync();
+            session.SendCharacterDbLoadSync();
             //.SenBoosterAdd(boosters)
             //eSUB_CMD_POST_ACCOUNT_RECV
             //.SendAttendanceRewardLoad()
