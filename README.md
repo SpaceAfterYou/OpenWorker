@@ -9,11 +9,11 @@
 
 Just another server emulator for korean SoulWoker written in .NET 5.
 
-### Chat
+### Chat 🙋
 
 [Discord channel](http://discord.gg/SequFJP)
 
-## How to
+## How to ❔
 
 ### Configuration
 
