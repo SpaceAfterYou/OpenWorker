@@ -63,6 +63,12 @@ namespace ow.Framework.IO.File.Bin
         public IReadOnlyDictionary<uint, NpcTableEntity> ReadNpcTable() =>
             Read<uint, NpcTableEntity>(_data);
 
+        public IReadOnlyDictionary<uint, PassInfoTableEntity> ReadPassInfoTable() =>
+            Read<uint, PassInfoTableEntity>(_data);
+
+        public IReadOnlyDictionary<uint, PassRewardInfoTableEntity> ReadPassRewardInfoTable() =>
+            Read<uint, PassRewardInfoTableEntity>(_data);
+
         public BinTable(IConfiguration configuration) => _data = new(configuration);
 
         internal static IReadOnlyDictionary<TId, TItem> Read<TId, TItem>(BinFile data) where TId : IConvertible where TItem : ITableEntity<TId> => GetEntries(data, typeof(TItem).GetCustomAttribute<BinTableAttribute>()!.Name)

@@ -57,5 +57,11 @@ namespace ow.Framework.Tests.IO.File.Bin
 
         [Fact]
         public void ReadNpcTable() => _tables.ReadNpcTable();
+
+        [Fact]
+        public void ReadPassInfo() => _tables.ReadPassInfoTable();
+
+        [Fact]
+        public void ReadPassRewardInfoTable() => _tables.ReadPassRewardInfoTable();
     }
 }

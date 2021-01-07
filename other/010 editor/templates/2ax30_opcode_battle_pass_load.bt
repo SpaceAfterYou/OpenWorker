@@ -1,0 +1,9 @@
+ushort opcode;
+
+ushort id;
+byte u2;
+uint64 u3;
+uint64 u4;
+uint u5;
+ushort u6;
+byte u7;

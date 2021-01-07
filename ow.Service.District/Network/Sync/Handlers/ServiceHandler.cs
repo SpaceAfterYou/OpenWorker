@@ -46,6 +46,14 @@ namespace ow.Service.District.Network.Sync.Handlers
                 NetworkUtils.DropSession();
 
             session.SendAsync(new ServiceCurrentDataResponse());
+            session.SendAsync(new WorldVersionResponse()
+            {
+                Id = 0,
+                Main = 1,
+                Sub = 837,
+                Data = 16888
+            });
+
             session.SendAsync(new DistrictEnterResponse()
             {
                 Place = new()
@@ -63,14 +71,6 @@ namespace ow.Service.District.Network.Sync.Handlers
                     Id = s.Id,
                     Maze = s.Maze.Id
                 }).ToArray()
-            });
-
-            session.SendAsync(new WorldVersionResponse()
-            {
-                Id = 0,
-                Main = 1,
-                Sub = 837,
-                Data = 16888
             });
 
             session.SendCharacterDbLoadSync();

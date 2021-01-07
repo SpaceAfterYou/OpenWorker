@@ -20,6 +20,16 @@ namespace ow.Framework.IO.Network.Sync
 {
     public abstract partial class SyncSession : TcpSession
     {
+        //#region Send Battle Pass
+
+        //public SyncSession SendAsync(InfiniteTowerLoadInfoResponse value) =>
+        //    SendAsync(ClientOpcode.InfiniteTowerLoadInfo, (PacketWriter writer) =>
+        //    {
+        //        writer.Write(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+        //    });
+
+        //#endregion Send Battle Pass
+
         #region Send Infinite Tower
 
         public SyncSession SendAsync(InfiniteTowerLoadInfoResponse value) =>
