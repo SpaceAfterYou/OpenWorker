@@ -105,7 +105,7 @@ Just build solution and launch output files.
    - [x] Movement
    - [ ] Jump
    - [x] Stop
- - [ ] Gesture
+ - [x] Gesture _(without costume validation)_
 
 ##### 🐂 Maze Service
 
