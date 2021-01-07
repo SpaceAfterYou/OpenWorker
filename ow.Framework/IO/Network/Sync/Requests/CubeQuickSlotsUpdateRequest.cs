@@ -10,6 +10,6 @@ namespace ow.Framework.IO.Network.Sync.Requests
     {
         public IReadOnlyList<int> Values { get; }
 
-        public CubeQuickSlotsUpdateRequest(BinaryReader br) => Values = Enumerable.Range(0, Defines.CubeQuickSlotCount).Select(_ => br.ReadInt32()).ToArray();
+        public CubeQuickSlotsUpdateRequest(BinaryReader br) => Values = Enumerable.Range(1, Defines.CubeQuickSlotCount).Select(_ => br.ReadInt32()).ToArray();
     }
 }

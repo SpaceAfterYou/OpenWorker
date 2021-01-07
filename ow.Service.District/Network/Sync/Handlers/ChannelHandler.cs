@@ -15,7 +15,11 @@ namespace ow.Service.District.Network.Sync.Handlers
             .SendAsync(new ChannelInfoResponse()
             {
                 Location = _instance.Location.Id,
-                Values = _dimensions.Values.Select(s => new ChannelInfoResponse.Entity() { Id = s.Id, Status = s.Status })
+                Values = _dimensions.Values.Select(s => new ChannelInfoResponse.Entity()
+                {
+                    Id = (ushort)(1 + s.Id),
+                    Status = s.Status
+                })
             });
 
         //[Handler(ServerOpcode.ChannelSwitch, HandlerPermission.Authorized)]

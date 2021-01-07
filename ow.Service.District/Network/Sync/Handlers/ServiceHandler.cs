@@ -13,6 +13,7 @@ using ow.Framework.Utils;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
 using ow.Service.District.Network.Relay;
+using System;
 using System.Linq;
 
 namespace ow.Service.District.Network.Sync.Handlers
@@ -61,8 +62,11 @@ namespace ow.Service.District.Network.Sync.Handlers
                 session.SendAsync(new BattlePassLoadResponse()
                 {
                     Id = entity.Id,
-                    HavePoint = 200,
-                    NextReward = 2
+                    HavePoint = 2000,
+                    NextReward = 3,
+                    StartDate = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    EndDate = DateTimeOffset.UtcNow.AddMonths(1).ToUnixTimeSeconds(),
+                    IsPremium = 1
                 });
             }
 

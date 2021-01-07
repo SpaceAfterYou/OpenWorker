@@ -73,6 +73,8 @@
         GestureDo = 0x2301,
         GestureUpdateSlots = 0x2303,
 
+        BattlePassTakeReward = 0x322A,
+
         ChannelInfo = 0xF101,
         ChannelSwitch = 0xF102,
     }

@@ -9,17 +9,11 @@
 
 Just another server emulator for korean SoulWoker written in .NET 5.
 
-### Chat
+### Chat 🙋
 
 [Discord channel](http://discord.gg/SequFJP)
 
-# How to
-
-### Database
-
-- Uses **PostgreSQL** for storage.
-
-Apply migration with nuget console: `update-database -Context MigrationContext -Project SetupDatabase`
+## How to ❔
 
 ### Configuration
 
@@ -64,11 +58,18 @@ rename **appsettings.example.json** to **appsettings.json**
 }
 ```
 
+
+### Database
+
+- Uses **PostgreSQL** for storage.
+
+Apply migration with nuget console: `update-database -Context MigrationContext -Project SetupDatabase`
+
 ### Run
 
 Just build solution and launch output files.
 
-## Services
+## What's implemented? 💫
 
 ##### 💾 Auth Service
 
@@ -92,7 +93,7 @@ Just build solution and launch output files.
 
 ##### 👯 District Service
 
-- [ ] Join
+- [x] Join
 - [ ] Maze enter
 - [ ] Party / PartyEx _(Soul squad)_
   - [ ] Join
@@ -100,7 +101,24 @@ Just build solution and launch output files.
   - [ ] Kick
   - [ ] Pass master
   - [ ] Maze enter
+ - [ ] Syncronization
+   - [x] Movement
+   - [ ] Jump
+   - [x] Stop
+ - [x] Gesture _(without costume validation)_
 
 ##### 🐂 Maze Service
 
 - [ ] Hello, world
+
+
+## Contributors ❤️
+
+My regards:
+
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/Kimjunseo319"><img src="https://avatars.githubusercontent.com/u/59918240?v=3?s=100" width="100px;" alt=""/><br /><sub><b>Kimjunseo319</b></sub></td>
+    <td align="center"><a href="https://github.com/RutsuKun"><img src="https://avatars.githubusercontent.com/u/14915249?v=3?s=100" width="100px;" alt=""/><br /><sub><b>RutsuKun</b></sub></td>
+  </tr>
+<table>
