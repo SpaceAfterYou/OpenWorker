@@ -46,8 +46,8 @@ namespace ow.Service.District.Network.Sync.Handlers
             session.Dimension!.BroadcastAsync(new ChatMessageResponse()
             {
                 Character = session.Character.Id,
-                Chat = ChatType.Red,
-                Message = "Command not found"
+                Chat = request.Type,
+                Message = request.Message
             });
         }
 
