@@ -231,7 +231,8 @@ namespace ow.Framework.IO.Network.Sync
 
         public PacketWriter(ClientOpcode opcode, ILogger logger) : base(new MemoryStream(ushort.MaxValue), Encoding.ASCII, false)
         {
-            logger.LogDebug($"Create packet: {opcode}");
+            if (opcode != ClientOpcode.Heartbeat)
+                logger.LogDebug($"Create packet: {opcode}");
 
             /// Write SoulWorker magic bytes
             Write((byte)0x02);

@@ -39,14 +39,14 @@ namespace ow.Framework.IO.Network.Sync
         #region Send Battle Pass
 
         public SyncSession SendAsync(BattlePassLoadResponse value) =>
-            SendAsync(ClientOpcode.InfiniteTowerLoadInfo, (PacketWriter writer) =>
+            SendAsync(ClientOpcode.BattlePassLoad, (PacketWriter writer) =>
             {
                 writer.Write(value.Id);
                 writer.Write(value.NextReward);
-                writer.Write(1607472000ul);
-                writer.Write(1610495999ul);
+                writer.Write(value.StartDate);
+                writer.Write(value.EndDate);
                 writer.Write(value.HavePoint);
-                writer.Write(byte.MinValue);
+                writer.Write(value.IsPremium);
             });
 
         #endregion Send Battle Pass
@@ -523,10 +523,16 @@ namespace ow.Framework.IO.Network.Sync
         [Conditional("DEBUG")]
         private void DebugLogOpcode(ushort opcode)
         {
-            ServerOpcode o = (ServerOpcode)ConvertUtils.LeToBeUInt16(opcode);
-
-            if (o != ServerOpcode.Heartbeat)
-                _logger.LogDebug($"@event [{(ServerOpcode)ConvertUtils.LeToBeUInt16(opcode)}]");
+            ushort o = ConvertUtils.LeToBeUInt16(opcode);
+            if (Enum.IsDefined(typeof(ServerOpcode), o))
+            {
+                if ((ServerOpcode)o != ServerOpcode.Heartbeat)
+                    _logger.LogDebug($"@event [{(ServerOpcode)opcode}]");
+            }
+            else
+                _logger.LogDebug($"@event [0x{opcode:X4}]");
         }
     }
 }
+
+// https://youtu.be/UnIhRpIT7nc
