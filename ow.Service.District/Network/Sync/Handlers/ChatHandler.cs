@@ -11,15 +11,15 @@ namespace ow.Service.District.Network.Sync.Handlers
     public sealed class ChatHandler
     {
         [Handler(ServerOpcode.ChatReceiveMessage, HandlerPermission.Authorized)]
-        public void Receive(Session session, ChatReceiveRequest request)
+        public void Receive(SyncSession session, ChatReceiveRequest request)
         {
             if (request.Message.Length == 0)
                 return;
 
-            if (request.Message.StartsWith('!'))
+            if (request.Message.StartsWith('/'))
             {
                 string[] msg = request.Message.Split(' ');
-                if (_repository.TryGetValue(msg[0], out var command))
+                if (_repository.TryGetValue(msg[0], out ChatCommand? command))
                 {
                     command(session, msg);
 
@@ -43,7 +43,7 @@ namespace ow.Service.District.Network.Sync.Handlers
                 return;
             }
 
-            session.Dimension!.BroadcastAsync(new ChatMessageResponse()
+            session.Channel!.BroadcastAsync(new ChatMessageResponse()
             {
                 Character = session.Character.Id,
                 Chat = request.Type,

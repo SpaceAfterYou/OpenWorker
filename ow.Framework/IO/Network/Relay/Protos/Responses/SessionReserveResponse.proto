@@ -1,0 +1,9 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.Protos.Responses";
+
+package SessionHandler;
+
+message SessionReserveResponse {
+  bool Result = 1;
+}

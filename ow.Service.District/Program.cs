@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Extensions;
 using ow.Framework.IO.File.World;
+using ow.Framework.IO.Network.Relay;
 using ow.Framework.IO.Network.Relay.Extensions;
 using ow.Framework.IO.Network.Sync.Extensions;
 using ow.Service.District.Game;
@@ -24,21 +25,21 @@ namespace ow.Service.District
                 .AddSyncHandlers()
                 .AddHostedService<Worker>()
                 .AddSingleton<ChatCommandRepository>()
-                .AddSingleton<DimensionRepository>()
+                .AddSingleton<ChannelRepository>()
                 .AddSingleton<BinTables>()
                 .AddSingleton<Instance>()
                 .AddSingleton<DayEventBoosterRepository>()
                 .AddSingleton<BoosterRepository>()
                 .AddSingleton<NpcRepository>()
-                .AddSingleton<Server>()
+                .AddSingleton<SyncServer>()
                 .AddSingleton<GateInstance>()
                 .AddTransient<WorldTable>()
-                .AddTransient<Session>()
-                .AddSingleton<RelayClient>()
+                .AddTransient<SyncSession>()
+                .AddSingleton<WorldRelayClient>()
+                .AddSingleton<GlobalRelayClient>()
                 .AddAccountContext(context)
                 .AddCharacterContext(context)
                 .AddItemContext(context)
-                .AddRelayChannel()
                 .AddRelayHandlers());
     }
 }

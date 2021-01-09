@@ -1,0 +1,10 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.Protos.Requests";
+
+package SessionHandler;
+
+message SessionValidateRequest {
+  uint64 Key = 1;
+  int32 Account = 2;
+}

@@ -2,10 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Extensions;
 using ow.Framework.Game;
+using ow.Framework.IO.Network.Relay;
 using ow.Framework.IO.Network.Relay.Extensions;
 using ow.Framework.IO.Network.Sync.Extensions;
 using ow.Service.Auth.Game.Repositories;
-using ow.Service.Auth.Network.Relay;
 using ow.Service.Auth.Network.Sync;
 
 namespace ow.Service.Auth
@@ -22,13 +22,12 @@ namespace ow.Service.Auth
                 .AddSyncHandlers()
                 .AddHostedService<Worker>()
                 .AddSingleton<GateRepository>()
-                .AddSingleton<RelayClient>()
                 .AddSingleton<Features>()
-                .AddTransient<Session>()
-                .AddSingleton<Server>()
+                .AddTransient<SyncSession>()
+                .AddTransient<GlobalRelayClient>()
+                .AddSingleton<SyncServer>()
                 .AddAccountContext(context)
                 .AddCharacterContext(context)
-                .AddRelayChannel()
                 .AddRelayHandlers());
     }
 }

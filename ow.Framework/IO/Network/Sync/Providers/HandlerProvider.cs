@@ -12,7 +12,7 @@ using System.Reflection;
 
 namespace ow.Framework.IO.Network.Sync.Providers
 {
-    public delegate void Event(SyncSession session, BinaryReader br);
+    public delegate void Event(BaseSyncSession session, BinaryReader br);
 
     public class HandlerProvider : List<Event>
     {
@@ -20,7 +20,7 @@ namespace ow.Framework.IO.Network.Sync.Providers
         {
         }
 
-        private static void Dummy(SyncSession session, BinaryReader _)
+        private static void Dummy(BaseSyncSession session, BinaryReader _)
         {
 #if !DEBUG
             session.Disconnect();
@@ -71,7 +71,7 @@ namespace ow.Framework.IO.Network.Sync.Providers
 
         private static Event CreateEventHandler(object? instance, IServiceProvider service, MethodInfo method)
         {
-            ParameterExpression session = Expression.Parameter(typeof(SyncSession), "Session");
+            ParameterExpression session = Expression.Parameter(typeof(BaseSyncSession), "Session");
             ParameterExpression br = Expression.Parameter(typeof(BinaryReader), "BinaryReader");
 
             Expression[] arguments = method.GetParameters().Select(param =>
@@ -81,7 +81,7 @@ namespace ow.Framework.IO.Network.Sync.Providers
                 Debug.Assert(param.ParameterType is not null);
 
                 // Session typed parameter
-                if (param.ParameterType == typeof(SyncSession) || param.ParameterType?.BaseType == typeof(SyncSession))
+                if (param.ParameterType == typeof(BaseSyncSession) || param.ParameterType?.BaseType == typeof(BaseSyncSession))
                     return Expression.Convert(session, param.ParameterType) as Expression;
 
                 // Packet structure parameter

@@ -13,11 +13,11 @@ namespace ow.Service.District.Network.Sync.Handlers
     public sealed class CharacterHandler
     {
         [Handler(ServerOpcode.CharacterSpecialOptionUpdateList, HandlerPermission.Authorized)]
-        public static void UpdateSpecialOptions(Session session, CharacterSpecialOptionListUpdateRequest request) => session.Dimension!
+        public static void UpdateSpecialOptions(SyncSession session, CharacterSpecialOptionListUpdateRequest request) => session.Channel!
             .SendAsync(request);
 
         [Handler(ServerOpcode.OthersInfo, HandlerPermission.Authorized)]
-        public void GetOthers(Session session)
+        public void GetOthers(SyncSession session)
         {
             session.SendAsync(new NpcOthersInfosResponse()
             {
@@ -31,11 +31,11 @@ namespace ow.Service.District.Network.Sync.Handlers
                 })
             });
 
-            session.Dimension!.SendOtherCharactersAsync(_instance);
+            session.Channel!.SendOtherCharactersAsync(_instance);
         }
 
         [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
-        public void GetInfo(Session session) => session
+        public void GetInfo(SyncSession session) => session
             .SendAsync(new CharacterInfoResponse()
             {
                 Character = ResponseHelper.GetCharacter(session),
@@ -68,7 +68,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             });
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
-        public static void ToggleWeapon(Session session, CharacterToggleWeaponRequest request) => session
+        public static void ToggleWeapon(SyncSession session, CharacterToggleWeaponRequest request) => session
             .SendAsync(request);
 
         public CharacterHandler(Instance instance, NpcRepository npcs) =>

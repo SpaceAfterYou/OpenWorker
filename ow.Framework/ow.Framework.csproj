@@ -14,6 +14,25 @@
     <None Remove="config\appsettings.Development.json" />
     <None Remove="config\commonsettings.example.json" />
     <None Remove="config\commonsettings.json" />
+    <None Remove="IO\Network\Relay\Protos\Party.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\PartyAcceptRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\PartyDeclineRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\PartyInviteRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\PartyKickRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\PartyLeaveRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\PartyPassMasterRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\SessionRegisterRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\SessionReserveRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Requests\SessionValidateRequest.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\PartyAcceptResponse.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\PartyDeclineResponse.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\PartyInviteResponse.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\PartyKickResponse.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\PartyLeaveResponse.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\PartyPassMasterResponse.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\SessionRegisterResponse.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\SessionReserveResponse.proto" />
+    <None Remove="IO\Network\Relay\Protos\Responses\SessionValidateResponse.proto" />
     <None Remove="IO\Network\Relay\Protos\Session.proto" />
   </ItemGroup>
 
@@ -54,6 +73,25 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Protobuf Include="IO\Network\Relay\Protos\Party.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\PartyAcceptRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\PartyDeclineRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\PartyInviteRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\PartyKickRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\PartyLeaveRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\PartyPassMasterRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\SessionReserveRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\SessionValidateRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Requests\SessionRegisterRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\PartyAcceptResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\PartyDeclineResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\PartyInviteResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\PartyKickResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\PartyLeaveResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\PartyPassMasterResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\SessionReserveResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\SessionValidateResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Protos\Responses\SessionRegisterResponse.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\Protos\Session.proto" Access="Public" GrpcServices="Both" />
   </ItemGroup>
 </Project>

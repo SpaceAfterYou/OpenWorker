@@ -15,12 +15,12 @@ namespace ow.Service.Auth.Network.Sync.Handlers
     public sealed class GateHandler
     {
         [Handler(ServerOpcode.GateList, HandlerPermission.Authorized)]
-        public void GetList(Session session) => session
+        public void GetList(SyncSession session) => session
             .SendAsync(GetPersonalInfo(session))
             .SendAsync(_features);
 
         [Handler(ServerOpcode.GateConnect, HandlerPermission.Authorized)]
-        public void Connect(Session session, GateConnectRequest request)
+        public void Connect(SyncSession session, GateConnectRequest request)
         {
             GateRepository.Entity? gate = _repository.FirstOrDefault(s => s.Id == request.Gate);
             if (gate is null || gate.Status == GateStatus.Offline)
@@ -40,13 +40,13 @@ namespace ow.Service.Auth.Network.Sync.Handlers
             _characterFactory = characterFactory;
         }
 
-        private AuthPersonalGateResponse[] GetPersonalInfo(Session session)
+        private AuthPersonalGateResponse[] GetPersonalInfo(SyncSession session)
         {
             using CharacterContext context = _characterFactory.CreateDbContext();
             return _repository.Select(s => GetPersonalGate(context, session, s)).ToArray();
         }
 
-        private static AuthPersonalGateResponse GetPersonalGate(CharacterContext context, Session session, GateRepository.Entity gate) =>
+        private static AuthPersonalGateResponse GetPersonalGate(CharacterContext context, SyncSession session, GateRepository.Entity gate) =>
             new()
             {
                 CharactersCount = (byte)GetCharactersCount(context, session, gate),
@@ -64,7 +64,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
                 }
             };
 
-        private static int GetCharactersCount(CharacterContext context, Session session, GateRepository.Entity gate) => context.Characters
+        private static int GetCharactersCount(CharacterContext context, SyncSession session, GateRepository.Entity gate) => context.Characters
             .AsNoTracking()
             .Count(character => character.AccountId == session.Account.Id && character.Gate == gate.Id);
 

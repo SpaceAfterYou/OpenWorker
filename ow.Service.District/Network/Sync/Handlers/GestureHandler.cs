@@ -16,7 +16,7 @@ namespace ow.Service.District.Network.Sync.Handlers
     public sealed class GestureHandler
     {
         [Handler(ServerOpcode.GestureDo, HandlerPermission.Authorized)]
-        public static void GetOthers(Session session, GestureDoRequest request) => session.Dimension?
+        public static void GetOthers(SyncSession session, GestureDoRequest request) => session.Channel?
             .BroadcastAsync(new CharacterGestureDo()
             {
                 Character = session.Character.Id,
@@ -26,7 +26,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             });
 
         [Handler(ServerOpcode.GestureUpdateSlots, HandlerPermission.Authorized)]
-        public void UpdateSlots(Session session, GestureQuickSlotsUpdateRequest request)
+        public void UpdateSlots(SyncSession session, GestureQuickSlotsUpdateRequest request)
         {
             foreach (uint id in request.Values)
             {

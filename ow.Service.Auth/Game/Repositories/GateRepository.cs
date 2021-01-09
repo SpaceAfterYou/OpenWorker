@@ -16,12 +16,12 @@ namespace ow.Service.Auth.Game.Repositories
             public string Name { get; set; } = default!;
             public GateStatus Status { get; set; }
 
-            public Entity(ushort id, GateConfiguration request)
+            public Entity(InstanceConfiguration configuration)
             {
-                Id = id;
-                Ip = request.Host.Ip;
-                Port = request.Host.Port;
-                Name = request.Name;
+                Id = configuration.Id;
+                Ip = configuration.Gate.Host.Ip;
+                Port = configuration.Gate.Host.Port;
+                Name = configuration.Gate.Name;
                 Status = GateStatus.Online;
             }
         }
@@ -31,7 +31,7 @@ namespace ow.Service.Auth.Game.Repositories
         }
 
         private static IEnumerable<Entity> GetGates(IConfiguration configuration) => configuration
-            .GetSection("Gates").Get<IReadOnlyDictionary<string, GateConfiguration>>()
-            .Select(c => new Entity(ushort.Parse(c.Key), c.Value));
+            .GetSection("World").Get<WorldConfiguration>().Instance
+            .Select(s => new Entity(s.Value));
     }
 }
