@@ -27,7 +27,7 @@ script:
 
   - mv ow.Service.District/config/appsettings.example.json ow.Service.District/config/appsettings.json
 
-  - mv ow.Service.Gate/config/appsettings.example.json ow.Service.Gate/config/appsettings.json
+  - mv ow.Service.World/config/appsettings.example.json ow.Service.World/config/appsettings.json
 
   - mv ow.Utils.ItemView.Generator/config/appsettings.example.json ow.Utils.ItemView.Generator/config/appsettings.json
 
