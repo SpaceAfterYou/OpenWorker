@@ -1,11 +1,11 @@
 ﻿using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network.Relay.Attrubutes;
-using ow.Framework.IO.Network.Relay.World.Protos.Requests;
-using ow.Framework.IO.Network.Relay.World.Protos.Responses;
+using ow.Framework.IO.Network.Relay.World.Server.Protos.Requests;
+using ow.Framework.IO.Network.Relay.World.Server.Protos.Responses;
 using ow.Service.World.Game;
 using System.Threading.Tasks;
-using static ow.Framework.IO.Network.Relay.World.Protos.RWSPartyProto;
+using static ow.Framework.IO.Network.Relay.World.Server.Protos.RWSPartyProto;
 
 namespace ow.Service.World.Network.Relay.Handlers
 {

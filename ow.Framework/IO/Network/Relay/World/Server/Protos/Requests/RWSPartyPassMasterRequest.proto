@@ -1,8 +1,6 @@
 ﻿syntax = "proto3";
 
-option csharp_namespace = "ow.Framework.IO.Network.Relay.World.Protos.Requests";
-
-package PartyHandler;
+option csharp_namespace = "ow.Framework.IO.Network.Relay.World.Server.Protos.Requests";
 
 message RWSPartyPassMasterRequest
 {

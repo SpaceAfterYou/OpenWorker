@@ -101,6 +101,20 @@ namespace ow.Framework.IO.Network.Sync
 
         #region Send Characters
 
+        public BaseSyncSession SendAsync(SPartyInviteResponse value) =>
+            SendAsync(ClientOpcode.PartyDelete, (PacketWriter writer) =>
+            {
+                writer.WriteByteLengthUnicodeString(value.Member.Name);
+                writer.WriteByteLengthUnicodeString(value.Master.Name);
+                writer.Write(value.Master.Id);
+                writer.Write(value.Member.Id);
+                writer.Write(byte.MinValue);
+                writer.Write(byte.MinValue);
+                writer.Write(byte.MinValue);
+                writer.Write(uint.MinValue);
+                writer.Write(byte.MinValue);
+            });
+
         public BaseSyncSession SendAsync(PartyDeleteResponse value) =>
             SendAsync(ClientOpcode.PartyDelete, (PacketWriter writer) =>
             {
@@ -524,13 +538,8 @@ namespace ow.Framework.IO.Network.Sync
         private void DebugLogOpcode(ushort opcode)
         {
             ushort o = ConvertUtils.LeToBeUInt16(opcode);
-            if (Enum.IsDefined(typeof(ServerOpcode), o))
-            {
-                if ((ServerOpcode)o != ServerOpcode.Heartbeat)
-                    _logger.LogDebug($"@event [{(ServerOpcode)opcode}]");
-            }
-            else
-                _logger.LogDebug($"@event [0x{opcode:X4}]");
+            if ((ServerOpcode)o != ServerOpcode.Heartbeat)
+                _logger.LogDebug($"@event [0x{opcode:X4}] {(ServerOpcode)opcode}");
         }
     }
 }

@@ -5,9 +5,9 @@ using System;
 
 namespace ow.Framework.IO.Network.Relay.World
 {
-    public abstract class RWBase : RServerBase<WorldHandlerAttribute>
+    public abstract class RWSBase : RServerBase<WorldHandlerAttribute>
     {
-        protected RWBase(IConfigurationSection configuration, IServiceProvider services, ILogger logger) :
+        protected RWSBase(IConfigurationSection configuration, IServiceProvider services, ILogger logger) :
             base(configuration, services, logger)
         {
         }
