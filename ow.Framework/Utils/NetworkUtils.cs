@@ -7,7 +7,7 @@ namespace ow.Framework.Utils
         public static void DropSession()
         {
 #if !DEBUG
-            throw new BadActionException();
+            throw new Exceptions.BadActionException();
 #else
             Debug.Assert(false);
 #endif

@@ -1,8 +1,15 @@
-﻿namespace ow.Service.District.Network.Relay
+﻿using Microsoft.Extensions.Configuration;
+
+namespace ow.Service.District.Network.Relay
 {
     public sealed class WorldRelayClient
     {
-        //public SessionService.SessionServiceClient Session { get; }
+        public PartyService.PartyServiceClient Party { get; }
+
+        public WorldRelayClient(IConfiguration configuration)
+        {
+            Session = new(new RWChannel(configuration.GetSection("World:GlobalRelay:Host")));
+        }
 
         //public WorldRelayClient(IConfiguration configuration) =>
         //    Session = new(new WorldRelayChannel(GetHost(configuration, configuration["World"])));

@@ -71,7 +71,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
             });
 
         [Handler(ServerOpcode.CharacterChangeSlot, HandlerPermission.Authorized)]
-        public void ChangeSlot(SyncSession session, CharacterChangeSlotRequest request)
+        public void ChangeSlot(SyncSession session, SCharacterChangeSlotRequest request)
         {
             if (1 > request.FirstSlot || request.FirstSlot > Defines.CharactersSlotsCount)
                 NetworkUtils.DropSession();
@@ -213,7 +213,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
         }
 
         [Handler(ServerOpcode.CharacterChangeBackground, HandlerPermission.Authorized)]
-        public void ChangeBackground(SyncSession session, CharacterChangeBackgroundRequest request)
+        public void ChangeBackground(SyncSession session, SCharacterChangeBackgroundRequest request)
         {
             if (!_tables.CharacterBackground.ContainsKey(request.BackgroundId))
                 NetworkUtils.DropSession();

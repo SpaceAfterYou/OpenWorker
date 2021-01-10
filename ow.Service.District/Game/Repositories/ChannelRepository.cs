@@ -27,7 +27,7 @@ namespace ow.Service.District.Game.Repositories
 
                 session.Channel = new(session, this);
 
-                BroadcastAsync(session, new ChannelBrodcastCharacterInResponse
+                BroadcastAsync(session, new ChannelBroadcastCharacterInResponse
                 {
                     Character = ResponseHelper.GetCharacter(session),
                     Place = ResponseHelper.GetPlace(session, _instance)
@@ -39,7 +39,7 @@ namespace ow.Service.District.Game.Repositories
             internal new void Leave(SyncSession session)
             {
                 if (base.Leave(session))
-                    BroadcastAsync(session, new ChannelBrodcastCharacterOutResponse
+                    BroadcastAsync(session, new ChannelBroadcastCharacterOutResponse
                     {
                         Id = session.Character.Id
                     });

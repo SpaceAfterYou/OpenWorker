@@ -36,14 +36,14 @@ namespace ow.Framework.Game
 
         #region Broadcast Character
 
-        protected void BroadcastAsync(TSession session, ChannelBrodcastCharacterInResponse value) =>
+        protected void BroadcastAsync(TSession session, ChannelBroadcastCharacterInResponse value) =>
             BroadcastExceptAsync(ClientOpcode.CharacterInInfo, session, (PacketWriter writer) =>
             {
                 writer.WriteCharacter(value.Character);
                 writer.WritePlace(value.Place);
             });
 
-        protected void BroadcastAsync(TSession session, ChannelBrodcastCharacterOutResponse value) =>
+        protected void BroadcastAsync(TSession session, ChannelBroadcastCharacterOutResponse value) =>
             BroadcastExceptAsync(ClientOpcode.CharacterOutInfo, session, (PacketWriter writer) =>
             {
                 writer.Write((byte)1); // count
@@ -81,7 +81,7 @@ namespace ow.Framework.Game
 
             if (!session.SendAsync(packet, 0, length))
 #if !DEBUG
-                throw new NetworkException();
+                throw new IO.Network.Sync.Exceptions.NetworkException();
 #else
                 Debug.Assert(false);
 #endif // !DEBUG

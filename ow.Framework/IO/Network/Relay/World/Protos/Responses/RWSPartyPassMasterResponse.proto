@@ -1,0 +1,10 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.World.Protos.Responses";
+
+package PartyHandler;
+
+message RWSPartyPassMasterResponse
+{
+		bool Result = 1;
+}

@@ -4,7 +4,7 @@ using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Relay;
+using ow.Framework.IO.Network.Relay.Global;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
@@ -152,7 +152,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             });
         }
 
-        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, ChannelRepository channel, GlobalRelayClient globalRelay, BinTables tables, GateInstance gate)
+        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, ChannelRepository channel, RGClient globalRelay, BinTables tables, GateInstance gate)
         {
             _itemFactory = itemFactory;
             _accountFactory = accountFactory;
@@ -171,7 +171,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         private readonly Instance _instance;
         private readonly DayEventBoosterRepository _dayEventBoosters;
         private readonly ChannelRepository _channels;
-        private readonly GlobalRelayClient _globalRelay;
+        private readonly RGClient _globalRelay;
         private readonly BinTables _tables;
         private readonly GateInstance _gate;
     }

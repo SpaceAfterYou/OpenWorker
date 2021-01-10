@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using ow.Service.World.Network.Relay;
+using ow.Framework.IO.Network.Relay.Global;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,14 +7,10 @@ namespace ow.Service.Relay
 {
     public class Worker : IHostedService
     {
-        private readonly ILogger<Worker> _logger;
-        private readonly GlobalRelayServer _server;
+        private readonly RGServer _server;
 
-        public Worker(GlobalRelayServer server, ILogger<Worker> logger)
-        {
-            _logger = logger;
+        public Worker(RGServer server) =>
             _server = server;
-        }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {

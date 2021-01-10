@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Extensions;
-using ow.Framework.IO.Network.Relay;
 using ow.Framework.IO.Network.Relay.Extensions;
+using ow.Framework.IO.Network.Relay.Global;
 using ow.Framework.IO.Network.Sync.Extensions;
 using ow.Service.World.Game;
 using ow.Service.World.Game.Gate;
@@ -24,11 +24,11 @@ namespace ow.Service.World
                 .AddSyncHandlers()
                 .AddHostedService<Worker>()
                 .AddSingleton<DistrictRepository>()
-                .AddSingleton<GlobalRelayClient>()
+                .AddSingleton<RGClient>()
                 .AddSingleton<PartyRepository>()
                 .AddSingleton<Instance>()
                 .AddSingleton<BinTables>()
-                .AddTransient<RelayServer>()
+                .AddTransient<WorldRelayServer>()
                 .AddTransient<SyncSession>()
                 .AddSingleton<SyncServer>()
                 .AddAccountContext(context)

@@ -2,8 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Extensions;
 using ow.Framework.IO.File.World;
-using ow.Framework.IO.Network.Relay;
 using ow.Framework.IO.Network.Relay.Extensions;
+using ow.Framework.IO.Network.Relay.Global;
 using ow.Framework.IO.Network.Sync.Extensions;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
@@ -36,7 +36,7 @@ namespace ow.Service.District
                 .AddTransient<WorldTable>()
                 .AddTransient<SyncSession>()
                 .AddSingleton<WorldRelayClient>()
-                .AddSingleton<GlobalRelayClient>()
+                .AddSingleton<RGClient>()
                 .AddAccountContext(context)
                 .AddCharacterContext(context)
                 .AddItemContext(context)

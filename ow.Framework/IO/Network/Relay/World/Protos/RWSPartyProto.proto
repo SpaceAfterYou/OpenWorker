@@ -1,0 +1,29 @@
+﻿syntax = "proto3";
+
+import "IO/Network/Relay/World/Protos/Requests/RWSPartyInviteRequest.proto";
+import "IO/Network/Relay/World/Protos/Requests/RWSPartyKickRequest.proto";
+import "IO/Network/Relay/World/Protos/Requests/RWSPartyAcceptRequest.proto";
+import "IO/Network/Relay/World/Protos/Requests/RWSPartyDeclineRequest.proto";
+import "IO/Network/Relay/World/Protos/Requests/RWSPartyLeaveRequest.proto";
+import "IO/Network/Relay/World/Protos/Requests/RWSPartyPassMasterRequest.proto";
+
+import "IO/Network/Relay/World/Protos/Responses/RWSPartyInviteResponse.proto";
+import "IO/Network/Relay/World/Protos/Responses/RWSPartyKickResponse.proto";
+import "IO/Network/Relay/World/Protos/Responses/RWSPartyAcceptResponse.proto";
+import "IO/Network/Relay/World/Protos/Responses/RWSPartyDeclineResponse.proto";
+import "IO/Network/Relay/World/Protos/Responses/RWSPartyLeaveResponse.proto";
+import "IO/Network/Relay/World/Protos/Responses/RWSPartyPassMasterResponse.proto";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.World.Protos";
+
+package PartyHandler;
+
+service RWSPartyProto
+{
+    rpc Invite (RWSPartyInviteRequest) returns (RWSPartyInviteResponse);
+    rpc Kick (RWSPartyKickRequest) returns (RWSPartyKickResponse);
+    rpc Accept (RWSPartyAcceptRequest) returns (RWSPartyAcceptResponse);
+    rpc Decline (RWSPartyDeclineRequest) returns (RWSPartyDeclineResponse);
+    rpc Leave (RWSPartyLeaveRequest) returns (RWSPartyLeaveResponse);
+    rpc PassMaster (RWSPartyPassMasterRequest) returns (RWSPartyPassMasterResponse);
+}

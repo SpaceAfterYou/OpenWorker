@@ -8,7 +8,33 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Protobuf Include="IO\Network\Relay\World\Protos\RWSPartyProto.proto" Access="Public" GrpcServices="Both" />
+    <None Remove="certificate\client.pfx" />
+    <None Remove="certificate\server.pfx" />
+    <None Remove="config\appsettings.Development.example.json" />
+    <None Remove="config\appsettings.Development.json" />
+    <None Remove="config\commonsettings.example.json" />
+    <None Remove="config\commonsettings.json" />
+    <None Remove="IO\Network\Relay\World\Protos\Requests\RGSPartyAcceptRequest.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Requests\RGSPartyDeclineRequest.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Requests\RGSPartyInviteRequest.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Requests\RGSPartyKickRequest.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Requests\RGSPartyLeaveRequest.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Requests\RGSPartyPassMasterRequest.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Responses\RGSPartyAcceptResponse.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Responses\RGSPartyDeclineResponse.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Responses\RGSPartyInviteResponse.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Responses\RGSPartyKickResponse.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Responses\RGSPartyLeaveResponse.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\Responses\RGSPartyPassMasterResponse.proto" />
+    <None Remove="IO\Network\Relay\World\Protos\RWSPartyProt.proto" />
+    <None Remove="IO\Network\Relay\Global\Protos\Requests\RGSSessionRegisterRequest.proto" />
+    <None Remove="IO\Network\Relay\Global\Protos\Requests\RGSSessionReserveRequest.proto" />
+    <None Remove="IO\Network\Relay\Global\Protos\Requests\RGSSessionValidateRequest.proto" />
+    <None Remove="IO\Network\Relay\Global\Protos\RGSSessionService.proto" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="IO\Network\Relay\World\Protos\RGSPartyProto.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Protos\Requests\RWSPartyAcceptRequest.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Protos\Requests\RWSPartyDeclineRequest.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Protos\Requests\RWSPartyInviteRequest.proto" Access="Public" GrpcServices="Both" />
@@ -60,5 +86,9 @@
     <PackageReference Include="NetCoreServer" Version="5.0.7" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="5.0.2-ci.20210105T105531+sha.81cc79d36" />
     <PackageReference Include="SharpZipLib" Version="1.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="certificate\" />
   </ItemGroup>
 </Project>

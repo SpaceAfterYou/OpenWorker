@@ -2,8 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ow.Framework.Extensions;
 using ow.Framework.IO.Network.Relay.Extensions;
+using ow.Framework.IO.Network.Relay.Global;
 using ow.Service.Relay.Repository;
-using ow.Service.World.Network.Relay;
 
 namespace ow.Service.Relay
 {
@@ -17,7 +17,7 @@ namespace ow.Service.Relay
                 .AddFrameworkConfig(context))
             .ConfigureServices((hostContext, services) => services
                 .AddHostedService<Worker>()
-                .AddTransient<GlobalRelayServer>()
+                .AddTransient<RGServer>()
                 .AddTransient<SessionRepository>()
                 .AddRelayHandlers());
     }

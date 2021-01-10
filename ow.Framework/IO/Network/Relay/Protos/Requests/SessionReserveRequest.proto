@@ -1,9 +1,0 @@
-﻿syntax = "proto3";
-
-option csharp_namespace = "ow.Framework.IO.Network.Relay.Protos.Requests";
-
-package SessionHandler;
-
-message SessionReserveRequest {
-  int32 Account = 1;
-}

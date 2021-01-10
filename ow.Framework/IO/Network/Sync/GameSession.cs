@@ -405,7 +405,7 @@ namespace ow.Framework.IO.Network.Sync
                     writer.WriteOptionStatus(option);
             });
 
-        public BaseSyncSession SendAsync(AuthLoginResponse value) =>
+        public BaseSyncSession SendAsync(SAuthLoginResponse value) =>
             SendAsync(ClientOpcode.LoginResult, (PacketWriter writer) =>
             {
                 writer.Write(value.AccountId);
@@ -454,7 +454,7 @@ namespace ow.Framework.IO.Network.Sync
 
             if (!SendAsync(PacketUtils.Pack(writer), 0, writer.BaseStream.Length))
 #if !DEBUG
-                throw new NetworkException();
+                throw new Exceptions.NetworkException();
 #else
                 Debug.Assert(false);
 #endif // !DEBUG

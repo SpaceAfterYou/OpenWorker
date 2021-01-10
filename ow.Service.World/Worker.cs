@@ -10,7 +10,7 @@ namespace ow.Service.World
 {
     public class Worker : IHostedService
     {
-        public Worker(RelayServer relayServer, SyncServer server, ILogger<Worker> logger)
+        public Worker(WorldRelayServer relayServer, SyncServer server, ILogger<Worker> logger)
         {
             _logger = logger;
             _syncServer = server;
@@ -34,7 +34,7 @@ namespace ow.Service.World
         }
 
         private readonly ILogger<Worker> _logger;
-        private readonly RelayServer _relayServer;
+        private readonly WorldRelayServer _relayServer;
         private readonly SyncServer _syncServer;
     }
 }

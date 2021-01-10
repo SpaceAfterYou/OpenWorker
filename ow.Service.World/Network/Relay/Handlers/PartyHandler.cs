@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace ow.Service.World.Network.Relay.Handlers
 {
-    [GlobalHandler]
+    [WorldHandler]
     internal class PartyHandler : PartyService.PartyServiceBase
     {
         private readonly ILogger<PartyHandler> _logger;

@@ -3,7 +3,7 @@ using ow.Framework.Database.Accounts;
 using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Relay;
+using ow.Framework.IO.Network.Relay.Global;
 using ow.Framework.IO.Network.Relay.Protos.Requests;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
@@ -49,7 +49,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
             return new(model, gate, _tables, characterContext, itemContext);
         }
 
-        public ServiceHandler(Instance gate, GlobalRelayClient relay, BinTables tables, IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory)
+        public ServiceHandler(Instance gate, RGClient relay, BinTables tables, IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory)
         {
             _gate = gate;
             _relay = relay;
@@ -60,7 +60,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
         }
 
         private readonly Instance _gate;
-        private readonly GlobalRelayClient _relay;
+        private readonly RGClient _relay;
         private readonly BinTables _tables;
         private readonly IDbContextFactory<ItemContext> _itemFactory;
         private readonly IDbContextFactory<AccountContext> _accountFactory;
