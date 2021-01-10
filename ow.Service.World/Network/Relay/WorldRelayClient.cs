@@ -1,10 +1,14 @@
 ﻿using Microsoft.Extensions.Configuration;
+using ow.Framework.IO.Network.Relay;
+using static ow.Framework.IO.Network.Relay.World.Protos.RWSPartyProto;
 
 namespace ow.Service.World.Network.Relay
 {
     public sealed class WorldRelayClient
     {
-        public WorldRelayClient(IConfiguration configuration)
-        { }
+        public RWSPartyProtoClient Party { get; }
+
+        public WorldRelayClient(IConfigurationSection configuration) =>
+            Party = new(new RChannel(configuration));
     }
 }

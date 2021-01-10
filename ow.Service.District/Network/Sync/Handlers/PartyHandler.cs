@@ -12,16 +12,16 @@ namespace ow.Service.District.Network.Sync.Handlers
         [Handler(ServerOpcode.PartyAccept, HandlerPermission.Authorized)]
         public void Accept(SyncSession session, PartyAcceptRequest request)
         {
-            var response = _relay.Party.Accept(new Framework.IO.Network.Relay.Protos.Requests.PartyAcceptRequest()
-            {
-                Master = session.Character.Id,
-                Character = request.Character
-            });
+            //var response = _relay.Party.Accept(new Framework.IO.Network.Relay.Protos.Requests.PartyAcceptRequest()
+            //{
+            //    Master = session.Character.Id,
+            //    Character = request.Character
+            //});
 
-            if (response.Result)
-            {
-                session.SendAsync(new PartyAcceptResponse { Character = session. });
-            }
+            //if (response.Result)
+            //{
+            //    session.SendAsync(new PartyAcceptResponse { Character = session. });
+            //}
         }
 
         [Handler(ServerOpcode.PartyInvite, HandlerPermission.Authorized)]

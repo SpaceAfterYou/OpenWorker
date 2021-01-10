@@ -4,7 +4,7 @@ using ow.Framework.Database.Characters;
 using ow.Framework.Database.Storages;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Relay.Global;
-using ow.Framework.IO.Network.Relay.Protos.Requests;
+using ow.Framework.IO.Network.Relay.Global.Protos.Requests;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
@@ -24,7 +24,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
             if (_gate.Id != request.Gate)
                 NetworkUtils.DropSession();
 
-            if (!_relay.Session.Validate(new SessionValidateRequest { Account = request.Account, Key = request.SessionKey }).Result)
+            if (!_relay.Session.Validate(new RGSSessionValidateRequest { Account = request.Account, Key = request.SessionKey }).Result)
                 NetworkUtils.DropSession();
 
             {

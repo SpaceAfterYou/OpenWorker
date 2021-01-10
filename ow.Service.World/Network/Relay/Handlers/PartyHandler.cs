@@ -1,16 +1,16 @@
 ﻿using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network.Relay.Attrubutes;
-using ow.Framework.IO.Network.Relay.Protos;
-using ow.Framework.IO.Network.Relay.Protos.Requests;
-using ow.Framework.IO.Network.Relay.Protos.Responses;
+using ow.Framework.IO.Network.Relay.World.Protos.Requests;
+using ow.Framework.IO.Network.Relay.World.Protos.Responses;
 using ow.Service.World.Game;
 using System.Threading.Tasks;
+using static ow.Framework.IO.Network.Relay.World.Protos.RWSPartyProto;
 
 namespace ow.Service.World.Network.Relay.Handlers
 {
     [WorldHandler]
-    internal class PartyHandler : PartyService.PartyServiceBase
+    internal class PartyHandler : RWSPartyProtoBase
     {
         private readonly ILogger<PartyHandler> _logger;
 
@@ -19,9 +19,9 @@ namespace ow.Service.World.Network.Relay.Handlers
         public PartyHandler(PartyRepository parties, ILogger<PartyHandler> logger) =>
             (_parties, _logger) = (parties, logger);
 
-        public override Task<PartyAcceptResponse> Accept(PartyAcceptRequest request, ServerCallContext context)
+        public override Task<RWSPartyAcceptResponse> Accept(RWSPartyAcceptRequest request, ServerCallContext context)
         {
-            return Task.FromResult(new PartyAcceptResponse { });
+            return Task.FromResult(new RWSPartyAcceptResponse { });
         }
     }
 }

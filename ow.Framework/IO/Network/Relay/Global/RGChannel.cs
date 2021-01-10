@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.IO.Network.Relay.World;
 
 namespace ow.Framework.IO.Network.Relay.Global
 {
-    public sealed class RGChannel : RWChannel
+    public sealed class RGChannel : RChannel
     {
-        public RGChannel(IConfiguration configuration) : base(configuration.GetSection("World:GlobalRelay"))
+        public RGChannel(IConfiguration configuration) : base(configuration.GetSection("World:Relay:Global"))
         {
         }
     }

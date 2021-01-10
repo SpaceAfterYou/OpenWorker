@@ -1,21 +1,17 @@
 ﻿using Microsoft.Extensions.Configuration;
+using ow.Framework.IO.Network.Relay;
+using static ow.Framework.IO.Network.Relay.World.Protos.RWSPartyProto;
 
 namespace ow.Service.District.Network.Relay
 {
     public sealed class WorldRelayClient
     {
-        public PartyService.PartyServiceClient Party { get; }
+        public RWSPartyProtoClient Party { get; }
 
         public WorldRelayClient(IConfiguration configuration)
         {
-            Session = new(new RWChannel(configuration.GetSection("World:GlobalRelay:Host")));
+            Party = new(new RChannel(configuration.GetSection($"World:Instance:{configuration["World"]}:Relay:World:Host")));
         }
-
-        //public WorldRelayClient(IConfiguration configuration) =>
-        //    Session = new(new WorldRelayChannel(GetHost(configuration, configuration["World"])));
-
-        //private static IConfigurationSection GetHost(IConfiguration configuration, string world) =>
-        //    configuration.GetSection($"World:Instance:{world}:Relay:Host");
     }
 }
 

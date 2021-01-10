@@ -4,7 +4,7 @@ using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
-using ow.Service.District.Network.Sync.Repositories;
+using ow.Service.District.Game.Repositories;
 
 namespace ow.Service.District.Network.Sync.Handlers
 {

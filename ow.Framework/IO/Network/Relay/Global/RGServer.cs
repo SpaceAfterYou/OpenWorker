@@ -5,10 +5,10 @@ using System;
 
 namespace ow.Framework.IO.Network.Relay.Global
 {
-    public class RGServer : RServerBase<WorldHandlerAttribute>
+    public class RGServer : RServerBase<GlobalHandlerAttribute>
     {
-        public RGServer(IConfiguration configuration, IServiceProvider services, ILogger logger) :
-            this(configuration.GetSection("World:GlobalRelay:Host"), services, logger)
+        public RGServer(IConfiguration configuration, IServiceProvider services, ILogger<RGServer> logger) :
+            this(configuration.GetSection("World:Relay:Global:Host"), services, (ILogger)logger)
         {
         }
 
