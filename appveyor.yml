@@ -18,8 +18,7 @@ matrix:
   fast_finish: true
 
 before_build:
-  - mv ow.Framework/config/commonsettings.example.json ow.Framework/config/commonsettings.json
-
+  - touch ow.Framework/config/commonsettings.json
   - touch ow.Framework/config/appsettings.json
   - touch ow.Framework.Tests/config/appsettings.json
   - touch ow.Service.District/config/appsettings.json
