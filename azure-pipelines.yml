@@ -52,8 +52,8 @@ steps:
     command: 'restore'
     restoreSolution: '$(solution)'
     feedsToUse: 'config'
-    
-- task: Bash@3
+
+- task: PowerShell@2
   inputs:
     targetType: 'inline'
     script: |
