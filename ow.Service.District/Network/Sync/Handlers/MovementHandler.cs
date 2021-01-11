@@ -6,7 +6,7 @@ using ow.Framework.IO.Network.Sync.Responses;
 
 namespace ow.Service.District.Network.Sync.Handlers
 {
-    internal static class MovementHandler
+    public static class MovementHandler
     {
         [Handler(ServerOpcode.MovementJump, HandlerPermission.Authorized)]
         public static void Jump(SyncSession session, MovementJumpRequest request)

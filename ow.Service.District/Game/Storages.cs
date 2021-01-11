@@ -8,13 +8,13 @@ using System.Linq;
 
 namespace ow.Service.District.Game
 {
-    internal sealed record Storages
+    public sealed record Storages
     {
-        internal EquipableBattleFashionStorage EquippedBattleFashion { get; }
-        internal EquipableViewFashionStorage EquippedViewFashion { get; }
-        internal EquipableGearStorage EquippedGear { get; }
+        public EquipableBattleFashionStorage EquippedBattleFashion { get; }
+        public EquipableViewFashionStorage EquippedViewFashion { get; }
+        public EquipableGearStorage EquippedGear { get; }
 
-        internal Storages(CharacterModel model, BinTables tables, ItemContext context)
+        public Storages(CharacterModel model, BinTables tables, ItemContext context)
         {
             EquippedBattleFashion = new(GetItems(context, model, StorageType.EquippedBattleFashion), tables);
             EquippedViewFashion = new(GetItems(context, model, StorageType.EquippedViewFashion), tables);

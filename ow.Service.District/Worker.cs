@@ -1,35 +1,37 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ow.Framework.Utils;
+using ow.Service.District.Network.Relay;
 using ow.Service.District.Network.Sync;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace ow.Service.District
 {
-    internal class Worker : IHostedService
+    public class Worker : IHostedService
     {
-        private readonly ILogger<Worker> _logger;
-        private readonly SyncServer _server;
+        private readonly SyncServer _syncServer;
+        private readonly RWServer _relayWorldserver;
 
-        public Worker(SyncServer server, ILogger<Worker> logger)
+        public Worker(SyncServer server, RWServer relayWorldserver, ILogger<Worker> logger)
         {
-            _logger = logger;
-            _server = server;
+            _syncServer = server;
+            _relayWorldserver = relayWorldserver;
 
-            CommonUtils.PrintEnvironment(_logger);
+            CommonUtils.PrintEnvironment(logger);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _server.Start();
+            _syncServer.Start();
+            _relayWorldserver.Start();
             return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _server.Stop();
-            return Task.CompletedTask;
+            await _relayWorldserver.ShutdownAsync();
+            _syncServer.Stop();
         }
     }
 }

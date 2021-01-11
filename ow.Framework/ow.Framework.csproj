@@ -9,7 +9,10 @@
 
   <ItemGroup>
     <Protobuf Include="IO\Network\Relay\World\Client\Protos\Requests\RWCPartyInviteRequest.proto" Access="Public" GrpcServices="Both" />
-    <Protobuf Include="IO\Network\Relay\World\Client\Protos\RWSPartyProto.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\World\Client\Protos\Requests\RWCSessionReserveRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\World\Client\Protos\Responses\RWCSessionReserveResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\World\Client\Protos\RWCSessionProto.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\World\Client\Protos\RWCPartyProto.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\RWSPartyProto.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\Requests\RWSPartyAcceptRequest.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\Requests\RWSPartyDeclineRequest.proto" Access="Public" GrpcServices="Both" />
@@ -18,7 +21,7 @@
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\Requests\RWSPartyLeaveRequest.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\Requests\RWSPartyPassMasterRequest.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\Global\Protos\Requests\RGSSessionReserveRequest.proto" Access="Public" GrpcServices="Both" />
-    <Protobuf Include="IO\Network\Relay\Global\Protos\Requests\RGSSessionValidateRequest.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Global\Protos\Requests\RGSSessionContainsRequest.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\Global\Protos\Requests\RGSSessionRegisterRequest.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\Responses\RWSPartyAcceptResponse.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\Responses\RWSPartyDeclineResponse.proto" Access="Public" GrpcServices="Both" />
@@ -27,7 +30,7 @@
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\Responses\RWSPartyLeaveResponse.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\World\Server\Protos\Responses\RWSPartyPassMasterResponse.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\Global\Protos\Responses\RGSSessionReserveResponse.proto" Access="Public" GrpcServices="Both" />
-    <Protobuf Include="IO\Network\Relay\Global\Protos\Responses\RGSSessionValidateResponse.proto" Access="Public" GrpcServices="Both" />
+    <Protobuf Include="IO\Network\Relay\Global\Protos\Responses\RGSSessionContainsResponse.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\Global\Protos\Responses\RGSSessionRegisterResponse.proto" Access="Public" GrpcServices="Both" />
     <Protobuf Include="IO\Network\Relay\Global\Protos\RGSSessionProto.proto" Access="Public" GrpcServices="Both" />
   </ItemGroup>
@@ -62,9 +65,5 @@
     <PackageReference Include="NetCoreServer" Version="5.0.7" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="5.0.2-ci.20210105T105531+sha.81cc79d36" />
     <PackageReference Include="SharpZipLib" Version="1.3.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="IO\Network\Relay\World\Client\Protos\Responses\" />
   </ItemGroup>
 </Project>

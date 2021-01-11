@@ -9,7 +9,7 @@ namespace ow.Service.District.Game.Helpers
 {
     public static class ResponseHelper
     {
-        internal static CharacterShared GetCharacter(SyncSession session) => new()
+        public static CharacterShared GetCharacter(SyncSession session) => new()
         {
             Id = session.Character.Id,
             Name = session.Character.Name,
@@ -82,7 +82,7 @@ namespace ow.Service.District.Game.Helpers
 
         private static readonly GearItemInfo _emptyGearItem = new();
 
-        internal static PlaceShared GetPlace(SyncSession session, Instance instance) => new()
+        public static PlaceShared GetPlace(SyncSession session, Instance instance) => new()
         {
             Location = instance.Location.Id,
             Rotation = session.Character.Place.Rotation,

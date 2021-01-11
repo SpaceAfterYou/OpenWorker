@@ -6,7 +6,7 @@ using System;
 
 namespace ow.Service.World.Network.Gate.Sync
 {
-    public sealed class SyncServer : BaseSyncServer
+    public sealed class SyncServer : SServerBase
     {
         public SyncServer(IServiceProvider services, IConfiguration configuration) : base(services, GetHost(configuration))
         {

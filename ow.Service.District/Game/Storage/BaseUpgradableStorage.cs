@@ -1,7 +1,7 @@
 ﻿namespace ow.Framework.Game.Storage
 {
-    internal abstract class BaseUpgradableStorage
+    public abstract class BaseUpgradableStorage
     {
-        internal byte Upgrades { get; }
+        public byte Upgrades { get; }
     }
 }

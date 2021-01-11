@@ -35,9 +35,9 @@ namespace ow.Service.District.Network.Sync.Handlers
             session.SendAsync(new PartyDeleteResponse());
         }
 
-        public PartyHandler(WorldRelayClient relay) =>
+        public PartyHandler(RWClient relay) =>
             _relay = relay;
 
-        private readonly WorldRelayClient _relay;
+        private readonly RWClient _relay;
     }
 }

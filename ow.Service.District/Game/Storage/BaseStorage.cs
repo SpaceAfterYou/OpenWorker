@@ -4,11 +4,11 @@ using System.Linq;
 
 namespace ow.Service.District.Game.Storage
 {
-    internal abstract class BaseStorage : List<StorageItem?>
+    public abstract class BaseStorage : List<StorageItem?>
     {
-        internal new byte Capacity { get; set; }
+        public new byte Capacity { get; set; }
 
-        internal BaseStorage(IEnumerable<ItemModel> models, BinTables tables, ushort maxCapacity) : base(GetItems(models, tables, maxCapacity))
+        public BaseStorage(IEnumerable<ItemModel> models, BinTables tables, ushort maxCapacity) : base(GetItems(models, tables, maxCapacity))
         {
         }
 

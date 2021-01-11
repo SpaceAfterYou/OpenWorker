@@ -7,14 +7,14 @@ using System.Net;
 
 namespace ow.Framework.IO.Network.Sync
 {
-    public abstract class BaseSyncServer : TcpServer
+    public abstract class SServerBase : TcpServer
     {
-        private readonly ILogger<BaseSyncServer> _logger;
+        private readonly ILogger<SServerBase> _logger;
 
         protected readonly IServiceProvider Services;
 
-        protected BaseSyncServer(IServiceProvider services, IConfiguration configuration) : base(IPEndPoint.Parse($"{configuration["Ip"]}:{configuration["Port"]}")) =>
-            (_logger, Services) = (services.GetRequiredService<ILogger<BaseSyncServer>>(), services);
+        protected SServerBase(IServiceProvider services, IConfiguration configuration) : base(IPEndPoint.Parse($"{configuration["Ip"]}:{configuration["Port"]}")) =>
+            (_logger, Services) = (services.GetRequiredService<ILogger<SServerBase>>(), services);
 
         public override bool Start()
         {

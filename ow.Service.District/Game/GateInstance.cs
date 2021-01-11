@@ -5,8 +5,8 @@ namespace ow.Service.District.Game
 {
     public sealed record GateInstance
     {
-        internal string Ip { get; }
-        internal ushort Port { get; }
+        public string Ip { get; }
+        public ushort Port { get; }
 
         public GateInstance(IConfiguration configuration)
         {

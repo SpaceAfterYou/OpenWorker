@@ -12,11 +12,11 @@ using ow.Service.District.Network.Sync;
 
 namespace ow.Service.District
 {
-    internal static class Program
+    public static class Program
     {
-        internal static void Main(string[] args) => CreateHostBuilder(args).Build().Run();
+        public static void Main(string[] args) => CreateHostBuilder(args).Build().Run();
 
-        internal static IHostBuilder CreateHostBuilder(string[] args) => Host
+        public static IHostBuilder CreateHostBuilder(string[] args) => Host
             .CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((context, config) => config
                 .AddFrameworkConfig(context))
@@ -34,8 +34,9 @@ namespace ow.Service.District
                 .AddSingleton<GateInstance>()
                 .AddTransient<WorldTable>()
                 .AddTransient<SyncSession>()
-                .AddSingleton<WorldRelayClient>()
+                .AddSingleton<RWClient>()
                 .AddSingleton<RGClient>()
+                .AddSingleton<RWServer>()
                 .AddAccountContext(context)
                 .AddCharacterContext(context)
                 .AddItemContext(context)

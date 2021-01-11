@@ -23,8 +23,8 @@ namespace ow.Service.District.Network.Sync.Handlers
         [Handler(ServerOpcode.DistrictEnter, HandlerPermission.Anonymous)]
         public void Enter(SyncSession session, DistrictEnterRequest request)
         {
-            if (!_globalRelay.Session.Validate(new() { Account = request.Account, Key = request.SessionKey }).Result)
-                NetworkUtils.DropSession();
+            if (!_globalRelay.Session.Contains(new() { Account = request.Account, Key = request.SessionKey }).Result)
+                NetworkUtils.DropBadAction();
 
             {
                 AccountModel model = GetAccountModel(request.Account);
@@ -44,10 +44,15 @@ namespace ow.Service.District.Network.Sync.Handlers
                 session.Storages = new(model, _tables, context);
             }
 
-            if (!_channels.Join(session))
-                NetworkUtils.DropSession();
+            if (!_channels.TryJoin(session))
+                NetworkUtils.DropBadAction();
 
-            session.SendAsync(new ServiceCurrentDataResponse());
+            if (_sync.Characters.TryAdd(session.Character.Id, session))
+                NetworkUtils.DropBadAction();
+
+            session.Permission = HandlerPermission.Authorized;
+
+            session.SendAsync(new SWorldCurrentDataResponse());
             session.SendAsync(new WorldVersionResponse()
             {
                 Id = 0,
@@ -135,13 +140,13 @@ namespace ow.Service.District.Network.Sync.Handlers
         public void LogOut(SyncSession session, DistrictLogoutRequest request)
         {
             if (session.Account.Id != request.Account)
-                NetworkUtils.DropSession();
+                NetworkUtils.DropBadAction();
 
             if (session.Character.Id != request.Character)
-                NetworkUtils.DropSession();
+                NetworkUtils.DropBadAction();
 
             if (request.Way != DistrictLogOutWay.GoToGateService)
-                NetworkUtils.DropSession();
+                NetworkUtils.DropBadAction();
 
             session.SendAsync(new DistrictLogOutResponse()
             {
@@ -152,8 +157,9 @@ namespace ow.Service.District.Network.Sync.Handlers
             });
         }
 
-        public ServiceHandler(IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, ChannelRepository channel, RGClient globalRelay, BinTables tables, GateInstance gate)
+        public ServiceHandler(SyncServer sync, IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory, Instance instance, DayEventBoosterRepository dayEventBoosters, ChannelRepository channel, RGClient globalRelay, BinTables tables, GateInstance gate)
         {
+            _sync = sync;
             _itemFactory = itemFactory;
             _accountFactory = accountFactory;
             _characterFactory = characterFactory;
@@ -165,6 +171,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             _gate = gate;
         }
 
+        private readonly SyncServer _sync;
         private readonly IDbContextFactory<ItemContext> _itemFactory;
         private readonly IDbContextFactory<AccountContext> _accountFactory;
         private readonly IDbContextFactory<CharacterContext> _characterFactory;

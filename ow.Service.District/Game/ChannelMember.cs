@@ -2,17 +2,17 @@
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Service.District.Game.Helpers;
-using ow.Service.District.Game.Repositories;
 using ow.Service.District.Network.Sync;
 using System.Linq;
+using static ow.Service.District.Game.Repositories.ChannelRepository;
 
 namespace ow.Service.District.Game
 {
-    internal sealed class ChannelMember : BaseChannelMember<ChannelRepository.Entity, SyncSession>
+    public sealed class ChannelMember : BaseChannelMember<ChannelEntity, SyncSession>
     {
-        internal void Leave() => Channel.Leave(Session);
+        public void Leave() => Channel.Leave(Session);
 
-        internal void SendOtherCharactersAsync(Instance instance) =>
+        public void SendOtherCharactersAsync(Instance instance) =>
             SendAsync(new CharacterOthersResponse()
             {
                 Values = Channel.Sessions.Select(s => new CharacterOthersResponse.Entity()
@@ -22,7 +22,7 @@ namespace ow.Service.District.Game
                 })
             });
 
-        internal void SendAsync(CharacterSpecialOptionListUpdateRequest request)
+        public void SendAsync(CharacterSpecialOptionListUpdateRequest request)
         {
             SyncSession? session = Channel.Sessions.Values.FirstOrDefault(s => s.Character.Id == request.Character);
             if (session is null)
@@ -39,7 +39,7 @@ namespace ow.Service.District.Game
             });
         }
 
-        internal ChannelMember(SyncSession session, ChannelRepository.Entity channel) : base(session, channel)
+        public ChannelMember(SyncSession session, ChannelEntity channel) : base(session, channel)
         {
         }
     }

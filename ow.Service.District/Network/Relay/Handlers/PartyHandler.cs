@@ -25,7 +25,7 @@ namespace ow.Service.District.Network.Relay.Handlers
                 });
             }
 
-            return Task.FromResult(new Empty());
+            return Task.FromResult(new Empty { });
         }
 
         public PartyHandler(SyncServer syncServer)

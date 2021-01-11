@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Sync;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -12,7 +11,8 @@ using System.Linq;
 
 namespace ow.Framework.Game
 {
-    public abstract class BaseChannel<TSession> where TSession : BaseSyncSession
+    public abstract class BaseChannel<TSession>
+        where TSession : SSessionBase
     {
         public ushort Id { get; }
         public IReadOnlyDictionary<Guid, TSession> Sessions => _internalSessions;
@@ -20,30 +20,22 @@ namespace ow.Framework.Game
         private readonly ILogger _logger;
         private readonly ConcurrentDictionary<Guid, TSession> _internalSessions = new();
 
-        public ChannelLoadStatus Status => _internalSessions.Count switch
-        {
-            > 64 => ChannelLoadStatus.Full,
-            > 48 => ChannelLoadStatus.High,
-            > 32 => ChannelLoadStatus.Medium,
-            _ => ChannelLoadStatus.Low
-        };
-
         protected BaseChannel(ushort id, ILogger logger) => (Id, _logger) = (id, logger);
 
-        protected bool Join(TSession session) => _internalSessions.TryAdd(session.Id, session);
+        protected bool TryAdd(TSession session) => _internalSessions.TryAdd(session.Id, session);
 
-        protected bool Leave(TSession session) => _internalSessions.TryRemove(session.Id, out TSession _);
+        protected bool TryRemove(TSession session, out TSession? @out) => _internalSessions.TryRemove(session.Id, out @out);
 
         #region Broadcast Character
 
-        protected void BroadcastAsync(TSession session, ChannelBroadcastCharacterInResponse value) =>
+        protected void BroadcastAsync(TSession session, SChannelBroadcastCharacterInResponse value) =>
             BroadcastExceptAsync(ClientOpcode.CharacterInInfo, session, (PacketWriter writer) =>
             {
                 writer.WriteCharacter(value.Character);
                 writer.WritePlace(value.Place);
             });
 
-        protected void BroadcastAsync(TSession session, ChannelBroadcastCharacterOutResponse value) =>
+        protected void BroadcastAsync(TSession session, SChannelBroadcastCharacterOutResponse value) =>
             BroadcastExceptAsync(ClientOpcode.CharacterOutInfo, session, (PacketWriter writer) =>
             {
                 writer.Write((byte)1); // count
@@ -80,10 +72,11 @@ namespace ow.Framework.Game
             /// [ TODO ] Change checking
 
             if (!session.SendAsync(packet, 0, length))
+                NetworkUtils.DropBadAction();
 #if !DEBUG
                 throw new IO.Network.Sync.Exceptions.NetworkException();
 #else
-                Debug.Assert(false);
+            Debug.Assert(false);
 #endif // !DEBUG
         }
 

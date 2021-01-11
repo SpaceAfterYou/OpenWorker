@@ -5,9 +5,9 @@ using System;
 
 namespace ow.Service.District.Network.Relay
 {
-    public sealed class WorldRelayServer : RWSBase
+    public sealed class RWServer : RWSBase
     {
-        public WorldRelayServer(IConfiguration configuration, IServiceProvider services, ILogger<WorldRelayServer> logger) :
+        public RWServer(IConfiguration configuration, IServiceProvider services, ILogger<RWServer> logger) :
             base(configuration.GetSection($"World:Instance:{configuration["World"]}:District:{configuration["District"]}:Relay:World:Host"), services, logger)
         {
         }

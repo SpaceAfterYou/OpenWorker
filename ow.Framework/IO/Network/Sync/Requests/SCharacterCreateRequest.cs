@@ -8,7 +8,7 @@ using System.Linq;
 namespace ow.Framework.IO.Network.Sync.Requests
 {
     [Request]
-    public readonly struct CharacterCreateRequest
+    public readonly struct SCharacterCreateRequest
     {
         public readonly struct HairInfo
         {
@@ -226,7 +226,7 @@ namespace ow.Framework.IO.Network.Sync.Requests
         public byte Unknown3 { get; }
         public uint Outfit { get; }
 
-        public CharacterCreateRequest(BinaryReader br)
+        public SCharacterCreateRequest(BinaryReader br)
         {
             Character = new CharacterInfo(br);
             Slot = br.ReadByte();

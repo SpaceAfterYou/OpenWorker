@@ -21,6 +21,7 @@ namespace ow.Service.Auth.Network.Sync.Handlers
             if (GetAccount(request.Nickname, request.Password) is AccountModel model)
             {
                 session.Account = new(model);
+                session.Permission = HandlerPermission.Authorized;
 
                 session.SendAsync(new SAuthLoginResponse
 

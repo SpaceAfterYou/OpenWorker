@@ -28,7 +28,7 @@ namespace ow.Service.World
                 .AddSingleton<PartyRepository>()
                 .AddSingleton<Instance>()
                 .AddSingleton<BinTables>()
-                .AddTransient<WorldRelayServer>()
+                .AddTransient<RWServer>()
                 .AddTransient<SyncSession>()
                 .AddSingleton<SyncServer>()
                 .AddAccountContext(context)

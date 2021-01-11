@@ -2,10 +2,10 @@
 
 namespace ow.Service.District.Game
 {
-    internal sealed record Account
+    public sealed record Account
     {
-        internal int Id { get; }
+        public int Id { get; }
 
-        internal Account(AccountModel model) => Id = model.Id;
+        public Account(AccountModel model) => Id = model.Id;
     }
 }

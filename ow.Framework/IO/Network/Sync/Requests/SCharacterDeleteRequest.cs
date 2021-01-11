@@ -4,10 +4,10 @@ using System.IO;
 namespace ow.Framework.IO.Network.Sync.Requests
 {
     [Request]
-    public readonly struct CharacterDeleteRequest
+    public readonly struct SCharacterDeleteRequest
     {
         public int Id { get; }
 
-        public CharacterDeleteRequest(BinaryReader br) => Id = br.ReadInt32();
+        public SCharacterDeleteRequest(BinaryReader br) => Id = br.ReadInt32();
     }
 }

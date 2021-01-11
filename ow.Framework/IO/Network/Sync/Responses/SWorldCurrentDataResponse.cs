@@ -2,7 +2,7 @@
 
 namespace ow.Framework.IO.Network.Sync.Responses
 {
-    public sealed record ServiceCurrentDataResponse
+    public sealed record SWorldCurrentDataResponse
     {
         public long UnixTimeSeconds { get; }
         public ushort Year { get; }
@@ -13,7 +13,7 @@ namespace ow.Framework.IO.Network.Sync.Responses
         public ushort Second { get; }
         public ushort IsDaylightSavingTime { get; }
 
-        public ServiceCurrentDataResponse()
+        public SWorldCurrentDataResponse()
         {
             DateTimeOffset dateTime = DateTimeOffset.Now;
 

@@ -20,8 +20,8 @@ namespace ow.Service.Relay.Network.Relay.Handlers
                 Key = _repository.TryRegister(request.Account, out ulong key) ? key : ulong.MinValue
             });
 
-        public override Task<RGSSessionValidateResponse> Validate(RGSSessionValidateRequest request, ServerCallContext context) =>
-            Task.FromResult(new RGSSessionValidateResponse
+        public override Task<RGSSessionContainsResponse> Contains(RGSSessionContainsRequest request, ServerCallContext context) =>
+            Task.FromResult(new RGSSessionContainsResponse
             {
                 Result = _repository.Contains(request.Account, request.Key)
             });

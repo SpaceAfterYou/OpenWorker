@@ -5,20 +5,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using static ow.Service.District.Game.NpcRepository;
 
 namespace ow.Service.District.Game
 {
-    public sealed class NpcRepository : List<NpcRepository.Entity>
+    public sealed class NpcRepository : List<NpcEntity>
     {
-        public sealed record Entity
+        public sealed record NpcEntity
         {
-            internal uint Id { get; }
-            internal uint CreatureId { get; }
-            internal Vector3 Position { get; }
-            internal float Rotation { get; }
-            internal uint Waypoint { get; }
+            public uint Id { get; }
+            public uint CreatureId { get; }
+            public Vector3 Position { get; }
+            public float Rotation { get; }
+            public uint Waypoint { get; }
 
-            internal Entity(uint id, uint creatureId, in Vector3 position, float rotation, uint waypoint)
+            public NpcEntity(uint id, uint creatureId, in Vector3 position, float rotation, uint waypoint)
             {
                 Id = id;
                 CreatureId = creatureId;
@@ -32,10 +33,10 @@ namespace ow.Service.District.Game
         {
         }
 
-        private static IEnumerable<Entity> GetEntities(VRoot root, uint id = 0) => root.EventBox.MonsterSpawns
+        private static IEnumerable<NpcEntity> GetEntities(VRoot root, uint id = 0) => root.EventBox.MonsterSpawns
             .Select(c => c.Monsters
                 .Where(m => m.Id != 0 && m.Type == MonsterSpawnType.Npc)
-                .Select(m => new Entity(id++, m.Id, GetPosition(c), c.Rotation, c.Waypoint)))
+                .Select(m => new NpcEntity(id++, m.Id, GetPosition(c), c.Rotation, c.Waypoint)))
             .SelectMany(i => i);
 
         private static float GetRandomValue(float min, float max) =>

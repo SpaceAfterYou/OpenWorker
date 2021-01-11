@@ -22,10 +22,10 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
         public void Enter(SyncSession session, GateEnterRequest request)
         {
             if (_gate.Id != request.Gate)
-                NetworkUtils.DropSession();
+                NetworkUtils.DropBadAction();
 
-            if (!_relay.Session.Validate(new RGSSessionValidateRequest { Account = request.Account, Key = request.SessionKey }).Result)
-                NetworkUtils.DropSession();
+            if (!_relay.Session.Contains(new RGSSessionContainsRequest { Account = request.Account, Key = request.SessionKey }).Result)
+                NetworkUtils.DropBadAction();
 
             {
                 using AccountContext context = _accountFactory.CreateDbContext();
@@ -35,10 +35,11 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
                 session.Account = new(model);
                 session.Characters = GetCharacters(model, request.Gate);
                 session.Background = model.CharacterBackground;
+                session.Permission = HandlerPermission.Authorized;
             }
 
             session.SendAsync(new GateEnterResponse() { AccountId = request.Account, Result = GateEnterResult.Success });
-            session.SendAsync(new ServiceCurrentDataResponse());
+            session.SendAsync(new SWorldCurrentDataResponse());
         }
 
         private Characters GetCharacters(AccountModel model, ushort gate)

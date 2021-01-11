@@ -8,7 +8,7 @@ namespace ow.Framework.Game
 {
     public abstract class BaseChannelMember<TChannel, TSession>
         where TChannel : BaseChannel<TSession>
-        where TSession : BaseSyncSession
+        where TSession : SSessionBase
     {
         protected readonly TChannel Channel;
         protected readonly TSession Session;

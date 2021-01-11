@@ -6,16 +6,16 @@ using System.Collections.Generic;
 
 namespace ow.Service.District.Network.Sync
 {
-    public sealed class SyncSession : BaseSyncSession
+    public sealed class SyncSession : SSessionBase
     {
-        internal Account Account { get; set; } = default!;
-        internal Character Character { get; set; } = default!;
-        internal Profile Profile { get; set; } = default!;
-        internal ChannelMember? Channel { get; set; } = default!;
-        internal Storages Storages { get; set; } = default!;
-        internal SpecialOptions SpecialOptions { get; set; } = default!;
-        internal IReadOnlyList<uint> Gestures { get; set; } = default!;
-        internal Stats Stats { get; set; } = default!;
+        public Account Account { get; set; } = default!;
+        public Character Character { get; set; } = default!;
+        public Profile Profile { get; set; } = default!;
+        public ChannelMember? Channel { get; set; }
+        public Storages Storages { get; set; } = default!;
+        public SpecialOptions SpecialOptions { get; set; } = default!;
+        public IReadOnlyList<uint> Gestures { get; set; } = default!;
+        public Stats Stats { get; set; } = default!;
 
         public SyncSession(SyncServer server, HandlerProvider provider, ILogger<SyncSession> logger) : base(server, provider, logger)
         {
@@ -23,6 +23,8 @@ namespace ow.Service.District.Network.Sync
 
         protected override void OnDisconnected()
         {
+            ((SyncServer)Server).Characters.Remove(Character.Id, out _);
+
             Channel?.Leave();
 
             base.OnDisconnected();

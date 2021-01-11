@@ -5,7 +5,7 @@ using ow.Service.World.Game.Gate;
 
 namespace ow.Service.World.Network.Gate.Sync
 {
-    public sealed class SyncSession : BaseSyncSession
+    public sealed class SyncSession : SSessionBase
     {
         internal Account Account { get; set; } = default!;
         internal Characters Characters { get; set; } = default!;

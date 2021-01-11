@@ -1,60 +1,33 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ow.Framework;
-using ow.Framework.Game;
-using ow.Framework.IO.Network.Sync.Responses;
-using ow.Service.District.Game.Helpers;
 using ow.Service.District.Network.Sync;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using static ow.Service.District.Game.Repositories.ChannelRepository;
 
 namespace ow.Service.District.Game.Repositories
 {
-    public sealed class ChannelRepository : Dictionary<ushort, ChannelRepository.Entity>
+    public sealed partial class ChannelRepository : Dictionary<ushort, ChannelEntity>
     {
-        public sealed class Entity : BaseChannel<SyncSession>
-        {
-            private readonly object _joinLock = new();
-            private readonly Instance _instance;
+        private readonly ConcurrentDictionary<int, ushort> _reserved = new();
 
-            internal bool TryJoin(SyncSession session)
-            {
-                lock (_joinLock)
-                {
-                    if (Sessions.Count >= Defines.MaxChannelSessions || !Join(session))
-                        return false;
-                }
-
-                session.Channel = new(session, this);
-
-                BroadcastAsync(session, new ChannelBroadcastCharacterInResponse
-                {
-                    Character = ResponseHelper.GetCharacter(session),
-                    Place = ResponseHelper.GetPlace(session, _instance)
-                });
-
-                return true;
-            }
-
-            internal new void Leave(SyncSession session)
-            {
-                if (base.Leave(session))
-                    BroadcastAsync(session, new ChannelBroadcastCharacterOutResponse
-                    {
-                        Id = session.Character.Id
-                    });
-            }
-
-            internal Entity(ushort id, Instance instance, ILogger<Entity> logger) : base(id, logger) =>
-                _instance = instance;
-        }
-
-        public ChannelRepository(IConfiguration configuration, Instance instance, ILogger<Entity> logger) :
+        public ChannelRepository(IConfiguration configuration, Instance instance, ILogger<ChannelEntity> logger) :
             base(GetChannels(configuration, configuration["World"], configuration["District"], instance, GetChannelsCount(configuration), logger))
         {
         }
 
-        internal bool Join(SyncSession session) => this.Any(channel => channel.Value.TryJoin(session));
+        public bool TryReserve(int character) =>
+            Values.Any(channel => channel.PossibleJoin && _reserved.TryAdd(character, channel.Id));
+
+        public bool TryJoin(SyncSession session)
+        {
+            if (_reserved.TryRemove(session.Character.Id, out ushort id) && TryGetValue(id, out ChannelEntity? channel) && channel.HardJoin(session))
+                return channel.HardJoin(session);
+
+            return this.Any(channel => channel.Value.TryJoin(session));
+        }
 
         private static byte GetChannelsCount(IConfiguration configuration) =>
             byte.Parse(configuration["World:Channel:PerDistrictInstance"]);
@@ -67,9 +40,9 @@ namespace ow.Service.District.Game.Repositories
             .First(s => s.Value.Key == id)
             .Index;
 
-        private static Dictionary<ushort, Entity> GetChannels(IConfiguration configuration, string world, string id, Instance instance, byte channels, ILogger<Entity> logger) => Enumerable
+        private static Dictionary<ushort, ChannelEntity> GetChannels(IConfiguration configuration, string world, string id, Instance instance, byte channels, ILogger<ChannelEntity> logger) => Enumerable
             .Range(GetOffset(configuration, world, id, instance) * channels, channels)
-            .ToDictionary(k => (ushort)k, v => new Entity((ushort)v, instance, logger));
+            .ToDictionary(k => (ushort)k, v => new ChannelEntity((ushort)v, instance, logger));
     }
 }
 

@@ -34,10 +34,10 @@ namespace ow.Service.District.Network.Sync.Handlers
                     continue;
 
                 if (!_tables.Gesture.TryGetValue((ushort)id, out GestureTableEntity? gesture))
-                    NetworkUtils.DropSession();
+                    NetworkUtils.DropBadAction();
 
                 if (gesture!.Hero != session.Character.Hero && gesture!.Hero != Hero.None)
-                    NetworkUtils.DropSession();
+                    NetworkUtils.DropBadAction();
             }
 
             using CharacterContext context = _characterRepository.CreateDbContext();

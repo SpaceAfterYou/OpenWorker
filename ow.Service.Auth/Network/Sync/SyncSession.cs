@@ -5,7 +5,7 @@ using ow.Service.Auth.Game;
 
 namespace ow.Service.Auth.Network.Sync
 {
-    public sealed class SyncSession : BaseSyncSession
+    public sealed class SyncSession : SSessionBase
     {
         public Account Account { get; set; } = default!;
 

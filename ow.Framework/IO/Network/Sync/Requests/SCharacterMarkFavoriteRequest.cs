@@ -5,13 +5,13 @@ using System.IO;
 namespace ow.Framework.IO.Network.Sync.Requests
 {
     [Request]
-    public readonly struct CharacterMarkFavoriteRequest
+    public readonly struct SCharacterMarkFavoriteRequest
     {
         private int Unknown1 { get; }
         public int Id { get; }
         private IReadOnlyList<byte> Unknown2 { get; }
 
-        public CharacterMarkFavoriteRequest(BinaryReader br)
+        public SCharacterMarkFavoriteRequest(BinaryReader br)
         {
             Unknown1 = br.ReadInt32();
             Id = br.ReadInt32();

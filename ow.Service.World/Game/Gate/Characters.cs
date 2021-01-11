@@ -13,9 +13,9 @@ using System.Numerics;
 
 namespace ow.Service.World.Game.Gate
 {
-    internal sealed class Characters : Dictionary<int, Characters.Entity>
+    internal sealed class Characters : Dictionary<int, Characters.CharacterEntity>
     {
-        internal sealed class Entity
+        internal sealed class CharacterEntity
         {
             internal readonly struct AppearanceInfo
             {
@@ -142,7 +142,7 @@ namespace ow.Service.World.Game.Gate
             internal byte Level { get; init; }
             internal AppearanceInfo Appearance { get; init; }
 
-            internal Entity(CharacterModel model, BinTables tables, ItemContext context)
+            internal CharacterEntity(CharacterModel model, BinTables tables, ItemContext context)
             {
                 Id = model.Id;
                 Name = model.Name;
@@ -174,8 +174,8 @@ namespace ow.Service.World.Game.Gate
         }
 
         public TimeSpan InitializeTime { get; }
-        public Entity? Favorite { get; set; }
-        public Entity? LastSelected { get; set; }
+        public CharacterEntity? Favorite { get; set; }
+        public CharacterEntity? LastSelected { get; set; }
 
         public Characters(AccountModel accountModel, ushort gateId, BinTables tables, CharacterContext characterContext, ItemContext itemContext)
         {
@@ -184,12 +184,12 @@ namespace ow.Service.World.Game.Gate
 
             foreach (CharacterModel model in GetCharacterModels(accountModel, gateId, characterContext))
                 if (!TryAdd(model.Id, new(model, tables, itemContext)))
-                    NetworkUtils.DropSession();
+                    NetworkUtils.DropBadAction();
 
-            if (accountModel.LastSelectedCharacter != -1 && TryGetValue(accountModel.LastSelectedCharacter, out Entity? last))
+            if (accountModel.LastSelectedCharacter != -1 && TryGetValue(accountModel.LastSelectedCharacter, out CharacterEntity? last))
                 LastSelected = last;
 
-            if (accountModel.FavoriteCharacter != -1 && TryGetValue(accountModel.FavoriteCharacter, out Entity? favorite))
+            if (accountModel.FavoriteCharacter != -1 && TryGetValue(accountModel.FavoriteCharacter, out CharacterEntity? favorite))
                 Favorite = favorite;
 
             stopwatch.Stop();
