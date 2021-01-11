@@ -44,10 +44,6 @@ strategy:
 pool:
   vmImage: $(imageName)
 
-variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-
 steps:
 - task: NuGetToolInstaller@1
 
@@ -68,8 +64,7 @@ steps:
       touch ow.Service.World/config/appsettings.json
       touch ow.Utils.ItemView.Generator/config/appsettings.json
 
-- task: VSBuild@1
+- task: DotNetCoreCLI@2
   inputs:
-    solution: '$(solution)'
-    platform: '$(buildPlatform)'
+    command: 'build'
     configuration: '$(buildConfiguration)'
