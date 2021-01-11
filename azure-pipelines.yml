@@ -42,8 +42,9 @@ steps:
 
 - task: NuGetCommand@2
   inputs:
+    command: 'restore'
     restoreSolution: '$(solution)'
-    configuration: 'NuGet.config'
+    feedsToUse: 'config'
 
 - task: PowerShell@2
   inputs:
