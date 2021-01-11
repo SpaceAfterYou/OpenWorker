@@ -4,7 +4,7 @@ test: off
 before_build:
   - mv ow.Framework\config\commonsettings.example.json ow.Framework\config\commonsettings.json
 
-  - touch ow.Framework\config\appsettings.Development.json
+  - touch ow.Framework\config\appsettings.json
   - touch ow.Framework.Tests\config\appsettings.json
   - touch ow.Service.District\config\appsettings.json
   - touch ow.Service.World\config\appsettings.json
