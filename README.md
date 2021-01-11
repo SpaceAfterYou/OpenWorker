@@ -19,19 +19,26 @@ Just another server emulator for korean SoulWoker written in .NET 5.
 
 #### Project: ow.Framework
 
-- rename **commonsettings.example.json** to **commonsettings.json**
+- rename **config/commonsettings.example.json** to **config/commonsettings.json**
 
-* setup data12.v password in commonsettings.json `config["Game"]["Datas"]["Passwords"]["Data12"]`
-* setup gamepath in commonsettings.json `config["Game"]["Dir"]`
-* ~~copy **.pfx** server and client certificates in to **certificate** dir~~
-* ~~setup certeficates password in commonsettings.json `config["Master"]["Password"]`~~
-
-**currently server use only data12.v and data49.v files**
-path looks like: `your_entered_path/datas/data12|49.v`
+```jsonc
+  "Game": {
+    // setup game directory
+    // currently server use only data12.v and data49.v files
+    // at end, directory path looks like: `YOUR_ENTERED_PATH/datas/data12|49.v`
+    "Dir": "",
+    "Datas": {
+      "Passwords": {
+        // setup password for archive
+        "Data12": ""
+      }
+    }
+  }
+```
 
 #### Project: ow.Service.District
 
-rename **appsettings.example.json** to **appsettings.json**
+rename **config/appsettings.example.json** to **config/appsettings.json**
 
 ```jsonc
 {
@@ -45,7 +52,7 @@ rename **appsettings.example.json** to **appsettings.json**
 
 #### Project: ow.Service.World
 
-rename **appsettings.example.json** to **appsettings.json**
+rename **config/appsettings.example.json** to **config/appsettings.json**
 
 ```jsonc
 {
