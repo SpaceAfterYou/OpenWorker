@@ -1,0 +1,11 @@
+﻿syntax = "proto3";
+
+import "IO/Network/Relay/World/Client/Protos/Requests/RWCSessionReserveRequest.proto";
+import "IO/Network/Relay/World/Client/Protos/Responses/RWCSessionReserveResponse.proto";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.World.Client.Protos";
+
+service RWCSessionProto
+{
+    rpc Reserve (RWCSessionReserveRequest) returns (RWCSessionReserveResponse);
+}

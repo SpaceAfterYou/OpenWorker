@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network.Sync.Attributes;
+using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.Utils;
 using System;
 using System.Collections.Generic;
@@ -9,32 +10,40 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using static ow.Framework.IO.Network.Sync.Providers.HandlerProvider;
+using static ow.Framework.IO.Network.Sync.Providers.HandlerProvider.SHPEntity;
 
 namespace ow.Framework.IO.Network.Sync.Providers
 {
-    public delegate void Event(SyncSession session, BinaryReader br);
-
-    public class HandlerProvider : List<Event>
+    public class HandlerProvider : List<SHPEntity>
     {
+        public sealed record SHPEntity
+        {
+            public delegate void SHPEMethod(SSessionBase session, BinaryReader br);
+
+            public HandlerPermission Permission { get; init; }
+            public SHPEMethod Method { get; init; } = default!;
+        }
+
         public HandlerProvider(IServiceProvider service, ILogger<HandlerProvider> logger) : base(GetHandlers(service, logger))
         {
         }
 
-        private static void Dummy(SyncSession session, BinaryReader _)
+        private static void Dummy(SSessionBase session, BinaryReader _)
         {
 #if !DEBUG
             session.Disconnect();
 #endif // !DEBUG
         }
 
-        private static List<Event> GetHandlers(IServiceProvider service, ILogger<HandlerProvider> logger)
+        private static List<SHPEntity> GetHandlers(IServiceProvider service, ILogger<HandlerProvider> logger)
         {
             IEnumerable<MethodInfo> methods = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(assembly => assembly.GetTypes())
                 .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance))
                 .Where(type => type.IsDefined(typeof(HandlerAttribute)));
 
-            List<Event> handlers = Enumerable.Repeat((Event)Dummy, GetMaxHandlersCount()).ToList();
+            List<SHPEntity> handlers = Enumerable.Repeat(new SHPEntity { Permission = HandlerPermission.None, Method = Dummy }, GetMaxHandlersCount()).ToList();
 
             Dictionary<Type, object?> instances = new(methods.Count());
 
@@ -56,22 +65,26 @@ namespace ow.Framework.IO.Network.Sync.Providers
                     }
                 }
 
-                Event handler = CreateEventHandler(instance, service, method);
+                SHPEMethod handlerMethod = CreateHandlerMethod(instance, service, method);
 
                 HandlerAttribute? attribute = method.GetCustomAttribute<HandlerAttribute>();
                 Debug.Assert(attribute is not null);
 
                 logger.LogDebug($"Used SYNC EVENT ({attribute.Opcode}) invoker on {method.DeclaringType!.FullName}.{method.Name}.");
 
-                handlers[ConvertUtils.LeToBeUInt16((ushort)attribute.Opcode)] = handler;
+                handlers[ConvertUtils.LeToBeUInt16((ushort)attribute.Opcode)] = new()
+                {
+                    Method = handlerMethod,
+                    Permission = attribute.Permission
+                };
             }
 
             return handlers;
         }
 
-        private static Event CreateEventHandler(object? instance, IServiceProvider service, MethodInfo method)
+        private static SHPEMethod CreateHandlerMethod(object? instance, IServiceProvider service, MethodInfo method)
         {
-            ParameterExpression session = Expression.Parameter(typeof(SyncSession), "Session");
+            ParameterExpression session = Expression.Parameter(typeof(SSessionBase), "Session");
             ParameterExpression br = Expression.Parameter(typeof(BinaryReader), "BinaryReader");
 
             Expression[] arguments = method.GetParameters().Select(param =>
@@ -81,7 +94,7 @@ namespace ow.Framework.IO.Network.Sync.Providers
                 Debug.Assert(param.ParameterType is not null);
 
                 // Session typed parameter
-                if (param.ParameterType == typeof(SyncSession) || param.ParameterType?.BaseType == typeof(SyncSession))
+                if (param.ParameterType == typeof(SSessionBase) || param.ParameterType?.BaseType == typeof(SSessionBase))
                     return Expression.Convert(session, param.ParameterType) as Expression;
 
                 // Packet structure parameter
@@ -107,7 +120,7 @@ namespace ow.Framework.IO.Network.Sync.Providers
             }).ToArray();
 
             MethodCallExpression caller = Expression.Call(instance is null ? null : Expression.Constant(instance), method, arguments);
-            return Expression.Lambda<Event>(caller, session, br).Compile();
+            return Expression.Lambda<SHPEMethod>(caller, session, br).Compile();
         }
 
         private static int GetMaxHandlersCount() => Convert.ToInt32(Enum

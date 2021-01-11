@@ -1,0 +1,8 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.World.Client.Protos.Requests";
+
+message RWCSessionReserveRequest
+{
+    int32 Character = 1;
+}

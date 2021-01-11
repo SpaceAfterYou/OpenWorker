@@ -12,10 +12,10 @@ namespace ow.Service.District.Game.Repositories
 
         public sealed record Entity
         {
-            internal ushort Id { get; }
-            internal MazeInfoTableEntity Maze { get; }
+            public ushort Id { get; }
+            public MazeInfoTableEntity Maze { get; }
 
-            internal Entity(ushort id, MazeInfoTableEntity maze) => (Id, Maze) = (id, maze);
+            public Entity(ushort id, MazeInfoTableEntity maze) => (Id, Maze) = (id, maze);
         }
 
         private static IEnumerable<Entity> GetItems(Instance zone, BinTables tables) => tables.MazeInfo.Values

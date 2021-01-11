@@ -1,42 +1,31 @@
 ﻿using Grpc.Core;
-using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network.Relay.Attrubutes;
-using ow.Framework.IO.Network.Relay.Protos;
-using System;
-using System.Collections.Concurrent;
-using System.Security.Cryptography;
+using ow.Framework.IO.Network.Relay.Global.Protos.Requests;
+using ow.Framework.IO.Network.Relay.Global.Protos.Responses;
+using ow.Service.Relay.Repository;
 using System.Threading.Tasks;
+using static ow.Framework.IO.Network.Relay.Global.Protos.RGSSessionProto;
 
 namespace ow.Service.Relay.Network.Relay.Handlers
 {
-    [Handler]
-    internal class SessionHandler : SessionRelay.SessionRelayBase
+    [GlobalHandler]
+    internal sealed class SessionHandler : RGSSessionProtoBase
     {
-        private readonly ILogger<SessionHandler> _logger;
+        public SessionHandler(SessionRepository repository) =>
+            _repository = repository;
 
-        private readonly ConcurrentDictionary<ulong, int> _sessions = new();
-        private readonly RNGCryptoServiceProvider _rand = new();
-
-        public SessionHandler(ILogger<SessionHandler> logger) => _logger = logger;
-
-        public override Task<RegisterReply> Register(RegisterRequest request, ServerCallContext context)
-        {
-            byte[] buffer = new byte[sizeof(ulong)];
-            _rand.GetBytes(buffer, 0, sizeof(ulong));
-
-            ulong key = BitConverter.ToUInt64(buffer);
-            _logger.LogDebug($"Create session key: {key}");
-
-            return Task.FromResult(new RegisterReply
+        public override Task<RGSSessionRegisterResponse> Register(RGSSessionRegisterRequest request, ServerCallContext context) =>
+            Task.FromResult(new RGSSessionRegisterResponse
             {
-                Key = _sessions.TryAdd(key, request.Account) ? key : ulong.MinValue
+                Key = _repository.TryRegister(request.Account, out ulong key) ? key : ulong.MinValue
             });
-        }
 
-        public override Task<ValidateReply> Validate(ValidateRequest request, ServerCallContext context) =>
-            Task.FromResult(new ValidateReply
+        public override Task<RGSSessionContainsResponse> Contains(RGSSessionContainsRequest request, ServerCallContext context) =>
+            Task.FromResult(new RGSSessionContainsResponse
             {
-                Result = _sessions.TryGetValue(request.Key, out int account) && account == request.Account
+                Result = _repository.Contains(request.Account, request.Key)
             });
+
+        private readonly SessionRepository _repository;
     }
 }

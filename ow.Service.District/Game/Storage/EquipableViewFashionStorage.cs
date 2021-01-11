@@ -5,9 +5,9 @@ using System.Collections.Generic;
 
 namespace ow.Framework.Game.Storage
 {
-    internal sealed class EquipableViewFashionStorage : BaseStorage
+    public sealed class EquipableViewFashionStorage : BaseStorage
     {
-        internal EquipableViewFashionStorage(IEnumerable<ItemModel> values, BinTables tables) : base(values, tables, Defines.EquipableFashionStorageMaxCapacity)
+        public EquipableViewFashionStorage(IEnumerable<ItemModel> values, BinTables tables) : base(values, tables, Defines.EquipableFashionStorageMaxCapacity)
         {
         }
     }

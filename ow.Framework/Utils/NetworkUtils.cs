@@ -1,16 +1,21 @@
-﻿using System.Diagnostics;
+﻿using ow.Framework.Exceptions;
+using ow.Framework.IO.Network.Sync.Exceptions;
+using System.Diagnostics;
 
 namespace ow.Framework.Utils
 {
     public static class NetworkUtils
     {
-        public static void DropSession()
+        public static void DropBadAction()
         {
-#if !DEBUG
-            throw new BadActionException();
-#else
             Debug.Assert(false);
-#endif
+            throw new BadActionException();
+        }
+
+        public static void DropNetwork()
+        {
+            Debug.Assert(false);
+            throw new NetworkException();
         }
     }
 }

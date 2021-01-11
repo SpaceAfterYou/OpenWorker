@@ -7,13 +7,13 @@ namespace ow.Service.District.Game
 {
     public sealed record BinTables
     {
-        internal IReadOnlyDictionary<ushort, DistrictTableEntity> District { get; }
-        internal IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfo { get; }
-        internal IReadOnlyDictionary<ushort, BoosterTableEntity> Booster { get; }
-        internal IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItem { get; }
-        internal IReadOnlyDictionary<ushort, GestureTableEntity> Gesture { get; }
-        internal IReadOnlyDictionary<uint, ItemTableEntity> Item { get; }
-        internal IReadOnlyDictionary<uint, PassInfoTableEntity> BattlePass { get; }
+        public IReadOnlyDictionary<ushort, DistrictTableEntity> District { get; }
+        public IReadOnlyDictionary<ushort, MazeInfoTableEntity> MazeInfo { get; }
+        public IReadOnlyDictionary<ushort, BoosterTableEntity> Booster { get; }
+        public IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItem { get; }
+        public IReadOnlyDictionary<ushort, GestureTableEntity> Gesture { get; }
+        public IReadOnlyDictionary<uint, ItemTableEntity> Item { get; }
+        public IReadOnlyDictionary<uint, PassInfoTableEntity> BattlePass { get; }
 
         public BinTables(IConfiguration configuration)
         {

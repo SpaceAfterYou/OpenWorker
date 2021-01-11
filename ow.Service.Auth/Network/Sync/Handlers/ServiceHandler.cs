@@ -1,12 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ow.Framework.Database.Accounts;
 using ow.Framework.Game.Enums;
+using ow.Framework.IO.Network.Relay.Global;
 using ow.Framework.IO.Network.Sync.Attributes;
 using ow.Framework.IO.Network.Sync.Opcodes;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
-using ow.Service.Auth.Network.Relay;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -16,23 +16,25 @@ namespace ow.Service.Auth.Network.Sync.Handlers
     public sealed class ServiceHandler
     {
         [Handler(ServerOpcode.AuthEnter, HandlerPermission.Anonymous)]
-        public void Enter(Session session, AuthEnterRequest request)
+        public void Enter(SyncSession session, SAuthEnterRequest request)
         {
             if (GetAccount(request.Nickname, request.Password) is AccountModel model)
             {
                 session.Account = new(model);
+                session.Permission = HandlerPermission.Authorized;
 
-                session.SendAsync(new AuthLoginResponse
+                session.SendAsync(new SAuthLoginResponse
+
                 {
                     Mac = request.Mac,
                     AccountId = model.Id,
                     Response = AuthLoginStatus.Success,
-                    SessionKey = _relayClient.Session.Register(new() { Account = model.Id }).Key,
+                    SessionKey = _relay.Session.Register(new() { Account = model.Id }).Key,
                 });
             }
             else
             {
-                session.SendAsync(new AuthLoginResponse
+                session.SendAsync(new SAuthLoginResponse
                 {
                     Response = AuthLoginStatus.Failure,
                     ErrorMessageCode = AuthLoginErrorMessageCode.WrongUsernameOrPassword
@@ -54,10 +56,10 @@ namespace ow.Service.Auth.Network.Sync.Handlers
             return sham.ComputeHash(Encoding.UTF8.GetBytes(password));
         }
 
-        public ServiceHandler(RelayClient relayClient, IDbContextFactory<AccountContext> accountFactory) =>
-            (_relayClient, _accountFactory) = (relayClient, accountFactory);
+        public ServiceHandler(RGClient relayClient, IDbContextFactory<AccountContext> accountFactory) =>
+            (_relay, _accountFactory) = (relayClient, accountFactory);
 
         private readonly IDbContextFactory<AccountContext> _accountFactory;
-        private readonly RelayClient _relayClient;
+        private readonly RGClient _relay;
     }
 }

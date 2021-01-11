@@ -8,7 +8,7 @@ namespace ow.Service.District.Network.Sync.Handlers
     public static class PostHandler
     {
         [Handler(ServerOpcode.PostInfo, HandlerPermission.Authorized)]
-        public static void GetPostInfo(Session session) => session
+        public static void GetPostInfo(SyncSession session) => session
             .SendAsync(new PostInfoResponse() { });
     }
 }

@@ -1,0 +1,10 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.Global.Protos.Responses";
+
+package SessionHandler;
+
+message RGSSessionContainsResponse
+{
+		bool Result = 1;
+}

@@ -1,0 +1,8 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.World.Client.Protos.Responses";
+
+message RWCSessionReserveResponse
+{
+    bool Result = 1;
+}

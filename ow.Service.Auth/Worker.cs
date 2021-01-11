@@ -9,15 +9,13 @@ namespace ow.Service.Auth
 {
     public class Worker : IHostedService
     {
-        private readonly ILogger<Worker> _logger;
-        private readonly Server _server;
+        private readonly SyncServer _server;
 
-        public Worker(Server server, ILogger<Worker> logger)
+        public Worker(SyncServer server, ILogger<Worker> logger)
         {
-            _logger = logger;
             _server = server;
 
-            CommonUtils.PrintEnvironment(_logger);
+            CommonUtils.PrintEnvironment(logger);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

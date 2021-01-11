@@ -4,26 +4,26 @@ using System.Numerics;
 
 namespace ow.Service.District.Game
 {
-    internal sealed class Character
+    public sealed class Character
     {
-        internal sealed class AppearanceInfo
+        public sealed class AppearanceInfo
         {
-            internal sealed class HairInfo
+            public sealed class HairInfo
             {
-                internal ushort Style { get; set; }
-                internal ushort Color { get; set; }
+                public ushort Style { get; set; }
+                public ushort Color { get; set; }
 
-                internal HairInfo(HairModel model) => (Style, Color) = (model.Style, model.Color);
+                public HairInfo(HairModel model) => (Style, Color) = (model.Style, model.Color);
             }
 
-            internal HairInfo Hair { get; }
-            internal ushort EyeColor { get; set; }
-            internal ushort SkinColor { get; set; }
-            internal HairInfo EquippedHair { get; }
-            internal ushort EquippedEyeColor { get; set; }
-            internal ushort EquippedSkinColor { get; set; }
+            public HairInfo Hair { get; }
+            public ushort EyeColor { get; set; }
+            public ushort SkinColor { get; set; }
+            public HairInfo EquippedHair { get; }
+            public ushort EquippedEyeColor { get; set; }
+            public ushort EquippedSkinColor { get; set; }
 
-            internal AppearanceInfo(AppearanceModel model)
+            public AppearanceInfo(AppearanceModel model)
             {
                 Hair = new(model.Hair);
                 EyeColor = model.EyeColor;
@@ -34,7 +34,7 @@ namespace ow.Service.District.Game
             }
         }
 
-        internal sealed class PlaceInfo
+        public sealed class PlaceInfo
         {
             public Vector3 Position { get; set; }
             public float Rotation { get; set; }
@@ -42,17 +42,17 @@ namespace ow.Service.District.Game
             public PlaceInfo(PlaceModel model) => (Position, Rotation) = (new(model.Position.X, model.Position.Y, model.Position.Z), model.Rotation);
         }
 
-        internal int Id { get; }
-        internal byte Level { get; set; }
-        internal Hero Hero { get; }
-        internal CharacterAdvancement Advancement { get; set; }
-        internal uint Photo { get; }
-        internal string Name { get; set; }
-        internal ulong Exp { get; set; }
-        internal PlaceInfo Place { get; init; }
-        internal AppearanceInfo Appearance { get; init; }
+        public int Id { get; }
+        public byte Level { get; set; }
+        public Hero Hero { get; }
+        public CharacterAdvancement Advancement { get; set; }
+        public uint Photo { get; }
+        public string Name { get; set; }
+        public ulong Exp { get; set; }
+        public PlaceInfo Place { get; init; }
+        public AppearanceInfo Appearance { get; init; }
 
-        internal Character(CharacterModel model)
+        public Character(CharacterModel model)
         {
             Id = model.Id;
             Level = model.Level;

@@ -11,11 +11,11 @@ namespace ow.Service.District.Network.Sync.Handlers
     public sealed class ChannelHandler
     {
         [Handler(ServerOpcode.ChannelInfo, HandlerPermission.Authorized)]
-        public void GetInfo(Session session) => session
+        public void GetInfo(SyncSession session) => session
             .SendAsync(new ChannelInfoResponse()
             {
                 Location = _instance.Location.Id,
-                Values = _dimensions.Values.Select(s => new ChannelInfoResponse.Entity()
+                Values = _channels.Values.Select(s => new ChannelInfoResponse.Entity()
                 {
                     Id = (ushort)(1 + s.Id),
                     Status = s.Status
@@ -25,10 +25,10 @@ namespace ow.Service.District.Network.Sync.Handlers
         //[Handler(ServerOpcode.ChannelSwitch, HandlerPermission.Authorized)]
         //public static void Switch(Session session) => session;
 
-        public ChannelHandler(Instance instance, DimensionRepository dimensions) =>
-            (_instance, _dimensions) = (instance, dimensions);
+        public ChannelHandler(Instance instance, ChannelRepository channels) =>
+            (_instance, _channels) = (instance, channels);
 
         private readonly Instance _instance;
-        private readonly DimensionRepository _dimensions;
+        private readonly ChannelRepository _channels;
     }
 }

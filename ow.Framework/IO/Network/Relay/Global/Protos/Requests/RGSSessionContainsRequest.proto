@@ -1,0 +1,11 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ow.Framework.IO.Network.Relay.Global.Protos.Requests";
+
+package SessionHandler;
+
+message RGSSessionContainsRequest
+{
+    uint64 Key = 1;
+    int32 Account = 2;
+}
