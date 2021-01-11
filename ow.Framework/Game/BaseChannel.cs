@@ -6,7 +6,6 @@ using ow.Framework.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace ow.Framework.Game
@@ -67,18 +66,8 @@ namespace ow.Framework.Game
                 SendAsync(session, packet, writer.BaseStream.Length);
         }
 
-        private static void SendAsync(TSession session, byte[] packet, long length)
-        {
-            /// [ TODO ] Change checking
-
-            if (!session.SendAsync(packet, 0, length))
-                NetworkUtils.DropBadAction();
-#if !DEBUG
-                throw new IO.Network.Sync.Exceptions.NetworkException();
-#else
-            Debug.Assert(false);
-#endif // !DEBUG
-        }
+        private static void SendAsync(TSession session, byte[] packet, long length) =>
+            session.SendAsync(packet, 0, length);
 
         private static byte[] GetRawPacket(PacketWriter writer) => PacketUtils.Pack(writer);
     }
