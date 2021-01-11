@@ -23,7 +23,7 @@ namespace ow.Service.District.Game.Repositories
 
         public bool TryJoin(SyncSession session)
         {
-            if (_reserved.TryRemove(session.Character.Id, out ushort id) && TryGetValue(id, out ChannelEntity? channel) && channel.HardJoin(session))
+            if (_reserved.TryRemove(session.Character.Id, out ushort id) && TryGetValue(id, out ChannelEntity? channel))
                 return channel.HardJoin(session);
 
             return this.Any(channel => channel.Value.TryJoin(session));

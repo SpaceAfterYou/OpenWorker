@@ -1,6 +1,22 @@
 ---
 
 test: off
+
+image:
+  - Visual Studio 2019
+  - Ubuntu
+  - macOS
+
+platform:
+  - Any CPU
+
+configuration:
+  - Debug
+  - Release
+
+matrix:
+  fast_finish: true
+
 before_build:
   - mv ow.Framework\config\commonsettings.example.json ow.Framework\config\commonsettings.json
 
