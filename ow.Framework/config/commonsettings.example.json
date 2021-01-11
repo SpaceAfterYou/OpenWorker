@@ -2,17 +2,6 @@
   "ConnectionStrings": {
     "PgsqlConnection": "Host=localhost;Port=5432;Database=soulworker;Username=postgres;Password=postgres"
   },
-  "Relay": {
-    "Host": {
-      "Ip": "127.0.0.1",
-      "Port": 56666
-    },
-    "Certificate": {
-      "Server": "certificate/server.pfx",
-      "Client": "certificate/client.pfx",
-      "Password": "qwe123"
-    }
-  },
   "Game": {
     "Dir": "",
     "Datas": {
@@ -31,79 +20,66 @@
     "LoginBonus": "Enabled",
     "SecondaryPassword": "Enabled",
     "PremiumShop": "Enabled",
-    "Feature4": "Disabled",
-    "Feature5": "Disabled",
-    "Feature6": "Disabled",
-    "Feature7": "Disabled",
-    "Feature8": "Disabled",
-    "Feature9": "Disabled",
-    "Feature10": "Disabled",
-    "Feature11": "Disabled",
-    "Feature12": "Disabled",
-    "Feature13": "Disabled",
-    "Feature14": "Disabled"
+    "Option4": "Disabled",
+    "Option5": "Disabled",
+    "Option6": "Disabled",
+    "Option7": "Disabled",
+    "Option8": "Disabled",
+    "Option9": "Disabled",
+    "Option10": "Disabled",
+    "Option11": "Disabled",
+    "Option12": "Disabled",
+    "Option13": "Disabled",
+    "Option14": "Disabled"
   },
-  "DistrictsDimensionsPerInstance": 10,
-  "Districts": {
-    "Rocco-01": {
-      "Gate": 0,
-      "Location": 10003,
-      "DimensionsOffset": 0,
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10103
+  "World": {
+    "Relay": {
+      "Global": {
+        "Host": {
+          "Ip": "127.0.0.1",
+          "Port": 56660
+        }
       }
     },
-    "Candus-01": {
-      "Gate": 0,
-      "Location": 10021,
-      "DimensionsOffset": 0,
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10121
-      }
+    "Channel": {
+      "PerDistrictInstance": 10,
+      "PerMazeInstance": 10
     },
-    "Grace-01": {
-      "Gate": 0,
-      "Location": 10031,
-      "DimensionsOffset": 0,
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10131
-      }
-    },
-    "Ruin-01": {
-      "Gate": 0,
-      "Location": 10041,
-      "DimensionsOffset": 0,
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10141
-      }
-    },
-    "GrassCover-01": {
-      "Gate": 0,
-      "Location": 10101,
-      "DimensionsOffset": 0,
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10201
-      }
-    }
-  },
-  "Gates": {
-    "1": {
-      "Name": "Ashes of Melodies",
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10020
-      }
-    },
-    "0": {
-      "Name": "Ashes of Memories",
-      "Host": {
-        "Ip": "127.0.0.1",
-        "Port": 10010
+    "Instance": {
+      "World-01": {
+        "Id": 0,
+        "Relay": {
+          "World": {
+            "Host": {
+              "Ip": "127.0.0.1",
+              "Port": 56671
+            }
+          }
+        },
+        "Gate": {
+          "Name": "Ashes of Memories",
+          "Host": {
+            "Ip": "127.0.0.1",
+            "Port": 10010
+          }
+        },
+        "District": {
+          "Rocco-01": {
+            "Relay": {
+              "World": {
+                "Host": {
+                  "Ip": "127.0.0.1",
+                  "Port": 56672
+                }
+              }
+            },
+            "Location": 10003,
+            "Host": {
+              "Ip": "127.0.0.1",
+              "Port": 10103
+            }
+          }
+        }
       }
     }
   },

@@ -19,7 +19,6 @@ Just another server emulator for korean SoulWoker written in .NET 5.
 
 #### Project: ow.Framework
 
-- rename **appsettings.Development.example.json** to **appsettings.Development.json**
 - rename **commonsettings.example.json** to **commonsettings.json**
 
 * setup data12.v password in commonsettings.json `config["Game"]["Datas"]["Passwords"]["Data12"]`
@@ -36,25 +35,22 @@ rename **appsettings.example.json** to **appsettings.json**
 
 ```jsonc
 {
-  /// "Gate" it's "gate id" from commonsettings.json
-  /// config["Gates"][0]
-  "Gate": 0,
+  // config["World"]["Instance"]["World-01"]
+  "World": "World-01",
 
-  /// ID from commonsettings.json
-  /// config["Districts"]["Rocco-01"]
-  "Id": "Rocco-01"
+  // config["World"]["Instance"]["World-01"]["District"]["Rocco-01"]
+  "District": "Rocco-01"
 }
 ```
 
-#### Project: ow.Service.Gate
+#### Project: ow.Service.World
 
 rename **appsettings.example.json** to **appsettings.json**
 
 ```jsonc
 {
-  /// ID from commonsettings.json
-  /// config["Gates"][0]
-  "Id": 0
+  // config["World"]["Instance"]["World-01"]
+  "World": "World-01",
 }
 ```
 

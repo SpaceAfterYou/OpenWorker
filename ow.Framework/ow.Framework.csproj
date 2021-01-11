@@ -36,9 +36,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="config\appsettings.Development.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="config\commonsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

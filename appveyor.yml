@@ -3,14 +3,4 @@
 test: off
 before_build:
   - mv ow.Framework\config\commonsettings.example.json ow.Framework\config\commonsettings.json
-  - mv ow.Framework\config\appsettings.Development.example.json ow.Framework\config\appsettings.Development.json
-
-  - mv ow.Framework.Tests\config\appsettings.example.json ow.Framework.Tests\config\appsettings.json
-
-  - mv ow.Service.District\config\appsettings.example.json ow.Service.District\config\appsettings.json
-
-  - mv ow.Service.World\config\appsettings.example.json ow.Service.World\config\appsettings.json
-
-  - mv ow.Utils.ItemView.Generator\config\appsettings.example.json ow.Utils.ItemView.Generator\config\appsettings.json
-
   - nuget restore
