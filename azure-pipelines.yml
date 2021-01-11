@@ -19,14 +19,26 @@ schedules:
   branches:
     include:
     - main
-
+  
 strategy:
   matrix:
-    linux:
+    linux-Release:
+      buildConfiguration: Release
       imageName: 'windows-latest'
-    mac:
+    mac-Release:
+      buildConfiguration: Release
       imageName: 'ubuntu-latest'
-    windows:
+    windows-Release:
+      buildConfiguration: Release
+      imageName: 'macOS-latest'
+    linux-Debug:
+      buildConfiguration: Debug
+      imageName: 'windows-latest'
+    mac-Debug:
+      buildConfiguration: Debug
+      imageName: 'ubuntu-latest'
+    windows-Debug:
+      buildConfiguration: Debug
       imageName: 'macOS-latest'
 
 pool:
@@ -45,16 +57,17 @@ steps:
     command: 'restore'
     restoreSolution: '$(solution)'
     feedsToUse: 'config'
-- task: PowerShell@2
+    
+- task: Bash@3
   inputs:
     targetType: 'inline'
     script: |
-      New-Item ow.Framework/config/commonsettings.json
-      New-Item ow.Framework/config/appsettings.json
-      New-Item ow.Framework.Tests/config/appsettings.json
-      New-Item ow.Service.District/config/appsettings.json
-      New-Item ow.Service.World/config/appsettings.json
-      New-Item ow.Utils.ItemView.Generator/config/appsettings.json
+      touch ow.Framework/config/commonsettings.json
+      touch ow.Framework/config/appsettings.json
+      touch ow.Framework.Tests/config/appsettings.json
+      touch ow.Service.District/config/appsettings.json
+      touch ow.Service.World/config/appsettings.json
+      touch ow.Utils.ItemView.Generator/config/appsettings.json
 
 - task: VSBuild@1
   inputs:
