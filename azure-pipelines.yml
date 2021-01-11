@@ -1,0 +1,66 @@
+# .NET Desktop
+# Build and run tests for .NET Desktop or Windows classic desktop solutions.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/windows/dot-net
+
+trigger:
+  branches:
+    include:
+    - '*'
+
+pr:
+  branches:
+    include:
+    - '*'
+
+schedules:
+- cron: "0 12 * * *"
+  displayName: 'Daily Build'
+  branches:
+    include:
+    - main
+
+strategy:
+  matrix:
+    linux:
+      imageName: 'windows-latest'
+    mac:
+      imageName: 'ubuntu-latest'
+    windows:
+      imageName: 'macOS-latest'
+
+pool:
+  vmImage: $(imageName)
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: PowerShell@2
+  inputs:
+    script: |
+      New-Item ow.Framework/config/commonsettings.json
+      New-Item ow.Framework/config/appsettings.json
+      New-Item ow.Framework.Tests/config/appsettings.json
+      New-Item ow.Service.District/config/appsettings.json
+      New-Item ow.Service.World/config/appsettings.json
+      New-Item ow.Utils.ItemView.Generator/config/appsettings.json
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: VSTest@2
+  inputs:
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
