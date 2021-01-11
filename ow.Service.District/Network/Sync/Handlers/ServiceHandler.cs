@@ -47,7 +47,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             if (!_channels.TryJoin(session))
                 NetworkUtils.DropBadAction();
 
-            if (_sync.Characters.TryAdd(session.Character.Id, session))
+            if (!_sync.Characters.TryAdd(session.Character.Id, session))
                 NetworkUtils.DropBadAction();
 
             session.Permission = HandlerPermission.Authorized;
