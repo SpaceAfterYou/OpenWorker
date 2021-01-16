@@ -235,7 +235,7 @@ namespace ow.Framework.IO.Network.Sync
                 logger.LogDebug($"Create packet: {opcode}");
 
             /// Write SoulWorker magic bytes
-            Write((byte)0x02);
+            Write((byte)0x03);
             Write((byte)0x00);
 
             /// Write packet size (just reserve space, overwritten in GetBuffer)
