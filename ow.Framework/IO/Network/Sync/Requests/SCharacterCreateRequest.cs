@@ -145,8 +145,8 @@ namespace ow.Framework.IO.Network.Sync.Requests
             public int Id { get; }
             public string Name { get; }
             public Hero Hero { get; }
-            public byte Advancement { get; }
-            public uint Portrait { get; }
+            public CharacterAdvancement Advancement { get; }
+            public uint PhotoId { get; }
             public AppearanceInfo Appearance { get; }
             public byte Level { get; }
             private byte Unknown1 { get; }
@@ -158,8 +158,8 @@ namespace ow.Framework.IO.Network.Sync.Requests
                 Id = br.ReadInt32();
                 Name = br.ReadNumberLengthUnicodeString();
                 Hero = br.ReadHero();
-                Advancement = br.ReadByte();
-                Portrait = br.ReadUInt32();
+                Advancement = br.ReadCharacterAdvancement();
+                PhotoId = br.ReadUInt32();
                 Appearance = new AppearanceInfo(br);
                 Level = br.ReadByte();
                 Unknown1 = br.ReadByte();

@@ -2,7 +2,8 @@
 using NetCoreServer;
 using ow.Framework.Game;
 using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Providers;
 using ow.Framework.IO.Network.Sync.Requests;
@@ -10,22 +11,20 @@ using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.IO.Network.Sync.Responses.Shared;
 using ow.Framework.Utils;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using static ow.Framework.IO.Network.Sync.Providers.HandlerProvider;
+using static ow.Framework.IO.Network.Sync.Responses.SLUserCharacterForServerResponse;
 
 namespace ow.Framework.IO.Network.Sync
 {
     public abstract partial class SSessionBase : TcpSession
     {
-        //#region Send Boosters
-
-        //public SyncSession SendAsync(BattlePassLoadResponse value) =>
-        //    SendAsync(ClientOpcode.InfiniteTowerLoadInfo, (PacketWriter writer) =>
+        //public SSessionBase SendAsync(BattlePassLoadResponse value) =>
+        //    SendAsync(SCCategory.InfiniteTower, SCInfiniteTower.LoadInfo, (SPacketWriter writer) =>
         //    {
         //        writer.Write(value.Id);
         //        writer.Write(ushort.MinValue);
@@ -36,12 +35,8 @@ namespace ow.Framework.IO.Network.Sync
         //        writer.Write(byte.MinValue);
         //    });
 
-        //#endregion Send Boosters
-
-        #region Send Battle Pass
-
-        public SSessionBase SendAsync(BattlePassLoadResponse value) =>
-            SendAsync(ClientOpcode.BattlePassLoad, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(BattlePassLoadResponse value) =>
+            SendDeferred(SCCategory.Event, SCEvent.BattlePassLoad, (SPacketWriter writer) =>
             {
                 writer.Write(value.Id);
                 writer.Write(value.NextReward);
@@ -51,35 +46,22 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(value.IsPremium);
             });
 
-        #endregion Send Battle Pass
-
-        #region Send Infinite Tower
-
-        public SSessionBase SendAsync(InfiniteTowerLoadInfoResponse value) =>
-            SendAsync(ClientOpcode.InfiniteTowerLoadInfo, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(InfiniteTowerLoadInfoResponse value) =>
+            SendDeferred(SCCategory.InfiniteTower, SCInfiniteTower.LoadInfo, (SPacketWriter writer) =>
             {
                 writer.Write(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
             });
 
-        #endregion Send Infinite Tower
-
-        #region Send Skill
-
-        public SSessionBase SendAsync(CharacterSkillInfoResponse value) =>
-            SendAsync(ClientOpcode.SkillInfo, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(CharacterSkillInfoResponse value) =>
+            SendDeferred(SCCategory.Skill, SCSkill.SkillLoadInfo, (SPacketWriter writer) =>
             {
                 writer.Write(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00, 0x08, 0x00, 0x08, 0x00, 0x03, 0x00, 0x0E, 0x00, 0x3B, 0xB9, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x0D, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0xEF, 0x14, 0xEF, 0x03, 0x00, 0x00, 0x00, 0x00, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB8, 0x0C, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0xCB, 0xA7, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0xFB, 0x1C, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0x53, 0x0C, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x2B, 0x92, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0xAF, 0x3A, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0xF1, 0x0B, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x1A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B, 0x6B, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0x0B, 0x44, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x3B, 0xB9, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0xB7, 0x0C, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xCB, 0xA7, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0xFB, 0x1C, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0x53, 0x0C, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2B, 0x92, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0xAF, 0x3A, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0xEF, 0x0B, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x1B, 0x6B, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0x0B, 0x44, 0xB3, 0x03, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0xF1, 0x0B, 0xB2, 0x03, 0x53, 0x0C, 0xB2, 0x03, 0xB8, 0x0C, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x53, 0x0C, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0xB8, 0x0C, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x1C, 0x0D, 0xB2, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0B, 0x00, 0x15, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x01, 0x00, 0x0B, 0x00, 0x15, 0x00, 0x00, 0x00 });
             });
 
-        #endregion Send Skill
-
-        #region Send Channel
-
-        public SSessionBase SendAsync(ChannelInfoResponse value) =>
-            SendAsync(ClientOpcode.ChannelInfo, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(ChannelInfoResponse value) =>
+            SendDeferred(SCCategory.Channel, SCChannel.Info, (SPacketWriter writer) =>
             {
                 writer.Write(value.Location);
-
                 writer.Write((byte)value.Values.Count());
                 foreach (ChannelInfoResponse.Entity channel in value.Values)
                 {
@@ -88,23 +70,15 @@ namespace ow.Framework.IO.Network.Sync
                 }
             });
 
-        #endregion Send Channel
-
-        #region Send Post
-
-        public SSessionBase SendAsync(PostInfoResponse value) =>
-            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(PostInfoResponse value) =>
+            SendDeferred(SCCategory.Post, SCPost.Info, (SPacketWriter writer) =>
             {
                 writer.Write(ushort.MinValue);
                 writer.Write(value.Count);
             });
 
-        #endregion Send Post
-
-        #region Send Characters
-
-        public SSessionBase SendAsync(SPartyInviteResponse value) =>
-            SendAsync(ClientOpcode.PartyDelete, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(SPartyInviteResponse value) =>
+            SendDeferred(SCCategory.Party, SCParty.Invite, (SPacketWriter writer) =>
             {
                 writer.WriteByteLengthUnicodeString(value.Member.Name);
                 writer.WriteByteLengthUnicodeString(value.Master.Name);
@@ -117,39 +91,23 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(byte.MinValue);
             });
 
-        public SSessionBase SendAsync(PartyDeleteResponse value) =>
-            SendAsync(ClientOpcode.PartyDelete, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(PartyDeleteResponse value) =>
+            SendDeferred(SCCategory.Party, SCParty.Delete, (SPacketWriter writer) =>
             {
                 writer.Write(value.Id);
             });
 
-        #endregion Send Characters
+        public SSessionBase SendCharacterDbLoadDeferred() =>
+            SendDeferred(SCCategory.Character, SCCharacter.DbLoadSync);
 
-        #region Send Characters
-
-        public SSessionBase SendCharacterDbLoadSync() =>
-            SendAsync(ClientOpcode.CharacterDbLoadSync, (PacketWriter writer) =>
-            {
-            });
-
-        public SSessionBase SendAsync(CharacterToggleWeaponRequest request) =>
-            SendAsync(ClientOpcode.CharacterToggleWeapon, (PacketWriter writer) =>
-            {
-                writer.Write(request.Character);
-                writer.WriteVector3(request.Position);
-                writer.Write(request.Rotation);
-                writer.Write(request.Toggle);
-                writer.Write(request.Unknown1);
-            });
-
-        public SSessionBase SendAsync(NpcOthersInfosResponse value) =>
-            SendAsync(ClientOpcode.NpcOtherInfos, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(NpcOthersInfosResponse value) =>
+            SendDeferred(SCCategory.World, SCWorld.OtherInfosNpc, (SPacketWriter writer) =>
             {
                 writer.Write((ushort)value.Values.Count());
                 foreach (NpcOthersInfosResponse.Entity entity in value.Values)
                 {
                     writer.Write(entity.Id);
-                    writer.WriteVector3(entity.Position);
+                    writer.Write(entity.Position);
                     writer.Write(entity.Rotation);
                     writer.Write(uint.MinValue);
                     writer.Write(entity.Waypoint);
@@ -159,8 +117,8 @@ namespace ow.Framework.IO.Network.Sync
                 }
             });
 
-        public SSessionBase SendAsync(CharacterInfoResponse value) =>
-            SendAsync(ClientOpcode.CharacterInfo, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(CharacterInfoResponse value) =>
+            SendDeferred(SCCategory.Character, SCCharacter.InfoRes, (SPacketWriter writer) =>
             {
                 writer.WriteCharacter(value.Character);
                 writer.WritePlace(value.Place);
@@ -190,61 +148,53 @@ namespace ow.Framework.IO.Network.Sync
                 writer.WriteCharacterInfoResult(value.Result);
             });
 
-        public SSessionBase SendAsync(CharacterStatsUpdateResponse value) =>
-            SendAsync(ClientOpcode.CharacterStatsUpdate, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(CharacterStatsUpdateResponse value) =>
+            SendDeferred(SCCategory.Character, SCCharacter.UpdateStatList, (SPacketWriter writer) =>
             {
                 writer.Write((byte)0);
 
                 writer.Write(value.Character);
                 writer.Write((byte)value.Values.Count());
 
-                foreach (CharacterStatsUpdateResponse.Entity stat in value.Values)
+                foreach (CharacterStatsUpdateResponse.CSUREntity stat in value.Values)
                 {
                     writer.Write(stat.Value);
                     writer.WriteCharacterStat(stat.Id);
                 }
             });
 
-        public SSessionBase SendAsync(CharacterProfileResponse value) =>
-            SendAsync(ClientOpcode.CharacterProfileInfo, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(CharacterProfileResponse value) =>
+            SendDeferred(SCCategory.Character, SCCharacter.Community, (SPacketWriter writer) =>
             {
                 writer.WriteProfileStatus(value.Status);
                 writer.WriteByteLengthUnicodeString(value.About);
                 writer.WriteByteLengthUnicodeString(value.Note);
             });
 
-        public SSessionBase SendAsync(CharacterPostInfoResponse value) =>
-            SendAsync(ClientOpcode.PostInfo, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(CharacterPostInfoResponse value) =>
+            SendDeferred(SCCategory.Post, SCPost.Info, (SPacketWriter writer) =>
             {
                 writer.Write(ushort.MinValue);
                 writer.Write((ushort)value.Values.Count());
             });
 
-        public SSessionBase SendAsync(CharacterGestureLoadResponse value) =>
-            SendAsync(ClientOpcode.GestureLoad, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(CharacterGestureLoadResponse value) =>
+            SendDeferred(SCCategory.Gesture, SCGesture.SlotLoad, (SPacketWriter writer) =>
             {
                 foreach (uint gesture in value.Values)
                     writer.Write(gesture);
             });
 
-        #endregion Send Characters
-
-        #region Send Chat
-
-        public SSessionBase SendAsync(ChatMessageResponse value) =>
-            SendAsync(ClientOpcode.ChatMessage, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(ChatMessageResponse value) =>
+            SendDeferred(SCCategory.Chat, SCChat.Normal, (SPacketWriter writer) =>
             {
                 writer.Write(value.Character);
                 writer.WriteChatType(value.Chat);
                 writer.WriteByteLengthUnicodeString(value.Message);
             });
 
-        #endregion Send Chat
-
-        #region Send Maze
-
-        public SSessionBase SendAsync(DayEventBoosterResponse value) =>
-            SendAsync(ClientOpcode.EventDayEventBoosterList, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(DayEventBoosterResponse value) =>
+            SendDeferred(SCCategory.Event, SCEvent.DayEventBoosterList, (SPacketWriter writer) =>
             {
                 writer.Write((ushort)value.Values.Count);
                 foreach (DayEventBoosterResponse.Entity booster in value.Values)
@@ -254,18 +204,14 @@ namespace ow.Framework.IO.Network.Sync
                 }
             });
 
-        #endregion Send Maze
-
-        #region Send Service
-
-        public SSessionBase SendAsync(ServiceHeartbeatRequest value) =>
-            SendAsync(ClientOpcode.Heartbeat, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(ServiceHeartbeatRequest value) =>
+            SendDeferred(SCCategory.System, SCSystem.Ping, (SPacketWriter writer) =>
             {
                 writer.Write(value.Tick);
             });
 
-        public SSessionBase SendAsync(DistrictLogOutResponse value) =>
-            SendAsync(ClientOpcode.LogOut, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(DistrictLogOutResponse value) =>
+            SendDeferred(SCCategory.Character, SCCharacter.GobackLobby, (SPacketWriter writer) =>
             {
                 writer.Write(value.Account);
                 writer.Write(value.Character);
@@ -275,12 +221,8 @@ namespace ow.Framework.IO.Network.Sync
                 writer.WriteDistrictLogOutStatus(DistrictLogOutStatus.Success);
             });
 
-        #endregion Send Service
-
-        #region Send World
-
-        public SSessionBase SendAsync(DistrictEnterResponse value) =>
-            SendAsync(ClientOpcode.WorldEnter, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(DistrictEnterResponse value) =>
+            SendDeferred(SCCategory.Character, SCCharacter.EnterGameServerRes, (SPacketWriter writer) =>
             {
                 writer.Write(uint.MinValue);
                 writer.WriteDistrictConnectResult(value.Result);
@@ -288,8 +230,8 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(byte.MinValue);
             });
 
-        public SSessionBase SendAsync(WorldVersionResponse value) =>
-            SendAsync(ClientOpcode.WorldVersion, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(WorldVersionResponse value) =>
+            SendDeferred(SCCategory.World, SCWorld.Version, (SPacketWriter writer) =>
             {
                 writer.Write(value.Id);
                 writer.Write(value.Main);
@@ -297,55 +239,49 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(value.Data);
             });
 
-        #endregion Send World
-
-        #region Send Boosters
-
-        public SSessionBase SendAsync(BoosterRemoveResponse value) =>
-            SendAsync(ClientOpcode.BoosterRemove, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(BoosterRemoveResponse value) =>
+            SendDeferred(SCCategory.Booster, SCBooster.Remove, (SPacketWriter writer) =>
             {
                 writer.Write(value.Id);
             });
 
-        public SSessionBase SendAsync(BoosterAddResponse value) =>
-            SendAsync(ClientOpcode.BoosterAdd, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(BoosterAddResponse value) =>
+            SendDeferred(SCCategory.Booster, SCBooster.Add, (SPacketWriter writer) =>
             {
                 writer.Write(value.Id);
                 writer.Write(value.PrototypeId);
                 writer.Write(value.Duration);
             });
 
-        #endregion Send Boosters
-
-        public SSessionBase SendAsync(CharacterGestureUpdateSlotsResponse value) =>
-            SendAsync(ClientOpcode.GestureUpdateSlots, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(CharacterGestureUpdateSlotsResponse value) =>
+            SendDeferred(SCCategory.Gesture, SCGesture.SlotUpdate, (SPacketWriter writer) =>
             {
                 foreach (uint id in value.Values)
                     writer.Write(id);
             });
 
-        public SSessionBase SendAsync(GateEnterResponse value) =>
-            SendAsync(ClientOpcode.GateEnter, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(GateEnterResponse value) =>
+            SendDeferred(SCCategory.Login, SCLogin.EnterServerRes, (SPacketWriter writer) =>
             {
                 writer.WriteGateEnterResult(value.Result);
                 writer.Write(value.AccountId);
             });
 
-        public SSessionBase SendAsync(GateCharacterMarkAsFavoriteResponse value) =>
-            SendAsync(ClientOpcode.CharacterMarkAsFavorite, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(GateCharacterMarkAsFavoriteResponse value) =>
+            SendDeferred(SCCategory.Character, SCCharacter.RepresentativeChange, (SPacketWriter writer) =>
             {
                 writer.Write(value.AccountId);
                 writer.Write(value.CharacterId);
-                writer.Write(ushort.MinValue);
+                writer.WriteHero(value.Hero);
+                writer.Write(value.Level);
                 writer.WriteByteLengthUnicodeString(value.CharacterName);
                 writer.Write(value.PhotoId);
-                writer.Write(uint.MinValue);
-                writer.Write(uint.MinValue);
-                writer.Write(uint.MinValue);
+                writer.Write(value.Date);
+                writer.Write(value.Error);
             });
 
-        public SSessionBase SendAsync(GateCharacterListResponse value) =>
-            SendAsync(ClientOpcode.CharacterList, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(GateCharacterListResponse value) =>
+            SendDeferred(SCCategory.Character, SCCharacter.ListRes, (SPacketWriter writer) =>
             {
                 writer.Write((byte)value.Characters.Count);
                 foreach (CharacterShared character in value.Characters)
@@ -363,8 +299,8 @@ namespace ow.Framework.IO.Network.Sync
                 writer.Write(byte.MinValue);
             });
 
-        public SSessionBase SendAsync(GateCharacterChangeBackgroundResponse value) =>
-            SendAsync(ClientOpcode.CharacterChangeBackground, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(GateCharacterChangeBackgroundResponse value) =>
+            SendDeferred(SCCategory.Character, SCCharacter.ChangeBackground, (SPacketWriter writer) =>
             {
                 writer.Write(value.AccountId);
                 writer.Write(value.BackgroundId);
@@ -372,79 +308,80 @@ namespace ow.Framework.IO.Network.Sync
             });
 
         public SSessionBase SendAsync(SGateCharacterSelectResponse value) =>
-            SendAsync(ClientOpcode.CharacterSelect, (PacketWriter writer) =>
+            SendDeferred(SCCategory.Character, SCCharacter.SelectRes, (SPacketWriter writer) =>
             {
-                writer.Write(value.Character);
-                writer.Write(value.Account);
-                writer.Write(new byte[28]);
+                writer.Write(value.CharacterId);
+                writer.Write(value.AccountId);
+
+                writer.Write(value.ServerId);
+                writer.Write(value.JumpId);
+                writer.Write(value.PortalId);
+                writer.Write(value.Map.Seq);
+                writer.Write(value.ParentMap.Seq);
+
                 writer.WriteNumberLengthUtf8String(value.EndPoint.Ip);
                 writer.Write(value.EndPoint.Port);
-                writer.WritePlace(value.Place);
-                writer.Write(new byte[12]);
+                writer.Write(value.Pos);
+                writer.Write(value.Type);
             });
 
-        public SSessionBase SendAsync(AuthGateConnectionEndPointResponse endPoint) =>
-            SendAsync(ClientOpcode.GateConnect, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(AuthGateConnectionEndPointResponse endPoint) =>
+            SendDeferred(SCCategory.Login, SCLogin.EnterServer, (SPacketWriter writer) =>
             {
                 writer.WriteNumberLengthUtf8String(endPoint.Ip);
                 writer.Write(endPoint.Port);
             });
 
-        public SSessionBase SendAsync(IReadOnlyList<AuthPersonalGateResponse> gates) =>
-            SendAsync(ClientOpcode.GateList, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(SLUserCharacterForServerResponse gates) =>
+            SendDeferred(SCCategory.Login, SCLogin.ServerList, (SPacketWriter writer) =>
             {
-                writer.Write(byte.MinValue);
-                writer.Write((byte)gates.Count);
+                writer.Write(gates.LastSelectedId);
+                writer.Write((byte)gates.Values.Count());
 
-                foreach (AuthPersonalGateResponse gate in gates)
+                foreach (SLUCFSREntity gate in gates.Values)
                 {
-                    writer.Write(gate.Gate.Id);
-                    writer.Write(gate.Gate.EndPoint.Port);
-                    writer.WriteNumberLengthUtf8String(gate.Gate.Name);
-                    writer.WriteNumberLengthUtf8String(gate.Gate.EndPoint.Ip);
-                    writer.WriteGateStatus(gate.Gate.Status);
-                    writer.Write(byte.MinValue);
-                    writer.Write(byte.MinValue);
-                    writer.Write(byte.MinValue);
-                    writer.Write(gate.Gate.PlayersOnlineCount);
-                    writer.Write(ushort.MinValue);
+                    writer.Write(gate.Id);
+                    writer.Write(gate.EndPoint.Port);
+                    writer.WriteNumberLengthUtf8String(gate.Name);
+                    writer.WriteNumberLengthUtf8String(gate.EndPoint.Ip);
+                    writer.WriteGateStatus(gate.Status);
+                    writer.Write(gate.PlayersOnlineCount);
                     writer.Write(gate.CharactersCount);
                 }
             });
 
-        public SSessionBase SendAsync(Features value) =>
-            SendAsync(ClientOpcode.OptionLoad, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(Options value) =>
+            SendDeferred(SCCategory.Login, SCLogin.OptionLoad, (SPacketWriter writer) =>
             {
                 writer.Write(new byte[64]);
 
-                foreach (FeatureStatus option in value)
+                foreach (OptionStatus option in value)
                     writer.WriteOptionStatus(option);
             });
 
-        public SSessionBase SendAsync(SAuthLoginResponse value) =>
-            SendAsync(ClientOpcode.LoginResult, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(SAuthLoginResponse value) =>
+            SendDeferred(SCCategory.Login, SCLogin.Result, (SPacketWriter writer) =>
             {
                 writer.Write(value.AccountId);
-
-                writer.Write(byte.MinValue);
-                writer.Write(value.Response == AuthLoginStatus.Failure ? new byte[18] : Encoding.ASCII.GetBytes(value.Mac));
+                writer.Write(value.IsClearTutorial);
+                writer.Write(Encoding.ASCII.GetBytes(value.Mac));
 
                 writer.WriteByteLengthUnicodeString(value.ErrorMessage);
-                writer.WriteAuthLoginErrorMessageCode(value.ErrorMessageCode);
+                writer.WriteAuthLoginErrorMessageCode(value.ErrorCode);
 
                 writer.Write(byte.MinValue);
-                writer.Write(byte.MinValue);
-                writer.WriteByteLengthUnicodeString(value.ErrorMessage);
+                writer.Write(value.LoginType);
+                writer.WriteByteLengthUnicodeString(value.AuthId);
                 writer.Write(value.SessionKey);
 
-                writer.Write(byte.MinValue);
-                writer.Write(uint.MinValue);
-                writer.Write(uint.MinValue);
-                writer.Write(byte.MinValue);
+                writer.Write(value.GameMasterPower);
+                writer.Write(value.BrithYear);
+                writer.Write(value.BrithMonth);
+                writer.Write(value.BrithDay);
             });
 
-        public SSessionBase SendAsync(SWorldCurrentDataResponse value) =>
-            SendAsync(ClientOpcode.CurrentDate, (PacketWriter writer) =>
+        public SSessionBase SendDeferred(SWorldCurrentDataResponse value) =>
+            SendDeferred(SCCategory.World, SCWorld.CurDate, (SPacketWriter writer) =>
             {
                 writer.Write(value.UnixTimeSeconds);
                 writer.Write(value.Year);
@@ -461,18 +398,24 @@ namespace ow.Framework.IO.Network.Sync
     {
         public HandlerPermission Permission { get; set; } = HandlerPermission.Anonymous;
 
-        public SSessionBase SendAsync(ClientOpcode opcode, Action<PacketWriter> func)
+        public SSessionBase SendDeferred(SCCategory category, object command, Action<SPacketWriter> func)
         {
-            using PacketWriter writer = new(opcode, _logger);
-
+            using SPacketWriter writer = new(category, command);
             func(writer);
 
+            return SendDeferred(writer);
+        }
+
+        public SSessionBase SendDeferred(SCCategory category, object command)
+        {
+            using SPacketWriter writer = new(category, command);
+            return SendDeferred(writer);
+        }
+
+        private SSessionBase SendDeferred(SPacketWriter writer)
+        {
             if (!SendAsync(PacketUtils.Pack(writer), 0, writer.BaseStream.Length))
-#if !DEBUG
-                throw new Exceptions.NetworkException();
-#else
-                Debug.Assert(false);
-#endif // !DEBUG
+                NetworkUtils.DropNetwork();
 
             return this;
         }
@@ -537,12 +480,8 @@ namespace ow.Framework.IO.Network.Sync
         }
 
         [Conditional("DEBUG")]
-        private void DebugLogOpcode(ushort opcode)
-        {
-            ushort o = ConvertUtils.LeToBeUInt16(opcode);
-            if ((ServerOpcode)o != ServerOpcode.Heartbeat)
-                _logger.LogDebug($"@event [0x{opcode:X4}] {(ServerOpcode)opcode}");
-        }
+        private void DebugLogOpcode(ushort opcode) =>
+            _logger.LogDebug($"@event [0x{opcode:X4}] {(ServerOpcode)opcode}");
 
         private readonly HandlerProvider _provider;
         private readonly ILogger _logger;
@@ -550,3 +489,4 @@ namespace ow.Framework.IO.Network.Sync
 }
 
 // https://youtu.be/UnIhRpIT7nc
+// https://youtu.be/iceS6BvhuQ8

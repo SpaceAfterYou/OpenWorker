@@ -1,6 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
-using ow.Framework.IO.Network.Sync;
-using ow.Framework.IO.Network.Sync.Opcodes;
+﻿using ow.Framework.IO.Network.Sync;
+using ow.Framework.IO.Network.Sync.Commands;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Framework.Utils;
 using System;
@@ -14,61 +13,66 @@ namespace ow.Framework.Game
         where TSession : SSessionBase
     {
         public ushort Id { get; }
+
         public IReadOnlyDictionary<Guid, TSession> Sessions => _internalSessions;
 
-        private readonly ILogger _logger;
         private readonly ConcurrentDictionary<Guid, TSession> _internalSessions = new();
 
-        protected BaseChannel(ushort id, ILogger logger) => (Id, _logger) = (id, logger);
+        protected BaseChannel(ushort id) =>
+            Id = id;
 
-        protected bool TryAdd(TSession session) => _internalSessions.TryAdd(session.Id, session);
+        protected bool TryAdd(TSession session) =>
+            _internalSessions.TryAdd(session.Id, session);
 
-        protected bool TryRemove(TSession session, out TSession? @out) => _internalSessions.TryRemove(session.Id, out @out);
+        protected bool TryRemove(TSession session, out TSession? @out) =>
+            _internalSessions.TryRemove(session.Id, out @out);
 
-        #region Broadcast Character
+        #region Broadcast World
 
-        protected void BroadcastAsync(TSession session, SChannelBroadcastCharacterInResponse value) =>
-            BroadcastExceptAsync(ClientOpcode.CharacterInInfo, session, (PacketWriter writer) =>
+        protected void BroadcastDeferred(TSession session, SChannelBroadcastCharacterInResponse value) =>
+            BroadcastExceptDeferred(SCCategory.World, SCWorld.InInfoPc, session, (SPacketWriter writer) =>
             {
                 writer.WriteCharacter(value.Character);
                 writer.WritePlace(value.Place);
             });
 
-        protected void BroadcastAsync(TSession session, SChannelBroadcastCharacterOutResponse value) =>
-            BroadcastExceptAsync(ClientOpcode.CharacterOutInfo, session, (PacketWriter writer) =>
+        protected void BroadcastDeferred(TSession session, SChannelBroadcastCharacterOutResponse value) =>
+            BroadcastExceptDeferred(SCCategory.World, SCWorld.OutInfoPc, session, (SPacketWriter writer) =>
             {
                 writer.Write((byte)1); // count
                 writer.Write(value.Id);
             });
 
-        #endregion Broadcast Character
+        #endregion Broadcast World
 
-        public void BroadcastAsync(ClientOpcode opcode, Action<PacketWriter> func)
+        public void BroadcastDeferred(SCCategory category, object command, Action<SPacketWriter> func)
         {
-            using PacketWriter writer = new(opcode, _logger);
+            using SPacketWriter writer = new(category, command);
             func(writer);
 
-            BroadcastAsync(_internalSessions, writer);
+            BroadcastDeferred(_internalSessions, writer);
         }
 
-        public void BroadcastExceptAsync(ClientOpcode opcode, TSession except, Action<PacketWriter> func)
+        public void BroadcastExceptDeferred(SCCategory category, object command, TSession except, Action<SPacketWriter> func)
         {
-            using PacketWriter writer = new(opcode, _logger);
+            using SPacketWriter writer = new(category, command);
             func(writer);
 
-            BroadcastAsync(_internalSessions.Where(pair => except.Id != pair.Key), writer);
+            BroadcastDeferred(_internalSessions.Where(pair => except.Id != pair.Key), writer);
         }
 
-        private static void BroadcastAsync(IEnumerable<KeyValuePair<Guid, TSession>> pairs, PacketWriter writer)
+        private static void BroadcastDeferred(IEnumerable<KeyValuePair<Guid, TSession>> sessions, SPacketWriter writer)
         {
             byte[] packet = GetRawPacket(writer);
-            foreach ((Guid _, TSession session) in pairs)
-                SendAsync(session, packet, writer.BaseStream.Length);
+            foreach ((Guid _, TSession session) in sessions)
+                SendDeferred(session, packet, writer);
         }
 
-        private static void SendAsync(TSession session, byte[] packet, long length) =>
-            session.SendAsync(packet, 0, length);
+        private static void SendDeferred(TSession session, byte[] packet, SPacketWriter writer) =>
+            session.SendAsync(packet, 0, writer.BaseStream.Length);
 
-        private static byte[] GetRawPacket(PacketWriter writer) => PacketUtils.Pack(writer);
+        private static byte[] GetRawPacket(SPacketWriter writer) => PacketUtils.Pack(writer);
     }
 }
+
+// https://youtu.be/l74Ot_2kuNs

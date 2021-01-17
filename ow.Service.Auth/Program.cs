@@ -22,7 +22,7 @@ namespace ow.Service.Auth
                 .AddSyncHandlers()
                 .AddHostedService<Worker>()
                 .AddSingleton<GateRepository>()
-                .AddSingleton<Features>()
+                .AddSingleton<Options>()
                 .AddTransient<SyncSession>()
                 .AddTransient<RGClient>()
                 .AddSingleton<SyncServer>()

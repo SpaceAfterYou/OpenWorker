@@ -3,7 +3,7 @@ using ow.Framework.Database.Accounts;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Relay.Global;
 using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -23,21 +23,18 @@ namespace ow.Service.Auth.Network.Sync.Handlers
                 session.Account = new(model);
                 session.Permission = HandlerPermission.Authorized;
 
-                session.SendAsync(new SAuthLoginResponse
-
+                session.SendDeferred(new SAuthLoginResponse
                 {
                     Mac = request.Mac,
                     AccountId = model.Id,
-                    Response = AuthLoginStatus.Success,
                     SessionKey = _relay.Session.Register(new() { Account = model.Id }).Key,
                 });
             }
             else
             {
-                session.SendAsync(new SAuthLoginResponse
+                session.SendDeferred(new SAuthLoginResponse
                 {
-                    Response = AuthLoginStatus.Failure,
-                    ErrorMessageCode = AuthLoginErrorMessageCode.WrongUsernameOrPassword
+                    ErrorCode = AuthLoginErrorMessageCode.WrongUsernameOrPassword
                 });
             }
         }

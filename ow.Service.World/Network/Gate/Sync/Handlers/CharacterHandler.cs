@@ -5,7 +5,7 @@ using ow.Framework.Database.Storages;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.IO.Network.Relay.World.Client.Protos.Requests;
 using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -25,7 +25,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
     public sealed class CharacterHandler
     {
         public static void SendCharactersListAsync(SyncSession session) =>
-            session.SendAsync(new GateCharacterListResponse()
+            session.SendDeferred(new GateCharacterListResponse()
             {
                 LastSelected = session.Characters.LastSelected?.Id ?? -1,
                 InitializeTime = (ulong)session.Characters.InitializeTime.TotalSeconds,
@@ -45,7 +45,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
                     },
                     Appearance = new()
                     {
-                        EquippedEyeColor = c.Appearance.EquippedEyeColor,
+                        EquippedEyeColor = c.Appearance.EquippedEyesColor,
                         EquippedHair = new()
                         {
                             Color = c.Appearance.EquippedHair.Color,
@@ -57,7 +57,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
                             Color = c.Appearance.Hair.Color,
                         },
                         EquippedSkinColor = c.Appearance.EquippedSkinColor,
-                        EyeColor = c.Appearance.EyeColor,
+                        EyeColor = c.Appearance.EyesColor,
                         SkinColor = c.Appearance.SkinColor,
                     },
                     WeaponItem = new()
@@ -85,8 +85,8 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
             if (request.FirstSlot == request.SecondSlot)
                 NetworkUtils.DropBadAction();
 
-            CharacterEntity? first = session.Characters.Values.FirstOrDefault(c => c.Slot == request.FirstSlot);
-            CharacterEntity? second = session.Characters.Values.FirstOrDefault(c => c.Slot == request.SecondSlot);
+            CEntity? first = session.Characters.Values.FirstOrDefault(c => c.Slot == request.FirstSlot);
+            CEntity? second = session.Characters.Values.FirstOrDefault(c => c.Slot == request.SecondSlot);
 
             using CharacterContext context = _characterFactory.CreateDbContext();
 
@@ -133,12 +133,16 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
             if (!_tables.ClassSelectInfo.TryGetValue(request.Character.Main.Hero, out ClassSelectInfoTableEntity? classInfo))
                 NetworkUtils.DropBadAction();
 
+            if (!_tables.CharacterInfo.TryGetValue((ushort)((int)request.Character.Main.Hero * 1000), out CharacterInfoTableEntity? characterInfo))
+                NetworkUtils.DropBadAction();
+
             /// [ TODO ] Add default items to inventory
 
             CharacterModel model = CharacterCreateHelper.CreateModel(session.Account, request, _gate, _tables);
             context.UseAndSave(c => c.Add(model));
 
-            if (!session.Characters.TryAdd(model.Id, session.Characters.LastSelected = CreateEmptyCharacater(model)))
+            session.Characters.LastSelected = CreateEmptyCharacater(model);
+            if (!session.Characters.TryAdd(model.Id, session.Characters.LastSelected))
                 NetworkUtils.DropBadAction();
 
             SendCharactersListAsync(session);
@@ -147,7 +151,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
         [Handler(ServerOpcode.CharacterDelete, HandlerPermission.Authorized)]
         public void Delete(SyncSession session, SCharacterDeleteRequest request)
         {
-            if (!session.Characters.Remove(request.Id, out CharacterEntity _))
+            if (!session.Characters.Remove(request.Id, out CEntity _))
                 NetworkUtils.DropBadAction();
 
             if (session.Characters.LastSelected?.Id == request.Id)
@@ -168,10 +172,10 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
         [Handler(ServerOpcode.CharacterMarkFavorite, HandlerPermission.Authorized)]
         public static void MarkFavorite(SyncSession session, SCharacterMarkFavoriteRequest request)
         {
-            if (!session.Characters.TryGetValue(request.Id, out CharacterEntity? character))
+            if (!session.Characters.TryGetValue(request.Id, out CEntity? character))
                 NetworkUtils.DropBadAction();
 
-            session.SendAsync(new GateCharacterMarkAsFavoriteResponse()
+            session.SendDeferred(new GateCharacterMarkAsFavoriteResponse()
             {
                 AccountId = session.Account.Id,
                 CharacterId = character!.Id,
@@ -183,7 +187,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
         [Handler(ServerOpcode.CharacterSelect, HandlerPermission.Authorized)]
         public void Select(SyncSession session, SCharacterSelectRequest request)
         {
-            if (!session.Characters.TryGetValue(request.Id, out CharacterEntity? character))
+            if (!session.Characters.TryGetValue(request.Id, out CEntity? character))
                 NetworkUtils.DropBadAction();
 
             if (!_districts.TryGetValue(character!.Place.District, out DistrictEntity? district))
@@ -191,22 +195,22 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
 
             if (!district!.Relay.Session.Reserve(new RWCSessionReserveRequest() { Character = character.Id }).Result)
             {
-                session.SendAsync(new SGateCharacterSelectResponse { });
+                session.SendAsync(new SGateCharacterSelectResponse());
                 return;
             }
 
             session.Characters.LastSelected = character;
 
-            session.SendAsync(new SWorldCurrentDataResponse { });
+            session.SendDeferred(new SWorldCurrentDataResponse());
             session.SendAsync(new SGateCharacterSelectResponse
             {
-                Account = session.Account.Id,
-                Character = character.Id,
-                Place = new()
+                AccountId = session.Account.Id,
+                CharacterId = character.Id,
+                Pos = new()
                 {
-                    Location = character.Place.District,
-                    Position = character.Place.Postion,
-                    Rotation = character.Place.Rotation
+                    LocationId = character.Place.District,
+                    Pos = character.Place.Postion,
+                    Rot = character.Place.Rotation
                 },
                 EndPoint = new()
                 {
@@ -229,7 +233,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
 
             session.Background = request.BackgroundId;
 
-            session.SendAsync(new GateCharacterChangeBackgroundResponse()
+            session.SendDeferred(new GateCharacterChangeBackgroundResponse()
             {
                 AccountId = session.Account.Id,
                 BackgroundId = session.Background
@@ -245,10 +249,10 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
             _tables = tables;
         }
 
-        private CharacterEntity CreateEmptyCharacater(CharacterModel model)
+        private CEntity CreateEmptyCharacater(CharacterModel model)
         {
             using ItemContext itemContext = _itemFactory.CreateDbContext();
-            return new(model, _tables, itemContext);
+            return new(model, itemContext);
         }
 
         private readonly IDbContextFactory<ItemContext> _itemFactory;

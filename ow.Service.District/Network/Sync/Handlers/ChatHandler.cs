@@ -1,6 +1,6 @@
 ﻿using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -23,27 +23,27 @@ namespace ow.Service.District.Network.Sync.Handlers
                 {
                     command(session, msg);
 
-                    session.SendAsync(new ChatMessageResponse()
+                    session.SendDeferred(new ChatMessageResponse()
                     {
                         Character = session.Character.Id,
-                        Chat = ChatType.System,
+                        Chat = ChatType.Notice,
                         Message = "Command executed"
                     });
 
                     return;
                 }
 
-                session.SendAsync(new ChatMessageResponse()
+                session.SendDeferred(new ChatMessageResponse()
                 {
                     Character = session.Character.Id,
-                    Chat = ChatType.Red,
+                    Chat = ChatType.Yell,
                     Message = "Command not found"
                 });
 
                 return;
             }
 
-            session.Channel!.BroadcastAsync(new ChatMessageResponse()
+            session.Channel!.BroadcastDeferred(new ChatMessageResponse()
             {
                 Character = session.Character.Id,
                 Chat = request.Type,

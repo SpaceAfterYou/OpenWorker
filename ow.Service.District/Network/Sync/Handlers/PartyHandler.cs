@@ -1,5 +1,5 @@
 ﻿using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -32,7 +32,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         [Handler(ServerOpcode.PartyLeave, HandlerPermission.Authorized)]
         public void Leave(SyncSession session)
         {
-            session.SendAsync(new PartyDeleteResponse());
+            session.SendDeferred(new PartyDeleteResponse());
         }
 
         public PartyHandler(RWClient relay) =>

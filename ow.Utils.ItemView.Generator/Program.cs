@@ -30,7 +30,7 @@ namespace ow.Utils.ItemView.Generator
             var data = itemsTable.Values
                 .Select(i =>
                 {
-                    ItemClassifyTableEntity classify = itemClassifyTable[i.Classify];
+                    ItemClassifyTableEntity classify = itemClassifyTable[i.ClassifyId];
 
                     if (itemScriptTable.TryGetValue(i.Id, out ItemScriptTableEntity script))
                     {

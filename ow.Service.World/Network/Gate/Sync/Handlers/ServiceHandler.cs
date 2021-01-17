@@ -6,7 +6,7 @@ using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Relay.Global;
 using ow.Framework.IO.Network.Relay.Global.Protos.Requests;
 using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -38,8 +38,8 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
                 session.Permission = HandlerPermission.Authorized;
             }
 
-            session.SendAsync(new GateEnterResponse() { AccountId = request.Account, Result = GateEnterResult.Success });
-            session.SendAsync(new SWorldCurrentDataResponse());
+            session.SendDeferred(new GateEnterResponse() { AccountId = request.Account, Result = GateEnterResult.Success });
+            session.SendDeferred(new SWorldCurrentDataResponse());
         }
 
         private Characters GetCharacters(AccountModel model, ushort gate)
@@ -47,7 +47,7 @@ namespace ow.Service.World.Network.Gate.Sync.Handlers
             using CharacterContext characterContext = _characterFactory.CreateDbContext();
             using ItemContext itemContext = _itemFactory.CreateDbContext();
 
-            return new(model, gate, _tables, characterContext, itemContext);
+            return new(model, gate, characterContext, itemContext);
         }
 
         public ServiceHandler(Instance gate, RGClient relay, BinTables tables, IDbContextFactory<ItemContext> itemFactory, IDbContextFactory<AccountContext> accountFactory, IDbContextFactory<CharacterContext> characterFactory)

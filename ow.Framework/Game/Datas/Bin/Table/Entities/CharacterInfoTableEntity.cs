@@ -32,18 +32,18 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public uint Unknown13 { get; }
         public ushort Unknown24 { get; }
         public ushort Unknown25 { get; }
-        public uint DefaultWeapon { get; }
-        public IReadOnlyList<uint> DefaultOutfits { get; }
+        public uint DefaultWeaponId { get; }
+        public IReadOnlyList<uint> DefaultCostumeIds { get; }
         public uint ProvideItem { get; }
         public short District { get; }
         public short DistrictPositionX { get; }
         public short DistrictPositionY { get; }
         public short DistrictPositionZ { get; }
-        public short Maze { get; }
-        public byte MazeSpawnBox { get; }
+        public short MazeId { get; }
+        public byte Unknown38 { get; }
+        public uint MazeSpawnBoxId { get; }
         public uint StartQuest { get; }
-        public uint Unknown39 { get; }
-        public uint Unknown40 { get; }
+        public uint SkipQuestId { get; }
         public ushort Unknown41 { get; }
         public float Unknown42 { get; }
         public short Unknown43 { get; }
@@ -107,18 +107,18 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             Unknown13 = br.ReadUInt32();
             Unknown24 = br.ReadUInt16();
             Unknown25 = br.ReadUInt16();
-            DefaultWeapon = br.ReadUInt32();
-            DefaultOutfits = br.ReadUInt32Array(DefaultCostumesCount);
+            DefaultWeaponId = br.ReadUInt32();
+            DefaultCostumeIds = br.ReadUInt32Array(DefaultCostumesCount);
             ProvideItem = br.ReadUInt32();
             District = br.ReadInt16();
             DistrictPositionX = br.ReadInt16();
             DistrictPositionY = br.ReadInt16();
             DistrictPositionZ = br.ReadInt16();
-            Maze = br.ReadInt16();
-            MazeSpawnBox = br.ReadByte();
+            MazeId = br.ReadInt16();
+            Unknown38 = br.ReadByte();
+            MazeSpawnBoxId = br.ReadUInt32();
             StartQuest = br.ReadUInt32();
-            Unknown39 = br.ReadUInt32();
-            Unknown40 = br.ReadUInt32();
+            SkipQuestId = br.ReadUInt32();
             Unknown41 = br.ReadUInt16();
             Unknown42 = br.ReadSingle();
             Unknown43 = br.ReadInt16();

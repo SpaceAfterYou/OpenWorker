@@ -1,5 +1,5 @@
 ﻿using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -19,7 +19,7 @@ namespace ow.Service.District.Network.Sync.Handlers
         [Handler(ServerOpcode.OthersInfo, HandlerPermission.Authorized)]
         public void GetOthers(SyncSession session)
         {
-            session.SendAsync(new NpcOthersInfosResponse()
+            session.SendDeferred(new NpcOthersInfosResponse()
             {
                 Values = _npcs.Select(s => new NpcOthersInfosResponse.Entity()
                 {
@@ -36,40 +36,40 @@ namespace ow.Service.District.Network.Sync.Handlers
 
         [Handler(ServerOpcode.CharacterInfo, HandlerPermission.Authorized)]
         public void GetInfo(SyncSession session) => session
-            .SendAsync(new CharacterInfoResponse()
+            .SendDeferred(new CharacterInfoResponse()
             {
                 Character = ResponseHelper.GetCharacter(session),
                 Place = ResponseHelper.GetPlace(session, _instance),
             })
-            .SendAsync(new CharacterSkillInfoResponse()
+            .SendDeferred(new CharacterSkillInfoResponse()
             {
             })
-            .SendAsync(new InfiniteTowerLoadInfoResponse()
+            .SendDeferred(new InfiniteTowerLoadInfoResponse()
             {
             })
-            .SendAsync(new CharacterGestureLoadResponse()
+            .SendDeferred(new CharacterGestureLoadResponse()
             {
                 Values = session.Gestures
             })
-            .SendAsync(new CharacterProfileResponse()
+            .SendDeferred(new CharacterProfileResponse()
             {
                 About = session.Profile.About,
                 Note = session.Profile.Note,
                 Status = session.Profile.Status,
             })
-            .SendAsync(new CharacterPostInfoResponse()
+            .SendDeferred(new CharacterPostInfoResponse()
             {
                 Values = Array.Empty<object>()
             })
-            .SendAsync(new CharacterStatsUpdateResponse()
+            .SendDeferred(new CharacterStatsUpdateResponse()
             {
                 Character = session.Character.Id,
-                Values = session.Stats.Select(s => new CharacterStatsUpdateResponse.Entity() { Id = s.Id, Value = s.Value })
+                Values = session.Stats.Select(s => new CharacterStatsUpdateResponse.CSUREntity() { Id = s.Id, Value = s.Value })
             });
 
         [Handler(ServerOpcode.CharacterToggleWeapon, HandlerPermission.Authorized)]
-        public static void ToggleWeapon(SyncSession session, CharacterToggleWeaponRequest request) => session
-            .SendAsync(request);
+        public static void ToggleWeapon(SyncSession session, CharacterToggleWeaponRequest request) => session.Channel
+            !.BroadcastDeferred(request);
 
         public CharacterHandler(Instance instance, NpcRepository npcs) =>
             (_instance, _npcs) = (instance, npcs);

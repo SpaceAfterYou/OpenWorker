@@ -3,7 +3,7 @@ using ow.Framework.IO.Network.Sync.Responses.Shared;
 
 namespace ow.Framework.IO.Network.Sync.Responses
 {
-    public sealed record DistrictLogOutResponse : EndPointShared
+    public sealed record DistrictLogOutResponse : SEndPointSharedResponse
     {
         public int Account { get; init; }
         public int Character { get; init; }

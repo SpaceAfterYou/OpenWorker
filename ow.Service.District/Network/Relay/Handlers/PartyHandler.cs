@@ -18,7 +18,7 @@ namespace ow.Service.District.Network.Relay.Handlers
             SyncSession session = (SyncSession)_syncServer.FindSession(new Guid(request.GUID));
             if (session is not null)
             {
-                session.SendAsync(new SPartyInviteResponse
+                session.SendDeferred(new SPartyInviteResponse
                 {
                     Master = new() { Id = request.Master.Id, Name = request.Master.Name },
                     Member = new() { Id = session.Character.Id, Name = session.Character.Name }

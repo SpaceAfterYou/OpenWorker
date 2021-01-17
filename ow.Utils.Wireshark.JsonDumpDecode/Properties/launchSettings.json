@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ow.Utils.Wireshark.JsonDumpDecode": {
+      "commandName": "Project",
+      "commandLineArgs": "\"Y:\\soulworker-dev\\swSniffer\\wireshark\\1\\json.json\" \"Y:\\soulworker-dev\\swSniffer\\wireshark\\1\\packets_dump.txt\" \"192.168.1.105\""
+    }
+  }
+}

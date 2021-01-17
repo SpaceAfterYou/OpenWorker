@@ -3,10 +3,12 @@
     "PgsqlConnection": "Host=localhost;Port=5432;Database=soulworker;Username=postgres;Password=postgres"
   },
   "Game": {
-    "Dir": "",
+    "Dir": "Q:\\Stove\\Games\\Soulworker",
     "Datas": {
       "Passwords": {
-        "Data12": ""
+        "Data12": "",
+        "Data41": "",
+        "Data49": ""
       }
     }
   },
@@ -17,20 +19,20 @@
     }
   ],
   "Options": {
-    "LoginBonus": "Enabled",
-    "SecondaryPassword": "Enabled",
-    "PremiumShop": "Enabled",
-    "Option4": "Disabled",
-    "Option5": "Disabled",
-    "Option6": "Disabled",
-    "Option7": "Disabled",
-    "Option8": "Disabled",
-    "Option9": "Disabled",
-    "Option10": "Disabled",
-    "Option11": "Disabled",
-    "Option12": "Disabled",
-    "Option13": "Disabled",
-    "Option14": "Disabled"
+    "Attendance": "Enabled",
+    "SecondPassword": "Enabled",
+    "PvpDistrict": "Enabled",
+    "Ranking": "Disabled",
+    "CashShop": "Disabled",
+    "D6Mode": "Disabled",
+    "BroachEvent": "Disabled",
+    "OverIndulgence": "Disabled",
+    "SoulWeeklyMission": "Disabled",
+    "NetCafe": "Disabled",
+    "SoulEvent": "Disabled",
+    "ItemExchange": "Disabled",
+    "WaitSystem": "Disabled",
+    "OperationMaze": "Disabled"
   },
   "World": {
     "Relay": {
@@ -88,10 +90,5 @@
       "Ip": "127.0.0.1",
       "Port": 10000
     }
-  },
-  "LogLevel": {
-    "Default": "Information",
-    "Microsoft": "Warning",
-    "Microsoft.Hosting.Lifetime": "Information"
   }
 }

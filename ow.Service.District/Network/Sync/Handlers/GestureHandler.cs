@@ -3,7 +3,7 @@ using ow.Framework.Database.Characters;
 using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -17,7 +17,7 @@ namespace ow.Service.District.Network.Sync.Handlers
     {
         [Handler(ServerOpcode.GestureDo, HandlerPermission.Authorized)]
         public static void GetOthers(SyncSession session, GestureDoRequest request) => session.Channel?
-            .BroadcastAsync(new CharacterGestureDo()
+            .BroadcastDeferred(new CharacterGestureDo()
             {
                 Character = session.Character.Id,
                 Gesture = request.Gesture,
@@ -47,7 +47,7 @@ namespace ow.Service.District.Network.Sync.Handlers
 
             context.UseAndSave(c => c.Update(model));
 
-            session.SendAsync(new CharacterGestureUpdateSlotsResponse() { Values = request.Values });
+            session.SendDeferred(new CharacterGestureUpdateSlotsResponse() { Values = request.Values });
         }
 
         public GestureHandler(BinTables tables, IDbContextFactory<CharacterContext> characterRepository) =>

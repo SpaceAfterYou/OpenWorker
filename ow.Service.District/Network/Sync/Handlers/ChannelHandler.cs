@@ -1,5 +1,5 @@
 ﻿using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Responses;
 using ow.Service.District.Game;
@@ -12,7 +12,7 @@ namespace ow.Service.District.Network.Sync.Handlers
     {
         [Handler(ServerOpcode.ChannelInfo, HandlerPermission.Authorized)]
         public void GetInfo(SyncSession session) => session
-            .SendAsync(new ChannelInfoResponse()
+            .SendDeferred(new ChannelInfoResponse()
             {
                 Location = _instance.Location.Id,
                 Values = _channels.Values.Select(s => new ChannelInfoResponse.Entity()

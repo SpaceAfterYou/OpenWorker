@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using ow.Framework;
+﻿using ow.Framework;
 using ow.Framework.Game;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -40,20 +39,20 @@ namespace ow.Service.District.Game.Repositories
             public void Leave(SyncSession session)
             {
                 if (TryRemove(session, out _))
-                    BroadcastAsync(session, new SChannelBroadcastCharacterOutResponse
+                    BroadcastDeferred(session, new SChannelBroadcastCharacterOutResponse
                     {
                         Id = session.Character.Id
                     });
             }
 
-            public ChannelEntity(ushort id, Instance instance, ILogger<ChannelEntity> logger) : base(id, logger) =>
+            public ChannelEntity(ushort id, Instance instance) : base(id) =>
                 _instance = instance;
 
             private bool Join(SyncSession session)
             {
                 session.Channel = new(session, this);
 
-                BroadcastAsync(session, new SChannelBroadcastCharacterInResponse
+                BroadcastDeferred(session, new SChannelBroadcastCharacterInResponse
                 {
                     Character = ResponseHelper.GetCharacter(session),
                     Place = ResponseHelper.GetPlace(session, _instance)

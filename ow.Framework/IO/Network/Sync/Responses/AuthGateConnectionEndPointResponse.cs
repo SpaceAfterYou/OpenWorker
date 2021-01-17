@@ -2,7 +2,7 @@
 
 namespace ow.Framework.IO.Network.Sync.Responses
 {
-    public sealed record AuthGateConnectionEndPointResponse : EndPointShared
+    public sealed record AuthGateConnectionEndPointResponse : SEndPointSharedResponse
     {
     }
 }

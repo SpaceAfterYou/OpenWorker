@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ow.Utils.GenerateItemsForView": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\sawic\\web_projects\\soulworker-items-viewer\\public"
+    }
+  }
+}

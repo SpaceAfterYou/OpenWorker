@@ -61,7 +61,7 @@ namespace ow.Framework.Utils
 
     public static partial class PacketUtils
     {
-        public static byte[] Pack(PacketWriter writer)
+        public static byte[] Pack(SPacketWriter writer)
         {
             byte[] response = writer.GetBuffer();
             Exchange(ref response, Defines.PacketUnEncryptedHeaderSize, (int)writer.BaseStream.Length - Defines.PacketUnEncryptedHeaderSize);

@@ -13,9 +13,9 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
     {
         public KeyType Id { get; }
         public Hero Hero { get; }
-        public byte Unknown2 { get; }
-        public byte Unknown3 { get; }
-        public uint Unknown4 { get; }
+        public byte MinLevel { get; }
+        public byte InitialGesture { get; }
+        public uint CoolTime { get; }
         public ushort Unknown5 { get; }
         public uint Unknown6 { get; }
         public string Unknown7 { get; }
@@ -35,9 +35,9 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         {
             Id = br.ReadUInt16();
             Hero = br.ReadHero();
-            Unknown2 = br.ReadByte();
-            Unknown3 = br.ReadByte();
-            Unknown4 = br.ReadUInt32();
+            MinLevel = br.ReadByte();
+            InitialGesture = br.ReadByte();
+            CoolTime = br.ReadUInt32();
             Unknown5 = br.ReadUInt16();
             Unknown6 = br.ReadUInt32();
             Unknown7 = br.ReadByteLengthUnicodeString();
