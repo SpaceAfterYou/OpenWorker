@@ -29,8 +29,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ow.Service.World", "ow.Serv
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ow.Service.Relay", "ow.Service.Relay\ow.Service.Relay.csproj", "{74A6EA96-CCB1-4502-BEF9-5A08808096F7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestLang", "TestLang\TestLang.csproj", "{45FB3506-65BD-4365-889E-0AC53451B5C0}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,10 +75,6 @@ Global
 		{74A6EA96-CCB1-4502-BEF9-5A08808096F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{74A6EA96-CCB1-4502-BEF9-5A08808096F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{74A6EA96-CCB1-4502-BEF9-5A08808096F7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{45FB3506-65BD-4365-889E-0AC53451B5C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{45FB3506-65BD-4365-889E-0AC53451B5C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{45FB3506-65BD-4365-889E-0AC53451B5C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{45FB3506-65BD-4365-889E-0AC53451B5C0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
