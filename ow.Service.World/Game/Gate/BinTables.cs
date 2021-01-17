@@ -15,6 +15,8 @@ namespace ow.Service.World.Game.Gate
         internal IReadOnlyDictionary<ushort, CharacterInfoTableEntity> CharacterInfo { get; }
         internal IReadOnlyDictionary<uint, CharacterBackgroundTableEntity> CharacterBackground { get; }
         internal IReadOnlyDictionary<uint, PhotoItemTableEntity> PhotoItem { get; }
+        internal IReadOnlyDictionary<uint, ItemTableEntity> Item { get; }
+        internal IReadOnlyDictionary<uint, ItemClassifyTableEntity> ItemClassify { get; }
 
         public BinTables(IConfiguration configuration)
         {
@@ -27,6 +29,8 @@ namespace ow.Service.World.Game.Gate
             CharacterInfo = tables.ReadCharacterInfoTable();
             CharacterBackground = tables.ReadCharacterBackgroundTable();
             PhotoItem = tables.ReadPhotoItemTable();
+            Item = tables.ReadItemTable();
+            ItemClassify = tables.ReadItemClassifyTable();
         }
     }
 }

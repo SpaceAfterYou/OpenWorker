@@ -35,7 +35,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         private static readonly ItemTableEntity _empty = new();
 
         public KeyType Id { get; }
-        public uint Classify { get; }
+        public uint ClassifyId { get; }
         public byte Unknown7 { get; }
         public byte MaxSlots { get; }
         public ushort Unknown9 { get; }
@@ -88,7 +88,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         internal ItemTableEntity(BinaryReader br)
         {
             Id = br.ReadUInt32();
-            Classify = br.ReadUInt32();
+            ClassifyId = br.ReadUInt32();
             Unknown7 = br.ReadByte();
             MaxSlots = br.ReadByte();
             Unknown9 = br.ReadUInt16();

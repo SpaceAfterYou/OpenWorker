@@ -53,6 +53,9 @@ namespace ow.Framework.Extensions
         public static StorageType ReadStorageType(this BinaryReader br) =>
             (StorageType)br.ReadByte();
 
+        public static CharacterAdvancement ReadCharacterAdvancement(this BinaryReader br) =>
+            (CharacterAdvancement)br.ReadByte();
+
         public static GroupRole ReadGroupRoleType(this BinaryReader br) =>
             (GroupRole)br.ReadByte();
 

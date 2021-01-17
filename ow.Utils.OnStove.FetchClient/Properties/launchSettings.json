@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ow.Utils.FetchOnStoveClient": {
+      "commandName": "Project",
+      "commandLineArgs": "14.63.228.217 80 \"Q:\\Stove\\Games\""
+    }
+  }
+}

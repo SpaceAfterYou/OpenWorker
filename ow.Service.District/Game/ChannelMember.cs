@@ -13,7 +13,7 @@ namespace ow.Service.District.Game
         public void Leave() => Channel.Leave(Session);
 
         public void SendOtherCharactersAsync(Instance instance) =>
-            SendAsync(new CharacterOthersResponse()
+            SendDeferred(new CharacterOthersResponse()
             {
                 Values = Channel.Sessions.Select(s => new CharacterOthersResponse.Entity()
                 {
@@ -28,7 +28,7 @@ namespace ow.Service.District.Game
             if (session is null)
                 return;
 
-            SendAsync(new CharacterSpecialOptionListUpdateResponse()
+            SendDeferred(new CharacterSpecialOptionListUpdateResponse()
             {
                 Character = session.Character.Id,
                 Values = session.SpecialOptions.Select(s => new CharacterSpecialOptionListUpdateResponse.Entity()

@@ -1,13 +1,13 @@
 ﻿namespace ow.Framework.Game.Enums
 {
-    /// <summary>
-    /// Field Ids from datas/data12.v/../bin/Tables/tb_UI_String.res
-    /// </summary>
-    public enum AuthLoginErrorMessageCode : uint
+    public enum AuthLoginErrorMessageCode
     {
-        None,
+        None = 0,
         WrongUsernameOrPassword = 1,
-        TheIdYouEnteredIsAlreadyConnectedToTheServer = 2,
-        WithErrorMessage = 3
+        InGameAlready = 2,
+        BlockAccountId = 3,
+        BlockMac = 5,
+        WrongMac = 6,
+        CheckSystem = 7,
     }
 }

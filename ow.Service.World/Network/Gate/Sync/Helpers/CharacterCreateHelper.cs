@@ -54,7 +54,7 @@ namespace ow.Service.World.Network.Gate.Sync.Helpers
             if (!binTable.CharacterInfo.TryGetValue((ushort)(1000 * (byte)request.Character.Main.Hero), out CharacterInfoTableEntity? entity))
                 NetworkUtils.DropBadAction();
 
-            if (request.Outfit == 0 || !entity!.DefaultOutfits.Contains(request.Outfit))
+            if (request.Outfit == 0 || !entity!.DefaultCostumeIds.Contains(request.Outfit))
                 NetworkUtils.DropBadAction();
         }
 
@@ -104,9 +104,9 @@ namespace ow.Service.World.Network.Gate.Sync.Helpers
                 new() { Type = StorageType.InventoryItems },
                 new() { Type = StorageType.InventoryFashion },
                 new() { Type = StorageType.InventoryExtra },
-                new() { Type = StorageType.BankItems },
+                new() { Type = StorageType.BankCommon},
                 new() { Type = StorageType.BankFashion },
-                new() { Type = StorageType.BankExtra },
+                new() { Type = StorageType.BankCash},
             };
     }
 }

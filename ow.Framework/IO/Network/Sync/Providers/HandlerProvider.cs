@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ow.Framework.IO.Network.Sync.Attributes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.Utils;
 using System;
@@ -124,7 +125,7 @@ namespace ow.Framework.IO.Network.Sync.Providers
         }
 
         private static int GetMaxHandlersCount() => Convert.ToInt32(Enum
-            .GetUnderlyingType(typeof(Opcodes.ServerOpcode))?
+            .GetUnderlyingType(typeof(ServerOpcode))?
             .GetField("MaxValue", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)?
             .GetRawConstantValue());
     }

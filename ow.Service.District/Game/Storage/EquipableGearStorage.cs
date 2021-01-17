@@ -8,17 +8,17 @@ namespace ow.Framework.Game.Storage
 {
     public class EquipableGearStorage : BaseStorage
     {
-        public StorageItem this[EquippedGearSlot index] => this[(int)index]!;
+        public StorageItem this[StorageEquippedGearSlot index] => this[(int)index]!;
 
-        public StorageItem Head => this[EquippedGearSlot.Head];
-        public StorageItem Shoulderguard => this[EquippedGearSlot.Shoulderguard];
-        public StorageItem Chest => this[EquippedGearSlot.Chest];
-        public StorageItem Leg => this[EquippedGearSlot.Leg];
-        public StorageItem Earrings => this[EquippedGearSlot.Earrings];
-        public StorageItem Talisman => this[EquippedGearSlot.Talisman];
-        public StorageItem Ring1 => this[EquippedGearSlot.Ring1];
-        public StorageItem Ring2 => this[EquippedGearSlot.Ring2];
-        public StorageItem Weapon => this[EquippedGearSlot.Weapon];
+        public StorageItem Head => this[StorageEquippedGearSlot.Head];
+        public StorageItem Shoulderguard => this[StorageEquippedGearSlot.Shoulderguard];
+        public StorageItem Chest => this[StorageEquippedGearSlot.Chest];
+        public StorageItem Leg => this[StorageEquippedGearSlot.Leg];
+        public StorageItem Earrings => this[StorageEquippedGearSlot.Earrings];
+        public StorageItem Talisman => this[StorageEquippedGearSlot.Pendant];
+        public StorageItem Ring1 => this[StorageEquippedGearSlot.Ring1];
+        public StorageItem Ring2 => this[StorageEquippedGearSlot.Ring2];
+        public StorageItem Weapon => this[StorageEquippedGearSlot.Weapon];
 
         public EquipableGearStorage(IEnumerable<ItemModel> values, BinTables tables) : base(values, tables, Defines.EquipableFashionStorageMaxCapacity)
         {

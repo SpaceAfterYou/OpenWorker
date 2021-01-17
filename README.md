@@ -20,6 +20,7 @@ Just another server emulator for korean SoulWoker written in .NET 5.
 #### Project: ow.Framework
 
 - rename **config/commonsettings.example.json** to **config/commonsettings.json**
+- (___FOR DEBUG___) rename **config/commonsettings.Development.example.json** to **config/commonsettings.Development.json**
 
 ```jsonc
   "Game": {
@@ -28,9 +29,11 @@ Just another server emulator for korean SoulWoker written in .NET 5.
     // at end, directory path looks like: `YOUR_ENTERED_PATH/datas/data12|49.v`
     "Dir": "",
     "Datas": {
+      // setup passwords for archives here
       "Passwords": {
-        // setup password for archive
-        "Data12": ""
+        "Data12": "",
+        "Data41": "",
+        "Data49": ""
       }
     }
   }
@@ -42,10 +45,10 @@ rename **config/appsettings.example.json** to **config/appsettings.json**
 
 ```jsonc
 {
-  // config["World"]["Instance"]["World-01"]
+  // commonsettings["World"]["Instance"]["World-01"]
   "World": "World-01",
 
-  // config["World"]["Instance"]["World-01"]["District"]["Rocco-01"]
+  // commonsettings["World"]["Instance"]["World-01"]["District"]["Rocco-01"]
   "District": "Rocco-01"
 }
 ```
@@ -56,7 +59,7 @@ rename **config/appsettings.example.json** to **config/appsettings.json**
 
 ```jsonc
 {
-  // config["World"]["Instance"]["World-01"]
+  // commonsettings["World"]["Instance"]["World-01"]
   "World": "World-01",
 }
 ```

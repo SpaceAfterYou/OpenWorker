@@ -28,13 +28,13 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         }
 
         public KeyType Id { get; }
-        public byte Unknown5 { get; }
+        public byte Group { get; }
         public ushort Unknown6 { get; }
-        public byte Unknown7 { get; }
+        public byte SubGroup { get; }
         public ushort Unknown8 { get; }
-        public byte Unknown9 { get; }
+        public byte Category { get; }
         public ushort Unknown10 { get; }
-        public byte Unknown11 { get; }
+        public byte SubCategory { get; }
         public ushort Unknown12 { get; }
         public byte GainType { get; }
         public ItemClassifyInventoryType InventoryType { get; }
@@ -44,7 +44,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         public byte UseType { get; }
         public byte ConsumeType { get; }
         public ushort Unknown20 { get; }
-        public ushort Socket { get; }
+        public ushort SocketId { get; }
         public ushort Unknown22 { get; }
         public ActionInfo Action { get; }
         public short Unknown27 { get; }
@@ -52,13 +52,13 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
         internal ItemClassifyTableEntity(BinaryReader br)
         {
             Id = br.ReadUInt32();
-            Unknown5 = br.ReadByte();
+            Group = br.ReadByte();
             Unknown6 = br.ReadUInt16();
-            Unknown7 = br.ReadByte();
+            SubGroup = br.ReadByte();
             Unknown8 = br.ReadUInt16();
-            Unknown9 = br.ReadByte();
+            Category = br.ReadByte();
             Unknown10 = br.ReadUInt16();
-            Unknown11 = br.ReadByte();
+            SubCategory = br.ReadByte();
             Unknown12 = br.ReadUInt16();
             GainType = br.ReadByte();
             InventoryType = br.ReadItemClassifyInventoryType();
@@ -68,7 +68,7 @@ namespace ow.Framework.Game.Datas.Bin.Table.Entities
             UseType = br.ReadByte();
             ConsumeType = br.ReadByte();
             Unknown20 = br.ReadUInt16();
-            Socket = br.ReadUInt16();
+            SocketId = br.ReadUInt16();
             Unknown22 = br.ReadUInt16();
             Action = new(br);
             Unknown27 = br.ReadInt16();

@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using ow.Framework;
 using ow.Service.District.Network.Sync;
 using System.Collections.Concurrent;
@@ -13,8 +12,8 @@ namespace ow.Service.District.Game.Repositories
     {
         private readonly ConcurrentDictionary<int, ushort> _reserved = new();
 
-        public ChannelRepository(IConfiguration configuration, Instance instance, ILogger<ChannelEntity> logger) :
-            base(GetChannels(configuration, configuration["World"], configuration["District"], instance, GetChannelsCount(configuration), logger))
+        public ChannelRepository(IConfiguration configuration, Instance instance) :
+            base(GetChannels(configuration, configuration["World"], configuration["District"], instance, GetChannelsCount(configuration)))
         {
         }
 
@@ -40,9 +39,9 @@ namespace ow.Service.District.Game.Repositories
             .First(s => s.Value.Key == id)
             .Index;
 
-        private static Dictionary<ushort, ChannelEntity> GetChannels(IConfiguration configuration, string world, string id, Instance instance, byte channels, ILogger<ChannelEntity> logger) => Enumerable
+        private static Dictionary<ushort, ChannelEntity> GetChannels(IConfiguration configuration, string world, string id, Instance instance, byte channels) => Enumerable
             .Range(GetOffset(configuration, world, id, instance) * channels, channels)
-            .ToDictionary(k => (ushort)k, v => new ChannelEntity((ushort)v, instance, logger));
+            .ToDictionary(k => (ushort)k, v => new ChannelEntity((ushort)v, instance));
     }
 }
 

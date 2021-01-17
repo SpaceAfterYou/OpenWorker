@@ -6,7 +6,7 @@ using ow.Framework.Game.Datas.Bin.Table.Entities;
 using ow.Framework.Game.Enums;
 using ow.Framework.IO.Network.Relay.Global;
 using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Opcodes;
+using ow.Framework.IO.Network.Sync.Commands.Old;
 using ow.Framework.IO.Network.Sync.Permissions;
 using ow.Framework.IO.Network.Sync.Requests;
 using ow.Framework.IO.Network.Sync.Responses;
@@ -52,8 +52,8 @@ namespace ow.Service.District.Network.Sync.Handlers
 
             session.Permission = HandlerPermission.Authorized;
 
-            session.SendAsync(new SWorldCurrentDataResponse());
-            session.SendAsync(new WorldVersionResponse()
+            session.SendDeferred(new SWorldCurrentDataResponse());
+            session.SendDeferred(new WorldVersionResponse()
             {
                 Id = 0,
                 Main = 1,
@@ -64,7 +64,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             if (_tables.BattlePass.Count > 0)
             {
                 PassInfoTableEntity entity = _tables.BattlePass.Values.First();
-                session.SendAsync(new BattlePassLoadResponse()
+                session.SendDeferred(new BattlePassLoadResponse()
                 {
                     Id = entity.Id,
                     HavePoint = 2000,
@@ -75,7 +75,7 @@ namespace ow.Service.District.Network.Sync.Handlers
                 });
             }
 
-            session.SendAsync(new DayEventBoosterResponse()
+            session.SendDeferred(new DayEventBoosterResponse()
             {
                 Values = _dayEventBoosters.Select(s => new DayEventBoosterResponse.Entity()
                 {
@@ -87,7 +87,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             // CharacterSuperArmorGage
             // LOGLV 2 : 454.747 :: eSUB_CMD_BOOSTER_ADD 2
 
-            session.SendAsync(new DistrictEnterResponse()
+            session.SendDeferred(new DistrictEnterResponse()
             {
                 Place = new()
                 {
@@ -117,7 +117,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             //LOGLV 2 : 454.863 :: eSUB_CMD_POST_ACCOUNT_RECV
             //LOGLV 2 : 455.905 :: receive_eSUB_CMD_CHARACTER_INFO_RES
 
-            session.SendCharacterDbLoadSync();
+            session.SendCharacterDbLoadDeferred();
         }
 
         private AccountModel GetAccountModel(int id)
@@ -134,7 +134,7 @@ namespace ow.Service.District.Network.Sync.Handlers
 
         [Handler(ServerOpcode.Heartbeat, HandlerPermission.Authorized)]
         public static void Heartbeat(SyncSession session, ServiceHeartbeatRequest request) =>
-            session.SendAsync(request);
+            session.SendDeferred(request);
 
         [Handler(ServerOpcode.DistrictLogOut, HandlerPermission.Authorized)]
         public void LogOut(SyncSession session, DistrictLogoutRequest request)
@@ -148,7 +148,7 @@ namespace ow.Service.District.Network.Sync.Handlers
             if (request.Way != DistrictLogOutWay.GoToGateService)
                 NetworkUtils.DropBadAction();
 
-            session.SendAsync(new DistrictLogOutResponse()
+            session.SendDeferred(new DistrictLogOutResponse()
             {
                 Account = session.Account.Id,
                 Character = session.Character.Id,
