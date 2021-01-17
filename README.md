@@ -20,7 +20,7 @@ Just another server emulator for korean SoulWoker written in .NET 5.
 #### Project: ow.Framework
 
 - rename **config/commonsettings.example.json** to **config/commonsettings.json**
-- (___FOR DEBUG___) rename **config/commonsettings.Development.example.json** to **config/commonsettings.Development.json**
+- rename **config/commonsettings.Development.example.json** to **config/commonsettings.Development.json**
 
 ```jsonc
   "Game": {
