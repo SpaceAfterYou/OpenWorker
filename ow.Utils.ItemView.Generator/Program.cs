@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Enums;
-using ow.Framework.IO.File.Bin;
+using SoulCore.Game.Datas.Bin.Table.Entities;
+using SoulCore.Game.Enums;
+using SoulCore.IO.File.Bin;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;

@@ -1,7 +1,7 @@
-﻿using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Commands.Old;
-using ow.Framework.IO.Network.Sync.Permissions;
-using ow.Framework.IO.Network.Sync.Responses;
+﻿using SoulCore.IO.Network.Sync.Attributes;
+using SoulCore.IO.Network.Sync.Commands.Old;
+using SoulCore.IO.Network.Sync.Permissions;
+using SoulCore.IO.Network.Sync.Responses;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Repositories;
 using System.Linq;

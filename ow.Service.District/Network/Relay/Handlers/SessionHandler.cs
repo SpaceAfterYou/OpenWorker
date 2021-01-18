@@ -1,11 +1,11 @@
 ﻿using Grpc.Core;
-using ow.Framework.IO.Network.Relay.Attrubutes;
-using ow.Framework.IO.Network.Relay.World.Client.Protos.Requests;
-using ow.Framework.IO.Network.Relay.World.Client.Protos.Responses;
+using SoulCore.IO.Network.Relay.Attrubutes;
+using SoulCore.IO.Network.Relay.World.Client.Protos.Requests;
+using SoulCore.IO.Network.Relay.World.Client.Protos.Responses;
 using ow.Service.District.Game.Repositories;
 using ow.Service.District.Network.Sync;
 using System.Threading.Tasks;
-using static ow.Framework.IO.Network.Relay.World.Client.Protos.RWCSessionProto;
+using static SoulCore.IO.Network.Relay.World.Client.Protos.RWCSessionProto;
 
 namespace ow.Service.District.Network.Relay.Handlers
 {

@@ -1,5 +1,5 @@
-﻿using ow.Framework.Database.Characters;
-using ow.Framework.Game.Enums;
+﻿using SoulCore.Database.Characters;
+using SoulCore.Game.Enums;
 using System.Numerics;
 
 namespace ow.Service.District.Game

@@ -1,5 +1,5 @@
-﻿using ow.Framework.Database.Characters;
-using ow.Framework.Game.Types;
+﻿using SoulCore.Database.Characters;
+using SoulCore.Game.Types;
 
 namespace ow.Service.District.Game
 {

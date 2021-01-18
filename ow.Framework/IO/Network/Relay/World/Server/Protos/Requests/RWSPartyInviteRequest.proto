@@ -1,9 +1,0 @@
-﻿syntax = "proto3";
-
-option csharp_namespace = "ow.Framework.IO.Network.Relay.World.Server.Protos.Requests";
-
-message RWSPartyInviteRequest
-{
-    int32 Id = 1;
-    int32 CharacterId = 2;
-}

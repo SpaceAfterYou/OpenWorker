@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
-using ow.Framework.IO.Network.Sync;
-using ow.Framework.IO.Network.Sync.Providers;
+using SoulCore.IO.Network.Sync;
+using SoulCore.IO.Network.Sync.Providers;
 using ow.Service.District.Game;
 using System.Collections.Generic;
 

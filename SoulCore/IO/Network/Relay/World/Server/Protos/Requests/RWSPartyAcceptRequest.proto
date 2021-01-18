@@ -1,0 +1,9 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "SoulCore.IO.Network.Relay.World.Server.Protos.Requests";
+
+message RWSPartyAcceptRequest
+{
+    int32 Master = 1;
+    int32 Character = 2;
+}

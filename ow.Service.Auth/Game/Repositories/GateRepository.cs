@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework;
-using ow.Framework.Game.Enums;
+using SoulCore;
+using SoulCore.Game.Enums;
 using System.Collections.Generic;
 using System.Linq;
 

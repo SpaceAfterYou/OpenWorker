@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
-using ow.Framework.Database.Characters;
-using ow.Framework.Database.Storages;
+using SoulCore.Database.Characters;
+using SoulCore.Database.Storages;
 
 namespace SetupDatabase.Migrations
 {

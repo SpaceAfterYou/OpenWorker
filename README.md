@@ -17,7 +17,7 @@ Just another server emulator for korean SoulWoker written in .NET 5.
 
 ### Configuration
 
-#### Project: ow.Framework
+#### Project: SoulCore
 
 - rename **config/commonsettings.example.json** to **config/commonsettings.json**
 - rename **config/commonsettings.Development.example.json** to **config/commonsettings.Development.json**

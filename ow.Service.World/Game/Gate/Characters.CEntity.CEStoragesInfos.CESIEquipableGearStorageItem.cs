@@ -1,4 +1,4 @@
-﻿using ow.Framework.Database.Storages;
+﻿using SoulCore.Database.Storages;
 
 namespace ow.Service.World.Game.Gate
 {

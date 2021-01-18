@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.IO.Network.Relay;
-using static ow.Framework.IO.Network.Relay.World.Client.Protos.RWCPartyProto;
-using static ow.Framework.IO.Network.Relay.World.Client.Protos.RWCSessionProto;
+using SoulCore.IO.Network.Relay;
+using static SoulCore.IO.Network.Relay.World.Client.Protos.RWCPartyProto;
+using static SoulCore.IO.Network.Relay.World.Client.Protos.RWCSessionProto;
 
 namespace ow.Service.World.Network.Relay
 {

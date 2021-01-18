@@ -1,6 +1,6 @@
-﻿using ow.Framework.Game;
-using ow.Framework.IO.Network.Sync.Requests;
-using ow.Framework.IO.Network.Sync.Responses;
+﻿using SoulCore.Game;
+using SoulCore.IO.Network.Sync.Requests;
+using SoulCore.IO.Network.Sync.Responses;
 using ow.Service.District.Game.Helpers;
 using ow.Service.District.Network.Sync;
 using System.Linq;

@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SetupDatabase;
-using ow.Framework.Database.Characters;
-using ow.Framework.Database.Storages;
+using SoulCore.Database.Characters;
+using SoulCore.Database.Storages;
 
 namespace SetupDatabase.Migrations
 {
@@ -21,7 +21,7 @@ namespace SetupDatabase.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63)
                 .HasAnnotation("ProductVersion", "6.0.0-alpha.1.20417.8");
 
-            modelBuilder.Entity("ow.Framework.Database.AccouintPosts.AccountPostModel", b =>
+            modelBuilder.Entity("SoulCore.Database.AccouintPosts.AccountPostModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -38,7 +38,7 @@ namespace SetupDatabase.Migrations
                     b.ToTable("account_posts");
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.Accounts.AccountModel", b =>
+            modelBuilder.Entity("SoulCore.Database.Accounts.AccountModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -136,7 +136,7 @@ namespace SetupDatabase.Migrations
                         });
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.CharacterPosts.CharacterPostModel", b =>
+            modelBuilder.Entity("SoulCore.Database.CharacterPosts.CharacterPostModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -156,7 +156,7 @@ namespace SetupDatabase.Migrations
                     b.ToTable("character_posts");
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.Characters.CharacterModel", b =>
+            modelBuilder.Entity("SoulCore.Database.Characters.CharacterModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -246,7 +246,7 @@ namespace SetupDatabase.Migrations
                     b.ToTable("characters");
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.Guilds.GuildModel", b =>
+            modelBuilder.Entity("SoulCore.Database.Guilds.GuildModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -268,7 +268,7 @@ namespace SetupDatabase.Migrations
                     b.ToTable("guilds");
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.Storages.ItemModel", b =>
+            modelBuilder.Entity("SoulCore.Database.Storages.ItemModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -327,9 +327,9 @@ namespace SetupDatabase.Migrations
                     b.ToTable("items");
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.AccouintPosts.AccountPostModel", b =>
+            modelBuilder.Entity("SoulCore.Database.AccouintPosts.AccountPostModel", b =>
                 {
-                    b.HasOne("ow.Framework.Database.Accounts.AccountModel", "Account")
+                    b.HasOne("SoulCore.Database.Accounts.AccountModel", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -338,9 +338,9 @@ namespace SetupDatabase.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.CharacterPosts.CharacterPostModel", b =>
+            modelBuilder.Entity("SoulCore.Database.CharacterPosts.CharacterPostModel", b =>
                 {
-                    b.HasOne("ow.Framework.Database.Characters.CharacterModel", "Character")
+                    b.HasOne("SoulCore.Database.Characters.CharacterModel", "Character")
                         .WithMany()
                         .HasForeignKey("CharacterId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -349,9 +349,9 @@ namespace SetupDatabase.Migrations
                     b.Navigation("Character");
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.Characters.CharacterModel", b =>
+            modelBuilder.Entity("SoulCore.Database.Characters.CharacterModel", b =>
                 {
-                    b.HasOne("ow.Framework.Database.Accounts.AccountModel", "Account")
+                    b.HasOne("SoulCore.Database.Accounts.AccountModel", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -360,9 +360,9 @@ namespace SetupDatabase.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("ow.Framework.Database.Storages.ItemModel", b =>
+            modelBuilder.Entity("SoulCore.Database.Storages.ItemModel", b =>
                 {
-                    b.HasOne("ow.Framework.Database.Characters.CharacterModel", "Character")
+                    b.HasOne("SoulCore.Database.Characters.CharacterModel", "Character")
                         .WithMany()
                         .HasForeignKey("CharacterId")
                         .OnDelete(DeleteBehavior.Cascade)

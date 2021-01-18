@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework;
+using SoulCore;
 
 namespace ow.Service.District.Game
 {

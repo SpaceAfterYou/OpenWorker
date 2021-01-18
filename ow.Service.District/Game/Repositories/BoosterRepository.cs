@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
+using SoulCore.Game.Datas.Bin.Table.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;

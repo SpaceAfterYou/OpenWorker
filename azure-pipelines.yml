@@ -57,10 +57,10 @@ steps:
   inputs:
     targetType: 'inline'
     script: |
-      touch ow.Framework/config/commonsettings.json
-      touch ow.Framework/config/commonsettings.Development.json
-      touch ow.Framework/config/appsettings.json
-      touch ow.Framework.Tests/config/appsettings.json
+      touch SoulCore/config/commonsettings.json
+      touch SoulCore/config/commonsettings.Development.json
+      touch SoulCore/config/appsettings.json
+      touch SoulCore.Tests/config/appsettings.json
       touch ow.Service.District/config/appsettings.json
       touch ow.Service.World/config/appsettings.json
       touch ow.Utils.ItemView.Generator/config/appsettings.json

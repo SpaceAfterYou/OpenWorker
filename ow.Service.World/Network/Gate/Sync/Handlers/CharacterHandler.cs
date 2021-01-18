@@ -1,22 +1,22 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ow.Framework;
-using ow.Framework.Database.Characters;
-using ow.Framework.Database.Storages;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.IO.Network.Relay.World.Client.Protos.Requests;
-using ow.Framework.IO.Network.Sync.Attributes;
-using ow.Framework.IO.Network.Sync.Commands.Old;
-using ow.Framework.IO.Network.Sync.Permissions;
-using ow.Framework.IO.Network.Sync.Requests;
-using ow.Framework.IO.Network.Sync.Responses;
-using ow.Framework.IO.Network.Sync.Responses.Shared;
-using ow.Framework.Utils;
+using SoulCore;
+using SoulCore.Database.Characters;
+using SoulCore.Database.Storages;
+using SoulCore.Game.Datas.Bin.Table.Entities;
+using SoulCore.IO.Network.Relay.World.Client.Protos.Requests;
+using SoulCore.IO.Network.Sync.Attributes;
+using SoulCore.IO.Network.Sync.Commands.Old;
+using SoulCore.IO.Network.Sync.Permissions;
+using SoulCore.IO.Network.Sync.Requests;
+using SoulCore.IO.Network.Sync.Responses;
+using SoulCore.IO.Network.Sync.Responses.Shared;
+using SoulCore.Utils;
 using ow.Service.World.Game.Gate;
 using ow.Service.World.Game.Gate.Repository;
 using ow.Service.World.Network.Gate.Sync.Helpers;
 using System.Linq;
 
-using static ow.Framework.IO.Network.Sync.Responses.Shared.CharacterShared.EquippedItemsInfo;
+using static SoulCore.IO.Network.Sync.Responses.Shared.CharacterShared.EquippedItemsInfo;
 using static ow.Service.World.Game.Gate.Characters;
 using static ow.Service.World.Game.Gate.Repository.DistrictRepository;
 

@@ -1,6 +1,6 @@
-﻿using ow.Framework.Database.Characters;
-using ow.Framework.Database.Storages;
-using ow.Framework.Game.Enums;
+﻿using SoulCore.Database.Characters;
+using SoulCore.Database.Storages;
+using SoulCore.Game.Enums;
 
 namespace ow.Service.World.Game.Gate
 {

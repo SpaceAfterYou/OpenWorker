@@ -1,4 +1,4 @@
-﻿using ow.Framework.Database.Characters;
+﻿using SoulCore.Database.Characters;
 using System.Numerics;
 
 namespace ow.Service.World.Game.Gate

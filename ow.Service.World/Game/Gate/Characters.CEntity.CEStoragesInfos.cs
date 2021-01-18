@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ow.Framework.Database.Characters;
-using ow.Framework.Database.Storages;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Enums;
+using SoulCore.Database.Characters;
+using SoulCore.Database.Storages;
+using SoulCore.Game.Datas.Bin.Table.Entities;
+using SoulCore.Game.Enums;
 using System.Collections.Generic;
 using System.Linq;
 

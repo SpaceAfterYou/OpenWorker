@@ -1,7 +1,7 @@
-﻿using ow.Framework;
-using ow.Framework.Game;
-using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Sync.Responses;
+﻿using SoulCore;
+using SoulCore.Game;
+using SoulCore.Game.Enums;
+using SoulCore.IO.Network.Sync.Responses;
 using ow.Service.District.Game.Helpers;
 using ow.Service.District.Network.Sync;
 

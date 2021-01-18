@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <UserSecretsId>dotnet-ow.Service.District-099080BF-8017-416E-9371-974CA151EFA9</UserSecretsId>
+    <StartupObject>ow.Service.District.Program</StartupObject>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="config\appsettings.example.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SoulCore\SoulCore.csproj" />
+  </ItemGroup>
+</Project>

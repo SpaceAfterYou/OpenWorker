@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ow.Framework.Database.Accounts;
-using ow.Framework.Database.Characters;
-using ow.Framework.Database.Storages;
-using ow.Framework.Utils;
+using SoulCore.Database.Accounts;
+using SoulCore.Database.Characters;
+using SoulCore.Database.Storages;
+using SoulCore.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

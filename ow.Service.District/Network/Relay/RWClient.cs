@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.IO.Network.Relay;
-using static ow.Framework.IO.Network.Relay.World.Server.Protos.RWSPartyProto;
+using SoulCore.IO.Network.Relay;
+using static SoulCore.IO.Network.Relay.World.Server.Protos.RWSPartyProto;
 
 namespace ow.Service.District.Network.Relay
 {

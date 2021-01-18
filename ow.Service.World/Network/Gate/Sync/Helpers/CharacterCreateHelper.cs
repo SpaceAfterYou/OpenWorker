@@ -1,9 +1,9 @@
-﻿using ow.Framework;
-using ow.Framework.Database.Characters;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Enums;
-using ow.Framework.IO.Network.Sync.Requests;
-using ow.Framework.Utils;
+﻿using SoulCore;
+using SoulCore.Database.Characters;
+using SoulCore.Game.Datas.Bin.Table.Entities;
+using SoulCore.Game.Enums;
+using SoulCore.IO.Network.Sync.Requests;
+using SoulCore.Utils;
 using ow.Service.World.Game.Gate;
 using System;
 using System.Linq;

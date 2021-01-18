@@ -1,4 +1,4 @@
-﻿using ow.Framework.Game.Enums;
+﻿using SoulCore.Game.Enums;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;

@@ -1,5 +1,5 @@
-﻿using ow.Framework.Database.Storages;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
+﻿using SoulCore.Database.Storages;
+using SoulCore.Game.Datas.Bin.Table.Entities;
 
 namespace ow.Service.District.Game.Storage
 {

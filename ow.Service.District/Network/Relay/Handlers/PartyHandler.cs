@@ -1,12 +1,12 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using ow.Framework.IO.Network.Relay.Attrubutes;
-using ow.Framework.IO.Network.Relay.World.Client.Protos.Requests;
-using ow.Framework.IO.Network.Sync.Responses;
+using SoulCore.IO.Network.Relay.Attrubutes;
+using SoulCore.IO.Network.Relay.World.Client.Protos.Requests;
+using SoulCore.IO.Network.Sync.Responses;
 using ow.Service.District.Network.Sync;
 using System;
 using System.Threading.Tasks;
-using static ow.Framework.IO.Network.Relay.World.Client.Protos.RWCPartyProto;
+using static SoulCore.IO.Network.Relay.World.Client.Protos.RWCPartyProto;
 
 namespace ow.Service.District.Network.Relay.Handlers
 {

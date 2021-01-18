@@ -1,4 +1,4 @@
-﻿namespace ow.Framework.Game.Storage
+﻿namespace SoulCore.Game.Storage
 {
     public abstract class BaseUpgradableStorage
     {

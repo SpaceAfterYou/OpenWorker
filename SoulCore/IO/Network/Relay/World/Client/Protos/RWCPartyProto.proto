@@ -1,0 +1,11 @@
+﻿syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "IO/Network/Relay/World/Client/Protos/Requests/RWCPartyInviteRequest.proto";
+
+option csharp_namespace = "SoulCore.IO.Network.Relay.World.Client.Protos";
+
+service RWCPartyProto
+{
+    rpc Invite (RWCPartyInviteRequest) returns (google.protobuf.Empty);
+}

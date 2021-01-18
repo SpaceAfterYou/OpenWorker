@@ -1,0 +1,15 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "SoulCore.IO.Network.Relay.World.Client.Protos.Requests";
+
+message RWCPartyInviteRequest
+{
+    message Character
+    {
+        int32 Id = 1;
+        string Name = 2;
+    }
+
+    string GUID = 1;
+    Character Master = 2;
+}

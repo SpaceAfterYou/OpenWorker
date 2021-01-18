@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using ow.Framework.Extensions;
-using ow.Framework.Game;
-using ow.Framework.IO.Network.Relay.Extensions;
-using ow.Framework.IO.Network.Relay.Global;
-using ow.Framework.IO.Network.Sync.Extensions;
+using SoulCore.Extensions;
+using SoulCore.Game;
+using SoulCore.IO.Network.Relay.Extensions;
+using SoulCore.IO.Network.Relay.Global;
+using SoulCore.IO.Network.Sync.Extensions;
 using ow.Service.Auth.Game.Repositories;
 using ow.Service.Auth.Network.Sync;
 

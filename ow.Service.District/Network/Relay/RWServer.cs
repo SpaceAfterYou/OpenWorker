@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using ow.Framework.IO.Network.Relay.World;
+using SoulCore.IO.Network.Relay.World;
 using System;
 
 namespace ow.Service.District.Network.Relay

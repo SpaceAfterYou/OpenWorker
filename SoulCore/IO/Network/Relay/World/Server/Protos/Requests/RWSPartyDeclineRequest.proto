@@ -1,0 +1,9 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "SoulCore.IO.Network.Relay.World.Server.Protos.Requests";
+
+message RWSPartyDeclineRequest
+{
+    int32 Id = 1;
+    int32 CharacterId = 2;
+}

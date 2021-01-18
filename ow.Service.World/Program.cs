@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using ow.Framework.Extensions;
-using ow.Framework.IO.Network.Relay.Extensions;
-using ow.Framework.IO.Network.Relay.Global;
-using ow.Framework.IO.Network.Sync.Extensions;
+using SoulCore.Extensions;
+using SoulCore.IO.Network.Relay.Extensions;
+using SoulCore.IO.Network.Relay.Global;
+using SoulCore.IO.Network.Sync.Extensions;
 using ow.Service.World.Game;
 using ow.Service.World.Game.Gate;
 using ow.Service.World.Game.Gate.Repository;

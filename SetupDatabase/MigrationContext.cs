@@ -2,14 +2,14 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using ow.Framework.Database;
-using ow.Framework.Database.AccouintPosts;
-using ow.Framework.Database.Accounts;
-using ow.Framework.Database.CharacterPosts;
-using ow.Framework.Database.Characters;
-using ow.Framework.Database.Guilds;
-using ow.Framework.Database.Storages;
-using ow.Framework.Extensions;
+using SoulCore.Database;
+using SoulCore.Database.AccouintPosts;
+using SoulCore.Database.Accounts;
+using SoulCore.Database.CharacterPosts;
+using SoulCore.Database.Characters;
+using SoulCore.Database.Guilds;
+using SoulCore.Database.Storages;
+using SoulCore.Extensions;
 
 namespace SetupDatabase
 {

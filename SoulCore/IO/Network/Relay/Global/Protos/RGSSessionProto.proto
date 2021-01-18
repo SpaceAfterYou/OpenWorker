@@ -1,0 +1,21 @@
+﻿syntax = "proto3";
+
+import "IO/Network/Relay/Global/Protos/Requests/RGSSessionRegisterRequest.proto";
+import "IO/Network/Relay/Global/Protos/Requests/RGSSessionContainsRequest.proto";
+import "IO/Network/Relay/Global/Protos/Requests/RGSSessionReserveRequest.proto";
+
+import "IO/Network/Relay/Global/Protos/Responses/RGSSessionRegisterResponse.proto";
+import "IO/Network/Relay/Global/Protos/Responses/RGSSessionContainsResponse.proto";
+import "IO/Network/Relay/Global/Protos/Responses/RGSSessionReserveResponse.proto";
+
+option csharp_namespace = "SoulCore.IO.Network.Relay.Global.Protos";
+
+package SessionHandler;
+
+service RGSSessionProto
+{
+  rpc Register (RGSSessionRegisterRequest) returns (RGSSessionRegisterResponse);
+  rpc Contains (RGSSessionContainsRequest) returns (RGSSessionContainsResponse);
+  rpc Reserve (RGSSessionReserveRequest) returns (RGSSessionReserveResponse);
+}
+

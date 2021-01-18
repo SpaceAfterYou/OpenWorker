@@ -1,0 +1,8 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "SoulCore.IO.Network.Relay.World.Server.Protos.Responses";
+
+message RWSPartyPassMasterResponse
+{
+		bool Result = 1;
+}

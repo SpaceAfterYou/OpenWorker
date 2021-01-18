@@ -1,5 +1,5 @@
-﻿using ow.Framework;
-using ow.Framework.Database.Storages;
+﻿using SoulCore;
+using SoulCore.Database.Storages;
 using System.Collections.Generic;
 using System.Linq;
 

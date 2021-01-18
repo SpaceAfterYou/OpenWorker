@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.Game.Datas.World.Table;
-using ow.Framework.IO.File.World;
+using SoulCore.Game.Datas.Bin.Table.Entities;
+using SoulCore.Game.Datas.World.Table;
+using SoulCore.IO.File.World;
 using ow.Service.District.Network.Sync;
 using System.Collections.Concurrent;
 

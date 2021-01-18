@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework.Game.Datas.Bin.Table.Entities;
-using ow.Framework.IO.File.Bin;
+using SoulCore.Game.Datas.Bin.Table.Entities;
+using SoulCore.IO.File.Bin;
 using System.Collections.Generic;
 
 namespace ow.Service.District.Game

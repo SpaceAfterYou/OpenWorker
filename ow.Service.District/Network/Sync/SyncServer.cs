@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NetCoreServer;
-using ow.Framework.IO.Network.Sync;
+using SoulCore.IO.Network.Sync;
 using System;
 using System.Collections.Concurrent;
 

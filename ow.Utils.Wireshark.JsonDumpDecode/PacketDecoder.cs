@@ -1,6 +1,6 @@
-﻿using ow.Framework;
-using ow.Framework.IO.Network.Sync.Commands.Old;
-using ow.Framework.Utils;
+﻿using SoulCore;
+using SoulCore.IO.Network.Sync.Commands.Old;
+using SoulCore.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;

@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework;
+using SoulCore;
 using System.Linq;
 
 namespace ow.Service.World.Game.Gate

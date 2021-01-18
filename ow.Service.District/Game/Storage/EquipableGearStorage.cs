@@ -1,10 +1,10 @@
-﻿using ow.Framework.Database.Storages;
-using ow.Framework.Game.Enums;
+﻿using SoulCore.Database.Storages;
+using SoulCore.Game.Enums;
 using ow.Service.District.Game;
 using ow.Service.District.Game.Storage;
 using System.Collections.Generic;
 
-namespace ow.Framework.Game.Storage
+namespace SoulCore.Game.Storage
 {
     public class EquipableGearStorage : BaseStorage
     {

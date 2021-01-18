@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ow.Framework\ow.Framework.csproj" />
+    <ProjectReference Include="..\SoulCore\SoulCore.csproj" />
+    <ProjectReference Include="..\SoulCore\SoulCore.csproj" />
   </ItemGroup>
 </Project>

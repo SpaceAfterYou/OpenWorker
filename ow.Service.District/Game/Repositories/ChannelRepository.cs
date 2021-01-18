@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework;
+using SoulCore;
 using ow.Service.District.Network.Sync;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

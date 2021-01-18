@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ow.Framework;
+using SoulCore;
 using ow.Service.World.Network.Relay;
 using System.Collections.Generic;
 using System.Linq;

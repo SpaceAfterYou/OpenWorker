@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ow.Framework.Utils;
+using SoulCore.Utils;
 using ow.Service.Auth.Network.Sync;
 using System.Threading;
 using System.Threading.Tasks;
