@@ -1,21 +1,18 @@
 ﻿using Microsoft.Extensions.Configuration;
-using SoulCore.IO.Network.Relay;
-using static SoulCore.IO.Network.Relay.World.Client.Protos.RWCPartyProto;
-using static SoulCore.IO.Network.Relay.World.Client.Protos.RWCSessionProto;
+using ow.Framework.IO.Network.Relay;
+using static ow.Framework.IO.Network.Relay.World.Server.Protos.RWSPartyProto;
 
-namespace ow.Service.World.Network.Relay
+namespace ow.Service.District.Network.Relay
 {
     public sealed class RWClient
     {
-        public RWCPartyProtoClient Party { get; }
-        public RWCSessionProtoClient Session { get; }
+        public RWSPartyProtoClient Party { get; }
 
-        public RWClient(IConfigurationSection configuration)
+        public RWClient(IConfiguration configuration)
         {
-            RChannel channel = new(configuration);
-
-            Party = new(channel);
-            Session = new(channel);
+            Party = new(new RChannel(configuration.GetSection($"World:Instance:{configuration["World"]}:Relay:World:Host")));
         }
     }
 }
+
+// https://youtu.be/BCHRxsmWsCQ

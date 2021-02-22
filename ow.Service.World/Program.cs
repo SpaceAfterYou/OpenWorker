@@ -1,16 +1,17 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using SoulCore.Extensions;
-using SoulCore.IO.Network.Relay.Extensions;
-using SoulCore.IO.Network.Relay.Global;
-using SoulCore.IO.Network.Sync.Extensions;
-using ow.Service.World.Game;
-using ow.Service.World.Game.Gate;
-using ow.Service.World.Game.Gate.Repository;
-using ow.Service.World.Network.Gate.Sync;
-using ow.Service.World.Network.Relay;
+using ow.Framework.Database.Extensions;
+using ow.Framework.Extensions;
+using ow.Framework.IO.File.World;
+using ow.Framework.IO.Network.Relay.Extensions;
+using ow.Framework.IO.Network.Relay.Global;
+using ow.Service.District.Game;
+using ow.Service.District.Game.Repositories;
+using ow.Service.District.Network.Relay;
+using ow.Service.District.Network.Sync;
+using SoulCore.IO.Network.Extensions;
 
-namespace ow.Service.World
+namespace ow.Service.District
 {
     public static class Program
     {
@@ -21,16 +22,18 @@ namespace ow.Service.World
             .ConfigureAppConfiguration((context, config) => config
                 .AddFrameworkConfig(context))
             .ConfigureServices((context, services) => services
-                .AddSyncHandlers()
+                .AddNetwork()
                 .AddHostedService<Worker>()
-                .AddSingleton<DistrictRepository>()
+                .AddSingleton<ChatCommandRepository>()
+                .AddSingleton<ChannelRepository>()
+                .AddSingleton<DayEventBoosterRepository>()
+                .AddSingleton<BoosterRepository>()
+                .AddSingleton<NpcRepository>()
+                .AddSingleton<GateInstance>()
+                .AddTransient<WorldTable>()
+                .AddSingleton<RWClient>()
                 .AddSingleton<RGClient>()
-                .AddSingleton<PartyRepository>()
-                .AddSingleton<Instance>()
-                .AddSingleton<BinTables>()
-                .AddTransient<RWServer>()
-                .AddTransient<SyncSession>()
-                .AddSingleton<SyncServer>()
+                .AddSingleton<RWServer>()
                 .AddAccountContext(context)
                 .AddCharacterContext(context)
                 .AddItemContext(context)

@@ -1,27 +1,34 @@
-﻿using Grpc.Core;
-using Microsoft.Extensions.Logging;
-using SoulCore.IO.Network.Relay.Attrubutes;
-using SoulCore.IO.Network.Relay.World.Server.Protos.Requests;
-using SoulCore.IO.Network.Relay.World.Server.Protos.Responses;
-using ow.Service.World.Game;
+﻿using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
+using ow.Framework.IO.Network.Relay.Attrubutes;
+using ow.Framework.IO.Network.Relay.World.Client.Protos.Requests;
+using ow.Service.District.Network.Sync;
+using SoulCore.IO.Network.Responses;
 using System.Threading.Tasks;
-using static SoulCore.IO.Network.Relay.World.Server.Protos.RWSPartyProto;
+using static ow.Framework.IO.Network.Relay.World.Client.Protos.RWCPartyProto;
 
-namespace ow.Service.World.Network.Relay.Handlers
+namespace ow.Service.District.Network.Relay.Handlers
 {
     [WorldHandler]
-    internal class PartyHandler : RWSPartyProtoBase
+    public sealed class PartyHandler : RWCPartyProtoBase
     {
-        private readonly ILogger<PartyHandler> _logger;
+        private readonly SyncServer _syncServer;
 
-        private readonly PartyRepository _parties;
-
-        public PartyHandler(PartyRepository parties, ILogger<PartyHandler> logger) =>
-            (_parties, _logger) = (parties, logger);
-
-        public override Task<RWSPartyAcceptResponse> Accept(RWSPartyAcceptRequest request, ServerCallContext context)
+        public override Task<Empty> Invite(RWCPartyInviteRequest request, ServerCallContext context)
         {
-            return Task.FromResult(new RWSPartyAcceptResponse { });
+            if (_syncServer.Characters.TryGetValue(request.MemberCharacterId, out SyncSession? session))
+                session.SendAsync(new SPartyInviteResponse
+                {
+                    Master = new() { Id = request.Master.Id, Name = request.Master.Name },
+                    Member = new() { Id = session.Character.Id, Name = session.Character.Name }
+                });
+
+            return Task.FromResult(new Empty());
+        }
+
+        public PartyHandler(SyncServer syncServer)
+        {
+            _syncServer = syncServer;
         }
     }
 }

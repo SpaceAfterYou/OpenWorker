@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <UserSecretsId>dotnet-ow.Service.District-099080BF-8017-416E-9371-974CA151EFA9</UserSecretsId>
     <StartupObject>ow.Service.District.Program</StartupObject>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -11,16 +11,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="config\appsettings.example.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.Threading" Version="16.9.45-alpha" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ow.Framework\ow.Framework.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Update="config\appsettings.example.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 </Project>
