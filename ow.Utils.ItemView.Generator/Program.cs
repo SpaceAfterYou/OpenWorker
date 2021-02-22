@@ -19,9 +19,9 @@ namespace ow.Utils.ItemView.Generator
 
             using BinTable table = new(GetConfiguration());
 
-            IReadOnlyDictionary<uint, ItemTableEntity> itemsTable = table.ReadItemTable();
-            IReadOnlyDictionary<uint, ItemClassifyTableEntity> itemClassifyTable = table.ReadItemClassifyTable();
-            IReadOnlyDictionary<uint, ItemScriptTableEntity> itemScriptTable = table.ReadItemScriptTable();
+            IReadOnlyDictionary<uint, ItemEntity> itemsTable = table.ReadItemTable();
+            IReadOnlyDictionary<uint, ItemClassifyEntity> itemClassifyTable = table.ReadItemClassifyTable();
+            IReadOnlyDictionary<uint, ItemScriptEntity> itemScriptTable = table.ReadItemScriptTable();
 
             IEnumerable<ItemClassifyInventoryType> inventoryTypes = itemClassifyTable.Values.Select(s => s.InventoryType).Distinct().OrderBy(s => s);
             IEnumerable<ItemClassifySlotType> slotTypes = itemClassifyTable.Values.Select(s => s.SlotType).Distinct().OrderBy(s => s);
@@ -30,9 +30,9 @@ namespace ow.Utils.ItemView.Generator
             var data = itemsTable.Values
                 .Select(i =>
                 {
-                    ItemClassifyTableEntity classify = itemClassifyTable[i.ClassifyId];
+                    ItemClassifyEntity classify = itemClassifyTable[i.ClassifyId];
 
-                    if (itemScriptTable.TryGetValue(i.Id, out ItemScriptTableEntity script))
+                    if (itemScriptTable.TryGetValue(i.Id, out ItemScriptEntity script))
                     {
                         return new
                         {
@@ -43,7 +43,7 @@ namespace ow.Utils.ItemView.Generator
                             script.Name,
                             script.Description,
                             Icon = $"GUI/{script.Icon}.png",
-                            i.Hero
+                            i.Class
                         };
                     }
 
@@ -56,7 +56,7 @@ namespace ow.Utils.ItemView.Generator
                         Name = "",
                         Description = "",
                         Icon = "",
-                        i.Hero
+                        i.Class
                     };
                 });
 
