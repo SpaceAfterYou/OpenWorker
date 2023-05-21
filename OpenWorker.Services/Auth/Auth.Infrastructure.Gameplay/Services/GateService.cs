@@ -16,16 +16,18 @@ namespace OpenWorker.Services.Auth.Infrastructure.Gameplay.Services;
 
 internal sealed record GateService : IGateService
 {
+    private readonly IHotSpotSession _session;
     private readonly IRedisCollection<GateModel> _gate;
     private readonly IDbContextFactory<PersistentContext> _factory;
 
-    public GateService(IRedisConnectionProvider client, IDbContextFactory<PersistentContext> factory)
+    public GateService(IHotSpotSession session, IRedisConnectionProvider client, IDbContextFactory<PersistentContext> factory)
     {
+        _session = session;
         _gate = client.RedisCollection<GateModel>();
         _factory = factory;
     }
 
-    public async ValueTask<bool> JoinAsync(IHotSpotSession session, ushort id, CancellationToken ct = default)
+    public async ValueTask<bool> JoinAsync(ushort id, CancellationToken ct = default)
     {
         if (await _gate.FirstOrDefaultAsync(e => e.Id == id) is not GateModel gateModel)
         {
@@ -37,32 +39,32 @@ internal sealed record GateService : IGateService
             return false;
         }
 
-        await session.SendAsync(new LoginEnterServerClientMessage { Endpoint = gateModel.EndPoint }, ct);
+        await _session.SendAsync(new LoginEnterServerClientMessage { Endpoint = gateModel.EndPoint }, ct);
 
         return true;
     }
 
-    public async ValueTask ShowAvailableGatesAsync(Entity entity, IHotSpotSession session, CancellationToken ct = default)
+    public async ValueTask ShowAvailableGatesAsync(CancellationToken ct = default)
     {
-        var gates = GetAvailableGates(entity, ct);
+        var gates = GetAvailableGates(ct);
 
-        await session.SendAsync(new LoginUserPersonsForServerResponseClientMessage { Values = await gates.ToArrayAsync(ct), }, ct);
+        await _session.SendAsync(new LoginUserPersonsForServerResponseClientMessage { Values = await gates.ToArrayAsync(ct), }, ct);
     }
 
-    public async ValueTask UpdateClientFeaturesAsync(Entity entity, IHotSpotSession session, CancellationToken ct = default)
+    public async ValueTask ShowEnabledFeaturesAsync(CancellationToken ct = default)
     {
-        var account = entity.Get<AccountComponent>();
+        var account = _session.Entity.Get<AccountComponent>();
 
-        await session.SendAsync(new LoginContentsInfoClientMessage
+        await _session.SendAsync(new LoginContentsInfoClientMessage
         {
             Content = OptionList.Empty,
             AccountId = account.Id,
         }, ct);
     }
 
-    public async IAsyncEnumerable<LoginUserPersonsForServerResponseClientMessage.Entry> GetAvailableGates(Entity entity, [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<LoginUserPersonsForServerResponseClientMessage.Entry> GetAvailableGates([EnumeratorCancellation] CancellationToken ct = default)
     {
-        var account = entity.Get<AccountComponent>();
+        var account = _session.Entity.Get<AccountComponent>();
 
         await using var db = await _factory.CreateDbContextAsync(ct);
         var persons = db.Person.Where(e => e.Account.Id == account.Id).ToArray();
@@ -80,7 +82,5 @@ internal sealed record GateService : IGateService
                 Person = (byte)Math.Min(count, byte.MaxValue),
             };
         }
-
-        yield break;
     }
 }

@@ -48,8 +48,7 @@ internal sealed record AuthService : IAuthService
         {
             Id = account.Id,
             Key = new(registry.Key),
-            Name = account.Nickname,
-            SoulCash = account.SoulCash
+            Name = account.Nickname
         };
     }
 
@@ -69,8 +68,6 @@ internal sealed record AuthService : IAuthService
             await _session.SendAsync(new LoginResultClientMessage { ErrorCode = AuthLoginErrorMessageCode.InGameAlready }, ct);
             return null;
         }
-
-        _session.Entity.Set(claims);
 
         return model;
     }

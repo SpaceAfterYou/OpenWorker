@@ -20,4 +20,8 @@
 		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Gameplay\OpenWorker.Infrastructure.Gameplay.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Components\" />
+	</ItemGroup>
+
 </Project>
