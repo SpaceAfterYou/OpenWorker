@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UserSecretsId>dotnet-Auth.API-9eac9d86-2a8a-47cd-a656-0e315788c5b0</UserSecretsId>
+		
+		<LangVersion>preview</LangVersion>
+		<EnablePreviewFeatures>true</EnablePreviewFeatures>
+		<RootNamespace>OpenWorker.Services.Auth.Api</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Communication.Hotspot\OpenWorker.Infrastructure.Communication.HotSpot.csproj" />
+		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Database\OpenWorker.Infrastructure.Database.csproj" />
+		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Gameplay\OpenWorker.Infrastructure.Gameplay.csproj" />
+		<ProjectReference Include="..\Auth.Infrastructure.Gameplay\Auth.Infrastructure.Gameplay.csproj" />
+	</ItemGroup>
+</Project>
