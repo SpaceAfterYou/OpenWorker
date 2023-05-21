@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.DatabaseModel;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
-using OpenWorker.Infrastructure.Database.Abstractions;
+using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Database.Helpers;
 using OpenWorker.Infrastructure.Gameplay;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
@@ -18,12 +18,12 @@ namespace OpenWorker.Services.Auth.Infrastructure.Gameplay;
 
 internal sealed record GameplayAuth : IGameplayAuth
 {
-    private readonly IPersistent _database;
+    private readonly IDbContextFactory<PersistentContext> _factory;
     private readonly IRedisCollection<SessionModel> _sessions;
 
-    public GameplayAuth(IPersistent database, RedisConnectionProvider provider)
+    public GameplayAuth(IDbContextFactory<PersistentContext> factory, RedisConnectionProvider provider)
     {
-        _database = database;
+        _factory = factory;
         _sessions = provider.RedisCollection<SessionModel>();
     }
 
@@ -72,7 +72,9 @@ internal sealed record GameplayAuth : IGameplayAuth
 
     private async ValueTask<AccountModel?> TryGetAccount(IHotSpotSession session, string login, string password, string mac, CancellationToken ct = default)
     {
-        if (await _database.Account.FirstOrDefaultAsync(e => e.Nickname == login, ct) is not AccountModel model)
+        await using var db = await _factory.CreateDbContextAsync(ct);
+
+        if (await db.Account.FirstOrDefaultAsync(e => e.Nickname == login, ct) is not AccountModel model)
         {
             await session.SendAsync(new LoginResultClientMessage { ErrorCode = AuthLoginErrorMessageCode.WrongUsernameOrPassword }, ct);
             return null;
@@ -84,7 +86,7 @@ internal sealed record GameplayAuth : IGameplayAuth
             return null;
         }
 
-        if (await _database.BannedMac.AnyAsync(e => e.Mac == mac, ct))
+        if (await db.BannedMac.AnyAsync(e => e.Mac == mac, ct))
         {
             await session.SendAsync(new LoginResultClientMessage { ErrorCode = AuthLoginErrorMessageCode.BlockMac }, ct);
             return null;

@@ -4,8 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
 using OpenWorker.Infrastructure.Communication.Relay.Messages.Requests;
 using OpenWorker.Infrastructure.Communication.Relay.Messages.Responses;
-using OpenWorker.Infrastructure.Database.Abstractions;
-using OpenWorker.Infrastructure.Gameplay.Realm.Abstractions;
+using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
 using OpenWorker.Services.Auth.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.DataTypes;
@@ -17,13 +16,13 @@ namespace OpenWorker.Services.Auth.Infrastructure.Gameplay;
 
 internal sealed record GameplayGate : IGameplayGate
 {
-    private readonly IPersistent _database;
+    private readonly IDbContextFactory<PersistentContext> _factory;
     private readonly IRequestClient<AvaliableGateRequest> _availableGates;
     private readonly IRequestClient<ConnectGateRequest> _connectGate;
 
-    public GameplayGate(IPersistent database, IRequestClient<AvaliableGateRequest> client, IRequestClient<ConnectGateRequest> connectGate)
+    public GameplayGate(IDbContextFactory<PersistentContext> factory, IRequestClient<AvaliableGateRequest> client, IRequestClient<ConnectGateRequest> connectGate)
     {
-        _database = database;
+        _factory = factory;
         _availableGates = client;
         _connectGate = connectGate;
     }
@@ -59,7 +58,9 @@ internal sealed record GameplayGate : IGameplayGate
     public async IAsyncEnumerable<LoginUserPersonsForServerResponseClientMessage.Entry> GetAvailableGates(Entity entity, [EnumeratorCancellation] CancellationToken ct = default)
     {
         var account = entity.Get<AccountComponent>();
-        var persons = _database.Person.Where(e => e.Account.Id == account.Id).ToArray();
+
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var persons = db.Person.Where(e => e.Account.Id == account.Id).ToArray();
 
         var response = await _availableGates.GetResponse<IEnumerable<AvaliableGateResponse>>(new(), ct);
         foreach (var gate in response.Message.Where(e => e.Status != GateStatus.Offline))

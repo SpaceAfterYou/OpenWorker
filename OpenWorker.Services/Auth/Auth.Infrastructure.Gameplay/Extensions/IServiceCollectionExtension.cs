@@ -8,9 +8,8 @@ public static class ServiceCollectionExtension
 {
     public static IServiceCollection AddAuthGameplay(this IServiceCollection @this) => @this
         .AddScoped<AuthComponent>()
-        // .AddScoped<GateComponent>()
+        .AddScoped<GateComponent>()
 
-        .AddScoped<IGameplayAuth, GameplayAuth>()
-        // .AddScoped<GameplayGate>()
-        ;
+        .AddSingleton<IGameplayAuth, GameplayAuth>()
+        .AddSingleton<IGameplayGate, GameplayGate>();
 }
