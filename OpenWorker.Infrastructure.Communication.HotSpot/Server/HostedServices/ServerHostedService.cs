@@ -4,10 +4,10 @@ using System.Diagnostics;
 
 namespace OpenWorker.Infrastructure.Communication.Hotspot.Server.Services;
 
-internal sealed class ServerService : IHostedService
+internal sealed class ServerHostedService : IHostedService
 {
     private readonly HotSpotServer _server;
-    private readonly ILogger<ServerService> _logger;
+    private readonly ILogger<ServerHostedService> _logger;
 
     public Task StartAsync(CancellationToken ct)
     {
@@ -28,7 +28,7 @@ internal sealed class ServerService : IHostedService
         return Task.CompletedTask;
     }
 
-    public ServerService(HotSpotServer server, ILogger<ServerService> logger)
+    public ServerHostedService(HotSpotServer server, ILogger<ServerHostedService> logger)
     {
         _server = server;
         _logger = logger;

@@ -29,5 +29,5 @@ public static class ServiceCollectionExtension
         .AddSingleton<HandlerCollection>()
         .AddSingleton<IPacketExchanger, PacketExchanger>()
 
-        .AddHostedService<ServerService>();
+        .AddHostedService<ServerHostedService>();
 }
