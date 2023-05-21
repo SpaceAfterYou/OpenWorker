@@ -12,7 +12,7 @@ internal sealed class LoginHandler : IHotSpotHandler<LoginUserLoginServerMessage
     {
         if (entity.Has<AccountComponent>()) return;
 
-        if (await entity.Get<AuthComponent>().LoginAsync(request.Nickname, request.Password, request.Mac, ct) is AccountComponent account)
+        if (await entity.Get<AuthComponent>().JoinAsync(request.Nickname, request.Password, request.Mac, ct) is AccountComponent account)
         {
             entity.Set(account);
             entity.Remove<AuthComponent>();
