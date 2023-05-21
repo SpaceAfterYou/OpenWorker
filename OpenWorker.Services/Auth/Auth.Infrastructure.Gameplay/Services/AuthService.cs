@@ -8,6 +8,7 @@ using OpenWorker.Infrastructure.Gameplay.Realm.Components;
 using OpenWorker.Infrastructure.Gameplay.Redis.Models;
 using OpenWorker.Services.Auth.Infrastructure.Gameplay.Abstractions;
 using Redis.OM;
+using Redis.OM.Contracts;
 using Redis.OM.Searching;
 using SoulWorkerResearch.SoulCore.Defines;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.Login;
@@ -22,7 +23,7 @@ internal sealed record AuthService : IAuthService
     private readonly IRedisCollection<SessionModel> _sessions;
     private readonly IDbContextFactory<PersistentContext> _factory;
 
-    public AuthService(IHotSpotSession session, RedisConnectionProvider provider, IDbContextFactory<PersistentContext> factory)
+    public AuthService(IHotSpotSession session, IRedisConnectionProvider provider, IDbContextFactory<PersistentContext> factory)
     {
         _session = session;
         _sessions = provider.RedisCollection<SessionModel>();

@@ -1,9 +1,6 @@
 ﻿using DefaultEcs;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
-using OpenWorker.Infrastructure.Communication.Relay.Messages.Requests;
-using OpenWorker.Infrastructure.Communication.Relay.Messages.Responses;
 using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay.Cache.Models;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
@@ -19,23 +16,28 @@ namespace OpenWorker.Services.Auth.Infrastructure.Gameplay.Services;
 
 internal sealed record GateService : IGateService
 {
-    private readonly IDbContextFactory<PersistentContext> _factory;
     private readonly IRedisCollection<GateModel> _gate;
-    private readonly IRequestClient<ConnectGateRequest> _connectGate;
+    private readonly IDbContextFactory<PersistentContext> _factory;
 
-    public GateService(IDbContextFactory<PersistentContext> factory, IRedisConnectionProvider client, IRequestClient<ConnectGateRequest> connectGate)
+    public GateService(IRedisConnectionProvider client, IDbContextFactory<PersistentContext> factory)
     {
-        _factory = factory;
         _gate = client.RedisCollection<GateModel>();
-        _connectGate = connectGate;
+        _factory = factory;
     }
 
     public async ValueTask<bool> JoinAsync(IHotSpotSession session, ushort id, CancellationToken ct = default)
     {
-        var response = await _connectGate.GetResponse<ConnectGateResponse>(new ConnectGateRequest { Id = id }, ct);
-        if (response.Message.Result is false) return false;
+        if (await _gate.FirstOrDefaultAsync(e => e.Id == id) is not GateModel gateModel)
+        {
+            return false;
+        }
 
-        await session.SendAsync(new LoginEnterServerClientMessage { Endpoint = response.Message.EndPoint }, ct);
+        if (!gateModel.CanJoin)
+        {
+            return false;
+        }
+
+        await session.SendAsync(new LoginEnterServerClientMessage { Endpoint = gateModel.EndPoint }, ct);
 
         return true;
     }
@@ -73,7 +75,7 @@ internal sealed record GateService : IGateService
             {
                 Id = gate.Id,
                 Name = gate.Name,
-                Status = gate.GetStatus(),
+                Status = gate.Status,
                 Online = gate.Online,
                 Person = (byte)Math.Min(count, byte.MaxValue),
             };
