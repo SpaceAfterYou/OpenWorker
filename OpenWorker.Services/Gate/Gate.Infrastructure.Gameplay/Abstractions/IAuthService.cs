@@ -1,4 +1,4 @@
-﻿namespace Gate.Infrastructure.Gameplay.Abstractions;
+﻿namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 
 public interface IAuthService
 {
