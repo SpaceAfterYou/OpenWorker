@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <Nullable>enable</Nullable>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <TargetFramework>net8.0</TargetFramework>
+
+	  <LangVersion>preview</LangVersion>
+	  <EnablePreviewFeatures>true</EnablePreviewFeatures>
+	  <RootNamespace>OpenWorker.Services.District.Infrastructure.Gameplay</RootNamespace>
+  </PropertyGroup>
+
+</Project>
