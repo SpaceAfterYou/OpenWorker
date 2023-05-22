@@ -1,9 +1,9 @@
 ﻿using DefaultEcs;
-using Gate.Infrastructure.Gameplay.Abstractions;
 using OpenWorker.Infrastructure.Communication.HotSpot.Handlers.Abstractions;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Server.Character;
 
-namespace Gate.Api.Handlers.HotSpot.Account;
+namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Handlers.HotSpot.Account;
 
 public sealed class ChangeBackgroundAccountHandler : IHotSpotHandler<CharacterBackgroundChangeServerMessage>
 {
