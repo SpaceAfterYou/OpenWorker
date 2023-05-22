@@ -1,8 +1,7 @@
 using OpenWorker.Infrastructure.Database.Extensions;
 using OpenWorker.Infrastructure.Communication.Hotspot.Extensions;
 using OpenWorker.Infrastructure.Gameplay.Extensions;
-using Microsoft.Extensions.Hosting;
-using Gate.Infrastructure.Gameplay.Extensions;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Extensions;
 
 var builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices((builder, services) => services

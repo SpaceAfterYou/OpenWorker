@@ -1,24 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Worker">
 
-	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
+  <PropertyGroup>
+	  <Nullable>enable</Nullable>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <TargetFramework>net8.0</TargetFramework>
+	  <InvariantGlobalization>true</InvariantGlobalization>
+	  <UserSecretsId>dotnet-Gate.Api-6ced75d1-adac-403b-bca7-a09638d95dc7</UserSecretsId>
 
-		<EnablePreviewFeatures>true</EnablePreviewFeatures>
-		<LangVersion>preview</LangVersion>
-	</PropertyGroup>
+	  <LangVersion>preview</LangVersion>
+	  <EnablePreviewFeatures>true</EnablePreviewFeatures>
+	  <RootNamespace>OpenWorker.Services.Gate.Api</RootNamespace>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0-preview.4.23259.5" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Communication.HotSpot\OpenWorker.Infrastructure.Communication.HotSpot.csproj" />
-		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Communication.Relay\OpenWorker.Infrastructure.Communication.Relay.csproj" />
-		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Database\OpenWorker.Infrastructure.Database.csproj" />
-		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Gameplay\OpenWorker.Infrastructure.Gameplay.csproj" />
-		<ProjectReference Include="..\Gate.Infrastructure.Gameplay\Gate.Infrastructure.Gameplay.csproj" />
-	</ItemGroup>
-
+  <ItemGroup>
+    <ProjectReference Include="..\Gate.Infrastructure.Gameplay\Gate.Infrastructure.Gameplay.csproj" />
+  </ItemGroup>
 </Project>
