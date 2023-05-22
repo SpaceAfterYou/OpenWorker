@@ -1,8 +1,8 @@
-﻿using Gate.Infrastructure.Gameplay.Abstractions;
-using Gate.Infrastructure.Gameplay.Services;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Services;
 
-namespace Gate.Infrastructure.Gameplay.Extensions;
+namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Extensions;
 
 public static class ServiceCollectionExtension
 {

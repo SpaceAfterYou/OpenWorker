@@ -1,16 +1,14 @@
-﻿using Gate.Infrastructure.Gameplay.Abstractions;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.DatabaseModel;
-using OpenWorker.Domain.DatabaseModel.Resources;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
 using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
-using Redis.OM.Contracts;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.Character;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.World;
 
-namespace Gate.Infrastructure.Gameplay.Services;
+namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Services;
 
 internal sealed record PersonService : IPersonService
 {
@@ -83,11 +81,6 @@ internal sealed record PersonService : IPersonService
             await _session.SendAsync(new CharacterEnterMapClientMessage { Result = 51001 }, ct);
             return;
         }
-
-        district = new DistrictModel
-        {
-            Id = resource.Id,
-        };
 
         await _session.SendAsync(new CharacterEnterMapClientMessage(), ct);
         await _session.SendAsync(new WorldCurrentDateClientMessage(), ct);

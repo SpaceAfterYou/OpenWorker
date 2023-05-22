@@ -1,13 +1,13 @@
-﻿using Gate.Infrastructure.Gameplay.Abstractions;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.DatabaseModel;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
 using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.Character;
 
-namespace Gate.Infrastructure.Gameplay.Services;
+namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Services;
 
 internal sealed record AccountService : IAccountService
 {

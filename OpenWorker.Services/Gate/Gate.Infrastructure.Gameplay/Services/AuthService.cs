@@ -1,6 +1,4 @@
 ﻿using DefaultEcs;
-using Gate.Infrastructure.Gameplay.Abstractions;
-using Gate.Infrastructure.Gameplay.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -8,8 +6,10 @@ using OpenWorker.Domain.DatabaseModel;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
 using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay;
+using OpenWorker.Infrastructure.Gameplay.Cache.Models;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
-using OpenWorker.Infrastructure.Gameplay.Redis.Models;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Components;
 using Redis.OM;
 using Redis.OM.Contracts;
 using Redis.OM.Searching;
@@ -17,7 +17,7 @@ using SoulWorkerResearch.SoulCore.Defines;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.Login;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.World;
 
-namespace Gate.Infrastructure.Gameplay.Services;
+namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Services;
 
 internal sealed record AuthService : IAuthService
 {
@@ -97,7 +97,7 @@ internal sealed record AuthService : IAuthService
             Id = accountModel.Id,
             Key = claims
         });
-        
+
         _session.Entity.Set(new PersonListComponent(accountModel.Person.Select(CreatePerson)));
     }
 }

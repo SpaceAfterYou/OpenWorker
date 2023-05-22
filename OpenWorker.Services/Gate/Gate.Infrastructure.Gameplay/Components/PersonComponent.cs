@@ -1,6 +1,6 @@
 ﻿using SoulWorkerResearch.SoulCore.Defines;
 
-namespace Gate.Infrastructure.Gameplay.Components;
+namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Components;
 
 public sealed class PersonComponent
 {
