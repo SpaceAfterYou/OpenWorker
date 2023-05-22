@@ -1,9 +1,9 @@
 ﻿using DefaultEcs;
-using Gate.Infrastructure.Gameplay.Abstractions;
 using OpenWorker.Infrastructure.Communication.HotSpot.Handlers.Abstractions;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Server.Character;
 
-namespace OpenWorker.Services.Login.Application.Net.Person;
+namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Handlers.HotSpot.Person;
 
 public sealed class DeletePersonHandler : IHotSpotHandler<CharacterDeleteServerMessage>
 {

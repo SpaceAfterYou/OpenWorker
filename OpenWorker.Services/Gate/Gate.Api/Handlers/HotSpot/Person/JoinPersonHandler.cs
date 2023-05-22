@@ -1,48 +1,53 @@
 ﻿using DefaultEcs;
 using OpenWorker.Infrastructure.Communication.HotSpot.Handlers.Abstractions;
-using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.World;
+using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Server.Character;
 
-namespace OpenWorker.Services.Login.Application.Net.Person;
+namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Handlers.HotSpot.Person;
 
 public sealed class JoinPersonHandler : IHotSpotHandler<CharacterSelectServerMessage>
 {
+    private readonly IWorldService _service;
+
+    public JoinPersonHandler(IWorldService service) => _service = service;
+
     public async ValueTask OnHandleAsync(Entity entity, CharacterSelectServerMessage message, CancellationToken ct)
     {
-        var persons = entity.Get<PersonList>();
+        await _service.Join(ct);
 
-        if (!persons.TryGetValue(message.CharacterId, out var person))
-            return;
+        //var persons = entity.Get<PersonList>();
 
-        if (!session.Server.Districts.TryGetValue(person.Place.District, out var district))
-            return;
+        //if (!persons.TryGetValue(message.CharacterId, out var person))
+        //    return;
 
-        if (!district.Relay.Session.Reserve(new RWCSessionReserveRequest() { Character = person.Id }).Result)
-        {
-            await session.SendAsync(new EnterMapResponse { Result = 50011 });
-        }
+        //if (!session.Server.Districts.TryGetValue(person.Place.District, out var district))
+        //    return;
 
-        persons.Last = person;
+        //if (!district.Relay.Session.Reserve(new RWCSessionReserveRequest() { Character = person.Id }).Result)
+        //{
+        //    await session.SendAsync(new EnterMapResponse { Result = 50011 });
+        //}
 
-        var session = entity.Get<ISyncSession>();
+        //persons.Last = person;
 
-        await session.SendAsync(new WorldCurrentDateClientMessage());
-        await session.SendAsync(new EnterMapResponse
-        {
-            AccountId = session.AccountId,
-            CharacterId = person.Id,
-            Pos = new PositionInfoPacketSharedStructure()
-            {
-                LocationId = person.Place.District,
-                Position = person.Place.Postion,
-                Rotation = person.Place.Rotation
-            },
-            EndPoint = new SEndPointSharedResponse()
-            {
-                Ip = district.Ip,
-                Port = district.Port
-            }
-        });
+        //var session = entity.Get<ISyncSession>();
+
+        //await session.SendAsync(new WorldCurrentDateClientMessage());
+        //await session.SendAsync(new EnterMapResponse
+        //{
+        //    AccountId = session.AccountId,
+        //    CharacterId = person.Id,
+        //    Pos = new PositionInfoPacketSharedStructure()
+        //    {
+        //        LocationId = person.Place.District,
+        //        Position = person.Place.Postion,
+        //        Rotation = person.Place.Rotation
+        //    },
+        //    EndPoint = new SEndPointSharedResponse()
+        //    {
+        //        Ip = district.Ip,
+        //        Port = district.Port
+        //    }
+        //});
     }
-
 }

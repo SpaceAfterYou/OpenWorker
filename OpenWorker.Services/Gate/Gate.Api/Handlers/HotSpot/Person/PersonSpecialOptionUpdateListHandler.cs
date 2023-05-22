@@ -1,4 +1,4 @@
-﻿namespace OpenWorker.Services.Login.Application.Net.Person;
+﻿namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Handlers.HotSpot.Person;
 
 public sealed class PersonSpecialOptionUpdateListHandler
 {
