@@ -95,6 +95,8 @@ internal sealed record PersonService : IPersonService
         await ChangeSlot(db, left, right, account.Id, ct);
         await ChangeSlot(db, right, left, account.Id, ct);
 
+        await db.SaveChangesAsync(ct);
+
         await _session.SendAsync(new CharacterListClientMessage(), ct);
     }
 
