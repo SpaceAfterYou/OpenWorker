@@ -8,6 +8,7 @@ using OpenWorker.Domain.DatabaseModel;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
 using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay;
+using OpenWorker.Infrastructure.Gameplay.Realm.Components;
 using OpenWorker.Infrastructure.Gameplay.Redis.Models;
 using Redis.OM;
 using Redis.OM.Contracts;
@@ -91,14 +92,12 @@ internal sealed record AuthService : IAuthService
             return person;
         }
 
-        _session.Entity.Set(new GateAccountComponent
+        _session.Entity.Set(new AccountComponent
         {
             Id = accountModel.Id,
-            Background = accountModel.Background,
-            Name = accountModel.Nickname,
             Key = claims
         });
-
+        
         _session.Entity.Set(new PersonListComponent(accountModel.Person.Select(CreatePerson)));
     }
 }

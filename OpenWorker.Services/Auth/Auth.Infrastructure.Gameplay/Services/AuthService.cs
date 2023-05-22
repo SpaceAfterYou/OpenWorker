@@ -47,8 +47,7 @@ internal sealed record AuthService : IAuthService
         return new()
         {
             Id = account.Id,
-            Key = new(registry.Key),
-            Name = account.Nickname
+            Key = new(registry.Key)
         };
     }
 
