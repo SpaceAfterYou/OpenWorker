@@ -11,6 +11,9 @@ public sealed class DeletePersonHandler : IHotSpotHandler<CharacterDeleteServerM
 
     public DeletePersonHandler(IPersonService service) => _service = service;
 
-    public ValueTask OnHandleAsync(Entity entity, CharacterDeleteServerMessage message, CancellationToken ct) => _service
-        .Delete(message.Character, ct);
+    public async ValueTask OnHandleAsync(Entity entity, CharacterDeleteServerMessage message, CancellationToken ct)
+    {
+        await _service.Delete(message.Character, ct);
+        await _service.ShowList(ct);
+    }
 }

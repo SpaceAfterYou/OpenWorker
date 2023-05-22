@@ -67,7 +67,7 @@ internal sealed record GateService : IGateService
         var account = _session.Entity.Get<AccountComponent>();
 
         await using var db = await _factory.CreateDbContextAsync(ct);
-        var persons = db.Person.Where(e => e.Account.Id == account.Id).ToArray();
+        var persons = await db.Person.Where(e => e.Account.Id == account.Id).ToArrayAsync(ct);
 
         await foreach (var gate in _gate.GetOnlineGates())
         {

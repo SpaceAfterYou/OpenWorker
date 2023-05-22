@@ -1,13 +1,17 @@
 ﻿using SoulWorkerResearch.SoulCore.IO.Net.Messages.Server.Character;
 using DefaultEcs;
-using Microsoft.Extensions.Logging;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.Character;
 using OpenWorker.Infrastructure.Communication.HotSpot.Handlers.Abstractions;
+using Gate.Infrastructure.Gameplay.Abstractions;
 
 namespace OpenWorker.Services.Login.Application.Net.Person;
 
-public sealed class PersonSlotChangeHandler : IHotSpotHandler<CharacterChangeSlotServerMessage>
+public sealed class SlotChangePersonHandler : IHotSpotHandler<CharacterChangeSlotServerMessage>
 {
+    private readonly IPersonService _service;
+
+    public SlotChangePersonHandler(IPersonService service) => _service = service;
+
     public async ValueTask OnHandleAsync(Entity entity, CharacterChangeSlotServerMessage message, CancellationToken ct)
     {
         var persons = entity.Get<PersonList>();
@@ -18,11 +22,4 @@ public sealed class PersonSlotChangeHandler : IHotSpotHandler<CharacterChangeSlo
             Values = persons.Values.ToArray()
         }, ct);
     }
-
-    public PersonSlotChangeHandler(ILogger<PersonSlotChangeHandler> logger)
-    {
-        _logger = logger;
-    }
-
-    private readonly ILogger _logger;
 }

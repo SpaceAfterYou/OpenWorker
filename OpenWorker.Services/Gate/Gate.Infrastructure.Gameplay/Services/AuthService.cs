@@ -63,7 +63,7 @@ internal sealed record AuthService : IAuthService
         }
 
         // TODO: Kick user with message about expiration
-        if (sessionModel.IsInAnyServer == true || sessionModel.IsKeyExpired)
+        if (sessionModel.IsInAnyServer || sessionModel.IsKeyExpired)
         {
             _logger.LogWarning("Session expired with account ({}) and key ({})", claims.Account, claims.Key);
 
