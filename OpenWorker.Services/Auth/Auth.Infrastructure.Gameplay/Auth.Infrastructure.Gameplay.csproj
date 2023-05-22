@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<TargetFramework>net8.0</TargetFramework>
 
 		<LangVersion>preview</LangVersion>
 		<EnablePreviewFeatures>true</EnablePreviewFeatures>
@@ -11,12 +11,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="DefaultEcs" Version="0.17.2" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\..\..\..\..\SoulWorkerResearch\SoulCore\SoulWorkerResearch.SoulCore\SoulWorkerResearch.SoulCore.csproj" />
-		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Communication.HotSpot\OpenWorker.Infrastructure.Communication.HotSpot.csproj" />
 		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Gameplay\OpenWorker.Infrastructure.Gameplay.csproj" />
 	</ItemGroup>
 
