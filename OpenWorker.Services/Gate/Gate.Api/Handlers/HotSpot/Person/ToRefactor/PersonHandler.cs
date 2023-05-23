@@ -1,4 +1,4 @@
-﻿namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Handlers.HotSpot.Person;
+﻿namespace OpenWorker.Services.Gate.Api.Handlers.HotSpot.Person.ToRefactor;
 
 public static class PersonHandler
 {
