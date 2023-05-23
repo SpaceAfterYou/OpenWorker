@@ -1,19 +1,26 @@
 ﻿using DefaultEcs;
 using OpenWorker.Infrastructure.Communication.HotSpot.Handlers.Abstractions;
+using OpenWorker.Infrastructure.Gameplay.Service.Abstractions;
 using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Server.Character;
 
 namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Handlers.HotSpot.Person;
 
-public sealed class JoinPersonHandler : IHotSpotHandler<CharacterSelectServerMessage>
+public sealed class SelectPersonHandler : IHotSpotHandler<CharacterSelectServerMessage>
 {
-    private readonly IWorldService _service;
+    private readonly IPersonService _personService;
+    private readonly IServerService _serverService;
 
-    public JoinPersonHandler(IWorldService service) => _service = service;
+    public SelectPersonHandler(IPersonService service, IServerService serverService)
+    {
+        _personService = service;
+        _serverService = serverService;
+    }
 
     public async ValueTask OnHandleAsync(Entity entity, CharacterSelectServerMessage message, CancellationToken ct)
     {
-        await _service.Join(ct);
+        await _personService.Select(message.Character, ct);
+        await _serverService.SyncDateTime(ct);
 
         //var persons = entity.Get<PersonList>();
 

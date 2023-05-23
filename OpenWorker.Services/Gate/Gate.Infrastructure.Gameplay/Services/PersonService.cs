@@ -6,7 +6,6 @@ using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
 using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.Character;
-using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.World;
 
 namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Services;
 
@@ -70,7 +69,7 @@ internal sealed record PersonService : IPersonService
         await db.SaveChangesAsync(ct);
     }
 
-    public async ValueTask Join(int id, CancellationToken ct = default)
+    public async ValueTask Select(int id, CancellationToken ct = default)
     {
         var account = _session.Entity.Get<AccountComponent>();
 
@@ -83,7 +82,6 @@ internal sealed record PersonService : IPersonService
         }
 
         await _session.SendAsync(new CharacterEnterMapClientMessage(), ct);
-        await _session.SendAsync(new WorldCurrentDateClientMessage(), ct);
     }
 
     public async ValueTask SwapSlot(byte left, byte right, CancellationToken ct = default)

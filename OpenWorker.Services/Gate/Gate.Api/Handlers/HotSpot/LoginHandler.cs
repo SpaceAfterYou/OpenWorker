@@ -9,15 +9,21 @@ using OpenWorker.Domain.DatabaseModel;
 using OpenWorker.Infrastructure.Communication.HotSpot.Handlers.Abstractions;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
 using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
+using OpenWorker.Infrastructure.Gameplay.Service.Abstractions;
 
 namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Handlers.HotSpot;
 
 [AllowAnonymous]
 public sealed class EnterServerHandler : IHotSpotHandler<LoginEnterServerMessage>
 {
-    private readonly IAuthService _service;
+    private readonly IAuthService _authService;
+    private readonly IServerService _serverService;
 
-    public EnterServerHandler(IAuthService service) => _service = service;
+    public EnterServerHandler(IAuthService service, IServerService serverService)
+    {
+        _authService = service;
+        _serverService = serverService;
+    }
 
     public async ValueTask OnHandleAsync(Entity entity, LoginEnterServerMessage request, CancellationToken ct)
     {
@@ -26,7 +32,8 @@ public sealed class EnterServerHandler : IHotSpotHandler<LoginEnterServerMessage
             return;
         }
 
-        await _service.JoinAsync(request.Account, request.LastGate, request.Key, ct);
+        await _authService.JoinAsync(request.Account, request.LastGate, request.Key, ct);
+        await _serverService.SyncDateTime(ct);
 
         //entity.Set(new UserInfo { AccountId = model.Id, BackgroundId = model.Background });
         //entity.Set(CreatePersonList(model, request.LastGate));

@@ -9,13 +9,11 @@ using OpenWorker.Infrastructure.Gameplay;
 using OpenWorker.Infrastructure.Gameplay.Cache.Models;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
 using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
-using OpenWorker.Services.Gate.Infrastructure.Gameplay.Components;
 using Redis.OM;
 using Redis.OM.Contracts;
 using Redis.OM.Searching;
 using SoulWorkerResearch.SoulCore.Defines;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.Login;
-using SoulWorkerResearch.SoulCore.IO.Net.Messages.Client.World;
 
 namespace OpenWorker.Services.Gate.Infrastructure.Gameplay.Services;
 
@@ -23,18 +21,16 @@ internal sealed record AuthService : IAuthService
 {
     private readonly ushort _id;
 
-    private readonly World _world;
     private readonly IHotSpotSession _session;
     private readonly IRedisCollection<SessionModel> _sessions;
     private readonly IDbContextFactory<PersistentContext> _factory;
 
     private readonly ILogger _logger;
 
-    public AuthService(World world, IConfiguration configuration, IHotSpotSession session, IRedisConnectionProvider provider, IDbContextFactory<PersistentContext> factory, ILogger<AuthService> logger)
+    public AuthService(IConfiguration configuration, IHotSpotSession session, IRedisConnectionProvider provider, IDbContextFactory<PersistentContext> factory, ILogger<AuthService> logger)
     {
         _id = configuration.GetValue<ushort>("Id");
 
-        _world = world;
         _session = session;
         _sessions = provider.RedisCollection<SessionModel>();
         _factory = factory;
@@ -82,22 +78,7 @@ internal sealed record AuthService : IAuthService
         }
 
         await _session.SendAsync(new LoginResponseEnterServerClientMessage { Account = accountModel.Id, Result = GateEnterResult.Success }, ct);
-        await _session.SendAsync(new WorldCurrentDateClientMessage(), ct);
 
-        Entity CreatePerson(PersonModel model)
-        {
-            var person = _world.CreateEntity();
-            person.Set(new PersonComponent());
-
-            return person;
-        }
-
-        _session.Entity.Set(new AccountComponent
-        {
-            Id = accountModel.Id,
-            Key = claims
-        });
-
-        _session.Entity.Set(new PersonListComponent(accountModel.Person.Select(CreatePerson)));
+        _session.Entity.Set(new AccountComponent { Id = accountModel.Id, Key = claims });
     }
 }

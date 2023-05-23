@@ -14,9 +14,5 @@
 		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Communication.HotSpot\OpenWorker.Infrastructure.Communication.HotSpot.csproj" />
 		<ProjectReference Include="..\..\..\OpenWorker.Infrastructure.Gameplay\OpenWorker.Infrastructure.Gameplay.csproj" />
 	</ItemGroup>
-	
-	<ItemGroup>
-	  <Folder Include="Mapper\" />
-	</ItemGroup>
 
 </Project>

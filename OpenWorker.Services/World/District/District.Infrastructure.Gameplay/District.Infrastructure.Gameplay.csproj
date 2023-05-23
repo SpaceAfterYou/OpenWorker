@@ -10,4 +10,8 @@
 	  <RootNamespace>OpenWorker.Services.District.Infrastructure.Gameplay</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\OpenWorker.Infrastructure.Gameplay\OpenWorker.Infrastructure.Gameplay.csproj" />
+  </ItemGroup>
+
 </Project>
