@@ -4,14 +4,14 @@ using OpenWorker.Infrastructure.Communication.HotSpot.Handlers.Abstractions;
 using OpenWorker.Services.Auth.Infrastructure.Gameplay.Abstractions;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Server.Login;
 
-namespace OpenWorker.Services.Auth.Api.Handlers.HotSpot;
+namespace OpenWorker.Services.Auth.Api.Handlers.HotSpot.Gate;
 
-internal sealed class GateListHandle : IHotSpotHandler<LoginServerListServerMessage>
+internal sealed record ListHandle : IHotSpotHandler<LoginServerListServerMessage>
 {
     private readonly IGateService _service;
     private readonly ILogger _logger;
 
-    public GateListHandle(IGateService service, ILogger<GateListHandle> logger)
+    public ListHandle(IGateService service, ILogger<ListHandle> logger)
     {
         _service = service;
         _logger = logger;
