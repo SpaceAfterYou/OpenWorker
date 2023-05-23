@@ -2,6 +2,6 @@
 
 public interface IAccountService
 {
-    ValueTask ChangeBackground(int id, CancellationToken ct = default);
-    ValueTask ChangeRepresentativePerson(int id, CancellationToken ct = default);
+    ValueTask ChangeBackgroundAsync(int id, CancellationToken ct = default);
+    ValueTask ChangeRepPersonAsync(int id, CancellationToken ct = default);
 }

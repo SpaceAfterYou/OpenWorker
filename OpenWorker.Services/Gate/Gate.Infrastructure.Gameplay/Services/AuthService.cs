@@ -1,5 +1,4 @@
-﻿using DefaultEcs;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.DatabaseModel;

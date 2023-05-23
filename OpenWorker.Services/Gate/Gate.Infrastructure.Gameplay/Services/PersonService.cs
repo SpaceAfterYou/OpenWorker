@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.DatabaseModel;
+using OpenWorker.Domain.DatabaseModel.Resources;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
 using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
@@ -24,17 +25,19 @@ internal sealed record PersonService : IPersonService
         _logger = logger;
     }
 
-    public async ValueTask ShowList(CancellationToken ct = default)
+    public async ValueTask ShowListAsync(CancellationToken ct = default)
     {
         var account = _session.Entity.Get<AccountComponent>();
 
         await using var db = await _factory.CreateDbContextAsync(ct);
         var persons = db.Person.AsNoTracking().Where(e => e.Account.Id == account.Id);
-
+        
+        // Stopwatch.StartNew()
+        
         await _session.SendAsync(new CharacterListClientMessage(), ct);
     }
 
-    public async ValueTask Delete(int id, CancellationToken ct = default)
+    public async ValueTask DeleteAsync(int id, CancellationToken ct = default)
     {
         var account = _session.Entity.Get<AccountComponent>();
 
@@ -69,7 +72,7 @@ internal sealed record PersonService : IPersonService
         await db.SaveChangesAsync(ct);
     }
 
-    public async ValueTask Select(int id, CancellationToken ct = default)
+    public async ValueTask SelectAsync(int id, CancellationToken ct = default)
     {
         var account = _session.Entity.Get<AccountComponent>();
 
@@ -81,10 +84,19 @@ internal sealed record PersonService : IPersonService
             return;
         }
 
+        if (person.IsTutorialClear)
+        {
+            if (await db.CharacterInfo.FirstOrDefaultAsync(e=> e.Id == 1000 * (byte)person.Class, ct) is not CharacterInfoResource resource)
+            {
+                _logger.LogError("No character information. CLASS={}, PERSON ID={}, ACCOUNT ID={}", person.Class, person.Id, account.Id);
+                return;
+            }
+        }
+
         await _session.SendAsync(new CharacterEnterMapClientMessage(), ct);
     }
 
-    public async ValueTask SwapSlot(byte left, byte right, CancellationToken ct = default)
+    public async ValueTask SwapSlotAsync(byte left, byte right, CancellationToken ct = default)
     {
         var account = _session.Entity.Get<AccountComponent>();
 

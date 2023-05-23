@@ -2,8 +2,8 @@
 
 public interface IPersonService
 {
-    ValueTask ShowList(CancellationToken ct = default);
-    ValueTask Delete(int id, CancellationToken ct = default);
-    ValueTask SwapSlot(byte left, byte right, CancellationToken ct = default);
-    ValueTask Select(int id, CancellationToken ct = default);
+    ValueTask ShowListAsync(CancellationToken ct = default);
+    ValueTask DeleteAsync(int id, CancellationToken ct = default);
+    ValueTask SwapSlotAsync(byte left, byte right, CancellationToken ct = default);
+    ValueTask SelectAsync(int id, CancellationToken ct = default);
 }

@@ -24,7 +24,7 @@ internal sealed record AccountService : IAccountService
         _logger = logger;
     }
 
-    public async ValueTask ChangeBackground(int id, CancellationToken ct = default)
+    public async ValueTask ChangeBackgroundAsync(int id, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
         if (await db.CharacterBackground.AnyAsync(e => e.Id == id, ct) is not true)
@@ -37,7 +37,7 @@ internal sealed record AccountService : IAccountService
         await _session.SendAsync(new CharacterBackgroundChangeClientMessage { Account = account.Id, Background = id }, ct);
     }
 
-    public async ValueTask ChangeRepresentativePerson(int id, CancellationToken ct = default)
+    public async ValueTask ChangeRepPersonAsync(int id, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
 
