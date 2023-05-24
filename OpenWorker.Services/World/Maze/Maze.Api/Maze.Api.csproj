@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+	<PropertyGroup>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<TargetFramework>net8.0</TargetFramework>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<UserSecretsId>dotnet-Maze.Api-07d0765f-cd01-446a-ba94-8006a5893e95</UserSecretsId>
+
+		<LangVersion>preview</LangVersion>
+		<EnablePreviewFeatures>true</EnablePreviewFeatures>
+		<RootNamespace>OpenWorker.Services.World.Maze.Api</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Maze.Infrastructure.Gameplay\Maze.Infrastructure.Gameplay.csproj" />
+	</ItemGroup>
+</Project>
