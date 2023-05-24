@@ -57,7 +57,7 @@ internal sealed record GateService : IGateService
 
         await _session.SendAsync(new LoginContentsInfoClientMessage
         {
-            Content = OptionList.Empty,
+            Content = ServerOptionList.Empty,
             AccountId = account.Id,
         }, ct);
     }
