@@ -18,9 +18,7 @@
 
 	<ItemGroup>
 	  <Folder Include="HotSpot\Handlers\Auth\" />
-	  <Folder Include="HotSpot\Handlers\Move\" />
 	  <Folder Include="HotSpot\Handlers\Inventory\" />
-	  <Folder Include="HotSpot\Handlers\Chat\" />
 	  <Folder Include="HotSpot\Handlers\Channel\" />
 	</ItemGroup>
 </Project>
