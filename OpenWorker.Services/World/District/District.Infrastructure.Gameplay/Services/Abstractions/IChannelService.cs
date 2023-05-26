@@ -2,7 +2,7 @@
 
 public interface IChannelService
 {
-    ValueTask Join(CancellationToken ct = default);
+    ValueTask Join(ushort id, CancellationToken ct = default);
     ValueTask Leave(CancellationToken ct = default);
     ValueTask ShowList(CancellationToken ct = default);
     ValueTask Switch(ushort id, CancellationToken ct = default);

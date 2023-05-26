@@ -7,6 +7,7 @@ using OpenWorker.Infrastructure.Gameplay.Realm.Components;
 using OpenWorker.Services.District.Infrastructure.Gameplay.Extensions;
 using OpenWorker.Services.District.Infrastructure.Gameplay.Services.Abstractions;
 using Redis.OM;
+using SoulWorkerResearch.SoulCore.IO.Net.Messages.Bidirectional.Gesture;
 using SoulWorkerResearch.SoulCore.IO.Net.Messages.Server.Gesture;
 using System.Numerics;
 
@@ -47,7 +48,7 @@ internal sealed record GestureService : IGestureService
             }
         }
 
-        await _session.SendAsync(new GestureSlotUpdateClientMessage { Values = values, }, ct);
+        await _session.SendAsync(new GestureSlotUpdateBidirectionalMessage { Values = values, }, ct);
     }
 
     public async ValueTask Show(int id, Vector3 position, Vector2 rotation, CancellationToken ct = default)

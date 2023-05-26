@@ -21,7 +21,7 @@ internal sealed record ChannelService : IChannelService
         _channels = provider.RedisCollection<ChannelModel>();
     }
 
-    public ValueTask Join(CancellationToken ct = default)
+    public ValueTask Join(ushort id, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }
@@ -51,5 +51,8 @@ internal sealed record ChannelService : IChannelService
             // await _session.SendAsync(new ChannelChangeClientMessage() { Channel = id });
             return;
         }
+        
+        // TODO: connect to another instance
+        //       request to relay
     }
 }
