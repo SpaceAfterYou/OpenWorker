@@ -3,9 +3,9 @@ using OpenWorker.Domain.DatabaseModel;
 using OpenWorker.Infrastructure.Communication.HotSpot.Session.Abstractions;
 using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Database.Helpers;
-using OpenWorker.Infrastructure.Gameplay;
 using OpenWorker.Infrastructure.Gameplay.Cache.Models;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
+using OpenWorker.Infrastructure.Gameplay.Session;
 using OpenWorker.Services.Auth.Infrastructure.Gameplay.Abstractions;
 using Redis.OM;
 using Redis.OM.Contracts;
@@ -42,13 +42,10 @@ internal sealed record AuthService : IAuthService
             return null;
         }
 
-        await _session.SendAsync(new LoginResultClientMessage { AccountId = account.Id, SessionKey = registry.Key, Mac = mac }, ct);
+        var claims = SessionClaims.Create(account.Id);
+        await _session.SendAsync(new LoginResultClientMessage { AccountId = account.Id, SessionKey = claims.Key, Mac = mac }, ct);
 
-        return new()
-        {
-            Id = account.Id,
-            Key = new(registry.Key)
-        };
+        return new() { Claims = claims };
     }
 
     private async ValueTask<SessionModel?> TryRegisterSession(AccountModel account, CancellationToken ct = default)
@@ -60,7 +57,7 @@ internal sealed record AuthService : IAuthService
         }
 
         var claims = SessionClaims.Create(account.Id);
-        var model = new SessionModel { Account = claims.Account, Key = claims.Key };
+        var model = new SessionModel { Account = claims.Account, Salt = claims.Salt };
 
         if (await _sessions.InsertAsync(model) is null)
         {

@@ -7,6 +7,7 @@ using OpenWorker.Infrastructure.Database;
 using OpenWorker.Infrastructure.Gameplay;
 using OpenWorker.Infrastructure.Gameplay.Cache.Models;
 using OpenWorker.Infrastructure.Gameplay.Realm.Components;
+using OpenWorker.Infrastructure.Gameplay.Session;
 using OpenWorker.Services.Gate.Infrastructure.Gameplay.Abstractions;
 using Redis.OM;
 using Redis.OM.Contracts;
@@ -78,6 +79,6 @@ internal sealed record AuthService : IAuthService
 
         await _session.SendAsync(new LoginResponseEnterServerClientMessage { Account = accountModel.Id, Result = GateEnterResult.Success }, ct);
 
-        _session.Entity.Set(new AccountComponent { Id = accountModel.Id, Key = claims });
+        _session.Entity.Set(new AccountComponent { Claims = claims });
     }
 }
