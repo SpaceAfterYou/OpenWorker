@@ -1,0 +1,337 @@
+﻿services:
+  redis:
+    container_name: "OpenWorker-Redis"
+    image: redis/redis-stack:latest
+    pull_policy: missing
+    restart: on-failure
+    ports:
+      - "6379:6379"
+      - "5540:8001"
+    networks:
+      - eva-01
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  rabbitmq:
+    container_name: "OpenWorker-RabbitMQ"
+    image: rabbitmq:management-alpine
+    pull_policy: missing
+    restart: on-failure
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - eva-01
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "status" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  postgres:
+    container_name: "OpenWorker-Postgres"
+    image: postgres:alpine
+    pull_policy: missing
+    restart: on-failure
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+    ports:
+      - "5432:5432"
+    networks:
+      - eva-01
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+
+  pgadmin:
+    container_name: "OpenWorker-PgAdmin"
+    image: dpage/pgadmin4:latest
+    pull_policy: missing
+    restart: on-failure
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "root@postgresql.org"
+      PGADMIN_DEFAULT_PASSWORD: "root"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5050:80"
+    networks:
+      - eva-01
+
+  openworker.relayserver:
+    container_name: "OpenWorker-RelayServer"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.RelayServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Credentials__DiscordToken=
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10003:10000"
+    networks:
+      - eva-01
+    volumes:
+      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+
+  openworker.authserver:
+    container_name: "OpenWorker-AuthServer"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.AuthServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Game__Version=1.4.2.3
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10000:10000"
+    networks:
+      - eva-01
+    volumes:
+      - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
+
+  openworker.gateserver:
+    container_name: "OpenWorker-GateServer"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.GateServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Gate__Id=1
+      - Gate__Port=10010
+      - Gate__Host=127.0.0.1
+      - Game__Version=1.4.2.3
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10010:10000"
+    networks:
+      - eva-01
+    volumes:
+      - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
+      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+
+  openworker.districtserver-roccotown:
+    container_name: "OpenWorker-DistrictServer-RoccoTown"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.DistrictServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Game__Version=1.4.2.3
+      - Gate__Id=1
+      - Channel__From=1
+      - Channel__To=10
+      - Instance__Location=10003
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10011:10000"
+    networks:
+      - eva-01
+    volumes:
+      - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
+      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+
+  openworker.mazeserver:
+    container_name: "OpenWorker-MazeServer"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.MazeServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Game__Version=1.4.2.3
+      - Gate__Id=1
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10101:10000"
+    networks:
+      - eva-01
+    volumes:
+      - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
+      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - T:/Games/HanPurple/soulworker/datas/Scripts/Server:/app/scripts
+        
+  openworker.districtserver-canduscity:
+    container_name: "OpenWorker-DistrictServer-CandusCity"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.DistrictServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Game__Version=1.4.2.3
+      - Gate__Id=1
+      - Channel__From=1
+      - Channel__To=10
+      - Instance__Location=10021
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10012:10000"
+    networks:
+      - eva-01
+    volumes:
+      - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
+      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+
+  openworker.districtserver-gracecity:
+    container_name: "OpenWorker-DistrictServer-GraceCity"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.DistrictServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Game__Version=1.4.2.3
+      - Channel__From=1
+      - Channel__To=10
+      - Instance__Location=10031
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10013:10000"
+    networks:
+      - eva-01
+    volumes:
+      - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
+      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+
+  openworker.districtserver-ruinfortress:
+    container_name: "OpenWorker-DistrictServer-RuinFortress"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.DistrictServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Game__Version=1.4.2.3
+      - Channel__From=1
+      - Channel__To=10
+      - Instance__Location=10041
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10014:10000"
+    networks:
+      - eva-01
+    volumes:
+      - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
+      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+
+  openworker.updatecontent:
+    container_name: "OpenWorker-UpdateContent"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.UpdateContent/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - eva-01
+    volumes:
+      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+
+networks:
+  eva-01:
+    driver: bridge
+
+# https://youtu.be/Soa3gO7tL-c?list=RDMM
+# https://youtu.be/_N66Hud_Tq4?list=RDeT2XZA8LZzM
+

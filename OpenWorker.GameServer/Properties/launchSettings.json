@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "OpenWorker.GameServer": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Instance__Type": "Game",
+        "Instance__World__Type": "Maze"
+      }
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

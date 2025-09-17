@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\OpenWorker.Cache\OpenWorker.Cache.csproj" />
+      <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Types\" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>dotnet-OpenWorker.MazeServer-cec53332-b600-4c3a-9087-674a3022e749</UserSecretsId>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <LangVersion>preview</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\OpenWorker.Cache\OpenWorker.Cache.csproj" />
+      <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
+      <ProjectReference Include="..\OpenWorker.Commands\OpenWorker.Commands.csproj" />
+      <ProjectReference Include="..\OpenWorker.DependencyInjection\OpenWorker.DependencyInjection.csproj" />
+      <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj" />
+      <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+      <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
+    </ItemGroup>
+</Project>

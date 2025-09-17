@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Arch" Version="2.1.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="9.0.9" />
+        <PackageReference Include="Redis.OM" Version="1.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Batch\"/>
+        <Folder Include="Extensions\" />
+    </ItemGroup>
+
+</Project>

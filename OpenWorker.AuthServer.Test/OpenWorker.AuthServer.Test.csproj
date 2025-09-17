@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.9" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+        <PackageReference Include="MSTest" Version="3.10.4" />
+        <PackageReference Include="MSTest.TestAdapter" Version="3.10.4" />
+        <PackageReference Include="MSTest.TestFramework" Version="3.10.4" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\OpenWorker.AuthServer.Gameplay\OpenWorker.AuthServer.Gameplay.csproj" />
+      <ProjectReference Include="..\OpenWorker.DependencyInjection\OpenWorker.DependencyInjection.csproj" />
+      <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
+    </ItemGroup>
+
+</Project>

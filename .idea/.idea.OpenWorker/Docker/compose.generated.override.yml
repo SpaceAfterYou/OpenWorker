@@ -1,0 +1,224 @@
+# This is a generated file. Not intended for manual editing.
+services:
+  openworker.authserver:
+    build:
+      context: "T:\\source\\repos\\SpaceAfterYou\\OpenWorker"
+      dockerfile: "OpenWorker.AuthServer/Dockerfile"
+      target: "base"
+      args:
+        BUILD_CONFIGURATION: "Debug"
+    command: []
+    entrypoint:
+    - "/opt/JetBrains/RiderDebuggerTools/linux-x64/JetBrains.Debugger.Worker"
+    - "--runtimeconfig"
+    - "/opt/JetBrains/RiderDebuggerTools/JetBrains.Debugger.Worker.runtimeconfig.json"
+    - "--mode=server"
+    - "--frontend-port=57000"
+    - "--backend-port=57200"
+    - "--roslyn-worker-port=57435"
+    - "--timeout=60"
+    environment:
+      DOTNET_ENVIRONMENT: "Development"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      RIDER_DEBUGGER_LOG_DIR: "/var/opt/JetBrains/RiderDebuggerTools"
+      RESHARPER_LOG_CONF: "/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    image: "openworker.authserver:dev"
+    ports:
+    - "127.0.0.1:57035:57000"
+    - "127.0.0.1:57235:57200"
+    - "127.0.0.1:57435:57435"
+    volumes:
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker\\OpenWorker.AuthServer:/app:rw"
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker:/src:rw"
+    - "Q:\\Users\\sawic\\.nuget\\packages:/home/app/.nuget/packages"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\RiderRemoteDebugger\\2025.2.1\\\
+      Linux64:/opt/JetBrains/RiderDebuggerTools"
+    - "Q:\\Program Files\\JetBrains\\JetBrains Rider 2024.3\\bin\\backend-log.xml:/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\Rider2025.2\\log\\DebuggerWorker\\\
+      JetBrains.Debugger.Worker.2025_9_10_16_09_40:/var/opt/JetBrains/RiderDebuggerTools:rw"
+    working_dir: "/app"
+  openworker.districtserver-canduscity:
+    build:
+      context: "T:\\source\\repos\\SpaceAfterYou\\OpenWorker"
+      dockerfile: "OpenWorker.DistrictServer/Dockerfile"
+      target: "base"
+      args:
+        BUILD_CONFIGURATION: "Debug"
+    command: []
+    entrypoint:
+    - "/opt/JetBrains/RiderDebuggerTools/linux-x64/JetBrains.Debugger.Worker"
+    - "--runtimeconfig"
+    - "/opt/JetBrains/RiderDebuggerTools/JetBrains.Debugger.Worker.runtimeconfig.json"
+    - "--mode=server"
+    - "--frontend-port=57000"
+    - "--backend-port=57200"
+    - "--roslyn-worker-port=57436"
+    - "--timeout=60"
+    environment:
+      DOTNET_ENVIRONMENT: "Development"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      RIDER_DEBUGGER_LOG_DIR: "/var/opt/JetBrains/RiderDebuggerTools"
+      RESHARPER_LOG_CONF: "/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    image: "openworker.districtserver:dev"
+    ports:
+    - "127.0.0.1:57036:57000"
+    - "127.0.0.1:57236:57200"
+    - "127.0.0.1:57436:57436"
+    volumes:
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker\\OpenWorker.DistrictServer:/app:rw"
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker:/src:rw"
+    - "Q:\\Users\\sawic\\.nuget\\packages:/home/app/.nuget/packages"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\RiderRemoteDebugger\\2025.2.1\\\
+      Linux64:/opt/JetBrains/RiderDebuggerTools"
+    - "Q:\\Program Files\\JetBrains\\JetBrains Rider 2024.3\\bin\\backend-log.xml:/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\Rider2025.2\\log\\DebuggerWorker\\\
+      JetBrains.Debugger.Worker.2025_9_10_16_09_40:/var/opt/JetBrains/RiderDebuggerTools:rw"
+    working_dir: "/app"
+  openworker.districtserver-roccotown:
+    build:
+      context: "T:\\source\\repos\\SpaceAfterYou\\OpenWorker"
+      dockerfile: "OpenWorker.DistrictServer/Dockerfile"
+      target: "base"
+      args:
+        BUILD_CONFIGURATION: "Debug"
+    command: []
+    entrypoint:
+    - "/opt/JetBrains/RiderDebuggerTools/linux-x64/JetBrains.Debugger.Worker"
+    - "--runtimeconfig"
+    - "/opt/JetBrains/RiderDebuggerTools/JetBrains.Debugger.Worker.runtimeconfig.json"
+    - "--mode=server"
+    - "--frontend-port=57000"
+    - "--backend-port=57200"
+    - "--roslyn-worker-port=57437"
+    - "--timeout=60"
+    environment:
+      DOTNET_ENVIRONMENT: "Development"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      RIDER_DEBUGGER_LOG_DIR: "/var/opt/JetBrains/RiderDebuggerTools"
+      RESHARPER_LOG_CONF: "/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    image: "openworker.districtserver:dev"
+    ports:
+    - "127.0.0.1:57037:57000"
+    - "127.0.0.1:57237:57200"
+    - "127.0.0.1:57437:57437"
+    volumes:
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker\\OpenWorker.DistrictServer:/app:rw"
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker:/src:rw"
+    - "Q:\\Users\\sawic\\.nuget\\packages:/home/app/.nuget/packages"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\RiderRemoteDebugger\\2025.2.1\\\
+      Linux64:/opt/JetBrains/RiderDebuggerTools"
+    - "Q:\\Program Files\\JetBrains\\JetBrains Rider 2024.3\\bin\\backend-log.xml:/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\Rider2025.2\\log\\DebuggerWorker\\\
+      JetBrains.Debugger.Worker.2025_9_10_16_09_40:/var/opt/JetBrains/RiderDebuggerTools:rw"
+    working_dir: "/app"
+  openworker.gateserver:
+    build:
+      context: "T:\\source\\repos\\SpaceAfterYou\\OpenWorker"
+      dockerfile: "OpenWorker.GateServer/Dockerfile"
+      target: "base"
+      args:
+        BUILD_CONFIGURATION: "Debug"
+    command: []
+    entrypoint:
+    - "/opt/JetBrains/RiderDebuggerTools/linux-x64/JetBrains.Debugger.Worker"
+    - "--runtimeconfig"
+    - "/opt/JetBrains/RiderDebuggerTools/JetBrains.Debugger.Worker.runtimeconfig.json"
+    - "--mode=server"
+    - "--frontend-port=57000"
+    - "--backend-port=57200"
+    - "--roslyn-worker-port=57438"
+    - "--timeout=60"
+    environment:
+      DOTNET_ENVIRONMENT: "Development"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      RIDER_DEBUGGER_LOG_DIR: "/var/opt/JetBrains/RiderDebuggerTools"
+      RESHARPER_LOG_CONF: "/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    image: "openworker.gateserver:dev"
+    ports:
+    - "127.0.0.1:57038:57000"
+    - "127.0.0.1:57238:57200"
+    - "127.0.0.1:57438:57438"
+    volumes:
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker\\OpenWorker.GateServer:/app:rw"
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker:/src:rw"
+    - "Q:\\Users\\sawic\\.nuget\\packages:/home/app/.nuget/packages"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\RiderRemoteDebugger\\2025.2.1\\\
+      Linux64:/opt/JetBrains/RiderDebuggerTools"
+    - "Q:\\Program Files\\JetBrains\\JetBrains Rider 2024.3\\bin\\backend-log.xml:/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\Rider2025.2\\log\\DebuggerWorker\\\
+      JetBrains.Debugger.Worker.2025_9_10_16_09_40:/var/opt/JetBrains/RiderDebuggerTools:rw"
+    working_dir: "/app"
+  openworker.mazeserver:
+    build:
+      context: "T:\\source\\repos\\SpaceAfterYou\\OpenWorker"
+      dockerfile: "OpenWorker.MazeServer/Dockerfile"
+      target: "base"
+      args:
+        BUILD_CONFIGURATION: "Debug"
+    command: []
+    entrypoint:
+    - "/opt/JetBrains/RiderDebuggerTools/linux-x64/JetBrains.Debugger.Worker"
+    - "--runtimeconfig"
+    - "/opt/JetBrains/RiderDebuggerTools/JetBrains.Debugger.Worker.runtimeconfig.json"
+    - "--mode=server"
+    - "--frontend-port=57000"
+    - "--backend-port=57200"
+    - "--roslyn-worker-port=57439"
+    - "--timeout=60"
+    environment:
+      DOTNET_ENVIRONMENT: "Development"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      RIDER_DEBUGGER_LOG_DIR: "/var/opt/JetBrains/RiderDebuggerTools"
+      RESHARPER_LOG_CONF: "/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    image: "openworker.mazeserver:dev"
+    ports:
+    - "127.0.0.1:57039:57000"
+    - "127.0.0.1:57239:57200"
+    - "127.0.0.1:57439:57439"
+    volumes:
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker\\OpenWorker.MazeServer:/app:rw"
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker:/src:rw"
+    - "Q:\\Users\\sawic\\.nuget\\packages:/home/app/.nuget/packages"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\RiderRemoteDebugger\\2025.2.1\\\
+      Linux64:/opt/JetBrains/RiderDebuggerTools"
+    - "Q:\\Program Files\\JetBrains\\JetBrains Rider 2024.3\\bin\\backend-log.xml:/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\Rider2025.2\\log\\DebuggerWorker\\\
+      JetBrains.Debugger.Worker.2025_9_10_16_09_40:/var/opt/JetBrains/RiderDebuggerTools:rw"
+    working_dir: "/app"
+  openworker.relayserver:
+    build:
+      context: "T:\\source\\repos\\SpaceAfterYou\\OpenWorker"
+      dockerfile: "OpenWorker.RelayServer/Dockerfile"
+      target: "base"
+      args:
+        BUILD_CONFIGURATION: "Debug"
+    command: []
+    entrypoint:
+    - "/opt/JetBrains/RiderDebuggerTools/linux-x64/JetBrains.Debugger.Worker"
+    - "--runtimeconfig"
+    - "/opt/JetBrains/RiderDebuggerTools/JetBrains.Debugger.Worker.runtimeconfig.json"
+    - "--mode=server"
+    - "--frontend-port=57000"
+    - "--backend-port=57200"
+    - "--roslyn-worker-port=57440"
+    - "--timeout=60"
+    environment:
+      DOTNET_ENVIRONMENT: "Development"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      RIDER_DEBUGGER_LOG_DIR: "/var/opt/JetBrains/RiderDebuggerTools"
+      RESHARPER_LOG_CONF: "/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    image: "openworker.relayserver:dev"
+    ports:
+    - "127.0.0.1:57040:57000"
+    - "127.0.0.1:57240:57200"
+    - "127.0.0.1:57440:57440"
+    volumes:
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker\\OpenWorker.RelayServer:/app:rw"
+    - "T:\\source\\repos\\SpaceAfterYou\\OpenWorker:/src:rw"
+    - "Q:\\Users\\sawic\\.nuget\\packages:/home/app/.nuget/packages"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\RiderRemoteDebugger\\2025.2.1\\\
+      Linux64:/opt/JetBrains/RiderDebuggerTools"
+    - "Q:\\Program Files\\JetBrains\\JetBrains Rider 2024.3\\bin\\backend-log.xml:/etc/opt/JetBrains/RiderDebuggerTools/backend-log.xml"
+    - "Q:\\Users\\sawic\\AppData\\Local\\JetBrains\\Rider2025.2\\log\\DebuggerWorker\\\
+      JetBrains.Debugger.Worker.2025_9_10_16_09_40:/var/opt/JetBrains/RiderDebuggerTools:rw"
+    working_dir: "/app"

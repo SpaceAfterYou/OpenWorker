@@ -1,0 +1,114 @@
+using Arch.Core;
+using OpenWorker.Domain.Components;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+
+namespace OpenWorker.Hotspot.Modules.Persons.Responses;
+
+public enum STAT_TYPE : byte
+{
+    STAT_NONE = 0x0,
+    STAT_HP_CUR = 0x1,
+    STAT_SG_CUR = 0x2,
+    STAT_ST_CUR = 0x3,
+    STAT_STR = 0x4,
+    STAT_AGI = 0x5,
+    STAT_INT = 0x6,
+    STAT_BAL = 0x7,
+    STAT_VIT = 0x8,
+    STAT_LUC = 0x9,
+    STAT_HP_MAX = 0xA,
+    STAT_HP_REG = 0xB,
+    STAT_SG_MAX = 0xC,
+    STAT_SG_REG = 0xD,
+    STAT_ST_MAX = 0xE,
+    STAT_ST_REG = 0xF,
+    STAT_SV_CUR = 0x10,
+    STAT_SV_MAX = 0x11,
+    STAT_MSR = 0x12,
+    STAT_ASR = 0x13,
+    STAT_PATK_MIN = 0x14,
+    STAT_PATK_MAX = 0x15,
+    STAT_MATK_MIN = 0x16,
+    STAT_MATK_MAX = 0x17,
+    STAT_PDEF = 0x18,
+    STAT_MDEF = 0x19,
+    STAT_PAR = 0x1A,
+    STAT_MAR = 0x1B,
+    STAT_ADR = 0x1C,
+    STAT_PCP = 0x1D,
+    STAT_MCP = 0x1E,
+    STAT_PCRP = 0x1F,
+    STAT_MCRP = 0x20,
+    STAT_PCR = 0x21,
+    STAT_MCR = 0x22,
+    STAT_PCA = 0x23,
+    STAT_MCA = 0x24,
+    STAT_DAR = 0x25,
+    STAT_PDSR = 0x26,
+    STAT_MDSR = 0x27,
+    STAT_PARP = 0x2B,
+    STAT_MARP = 0x2C,
+    STAT_PASR = 0x2D,
+    STAT_MASR = 0x2E,
+    STAT_PDPR = 0x2F,
+    STAT_MDPR = 0x30,
+    STAT_RES_BURN = 0x31,
+    STAT_RES_POISON = 0x32,
+    STAT_RES_SHOCK = 0x33,
+    STAT_RES_BLEED = 0x34,
+    STAT_RES_STUN = 0x35,
+    STAT_RES_PARALYSIS = 0x36,
+    STAT_RES_SLEEP = 0x37,
+    STAT_RES_FREEZE = 0x38,
+    STAT_RES_CHARM = 0x39,
+    STAT_RES_CONFUSION = 0x3A,
+    STAT_RES_SILENCE = 0x3B,
+    STAT_RES_WEAKNESS = 0x3C,
+    STAT_ITEM_ATTACK = 0x3D,
+    STAT_ITEM_DEFENSE = 0x3E,
+    STAT_ATTRIBUTE_LIGHT = 0x3F,
+    STAT_ATTRIBUTE_DARKNESS = 0x40,
+    STAT_ATTRIBUTE_COOL = 0x41,
+    STAT_ATTRIBUTE_ABHOR = 0x42,
+    STAT_ATTRIBUTE_HEAL = 0x43,
+    STAT_ATTRIBUTE_PAIN = 0x44,
+    STAT_ATTRIBUTE_RES_LIGHT = 0x45,
+    STAT_ATTRIBUTE_RES_DARKNESS = 0x46,
+    STAT_ATTRIBUTE_RES_COOL = 0x47,
+    STAT_ATTRIBUTE_RES_ABHOR = 0x48,
+    STAT_ATTRIBUTE_RES_HEAL = 0x49,
+    STAT_ATTRIBUTE_RES_PAIN = 0x4A,
+    STAT_PVP_ATK = 0x4B,
+    STAT_PVP_DEF = 0x4C,
+    MAX_STAT = 0x4D,
+};
+
+
+[HotspotMessage(Group, Command)]
+public readonly struct PersonUpdateOriginStatListResponse(Arch.Core.World world, Entity player) : IResponseHotspotMessage
+{
+    private const GroupOpcode Group = GroupOpcode.Character;
+    private const CharacterOpcode Command = CharacterOpcode.UpdateOriginStat;
+
+    public MessageOpcode Opcode => new(Group, Command);
+
+    public void ToBinary(BinaryWriter writer)
+    {
+        var actor = world.Get<ActorComponent>(player);
+        var stats = Enumerable.Repeat(100.0f, 60).ToArray();
+        
+        writer.WriteActor(actor);
+        writer.Write((byte)stats.Length);
+        
+        // STAT_TYPE
+        foreach (var stat in stats.Select((value, index) => new { Value = value, Index = index }))
+        {
+            writer.Write(stat.Value);
+            writer.Write((short)stat.Index);
+        }
+    }
+}

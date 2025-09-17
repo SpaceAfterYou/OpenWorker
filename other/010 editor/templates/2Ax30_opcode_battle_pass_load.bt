@@ -1,8 +1,0 @@
-ushort opcode;
-
-uint id;
-byte next_reward;
-uint64 u3;
-uint64 u4;
-uint have_point;
-byte u6;

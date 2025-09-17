@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OpenWorker.GateServer\OpenWorker.GateServer.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Havok\OpenWorker.Havok.csproj" />
+        <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
+        <ProjectReference Include="..\OpenWorker.Res\OpenWorker.Res.csproj"/>
+    </ItemGroup>
+
+</Project>

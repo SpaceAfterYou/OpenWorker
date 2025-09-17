@@ -1,0 +1,31 @@
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+
+namespace OpenWorker.Hotspot.Modules.World.Responses;
+
+/// <summary>
+/// TODO: Unverified
+/// </summary>
+[HotspotMessage(Group, Command)]
+public readonly struct WorldVersionResponse : IResponseHotspotMessage
+{
+    private const GroupOpcode Group = GroupOpcode.World;
+    private const WorldOpcode Command = WorldOpcode.Version;
+
+    public required int Identifier { get; init; }
+    public required int MainVer { get; init; }
+    public required int SubVer { get; init; }
+    public required int DataVer { get; init; }
+    
+    public MessageOpcode Opcode => new(Group, Command);
+
+    public void ToBinary(BinaryWriter writer)
+    {
+        writer.Write(Identifier);
+        writer.Write(MainVer);
+        writer.Write(SubVer);
+        writer.Write(DataVer);
+    }
+}

@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OpenWorker.Batch\OpenWorker.Batch.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Persistence\OpenWorker.Persistence.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Arch" Version="2.1.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Messages\Response\Login\" />
+        <Folder Include="Modules\Items\Components\Storage\Item\" />
+        <Folder Include="Modules\Maze\DataTypes\" />
+        <Folder Include="Modules\Skill\Extensions\" />
+    </ItemGroup>
+
+</Project>
