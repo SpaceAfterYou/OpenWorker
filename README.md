@@ -54,5 +54,3 @@ Wanna chat with us, talk about changes, or just hang out? ~~We~~(I'm) have a Dis
 > - Not supported method overloading
 > - Not supported enums
 > - Not unsigned numbers (except byte)
-
-<iframe src="https://discord.com/widget?id=606442027873206292&theme=dark" width="350" height="500" allowtransparency="true" frameborder="0" sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
