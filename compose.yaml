@@ -1,4 +1,4 @@
-﻿services:
+services:
   redis:
     container_name: "OpenWorker-Redis"
     image: redis/redis-stack:latest
@@ -14,6 +14,19 @@
       interval: 10s
       timeout: 10s
       retries: 5
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 300
+      --save ""
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   rabbitmq:
     container_name: "OpenWorker-RabbitMQ"
@@ -38,12 +51,26 @@
     restart: on-failure
     environment:
       POSTGRES_HOST_AUTH_METHOD: "trust"
+      POSTGRES_SHARED_PRELOAD_LIBRARIES: "pg_stat_statements"
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: "256MB"
+      POSTGRES_EFFECTIVE_CACHE_SIZE: "1GB"
+      POSTGRES_MAINTENANCE_WORK_MEM: "64MB"
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: "0.9"
+      POSTGRES_WAL_BUFFERS: "16MB"
+      POSTGRES_DEFAULT_STATISTICS_TARGET: "100"
     ports:
       - "5432:5432"
     networks:
       - eva-01
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "postgres" ]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   pgadmin:
     container_name: "OpenWorker-PgAdmin"

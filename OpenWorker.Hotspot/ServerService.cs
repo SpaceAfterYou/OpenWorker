@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -78,6 +78,14 @@ internal sealed class ServerService(
                 while (cancellationToken.IsCancellationRequested is false)
                 {
                     var header = new MessageHeader(reader);
+                    
+                    // Validate content length to prevent excessive memory allocation
+                    if (header.ContentLength > short.MaxValue || header.ContentLength < 0)
+                    {
+                        logger.LogWarning("Invalid content length: {ContentLength}", header.ContentLength);
+                        break;
+                    }
+                    
                     var buffer = memory.Memory[..header.ContentLength];
 
                     await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
