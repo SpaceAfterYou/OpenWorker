@@ -1,11 +1,11 @@
-using Arch.Core;
+﻿using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Modules.Gestures.Components;
-using OpenWorker.Hotspot.Modules.Gestures.Request;
+using OpenWorker.Hotspot.Modules.Gestures.Requests;
 using OpenWorker.Hotspot.Modules.Gestures.Responses;
 using OpenWorker.Persistence;
 

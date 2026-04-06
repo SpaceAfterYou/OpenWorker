@@ -5,7 +5,7 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
 
-namespace OpenWorker.Hotspot.Modules.Gestures.Request;
+namespace OpenWorker.Hotspot.Modules.Gestures.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct GestureSlotUpdateRequest(BinaryReader reader) : IRequestHotspotMessage
