@@ -1,7 +1,7 @@
 ﻿using OpenWorker.DistrictServer.Gameplay;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Hotspot.Modules.Gestures.Request;
+using OpenWorker.Hotspot.Modules.Gestures.Requests;
 
 namespace OpenWorker.DistrictServer.Services;
 
