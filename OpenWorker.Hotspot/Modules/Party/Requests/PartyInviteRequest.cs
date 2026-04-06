@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.Persons.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Party.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct PartyInviteRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;

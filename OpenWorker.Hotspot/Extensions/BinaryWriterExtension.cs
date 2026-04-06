@@ -2,10 +2,9 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Arch.Core;
-using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
+using OpenWorker.Hotspot.Dtos;
 using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
@@ -14,9 +13,8 @@ using OpenWorker.Hotspot.Modules.Friends.Responses;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
-using OpenWorker.Hotspot.Modules.Persons.DataTypes;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
-using OpenWorker.Hotspot.Modules.Shop.Components;
+using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.SoulWorker.Network.DataTypes.Enums;
 
 namespace OpenWorker.Hotspot.Extensions;
@@ -30,15 +28,19 @@ public static class BinaryWriterExtension
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteActorList(this BinaryWriter writer, World world, Entity[] entityList)
+    public static void WriteActorList(this BinaryWriter writer, ReadOnlySpan<ActorValue> actors)
     {
-        writer.Write((byte)entityList.Length);
-        
-        foreach (var player in entityList)
+        writer.Write((byte)actors.Length);
+
+        foreach (var actor in actors)
         {
-            writer.WriteActor(world.Get<ActorComponent>(player));
+            writer.WriteActor(actor);
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteActorList(this BinaryWriter writer, ActorValue[] actors) =>
+        writer.WriteActorList(actors.AsSpan());
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, EnterMapType value)
@@ -263,44 +265,24 @@ public static class BinaryWriterExtension
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteProtectionState(this BinaryWriter writer, Entity entity)
+    public static void Write(this BinaryWriter writer, CharacterInfoGatePayload gate)
     {
-        writer.Write(new ProtectionStateValue(entity));
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteMyChar(this BinaryWriter writer, World world, Entity player)
-    {
-        var currency = world.Get<CurrencyComponent>(player);
-        
-        writer.Write(new PersonValue(player, player));
-        writer.Write(new WorldValue(world, player));
-        
-        writer.Write(0);
-
-        writer.Write(currency.Gold); // biMoney;
-
-        writer.Write(byte.MinValue); // byCommonStep;
-        writer.Write(byte.MinValue); // byConsumeStep;
-        writer.Write(byte.MinValue); // byCostumeStep;
-        writer.Write(byte.MinValue); // byCardStep;
-
-        writer.Write(uint.MinValue); // nUserDB;
-        writer.Write(uint.MinValue); // nSyncUser;
-
-        writer.Write(currency.BattlePoint); // biBP;
-        writer.Write(currency.Ether); // biEther;
-        writer.Write((long)17_000); // biFriendPoint;
-
-        writer.WriteUtf16UnicodeString(""); // char szAccountID[21];
-        writer.Write(false); // bool bNetCafe;
-
-        var worldComponent = world.Get<WorldComponent>(player);
-        var worldType = worldComponent.Location < 20_000 ? WorldType.District : WorldType.Maze;
-        
-        writer.Write(false); // bClassScene
-        writer.Write(worldType); // byWorldType
-        writer.Write(false); // bUsePvpDistrict
+        writer.Write(gate.PlaceholderInt);
+        writer.Write(gate.Gold);
+        writer.Write(gate.CommonStep);
+        writer.Write(gate.ConsumeStep);
+        writer.Write(gate.CostumeStep);
+        writer.Write(gate.CardStep);
+        writer.Write(gate.UserDb);
+        writer.Write(gate.SyncUser);
+        writer.Write(gate.BattlePoint);
+        writer.Write(gate.Ether);
+        writer.Write(gate.FriendPoint);
+        writer.WriteUtf16UnicodeString(gate.AccountId, 21);
+        writer.Write(gate.NetCafe);
+        writer.Write(gate.ClassScene);
+        writer.Write(gate.WorldType);
+        writer.Write(gate.UsePvpDistrict);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

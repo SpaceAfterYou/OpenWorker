@@ -1,4 +1,4 @@
-﻿using OpenWorker.Domain.Types;
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -10,7 +10,7 @@ using OpenWorker.Hotspot.Modules.Persons.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.League.Responses;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct LeagueSearchResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -24,7 +24,7 @@ public readonly struct LeagueSearchResponse : IResponseHotspotMessage
     
     public MessageOpcode Opcode => new(Group, Command);
     
-    public void ToBinary(BinaryWriter writer)
+    public void Write(BinaryWriter writer)
     {
         writer.Write(State);
         writer.Write(Name);

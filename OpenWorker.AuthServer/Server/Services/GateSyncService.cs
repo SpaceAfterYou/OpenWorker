@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
-using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Modules.Login.Types;
 using OpenWorker.Persistence;
@@ -34,8 +33,7 @@ public sealed class GateSyncService(IDbContextFactory<PersistenceContext> factor
         {
             var updatedAt = DateTime.UtcNow.AddMinutes(-1);
             
-            var cacheList = await gateCache.Where(e => e.UpdatedAt > updatedAt)
-                .ToArrayAsync(cancellationToken)
+            var cacheList = await AsyncEnumerable.ToArrayAsync(gateCache.Where(e => e.UpdatedAt > updatedAt), cancellationToken)
                 .ConfigureAwait(false);
             
             var persistentList = await database.Gates

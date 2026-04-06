@@ -1,4 +1,4 @@
-﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -6,9 +6,7 @@ using OpenWorker.Hotspot.Modules.Chat.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Responses;
 
-public readonly record struct ChatMemoryStatisticsValue(int Count, int Size);
-
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct ChatMemoryResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Chat;
@@ -31,7 +29,7 @@ public readonly struct ChatMemoryResponse : IResponseHotspotMessage
     
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+    public void Write(BinaryWriter writer)
     {
         writer.Write(AllocatedMemory);
         writer.Write(ResourceManagerMemory);

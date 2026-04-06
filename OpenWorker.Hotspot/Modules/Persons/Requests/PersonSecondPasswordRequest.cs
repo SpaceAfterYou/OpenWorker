@@ -9,7 +9,7 @@ using OpenWorker.Hotspot.SoulWorker.Network.DataTypes.Enums;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct PersonSecondPasswordRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;

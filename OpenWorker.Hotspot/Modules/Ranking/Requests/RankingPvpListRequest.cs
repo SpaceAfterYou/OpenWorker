@@ -7,15 +7,23 @@ using OpenWorker.Hotspot.Modules.Ranking.Types;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct RankingPvpListRequest(BinaryReader reader) : IRequestHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Ranking;
     private const RankingOpcode Command = RankingOpcode.PvpList;
-    
-    public int Person { get; } = reader.ReadInt32();
-    
-    public RankingType Type { get; } = reader.ReadRankingType();
-    
+
     public MessageOpcode Opcode => new(Group, Command);
+
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public int Person { get; } = reader.ReadInt32();
+
+    public RankingType Type { get; } = reader.ReadRankingType();
+
+#endregion Message: Body
 }

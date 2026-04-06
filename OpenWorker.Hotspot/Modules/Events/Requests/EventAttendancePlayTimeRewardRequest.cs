@@ -6,9 +6,9 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Events.Requests;
 
 /// <summary>
-///     This packet no have content.
+/// This packet doesn't have any content.
 /// </summary>
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct EventAttendancePlayTimeRewardRequest(BinaryReader _) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Event;

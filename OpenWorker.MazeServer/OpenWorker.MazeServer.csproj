@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <UserSecretsId>dotnet-OpenWorker.MazeServer-cec53332-b600-4c3a-9087-674a3022e749</UserSecretsId>
@@ -10,7 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
     </ItemGroup>
 
     <ItemGroup>
@@ -25,6 +25,7 @@
       <ProjectReference Include="..\OpenWorker.Commands\OpenWorker.Commands.csproj" />
       <ProjectReference Include="..\OpenWorker.DependencyInjection\OpenWorker.DependencyInjection.csproj" />
       <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj" />
+      <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
       <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
     </ItemGroup>

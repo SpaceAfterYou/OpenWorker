@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 /// TODO: Achievement for district completion?
 /// </summary>
 /// <param name="reader"></param>
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct PersonGetRewardSharePointRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;

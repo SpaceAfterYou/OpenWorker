@@ -1,6 +1,6 @@
 ﻿namespace OpenWorker.Hotspot.Modules.Channels.Enums;
 
-public enum ChannelWorkload : int /* byte */
+public enum ChannelWorkload
 {
     Low = 0x0,
     Normal = 0x1,

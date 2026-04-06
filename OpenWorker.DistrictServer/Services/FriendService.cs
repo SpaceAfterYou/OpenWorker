@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using Arch.Core;
 using Arch.Core.Extensions;
+using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot;
@@ -12,6 +13,7 @@ using OpenWorker.Hotspot.Modules.Friends.Requests;
 using OpenWorker.Hotspot.Modules.Friends.Responses;
 using OpenWorker.Hotspot.Modules.Friends.Types;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Gameplay;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.DistrictServer.Services;
@@ -67,9 +69,9 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
                 IsLoggedIn = Random.Shared.Next(0, 2) > 0
             }).ToArray();
 
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
 
-        session.Send(new FriendFindResponse(tempFriendList));
+        session.Send(new FriendFindResponse { Values = tempFriendList });
 
         return ValueTask.CompletedTask;
     }
@@ -92,7 +94,7 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendLoadBlocklistRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         var list = Enumerable
             .Range(10_000, 15)
@@ -103,7 +105,7 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
             ))
             .ToArray();
         
-        session.Send(new FriendLoadBlocklistResponse(list));
+        session.Send(new FriendLoadBlocklistResponse { List = list });
         
         return ValueTask.CompletedTask;
     }
@@ -142,16 +144,16 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
                 LogOut = (ulong)DateTime.UtcNow.Ticks
             }).ToList();
 
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
 
-        session.Send(new FriendLoadResponse(tempFriendList));
+        session.Send(new FriendLoadResponse { List = tempFriendList });
 
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendRecommendListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         var districts = districtList
             .Where(x => x.Field14 > 0)
@@ -171,7 +173,11 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
             })
             .ToArray();
         
-        session.Send(new FriendRecommendListResponse(world, context.Player, list));
+        session.Send(new FriendRecommendListResponse
+        {
+            Actor = world.Get<ActorComponent>(context.GetPlayerEntity()),
+            List = list
+        });
         
         
         return ValueTask.CompletedTask;
@@ -194,7 +200,7 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
     
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendRecruitListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         var districts = districtList
             .Where(x => x.Field14 > 0)
@@ -218,7 +224,7 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
             })
             .ToArray();
         
-        session.Send(new FriendRecruitListResponse(list));
+        session.Send(new FriendRecruitListResponse { List = list });
         
         return ValueTask.CompletedTask;
     }

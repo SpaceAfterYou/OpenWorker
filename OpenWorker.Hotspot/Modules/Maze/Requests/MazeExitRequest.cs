@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Messages.Response.Person;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct MazeExitRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;

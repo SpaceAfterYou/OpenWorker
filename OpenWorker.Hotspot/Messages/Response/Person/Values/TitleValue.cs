@@ -1,6 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using OpenWorker.Hotspot.Messages.Response.Person.Components;
-using OpenWorker.Hotspot.Modules.Persons.Components;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
@@ -16,10 +14,10 @@ public readonly struct TitleValue
     [field: FieldOffset(4)]
     public int Secondary { get; }
 
-    public TitleValue(TitleComponent component)
+    public TitleValue(int primary, int secondary)
     {
-        Primary = component.Primary;
-        Secondary = component.Secondary;
+        Primary = primary;
+        Secondary = secondary;
     }
 
     public TitleValue(BinaryReader reader)

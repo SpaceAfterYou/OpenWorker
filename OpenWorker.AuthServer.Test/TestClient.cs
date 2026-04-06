@@ -29,7 +29,7 @@ internal sealed class TestClient : TcpClient
 
                 writer.Write(message.Opcode);
 
-                message.ToBinary(writer);
+                message.Write(writer);
 
                 header = new MessageHeader(stream.Position);
 

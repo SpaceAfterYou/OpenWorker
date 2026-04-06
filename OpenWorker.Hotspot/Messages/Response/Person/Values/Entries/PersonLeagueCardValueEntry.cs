@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using OpenWorker.Hotspot.Messages.Response.Person.Components.Entries;
-using OpenWorker.Hotspot.Modules.League.Components;
+using System.Runtime.InteropServices;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
@@ -16,10 +14,10 @@ public readonly struct PersonLeagueCardValueEntry
     [field: FieldOffset(2)]
     public short Border { get; }
 
-    public PersonLeagueCardValueEntry(LeagueComponentCard value)
+    public PersonLeagueCardValueEntry(short logo, short border)
     {
-        Logo = value.Emblem;
-        Border = value.Border;
+        Logo = logo;
+        Border = border;
     }
 
     public PersonLeagueCardValueEntry(BinaryReader reader)

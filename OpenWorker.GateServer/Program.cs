@@ -6,8 +6,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.GateServer.Gameplay.Extensions;
 using OpenWorker.GateServer.Server.Services;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Modules.Items;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Res.Extensions;
 
 await Host

@@ -9,16 +9,30 @@ namespace OpenWorker.Hotspot.Modules.World.Responses;
 /// <summary>
 /// TODO: Time before teleport to the next sector?
 /// </summary>
-[HotspotMessage(Group, Command)]
-public readonly struct WorldWarpMazeTimeResponse(TimeSpan time) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct WorldWarpMazeTimeResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.WarpMazeTimeRes;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public TimeSpan Time { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.Write(time);
+        writer.Write(Time);
     }
+
+#endregion Interface: IWritableData
 }

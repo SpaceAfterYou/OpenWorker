@@ -4,6 +4,7 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.System.Requests;
 using OpenWorker.Hotspot.Modules.System.Responses;
 
@@ -18,9 +19,9 @@ public sealed class SystemService(World world) :
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, SystemKeepAliveRequest request)
     {
-        var component = world.Get<KeepAliveComponent>(context.Player);
+        var component = world.Get<KeepAliveComponent>(context.GetPlayerEntity());
             
-        world.Set(context.Player, component with { LastTickCount = new TimeSpan(request.TickCount) });
+        world.Set(context.GetPlayerEntity(), component with { LastTickCount = new TimeSpan(request.TickCount) });
             
         return ValueTask.CompletedTask;
     }
@@ -32,9 +33,9 @@ public sealed class SystemService(World world) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SystemPingRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
-        session.Send(new SystemPingResponse(request.TickCount));
+        session.Send(new SystemPingResponse { KeepAlive = request.TickCount });
         
         return ValueTask.CompletedTask;
     }

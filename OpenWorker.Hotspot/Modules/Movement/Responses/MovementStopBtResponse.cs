@@ -1,4 +1,4 @@
-﻿using OpenWorker.Domain.Components;
+using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -8,28 +8,43 @@ using OpenWorker.Hotspot.Messages.Response.Person;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct MovementStopBtResponse(ActorComponent actor, MapValue nMapID) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct MovementStopBtResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.StopBt;
 
-    public float fPosX { get; init; }
-    public float fPosY { get; init; }
-    public float fPosZ { get; init; }
-    public float fYaw { get; init; }
-    public float fPitch { get; init; }
-
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public ActorComponent Actor { get; init; }
+    public MapValue MapId { get; init; }
+
+    public float PosX { get; init; }
+    public float PosY { get; init; }
+    public float PosZ { get; init; }
+    public float Yaw { get; init; }
+    public float Pitch { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.WriteActor(actor);
-        writer.WriteMapValue(nMapID);
-        writer.Write(fPosX);
-        writer.Write(fPosY);
-        writer.Write(fPosZ);
-        writer.Write(fYaw);
-        writer.Write(fPitch);
+        writer.WriteActor(Actor);
+        writer.WriteMapValue(MapId);
+        writer.Write(PosX);
+        writer.Write(PosY);
+        writer.Write(PosZ);
+        writer.Write(Yaw);
+        writer.Write(Pitch);
     }
+
+#endregion Interface: IWritableData
 }

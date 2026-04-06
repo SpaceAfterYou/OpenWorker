@@ -7,8 +7,9 @@ using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Mapping;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Lua.Managers;
@@ -51,13 +52,19 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
         switch (spawn.CreationCondition)
         {
             case CreationConditionType.Immediate:
-                session.Send(new WorldOtherInfosMonsterResponse(ecs, monsters));
+                session.Send(new WorldOtherInfosMonsterResponse
+                {
+                    Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e)).ToArray()
+                });
                 break;
                 
             case CreationConditionType.WaitSignal:
                 Task
                     .Delay(TimeSpan.FromSeconds(spawn.WaitCreationDelayTime))
-                    .ContinueWith(x => session.Send(new WorldOtherInfosMonsterResponse(ecs, monsters)));
+                    .ContinueWith(x => session.Send(new WorldOtherInfosMonsterResponse
+                    {
+                        Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e)).ToArray()
+                    }));
                 break;
         }
 

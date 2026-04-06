@@ -17,11 +17,11 @@ public readonly struct ActorValue
     public ActorType Type { get; init; }
 
     public ActorValue(BinaryReader reader) : this(reader.ReadInt32()) {}
-    
-    public ActorValue(int raw)
+
+    private ActorValue(int value)
     {
-        Identifier = (int)(raw & 0x1FFFFFFFu);
-        Type = (ActorType)(byte)((raw >> 29) & 0x7);
+        Identifier = (int)(value & 0x1FFFFFFFu);
+        Type = (ActorType)(byte)((value >> 29) & 0x7);
     }
     
     public ActorValue(int identifier, ActorType type)
@@ -29,12 +29,7 @@ public readonly struct ActorValue
         Identifier = identifier;
         Type = type;
     }
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static bool operator==(ActorValue right, ActorComponent left) => left.Identifier == right.Identifier && left.Type == right.Type;
-    //
-    // public static bool operator !=(ActorValue right, ActorComponent left) => !(left == right);
-
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator ActorValue(int value) => new(value);
     
@@ -44,10 +39,10 @@ public readonly struct ActorValue
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator int(ActorValue obj)
     {
-        int value = 0;
+        var value = 0;
         
         value |= (int)(obj.Identifier & 0x1FFFFFFFu);
-        value |= ((int)((byte)obj.Type & 0x7)) << 29;
+        value |= ((byte)obj.Type & 0x7) << 29;
         
         return value;
     }

@@ -1,4 +1,4 @@
-﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Modules.Items.Responses;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct ItemCombineRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;

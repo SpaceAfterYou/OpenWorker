@@ -1,6 +1,4 @@
-﻿using OpenWorker.Hotspot.Messages.Response.Person.Components;
-using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
-using OpenWorker.Hotspot.Modules.Skill.Components;
+﻿using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
@@ -14,14 +12,20 @@ public readonly struct AbilityValue
 
     public SpeedValueEntry Speed { get; init; }
 
-    public AbilityValue(AbilityComponent component)
+    public AbilityValue(
+        AbilityValueEntry health,
+        AbilityValueEntry soulGain,
+        AbilityValueEntry soulVapor,
+        AbilityValueEntry stamina,
+        AbilityValueEntry superArmor,
+        SpeedValueEntry speed)
     {
-        Health = new AbilityValueEntry(component.Health);
-        SoulGain = new AbilityValueEntry(component.SoulGain);
-        SoulVapor = new AbilityValueEntry(component.SoulVapor);
-        Stamina = new AbilityValueEntry(component.Stamina);
-        SuperArmor = new AbilityValueEntry(component.SuperArmor);
-        Speed = new SpeedValueEntry(component.Speed);
+        Health = health;
+        SoulGain = soulGain;
+        SoulVapor = soulVapor;
+        Stamina = stamina;
+        SuperArmor = superArmor;
+        Speed = speed;
     }
 
     public AbilityValue(BinaryReader reader)

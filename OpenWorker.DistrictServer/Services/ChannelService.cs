@@ -1,16 +1,17 @@
-﻿using Arch.Core;
+using Arch.Core;
+using Arch.Core.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.DistrictServer.Server;
+using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Hotspot.Modules.Boosters.Enums;
-using OpenWorker.Hotspot.Modules.Boosters.Responses;
-using OpenWorker.Hotspot.Modules.Channels;
-using OpenWorker.Hotspot.Modules.Channels.Components;
+using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Hotspot.Modules.Channels.Requests;
 using OpenWorker.Hotspot.Modules.World.Responses;
+using OpenWorker.Hotspot.Modules.World.Types;
 
 namespace OpenWorker.DistrictServer.Services;
 
@@ -27,21 +28,38 @@ public sealed class ChannelService(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelChangeRequest request)
     {
         await serverChannels
-            .SwitchAsync(context.Player, request.Channel)
+            .SwitchAsync(context.GetPlayerEntity(), request.Channel)
             .ConfigureAwait(false);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelInfoRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
 
-        await serverChannels.SendListAsync(context.Player, context.CancellationToken).ConfigureAwait(false);
+        await serverChannels.SendListAsync(context.GetPlayerEntity(), context.CancellationToken).ConfigureAwait(false);
 
-        var channel = world.Get<ChannelMemberComponent>(context.Player);
+        var channel = world.Get<ChannelMemberComponent>(context.GetPlayerEntity());
         var serviceChannel = serviceChannels[channel.Index];
         
-        session.Send(new WorldOtherInfosNpcResponse(npcManager.Collection));
+        var npcWireList = npcManager.Collection
+            .Select(e =>
+            {
+                var a = e.Get<ActorComponent>();
+                var n = e.Get<CreatureComponent___Old>();
+                return new WorldNpcListEntry(
+                    a,
+                    n.Position,
+                    n.Rotation,
+                    n.Health,
+                    n.Waypoint,
+                    n.Sector,
+                    n.Level,
+                    n.Prototype);
+            })
+            .ToArray();
+
+        session.Send(new WorldOtherInfosNpcResponse { List = npcWireList });
         
-        serviceChannel.SendOthers(context.Player, world);
+        serviceChannel.SendOthers(context.GetPlayerEntity(), world);
     }
 }

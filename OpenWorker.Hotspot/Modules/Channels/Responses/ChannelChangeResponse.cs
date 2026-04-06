@@ -1,79 +1,37 @@
-﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Channels.Requests;
-using OpenWorker.Hotspot.Modules.Persons.DataTypes;
+using OpenWorker.Hotspot.Modules.Persons.Types;
 
 namespace OpenWorker.Hotspot.Modules.Channels.Responses;
 
-/// <summary>
-/// 
-/// </summary>
-/// <param name="errorCode">0 - no error. Message code in tb_(.*?)_script.res</param>
-/// <param name="divergence">tb_divergence.res</param>
-/// <param name="swap"></param>
-[HotspotMessage(Group, Command)]
-public readonly struct SkillActiveSkillResponse(int errorCode, int divergence, bool swap) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct ChannelChangeResponse : IResponseHotspotMessage
 {
-    private const GroupOpcode Group = GroupOpcode.Skill;
-    private const SkillOpcode Command = SkillOpcode.ActiveSkillRes;
+#region Interface: IHotspotMessage
 
-    public void ToBinary(BinaryWriter writer)
-    {
-        writer.Write(errorCode);
-        writer.Write(divergence);
-        writer.Write(swap);
-    }
-
-    public MessageOpcode Opcode => new(Group, Command);
-}
-
-[HotspotMessage(Group, Command)]
-public readonly struct SkillDeckBonusResponse(SkillDeckBonus deck) : IResponseHotspotMessage
-{
-    private const GroupOpcode Group = GroupOpcode.Skill;
-    private const SkillOpcode Command = SkillOpcode.SkillDeckBonus;
-
-    public void ToBinary(BinaryWriter writer)
-    {
-        writer.Write(deck.Value);
-    }
-
-    public MessageOpcode Opcode => new(Group, Command);
-}
-
-/// <summary>
-/// 
-/// </summary>
-/// <param name="error">0 - no error. Message code in tb_(.*?)_script.res</param>
-[HotspotMessage(Group, Command)]
-public readonly struct SkillPassiveResponse(short error) : IResponseHotspotMessage
-{
-    private const GroupOpcode Group = GroupOpcode.Skill;
-    private const SkillOpcode Command = SkillOpcode.PassiveSkillRes;
-
-    public void ToBinary(BinaryWriter writer)
-    {
-        writer.Write(error);
-    }
-
-    public MessageOpcode Opcode => new(Group, Command);
-}
-
-[HotspotMessage(Group, Command)]
-public readonly struct ChannelChangeResponse(EnterMapResultValue value) : IResponseHotspotMessage
-{
     private const GroupOpcode Group = GroupOpcode.Channel;
     private const ChannelOpcode Command = ChannelOpcode.Change;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public EnterMapResultValue Value { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.Write(value);
+        writer.Write(Value.Result);
     }
 
-    public static ChannelChangeResponse Error => new(EnterMapResultValue.Error);
+#endregion Interface: IWritableData
+
+    public static ChannelChangeResponse Error => new() { Value = EnterMapResultValue.Error };
 }

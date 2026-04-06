@@ -1,6 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using OpenWorker.Hotspot.Messages.Response.Person.Components;
-using OpenWorker.Hotspot.Modules.Maze.Components;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
@@ -16,10 +14,10 @@ public readonly struct FatiguePointsValue
     [field: FieldOffset(2)]
     public short Bonus { get; init; }
 
-    public FatiguePointsValue(FatiguePointsComponent component)
+    public FatiguePointsValue(short common, short bonus)
     {
-        Common = component.Common;
-        Bonus = component.Bonus;
+        Common = common;
+        Bonus = bonus;
     }
 
     public FatiguePointsValue(BinaryReader reader)

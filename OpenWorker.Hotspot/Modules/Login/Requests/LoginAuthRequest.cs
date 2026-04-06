@@ -1,4 +1,4 @@
-﻿using OpenWorker.Extensions;
+using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Login.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct LoginAuthRequest() : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Login;

@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Arch.Core;
 using Arch.Core.Extensions;
@@ -6,12 +6,14 @@ using OpenWorker.DistrictServer.Server;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.Items;
-using OpenWorker.Hotspot.Modules.Items.Components;
+using OpenWorker.Gameplay.Modules.Items.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
-using OpenWorker.Hotspot.Modules.Shop.Components;
+using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Requests;
 using OpenWorker.Hotspot.Modules.Shop.Responses;
@@ -44,25 +46,25 @@ public sealed class ShopService(
         var itemRow = itemList.First(e => e.Id == shopRow.Item);
 
         Debug.Assert(shopRow.Count == request.Count);
-        
+
         var count = (short)shopRow.Count;
         var price = (short)(itemRow.Price * count);
 
         var created = itemFactory.Create(shopRow.Item, count);
-        
-        var response = storageManager.TryAdd(context.Player, created, count);
+
+        var response = storageManager.TryAdd(context.GetPlayerEntity(), created, count);
 
         if (response.State is false)
         {
             return ValueTask.CompletedTask;
         }
 
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
 
         foreach (var info in response.Info)
         {
-            var item = new ItemValue(world, created);
-            
+            var item = ItemDtoFactory.FromEntity(world, created);
+
             var storage = new StorageValue
             {
                 Storage = world.Get<StorageGroupComponent>(response.Storage).Group,
@@ -70,13 +72,23 @@ public sealed class ShopService(
                 Item = item
             };
 
-            session.Send(new ShopBuyResponse([storage], price, ShopCurrency.Gold));
+            session.Send(new ShopBuyResponse
+            {
+                StorageList = [storage],
+                Spent = price,
+                Currency = ShopCurrency.Gold
+            });
         }
 
-        var currency = context.Player.Get<CurrencyComponent>();
+        var currency = context.GetPlayerEntity().Get<CurrencyComponent>();
         currency.Gold -= price;
 
-        session.Send(new ItemUpdateInvenMoneyResponse(currency.Gold, 0, MoneyEarnFlow.Normal));
+        session.Send(new ItemUpdateInvenMoneyResponse
+        {
+            Total = currency.Gold,
+            Bonus = 0,
+            Type = MoneyEarnFlow.Normal
+        });
 
         return ValueTask.CompletedTask;
     }

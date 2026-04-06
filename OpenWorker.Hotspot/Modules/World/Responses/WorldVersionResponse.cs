@@ -8,24 +8,36 @@ namespace OpenWorker.Hotspot.Modules.World.Responses;
 /// <summary>
 /// TODO: Unverified
 /// </summary>
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct WorldVersionResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.Version;
+
+    public MessageOpcode Opcode => new(Group, Command);
+
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
 
     public required int Identifier { get; init; }
     public required int MainVer { get; init; }
     public required int SubVer { get; init; }
     public required int DataVer { get; init; }
-    
-    public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
         writer.Write(Identifier);
         writer.Write(MainVer);
         writer.Write(SubVer);
         writer.Write(DataVer);
     }
+
+#endregion Interface: IWritableData
 }

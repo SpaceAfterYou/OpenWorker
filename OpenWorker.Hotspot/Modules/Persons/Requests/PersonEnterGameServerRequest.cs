@@ -8,7 +8,7 @@ using OpenWorker.Hotspot.Messages.Response.Person;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct PersonEnterGameServerRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;

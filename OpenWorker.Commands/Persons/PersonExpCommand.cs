@@ -1,30 +1,38 @@
 ﻿using Arch.Core;
-using OpenWorker.Hotspot.Commands.Attributes;
+using OpenWorker.Commands.Abstractions;
+using OpenWorker.Commands.Attributes;
+using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 
-namespace OpenWorker.Hotspot.Commands.Persons;
+namespace OpenWorker.Commands.Persons;
 
-[StuffCommand("exp")]
-public sealed class PersonExpCommand(World world) : AStuffCommand(world)
+[CommandTrigger("exp")]
+[CommandDescription("Add player experience")]
+internal sealed partial class PersonExpCommand : ICommand
 {
-    protected override string GetTutorialMessage() => "exp (value) [additional] [bonus]";
-
-    public override ValueTask<bool> TryExecute(Entity player, IReadOnlyList<string> tokens)
+    [ExternalDependency]
+    private World World { get; }
+    
+    ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
-        if (int.TryParse(tokens.ElementAtOrDefault(0), out var value) is false)
+        if (!int.TryParse(tokens.ElementAtOrDefault(0), out var value))
         {
-            SendTutorial(player, nameof(value));
-            
+            // TODO: Failed parser message
             return ValueTask.FromResult(false);
         }
 
         _ = int.TryParse(tokens.ElementAtOrDefault(1), out var additional);
         _ = int.TryParse(tokens.ElementAtOrDefault(2), out var bonus);
-
-        var session = World.Get<ServerSessionComponent>(player);
         
-        session.Send(new PersonExpResponse(value, additional, bonus));
+        PrivateExecute(player, value, additional, bonus);
         
         return ValueTask.FromResult(true);
+    }
+    
+    private void PrivateExecute(Entity player, int value, int additional, int bonus)
+    {
+        var session = World.Get<ServerSessionComponent>(player);
+        
+        session.Send(new PersonExpResponse { Value = value, Additional = additional, Bonus = bonus });
     }
 }

@@ -1,4 +1,5 @@
-﻿using Arch.Core;
+using Arch.Core;
+using Arch.Core.Extensions;
 using Lua;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Entities;
@@ -6,8 +7,9 @@ using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua.Managers;
@@ -154,7 +156,7 @@ public partial class LuaMaze(
     {
         var action = Batch.EventBox.InterActions.First(x => x.Id == box);
 
-        var session = Ecs.Get<ServerSessionComponent>(player);
+        var session = player.Get<ServerSessionComponent>();
         
         session.Send(new MazeInteractionEnableResponse
         {

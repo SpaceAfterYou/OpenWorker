@@ -1,4 +1,4 @@
-﻿using OpenWorker.Domain.Types;
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -8,7 +8,7 @@ using OpenWorker.Hotspot.Messages.Response.Person;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct MovementStopRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;

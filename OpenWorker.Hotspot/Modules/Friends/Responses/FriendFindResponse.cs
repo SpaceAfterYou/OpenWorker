@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -8,20 +8,32 @@ using OpenWorker.Hotspot.Modules.Friends.Types;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct FriendFindResponse(IReadOnlyCollection<FriendFindEntry> values) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct FriendFindResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Friend;
     private const FriendOpcode Command = FriendOpcode.Find;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
-    {
-        Debug.Assert(values.Count < short.MaxValue);
-        writer.Write((short)values.Count);
+#endregion Interface: IHotspotMessage
 
-        foreach (var value in values)
+#region Message: Body
+
+    public required IReadOnlyCollection<FriendFindEntry> Values { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
+    {
+        Debug.Assert(Values.Count < short.MaxValue);
+        writer.Write((short)Values.Count);
+
+        foreach (var value in Values)
         {
             writer.Write(value.Person);
 
@@ -34,4 +46,6 @@ public readonly struct FriendFindResponse(IReadOnlyCollection<FriendFindEntry> v
             writer.Write(value.IsLoggedIn);
         }
     }
+
+#endregion Interface: IWritableData
 }

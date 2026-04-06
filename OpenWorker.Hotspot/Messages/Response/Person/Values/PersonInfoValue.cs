@@ -1,20 +1,17 @@
 ﻿using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Messages.Response.Person.Components;
-using OpenWorker.Hotspot.Modules.Persons.Components;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 public readonly struct PersonInfoValue
 {
-    public PersonInfoValue(PersonInfoComponent component, AppearanceComponent appearance)
+    public PersonInfoValue(string name, Hero hero, AppearanceValue appearanceShape, AppearanceValue appearanceLook)
     {
-        Name = component.Name;
-        Hero = component.Hero;
-
-        AppearanceShape = AppearanceValue.CreateShape(appearance);
-        AppearanceLook = AppearanceValue.CreateLook(appearance);
+        Name = name;
+        Hero = hero;
+        AppearanceShape = appearanceShape;
+        AppearanceLook = appearanceLook;
     }
 
     public PersonInfoValue(BinaryReader reader)

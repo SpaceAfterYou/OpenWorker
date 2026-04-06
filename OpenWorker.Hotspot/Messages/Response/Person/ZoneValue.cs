@@ -1,4 +1,4 @@
-﻿using OpenWorker.Domain.Types;
+using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Enums;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person;

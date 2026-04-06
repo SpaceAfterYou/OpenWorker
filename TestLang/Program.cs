@@ -1,21 +1,36 @@
 ﻿// https://www.youtube.com/watch?v=7vWzIPUX5CQ&list=RD7vWzIPUX5CQ&start_radio=1
 //
 
-using System.Collections.ObjectModel;
-using System.Net;
-using System.Net.Sockets;
-using Arch.Core;
-using Lua;
-using Lua.Standard;
-using OpenWorker.Batch;
-using OpenWorker.Domain.Components;
-using OpenWorker.Hotspot;
-using OpenWorker.Lua;
-using OpenWorker.Lua.Managers;
-using OpenWorker.UpdateContent.Res.Rows;
-using TestLang;
+Console.WriteLine("Hello World!");
 
-await ReaderHavokHkt.Read().ConfigureAwait(false);
+//namespace TestLang;
+
+//public enum ChannelWorkload : byte
+//{
+//    Low = 0x0,
+//    Normal = 0x1,
+//    High = 0x2,
+//    Full = 0x3
+//}
+
+//public readonly struct ChannelValue
+//{
+//    public short Id { get; init; }
+//    public ChannelWorkload Workload { get; init; }
+
+//    public ChannelValue(short id, ChannelWorkload workload)
+//    {
+//        Id = id;
+//        Workload = workload;
+//    }
+//}
+//public static class Program
+//{
+//    public static void Main(string[] args)
+//    {
+//        var x = typeof(IReadOnlyList<ChannelValue>);
+//    }
+//}
 
 // var test = new TestComponent();
 // test.Test();

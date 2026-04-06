@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using OpenWorker.Hotspot.Messages.Response.Person.Components.Entries;
-using OpenWorker.Hotspot.Modules.Skill.Components;
+using System.Runtime.InteropServices;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
@@ -16,10 +14,10 @@ public readonly struct SpeedValueEntry
     [field: FieldOffset(4)]
     public float Attack { get; }
 
-    public SpeedValueEntry(SpeedComponentEntry entry)
+    public SpeedValueEntry(float move, float attack)
     {
-        Move = entry.Move;
-        Attack = entry.Attack;
+        Move = move;
+        Attack = attack;
     }
 
     public SpeedValueEntry(BinaryReader reader)

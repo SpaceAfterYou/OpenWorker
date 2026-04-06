@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -9,19 +9,34 @@ using OpenWorker.Hotspot.Modules.Friends.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct FriendInviteAcceptResponse(string name, FriendResult result) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct FriendInviteAcceptResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Friend;
     private const FriendOpcode Command = FriendOpcode.InviteAccept;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
-    {
-        writer.Write(result);
+#endregion Interface: IHotspotMessage
 
-        Debug.Assert(name.Length <= 21);
-        writer.WriteUtf16UnicodeString(name);
+#region Message: Body
+
+    public required string Name { get; init; }
+    public FriendResult Result { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Result);
+
+        Debug.Assert(Name.Length <= 21);
+        writer.WriteUtf16UnicodeString(Name);
     }
+
+#endregion Interface: IWritableData
 }

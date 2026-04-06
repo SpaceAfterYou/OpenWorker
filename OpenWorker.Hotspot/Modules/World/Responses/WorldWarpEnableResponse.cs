@@ -7,16 +7,30 @@ using OpenWorker.Hotspot.Modules.World.Types;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct WorldWarpEnableResponse(WarpValue warp) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct WorldWarpEnableResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.WarpEnableRes;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public WarpValue Warp { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.Write(warp);
+        writer.Write(Warp);
     }
+
+#endregion Interface: IWritableData
 }

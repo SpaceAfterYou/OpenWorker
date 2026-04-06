@@ -7,16 +7,30 @@ using OpenWorker.Hotspot.Modules.Events.Types;
 
 namespace OpenWorker.Hotspot.Modules.Events.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly record struct EventAttendanceRewardResponse(AttendanceInfo Info) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct EventAttendanceRewardResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Event;
     private const EventOpcode Command = EventOpcode.AttendanceReward;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public AttendanceInfo Info { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
         writer.Write(Info);
     }
+
+#endregion Interface: IWritableData
 }

@@ -1,4 +1,4 @@
-﻿namespace OpenWorker.Hotspot.Modules.Boosters.Enums;
+namespace OpenWorker.Hotspot.Modules.Boosters.Enums;
 
 public enum BoosterConsumeArea : byte
 {

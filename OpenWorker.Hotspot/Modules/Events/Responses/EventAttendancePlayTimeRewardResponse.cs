@@ -6,17 +6,25 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Events.Responses;
 
 /// <summary>
-///     This packet no have content.
+/// This packet doesn't have any content.
 /// </summary>
-[HotspotMessage(Group, Command)]
-public readonly record struct EventAttendancePlayTimeRewardResponse : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct EventAttendancePlayTimeRewardResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Event;
     private const EventOpcode Command = EventOpcode.AttendancePlayTimeReward;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
     }
+
+#endregion Interface: IWritableData
 }

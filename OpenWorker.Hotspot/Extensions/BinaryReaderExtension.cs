@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Enums;

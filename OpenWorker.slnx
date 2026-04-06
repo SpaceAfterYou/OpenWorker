@@ -1,0 +1,55 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/OpenWorker Commands/">
+    <Project Path="OpenWorker.Commands.SourceGenerators/OpenWorker.Commands.SourceGenerators.csproj" />
+    <Project Path="OpenWorker.Commands/OpenWorker.Commands.csproj" />
+  </Folder>
+  <Folder Name="/Research/">
+    <Project Path="Research.Dotnet/Research.Dotnet.csproj" />
+    <Project Path="Research.Ecs/Research.Ecs.csproj" />
+    <Project Path="Research.Havok.Hkt/Research.Havok.Hkt.csproj" />
+  </Folder>
+  <Folder Name="/Servers/" />
+  <Folder Name="/Servers/Auth/">
+    <Project Path="OpenWorker.AuthServer.Gameplay/OpenWorker.AuthServer.Gameplay.csproj" />
+    <Project Path="OpenWorker.AuthServer.Test/OpenWorker.AuthServer.Test.csproj" />
+    <Project Path="OpenWorker.AuthServer/OpenWorker.AuthServer.csproj" />
+  </Folder>
+  <Folder Name="/Servers/District/">
+    <Project Path="OpenWorker.DistrictServer.Gameplay/OpenWorker.DistrictServer.Gameplay.csproj" />
+    <Project Path="OpenWorker.DistrictServer/OpenWorker.DistrictServer.csproj" />
+  </Folder>
+  <Folder Name="/Servers/Gate/">
+    <Project Path="OpenWorker.GateServer.Gameplay/OpenWorker.GateServer.Gameplay.csproj" />
+    <Project Path="OpenWorker.GateServer/OpenWorker.GateServer.csproj" />
+  </Folder>
+  <Folder Name="/Servers/Maze/">
+    <Project Path="OpenWorker.MazeServer/OpenWorker.MazeServer.csproj" />
+  </Folder>
+  <Folder Name="/Servers/Relay/">
+    <Project Path="OpenWorker.RelayServer/OpenWorker.RelayServer.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="compose.yaml" />
+  </Folder>
+  <Project Path="OpenWorker.Batch/OpenWorker.Batch.csproj" />
+  <Project Path="OpenWorker.Cache/OpenWorker.Cache.csproj" />
+  <Project Path="OpenWorker.Channel/OpenWorker.Channel.csproj" />
+  <Project Path="OpenWorker.DependencyInjection/OpenWorker.DependencyInjection.csproj" />
+  <Project Path="OpenWorker.Domain/OpenWorker.Domain.csproj" />
+  <Project Path="OpenWorker.Extensions/OpenWorker.Extensions.csproj" />
+  <Project Path="OpenWorker.Gameplay/OpenWorker.Gameplay.csproj" />
+  <Project Path="OpenWorker.Havok/OpenWorker.Havok.csproj" />
+  <Project Path="OpenWorker.Hotspot.Test/OpenWorker.Hotspot.Test.csproj" />
+  <Project Path="OpenWorker.Hotspot/OpenWorker.Hotspot.csproj" />
+  <Project Path="OpenWorker.Lua/OpenWorker.Lua.csproj" />
+  <Project Path="OpenWorker.Persistence/OpenWorker.Persistence.csproj" />
+  <Project Path="OpenWorker.Res/OpenWorker.Res.csproj" />
+  <Project Path="OpenWorker.SourceGenerator.ResourceStructures/OpenWorker.SourceGenerator.ResourceStructures.csproj" />
+  <Project Path="OpenWorker.UpdateContent/OpenWorker.UpdateContent.csproj" />
+  <Project Path="TestLang/TestLang.csproj" />
+</Solution>

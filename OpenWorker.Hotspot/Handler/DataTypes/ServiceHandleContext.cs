@@ -1,5 +1,3 @@
-﻿using Arch.Core;
+﻿namespace OpenWorker.Hotspot.Handler.DataTypes;
 
-namespace OpenWorker.Hotspot.Handler.DataTypes;
-
-public readonly record struct ServiceHandleContext(Entity Player, CancellationToken CancellationToken);
+public readonly record struct ServiceHandleContext(object Player, CancellationToken CancellationToken);

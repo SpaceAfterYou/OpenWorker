@@ -7,18 +7,34 @@ using OpenWorker.Hotspot.Modules.World.Types;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct WorldWarpMazeResponse(int boxIndex, WarpValue warp, int portalIndex) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct WorldWarpMazeResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.WarpMazeRes;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public int BoxIndex { get; init; }
+    public WarpValue Warp { get; init; }
+    public int PortalIndex { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.Write(boxIndex);
-        writer.Write(warp);
-        writer.Write(portalIndex);
+        writer.Write(BoxIndex);
+        writer.Write(Warp);
+        writer.Write(PortalIndex);
     }
+
+#endregion Interface: IWritableData
 }

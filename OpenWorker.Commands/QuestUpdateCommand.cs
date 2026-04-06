@@ -1,53 +1,69 @@
 ﻿using System.Collections.ObjectModel;
 using Arch.Core;
-using OpenWorker.Hotspot.Commands.Attributes;
+using OpenWorker.Commands.Abstractions;
+using OpenWorker.Commands.Attributes;
+using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Quests.Responses;
 using OpenWorker.Hotspot.Modules.Quests.Types;
 using OpenWorker.UpdateContent.Res.Rows;
 
-namespace OpenWorker.Hotspot.Commands;
+namespace OpenWorker.Commands;
 
-[StuffCommand("quest", "update")]
-public sealed class QuestUpdateCommand(World world, ReadOnlyCollection<QuestConditionRow> conditionCollection) : AStuffCommand(world)
+[CommandTrigger("quest", "update")]
+[CommandDescription("Update player quest progress")]
+internal sealed partial class QuestUpdateCommand : ICommand
 {
-    protected override string GetTutorialMessage() => "quest-update (condition) (step)";
+    [ExternalDependency]
+    private World World { get; }
+    
+    [ExternalDependency]
+    private ReadOnlyCollection<QuestConditionRow> ConditionCollection { get; }
+    
+    ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
+    {
+        if (!int.TryParse(tokens.ElementAtOrDefault(0), out var condition))
+        {
+            // TODO: Failed parser message
+            return ValueTask.FromResult(false);
+        }
 
-    public override ValueTask<bool> TryExecute(Entity player, IReadOnlyList<string> tokens)
+        if (!byte.TryParse(tokens.ElementAtOrDefault(1), out var step))
+        {
+            // TODO: Failed parser message
+            return ValueTask.FromResult(false);
+        }
+
+        if (ConditionCollection.All(e => e.Id != condition))
+        {
+            // TODO: Not found message
+            return ValueTask.FromResult(false);
+        }
+
+        if (step > ConditionCollection.First(e => e.Id == condition).Field21)
+        {
+            // TODO: Invalid step message
+            return ValueTask.FromResult(false);
+        }
+        
+        PrivateExecute(player, condition, step);
+        
+        return ValueTask.FromResult(true);
+    }
+    
+    private void PrivateExecute(Entity player, int condition, byte step)
     {
         var session = World.Get<ServerSessionComponent>(player);
 
-        if (int.TryParse(tokens.ElementAtOrDefault(0), out var condition) is false)
+        session.Send(new QuestUpdateResponse
         {
-            SendTutorial(player, nameof(condition));
-            return ValueTask.FromResult(false);
-        }
-
-        if (byte.TryParse(tokens.ElementAtOrDefault(1), out var step) is false)
-        {
-            SendTutorial(player, nameof(step));
-            return ValueTask.FromResult(false);
-        }
-
-        if (conditionCollection.Any(e => e.Id == condition) is false)
-        {
-            SendTutorial(player, nameof(condition));
-            return ValueTask.FromResult(false);
-        }
-
-        if (step > conditionCollection.First(e => e.Id == condition).Field21)
-        {
-            SendTutorial(player, nameof(step));
-            return ValueTask.FromResult(false);
-        }
-
-        session.Send(new QuestUpdateResponse([
-            new QuestCondition
-            {
-                Condition = condition,
-                Step = step
-            }
-        ]));
-
-        return ValueTask.FromResult(true);
+            ConditionList =
+            [
+                new QuestCondition
+                {
+                    Condition = condition,
+                    Step = step
+                }
+            ]
+        });
     }
 }

@@ -6,16 +6,19 @@ namespace OpenWorker.Hotspot.Modules.Channels.Extensions;
 
 internal static class BinaryWriterExtension
 {
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, ChannelWorkload value)
+    extension(BinaryWriter writer)
     {
-        writer.Write((byte)value);
-    }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Write(ChannelWorkload value)
+        {
+            writer.Write((byte)value);
+        }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, ChannelValue value)
-    {
-        writer.Write(value.Id);
-        writer.Write(value.Workload);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void Write(ChannelValue value)
+        {
+            writer.Write(value.Id);
+            writer.Write(value.Workload);
+        }
     }
 }

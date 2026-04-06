@@ -106,6 +106,16 @@ public static class BinaryReaderExtension
 
     #endregion Arrays
 
+#region Core.Time
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TimeSpan ReadTimeInSeconds32(this BinaryReader reader)
+    {
+        return TimeSpan.FromSeconds(reader.ReadInt32());
+    }
+
+#endregion Core.Time
+    
     #region Strings
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -126,7 +136,7 @@ public static class BinaryReaderExtension
     private static string ReadUnicodeString(this BinaryReader reader, int length, int max = 0)
     {
         var bytes = reader.ReadBytes(length);
-        var value = Encoding.Unicode.GetString(bytes.AsSpan(0, length - 1) /* skip \0 */);
+        var value = Encoding.Unicode.GetString(bytes.AsSpan(0, length - 1) /* skip null-terminator */);
 
         return value;
     }

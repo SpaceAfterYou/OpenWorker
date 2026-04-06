@@ -1,6 +1,10 @@
 ﻿using Arch.Core;
+using Arch.Core.Extensions;
+using OpenWorker.Domain.Components;
+using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache;
+using OpenWorker.Hotspot.Dtos;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
@@ -41,7 +45,7 @@ public readonly record struct ServiceChannel(short Identifier)
     {
         foreach (var session in InternalMemberCollection.Select(member => world.Get<ServerSessionComponent>(member)))
         {
-            session.Send(new WorldOutInfoPcResponse(world, player));
+            session.Send(new WorldOutInfoPcResponse { Actors = [world.Get<ActorComponent>(player)] });
         }
     }
 
@@ -49,14 +53,25 @@ public readonly record struct ServiceChannel(short Identifier)
     {
         foreach (var session in InternalMemberCollection.Select(member => world.Get<ServerSessionComponent>(member)))
         {
-            session.Send(new WorldInInfoPcResponse(world, player));
-            session.Send(new PersonUpdateOriginStatListResponse(world, player));
+            session.Send(new WorldInInfoPcResponse
+            {
+                Person = PersonSnapshotMapper.CreatePersonValue(world, player, player),
+                World = PersonSnapshotMapper.CreateWorldValue(world, player)
+            });
+            session.Send(new PersonUpdateOriginStatListResponse { Actor = world.Get<ActorComponent>(player) });
         }
     }
 
     public void SendOthers(Entity player, World world)
     {
         var session = world.Get<ServerSessionComponent>(player);
-        session.Send(new WorldOtherPersonListResponse(InternalMemberCollection));
+        var people = InternalMemberCollection
+            .Where(e => e != player)
+            .Select(e => new PersonWorldPair(
+                PersonSnapshotMapper.CreatePersonValue(world, e, e),
+                PersonSnapshotMapper.CreateWorldValue(world, e)))
+            .ToList();
+
+        session.Send(new WorldOtherPersonListResponse { People = people });
     }
 }

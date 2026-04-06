@@ -2,6 +2,7 @@ using Arch.Core;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.Events.Requests;
 using OpenWorker.Hotspot.Modules.Events.Responses;
 
@@ -13,7 +14,7 @@ public sealed class EventService(World world) :
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, EventAttendancePlayTimeRewardRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         session.Send(new EventAttendancePlayTimeRewardResponse());
         

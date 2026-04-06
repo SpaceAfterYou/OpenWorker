@@ -27,7 +27,7 @@ public readonly struct ServerSessionComponent(TcpClient client)
 
                 writer.Write(message.Opcode);
 
-                message.ToBinary(writer);
+                message.Write(writer);
 
                 header = new MessageHeader(stream.Position);
 

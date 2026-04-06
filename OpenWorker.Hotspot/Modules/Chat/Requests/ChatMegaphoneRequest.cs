@@ -1,4 +1,4 @@
-﻿using OpenWorker.Extensions;
+using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.Chat.Types;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct ChatMegaphoneRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Chat;

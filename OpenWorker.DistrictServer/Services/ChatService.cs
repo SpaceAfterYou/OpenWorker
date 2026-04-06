@@ -2,16 +2,13 @@
 using Arch.Core.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.Commands;
-using OpenWorker.DistrictServer.Server;
 using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
-using OpenWorker.Hotspot.Commands;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Hotspot.Modules.Channels;
-using OpenWorker.Hotspot.Modules.Channels.Components;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.Chat.Enums;
 using OpenWorker.Hotspot.Modules.Chat.Requests;
 using OpenWorker.Hotspot.Modules.Chat.Responses;
@@ -20,7 +17,7 @@ using Redis.OM.Searching;
 namespace OpenWorker.DistrictServer.Services;
 
 [HotspotHandler(HotspotHandlerType.District)]
-public sealed class ChatService(World world, StuffCommands commands, ServiceChannels channels, IRedisCollection<ChannelChatCache> channelChatCache) :
+public sealed class ChatService(World world, CommandManager commands, ServiceChannels channels, IRedisCollection<ChannelChatCache> channelChatCache) :
     IHotspotHandler<ChatNormalRequest>,
     IHotspotHandler<ChatWhisperRequest>,
     IHotspotHandler<ChatTradeRequest>,
@@ -29,15 +26,20 @@ public sealed class ChatService(World world, StuffCommands commands, ServiceChan
 {
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatStuffRequest request)
     {
-        if (!await commands.TryExecute(context.Player, request.Message).ConfigureAwait(false))
+        if (!await commands.TryExecute(context.GetPlayerEntity(), request.Message).ConfigureAwait(false))
         {
             return;
         }
 
-        var session = world.Get<ServerSessionComponent>(context.Player);
-        var actor = world.Get<ActorComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var actor = world.Get<ActorComponent>(context.GetPlayerEntity());
 
-        session.Send(new ChatNormalResponse(actor, ChatMessageAppearance.System, $"[CMD EXEC] {request.Message}"));
+        session.Send(new ChatNormalResponse
+        {
+            Actor = actor,
+            Appearance = ChatMessageAppearance.System,
+            Message = $"[CMD EXEC] {request.Message}"
+        });
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ChatMegaphoneRequest request)
@@ -47,13 +49,18 @@ public sealed class ChatService(World world, StuffCommands commands, ServiceChan
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatNormalRequest request)
     {
-        var channel = channels.Get(context.Player);
-        var actor = world.Get<ActorComponent>(context.Player);
+        var channel = channels.Get(context.GetPlayerEntity());
+        var actor = world.Get<ActorComponent>(context.GetPlayerEntity());
 
         channel.ForEach(e =>
         {
             var session = e.Get<ServerSessionComponent>();
-            session.Send(new ChatNormalResponse(actor, ChatMessageAppearance.Normal, request.Message));
+            session.Send(new ChatNormalResponse
+            {
+                Actor = actor,
+                Appearance = ChatMessageAppearance.Normal,
+                Message = request.Message
+            });
         });
 
         var cache = new ChannelChatCache

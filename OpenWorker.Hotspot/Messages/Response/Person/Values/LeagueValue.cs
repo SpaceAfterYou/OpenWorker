@@ -1,6 +1,5 @@
 ﻿using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
-using OpenWorker.Hotspot.Modules.League.Components;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
@@ -11,11 +10,11 @@ public readonly struct LeagueValue
 
     public PersonLeagueCardValueEntry Card { get; }
 
-    public LeagueValue(LeagueComponent component)
+    public LeagueValue(int id, string name, PersonLeagueCardValueEntry card)
     {
-        Id = component.Id;
-        Name = component.Name;
-        Card = new PersonLeagueCardValueEntry(component.Card);
+        Id = id;
+        Name = name;
+        Card = card;
     }
 
     public LeagueValue(BinaryReader reader)

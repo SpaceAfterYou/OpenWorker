@@ -1,39 +1,37 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Arch.Core;
-using Arch.Core.Extensions;
+using OpenWorker.Domain.Components;
 using Microsoft.EntityFrameworkCore;
-using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.DistrictServer.Server;
 using OpenWorker.DistrictServer.Server.Components;
-using OpenWorker.DistrictServer.Types;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Mapping;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person.Enums;
-using OpenWorker.Hotspot.Modules.Boosters.Enums;
-using OpenWorker.Hotspot.Modules.Boosters.Responses;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
 using OpenWorker.Hotspot.Modules.Events.Enums;
 using OpenWorker.Hotspot.Modules.Events.Responses;
 using OpenWorker.Hotspot.Modules.Events.Types;
-using OpenWorker.Hotspot.Modules.Gestures.Components;
+using OpenWorker.Gameplay.Modules.Gestures.Components;
 using OpenWorker.Hotspot.Modules.Gestures.Responses;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
-using OpenWorker.Hotspot.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.Quests.Responses;
 using OpenWorker.Hotspot.Modules.Quests.Types;
 using OpenWorker.Hotspot.Modules.Ranking.Responses;
-using OpenWorker.Hotspot.Modules.Shop.Components;
+using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
 using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Persistence;
@@ -64,7 +62,7 @@ public sealed class PersonService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonEnterGameServerRequest request)
     {
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
+        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         if (await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false) is false)
         {
@@ -84,7 +82,7 @@ public sealed class PersonService(
             .FirstAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken)
             .ConfigureAwait(false);
         
-        ecs.Set(context.Player, new ClaimsComponent(request.Session));
+        ecs.Set(context.GetPlayerEntity(), new ClaimsComponent(request.Session));
 
         if (!manager.TryGetAndCache(Location, out var batch, out var type) || type != BatchType.District)
         {
@@ -94,7 +92,7 @@ public sealed class PersonService(
         Debug.Assert(batch.EventBox.StartEvents.Count > 0);
         var start = batch.EventBox.StartEvents.First(x => x.Id == Location * 100 + 1);
 
-        ecs.Set(context.Player, new WorldComponent
+        ecs.Set(context.GetPlayerEntity(), new WorldComponent
         {
             Location = Location,
             Position = start.GetPosition(),
@@ -102,9 +100,9 @@ public sealed class PersonService(
             Jump = start.Id
         });
 
-        ecs.Set(context.Player, new KeepAliveComponent());
+        ecs.Set(context.GetPlayerEntity(), new KeepAliveComponent());
 
-        ecs.Set(context.Player, new CurrencyComponent
+        ecs.Set(context.GetPlayerEntity(), new CurrencyComponent
         {
             Gold = 5_000_000,
             Cash = 7_000_000,
@@ -112,7 +110,7 @@ public sealed class PersonService(
             Ether = 15_000_000
         });
         
-        ecs.Set(context.Player, new GestureComponent
+        ecs.Set(context.GetPlayerEntity(), new GestureComponent
         {
             Collection = person.GestureList.Length switch
             {
@@ -128,17 +126,22 @@ public sealed class PersonService(
             }
         });
 
-        registry.PullPerson(context.Player, person);
+        registry.PullPerson(context.GetPlayerEntity(), person);
 
-        session.Send(new CharacterInfoResponse(ecs, context.Player));
-        session.Send(new GestureSlotLoadResponse(ecs, context.Player));
-        session.Send(new PersonUpdateOriginStatListResponse(ecs, context.Player));
-        session.Send(new BoosterLoadResponse([], BoosterConsumeArea.None));
+        session.Send(new CharacterInfoResponse
+        {
+            Person = PersonSnapshotMapper.CreatePersonValue(ecs, context.GetPlayerEntity(), context.GetPlayerEntity()),
+            World = PersonSnapshotMapper.CreateWorldValue(ecs, context.GetPlayerEntity()),
+            Gate = PersonSnapshotMapper.CreateCharacterInfoGatePayload(ecs, context.GetPlayerEntity())
+        });
+        session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.GetPlayerEntity()).Collection });
+        session.Send(new PersonUpdateOriginStatListResponse { Actor = ecs.Get<ActorComponent>(context.GetPlayerEntity()) });
+        // session.Send(new BoosterLoadReply([], BoosterConsumeArea.None));
 
         SendSoulMetryList(session);
         SendQuestEpisodeList(session);
 
-        JoinChannel(context.Player);
+        JoinChannel(context.GetPlayerEntity());
         
         session.Send(new EventAttendanceLoadResponse
         {
@@ -194,9 +197,9 @@ public sealed class PersonService(
             .Select(e => e.Id)
             .ToArray();
 
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
+        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
-        session.Send(new PersonLoadTitleResponse(list, [], true));
+        session.Send(new PersonLoadTitleResponse { TitleList = list, OpenList = [], Result = true });
 
         return ValueTask.CompletedTask;
     }
@@ -207,7 +210,7 @@ public sealed class PersonService(
             .Select(e => new SoulMetryValue(e.Id, 0))
             .ToArray();
 
-        session.Send(new SoulMetryListResponse(list));
+        session.Send(new SoulMetryListResponse { Values = list });
     }
 
     private void SendQuestEpisodeList(ServerSessionComponent session)
@@ -279,16 +282,20 @@ public sealed class PersonService(
             })
             .ToArray();
 
-        session.Send(new QuestListResponse(list));
+        session.Send(new QuestListResponse { List = list });
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)
     {
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
+        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         // session.Send(new PersonTradePasswordResponse(request.Password));
         
-        session.Send(new CharacterTradePasswordResponse(E_PASSWORD_STATE.ePASSWORD_STATE_AUTHENTICATED, 0));
+        session.Send(new CharacterTradePasswordResponse
+        {
+            State = E_PASSWORD_STATE.ePASSWORD_STATE_AUTHENTICATED,
+            ErrorCode = 0
+        });
         
         return ValueTask.CompletedTask;
     }

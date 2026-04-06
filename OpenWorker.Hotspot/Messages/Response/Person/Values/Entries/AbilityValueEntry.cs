@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using OpenWorker.Hotspot.Messages.Response.Person.Components.Entries;
-using OpenWorker.Hotspot.Modules.Skill.Components;
+using System.Runtime.InteropServices;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
@@ -16,10 +14,10 @@ public readonly struct AbilityValueEntry
     [field: FieldOffset(4)]
     public int Max { get; }
 
-    public AbilityValueEntry(AbilityComponentEntry entry)
+    public AbilityValueEntry(int current, int max)
     {
-        Current = entry.Current;
-        Max = entry.Max;
+        Current = current;
+        Max = max;
     }
 
     public AbilityValueEntry(BinaryReader reader)

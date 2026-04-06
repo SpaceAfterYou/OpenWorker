@@ -1,7 +1,4 @@
-﻿using Arch.Core;
-using Arch.Core.Extensions;
-using OpenWorker.Hotspot.Messages.Response.Person.Components.Entries;
-using OpenWorker.Hotspot.Modules.Items.Components;
+﻿using OpenWorker.Hotspot.Messages.Response.Person.Components.Entries;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
@@ -9,21 +6,6 @@ public readonly struct EquipItemValueEntry
 {
     public int Id { get; }
     public byte Upgrade { get; }
-
-    public EquipItemValueEntry(Entity entity)
-    {
-        if (Entity.Null == entity)
-        {
-            Id = -1;
-            Upgrade = 0;
-        }
-
-        else
-        {
-            Id = entity.Get<StorageItemComponent>().Identifier;
-            Upgrade = entity.Get<StorageItemGradeComponent>().Level;
-        }
-    }
 
     public EquipItemValueEntry(InventoryComponentEntry entry)
     {

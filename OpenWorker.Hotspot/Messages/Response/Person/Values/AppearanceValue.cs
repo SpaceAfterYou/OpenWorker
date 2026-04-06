@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using OpenWorker.Hotspot.Messages.Response.Person.Components;
-using OpenWorker.Hotspot.Modules.Persons.Components;
+using System.Runtime.InteropServices;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
@@ -21,26 +19,6 @@ public readonly struct AppearanceValue
 
     [field: FieldOffset(6)]
     public short SkinColor { get; }
-
-    public static AppearanceValue CreateLook(AppearanceComponent component)
-    {
-        return new AppearanceValue(
-            component.HairStyle.Look,
-            component.HairColor.Look,
-            component.EyeColor.Look,
-            component.SkinColor.Look
-        );
-    }
-
-    public static AppearanceValue CreateShape(AppearanceComponent component)
-    {
-        return new AppearanceValue(
-            component.HairStyle.Shape,
-            component.HairColor.Shape,
-            component.EyeColor.Shape,
-            component.SkinColor.Shape
-        );
-    }
 
     public AppearanceValue(short hairStyle, short hairColor, short eyeColor, short skinColor)
     {
