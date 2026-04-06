@@ -1,28 +1,37 @@
 ﻿using Arch.Core;
+using OpenWorker.Commands.Abstractions;
+using OpenWorker.Commands.Attributes;
 using OpenWorker.Domain.Components;
-using OpenWorker.Hotspot.Commands.Attributes;
+using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 
-namespace OpenWorker.Hotspot.Commands.Persons;
+namespace OpenWorker.Commands.Persons;
 
-[StuffCommand("level")]
-public sealed class PersonLevelCommand(World world) : AStuffCommand(world)
+[CommandTrigger("level")]
+[CommandDescription("Set player level")]
+internal sealed partial class PersonLevelCommand : ICommand
 {
-    protected override string GetTutorialMessage() => "level (level)";
-
-    public override ValueTask<bool> TryExecute(Entity player, IReadOnlyList<string> tokens)
+    [ExternalDependency]
+    private World World { get; }
+    
+    ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
+    {
+        if (!byte.TryParse(tokens.ElementAtOrDefault(0), out var level))
+        {
+            // TODO: Failed parser message
+            return ValueTask.FromResult(false);
+        }
+        
+        PrivateExecute(player, level);
+        
+        return ValueTask.FromResult(true);
+    }
+    
+    private void PrivateExecute(Entity player, byte level)
     {
         var session = World.Get<ServerSessionComponent>(player);
         var actor = World.Get<ActorComponent>(player);
 
-        if (byte.TryParse(tokens.ElementAtOrDefault(0), out var level) is false)
-        {
-            SendTutorial(player, nameof(level));
-            
-            return ValueTask.FromResult(false);
-        }
-
-        session.Send(new PersonLevelResponse(actor, level));
-        return ValueTask.FromResult(true);
+        session.Send(new PersonLevelResponse { Actor = actor, Value = level });
     }
 }

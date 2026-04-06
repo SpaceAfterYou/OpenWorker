@@ -1,42 +1,40 @@
-﻿using OpenWorker.Domain.Components;
+using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Persons.Enums;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct PersonDieResponse(ActorComponent victim, ActorComponent attacker, int pvpKillCount) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct PersonDieResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.Die;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public ActorComponent Victim { get; init; }
+    public ActorComponent Attacker { get; init; }
+    public int PvpKillCount { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.WriteActor(victim);
-        writer.WriteActor(attacker);
-        writer.Write(pvpKillCount);
+        writer.WriteActor(Victim);
+        writer.WriteActor(Attacker);
+        writer.Write(PvpKillCount);
     }
-}
 
-[HotspotMessage(Group, Command)]
-public readonly struct PersonKickOutResponse(PersonKickOutReason outReason, int account, string message = "") : IResponseHotspotMessage
-{
-    private const GroupOpcode Group = GroupOpcode.Character;
-    private const CharacterOpcode Command = CharacterOpcode.KickOut;
-
-    public MessageOpcode Opcode => new(Group, Command);
-
-    public void ToBinary(BinaryWriter writer)
-    {
-        writer.Write(outReason);
-        writer.Write(account);
-        writer.WriteUtf16UnicodeString(message);
-    }
+#endregion Interface: IWritableData
 }

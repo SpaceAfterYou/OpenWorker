@@ -1,4 +1,4 @@
-﻿using OpenWorker.Extensions;
+using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -9,23 +9,37 @@ using OpenWorker.Hotspot.Modules.Boosters.Types;
 
 namespace OpenWorker.Hotspot.Modules.Boosters.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct BoosterLoadResponse(IReadOnlyList<BoosterLoadEntry> entries, BoosterConsumeArea area) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct BoosterLoadResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Booster;
     private const BoosterOpcode Command = BoosterOpcode.ListLoad;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
-    {
-        writer.Write(area);
-        writer.Write((short)entries.Count);
+#endregion Interface: IHotspotMessage
 
-        foreach (var entry in entries)
+#region Message: Body
+
+    public IReadOnlyList<BoosterLoadEntry> Entries { get; init; }
+    public BoosterConsumeArea Area { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Area);
+        writer.Write((short)Entries.Count);
+
+        foreach (var entry in Entries)
         {
-            writer.Write(entry.Id);
-            writer.Write(entry.Remaining);
+            entry.Write(writer);
         }
     }
+
+#endregion Interface: IWritableData
 }

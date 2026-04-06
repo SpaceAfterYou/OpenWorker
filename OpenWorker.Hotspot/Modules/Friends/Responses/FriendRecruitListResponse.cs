@@ -1,4 +1,3 @@
-﻿using OpenWorker.Domain.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -7,44 +6,31 @@ using OpenWorker.Hotspot.Modules.Persons.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
-enum ENUM_FRIEND_STATE : byte
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct FriendRecruitListResponse : IResponseHotspotMessage
 {
-    eFRIEND_STATE_NONE = 0x0,
-    eFRIEND_TYPE_PARTY = 0x1,
-}
+#region Interface: IHotspotMessage
 
-public readonly struct FriendRecruitValue
-{
-    public string Name { get; init; }
-    
-    /// <summary>
-    /// TODO
-    /// </summary>
-    public int Person { get; init; }
-    public byte Level { get; init; }
-    public Hero Hero { get; init; }
-    public byte Status { get; init; }
-    public string Memo { get; init; }
-    public byte Channel { get; init; }
-    public short World { get; init; }
-    public bool IsLoggedIn { get; init; }
-    public ulong tLogOut { get; init; }
-    public ulong tAddTime { get; init; }
-}
-
-[HotspotMessage(Group, Command)]
-public readonly struct FriendRecruitListResponse(FriendRecruitValue[] list) : IResponseHotspotMessage
-{
     private const GroupOpcode Group = GroupOpcode.Friend;
     private const FriendOpcode Command = FriendOpcode.RecruitList;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public required FriendRecruitValue[] List { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.Write((byte)list.Length);
-        
-        foreach (var value in list)
+        writer.Write((byte)List.Length);
+
+        foreach (var value in List)
         {
             writer.WritePersonName(value.Name);
             writer.Write(value.Person);
@@ -59,4 +45,6 @@ public readonly struct FriendRecruitListResponse(FriendRecruitValue[] list) : IR
             writer.Write(value.tAddTime);
         }
     }
+
+#endregion Interface: IWritableData
 }

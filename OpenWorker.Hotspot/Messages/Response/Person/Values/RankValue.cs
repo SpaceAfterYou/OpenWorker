@@ -1,16 +1,14 @@
-﻿using OpenWorker.Hotspot.Messages.Response.Person.Components;
-
-namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
+﻿namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 public readonly struct RankValue
 {
     public byte Level { get; }
     public int Experience { get; }
 
-    public RankValue(RankComponent component)
+    public RankValue(byte level, int experience)
     {
-        Level = component.Level;
-        Experience = component.Experience;
+        Level = level;
+        Experience = experience;
     }
 
     public RankValue(BinaryReader reader)

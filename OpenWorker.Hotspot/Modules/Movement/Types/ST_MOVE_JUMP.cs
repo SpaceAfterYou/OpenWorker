@@ -1,4 +1,4 @@
-﻿using OpenWorker.Domain.Types;
+using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Messages.Response.Person;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Types;

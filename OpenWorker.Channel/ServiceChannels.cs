@@ -1,7 +1,7 @@
-﻿using Arch.Core;
+using Arch.Core;
 using Microsoft.Extensions.Configuration;
 using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Modules.Channels.Components;
+using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
 using OpenWorker.Hotspot.Modules.Channels.Extensions;
 

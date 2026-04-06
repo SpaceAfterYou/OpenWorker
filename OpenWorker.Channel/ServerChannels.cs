@@ -1,5 +1,4 @@
 ﻿using Arch.Core;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
@@ -35,7 +34,11 @@ public sealed class ServerChannels(
             .Select(e => new ChannelValue(e.Identifier, e.Workload))
             .ToArray();
 
-        session.Send(new ChannelInfoResponse(Location, values));
+        session.Send(new ChannelInfoResponse
+        {
+            Location = Location,
+            Values = values
+        });
     }
 
     public async ValueTask<ChannelSwitchResult> SwitchAsync(Entity entity, short identifier)

@@ -3,6 +3,7 @@ using OpenWorker.Channel;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.World.Requests;
 
 namespace OpenWorker.DistrictServer.Services;
@@ -12,7 +13,7 @@ public sealed class WorldService(World world, WorldManager manager) : IHotspotHa
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeCreateRequest request)
     {
         await manager
-            .TryEnterMaze(context.Player, request.Location)
+            .TryEnterMaze(context.GetPlayerEntity(), request.Location)
             .ConfigureAwait(false);
     }
 }

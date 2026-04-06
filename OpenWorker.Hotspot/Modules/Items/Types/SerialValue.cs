@@ -1,5 +1,3 @@
-﻿using Arch.Core;
-
 namespace OpenWorker.Hotspot.Modules.Items.Types;
 
 public readonly struct SerialValue
@@ -57,11 +55,6 @@ public readonly struct SerialValue
     public SerialValue(long value)
     {
         Value = value;
-    }
-    
-    public SerialValue(Arch.Core.World world, Entity entity)
-    {
-        Value = world.Get<StorageItemSerialComponent>(entity).Serial;
     }
 
     public SerialValue(BinaryReader reader)

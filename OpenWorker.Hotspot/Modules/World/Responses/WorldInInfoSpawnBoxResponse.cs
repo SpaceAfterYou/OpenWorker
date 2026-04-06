@@ -5,21 +5,35 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct WorldInInfoSpawnBoxResponse(int[] spawnBoxList) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct WorldInInfoSpawnBoxResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.InInfoSpawnBox;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public required int[] SpawnBoxList { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.Write((byte)spawnBoxList.Length);
-        
-        foreach (var spawnBox in spawnBoxList)
+        writer.Write((byte)SpawnBoxList.Length);
+
+        foreach (var spawnBox in SpawnBoxList)
         {
             writer.Write(spawnBox);
         }
     }
+
+#endregion Interface: IWritableData
 }

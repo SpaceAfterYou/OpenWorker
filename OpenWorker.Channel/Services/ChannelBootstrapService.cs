@@ -14,34 +14,28 @@ internal sealed class ChannelBootstrapService(
     BackgroundService
 {
     private short Location { get; } = configuration.GetLocation();
-    
+
     private short Gate { get; } = configuration.GetGate();
-    
+
     private Guid Instance { get; } = configuration.GetInstance();
 
 #region BackgroundService
-    
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        foreach (var value in channels.Select(CreateChannelCache))
-        {
-            await cache
-                .InsertAsync(value)
-                .ConfigureAwait(false);
-        }
+        await cache
+            .InsertAsync(channels.Select(CreateChannelCache))
+            .ConfigureAwait(false);
     }
-    
+
 #endregion BackgroundService
-    
-    private ChannelCache CreateChannelCache(ServiceChannel channel)
+
+    private ChannelCache CreateChannelCache(ServiceChannel channel) => new()
     {
-        return new ChannelCache
-        {
-            Owner = Instance,
-            Gate = Gate,
-            Location = Location,
-            Identifier = channel.Identifier,
-            OnlineCount = channel.Online
-        };
-    }
+        Owner = Instance,
+        Gate = Gate,
+        Location = Location,
+        Identifier = channel.Identifier,
+        OnlineCount = channel.Online
+    };
 }

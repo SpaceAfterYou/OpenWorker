@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -8,25 +8,38 @@ using OpenWorker.Hotspot.Modules.Login.Types;
 
 namespace OpenWorker.Hotspot.Modules.Login.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct LoginGateListResponse(byte previous, GateDataInfo[] values) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct LoginGateListResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Login;
     private const LoginOpcode Command = LoginOpcode.ServerList;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public byte Previous { get; init; }
+    public required GateDataInfo[] Values { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        Debug.Assert(values.Length < byte.MaxValue);
+        Debug.Assert(Values.Length < byte.MaxValue);
 
         // TODO: Previous gate? Error state?
         //       Unused in client
-        writer.Write(previous);
-        
-        writer.Write((byte)values.Length);
+        writer.Write(Previous);
 
-        foreach (var value in values)
+        writer.Write((byte)Values.Length);
+
+        foreach (var value in Values)
         {
             writer.Write(value.Gate.Id);
             writer.Write(value.Gate.Port);
@@ -37,4 +50,6 @@ public readonly struct LoginGateListResponse(byte previous, GateDataInfo[] value
             writer.Write(value.Person.Count);
         }
     }
+
+#endregion Interface: IWritableData
 }

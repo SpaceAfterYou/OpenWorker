@@ -1,4 +1,4 @@
-namespace OpenWorker.Lua;
+namespace OpenWorker.Lua.Enums;
 
 public enum MazeClearCondition : byte
 {

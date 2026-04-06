@@ -2,7 +2,6 @@ using OpenWorker.AuthServer.App.Extensions;
 using OpenWorker.AuthServer.Server.Extensions;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Enums;
-using OpenWorker.Hotspot.Extensions;
 
 await Host
     .CreateDefaultBuilder(args)

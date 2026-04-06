@@ -44,10 +44,10 @@ public sealed class TestLoginService
         var factory = provider.GetRequiredService<IDbContextFactory<PersistenceContext>>();
         
         {
-            await using var context = await factory.CreateDbContextAsync().ConfigureAwait(false);
+            await using var context = await factory.CreateDbContextAsync(TestContext.CancellationToken).ConfigureAwait(false);
             
-            await context.Database.EnsureDeletedAsync().ConfigureAwait(false);
-            await context.Database.EnsureCreatedAsync().ConfigureAwait(false);
+            await context.Database.EnsureDeletedAsync(TestContext.CancellationToken).ConfigureAwait(false);
+            await context.Database.EnsureCreatedAsync(TestContext.CancellationToken).ConfigureAwait(false);
             
             PasswordHash.Create("password", out var passwordHash, out var saltHash);
             
@@ -57,9 +57,9 @@ public sealed class TestLoginService
                 Username = "username",
                 SaltHash = saltHash,
                 PasswordHash = passwordHash
-            }).ConfigureAwait(false);
+            }, TestContext.CancellationToken).ConfigureAwait(false);
             
-            await context.SaveChangesAsync().ConfigureAwait(false);
+            await context.SaveChangesAsync(TestContext.CancellationToken).ConfigureAwait(false);
         }
         
         var world = provider.GetRequiredService<World>();
@@ -69,7 +69,7 @@ public sealed class TestLoginService
         server.Start();
         
         var client = provider.GetRequiredService<TestClient>();
-        await client.ConnectAsync((IPEndPoint)server.LocalEndpoint).ConfigureAwait(false);
+        await client.ConnectAsync((IPEndPoint)server.LocalEndpoint, TestContext.CancellationToken).ConfigureAwait(false);
 
         entity.Set(world, new ServerSessionComponent(client));
         
@@ -80,4 +80,6 @@ public sealed class TestLoginService
             new LoginAuthRequest("username", "password", "12-34-56-78-90-12")
         ).ConfigureAwait(false);
     }
+
+    public TestContext TestContext { get; set; }
 }

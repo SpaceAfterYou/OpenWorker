@@ -52,7 +52,7 @@ public sealed class KeepAliveService(World world, ServiceChannels channelCollect
                         return;
                     }
 
-                    session.Send(new SystemKeepAliveResponse(component.LastTickCount));
+                    session.Send(new SystemKeepAliveResponse { Time = component.LastTickCount });
                     
                     world.Set(entity, component with { PenaltyCount = penalty });   
                 });

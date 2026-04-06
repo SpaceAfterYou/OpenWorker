@@ -54,6 +54,14 @@ public static class BinaryReaderExtensions
         var parent = parentIndex < 0 ? string.Empty : classes[parentIndex];
         var members = reader.ReadHavokNumber();
         
+        var exists = Classes.Any(x => 
+        {
+            var a = x.GetCustomAttribute<HavokSerializeClassAttribute>();
+            return a is not null && a.Name == name && a.Version == version;
+        });
+        
+        Debug.Assert(exists);
+        
         Debug.Write($"<class name=\"{name}\" version=\"{version}\"");
         
         if (parent.Length > 0)
@@ -89,7 +97,7 @@ public static class BinaryReaderExtensions
                 }
             }
             
-            Debug.WriteLine($"  <member name=\"{member}\" />"); // type="" array="" class=""
+            Debug.WriteLine($"  <member name=\"{member}\" type=\"{type}\" />"); // type="" array="" class=""
         }
         
         Debug.WriteLine("</class>");

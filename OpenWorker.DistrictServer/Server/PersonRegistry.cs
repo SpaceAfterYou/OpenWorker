@@ -3,16 +3,17 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Messages.Response.Person.Components;
-using OpenWorker.Hotspot.Modules.Items;
-using OpenWorker.Hotspot.Modules.Items.Components;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Items.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
-using OpenWorker.Hotspot.Modules.League.Components;
-using OpenWorker.Hotspot.Modules.Maze.Components;
-using OpenWorker.Hotspot.Modules.Persons.Components;
-using OpenWorker.Hotspot.Modules.Shop.Components;
-using OpenWorker.Hotspot.Modules.Skill.Components;
+using OpenWorker.Gameplay.Modules.Login.Extensions;
+using OpenWorker.Gameplay.Modules.League.Components;
+using OpenWorker.Gameplay.Modules.Maze.Components;
+using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Shop.Components;
+using OpenWorker.Gameplay.Modules.Skill.Components;
 
 namespace OpenWorker.DistrictServer.Server;
 
@@ -51,7 +52,7 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
         Component.GetComponentType(typeof(StorageContentComponent)),
         Component.GetComponentType(typeof(StorageGroupComponent))
     ];
-        
+
     private ComponentType[] ItemArchetype { get; } =
     [
         Component.GetComponentType(typeof(StorageItemComponent)),
@@ -65,7 +66,7 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
             Identifier = persistent.Id,
             Type = ActorType.User
         });
-        
+
         world.Set(entity, new AbilityComponent
         {
             Health = new AbilityComponentEntry
@@ -99,7 +100,7 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
                 Move = 100.0f
             }
         });
-        
+
         world.Set(entity, new AppearanceComponent
         {
             HairStyle = new AppearanceComponentEntry
@@ -123,13 +124,13 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
                 Look = persistent.EquippedSkinColor
             }
         });
-        
+
         world.Set(entity, new FatiguePointsComponent
         {
             Common = 100,
             Bonus = 100
         });
-        
+
         world.Set(entity, new LeagueComponent
         {
             Id = 0,
@@ -140,19 +141,19 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
                 Emblem = 0
             }
         });
-        
+
         world.Set(entity, new PersonInfoComponent
         {
             Name = persistent.Name,
             Hero = persistent.Hero
         });
-        
+
         world.Set(entity, new ShopPrivateComponent
         {
             Name = string.Empty,
             Type = 0
         });
-        
+
         world.Set(entity, new RankComponent
         {
             Level = 0,
@@ -164,31 +165,31 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
             Primary = 0,
             Secondary = 0
         });
-        
+
         world.Set(entity, persistent.ToPersonOptionComponent());
-        
+
         world.Set(entity, new StorageComponent([
             factory.Create(StorageGroup.Common),
             factory.Create(StorageGroup.Costume),
             factory.Create(StorageGroup.Cash),
-            
+
             factory.Create(StorageGroup.CommonStorage),
             factory.Create(StorageGroup.CostumeStorage),
-            
-            CreateGearStorage(persistent.Hero), 
+
+            CreateGearStorage(persistent.Hero),
             CreatesEquipStorage()
         ]));
-        
+
         storageManager.TryAdd(entity, itemFactory.Create(715146322, 1), 1);
         storageManager.TryAdd(entity, itemFactory.Create(820900502, 1), 1);
         storageManager.TryAdd(entity, itemFactory.Create(251020601, 1), 1);
         storageManager.TryAdd(entity, itemFactory.Create(251050901, 1), 1);
         storageManager.TryAdd(entity, itemFactory.Create(253120701, 1), 1);
         storageManager.TryAdd(entity, itemFactory.Create(253040901, 1), 1);
-        
+
         storageManager.TryAdd(entity, itemFactory.Create(837000001, 1), 1);
         storageManager.TryAdd(entity, itemFactory.Create(837000001, 3), 3);
-        
+
         storageManager.TryAdd(entity, itemFactory.Create(710105001, 50), 50);
         storageManager.TryAdd(entity, itemFactory.Create(710105002, 50), 50);
         storageManager.TryAdd(entity, itemFactory.Create(710105003, 50), 50);
@@ -196,13 +197,13 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
         storageManager.TryAdd(entity, itemFactory.Create(710105005, 50), 50);
         storageManager.TryAdd(entity, itemFactory.Create(710105006, 50), 50);
     }
-    
+
     private Entity CreateGearStorage(Hero hero)
     {
-        var storage = factory.Create(StorageGroup.AbilityEquip); 
-        
+        var storage = factory.Create(StorageGroup.AbilityEquip);
+
         var content = world.Get<StorageContentComponent>(storage);
-        
+
         var weaponIdentifier = new[]
         {
             /* 0 */ 0,
@@ -213,15 +214,15 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
             /* 5 */ 115000001,
             /* 6 */ 116000001
         };
-        
+
         content[AbilityEquipSlot.SoulWeapon] = world.Create(
-            new StorageItemComponent(weaponIdentifier[(int)hero]), 
+            new StorageItemComponent(weaponIdentifier[(int)hero]),
             new StorageItemGradeComponent(9)
         );
 
         return storage;
     }
-    
+
     private Entity CreatesEquipStorage()
     {
         return factory.Create(StorageGroup.ShapeEquip);

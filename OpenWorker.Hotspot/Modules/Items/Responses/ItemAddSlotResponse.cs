@@ -1,4 +1,4 @@
-﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -7,18 +7,34 @@ using OpenWorker.Hotspot.Modules.Items.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Items.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct ItemAddSlotResponse(StorageGroup storage, byte extendStep, short slotCount) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct ItemAddSlotResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.AddSlot;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public StorageGroup Storage { get; init; }
+    public byte ExtendStep { get; init; }
+    public short SlotCount { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.Write(storage);
-        writer.Write(extendStep);
-        writer.Write(slotCount);
+        writer.Write(Storage);
+        writer.Write(ExtendStep);
+        writer.Write(SlotCount);
     }
+
+#endregion Interface: IWritableData
 }

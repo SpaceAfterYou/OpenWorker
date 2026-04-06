@@ -1,4 +1,4 @@
-﻿using OpenWorker.Domain.Components;
+using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -8,34 +8,49 @@ using OpenWorker.Hotspot.Messages.Response.Person;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct MovementJumpBtResponse(ActorComponent actor, MapValue nMapID) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct MovementJumpBtResponse : IResponseHotspotMessage
 {
+#region Interface: IHotspotMessage
+
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.JumpBt;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public float fPosX { get; init; }
-    public float fPosY { get; init; }
-    public float fPosZ { get; init; }
-    public float fYaw { get; init; }
-    public float fTargetPosX { get; init; }
-    public float fTargetPosY { get; init; }
-    public byte bJumpingMove { get; init; }
-    public byte bJumpDrop { get; init; }
+#endregion Interface: IHotspotMessage
 
-    public void ToBinary(BinaryWriter writer)
+#region Message: Body
+
+    public ActorComponent Actor { get; init; }
+    public MapValue MapId { get; init; }
+
+    public float PosX { get; init; }
+    public float PosY { get; init; }
+    public float PosZ { get; init; }
+    public float Yaw { get; init; }
+    public float TargetPosX { get; init; }
+    public float TargetPosY { get; init; }
+    public byte JumpingMove { get; init; }
+    public byte JumpDrop { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
     {
-        writer.WriteActor(actor);
-        writer.WriteMapValue(nMapID);
-        writer.Write(fPosX);
-        writer.Write(fPosY);
-        writer.Write(fPosZ);
-        writer.Write(fYaw);
-        writer.Write(fTargetPosX);
-        writer.Write(fTargetPosY);
-        writer.Write(bJumpingMove);
-        writer.Write(bJumpDrop);
+        writer.WriteActor(Actor);
+        writer.WriteMapValue(MapId);
+        writer.Write(PosX);
+        writer.Write(PosY);
+        writer.Write(PosZ);
+        writer.Write(Yaw);
+        writer.Write(TargetPosX);
+        writer.Write(TargetPosY);
+        writer.Write(JumpingMove);
+        writer.Write(JumpDrop);
     }
+
+#endregion Interface: IWritableData
 }

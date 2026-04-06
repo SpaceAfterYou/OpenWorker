@@ -1,4 +1,4 @@
-﻿using Arch.Core;
+using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.DistrictServer.Types;
@@ -8,10 +8,11 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Hotspot.Messages.Response.Person;
-using OpenWorker.Hotspot.Messages.Response.Person.Components;
+using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Hotspot.Modules.Channels;
-using OpenWorker.Hotspot.Modules.Channels.Components;
+using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Enums;
 using OpenWorker.Hotspot.Modules.League.Requests;
@@ -26,31 +27,32 @@ public sealed class LeagueService(World world, ServiceChannels channels) :
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, LeagueOverlapNameRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
-        session.Send(new LeagueOverlapNameResponse(false));
+        session.Send(new LeagueOverlapNameResponse { CanBeUsed = false });
         return ValueTask.CompletedTask;
     }
     
     public ValueTask OnHandleAsync(ServiceHandleContext context, LeagueCreateRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
-        var actor = world.Get<ActorComponent>(context.Player);
-        var person = context.Player.Get<PersonInfoComponent>();
-        var location = context.Player.Get<WorldComponent>();
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var actor = world.Get<ActorComponent>(context.GetPlayerEntity());
+        var person = context.GetPlayerEntity().Get<PersonInfoComponent>();
+        var location = context.GetPlayerEntity().Get<WorldComponent>();
         
-        var channel = channels.Get(context.Player);
+        var channel = channels.Get(context.GetPlayerEntity());
         
-        session.Send(new LeagueCreateResponse(
-            new LeagueInfo
+        session.Send(new LeagueCreateResponse
+        {
+            LeagueInfo = new LeagueInfo
             {
                 Identifier = 1,
                 Name = request.Name,
                 Master = actor.Identifier,
                 MasterName = person.Name,
                 MemberCount = 1
-            }, 
-            new LeagueMember
+            },
+            Member = new LeagueMember
             {
                 Hero = person.Hero,
                 Name = person.Name,
@@ -64,14 +66,15 @@ public sealed class LeagueService(World world, ServiceChannels channels) :
                     League = 1,
                     Position = LeaguePosition.LeagueMaster
                 }
-            }));
+            }
+        });
         
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, LeagueListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         session.Send(new LeagueListResponse
         {
@@ -104,7 +107,7 @@ public sealed class LeagueService(World world, ServiceChannels channels) :
     
     public ValueTask OnHandleAsync(ServiceHandleContext context, LeagueSearchRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         session.Send(new LeagueSearchResponse
         {

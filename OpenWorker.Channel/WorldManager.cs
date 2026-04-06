@@ -1,8 +1,5 @@
-using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Numerics;
 using Arch.Core;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
@@ -11,13 +8,12 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Enums;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
-using OpenWorker.Hotspot.Modules.Login.Components;
-using OpenWorker.Hotspot.Modules.Persons.DataTypes;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
-using OpenWorker.Hotspot.Modules.World.Requests;
+using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
-using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM;
 using Redis.OM.Searching;
 
@@ -25,10 +21,10 @@ namespace OpenWorker.Channel;
 
 public sealed class WorldManager(
     IConfiguration configuration,
-    BatchManager provider, 
+    BatchManager provider,
     IRedisCollection<DistrictReserveCache> districtReserveCache,
-    World ecs, 
-    IRedisCollection<ChannelCache> channels, 
+    World ecs,
+    IRedisCollection<ChannelCache> channels,
     IRedisCollection<DistrictCache> districts,
     IRedisCollection<MazeReserveCache> mazeReserves)
 {
@@ -46,7 +42,7 @@ public sealed class WorldManager(
             case BatchType.Maze:
                 await EnterMaze(player, location, batch).ConfigureAwait(false);
                 return true;
-            
+
             case BatchType.District:
                 await TryEnterDistrict(player, location, batch).ConfigureAwait(false);
                 return true;
@@ -63,24 +59,24 @@ public sealed class WorldManager(
         {
             return false;
         }
-        
+
         await EnterMaze(player, location, batch).ConfigureAwait(false);
         return true;
     }
-    
+
     private async ValueTask EnterMaze(Entity player, short location, VBatchFile batch)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
         var jump = location * 100 + 1;
         var start = batch.EventBox.StartEvents.First(x => x.Id == jump);
-        
+
         var map = new MapValue
         {
             Location = location,
             Server = Gate
         };
-        
+
         var world = new WorldValue
         {
             Location = location,
@@ -88,7 +84,7 @@ public sealed class WorldManager(
             Rotation = start.Rotation,
             Map = map
         };
-        
+
         var enter = new EnterMapResultValue
         {
             Zone = new ZoneValue
@@ -121,16 +117,16 @@ public sealed class WorldManager(
             .InsertAsync(cache)
             .ConfigureAwait(false);
 
-        session.Send(new WorldEnterResponse(enter));
+        session.Send(new WorldEnterResponse { Map = enter });
     }
-    
+
     private async ValueTask TryEnterDistrict(Entity player, short location, VBatchFile batch)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
         var jump = location * 100 + 1;
         var start = batch.EventBox.StartEvents.First(x => x.Id == jump);
-        
+
         var (district, channel) = await GetDistrictAsync(location).ConfigureAwait(false);
 
         var map = new MapValue
@@ -139,7 +135,7 @@ public sealed class WorldManager(
             Location = location,
             Server = Gate
         };
-        
+
         var world = new WorldValue
         {
             Location = location,
@@ -147,7 +143,7 @@ public sealed class WorldManager(
             Rotation = start.Rotation,
             Map = map
         };
-        
+
         var enter = new EnterMapResultValue
         {
             Zone = new ZoneValue
@@ -180,20 +176,20 @@ public sealed class WorldManager(
             .InsertAsync(cache)
             .ConfigureAwait(false);
 
-        session.Send(new WorldEnterResponse(enter));
+        session.Send(new WorldEnterResponse { Map = enter });
     }
-    
+
     public async Task SelectPerson(Entity entity, int person)
     {
         var session = ecs.Get<ServerSessionComponent>(entity);
         var account = ecs.Get<ClaimsComponent>(entity);
-        
+
         var personList = ecs.Get<GatePersonComponent>(entity);
-        
+
         var personComponent = personList.SlotList.First(x => Entity.Null != x && ecs.Get<ActorComponent>(x).Identifier == person);
-        
+
         var worldComponent = ecs.Get<WorldComponent>(personComponent);
-        
+
         var (district, channel) = await GetDistrictAsync(worldComponent.Location).ConfigureAwait(false);
 
         var reserve = new DistrictReserveCache
@@ -208,26 +204,30 @@ public sealed class WorldManager(
             R = worldComponent.Rotation,
             Jump = worldComponent.Jump
         };
-        
+
         await districtReserveCache
             .InsertAsync(reserve, WhenKey.NotExists)
             .ConfigureAwait(false);
-        
-        session.Send(new CharacterSelectResponse(
-            new EnterMapResultValue
+
+        session.Send(new CharacterSelectResponse
+        {
+            Zone = new EnterMapResultValue
             {
                 Zone = new ZoneValue
                 {
                     Actor = person,
                     Account = account.Account,
-                    World = new WorldValue(worldComponent)
+                    World = new WorldValue
                     {
+                        Location = worldComponent.Location,
                         Map = new MapValue
                         {
                             Location = worldComponent.Location,
                             Channel = channel.Identifier,
                             Server = Gate
-                        }
+                        },
+                        Position = worldComponent.Position,
+                        Rotation = worldComponent.Rotation
                     },
                     Jump = worldComponent.Jump,
                     Address = district.Host,
@@ -242,7 +242,8 @@ public sealed class WorldManager(
                 },
                 ChangeServer = true,
                 ChangeType = ChangeServerType.EnterDistrict
-            }));
+            }
+        });
     }
 
     public async Task<Tuple<DistrictCache, ChannelCache>> GetDistrictAsync(int location)
@@ -285,7 +286,7 @@ public sealed class WorldManager(
             .OrderBy(c => c.OnlineCount)
             .ThenBy(c => c.Workload)
             .First();
-        
+
         return Tuple.Create(availableDistricts.First(d => d.Guid == bestDistrict.DistrictGuid), bestChannel);
     }
 }

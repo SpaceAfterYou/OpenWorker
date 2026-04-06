@@ -1,64 +1,53 @@
-﻿using Arch.Core;
-using Arch.Core.Extensions;
-using OpenWorker.Domain.Components;
-using OpenWorker.Domain.Types;
+﻿using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Messages.Response.Person.Components;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
-using OpenWorker.Hotspot.Modules.Items.Components;
-using OpenWorker.Hotspot.Modules.Items.Enums;
-using OpenWorker.Hotspot.Modules.League.Components;
-using OpenWorker.Hotspot.Modules.Login.Components;
-using OpenWorker.Hotspot.Modules.Maze.Components;
-using OpenWorker.Hotspot.Modules.Persons.Components;
-using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
-using OpenWorker.Hotspot.Modules.Shop.Components;
-using OpenWorker.Hotspot.Modules.Skill.Components;
+using OpenWorker.Hotspot.Modules.Persons.Enums;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 public readonly struct PersonValue
 {
-    public PersonValue(Entity entity, Entity person)
+    public PersonValue(
+        ActorValue actor,
+        PersonInfoValue infoValue,
+        int account,
+        byte level,
+        FactionGroup faction,
+        StuffLevel stuffLevel,
+        int pvpKillCount,
+        EquipItemValueEntry primaryWeapon,
+        EquipItemValueEntry secondaryWeapon,
+        EquipItemValueEntry[] equipItems,
+        TitleValue title,
+        LeagueValue league,
+        AbilityValue ability,
+        PrivateShopValue privateShop,
+        FatiguePointsValue fatiguePoints,
+        RankValue rank,
+        bool battlePose,
+        int status,
+        StatusEffectValueEntry[] statusEffects)
     {
-        var storage = person.Get<StorageComponent>();
-
-        Actor = person.Get<ActorComponent>();
-
-        InfoValue = new PersonInfoValue(
-            person.Get<PersonInfoComponent>(),
-            person.Get<AppearanceComponent>()
-        );
-
-        Level = 25;
-        Faction = FactionGroup.None;
-        Account = entity.Get<ClaimsComponent>().Account;
-        StuffLevel = StuffLevel.GameMaster;
-        PvPKillCount = 0;
-
-        var gear = storage.Collection
-            .First(x => x.Get<StorageGroupComponent>().Group == StorageGroup.AbilityEquip)
-            .Get<StorageContentComponent>();
-        
-        PrimaryWeapon = new EquipItemValueEntry(gear[0]);
-        SecondaryWeapon = new EquipItemValueEntry(gear[1]);
-
-        EquipItems = storage.Collection
-            .First(x => x.Get<StorageGroupComponent>().Group == StorageGroup.ShapeEquip)
-            .Get<StorageContentComponent>().SlotList
-            .Select(x => new EquipItemValueEntry(x))
-            .ToArray();
-
-        Title = new TitleValue(person.Get<TitleComponent>());
-        League = new LeagueValue(person.Get<LeagueComponent>());
-        Ability = new AbilityValue(person.Get<AbilityComponent>());
-        PrivateShop = new PrivateShopValue(person.Get<ShopPrivateComponent>());
-        FatiguePoints = new FatiguePointsValue(person.Get<FatiguePointsComponent>());
-        Rank = new RankValue(person.Get<RankComponent>());
-        BattlePose = false;
-        Status = 0;
-        StatusEffects = [];
+        Actor = actor;
+        InfoValue = infoValue;
+        Account = account;
+        Level = level;
+        Faction = faction;
+        StuffLevel = stuffLevel;
+        PvPKillCount = pvpKillCount;
+        PrimaryWeapon = primaryWeapon;
+        SecondaryWeapon = secondaryWeapon;
+        EquipItems = equipItems;
+        Title = title;
+        League = league;
+        Ability = ability;
+        PrivateShop = privateShop;
+        FatiguePoints = fatiguePoints;
+        Rank = rank;
+        BattlePose = battlePose;
+        Status = status;
+        StatusEffects = statusEffects;
     }
 
     public PersonValue(BinaryReader reader)
@@ -93,7 +82,7 @@ public readonly struct PersonValue
     public ActorValue Actor { get; }
     public PersonInfoValue InfoValue { get; }
     public int Account { get; }
-    public byte Level { get; } = 1;
+    public byte Level { get; }
     public FactionGroup Faction { get; }
     public StuffLevel StuffLevel { get; }
     public int PvPKillCount { get; }

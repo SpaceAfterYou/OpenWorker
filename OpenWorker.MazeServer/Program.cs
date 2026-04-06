@@ -1,14 +1,14 @@
 using OpenWorker.Batch;
-using OpenWorker.Batch.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Commands.Extensions;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Modules.Items;
+using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.Res.Extensions;
 
@@ -23,17 +23,17 @@ await Host
         services.AddChannelCache();
         services.AddDistrictCache();
         services.AddDistrictReserveCache();
-        
+
         services.AddRes();
         services.AddBatch();
-        
+
         services.AddSingleton<MazeResourceProvider>();
         services.AddSingleton<DistrictResourceProvider>();
         services.AddSingleton<BatchManager>();
         services.AddSingleton<BuffManager>();
-        
-        services.AddStuffCommands();
-        
+
+        services.AddCommandManager();
+
         services.AddSingleton<WorldManager>();
         services.AddSingleton<PersonRegistry>();
 
@@ -41,7 +41,7 @@ await Host
         services.AddSingleton<StorageFactory>();
         services.AddSingleton<StorageManager>();
         services.AddPersistence();
-        
+
         services.AddChannels();
 
         // services.AddSingleton<ItemSystem>();

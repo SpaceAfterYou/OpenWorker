@@ -15,16 +15,12 @@ public static class PasswordHash
     public static void Create(string password, out byte[] hash, out byte[] salt)
     {
         salt = RandomNumberGenerator.GetBytes(PasswordSaltSize);
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, Algorithm);
-
-        hash = pbkdf2.GetBytes(PasswordHashSize);
+        hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, Algorithm, PasswordHashSize);;
     }
 
     public static bool Verify(string password, ReadOnlySpan<byte> hash, byte[] salt)
     {
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, Algorithm);
-
-        var bytes = pbkdf2.GetBytes(PasswordHashSize);
+        var bytes = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, Algorithm, PasswordHashSize);;
 
         return CryptographicOperations.FixedTimeEquals(bytes, hash);
     }

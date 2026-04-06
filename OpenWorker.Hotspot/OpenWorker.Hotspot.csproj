@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>preview</LangVersion>
@@ -16,15 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Arch" Version="2.1.0" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Messages\Response\Login\" />
-        <Folder Include="Modules\Items\Components\Storage\Item\" />
-        <Folder Include="Modules\Maze\DataTypes\" />
-        <Folder Include="Modules\Skill\Extensions\" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
     </ItemGroup>
 
 </Project>

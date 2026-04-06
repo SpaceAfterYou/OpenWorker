@@ -1,4 +1,4 @@
-﻿using OpenWorker.Hotspot.Modules.Boosters.Enums;
+using OpenWorker.Hotspot.Modules.Boosters.Enums;
 
 namespace OpenWorker.Hotspot.Modules.Boosters.Extensions;
 

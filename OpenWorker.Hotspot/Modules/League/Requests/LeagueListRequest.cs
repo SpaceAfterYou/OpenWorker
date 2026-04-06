@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.League.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
-[HotspotMessage(Group, Command)]
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct LeagueListRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;

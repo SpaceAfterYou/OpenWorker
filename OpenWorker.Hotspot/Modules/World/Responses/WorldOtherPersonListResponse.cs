@@ -1,30 +1,30 @@
-using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Dtos;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Messages.Response.Person;
-using OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
-[HotspotMessage(Group, Command)]
-public readonly struct WorldOtherPersonListResponse(IReadOnlyCollection<Entity> list) : IResponseHotspotMessage
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct WorldOtherPersonListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.OtherInfosPc;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void ToBinary(BinaryWriter writer)
-    {
-        writer.Write((short)list.Count);
+    public required IReadOnlyList<PersonWorldPair> People { get; init; }
 
-        foreach (var player in list)
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((short)People.Count);
+
+        foreach (var pair in People)
         {
-            writer.Write(new PersonValue(player, player));
-            writer.Write(new WorldValue(player));
+            writer.Write(pair.Person);
+            writer.Write(pair.World);
         }
     }
 }

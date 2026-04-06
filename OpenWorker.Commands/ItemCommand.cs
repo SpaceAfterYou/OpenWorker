@@ -1,46 +1,62 @@
 ﻿using System.Collections.ObjectModel;
 using Arch.Core;
-using OpenWorker.Hotspot.Commands.Attributes;
-using OpenWorker.Hotspot.Modules.Items;
+using OpenWorker.Commands.Abstractions;
+using OpenWorker.Commands.Attributes;
+using OpenWorker.Hotspot;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.UpdateContent.Res.Rows;
 
-namespace OpenWorker.Hotspot.Commands;
+namespace OpenWorker.Commands;
 
-[StuffCommand("item")]
-public sealed class ItemCommand(World world, StorageItemFactory storageItemFactory, StorageManager storageManager, ReadOnlyCollection<ItemRow> itemCollection) : AStuffCommand(world)
+[CommandTrigger("item")]
+[CommandDescription("Add item to player inventory")]
+internal sealed partial class ItemCommand : ICommand
 {
-    protected override string GetTutorialMessage() => "item (prototype)";
+    [ExternalDependency]
+    private World World { get; }
 
-    public override ValueTask<bool> TryExecute(Entity player, IReadOnlyList<string> tokens)
+    [ExternalDependency]
+    private StorageItemFactory StorageItemFactory { get; }
+
+    [ExternalDependency]
+    private StorageManager StorageManager { get; }
+
+    [ExternalDependency]
+    private ReadOnlyCollection<ItemRow> ItemCollection { get; }
+
+    ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
-        var session = World.Get<ServerSessionComponent>(player);
-
-        if (int.TryParse(tokens.ElementAtOrDefault(0), out var prototype) is false)
+        if (!int.TryParse(tokens.ElementAtOrDefault(0), out var prototype))
         {
-            SendTutorial(player, nameof(prototype));
+            // TODO: Failed parser message
             return ValueTask.FromResult(false);
         }
 
-        if (itemCollection.Any(e => e.Id == prototype) is false)
+        if (ItemCollection.All(e => e.Id != prototype))
         {
-            SendTutorial(player, nameof(prototype), "Item not found");
+            // TODO: Not found message
             return ValueTask.FromResult(false);
         }
 
-        var item = storageItemFactory.Create(prototype, 1);
-
-        var result = storageManager.TryAdd(player, item, 1);
-
-        if (result.State is false)
-        {
-            SendTutorial(player, nameof(prototype), "No space");
-            return ValueTask.FromResult(false);
-        }
-
-        session.Send(ItemCreateResponse.Create(World, result.Storage, result.Info.Select(e => e.Slot).ToArray()));
+        PrivateExecute(player, prototype);
 
         return ValueTask.FromResult(true);
+    }
 
+    private void PrivateExecute(Entity player, int prototype)
+    {
+        var session = World.Get<ServerSessionComponent>(player);
+        var item = StorageItemFactory.Create(prototype, 1);
+        var result = StorageManager.TryAdd(player, item, 1);
+
+        if (!result.State)
+        {
+            // TODO: No space message
+            return;
+        }
+
+        session.Send(ItemDtoFactory.CreateItemCreateResponse(World, result.Storage,
+            result.Info.Select(e => e.Slot).ToArray()));
     }
 }

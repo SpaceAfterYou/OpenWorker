@@ -2,6 +2,7 @@ using Arch.Core;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.Maze.Requests;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 
@@ -11,9 +12,9 @@ public sealed class MazeService(World world) : IHotspotHandler<MazeLuaFunctionRe
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeLuaFunctionRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
-        session.Send(new MazeLuaFunctionResponse(request.Box));
+        session.Send(new MazeLuaFunctionResponse { Box = request.Box });
 
         return ValueTask.CompletedTask;
     }

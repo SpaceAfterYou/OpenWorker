@@ -4,6 +4,11 @@ namespace OpenWorker.Extensions;
 
 public static class ConfigurationExtensions
 {
+    public static string GetGame(this IConfiguration configuration)
+    {
+        return configuration.GetValue<string>("Game:Version", "0.0.0.0");
+    }
+    
     public static Guid GetInstance(this IConfiguration configuration)
     {
         var value = configuration.GetValue<string>(ConfigurationUtils.InstanceIdentifierKey);

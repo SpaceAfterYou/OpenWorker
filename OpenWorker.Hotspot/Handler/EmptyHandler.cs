@@ -1,12 +1,11 @@
-﻿using Arch.Core;
-using OpenWorker.Hotspot.Handler.Abstractions;
+﻿using OpenWorker.Hotspot.Handler.Abstractions;
 
 namespace OpenWorker.Hotspot.Handler;
 
 internal sealed class EmptyHandler : IHotspotHandler
 {
     public static ValueTask OnUnhandledAsync(object instance,
-        Entity entity,
+        object player,
         BinaryReader reader,
         CancellationToken cancellationToken)
     {

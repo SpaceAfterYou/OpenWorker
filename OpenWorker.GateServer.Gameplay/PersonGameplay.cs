@@ -1,19 +1,20 @@
-﻿using System.Numerics;
+using System.Numerics;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Channel;
 using OpenWorker.Domain.Components;
+using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
-using OpenWorker.Hotspot.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Types;
-using OpenWorker.Hotspot.Modules.Persons.DataTypes;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Persistence;
 using Redis.OM.Searching;
@@ -32,7 +33,7 @@ public sealed class PersonGameplay(
 
     public async Task CreateAsync(ServiceHandleContext context, PersonCreateRequest message)
     {
-        var slotIndex = registry.FindFreeSlotIndex(context.Player);
+        var slotIndex = registry.FindFreeSlotIndex(context.GetPlayerEntity());
             
         if (slotIndex == -1)
         {
@@ -44,7 +45,7 @@ public sealed class PersonGameplay(
             .CreateDbContextAsync(context.CancellationToken)
             .ConfigureAwait(false);
 
-        var claims = world.Get<ClaimsComponent>(context.Player);
+        var claims = world.Get<ClaimsComponent>(context.GetPlayerEntity());
 
         var account = await database.Accounts
             .FirstAsync(x => x.Id == claims.Account, context.CancellationToken)
@@ -95,17 +96,17 @@ public sealed class PersonGameplay(
             .SaveChangesAsync(context.CancellationToken)
             .ConfigureAwait(false);
         
-        registry.CreatePerson(context.Player, slotIndex, person);
+        registry.CreatePerson(context.GetPlayerEntity(), slotIndex, person);
         
-        var session = world.Get<ServerSessionComponent>(context.Player);
-        session.Send(new CharacterListResponse(context.Player));
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.GetPlayerEntity()));
     }
 
     public Task ListAsync(ServiceHandleContext context, PersonListRequest message)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
-        session.Send(new CharacterListResponse(context.Player));
+        session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.GetPlayerEntity()));
         
         return Task.CompletedTask;
     }
@@ -113,7 +114,7 @@ public sealed class PersonGameplay(
     public async Task SelectAsync(ServiceHandleContext context, PersonSelectRequest message)
     {
         await worldManager
-            .SelectPerson(context.Player, message.Actor.Identifier)
+            .SelectPerson(context.GetPlayerEntity(), message.Actor.Identifier)
             .ConfigureAwait(false);
 
         // session.Send(new LoginOptionLoadResponse(world, person));

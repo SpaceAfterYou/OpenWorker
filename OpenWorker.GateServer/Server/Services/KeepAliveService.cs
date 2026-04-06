@@ -1,14 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
-using OpenWorker.Hotspot.Modules.Channels;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
-using OpenWorker.Hotspot.Modules.Items;
-using OpenWorker.Hotspot.Modules.Items.Enums;
 using Redis.OM;
 using Redis.OM.Searching;
 

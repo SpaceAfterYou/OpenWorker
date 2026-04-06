@@ -1,4 +1,4 @@
-﻿using Arch.Core;
+using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 // using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -8,7 +8,8 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Hotspot.Modules.Login.Components;
+using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Requests;
 using OpenWorker.Hotspot.Modules.Login.Responses;
 using OpenWorker.Hotspot.Modules.Login.Types;
@@ -23,13 +24,12 @@ public sealed class GateGameplay(
     IRedisCollection<GateCache> gates,
     IDbContextFactory<PersistenceContext> factory,
     List<GateInfo> gateList,
-    IConfiguration configuration,
     World world)
 {
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginGateConnectRequest message)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
-        var claims = world.Get<ClaimsComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var claims = world.Get<ClaimsComponent>(context.GetPlayerEntity());
         
         var cache = await gates
             .FirstOrDefaultAsync(e => e.Identifier == message.Gate)
@@ -37,13 +37,21 @@ public sealed class GateGameplay(
 
         if (cache is null)
         {
-            session.Send(new PersonKickOutResponse(PersonKickOutReason.UserWrongWorld, claims.Account));
+            session.Send(new PersonKickOutResponse
+            {
+                OutReason = PersonKickOutReason.UserWrongWorld,
+                Account = claims.Account
+            });
             return;
         }
 
-        if (cache.Workload == GateWorkload.Busy)
+        if (cache.Workload is GateWorkload.Busy)
         {
-            session.Send(new PersonKickOutResponse(PersonKickOutReason.ServerUserFull, claims.Account));
+            session.Send(new PersonKickOutResponse
+            {
+                OutReason = PersonKickOutReason.ServerUserFull,
+                Account = claims.Account
+            });
             return;
         }
 
@@ -57,21 +65,29 @@ public sealed class GateGameplay(
 
         if (persistent is null)
         {
-            session.Send(new PersonKickOutResponse(PersonKickOutReason.SystemError, claims.Account));
+            session.Send(new PersonKickOutResponse
+            {
+                OutReason = PersonKickOutReason.SystemError,
+                Account = claims.Account
+            });
             return;
         }
 
-        session.Send(new LoginGateConnectResponse(cache.Host, cache.Port));
+        session.Send(new LoginGateConnectResponse { Address = cache.Host, Port = cache.Port });
     }
 
     public async ValueTask GetListAsync(ServiceHandleContext context, LoginGateListRequest message)
     {
-        var component = world.Get<ClaimsComponent>(context.Player);
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var component = world.Get<ClaimsComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
         if (component.Account != message.Account)
         {
-            session.Send(new PersonKickOutResponse(PersonKickOutReason.NotExistUser, component.Account));
+            session.Send(new PersonKickOutResponse
+            {
+                OutReason = PersonKickOutReason.NotExistUser,
+                Account = component.Account
+            });
             return;
         }
         
@@ -112,7 +128,7 @@ public sealed class GateGameplay(
                 };
             });
 
-        session.Send(new LoginGateListResponse(0, values.ToArray()));
+        session.Send(new LoginGateListResponse { Previous = 0, Values = values.ToArray() });
     }
 }
 

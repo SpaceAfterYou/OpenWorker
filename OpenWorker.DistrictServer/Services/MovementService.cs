@@ -2,6 +2,7 @@
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.Channels;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
 
@@ -52,7 +53,7 @@ public sealed class MovementService(ServiceChannels channels) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementJumpRequest request)
     {
-        var channel = channels.Get(context.Player);
+        var channel = channels.Get(context.GetPlayerEntity());
 
         channel.ForEach(e =>
         {
@@ -79,7 +80,7 @@ public sealed class MovementService(ServiceChannels channels) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementMoveRequest request)
     {
-        var channel = channels.Get(context.Player);
+        var channel = channels.Get(context.GetPlayerEntity());
 
         channel.ForEach(e =>
         {
@@ -101,7 +102,7 @@ public sealed class MovementService(ServiceChannels channels) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementStopRequest request)
     {
-        var channel = channels.Get(context.Player);
+        var channel = channels.Get(context.GetPlayerEntity());
 
         channel.ForEach(e =>
         {

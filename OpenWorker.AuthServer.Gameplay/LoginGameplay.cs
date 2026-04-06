@@ -1,11 +1,12 @@
-﻿using Arch.Core;
+using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Hotspot.Modules.Login.Components;
+using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Enums;
 using OpenWorker.Hotspot.Modules.Login.Requests;
 using OpenWorker.Hotspot.Modules.Login.Responses;
@@ -22,7 +23,7 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
             .CreateDbContextAsync(context.CancellationToken)
             .ConfigureAwait(false);
 
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
 
         var account = await database.Accounts
             .FirstOrDefaultAsync(e => e.Username == message.Username, context.CancellationToken)
@@ -46,14 +47,14 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
         var account = await database.Accounts
             .FirstOrDefaultAsync(context.CancellationToken)
             .ConfigureAwait(false);
-        
+
         if (account is null)
         {
-            var session = world.Get<ServerSessionComponent>(context.Player);
-            
+            var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+
             session.Send(new LoginResponse(LoginErrorMessageCode.BanAccount));
             session.Disconnect();
-            
+
             return;
         }
 
@@ -62,9 +63,8 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
 
     private async ValueTask InternalLoginAsync(ServiceHandleContext context, int account, string username, string mac)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
 
-        // TODO: Uncomment when production        
         // if (await sessions.AnyAsync(e => e.Account == account).ConfigureAwait(false))
         // {
         //     session.Send(new LoginResponse(LoginErrorMessageCode.InGameAlready));
@@ -73,7 +73,7 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
 
         var claims = new SessionValue(account);
 
-        world.Set(context.Player, new ClaimsComponent(claims));
+        world.Set(context.GetPlayerEntity(), new ClaimsComponent(claims));
 
         var cache = new SessionCache
         {

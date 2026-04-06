@@ -1,24 +1,26 @@
 ﻿using Arch.Core;
 using OpenWorker.Channel;
-using OpenWorker.Hotspot.Commands;
-using OpenWorker.Hotspot.Commands.Attributes;
+using OpenWorker.Commands.Abstractions;
+using OpenWorker.Commands.Attributes;
 
 namespace OpenWorker.Commands;
 
-[StuffCommand("warp")]
-public sealed class WarpCommand(World world, WorldManager worldManager) : AStuffCommand(world)
+[CommandTrigger("warp")]
+[CommandDescription("Warp player to location")]
+internal sealed partial class WarpCommand : ICommand
 {
-    protected override string GetTutorialMessage() => "warp (location id)";
-
-    public override async ValueTask<bool> TryExecute(Entity player, IReadOnlyList<string> tokens)
+    [ExternalDependency]
+    private WorldManager WorldManager { get; }
+    
+    async ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
         if (!short.TryParse(tokens.ElementAtOrDefault(0), out var id))
         {
-            SendTutorial(player, nameof(id));
+            // TODO: Failed parser message
             return false;
         }
 
-        await worldManager
+        await WorldManager
             .TryEnter(player, id)
             .ConfigureAwait(false);
         

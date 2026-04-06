@@ -25,3 +25,5 @@ internal sealed class GateService(GateGameplay gameplay) :
             .ConfigureAwait(false);
     }
 }
+
+// https://youtu.be/g7440iqhlBs?list=RDTgkA0lgI2Mk

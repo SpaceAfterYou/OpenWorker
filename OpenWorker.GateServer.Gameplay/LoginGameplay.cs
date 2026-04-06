@@ -1,4 +1,4 @@
-﻿using Arch.Core;
+using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -8,8 +8,9 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Messages.Response.World;
-using OpenWorker.Hotspot.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Requests;
 using OpenWorker.Hotspot.Modules.Login.Responses;
 using OpenWorker.Persistence;
@@ -45,7 +46,7 @@ public sealed class LoginGameplay(
 
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginEnterServerRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
 
         if (request.Gate != Gate)
         {
@@ -80,13 +81,17 @@ public sealed class LoginGameplay(
             return;
         }
 
-        world.Set(context.Player, new ClaimsComponent(request.Session));
+        world.Set(context.GetPlayerEntity(), new ClaimsComponent(request.Session));
 
         var list = registry.CreatePersonListComponent(account.Persons);
         
-        world.Add(context.Player, list);
+        world.Add(context.GetPlayerEntity(), list);
 
-        session.Send(new LoginEnterGateResponse(context.Player));
+        session.Send(new LoginEnterGateResponse
+        {
+            HasError = false,
+            Account = world.Get<ClaimsComponent>(context.GetPlayerEntity()).Account
+        });
         session.Send(new WorldCurrentDateClientMessage());
     }
 }

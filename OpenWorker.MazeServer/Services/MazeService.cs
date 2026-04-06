@@ -9,12 +9,14 @@ using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
-using OpenWorker.Hotspot.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Maze.Requests;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
-using OpenWorker.Hotspot.Modules.Persons.DataTypes;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua;
 using Redis.OM.Searching;
@@ -37,10 +39,10 @@ public sealed class MazeService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)
     {
-        var claims = ecs.Get<ClaimsComponent>(context.Player);
-        var world = ecs.Get<WorldComponent>(context.Player);
+        var claims = ecs.Get<ClaimsComponent>(context.GetPlayerEntity());
+        var world = ecs.Get<WorldComponent>(context.GetPlayerEntity());
 
-        if (!batches.TryGetAndCache(world, out var mazeBatch))
+        if (!batches.TryGetAndCache(world.Location, out var mazeBatch))
         {
             return;
         }
@@ -97,7 +99,7 @@ public sealed class MazeService(
         var cache = new DistrictReserveCache
         {
             Account = claims,
-            Person = ecs.Get<ActorComponent>(context.Player),
+            Person = ecs.Get<ActorComponent>(context.GetPlayerEntity()),
             District = districtCache.Guid,
             Channel = channelCache.Guid,
             Jump = exit.Id,
@@ -111,14 +113,14 @@ public sealed class MazeService(
             .InsertAsync(cache)
             .ConfigureAwait(false);
 
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
+        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
         
-        session.Send(new WorldEnterResponse(enter));
+        session.Send(new WorldEnterResponse { Map = enter });
     }
     
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeEventSpawnBoxRequest request)
     {
-        var maze = ecs.Get<LuaMaze>(context.Player);
+        var maze = ecs.Get<LuaMaze>(context.GetPlayerEntity());
     
         var boxes = maze.Batch.EventBox.CheckMonsterSpawns
             .First(x => x.Id == request.Box);
@@ -133,7 +135,7 @@ public sealed class MazeService(
     
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeOperationEndRequest request)
     {
-        var maze = ecs.Get<LuaMaze>(context.Player);
+        var maze = ecs.Get<LuaMaze>(context.GetPlayerEntity());
         
         await maze.State
             .CheckConditionAsync(0, request.Operation, maze)
@@ -142,22 +144,22 @@ public sealed class MazeService(
     
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeLuaFunctionRequest request)
     {
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
-        var world = ecs.Get<WorldComponent>(context.Player);
+        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var world = ecs.Get<WorldComponent>(context.GetPlayerEntity());
 
-        if (!batches.TryGetAndCache(world, out var batch, BatchType.Maze))
+        if (!batches.TryGetAndCache(world.Location, out var batch, BatchType.Maze))
         {
             return;
         }
         
         var function = batch.EventBox.LuaFunctions.First(x => x.Id == request.Box);
         
-        var state = ecs.Get<LuaMaze>(context.Player);
+        var state = ecs.Get<LuaMaze>(context.GetPlayerEntity());
 
         await state.State
             .OnExecuteLuaFunction(function.Function, request.Box, state)
             .ConfigureAwait(false);
         
-        session.Send(new MazeLuaFunctionResponse(request.Box));
+        session.Send(new MazeLuaFunctionResponse { Box = request.Box });
     }
 }

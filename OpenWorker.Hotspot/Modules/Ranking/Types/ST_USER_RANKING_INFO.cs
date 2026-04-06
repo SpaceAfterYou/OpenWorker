@@ -2,7 +2,7 @@ using OpenWorker.Domain.Enums;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Types;
 
-struct ST_USER_RANKING_INFO
+public readonly struct ST_USER_RANKING_INFO
 {
     public required int Person { get; init; }
     public required short Order { get; init; }

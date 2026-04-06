@@ -27,7 +27,7 @@ internal sealed class ChannelLifecycleService(
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default
         );
-        
+
         return Task.CompletedTask;
     }
 
@@ -35,43 +35,30 @@ internal sealed class ChannelLifecycleService(
 
     private async ValueTask OnTickAsync(CancellationToken cancellationToken)
     {
-        try
+        while (cancellationToken.IsCancellationRequested is false)
         {
-            while (cancellationToken.IsCancellationRequested is false)
+            foreach (var channel in channels)
             {
-                foreach (var channel in channels)
+                var value = await cache
+                    .FirstOrDefaultAsync(e => e.Identifier == channel.Identifier && e.Owner == Instance)
+                    .ConfigureAwait(false);
+
+                if (value is null)
                 {
-                    var value = await cache
-                        .FirstOrDefaultAsync(e => e.Identifier == channel.Identifier && e.Owner == Instance)
-                        .ConfigureAwait(false);
-
-                    if (value is null)
-                    {
-                        logger.LogDebug("Channel not found: Owner={Guid}, Identifier={Identifier}", Instance, channel.Identifier);
-                        return;
-                    }
-
-                    value.OnlineCount = channel.Online;
-
-                    await cache
-                        .UpdateAsync(value)
-                        .ConfigureAwait(false);
+                    logger.LogDebug("Channel not found: Owner={Guid}, Identifier={Identifier}", Instance, channel.Identifier);
+                    continue;
                 }
+
+                value.OnlineCount = channel.Online;
+
+                await cache
+                    .UpdateAsync(value)
+                    .ConfigureAwait(false);
 
                 await Task
                     .Delay(TimeSpan.FromSeconds(1), cancellationToken)
                     .ConfigureAwait(false);
             }
-        }
-        
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error in ChannelLifecycleService");
-        }
-
-        finally
-        {
-            logger.LogDebug("ChannelLifecycleService stopped.");
         }
     }
 }

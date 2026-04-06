@@ -1,6 +1,7 @@
-using OpenWorker.Batch.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
 using OpenWorker.DistrictServer.Gameplay.Extensions;
 using OpenWorker.DistrictServer.Server;
@@ -8,9 +9,7 @@ using OpenWorker.DistrictServer.Server.Services;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Commands.Extensions;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Modules.Items;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Res.Extensions;
 
 await Host
@@ -26,7 +25,7 @@ await Host
         services.AddDistrictReserveCache();
         services.AddRes();
         services.AddBatch();
-        
+
         services.AddSingleton<WorldManager>();
 
         services.AddSingleton<StorageItemFactory>();
@@ -34,8 +33,9 @@ await Host
         services.AddSingleton<StorageManager>();
         services.AddPersistence();
         services.AddGameplay();
-        
-        services.AddStuffCommands();
+
+        services.AddCommandManager();
+
         services.AddChannels();
 
         services.AddSingleton<NpcManager>();

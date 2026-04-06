@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
-using Arch.Core;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -15,8 +14,8 @@ public sealed class HandlerBuilder
     private ParameterExpression Instance { get; } = Expression
         .Parameter(typeof(IHotspotHandler), nameof(Instance));
 
-    private ParameterExpression Entity { get; } = Expression
-        .Parameter(typeof(Entity), nameof(Entity));
+    private ParameterExpression Player { get; } = Expression
+        .Parameter(typeof(object), nameof(Player));
 
     private ParameterExpression Reader { get; } = Expression
         .Parameter(typeof(BinaryReader), nameof(Reader));
@@ -31,14 +30,9 @@ public sealed class HandlerBuilder
             return CancellationToken;
         }
 
-        if (param.ParameterType == typeof(Entity))
-        {
-            return Entity;
-        }
-
         if (param.ParameterType == typeof(ServiceHandleContext))
         {
-            var @params = new[] { Entity, CancellationToken };
+            var @params = new[] { Player, CancellationToken };
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
 
             var constructor = param.ParameterType.GetConstructor(flags, null, @params.Select(e => e.Type).ToArray(), null);
@@ -86,7 +80,7 @@ public sealed class HandlerBuilder
 
                 var opcode = attribute.Opcode;
                 var lambda = Expression
-                    .Lambda<HandlerDelegate>(call, Instance, Entity, Reader, CancellationToken)
+                    .Lambda<HandlerDelegate>(call, Instance, Player, Reader, CancellationToken)
                     .Compile();
 
                 return new CreatedHandler(opcode, @class, lambda);
