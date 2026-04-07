@@ -9,6 +9,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.Res.Extensions;
 
@@ -40,6 +41,7 @@ await Host
         services.AddSingleton<StorageItemFactory>();
         services.AddSingleton<StorageFactory>();
         services.AddSingleton<StorageManager>();
+        services.AddSingleton<QuestManager>();
         services.AddPersistence();
 
         services.AddChannels();

@@ -1,4 +1,4 @@
-using Arch.Core;
+﻿using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.DistrictServer.Server;
@@ -28,19 +28,19 @@ public sealed class ChannelService(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelChangeRequest request)
     {
         await serverChannels
-            .SwitchAsync(context.GetPlayerEntity(), request.Channel)
+            .SwitchAsync(context.Player, request.Channel)
             .ConfigureAwait(false);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelInfoRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
-        await serverChannels.SendListAsync(context.GetPlayerEntity(), context.CancellationToken).ConfigureAwait(false);
+        await serverChannels.SendListAsync(context.Player, context.CancellationToken).ConfigureAwait(false);
 
-        var channel = world.Get<ChannelMemberComponent>(context.GetPlayerEntity());
+        var channel = world.Get<ChannelMemberComponent>(context.Player);
         var serviceChannel = serviceChannels[channel.Index];
-        
+
         var npcWireList = npcManager.Collection
             .Select(e =>
             {
@@ -59,7 +59,7 @@ public sealed class ChannelService(
             .ToArray();
 
         session.Send(new WorldOtherInfosNpcResponse { List = npcWireList });
-        
-        serviceChannel.SendOthers(context.GetPlayerEntity(), world);
+
+        serviceChannel.SendOthers(context.Player, world);
     }
 }

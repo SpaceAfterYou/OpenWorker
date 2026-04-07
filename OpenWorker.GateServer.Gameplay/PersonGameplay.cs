@@ -33,19 +33,19 @@ public sealed class PersonGameplay(
 
     public async Task CreateAsync(ServiceHandleContext context, PersonCreateRequest message)
     {
-        var slotIndex = registry.FindFreeSlotIndex(context.GetPlayerEntity());
-            
+        var slotIndex = registry.FindFreeSlotIndex(context.Player);
+
         if (slotIndex == -1)
         {
             logger.LogDebug("Slot not found.");
             return;
         }
-        
+
         await using var database = await factory
             .CreateDbContextAsync(context.CancellationToken)
             .ConfigureAwait(false);
 
-        var claims = world.Get<ClaimsComponent>(context.GetPlayerEntity());
+        var claims = world.Get<ClaimsComponent>(context.Player);
 
         var account = await database.Accounts
             .FirstAsync(x => x.Id == claims.Account, context.CancellationToken)
@@ -69,23 +69,23 @@ public sealed class PersonGameplay(
             EquippedHairColor = message.Person.InfoValue.AppearanceLook.HairColor,
             EquippedEyeColor = message.Person.InfoValue.AppearanceLook.EyeColor,
             EquippedSkinColor = message.Person.InfoValue.AppearanceLook.SkinColor,
-        
+
             Location = 10003,
             PositionX = 10228.605f,
             PositionY = 10058.951f,
             PositionZ = 90.452f,
             RotationX = 90.0f,
-            
+
             FatiguePointCommon = 200,
-            
+
             GestureList = Enumerable
                 .Repeat(0, GesturesModuleDefines.MaxGestureCount)
                 .ToArray(),
-            
+
             OptionList = Enumerable
                 .Repeat((byte)'1', LoginModuleDefines.PersonOptionCount)
                 .ToArray(),
-        
+
             Account = account,
             Gate = gate
         };
@@ -95,26 +95,26 @@ public sealed class PersonGameplay(
         await database
             .SaveChangesAsync(context.CancellationToken)
             .ConfigureAwait(false);
-        
-        registry.CreatePerson(context.GetPlayerEntity(), slotIndex, person);
-        
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.GetPlayerEntity()));
+
+        registry.CreatePerson(context.Player, slotIndex, person);
+
+        var session = world.Get<ServerSessionComponent>(context.Player);
+        session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.Player));
     }
 
     public Task ListAsync(ServiceHandleContext context, PersonListRequest message)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
-        session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.GetPlayerEntity()));
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
+        session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.Player));
+
         return Task.CompletedTask;
     }
-    
+
     public async Task SelectAsync(ServiceHandleContext context, PersonSelectRequest message)
     {
         await worldManager
-            .SelectPerson(context.GetPlayerEntity(), message.Actor.Identifier)
+            .SelectPerson(context.Player, message.Actor.Identifier)
             .ConfigureAwait(false);
 
         // session.Send(new LoginOptionLoadResponse(world, person));

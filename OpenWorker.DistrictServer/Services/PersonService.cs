@@ -13,8 +13,8 @@ using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Mapping;
+using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person.Enums;
@@ -28,17 +28,12 @@ using OpenWorker.Hotspot.Modules.Gestures.Types;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
-using OpenWorker.Hotspot.Modules.Quests.Responses;
-using OpenWorker.Hotspot.Modules.Quests.Types;
-using OpenWorker.Hotspot.Modules.Ranking.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
 using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
-using QuestCondition = OpenWorker.Hotspot.Modules.Quests.Types.QuestCondition;
-
 namespace OpenWorker.DistrictServer.Services;
 
 [HotspotHandler(HotspotHandlerType.District)]
@@ -47,12 +42,12 @@ public sealed class PersonService(
     BatchManager manager,
     ReadOnlyCollection<TitleInfoRow> titleCollection,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
-    ReadOnlyCollection<QuestEpisodeRow> questEpisodeCollection,
     IRedisCollection<SessionCache> sessions,
     ServiceChannels channels,
     IDbContextFactory<PersistenceContext> factory,
     IConfiguration configuration,
-    PersonRegistry registry
+    PersonRegistry registry,
+    QuestManager questManager
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonLoadTitleRequest>,
@@ -62,8 +57,8 @@ public sealed class PersonService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonEnterGameServerRequest request)
     {
-        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = ecs.Get<ServerSessionComponent>(context.Player);
+
         if (await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false) is false)
         {
             session.Disconnect();
@@ -81,18 +76,18 @@ public sealed class PersonService(
             .AsNoTracking()
             .FirstAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken)
             .ConfigureAwait(false);
-        
-        ecs.Set(context.GetPlayerEntity(), new ClaimsComponent(request.Session));
+
+        ecs.Set(context.Player, new ClaimsComponent(request.Session));
 
         if (!manager.TryGetAndCache(Location, out var batch, out var type) || type != BatchType.District)
         {
             return;
         }
-        
+
         Debug.Assert(batch.EventBox.StartEvents.Count > 0);
         var start = batch.EventBox.StartEvents.First(x => x.Id == Location * 100 + 1);
 
-        ecs.Set(context.GetPlayerEntity(), new WorldComponent
+        ecs.Set(context.Player, new WorldComponent
         {
             Location = Location,
             Position = start.GetPosition(),
@@ -100,17 +95,17 @@ public sealed class PersonService(
             Jump = start.Id
         });
 
-        ecs.Set(context.GetPlayerEntity(), new KeepAliveComponent());
+        ecs.Set(context.Player, new KeepAliveComponent());
 
-        ecs.Set(context.GetPlayerEntity(), new CurrencyComponent
+        ecs.Set(context.Player, new CurrencyComponent
         {
             Gold = 5_000_000,
             Cash = 7_000_000,
             BattlePoint = 10_000_000,
             Ether = 15_000_000
         });
-        
-        ecs.Set(context.GetPlayerEntity(), new GestureComponent
+
+        ecs.Set(context.Player, new GestureComponent
         {
             Collection = person.GestureList.Length switch
             {
@@ -121,28 +116,29 @@ public sealed class PersonService(
                     .ToArray(),
 
                 > GesturesModuleDefines.MaxGestureCount => person.GestureList.Take(GesturesModuleDefines.MaxGestureCount).ToArray(),
-                
+
                 _ => person.GestureList
             }
         });
 
-        registry.PullPerson(context.GetPlayerEntity(), person);
+        registry.PullPerson(context.Player, person);
 
         session.Send(new CharacterInfoResponse
         {
-            Person = PersonSnapshotMapper.CreatePersonValue(ecs, context.GetPlayerEntity(), context.GetPlayerEntity()),
-            World = PersonSnapshotMapper.CreateWorldValue(ecs, context.GetPlayerEntity()),
-            Gate = PersonSnapshotMapper.CreateCharacterInfoGatePayload(ecs, context.GetPlayerEntity())
+            Person = PersonSnapshotMapper.CreatePersonValue(ecs, context.Player, context.Player),
+            World = PersonSnapshotMapper.CreateWorldValue(ecs, context.Player),
+            Gate = PersonSnapshotMapper.CreateCharacterInfoGatePayload(ecs, context.Player)
         });
-        session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.GetPlayerEntity()).Collection });
-        session.Send(new PersonUpdateOriginStatListResponse { Actor = ecs.Get<ActorComponent>(context.GetPlayerEntity()) });
+        session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.Player).Collection });
+        session.Send(new PersonUpdateOriginStatListResponse { Actor = ecs.Get<ActorComponent>(context.Player) });
         // session.Send(new BoosterLoadReply([], BoosterConsumeArea.None));
 
         SendSoulMetryList(session);
-        SendQuestEpisodeList(session);
 
-        JoinChannel(context.GetPlayerEntity());
-        
+        questManager.SendQuestEpisodeList(context.Player);
+
+        JoinChannel(context.Player);
+
         session.Send(new EventAttendanceLoadResponse
         {
             Info = new AttendanceInfo
@@ -154,7 +150,7 @@ public sealed class PersonService(
                     .ToArray(),
                 CurrentDay = 1
             },
-            
+
             Time = new AttendancePlayTime
             {
                 Step = 0,
@@ -166,7 +162,7 @@ public sealed class PersonService(
     private void JoinChannel(Entity entity)
     {
         // Try to find a channel that's not full
-        
+
         for (short index = 0; index < channels.Count; index++)
         {
             if (channels[index].Workload == ChannelWorkload.Full)
@@ -175,7 +171,7 @@ public sealed class PersonService(
             }
 
             channels.Join(index, entity);
-            
+
             return;
         }
 
@@ -197,8 +193,8 @@ public sealed class PersonService(
             .Select(e => e.Id)
             .ToArray();
 
-        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = ecs.Get<ServerSessionComponent>(context.Player);
+
         session.Send(new PersonLoadTitleResponse { TitleList = list, OpenList = [], Result = true });
 
         return ValueTask.CompletedTask;
@@ -213,90 +209,18 @@ public sealed class PersonService(
         session.Send(new SoulMetryListResponse { Values = list });
     }
 
-    private void SendQuestEpisodeList(ServerSessionComponent session)
-    {
-        var list = questEpisodeCollection
-            .Take(1)
-            .Select(e => new QuestEpisodeEntry
-            {
-                Index = e.Id,
-                Info = new QuestInfoEntry
-                {
-                    AddHelper = 0,
-                    CompleteBit = 0,
-                    Failed = false,
-                    Condition =
-                    [
-                        new QuestCondition
-                        {
-                            Condition = e.Field96,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field97,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field98,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field99,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field100,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field101,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field102,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field103,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field104,
-                            Step = 0
-                        },
-                        new QuestCondition
-                        {
-                            Condition = e.Field105,
-                            Step = 0
-                        }
-                    ]
-                }
-            })
-            .ToArray();
-
-        session.Send(new QuestListResponse { List = list });
-    }
-
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)
     {
-        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = ecs.Get<ServerSessionComponent>(context.Player);
+
         // session.Send(new PersonTradePasswordResponse(request.Password));
-        
+
         session.Send(new CharacterTradePasswordResponse
         {
-            State = E_PASSWORD_STATE.ePASSWORD_STATE_AUTHENTICATED,
+            ProtectionState = PasswordProtectionState.Authenticated,
             ErrorCode = 0
         });
-        
+
         return ValueTask.CompletedTask;
     }
 }

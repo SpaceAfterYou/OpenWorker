@@ -5,6 +5,9 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 
+/// <summary>
+/// Legacy client handler only logs; no payload consumed.
+/// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct QuestEventUpdateResponse : IResponseHotspotMessage
 {

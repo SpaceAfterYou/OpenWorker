@@ -26,13 +26,13 @@ public sealed class ChatService(World world, CommandManager commands, ServiceCha
 {
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatStuffRequest request)
     {
-        if (!await commands.TryExecute(context.GetPlayerEntity(), request.Message).ConfigureAwait(false))
+        if (!await commands.TryExecute(context.Player, request.Message).ConfigureAwait(false))
         {
             return;
         }
 
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        var actor = world.Get<ActorComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
+        var actor = world.Get<ActorComponent>(context.Player);
 
         session.Send(new ChatNormalResponse
         {
@@ -49,8 +49,8 @@ public sealed class ChatService(World world, CommandManager commands, ServiceCha
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatNormalRequest request)
     {
-        var channel = channels.Get(context.GetPlayerEntity());
-        var actor = world.Get<ActorComponent>(context.GetPlayerEntity());
+        var channel = channels.Get(context.Player);
+        var actor = world.Get<ActorComponent>(context.Player);
 
         channel.ForEach(e =>
         {
@@ -70,7 +70,7 @@ public sealed class ChatService(World world, CommandManager commands, ServiceCha
             Appearance = ChatMessageAppearance.Normal,
             Actor = actor.Identifier,
         };
-        
+
         await channelChatCache
             .InsertAsync(cache, TimeSpan.FromDays(1))
             .ConfigureAwait(false);

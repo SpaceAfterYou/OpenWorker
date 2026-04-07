@@ -29,7 +29,7 @@ public sealed class MazeService(
     IRedisCollection<DistrictReserveCache> districtReserves,
     WorldManager worldManager,
     IConfiguration configuration
-) : 
+) :
     IHotspotHandler<MazeExitRequest>,
     IHotspotHandler<MazeEventSpawnBoxRequest>,
     IHotspotHandler<MazeOperationEndRequest>,
@@ -39,28 +39,28 @@ public sealed class MazeService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)
     {
-        var claims = ecs.Get<ClaimsComponent>(context.GetPlayerEntity());
-        var world = ecs.Get<WorldComponent>(context.GetPlayerEntity());
+        var claims = ecs.Get<ClaimsComponent>(context.Player);
+        var world = ecs.Get<WorldComponent>(context.Player);
 
         if (!batches.TryGetAndCache(world.Location, out var mazeBatch))
         {
             return;
         }
-        
+
         // var escape = mazeBatch.EventBox.MazeEscapes.First(x => x.Id == /* id of escape box for back to district */ 1001);
         var escape = mazeBatch.EventBox.MazeEscapes[0];
-        
+
         var (districtCache, channelCache) = await worldManager
             .GetDistrictAsync(escape.Field)
             .ConfigureAwait(false);
-        
+
         Debug.Assert(districtCache.Location == escape.Field);
-        
+
         if (!batches.TryGetAndCache(districtCache.Location, out var districtBatch))
         {
             return;
         }
-        
+
         var exit = districtBatch.EventBox.PortalExits.First(x => x.Id == escape.EventObject);
 
         var map = new MapValue
@@ -69,7 +69,7 @@ public sealed class MazeService(
             Channel = channelCache.Identifier,
             Server = Gate
         };
-        
+
         var location = new WorldValue
         {
             Location = districtCache.Location,
@@ -77,7 +77,7 @@ public sealed class MazeService(
             Rotation = exit.Rotation,
             Map = map
         };
-        
+
         var enter = new EnterMapResultValue
         {
             Zone = new ZoneValue
@@ -95,11 +95,11 @@ public sealed class MazeService(
         };
 
         var position = exit.GetRandomPosition();
-        
+
         var cache = new DistrictReserveCache
         {
             Account = claims,
-            Person = ecs.Get<ActorComponent>(context.GetPlayerEntity()),
+            Person = ecs.Get<ActorComponent>(context.Player),
             District = districtCache.Guid,
             Channel = channelCache.Guid,
             Jump = exit.Id,
@@ -113,15 +113,15 @@ public sealed class MazeService(
             .InsertAsync(cache)
             .ConfigureAwait(false);
 
-        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = ecs.Get<ServerSessionComponent>(context.Player);
+
         session.Send(new WorldEnterResponse { Map = enter });
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeEventSpawnBoxRequest request)
     {
-        var maze = ecs.Get<LuaMaze>(context.GetPlayerEntity());
-    
+        var maze = ecs.Get<LuaMaze>(context.Player);
+
         var boxes = maze.Batch.EventBox.CheckMonsterSpawns
             .First(x => x.Id == request.Box);
 
@@ -132,34 +132,34 @@ public sealed class MazeService(
 
         return ValueTask.CompletedTask;
     }
-    
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeOperationEndRequest request)
     {
-        var maze = ecs.Get<LuaMaze>(context.GetPlayerEntity());
-        
+        var maze = ecs.Get<LuaMaze>(context.Player);
+
         await maze.State
             .CheckConditionAsync(0, request.Operation, maze)
             .ConfigureAwait(false);
     }
-    
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeLuaFunctionRequest request)
     {
-        var session = ecs.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        var world = ecs.Get<WorldComponent>(context.GetPlayerEntity());
+        var session = ecs.Get<ServerSessionComponent>(context.Player);
+        var world = ecs.Get<WorldComponent>(context.Player);
 
         if (!batches.TryGetAndCache(world.Location, out var batch, BatchType.Maze))
         {
             return;
         }
-        
+
         var function = batch.EventBox.LuaFunctions.First(x => x.Id == request.Box);
-        
-        var state = ecs.Get<LuaMaze>(context.GetPlayerEntity());
+
+        var state = ecs.Get<LuaMaze>(context.Player);
 
         await state.State
             .OnExecuteLuaFunction(function.Function, request.Box, state)
             .ConfigureAwait(false);
-        
+
         session.Send(new MazeLuaFunctionResponse { Box = request.Box });
     }
 }

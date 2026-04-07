@@ -11,7 +11,7 @@ public readonly struct SkillPassiveRequest(BinaryReader reader) : IRequestHotspo
 #region Interface: IHotspotMessage
 
     private const GroupOpcode Group = GroupOpcode.Skill;
-    private const SkillOpcode Command = SkillOpcode.PassiveSkillRes;
+    private const SkillOpcode Command = SkillOpcode.PassiveSkillReq;
 
     public MessageOpcode Opcode => new(Group, Command);
 
@@ -19,7 +19,7 @@ public readonly struct SkillPassiveRequest(BinaryReader reader) : IRequestHotspo
 
 #region Message: Body
 
-    public short Channel { get; } = reader.ReadInt16();
+    public ActiveSkillValue Skill { get; } = new(reader);
 
 #endregion Message: Body
 }

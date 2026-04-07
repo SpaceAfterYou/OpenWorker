@@ -32,10 +32,10 @@ public sealed class CashShopService(World world, ReadOnlyCollection<CashShopRow>
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashLoadRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         var date = DateTimeOffset.UtcNow;
-        
+
         session.Send(new ShopCashLoadResponse
         {
             ItemList =

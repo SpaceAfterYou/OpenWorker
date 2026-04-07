@@ -1,0 +1,32 @@
+using System.IO;
+using System.Numerics;
+using OpenWorker.Hotspot.Extensions;
+using OpenWorker.Hotspot.Messages.Abstractions;
+
+namespace OpenWorker.Hotspot.Modules.Skill.Requests;
+
+public readonly struct SkillActionPosInfoValue(BinaryReader reader) : IWritableData
+{
+    public Vector3 Position { get; init; } = reader.ReadVector3();
+    public float Angle { get; init; } = reader.ReadSingle();
+    public short MotionClass { get; init; } = reader.ReadInt16();
+
+    /// <summary>
+    /// TODO: client have in the struct but doesn't read.
+    /// </summary>
+    private bool SwapSkill { get; init; } /* = reader.ReadBoolean(); */
+
+    public bool HasInputFlag { get; init; } = reader.ReadBoolean();
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Position);
+        writer.Write(Angle);
+        writer.Write(MotionClass);
+
+        // TODO: client have in the struct but doesn't read
+        // writer.Write(SwapSkill);
+
+        writer.Write(HasInputFlag);
+    }
+}

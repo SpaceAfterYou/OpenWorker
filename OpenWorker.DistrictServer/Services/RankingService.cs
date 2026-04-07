@@ -17,33 +17,33 @@ namespace OpenWorker.DistrictServer.Services;
 public sealed class RankingService(World world) :
     IHotspotHandler<RankingTimeAttackListRequest>,
     IHotspotHandler<RankingPvpListRequest>,
-    IHotspotHandler<RankingInfiniteTowerListRequest>    
+    IHotspotHandler<RankingInfiniteTowerListRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, RankingTimeAttackListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
-        session.Send(RankingResponseMapper.CreateTimeAttackList(world, context.GetPlayerEntity(), request.World));
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
+        session.Send(RankingResponseMapper.CreateTimeAttackList(world, context.Player, request.World));
+
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, RankingPvpListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
-        session.Send(RankingResponseMapper.CreatePvpList(world, context.GetPlayerEntity(), RankingType.Weekly));
-        session.Send(RankingResponseMapper.CreatePvpList(world, context.GetPlayerEntity(), RankingType.Seasonal));
-        
+        session.Send(RankingResponseMapper.CreatePvpList(world, context.Player, RankingType.Weekly));
+        session.Send(RankingResponseMapper.CreatePvpList(world, context.Player, RankingType.Seasonal));
+
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, RankingInfiniteTowerListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
         session.Send(RankingInfiniteTowerListResponse.Create(request.Chapter));
-        
+
         return ValueTask.CompletedTask;
     }
 }

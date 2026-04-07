@@ -28,9 +28,9 @@ public sealed class GateGameplay(
 {
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginGateConnectRequest message)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        var claims = world.Get<ClaimsComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+        var claims = world.Get<ClaimsComponent>(context.Player);
+
         var cache = await gates
             .FirstOrDefaultAsync(e => e.Identifier == message.Gate)
             .ConfigureAwait(false);
@@ -78,9 +78,9 @@ public sealed class GateGameplay(
 
     public async ValueTask GetListAsync(ServiceHandleContext context, LoginGateListRequest message)
     {
-        var component = world.Get<ClaimsComponent>(context.GetPlayerEntity());
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var component = world.Get<ClaimsComponent>(context.Player);
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         if (component.Account != message.Account)
         {
             session.Send(new PersonKickOutResponse
@@ -90,7 +90,7 @@ public sealed class GateGameplay(
             });
             return;
         }
-        
+
         await using var database = await factory
             .CreateDbContextAsync(context.CancellationToken)
             .ConfigureAwait(false);
@@ -102,7 +102,7 @@ public sealed class GateGameplay(
             .ToArrayAsync(context.CancellationToken).ConfigureAwait(false);
 
         var groupList = personList.CountBy(e => e.Gate.Id);
-        
+
         var values = gateList
             .Select(gate =>
             {
@@ -117,7 +117,7 @@ public sealed class GateGameplay(
                         }
                     };
                 }
-                
+
                 return new GateDataInfo
                 {
                     Gate = gate,

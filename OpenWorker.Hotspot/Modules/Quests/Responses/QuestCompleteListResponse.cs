@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -17,10 +18,22 @@ public readonly struct QuestCompleteListResponse : IResponseHotspotMessage
 
 #endregion Interface: IHotspotMessage
 
+#region Message: Body
+
+    /// <summary>
+    /// 128-byte bitset of completed episodes.
+    /// </summary>
+    public ReadOnlyMemory<byte> CompletedEpisodeBits { get; init; }
+
+#endregion Message: Body
+
 #region Interface: IWritableData
 
     public void Write(BinaryWriter writer)
     {
+        Debug.Assert(QuestModuleDefines.CompleteListByteLength == CompletedEpisodeBits.Length);
+
+        writer.Write(CompletedEpisodeBits.Span);
     }
 
 #endregion Interface: IWritableData

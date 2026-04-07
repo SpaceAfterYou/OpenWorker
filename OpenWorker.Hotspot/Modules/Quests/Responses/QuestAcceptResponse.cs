@@ -17,10 +17,19 @@ public readonly struct QuestAcceptResponse : IResponseHotspotMessage
 
 #endregion Interface: IHotspotMessage
 
+#region Message: Body
+
+    public int Episode { get; init; }
+    public byte IsShowHelper { get; init; }
+
+#endregion Message: Body
+
 #region Interface: IWritableData
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Episode);
+        writer.Write(IsShowHelper);
     }
 
 #endregion Interface: IWritableData

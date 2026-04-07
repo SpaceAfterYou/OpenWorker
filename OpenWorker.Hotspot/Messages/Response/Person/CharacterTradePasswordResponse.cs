@@ -21,7 +21,7 @@ public readonly struct CharacterTradePasswordResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    public E_PASSWORD_STATE State { get; init; }
+    public PasswordProtectionState ProtectionState { get; init; }
     public int ErrorCode { get; init; }
 
 #endregion Message: Body
@@ -31,7 +31,7 @@ public readonly struct CharacterTradePasswordResponse : IResponseHotspotMessage
     public void Write(BinaryWriter writer)
     {
         writer.Write(ErrorCode);
-        writer.Write(State);
+        writer.Write(ProtectionState);
     }
 
 #endregion Interface: IWritableData

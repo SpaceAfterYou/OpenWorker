@@ -9,7 +9,7 @@ public enum QuestConditionType : byte
     Collect = 0x4,
     Deliver = 0x5,
     Protect = 0x6,
-    Survial = 0x7,
+    Survival = 0x7,
     Trace = 0x8,
     Guard = 0x9,
     Clear = 0xA,
