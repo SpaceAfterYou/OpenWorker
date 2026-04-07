@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 
 /// <summary>
-/// Legacy client clears local quest state without reading a body (receive_eSUB_CMD_QUEST_RESET).
+/// This packet doesn't have any content.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct QuestResetResponse : IResponseHotspotMessage
