@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using Arch.Core;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -15,7 +16,7 @@ public sealed class HandlerBuilder
         .Parameter(typeof(IHotspotHandler), nameof(Instance));
 
     private ParameterExpression Player { get; } = Expression
-        .Parameter(typeof(object), nameof(Player));
+        .Parameter(typeof(Entity), nameof(Player));
 
     private ParameterExpression Reader { get; } = Expression
         .Parameter(typeof(BinaryReader), nameof(Reader));

@@ -1,4 +1,4 @@
-using Arch.Core;
+﻿using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot;
@@ -23,7 +23,7 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
             .CreateDbContextAsync(context.CancellationToken)
             .ConfigureAwait(false);
 
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
         var account = await database.Accounts
             .FirstOrDefaultAsync(e => e.Username == message.Username, context.CancellationToken)
@@ -50,7 +50,7 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
 
         if (account is null)
         {
-            var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+            var session = world.Get<ServerSessionComponent>(context.Player);
 
             session.Send(new LoginResponse(LoginErrorMessageCode.BanAccount));
             session.Disconnect();
@@ -63,7 +63,7 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
 
     private async ValueTask InternalLoginAsync(ServiceHandleContext context, int account, string username, string mac)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
         // if (await sessions.AnyAsync(e => e.Account == account).ConfigureAwait(false))
         // {
@@ -73,7 +73,7 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
 
         var claims = new SessionValue(account);
 
-        world.Set(context.GetPlayerEntity(), new ClaimsComponent(claims));
+        world.Set(context.Player, new ClaimsComponent(claims));
 
         var cache = new SessionCache
         {

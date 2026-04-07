@@ -19,10 +19,10 @@ public sealed class SystemService(World world) :
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, SystemKeepAliveRequest request)
     {
-        var component = world.Get<KeepAliveComponent>(context.GetPlayerEntity());
-            
-        world.Set(context.GetPlayerEntity(), component with { LastTickCount = new TimeSpan(request.TickCount) });
-            
+        var component = world.Get<KeepAliveComponent>(context.Player);
+
+        world.Set(context.Player, component with { LastTickCount = new TimeSpan(request.TickCount) });
+
         return ValueTask.CompletedTask;
     }
 
@@ -33,10 +33,10 @@ public sealed class SystemService(World world) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SystemPingRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         session.Send(new SystemPingResponse { KeepAlive = request.TickCount });
-        
+
         return ValueTask.CompletedTask;
     }
 

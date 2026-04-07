@@ -20,7 +20,7 @@ namespace OpenWorker.DistrictServer.Services;
 
 public sealed class FriendManager
 {
-    
+
 }
 
 [HotspotHandler(HotspotHandlerType.District)]
@@ -44,12 +44,12 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
     {
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendBlockDelRequest request)
     {
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendDeleteRequest request)
     {
         return ValueTask.CompletedTask;
@@ -69,24 +69,24 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
                 IsLoggedIn = Random.Shared.Next(0, 2) > 0
             }).ToArray();
 
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
         session.Send(new FriendFindResponse { Values = tempFriendList });
 
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendInfoRequest request)
     {
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendInviteAcceptRequest request)
     {
         logger.LogDebug("PersonRequested: {RequestPersonRequested} / PersonTarget: {RequestPersonTarget} / TargetName: {RequestTargetName} / IsAccepted: {RequestIsAccepted}", request.PersonRequested, request.PersonTarget, request.TargetName, request.IsAccepted);
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendInviteRequest request)
     {
         return ValueTask.CompletedTask;
@@ -94,8 +94,8 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendLoadBlocklistRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         var list = Enumerable
             .Range(10_000, 15)
             .Select(person => new FriendBlockValue(
@@ -104,9 +104,9 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
                 (byte)Random.Shared.Next(1, byte.MaxValue)
             ))
             .ToArray();
-        
+
         session.Send(new FriendLoadBlocklistResponse { List = list });
-        
+
         return ValueTask.CompletedTask;
     }
 
@@ -144,7 +144,7 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
                 LogOut = (ulong)DateTime.UtcNow.Ticks
             }).ToList();
 
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
         session.Send(new FriendLoadResponse { List = tempFriendList });
 
@@ -153,8 +153,8 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendRecommendListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         var districts = districtList
             .Where(x => x.Field14 > 0)
             .ToArray();
@@ -172,40 +172,40 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
                 IsLoggedIn = 1
             })
             .ToArray();
-        
+
         session.Send(new FriendRecommendListResponse
         {
-            Actor = world.Get<ActorComponent>(context.GetPlayerEntity()),
+            Actor = world.Get<ActorComponent>(context.Player),
             List = list
         });
-        
-        
+
+
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendRecruitAddRequest request)
     {
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendRecruitDelRequest request)
     {
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendRecruitInfoRequest request)
     {
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, FriendRecruitListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         var districts = districtList
             .Where(x => x.Field14 > 0)
             .ToArray();
-        
+
         var list = Enumerable
             .Range(200_000, 16)
             .Select(person => new FriendRecruitValue
@@ -223,9 +223,9 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
                 // tAddTime = -1,
             })
             .ToArray();
-        
+
         session.Send(new FriendRecruitListResponse { List = list });
-        
+
         return ValueTask.CompletedTask;
     }
 

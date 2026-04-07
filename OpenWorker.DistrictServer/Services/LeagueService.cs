@@ -1,4 +1,4 @@
-using Arch.Core;
+﻿using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.DistrictServer.Types;
@@ -27,21 +27,21 @@ public sealed class LeagueService(World world, ServiceChannels channels) :
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, LeagueOverlapNameRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         session.Send(new LeagueOverlapNameResponse { CanBeUsed = false });
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, LeagueCreateRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        var actor = world.Get<ActorComponent>(context.GetPlayerEntity());
-        var person = context.GetPlayerEntity().Get<PersonInfoComponent>();
-        var location = context.GetPlayerEntity().Get<WorldComponent>();
-        
-        var channel = channels.Get(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+        var actor = world.Get<ActorComponent>(context.Player);
+        var person = context.Player.Get<PersonInfoComponent>();
+        var location = context.Player.Get<WorldComponent>();
+
+        var channel = channels.Get(context.Player);
+
         session.Send(new LeagueCreateResponse
         {
             LeagueInfo = new LeagueInfo
@@ -68,14 +68,14 @@ public sealed class LeagueService(World world, ServiceChannels channels) :
                 }
             }
         });
-        
+
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, LeagueListRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         session.Send(new LeagueListResponse
         {
             Leagues = Enumerable.Range(0, 10).Select((_, index) => new LeagueInfo
@@ -95,20 +95,20 @@ public sealed class LeagueService(World world, ServiceChannels channels) :
                 ViceMasterName = "Vice " + index,
                 Open = true
             }).ToArray(),
-            
+
             Actors = Enumerable
                 .Range(0, 10)
                 .Select((_, index) => new ActorValue((int)(1024 + index), ActorType.User))
                 .ToArray()
         });
-        
+
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, LeagueSearchRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         session.Send(new LeagueSearchResponse
         {
             State = 0,
@@ -131,13 +131,13 @@ public sealed class LeagueService(World world, ServiceChannels channels) :
                 ViceMasterName = "Search V " + index,
                 Open = true
             }).ToArray(),
-            
+
             Actors = Enumerable
                 .Range(0, 10)
                 .Select((_, index) => new ActorValue((int)(1024 + index), ActorType.User))
                 .ToArray()
         });
-        
+
         return ValueTask.CompletedTask;
     }
 }

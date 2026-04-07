@@ -12,8 +12,8 @@ public sealed class MazeService(World world) : IHotspotHandler<MazeLuaFunctionRe
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeLuaFunctionRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
         session.Send(new MazeLuaFunctionResponse { Box = request.Box });
 
         return ValueTask.CompletedTask;

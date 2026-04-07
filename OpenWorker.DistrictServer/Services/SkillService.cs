@@ -2,8 +2,6 @@ using Arch.Core;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Gameplay;
-using OpenWorker.Hotspot.Modules.Skill;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 
@@ -16,33 +14,39 @@ public sealed class SkillService(World world) :
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
-        session.Send(new SkillPassiveResponse { Error = 0 });
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
+        session.Send(new SkillPassiveResponse
+        {
+            Error = 0,
+        });
 
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillDeckBonusRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
-        session.Send(new SkillDeckBonusResponse { Deck = request.Deck });
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
+        session.Send(new SkillDeckBonusResponse
+        {
+            Deck = request.Deck,
+        });
 
         return ValueTask.CompletedTask;
     }
-    
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillActiveSkillRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        
-        session.Send(new SkillActiveSkillResponse
+        var session = world.Get<ServerSessionComponent>(context.Player);
+
+        session.Send(new SkillActiveResponse
         {
             ErrorCode = 0,
             Divergence = 0,
-            Swap = false
+            Swap = false,
         });
-        
+
         return ValueTask.CompletedTask;
     }
 }

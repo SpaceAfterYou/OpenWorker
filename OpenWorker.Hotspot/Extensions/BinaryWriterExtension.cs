@@ -26,7 +26,7 @@ public static class BinaryWriterExtension
     {
         writer.Write(value);
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void WriteActorList(this BinaryWriter writer, ReadOnlySpan<ActorValue> actors)
     {
@@ -41,19 +41,19 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void WriteActorList(this BinaryWriter writer, ActorValue[] actors) =>
         writer.WriteActorList(actors.AsSpan());
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, EnterMapType value)
     {
         writer.Write((byte)value);
-    }    
-    
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, DateTime value)
     {
         writer.Write(new DateTimeOffset(value).ToUnixTimeSeconds());
-    }  
-    
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, WorldType value)
     {
@@ -71,7 +71,7 @@ public static class BinaryWriterExtension
     {
         writer.Write((byte)value);
     }
-    
+
     // [MethodImpl(MethodImplOptions.AggressiveInlining)]
     // public static void Write(this BinaryWriter writer, IReadOnlyCollection<ItemValue> list)
     // {
@@ -608,7 +608,7 @@ public static class BinaryWriterExtension
     public static void WriteUnicodeString(this BinaryWriter writer, string value)
     {
         var str = Encoding.Unicode.GetBytes(value);
-        
+
         writer.Write(str);
         writer.Write(byte.MinValue);
     }

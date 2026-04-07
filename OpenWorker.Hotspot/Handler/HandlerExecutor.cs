@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Arch.Core;
 using CommunityToolkit.HighPerformance;
 using Microsoft.Extensions.Logging;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
@@ -12,7 +13,7 @@ public sealed class HandlerExecutor(
     IServiceProvider provider,
     ILogger<HandlerExecutor> logger)
 {
-    public async ValueTask ExecuteAsync(ReadOnlyMemory<byte> buffer, object player, CancellationToken cancellationToken)
+    public async ValueTask ExecuteAsync(ReadOnlyMemory<byte> buffer, Entity player, CancellationToken cancellationToken)
     {
         // Will be disposed in reader
         /* using */ var stream = buffer.AsStream();
@@ -50,12 +51,12 @@ public sealed class HandlerExecutor(
         {
             return;
         }
-        
+
         if (opcode.Group == (byte)GroupOpcode.Move)
         {
             return;
         }
-        
+
         // if (handler.Class.Name == nameof(EmptyHandler) || reader.BaseStream.Position != buffer.Length)
         // {
             var source = opcode.ToFullString();

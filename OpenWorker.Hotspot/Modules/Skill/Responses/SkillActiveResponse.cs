@@ -5,9 +5,8 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
-/// <summary>Ответ на активный скилл: код ошибки, divergence, swap.</summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct SkillActiveSkillResponse : IResponseHotspotMessage
+public readonly struct SkillActiveResponse(BinaryReader reader) : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,13 +19,9 @@ public readonly struct SkillActiveSkillResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    /// <summary>0 — без ошибки. Код сообщения в tb_(.*?)_script.res</summary>
-    public int ErrorCode { get; init; }
-
-    /// <summary>tb_divergence.res</summary>
-    public int Divergence { get; init; }
-
-    public bool Swap { get; init; }
+    public short ErrorCode { get; init; } = reader.ReadInt16();
+    public int Divergence { get; init; } = reader.ReadInt32();
+    public bool Swap { get; init; } = reader.ReadBoolean();
 
 #endregion Message: Body
 

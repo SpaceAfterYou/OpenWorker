@@ -8,7 +8,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct SkillUpdateBuffResponse : IResponseHotspotMessage
+public readonly struct SkillUpdateBuffResponse(BinaryReader reader)  : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,11 +21,11 @@ public readonly struct SkillUpdateBuffResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    public ActorValue Actor { get; init; }
-    public short Buff { get; init; }
-    public float Time { get; init; }
-    public byte Count { get; init; }
-    public int Owner { get; init; }
+    public ActorValue Actor { get; init; } = new(reader);
+    public short Buff { get; init; } = reader.ReadInt16();
+    public float Time { get; init; } = reader.ReadSingle();
+    public byte Count { get; init; } = reader.ReadByte();
+    public int Owner { get; init; } = reader.ReadInt32();
 
 #endregion Message: Body
 

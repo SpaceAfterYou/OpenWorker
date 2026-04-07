@@ -53,7 +53,7 @@ public sealed class MovementService(ServiceChannels channels) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementJumpRequest request)
     {
-        var channel = channels.Get(context.GetPlayerEntity());
+        var channel = channels.Get(context.Player);
 
         channel.ForEach(e =>
         {
@@ -80,7 +80,7 @@ public sealed class MovementService(ServiceChannels channels) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementMoveRequest request)
     {
-        var channel = channels.Get(context.GetPlayerEntity());
+        var channel = channels.Get(context.Player);
 
         channel.ForEach(e =>
         {
@@ -102,7 +102,7 @@ public sealed class MovementService(ServiceChannels channels) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementStopRequest request)
     {
-        var channel = channels.Get(context.GetPlayerEntity());
+        var channel = channels.Get(context.Player);
 
         channel.ForEach(e =>
         {

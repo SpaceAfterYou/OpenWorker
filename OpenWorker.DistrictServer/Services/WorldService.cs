@@ -13,7 +13,7 @@ public sealed class WorldService(World world, WorldManager manager) : IHotspotHa
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeCreateRequest request)
     {
         await manager
-            .TryEnterMaze(context.GetPlayerEntity(), request.Location)
+            .TryEnterMaze(context.Player, request.Location)
             .ConfigureAwait(false);
     }
 }

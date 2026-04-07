@@ -15,22 +15,22 @@ public sealed class GestureGameplay(World world, IDbContextFactory<PersistenceCo
 {
     public ValueTask ShowAsync(ServiceHandleContext context, GestureShowRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        var actor = world.Get<ActorComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
+        var actor = world.Get<ActorComponent>(context.Player);
 
         session.Send(new GestureShowResponse { Gesture = request.Identifier, Actor = actor });
 
-        var gesture = world.Get<GestureComponent>(context.GetPlayerEntity());
-        
-        world.Set(context.GetPlayerEntity(), gesture with { Active = request.Identifier });
-        
+        var gesture = world.Get<GestureComponent>(context.Player);
+
+        world.Set(context.Player, gesture with { Active = request.Identifier });
+
         return ValueTask.CompletedTask;
     }
 
     public async ValueTask UpdateAsync(ServiceHandleContext context, GestureSlotUpdateRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
-        var gesture = world.Get<GestureComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
+        var gesture = world.Get<GestureComponent>(context.Player);
 
         var length = Math.Min(gesture.Collection.Length, request.GestureList.Length);
 
@@ -40,18 +40,18 @@ public sealed class GestureGameplay(World world, IDbContextFactory<PersistenceCo
             .CreateDbContextAsync(context.CancellationToken)
             .ConfigureAwait(false);
 
-        var actor = world.Get<ActorComponent>(context.GetPlayerEntity());
-        
+        var actor = world.Get<ActorComponent>(context.Player);
+
         var person = persistence.Persons.First(x => x.Id == actor.Identifier);
 
-        person.GestureList = gesture.Collection.ToArray(); 
-        
+        person.GestureList = gesture.Collection.ToArray();
+
         persistence.Persons.Update(person);
-        
+
         await persistence
             .SaveChangesAsync(context.CancellationToken)
             .ConfigureAwait(false);
-        
+
         session.Send(new GestureSlotUpdateResponse { Gestures = gesture.Collection });
     }
 }

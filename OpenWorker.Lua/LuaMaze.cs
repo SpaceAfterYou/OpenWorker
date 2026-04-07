@@ -8,6 +8,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
@@ -32,7 +33,8 @@ public partial class LuaMaze(
     World ecs, 
     Entity player, 
     LuaCreatureManager creatureManager,
-    BuffManager buffManager, 
+    BuffManager buffManager,
+    QuestManager questManager,
     VBatchFile batch
 ) : ILuaUserData
 {
@@ -44,9 +46,9 @@ public partial class LuaMaze(
     public VBatchFile Batch { get; } = batch;
     
     [LuaMember]
-    public void AcceptQuest(int quest)
+    public void AcceptQuest(int episode)
     {
-        Console.WriteLine($"[{nameof(AcceptQuest)}]: {quest}");
+        questManager.AcceptEpisode(player, episode);
     }
 
     [LuaMember]
@@ -140,9 +142,9 @@ public partial class LuaMaze(
     }
 
     [LuaMember]
-    public void CompleteQuest()
+    public void CompleteQuest(int episode)
     {
-        throw new NotImplementedException();
+        questManager.CompleteEpisode(player, episode);
     }
 
     [LuaMember]
@@ -211,16 +213,18 @@ public partial class LuaMaze(
         throw new NotImplementedException();
     }
 
+    /// <summary>Maze Lua: returns whether any active episode references this condition id.</summary>
     [LuaMember]
-    public void IsHaveCondition()
+    public bool IsHaveCondition(int conditionId)
     {
-        throw new NotImplementedException();
+        return questManager.ActiveEpisodeUsesCondition(player, conditionId);
     }
 
+    /// <summary>Maze Lua: returns whether the episode is currently active.</summary>
     [LuaMember]
-    public void IsHaveQuest()
+    public bool IsHaveQuest(int episodeId)
     {
-        throw new NotImplementedException();
+        return questManager.HasActiveEpisode(player, episodeId);
     }
 
     [LuaMember]
@@ -240,7 +244,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void RemoveQuestAll()
     {
-        Console.WriteLine($"[{nameof(RemoveQuestAll)}]");
+        questManager.RemoveAllActiveEpisodes(player);
     }
 
     [LuaMember]

@@ -46,12 +46,12 @@ public sealed class LoginGameplay(
 
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginEnterServerRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
         if (request.Gate != Gate)
         {
             logger.LogDebug("Gate not found.");
-            
+
             session.Send(LoginEnterGateResponse.Error);
             return;
         }
@@ -81,16 +81,16 @@ public sealed class LoginGameplay(
             return;
         }
 
-        world.Set(context.GetPlayerEntity(), new ClaimsComponent(request.Session));
+        world.Set(context.Player, new ClaimsComponent(request.Session));
 
         var list = registry.CreatePersonListComponent(account.Persons);
-        
-        world.Add(context.GetPlayerEntity(), list);
+
+        world.Add(context.Player, list);
 
         session.Send(new LoginEnterGateResponse
         {
             HasError = false,
-            Account = world.Get<ClaimsComponent>(context.GetPlayerEntity()).Account
+            Account = world.Get<ClaimsComponent>(context.Player).Account
         });
         session.Send(new WorldCurrentDateClientMessage());
     }

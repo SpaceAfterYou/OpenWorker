@@ -6,7 +6,7 @@ namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 public readonly struct TitleValue
 {
     [field: FieldOffset(0)]
-    public long Value { get; }
+    public long Value { get; private init; }
 
     [field: FieldOffset(0)]
     public int Primary { get; }
@@ -24,4 +24,7 @@ public readonly struct TitleValue
     {
         Value = reader.ReadInt64();
     }
+
+    public static implicit operator long(TitleValue titleValue) => titleValue.Value;
+    public static implicit operator TitleValue(long value) => new() { Value = value };
 }

@@ -52,14 +52,14 @@ public sealed class ShopService(
 
         var created = itemFactory.Create(shopRow.Item, count);
 
-        var response = storageManager.TryAdd(context.GetPlayerEntity(), created, count);
+        var response = storageManager.TryAdd(context.Player, created, count);
 
         if (response.State is false)
         {
             return ValueTask.CompletedTask;
         }
 
-        var session = world.Get<ServerSessionComponent>(context.GetPlayerEntity());
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
         foreach (var info in response.Info)
         {
@@ -80,7 +80,7 @@ public sealed class ShopService(
             });
         }
 
-        var currency = context.GetPlayerEntity().Get<CurrencyComponent>();
+        var currency = context.Player.Get<CurrencyComponent>();
         currency.Gold -= price;
 
         session.Send(new ItemUpdateInvenMoneyResponse

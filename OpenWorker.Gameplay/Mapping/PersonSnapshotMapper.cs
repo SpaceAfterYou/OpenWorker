@@ -118,13 +118,17 @@ public static class PersonSnapshotMapper
     public static CharacterListResponse CreateCharacterListResponse(World world, Entity gateEntity)
     {
         var c = world.Get<GatePersonComponent>(gateEntity);
+
         var persons = c.SlotList
             .Where(e => Entity.Null != e)
             .Select(p => CreatePersonValue(world, gateEntity, p))
             .ToList();
-        var prot = new ProtectionStateValue(
-            world.Get<SecondPasswordComponent>(gateEntity).Has,
-            world.Get<TradePasswordComponent>(gateEntity).Has);
+
+        var prot = new ProtectionStateValue
+        {
+            HasSecondPassword = world.Get<SecondPasswordComponent>(gateEntity).Has,
+            HasTradePassword = world.Get<TradePasswordComponent>(gateEntity).Has
+        };
 
         return new CharacterListResponse
         {

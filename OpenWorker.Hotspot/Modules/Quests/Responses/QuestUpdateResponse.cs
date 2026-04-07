@@ -6,6 +6,9 @@ using OpenWorker.Hotspot.Modules.Quests.Types;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 
+/// <summary>
+/// int16 count, then count × (int32 condition id, byte step) — sub_417690 / receive_eSUB_CMD_QUEST_UPDATE.
+/// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct QuestUpdateResponse : IResponseHotspotMessage
 {

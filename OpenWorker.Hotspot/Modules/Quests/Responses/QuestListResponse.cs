@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -33,19 +32,7 @@ public readonly struct QuestListResponse : IResponseHotspotMessage
 
         foreach (var quest in List)
         {
-            writer.Write(quest.Index);
-
-            writer.Write(quest.Info.AddHelper);
-            writer.Write(quest.Info.CompleteBit);
-            writer.Write(quest.Info.Failed);
-
-            Debug.Assert(quest.Info.Condition.Count <= 10);
-
-            foreach (var condition in quest.Info.Condition)
-            {
-                writer.Write(condition.Condition);
-                writer.Write(condition.Step);
-            }
+            quest.Write(writer);
         }
     }
 

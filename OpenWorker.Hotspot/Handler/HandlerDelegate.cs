@@ -1,10 +1,11 @@
-﻿using OpenWorker.Hotspot.Handler.Abstractions;
+﻿using Arch.Core;
+using OpenWorker.Hotspot.Handler.Abstractions;
 
 namespace OpenWorker.Hotspot.Handler;
 
 internal delegate ValueTask HandlerDelegate(
     IHotspotHandler instance,
-    object player,
+    Entity player,
     BinaryReader reader,
     CancellationToken cancellationToken
 );
