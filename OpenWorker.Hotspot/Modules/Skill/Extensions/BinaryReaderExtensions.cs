@@ -12,8 +12,8 @@ public static class BinaryReaderExtensions
             .Select(e => new SkillDmgValue(reader))
             .ToArray();
 
-        public ushort[] ReadSkillDeck() => Enumerable
-            .Range(0, SkillModuleDefines.BonusSkillDeckCount)
+        public ushort[] ReadSkillDeckBonus() => Enumerable
+            .Range(0, SkillModuleDefines.SkillDeckBonusCount)
             .Select(e => reader.ReadUInt16())
             .ToArray();
 
@@ -22,9 +22,14 @@ public static class BinaryReaderExtensions
             .Select(e => new ActorValue(reader))
             .ToArray();
 
-        public SkillDeckValueList[] ReadSkillDeckValueList() => Enumerable
+        public SkillDeckValue[] ReadSkillDeckValueList() => Enumerable
             .Range(0, Math.Min(reader.ReadByte(), SkillModuleDefines.SkillDeckCount))
-            .Select(e => new SkillDeckValueList(reader))
+            .Select(e => new SkillDeckValue(reader))
+            .ToArray();
+
+        public SkillInfoValue[] ReadSkillInfoValueList() => Enumerable
+            .Range(0, reader.ReadByte())
+            .Select(e => new SkillInfoValue(reader))
             .ToArray();
     }
 }

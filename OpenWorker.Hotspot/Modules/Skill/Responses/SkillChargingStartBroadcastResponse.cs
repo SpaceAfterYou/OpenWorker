@@ -1,3 +1,4 @@
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -19,7 +20,7 @@ public readonly struct SkillChargingStartBroadcastResponse(BinaryReader reader) 
 
 #region Message: Body
 
-
+    public ActorValue Actor { get; init; } = new(reader);
 
 #endregion Message: Body
 
@@ -27,6 +28,7 @@ public readonly struct SkillChargingStartBroadcastResponse(BinaryReader reader) 
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Actor);
     }
 
 #endregion Interface: IWritableData

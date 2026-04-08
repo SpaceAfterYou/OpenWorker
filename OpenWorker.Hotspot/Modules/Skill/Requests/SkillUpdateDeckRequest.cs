@@ -20,7 +20,7 @@ public readonly struct SkillUpdateDeckRequest(BinaryReader reader) : IRequestHot
 
 #region Message: Body
 
-    public SkillDeckValueList[] SkillDeckList { get; init; } = reader.ReadSkillDeckValueList();
+    public SkillDeckValue[] SkillDeckList { get; init; } = reader.ReadSkillDeckValueList();
 
 #endregion Message: Body
 }

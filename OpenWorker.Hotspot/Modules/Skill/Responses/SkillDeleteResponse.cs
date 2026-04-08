@@ -19,7 +19,7 @@ public readonly struct SkillDeleteResponse(BinaryReader reader) : IResponseHotsp
 
 #region Message: Body
 
-
+    public int Skill { get; init; } = reader.ReadInt32();
 
 #endregion Message: Body
 
@@ -27,6 +27,7 @@ public readonly struct SkillDeleteResponse(BinaryReader reader) : IResponseHotsp
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Skill);
     }
 
 #endregion Interface: IWritableData

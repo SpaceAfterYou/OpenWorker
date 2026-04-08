@@ -19,7 +19,7 @@ public readonly struct SkillProjectileRemoveResponse(BinaryReader reader) : IRes
 
 #region Message: Body
 
-
+    public uint Session { get; init; } = reader.ReadUInt32();
 
 #endregion Message: Body
 
@@ -27,6 +27,7 @@ public readonly struct SkillProjectileRemoveResponse(BinaryReader reader) : IRes
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Session);
     }
 
 #endregion Interface: IWritableData

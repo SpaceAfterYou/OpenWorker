@@ -2,7 +2,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
-public readonly struct SkillDeckValueList(BinaryReader reader) : IWritableData
+public readonly struct SkillDeckValue(BinaryReader reader) : IWritableData
 {
     public ushort Position { get; init; } = reader.ReadUInt16();
 

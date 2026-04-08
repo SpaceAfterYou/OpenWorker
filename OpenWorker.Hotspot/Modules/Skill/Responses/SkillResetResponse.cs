@@ -2,6 +2,8 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Skill.Requests;
+using OpenWorker.Hotspot.Modules.Skill.Types;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
@@ -19,7 +21,7 @@ public readonly struct SkillResetResponse(BinaryReader reader) : IResponseHotspo
 
 #region Message: Body
 
-
+    public SkillSnapshotValue State { get; init; } = new(reader);
 
 #endregion Message: Body
 
@@ -27,6 +29,7 @@ public readonly struct SkillResetResponse(BinaryReader reader) : IResponseHotspo
 
     public void Write(BinaryWriter writer)
     {
+        State.Write(writer);
     }
 
 #endregion Interface: IWritableData

@@ -1,7 +1,9 @@
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Skill.Requests;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
@@ -19,7 +21,8 @@ public readonly struct SkillWarpPositionBroadcastResponse(BinaryReader reader) :
 
 #region Message: Body
 
-
+    public ActorValue Actor { get; init; } = new(reader);
+    public SkillPositionValue PosInfo { get; init; } = new(reader);
 
 #endregion Message: Body
 
@@ -27,6 +30,9 @@ public readonly struct SkillWarpPositionBroadcastResponse(BinaryReader reader) :
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Actor);
+
+        PosInfo.Write(writer);
     }
 
 #endregion Interface: IWritableData

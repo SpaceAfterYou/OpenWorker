@@ -1,5 +1,8 @@
+using System.Numerics;
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
@@ -19,7 +22,9 @@ public readonly struct SkillSyncPositionBroadcastResponse(BinaryReader reader) :
 
 #region Message: Body
 
-
+    public ActorValue Actor { get; init; } = new(reader);
+    public Vector3 Position { get; init; } = reader.ReadVector3();
+    public float Yaw { get; init; } = reader.ReadSingle();
 
 #endregion Message: Body
 
@@ -27,6 +32,9 @@ public readonly struct SkillSyncPositionBroadcastResponse(BinaryReader reader) :
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Actor);
+        writer.Write(Position);
+        writer.Write(Yaw);
     }
 
 #endregion Interface: IWritableData

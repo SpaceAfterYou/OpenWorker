@@ -1,5 +1,8 @@
+using System.Numerics;
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
@@ -19,7 +22,11 @@ public readonly struct SkillMoveWithTimeBroadcastResponse(BinaryReader reader) :
 
 #region Message: Body
 
+    public ActorValue Actor { get; init; } = new(reader);
+    public Vector3 Position { get; init; } = reader.ReadVector3();
 
+    /// <example>fDuration = fDist / fMaxSpeed;</example>
+    public float Time { get; init; } = reader.ReadSingle();
 
 #endregion Message: Body
 
@@ -27,6 +34,9 @@ public readonly struct SkillMoveWithTimeBroadcastResponse(BinaryReader reader) :
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Actor);
+        writer.Write(Position);
+        writer.Write(Time);
     }
 
 #endregion Interface: IWritableData

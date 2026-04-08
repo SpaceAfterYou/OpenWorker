@@ -22,7 +22,7 @@ public readonly struct SkillProjectileAttachBroadcastResponse(BinaryReader reade
 
 #region Message: Body
 
-    public ActorValue Owner { get; init; } = new(reader);
+    public uint Session { get; init; } = reader.ReadUInt32();
     public Vector3 Position { get; init; } = reader.ReadVector3();
     public ActorValue Target { get; init; } = new(reader);
 
@@ -32,7 +32,7 @@ public readonly struct SkillProjectileAttachBroadcastResponse(BinaryReader reade
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Owner);
+        writer.Write(Session);
         writer.Write(Position);
         writer.Write(Target);
     }

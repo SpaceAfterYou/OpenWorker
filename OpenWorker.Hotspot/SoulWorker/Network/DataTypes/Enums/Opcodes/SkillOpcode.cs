@@ -3,7 +3,7 @@
 namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 
 /// <summary>
-/// 
+///
 /// </summary>
 public enum SkillOpcode : byte
 {
@@ -11,7 +11,7 @@ public enum SkillOpcode : byte
     /// Request
     /// </summary>
     PassiveSkillEndReq = 0x05,
-    
+
     /// <summary>
     /// Request
     /// </summary>
@@ -38,7 +38,7 @@ public enum SkillOpcode : byte
     ActiveSkillBt = 0x10,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     ActionSkillReq = 0x11,
 
@@ -78,22 +78,22 @@ public enum SkillOpcode : byte
     AuraUpdateBt = 0x18,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     BuffActiveBroachEffect = 0x19,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     CallOutSkillReq = 0x1a,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     CallOutSkillRes = 0x1b,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     CallOutSkillBt = 0x1c,
 
@@ -168,7 +168,7 @@ public enum SkillOpcode : byte
     ProjectileRemove = 0x3b,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     CombatType = 0x3c,
 
@@ -225,7 +225,7 @@ public enum SkillOpcode : byte
     /// <summary>
     /// Response
     /// </summary>
-    SkillSuboInputBt = 0x4b,
+    SkillSubInputBt = 0x4b,
 
     /// <summary>
     /// Request
@@ -238,7 +238,7 @@ public enum SkillOpcode : byte
     SkillChargingStartBt = 0x4d,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     SkillChargingEnd = 0x4e,
 
@@ -248,32 +248,32 @@ public enum SkillOpcode : byte
     SkillChargingEndBt = 0x50,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     SkillChargingBothInputReq = 0x51,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     SkillChargingBothInputBt = 0x52,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     SkillMovingTarget = 0x53,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     DeckPageActive = 0x54,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     DeckPageName = 0x55,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     SkillDeckPageOpen = 0x56,
 
@@ -293,7 +293,7 @@ public enum SkillOpcode : byte
     SkillDelete = 0x63,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     SkillResetCooltime = 0x64,
 
@@ -368,7 +368,7 @@ public enum SkillOpcode : byte
     SkillDefenceType = 0x7d,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     PassiveSkillCooltime = 0x7e,
 }

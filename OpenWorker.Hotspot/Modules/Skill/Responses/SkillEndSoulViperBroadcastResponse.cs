@@ -5,6 +5,9 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+/// <summary>
+/// TODO: Deleted mech. Research.
+/// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct SkillEndSoulViperBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
 {
@@ -19,7 +22,7 @@ public readonly struct SkillEndSoulViperBroadcastResponse(BinaryReader reader) :
 
 #region Message: Body
 
-
+    public int ActorId { get; init; } = reader.ReadInt32();
 
 #endregion Message: Body
 
@@ -27,6 +30,7 @@ public readonly struct SkillEndSoulViperBroadcastResponse(BinaryReader reader) :
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(ActorId);
     }
 
 #endregion Interface: IWritableData
