@@ -6,12 +6,12 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct SkillActiveSkillRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+public readonly struct AkashicRecordRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
 {
 #region Interface: IHotspotMessage
 
     private const GroupOpcode Group = GroupOpcode.Skill;
-    private const SkillOpcode Command = SkillOpcode.ActiveSkillReq;
+    private const SkillOpcode Command = SkillOpcode.AkashicRecordReq;
 
     public MessageOpcode Opcode => new(Group, Command);
 
@@ -19,12 +19,15 @@ public readonly struct SkillActiveSkillRequest(BinaryReader reader) : IRequestHo
 
 #region Message: Body
 
-    public ActiveSkillValue Skill { get; } = new(reader);
+    public byte Slot { get; init; } = reader.ReadByte();
+    public SkillPositionValue SkillPosition { get; init; } = new(reader);
 
 #endregion Message: Body
 
     public void Write(BinaryWriter writer)
     {
-        Skill.Write(writer);
+        writer.Write(Slot);
+
+        SkillPosition.Write(writer);
     }
 }

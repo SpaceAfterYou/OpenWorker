@@ -1,14 +1,13 @@
-using System.Numerics;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Skill.Responses;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct SkillChainRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct SkillChainRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
 {
 #region Interface: IHotspotMessage
 
@@ -21,12 +20,16 @@ public readonly struct SkillChainRequest(BinaryReader reader) : IRequestHotspotM
 
 #region Message: Body
 
-    public int Skill { get; init; } = reader.ReadInt32();
-    public short TriggerIndex { get; init; } = reader.ReadInt16();
-    public Vector3 Position { get; init; } = reader.ReadVector3();
-    public Vector3 Direction { get; init; } = reader.ReadVector3();
-    public uint Session { get; init; } = reader.ReadUInt32();
-    public uint Target { get; init; } = reader.ReadUInt32();
+    public SkillProjectileValue Projectile { get; init; } = new(reader);
 
 #endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
+    {
+        Projectile.Write(writer);
+    }
+
+#endregion Interface: IWritableData
 }

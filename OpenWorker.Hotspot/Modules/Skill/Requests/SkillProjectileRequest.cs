@@ -1,4 +1,5 @@
 using System.Numerics;
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
@@ -31,7 +32,7 @@ public readonly struct SkillProjectileRequest(BinaryReader reader) : IRequestHot
     public short AdditionalDirectionX { get; init; } = reader.ReadInt16();
     public short AdditionalDirectionY { get; init; } = reader.ReadInt16();
     public uint Session { get; init; } = reader.ReadUInt32();
-    public uint Target { get; init; } = reader.ReadUInt32();
+    public ActorValue Target { get; init; } = new(reader);
 
 #endregion Message: Body
 }

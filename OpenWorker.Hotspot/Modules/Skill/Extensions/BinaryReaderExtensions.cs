@@ -1,3 +1,4 @@
+using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Extensions;
@@ -16,9 +17,9 @@ public static class BinaryReaderExtensions
             .Select(e => reader.ReadUInt16())
             .ToArray();
 
-        public int[] ReadPreTargetList() => Enumerable
+        public ActorValue[] ReadPreTargetList() => Enumerable
             .Range(0, reader.ReadByte())
-            .Select(e => reader.ReadInt32())
+            .Select(e => new ActorValue(reader))
             .ToArray();
 
         public SkillDeckValueList[] ReadSkillDeckValueList() => Enumerable

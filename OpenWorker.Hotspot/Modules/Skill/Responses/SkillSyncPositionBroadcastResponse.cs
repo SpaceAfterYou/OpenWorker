@@ -3,15 +3,15 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
-namespace OpenWorker.Hotspot.Modules.Skill.Requests;
+namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct SkillActiveSkillRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct SkillSyncPositionBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
     private const GroupOpcode Group = GroupOpcode.Skill;
-    private const SkillOpcode Command = SkillOpcode.ActiveSkillReq;
+    private const SkillOpcode Command = SkillOpcode.SkillSyncPositionBt;
 
     public MessageOpcode Opcode => new(Group, Command);
 
@@ -19,12 +19,15 @@ public readonly struct SkillActiveSkillRequest(BinaryReader reader) : IRequestHo
 
 #region Message: Body
 
-    public ActiveSkillValue Skill { get; } = new(reader);
+
 
 #endregion Message: Body
 
+#region Interface: IWritableData
+
     public void Write(BinaryWriter writer)
     {
-        Skill.Write(writer);
     }
+
+#endregion Interface: IWritableData
 }

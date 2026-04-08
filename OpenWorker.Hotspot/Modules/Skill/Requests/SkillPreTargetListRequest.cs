@@ -1,3 +1,4 @@
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -20,7 +21,7 @@ public readonly struct SkillPreTargetListRequest(BinaryReader reader) : IRequest
 
 #region Message: Body
 
-    public int[] Indices { get; init; } =  reader.ReadPreTargetList();
+    public ActorValue[] ActorList { get; init; } =  reader.ReadPreTargetList();
 
 #endregion Message: Body
 }
