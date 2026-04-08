@@ -2,11 +2,9 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
-
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct SkillLoadInfoResponse(BinaryReader reader) : IResponseHotspotMessage

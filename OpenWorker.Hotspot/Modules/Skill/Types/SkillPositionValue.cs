@@ -2,7 +2,7 @@ using System.Numerics;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
-namespace OpenWorker.Hotspot.Modules.Skill.Requests;
+namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
 public readonly struct SkillPositionValue(BinaryReader reader) : IWritableData
 {
@@ -13,7 +13,7 @@ public readonly struct SkillPositionValue(BinaryReader reader) : IWritableData
     public short MotionClass { get; init; } = reader.ReadInt16();
 
     /// <summary>
-    /// Client has a field but skips when read.
+    /// TODO: Client has a field but skips when read.
     /// </summary>
     public bool SwapSkill { get; init; } = reader.ReadBoolean();
 
@@ -30,7 +30,7 @@ public readonly struct SkillPositionValue(BinaryReader reader) : IWritableData
         writer.Write(Angle);
         writer.Write(MotionClass);
 
-        // Client has a field but skips when read.
+        // TODO: Client has a field but skips when read.
         // writer.Write(SwapSkill);
 
         writer.Write(HasInputFlag);

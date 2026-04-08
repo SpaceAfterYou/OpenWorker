@@ -1,9 +1,8 @@
-using System.IO;
 using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
-namespace OpenWorker.Hotspot.Modules.Skill.Requests;
+namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
 public readonly struct SkillActorInfoValue(BinaryReader reader) : IWritableData
 {

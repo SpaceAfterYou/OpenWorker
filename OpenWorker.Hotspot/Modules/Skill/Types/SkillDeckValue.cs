@@ -1,6 +1,6 @@
 using OpenWorker.Hotspot.Messages.Abstractions;
 
-namespace OpenWorker.Hotspot.Modules.Skill.Requests;
+namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
 public readonly struct SkillDeckValue(BinaryReader reader) : IWritableData
 {

@@ -1,9 +1,8 @@
-using System.IO;
 using System.Numerics;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
-namespace OpenWorker.Hotspot.Modules.Skill.Requests;
+namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
 public readonly struct SkillActionPosInfoValue(BinaryReader reader) : IWritableData
 {

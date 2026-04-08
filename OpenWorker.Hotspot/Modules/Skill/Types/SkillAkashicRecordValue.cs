@@ -1,8 +1,7 @@
 using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Skill.Requests;
 
-namespace OpenWorker.Hotspot.Modules.Skill.Responses;
+namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
 public readonly struct SkillAkashicRecordValue(BinaryReader reader) : IWritableData
 {

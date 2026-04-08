@@ -303,7 +303,7 @@ public enum SkillOpcode : byte
     SkillLoadInfo = 0x70,
 
     /// <summary>
-    /// Request
+    /// Request, Response
     /// </summary>
     SkillLearn = 0x71,
 

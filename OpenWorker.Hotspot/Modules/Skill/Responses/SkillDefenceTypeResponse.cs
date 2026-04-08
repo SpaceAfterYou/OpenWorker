@@ -3,12 +3,11 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Skill.Enums;
+using OpenWorker.Hotspot.Modules.Skill.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
-/// <summary>
-/// Client <c>sub_95DDD0</c>: <c>UXActorID</c>, byte, float.
-/// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct SkillDefenceTypeResponse(BinaryReader reader) : IResponseHotspotMessage
 {
@@ -24,11 +23,12 @@ public readonly struct SkillDefenceTypeResponse(BinaryReader reader) : IResponse
 #region Message: Body
 
     public ActorValue Actor { get; init; } = new(reader);
+    public CreatureDefenseType Defense { get; init; } = reader.ReadTypeOfDefense();
 
-    public byte DefenseType { get; init; } = reader.ReadByte();
-
-    /// <summary>Third argument to <c>CMover::SetDefenseType</c> (e.g. gauge / blend).</summary>
-    public float DefenseParam { get; init; } = reader.ReadSingle();
+    /// <summary>
+    /// TODO: Unknown
+    /// </summary>
+    public float Unknown { get; init; } = reader.ReadSingle();
 
 #endregion Message: Body
 
@@ -37,8 +37,8 @@ public readonly struct SkillDefenceTypeResponse(BinaryReader reader) : IResponse
     public void Write(BinaryWriter writer)
     {
         writer.Write(Actor);
-        writer.Write(DefenseType);
-        writer.Write(DefenseParam);
+        writer.Write(Defense);
+        writer.Write(Unknown);
     }
 
 #endregion Interface: IWritableData
