@@ -29,6 +29,8 @@ using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
+using OpenWorker.Hotspot.Modules.Skill.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
 using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Persistence;
@@ -129,8 +131,11 @@ public sealed class PersonService(
             World = PersonSnapshotMapper.CreateWorldValue(ecs, context.Player),
             Gate = PersonSnapshotMapper.CreateCharacterInfoGatePayload(ecs, context.Player)
         });
+
+        ref readonly var actor = ref ecs.Get<ActorComponent>(context.Player);
+
         session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.Player).Collection });
-        session.Send(new PersonUpdateOriginStatListResponse { Actor = ecs.Get<ActorComponent>(context.Player) });
+        session.Send(new PersonUpdateOriginStatListResponse { Actor = actor });
         // session.Send(new BoosterLoadReply([], BoosterConsumeArea.None));
 
         SendSoulMetryList(session);
@@ -155,6 +160,20 @@ public sealed class PersonService(
             {
                 Step = 0,
                 Played = TimeSpan.Zero
+            }
+        });
+
+        session.Send(new SkillLoadInfoResponse
+        {
+            Snapshot = new SkillSnapshotValue
+            {
+                Target = actor,
+                TotalSkillPoint = 32,
+                SkillPoint = 16,
+                DeckSlotCount = 4,
+                DeckBonus = [1, 2, 3, 4],
+                SkillList = [],
+                SkillDeck = []
             }
         });
     }

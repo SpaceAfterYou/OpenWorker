@@ -19,7 +19,9 @@ public readonly struct SkillDivergenceLearnResponse(BinaryReader reader) : IResp
 
 #region Message: Body
 
+    public int Skill { get; init; } = reader.ReadInt32();
 
+    public int Divergence { get; init; } = reader.ReadInt32();
 
 #endregion Message: Body
 
@@ -27,6 +29,8 @@ public readonly struct SkillDivergenceLearnResponse(BinaryReader reader) : IResp
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Skill);
+        writer.Write(Divergence);
     }
 
 #endregion Interface: IWritableData

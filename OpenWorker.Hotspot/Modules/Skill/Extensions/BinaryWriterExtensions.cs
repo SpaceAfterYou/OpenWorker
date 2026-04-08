@@ -18,9 +18,9 @@ public static class BinaryWriterExtensions
             }
         }
 
-        public void WriteSkillDeck(ushort[] values)
+        public void WriteSkillDeckBonus(ushort[] values)
         {
-            Debug.Assert(values.Length == SkillModuleDefines.BonusSkillDeckCount);
+            Debug.Assert(values.Length == SkillModuleDefines.SkillDeckBonusCount);
 
             foreach (var value in values)
             {
@@ -38,9 +38,19 @@ public static class BinaryWriterExtensions
             }
         }
 
-        public void Write(SkillDeckValueList[] values)
+        public void Write(SkillInfoValue[] values)
         {
-            Debug.Assert(values.Length == SkillModuleDefines.BonusSkillDeckCount);
+            writer.Write((byte)values.Length);
+
+            foreach (var value in values)
+            {
+                value.Write(writer);
+            }
+        }
+
+        public void Write(SkillDeckValue[] values)
+        {
+            Debug.Assert(values.Length < SkillModuleDefines.SkillDeckCount);
 
             writer.Write((byte)values.Length);
 
