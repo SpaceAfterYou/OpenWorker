@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct SkillActiveSkillRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct SkillActiveSkillRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
 {
 #region Interface: IHotspotMessage
 
@@ -22,4 +22,9 @@ public readonly struct SkillActiveSkillRequest(BinaryReader reader) : IRequestHo
     public ActiveSkillValue Skill { get; } = new(reader);
 
 #endregion Message: Body
+
+    public void Write(BinaryWriter writer)
+    {
+        Skill.Write(writer);
+    }
 }

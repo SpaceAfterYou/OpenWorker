@@ -21,11 +21,11 @@ public readonly struct SkillUpdateBuffResponse(BinaryReader reader)  : IResponse
 
 #region Message: Body
 
-    public ActorValue Actor { get; init; } = new(reader);
+    public ActorValue Target { get; init; } = new(reader);
     public short Buff { get; init; } = reader.ReadInt16();
     public float Time { get; init; } = reader.ReadSingle();
     public byte Count { get; init; } = reader.ReadByte();
-    public int Owner { get; init; } = reader.ReadInt32();
+    public ActorValue Owner { get; init; } = new(reader);
 
 #endregion Message: Body
 
@@ -33,7 +33,7 @@ public readonly struct SkillUpdateBuffResponse(BinaryReader reader)  : IResponse
 
     public void Write(BinaryWriter writer)
     {
-        writer.WriteActor(Actor);
+        writer.Write(Target);
         writer.Write(Buff);
         writer.Write(Time);
         writer.Write(Count);

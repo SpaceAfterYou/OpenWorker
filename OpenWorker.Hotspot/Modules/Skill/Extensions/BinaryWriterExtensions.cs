@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Extensions;
@@ -27,7 +28,7 @@ public static class BinaryWriterExtensions
             }
         }
 
-        public void WritePreTargetList(int[] values)
+        public void WritePreTargetList(ActorValue[] values)
         {
             writer.Write((byte)values.Length);
 
