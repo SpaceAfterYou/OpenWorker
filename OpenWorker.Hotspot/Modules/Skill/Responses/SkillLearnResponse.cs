@@ -1,20 +1,20 @@
-using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Skill.Requests;
+using OpenWorker.Hotspot.Modules.Skill.Enums;
+using OpenWorker.Hotspot.Modules.Skill.Extensions;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct SkillWarpPositionBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly struct SkillLearnResponse(BinaryReader reader) : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
     private const GroupOpcode Group = GroupOpcode.Skill;
-    private const SkillOpcode Command = SkillOpcode.SkillWarpPositionBt;
+    private const SkillOpcode Command = SkillOpcode.SkillLearn;
 
     public MessageOpcode Opcode => new(Group, Command);
 
@@ -22,8 +22,14 @@ public readonly struct SkillWarpPositionBroadcastResponse(BinaryReader reader) :
 
 #region Message: Body
 
-    public ActorValue Actor { get; init; } = new(reader);
-    public SkillPositionValue PosInfo { get; init; } = new(reader);
+    public required SkillInfoValue Info { get; init; } = new(reader);
+
+    /// <summary>
+    /// TODO: Always zero.
+    /// </summary>
+    public required SkillType Type { get; init; } = reader.ReadSkillType();
+
+    public required bool IsSuccessful { get; init; } = reader.ReadBoolean();
 
 #endregion Message: Body
 
@@ -31,9 +37,10 @@ public readonly struct SkillWarpPositionBroadcastResponse(BinaryReader reader) :
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Actor);
+        Info.Write(writer);
 
-        PosInfo.Write(writer);
+        writer.Write(Type);
+        writer.Write(IsSuccessful);
     }
 
 #endregion Interface: IWritableData

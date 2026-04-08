@@ -5,9 +5,6 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
-/// <summary>
-/// Client <c>sub_95D470</c>: single byte.
-/// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct SkillUpdateDeckResponse(BinaryReader reader) : IResponseHotspotMessage
 {
@@ -22,7 +19,7 @@ public readonly struct SkillUpdateDeckResponse(BinaryReader reader) : IResponseH
 
 #region Message: Body
 
-    public byte Value { get; init; } = reader.ReadByte();
+    public bool IsSuccessed { get; init; } = reader.ReadBoolean();
 
 #endregion Message: Body
 
@@ -30,7 +27,7 @@ public readonly struct SkillUpdateDeckResponse(BinaryReader reader) : IResponseH
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Value);
+        writer.Write(IsSuccessed);
     }
 
 #endregion Interface: IWritableData

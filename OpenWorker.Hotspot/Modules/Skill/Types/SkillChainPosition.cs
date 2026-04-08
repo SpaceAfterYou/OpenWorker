@@ -3,7 +3,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
-namespace OpenWorker.Hotspot.Modules.Skill.Responses;
+namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
 public readonly struct SkillChainPosition(BinaryReader reader) : IWritableData
 {
