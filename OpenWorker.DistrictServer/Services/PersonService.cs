@@ -26,12 +26,14 @@ using OpenWorker.Gameplay.Modules.Gestures.Components;
 using OpenWorker.Hotspot.Modules.Gestures.Responses;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
+using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -49,7 +51,8 @@ public sealed class PersonService(
     IDbContextFactory<PersistenceContext> factory,
     IConfiguration configuration,
     PersonRegistry registry,
-    QuestManager questManager
+    QuestManager questManager,
+    ReadOnlyCollection<CharacterInfoRow> characterInfo
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonLoadTitleRequest>,
@@ -125,6 +128,28 @@ public sealed class PersonService(
 
         registry.PullPerson(context.Player, person);
 
+        ecs.Set(context.Player, new SkillPointComponent
+        {
+            TotalSkillPoint = 32,
+            FreeSkillPoint = 16
+        });
+
+        ecs.Set(context.Player, new SkillLearnedComponent
+        {
+            Values = GetDefaultSkills(person.Hero)
+        });
+
+        ecs.Set(context.Player, new SkillDeckComponent
+        {
+            SlotList = [],
+            SlotCount = 4
+        });
+
+        ecs.Set(context.Player, new SkillDeckBonusComponent
+        {
+            Values = [1, 2, 3, 4]
+        });
+
         session.Send(new CharacterInfoResponse
         {
             Person = PersonSnapshotMapper.CreatePersonValue(ecs, context.Player, context.Player),
@@ -163,19 +188,43 @@ public sealed class PersonService(
             }
         });
 
+        // Get skill components
+        ref readonly var skillPoint = ref ecs.Get<SkillPointComponent>(context.Player);
+        ref readonly var skillLearned = ref ecs.Get<SkillLearnedComponent>(context.Player);
+        ref readonly var skillDeck = ref ecs.Get<SkillDeckComponent>(context.Player);
+        ref readonly var skillDeckBonus = ref ecs.Get<SkillDeckBonusComponent>(context.Player);
+
         session.Send(new SkillLoadInfoResponse
         {
             Snapshot = new SkillSnapshotValue
             {
                 Target = actor,
-                TotalSkillPoint = 32,
-                SkillPoint = 16,
-                DeckSlotCount = 4,
-                DeckBonus = [1, 2, 3, 4],
-                SkillList = [],
-                SkillDeck = []
+                SkillPoint = new SkillPointValue
+                {
+                    TotalSkillPoint = skillPoint.TotalSkillPoint,
+                    FreeSkillPoint = skillPoint.FreeSkillPoint,
+                },
+                DeckSlotCount = skillDeck.SlotCount,
+                DeckBonus = skillDeckBonus.Values,
+                SkillList = skillLearned.Values,
+                DeckSlotList = skillDeck.SlotList
             }
         });
+    }
+
+    private SkillInfoValue[] GetDefaultSkills(Hero hero)
+    {
+        var charInfo = characterInfo.FirstOrDefault(c => c.Character == (byte)hero);
+        if (charInfo.Id == 0)
+        {
+            return [];
+        }
+
+        return charInfo
+            .GetSkillList()
+            .Where(id => id > 0)
+            .Select(id => new SkillInfoValue { Skill = id, Divergence = 0 })
+            .ToArray();
     }
 
     private void JoinChannel(Entity entity)

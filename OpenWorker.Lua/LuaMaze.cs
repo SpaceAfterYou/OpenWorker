@@ -213,14 +213,12 @@ public partial class LuaMaze(
         throw new NotImplementedException();
     }
 
-    /// <summary>Maze Lua: returns whether any active episode references this condition id.</summary>
     [LuaMember]
     public bool IsHaveCondition(int conditionId)
     {
         return questManager.ActiveEpisodeUsesCondition(player, conditionId);
     }
 
-    /// <summary>Maze Lua: returns whether the episode is currently active.</summary>
     [LuaMember]
     public bool IsHaveQuest(int episodeId)
     {

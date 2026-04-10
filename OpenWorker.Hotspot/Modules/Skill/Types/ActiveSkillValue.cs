@@ -7,8 +7,9 @@ public readonly struct ActiveSkillValue(BinaryReader reader) : IWritableData
 {
 #region Message: Body
 
-    public ActorValue Actor { get; init; } = new(reader);
+    public ActorValue Actor { get; init; }
     public int Skill { get; init; } = reader.ReadInt32();
+    public int Unknown { get; init; } = reader.ReadInt32();
     public SkillPositionValue Position { get; init; } = new(reader);
     public int Divergence { get; init; } = reader.ReadInt32();
     public int ParentSkill { get; init; } = reader.ReadInt32();

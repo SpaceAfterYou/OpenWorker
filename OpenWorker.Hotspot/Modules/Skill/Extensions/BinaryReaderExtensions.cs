@@ -15,7 +15,7 @@ public static class BinaryReaderExtensions
             .Select(e => new SkillDmgValue(reader))
             .ToArray();
 
-        public ushort[] ReadSkillDeckBonus() => Enumerable
+        public ushort[] ReadSkillDeckBonusList() => Enumerable
             .Range(0, SkillModuleDefines.SkillDeckBonusCount)
             .Select(e => reader.ReadUInt16())
             .ToArray();

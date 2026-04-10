@@ -19,7 +19,7 @@ public readonly struct SkillAddDeckSlotRequest(BinaryReader reader) : IRequestHo
 
 #region Message: Body
 
-    public short Slot { get; init; } = reader.ReadInt16();
+    public short SlotCount { get; init; } = reader.ReadInt16();
 
 #endregion Message: Body
 }

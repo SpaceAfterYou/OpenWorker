@@ -24,8 +24,12 @@ public readonly struct SkillActiveSkillRequest(BinaryReader reader) : IRequestHo
 
 #endregion Message: Body
 
+#region Interface: IWritableData
+
     public void Write(BinaryWriter writer)
     {
         Skill.Write(writer);
     }
+
+#endregion Interface: IWritableData
 }

@@ -20,7 +20,7 @@ public readonly struct SkillDeckBonusResponse(BinaryReader reader) : IResponseHo
 
 #region Message: Body
 
-    public ushort[] Deck { get; init; } = reader.ReadSkillDeckBonus();
+    public ushort[] Values { get; init; } = reader.ReadSkillDeckBonusList();
 
 #endregion Message: Body
 
@@ -28,7 +28,7 @@ public readonly struct SkillDeckBonusResponse(BinaryReader reader) : IResponseHo
 
     public void Write(BinaryWriter writer)
     {
-        writer.WriteSkillDeckBonus(Deck);
+        writer.WriteSkillDeckBonus(Values);
     }
 
 #endregion Interface: IWritableData

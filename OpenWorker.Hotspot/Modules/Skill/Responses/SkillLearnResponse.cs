@@ -22,14 +22,14 @@ public readonly struct SkillLearnResponse(BinaryReader reader) : IResponseHotspo
 
 #region Message: Body
 
-    public required SkillInfoValue Info { get; init; } = new(reader);
+    public SkillInfoValue Info { get; init; } = new(reader);
 
     /// <summary>
-    /// TODO: Always zero.
+    /// TODO: Research, always zero.
     /// </summary>
-    public required SkillType Type { get; init; } = reader.ReadSkillType();
+    public SkillType Type { get; init; } = reader.ReadSkillType();
 
-    public required bool IsSuccessful { get; init; } = reader.ReadBoolean();
+    public bool IsSuccessful { get; init; } = reader.ReadBoolean();
 
 #endregion Message: Body
 

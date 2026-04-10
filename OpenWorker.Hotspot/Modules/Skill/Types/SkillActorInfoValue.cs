@@ -6,9 +6,15 @@ namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
 public readonly struct SkillActorInfoValue(BinaryReader reader) : IWritableData
 {
+#region Message: Body
+
     public ActorValue UxActorId { get; init; } = new(reader);
 
     public SkillActionPosInfoValue SkillPosInfo { get; init; } = new(reader);
+
+#endregion Message: Body
+
+#region Interface: IWritableData
 
     public void Write(BinaryWriter writer)
     {
@@ -16,4 +22,6 @@ public readonly struct SkillActorInfoValue(BinaryReader reader) : IWritableData
 
         SkillPosInfo.Write(writer);
     }
+
+#endregion Interface: IWritableData
 }

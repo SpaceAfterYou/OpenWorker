@@ -19,7 +19,7 @@ public readonly struct SkillAddDeckSlotResponse(BinaryReader reader) : IResponse
 
 #region Message: Body
 
-    public short DeckSlotCount { get; init; } = reader.ReadInt16();
+    public short SlotCount { get; init; } = reader.ReadInt16();
 
 #endregion Message: Body
 
@@ -27,7 +27,7 @@ public readonly struct SkillAddDeckSlotResponse(BinaryReader reader) : IResponse
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(DeckSlotCount);
+        writer.Write(SlotCount);
     }
 
 #endregion Interface: IWritableData
