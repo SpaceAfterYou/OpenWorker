@@ -24,8 +24,12 @@ public readonly struct SkillLearnRequest(BinaryReader reader) : IRequestHotspotM
 
 #endregion Message: Body
 
+#region Interface: IWritableData
+
     public void Write(BinaryWriter writer)
     {
         Info.Write(writer);
     }
+
+#endregion Interface: IWritableData
 }

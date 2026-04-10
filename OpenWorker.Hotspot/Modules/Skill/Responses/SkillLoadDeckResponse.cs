@@ -22,7 +22,7 @@ public readonly struct SkillLoadDeckResponse(BinaryReader reader) : IResponseHot
 
 #region Message: Body
 
-    public SkillDeckValue[] SkillDeckList { get; init; } = reader.ReadSkillDeckValueList();
+    public SkillDeckValue[] SlotList { get; init; } = reader.ReadSkillDeckValueList();
 
 #endregion Message: Body
 
@@ -30,7 +30,7 @@ public readonly struct SkillLoadDeckResponse(BinaryReader reader) : IResponseHot
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(SkillDeckList);
+        writer.Write(SlotList);
     }
 
 #endregion Interface: IWritableData

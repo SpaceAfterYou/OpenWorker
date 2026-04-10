@@ -15,7 +15,7 @@ public readonly struct SkillPositionValue(BinaryReader reader) : IWritableData
     /// <summary>
     /// TODO: Client has a field but skips when read.
     /// </summary>
-    public bool SwapSkill { get; init; } = reader.ReadBoolean();
+    // public bool IsSwapSkill { get; init; } = reader.ReadBoolean();
 
     public bool HasInputFlag { get; init; } = reader.ReadBoolean();
 
@@ -31,7 +31,7 @@ public readonly struct SkillPositionValue(BinaryReader reader) : IWritableData
         writer.Write(MotionClass);
 
         // TODO: Client has a field but skips when read.
-        // writer.Write(SwapSkill);
+        // writer.Write(IsSwapSkill);
 
         writer.Write(HasInputFlag);
     }

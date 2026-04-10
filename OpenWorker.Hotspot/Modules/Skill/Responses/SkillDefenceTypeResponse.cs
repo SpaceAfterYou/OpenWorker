@@ -26,9 +26,9 @@ public readonly struct SkillDefenceTypeResponse(BinaryReader reader) : IResponse
     public CreatureDefenseType Defense { get; init; } = reader.ReadTypeOfDefense();
 
     /// <summary>
-    /// TODO: Unknown
+    /// TODO: Research.
     /// </summary>
-    public float Unknown { get; init; } = reader.ReadSingle();
+    public float DamageAbsorptionFactor { get; init; } = reader.ReadSingle();
 
 #endregion Message: Body
 
@@ -38,7 +38,7 @@ public readonly struct SkillDefenceTypeResponse(BinaryReader reader) : IResponse
     {
         writer.Write(Actor);
         writer.Write(Defense);
-        writer.Write(Unknown);
+        writer.Write(DamageAbsorptionFactor);
     }
 
 #endregion Interface: IWritableData

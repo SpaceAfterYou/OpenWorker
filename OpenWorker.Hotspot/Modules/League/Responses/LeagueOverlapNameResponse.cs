@@ -20,7 +20,7 @@ public readonly struct LeagueOverlapNameResponse : IResponseHotspotMessage
 #region Message: Body
 
     /// <summary>Already used when false (see client naming).</summary>
-    public bool CanBeUsed { get; init; }
+    public bool IsCanBeUsed { get; init; }
 
 #endregion Message: Body
 
@@ -28,7 +28,7 @@ public readonly struct LeagueOverlapNameResponse : IResponseHotspotMessage
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(CanBeUsed);
+        writer.Write(IsCanBeUsed);
     }
 
 #endregion Interface: IWritableData

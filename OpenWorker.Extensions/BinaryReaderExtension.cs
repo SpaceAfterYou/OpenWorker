@@ -5,50 +5,53 @@ namespace OpenWorker.Extensions;
 
 public static class BinaryReaderExtension
 {
-    #region Another Strings
+#region Another Strings
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string ReadAsciiStringWithoutTerminator(this BinaryReader reader, int length)
+    extension(BinaryReader reader)
     {
-        var bytes = reader.ReadBytes(length);
-        var value = Encoding.ASCII.GetString(bytes);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public string ReadAsciiStringWithoutTerminator(int length)
+        {
+            var bytes = reader.ReadBytes(length);
+            var value = Encoding.ASCII.GetString(bytes);
 
-        return value;
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public string ReadUtf8AsciiStringWithoutTerminator()
+        {
+            var length = reader.ReadInt16();
+            var bytes = reader.ReadBytes(length);
+            var value = Encoding.ASCII.GetString(bytes);
+
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public string ReadUtf8UnicodeStringWithoutTerminator()
+        {
+            var length = reader.ReadInt16();
+            var bytes = reader.ReadBytes(length);
+            var value = Encoding.Unicode.GetString(bytes);
+
+            return value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public string ReadUtf16UnicodeStringWithoutTerminator(int max = 0)
+        {
+            var length = reader.ReadInt16() * 2;
+            var bytes = reader.ReadBytes(length);
+            var value = Encoding.Unicode.GetString(bytes);
+
+            return value;
+        }
     }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string ReadUtf8AsciiStringWithoutTerminator(this BinaryReader reader)
-    {
-        var length = reader.ReadInt16();
-        var bytes = reader.ReadBytes(length);
-        var value = Encoding.ASCII.GetString(bytes);
 
-        return value;
-    }
+#endregion Another Strings
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string ReadUtf8UnicodeStringWithoutTerminator(this BinaryReader reader)
-    {
-        var length = reader.ReadInt16();
-        var bytes = reader.ReadBytes(length);
-        var value = Encoding.Unicode.GetString(bytes);
-
-        return value;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string ReadUtf16UnicodeStringWithoutTerminator(this BinaryReader reader, int max = 0)
-    {
-        var length = reader.ReadInt16() * 2;
-        var bytes = reader.ReadBytes(length);
-        var value = Encoding.Unicode.GetString(bytes);
-
-        return value;
-    }
-
-    #endregion Another Strings
-
-    #region Enumerable
+#region Enumerable
 
     public static IEnumerable<int> ReadInt32AsEnumerable(this BinaryReader reader, int count)
     {
@@ -75,9 +78,9 @@ public static class BinaryReaderExtension
     //     return Enumerable.Repeat(0, count).Select(_ => reader.ReadUTF16UnicodeString());
     // }
 
-    #endregion Enumerable
+#endregion Enumerable
 
-    #region Arrays
+#region Arrays
 
     public static int[] ReadInt32AsArray(this BinaryReader reader, int count)
     {
@@ -104,7 +107,7 @@ public static class BinaryReaderExtension
     //     return reader.ReadByteLengthUnicodeStringAsEnumerable(count).ToArray();
     // }
 
-    #endregion Arrays
+#endregion Arrays
 
 #region Core.Time
 
@@ -115,8 +118,8 @@ public static class BinaryReaderExtension
     }
 
 #endregion Core.Time
-    
-    #region Strings
+
+#region Strings
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string ReadUtf8UnicodeString(this BinaryReader reader, int max = 0)
@@ -131,7 +134,7 @@ public static class BinaryReaderExtension
         var length = reader.ReadInt16() * 2;
         return reader.ReadUnicodeString(length, max);
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string ReadUnicodeString(this BinaryReader reader, int length, int max = 0)
     {
@@ -141,5 +144,5 @@ public static class BinaryReaderExtension
         return value;
     }
 
-    #endregion Strings
+#endregion Strings
 }

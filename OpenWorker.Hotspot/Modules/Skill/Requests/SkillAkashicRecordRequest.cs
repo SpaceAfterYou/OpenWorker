@@ -25,10 +25,14 @@ public readonly struct SkillAkashicRecordRequest(BinaryReader reader) : IRequest
 
 #endregion Message: Body
 
+#region Interface: IWritableData
+
     public void Write(BinaryWriter writer)
     {
         writer.Write(Slot);
 
         SkillPosition.Write(writer);
     }
+
+#endregion Interface: IWritableData
 }

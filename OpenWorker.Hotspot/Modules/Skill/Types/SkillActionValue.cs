@@ -4,6 +4,8 @@ namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
 public readonly struct SkillActionValue(BinaryReader reader) : IWritableData
 {
+#region Message: Body
+
     public SkillActorInfoValue SkillActorInfo { get; init; } = new(reader);
 
     public int Skill { get; init; } = reader.ReadInt32();
@@ -16,6 +18,10 @@ public readonly struct SkillActionValue(BinaryReader reader) : IWritableData
 
     public bool IsPenetrate { get; init; } = reader.ReadBoolean();
 
+#endregion Message: Body
+
+#region Interface: IWritableData
+
     public void Write(BinaryWriter writer)
     {
         SkillActorInfo.Write(writer);
@@ -26,4 +32,6 @@ public readonly struct SkillActionValue(BinaryReader reader) : IWritableData
         writer.Write(IsCounterAttack);
         writer.Write(IsPenetrate);
     }
+
+#endregion Interface: IWritableData
 }

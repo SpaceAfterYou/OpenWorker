@@ -29,7 +29,7 @@ public sealed class LeagueService(World world, ServiceChannels channels) :
     {
         var session = world.Get<ServerSessionComponent>(context.Player);
 
-        session.Send(new LeagueOverlapNameResponse { CanBeUsed = false });
+        session.Send(new LeagueOverlapNameResponse { IsCanBeUsed = false });
         return ValueTask.CompletedTask;
     }
 

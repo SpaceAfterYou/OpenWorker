@@ -13,12 +13,16 @@ public readonly struct SkillChargingStartRequest(BinaryReader reader) : IRequest
     private const GroupOpcode Group = GroupOpcode.Skill;
     private const SkillOpcode Command = SkillOpcode.SkillChargingStart;
 
+    public MessageOpcode Opcode => new(Group, Command);
+
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
     /// <summary>
     /// TODO: Skill ID?
     /// </summary>
     public int Unknown { get; init; } = reader.ReadInt32();
 
-    public MessageOpcode Opcode => new(Group, Command);
-
-#endregion Interface: IHotspotMessage
+#endregion Message: Body
 }
