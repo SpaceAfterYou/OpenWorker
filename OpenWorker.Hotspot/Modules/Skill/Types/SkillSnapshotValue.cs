@@ -11,9 +11,9 @@ public readonly struct SkillSnapshotValue(BinaryReader reader) : IWritableData
     public ActorValue Target { get; init; } = new(reader);
     public SkillPointValue SkillPoint { get; init; } = new(reader);
     public short DeckSlotCount { get; init; } = reader.ReadInt16();
-    public ushort[] DeckBonus { get; init; } = reader.ReadSkillDeckBonusList();
     public SkillInfoValue[] SkillList { get; init; } = reader.ReadSkillInfoValueList();
     public SkillDeckValue[] DeckSlotList { get; init; } = reader.ReadSkillDeckValueList();
+    public ushort[] DeckBonus { get; init; } = reader.ReadSkillDeckBonusList();
 
 #endregion Message: Body
 
@@ -26,9 +26,9 @@ public readonly struct SkillSnapshotValue(BinaryReader reader) : IWritableData
         SkillPoint.Write(writer);
 
         writer.Write(DeckSlotCount);
-        writer.WriteSkillDeckBonus(DeckBonus);
         writer.Write(SkillList);
         writer.Write(DeckSlotList);
+        writer.WriteSkillDeckBonus(DeckBonus);
     }
 
 #endregion Interface: IWritableData
