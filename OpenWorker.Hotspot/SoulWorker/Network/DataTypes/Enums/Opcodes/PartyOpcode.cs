@@ -8,7 +8,7 @@ namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 public enum PartyOpcode : byte
 {
     /// <summary>
-    /// Request, Response (Normal)
+    /// Request, Response
     /// </summary>
     Invite = 0x1,
 
@@ -18,7 +18,7 @@ public enum PartyOpcode : byte
     Accept = 0x2,
 
     /// <summary>
-    /// Request, Response (Normal)
+    /// Request, Response
     /// </summary>
     ChangeMaster = 0x3,
 
@@ -28,17 +28,17 @@ public enum PartyOpcode : byte
     KickOut = 0x4,
 
     /// <summary>
-    /// Request, Response (Normal)
+    /// Request, Response
     /// </summary>
     Leave = 0x5,
 
     /// <summary>
-    /// Response (Normal)
+    /// Response
     /// </summary>
     UpdateMemberInfo = 0x6,
 
     /// <summary>
-    /// Response (Normal)
+    /// Response
     /// </summary>
     Delete = 0x7,
 
@@ -128,7 +128,7 @@ public enum PartyOpcode : byte
     RecruitApplyAccept = 0x39,
 
     /// <summary>
-    /// Response
+    /// Request, Response
     /// </summary>
     RecruitApplyReject = 0x3A,
 

@@ -1,6 +1,5 @@
 using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
-using OpenWorker.Commands;
 using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
 using OpenWorker.DistrictServer.Gameplay.Extensions;
