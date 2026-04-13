@@ -14,11 +14,11 @@ public readonly struct MazeExitRequest(BinaryReader reader) : IRequestHotspotMes
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_EXIT_MAZE_REQ;
 
     public int Person { get; } = reader.ReadInt32();
-    public MapValue Instance { get; } = reader.ReadMapValue();
+    public MapValue Instance { get; } = new(reader);
     public int Res { get; } = reader.ReadInt32();
     public int Jump { get; } = reader.ReadInt32();
     public int Portal { get; } = reader.ReadInt32();
-    
+
     /// <summary>
     /// TODO
     /// </summary>

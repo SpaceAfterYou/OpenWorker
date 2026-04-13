@@ -3,7 +3,7 @@
 namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 
 /// <summary>
-/// 
+///
 /// </summary>
 public enum PartyOpcode : byte
 {
@@ -58,7 +58,7 @@ public enum PartyOpcode : byte
     AddMember = 0x10,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     RemoveMember = 0x11,
 
@@ -68,12 +68,12 @@ public enum PartyOpcode : byte
     UpdateMemberHp = 0x12,
 
     /// <summary>
-    /// Response (TODO: unknown_libname_8)
+    /// Response (defined but not implemented)
     /// </summary>
     UpdateMemberSg = 0x13,
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     Message = 0x20,
 
@@ -105,7 +105,7 @@ public enum PartyOpcode : byte
     /// <summary>
     /// Response (renamed)
     /// </summary>
-    AutoPenalty = 0x35,
+    RecruitPenalty = 0x35,
 
     /// <summary>
     /// Request, Response
@@ -115,85 +115,80 @@ public enum PartyOpcode : byte
     /// <summary>
     /// Request, Response
     /// </summary>
-    RecruitMyApplyList = 0x37,
+    RecruitAdd = 0x37,
 
     /// <summary>
     /// Request, Response
     /// </summary>
-    RecruitAdd = 0x38,
+    RecruitApply = 0x38,
 
     /// <summary>
     /// Request, Response
     /// </summary>
-    RecruitApply = 0x39,
-
-    /// <summary>
-    /// Request, Response
-    /// </summary>
-    RecruitApplyAccept = 0x3A,
+    RecruitApplyAccept = 0x39,
 
     /// <summary>
     /// Response
     /// </summary>
-    RecruitApplyReject = 0x3B,
+    RecruitApplyReject = 0x3A,
 
     /// <summary>
     /// Request, Response
     /// </summary>
-    RecruitApplyUpdate = 0x3C,
+    RecruitApplyUpdate = 0x3B,
 
     /// <summary>
     /// Request, Response
     /// </summary>
-    RecruitDel = 0x3D,
+    RecruitDel = 0x3C,
 
     /// <summary>
     /// Response
     /// </summary>
-    RecruitApplyList = 0x3E,
+    RecruitApplyList = 0x3D,
 
     /// <summary>
     /// Response
     /// </summary>
-    RecruitInfo = 0x3F,
+    RecruitInfo = 0x3E,
 
     /// <summary>
-    /// Request, Response (renamed)
+    /// Request, Response
     /// </summary>
-    AwaiterAdd = 0x40,
-
-    /// <summary>
-    /// Response (renamed)
-    /// </summary>
-    AwaiterDel = 0x41,
-
-    /// <summary>
-    /// Request, Response (renamed)
-    /// </summary>
-    AwaiterList = 0x42,
-
-    /// <summary>
-    /// Request, Response (renamed)
-    /// </summary>
-    RecruitApplyInfo = 0x43,
-
-    /// <summary>
-    /// Response (renamed)
-    /// </summary>
-    AwaiterInfo = 0x44,
-
-    /// <summary>
-    /// Response (renamed)
-    /// </summary>
-    RecruitApplyNotice = 0x45,
-
-    /// <summary>
-    /// Response (renamed)
-    /// </summary>
-    MazeClear = 0x46,
+    AwaiterAdd = 0x3F,
 
     /// <summary>
     /// Response
     /// </summary>
-    Unknown5 = 0x47
+    AwaiterDel = 0x40,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    AwaiterList = 0x41,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    RecruitApplyInfo = 0x42,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    AwaiterInfo = 0x43,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    RecruitApplyNotice = 0x44,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    MazeClear = 0x45,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Unknown5 = 0x46
 }

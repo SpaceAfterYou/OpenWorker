@@ -16,7 +16,7 @@ public readonly struct PersonEnterGameServerRequest(BinaryReader reader) : IRequ
 
     public int Account { get; } = reader.ReadInt32();
     public ActorValue Actor { get; } = new(reader);
-    public MapValue Map { get; } = reader.ReadMapValue();
+    public MapValue Map { get; } = new(reader);
     public bool FirstConnect { get; } = reader.ReadBoolean();
     public SessionValue Session { get; } = new(reader);
 
