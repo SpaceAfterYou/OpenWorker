@@ -23,7 +23,7 @@ public readonly struct PartyMemberInfoValue(BinaryReader reader) : IWritableData
     public void Write(BinaryWriter writer)
     {
         writer.Write(Actor);
-        writer.Write(Name);
+        writer.WritePersonName(Name);
         writer.Write(Level);
         writer.Write(Class);
         writer.Write(Location);

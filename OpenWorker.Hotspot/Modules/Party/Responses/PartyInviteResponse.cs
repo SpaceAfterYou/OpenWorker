@@ -14,12 +14,12 @@ public readonly struct PartyInviteResponse(BinaryReader reader) : IResponseHotsp
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Invite;
 
-    public ActorValue MasterActor { get; } = new(reader);
-    public ActorValue RequestActor { get; } = new(reader);
-    public string MasterName { get; } = reader.ReadUtf8UnicodeString(21);
-    public string RequestName { get; } = reader.ReadUtf8UnicodeString(21);
-    public int ReqServer { get; } = reader.ReadInt32();
-    public int Result { get; } = reader.ReadInt32();
+    public ActorValue MasterActor { get; init; } = new(reader);
+    public ActorValue RequestActor { get; init; } = new(reader);
+    public string MasterName { get; init; } = reader.ReadUtf8UnicodeString(21);
+    public string RequestName { get; init; } = reader.ReadUtf8UnicodeString(21);
+    public int ReqServer { get; init; } = reader.ReadInt32();
+    public int Result { get; init; } = reader.ReadInt32();
 
     public MessageOpcode Opcode => new(Group, Command);
 

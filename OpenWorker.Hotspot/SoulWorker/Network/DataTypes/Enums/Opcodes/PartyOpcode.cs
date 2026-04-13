@@ -50,7 +50,7 @@ public enum PartyOpcode : byte
     /// <summary>
     /// Request, Response
     /// </summary>
-    UpdateInfo = 0x9,
+    UpdateUserInfo = 0x9,
 
     /// <summary>
     /// Response
@@ -153,42 +153,47 @@ public enum PartyOpcode : byte
     RecruitInfo = 0x3E,
 
     /// <summary>
-    /// Request, Response
-    /// </summary>
-    AwaiterAdd = 0x3F,
-
-    /// <summary>
     /// Response
     /// </summary>
-    AwaiterDel = 0x40,
+    RecruitApplyDel = 0x3F,
 
     /// <summary>
     /// Request, Response
     /// </summary>
-    AwaiterList = 0x41,
+    AwaiterAdd = 0x40,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    AwaiterDel = 0x41,
 
     /// <summary>
     /// Request, Response
     /// </summary>
-    RecruitApplyInfo = 0x42,
+    AwaiterList = 0x42,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    RecruitApplyInfo = 0x43,
 
     /// <summary>
     /// Response
     /// </summary>
-    AwaiterInfo = 0x43,
+    AwaiterInfo = 0x44,
 
     /// <summary>
     /// Response
     /// </summary>
-    RecruitApplyNotice = 0x44,
+    RecruitApplyNotice = 0x45,
 
     /// <summary>
     /// Response
     /// </summary>
-    MazeClear = 0x45,
+    MazeClear = 0x46,
 
     /// <summary>
     /// Response
     /// </summary>
-    Unknown5 = 0x46
+    Unknown5 = 0x47
 }

@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.Party.Responses;
 public readonly struct PartyUpdateInfoResponse(BinaryReader reader) : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
-    private const PartyOpcode Command = PartyOpcode.UpdateInfo;
+    private const PartyOpcode Command = PartyOpcode.UpdateUserInfo;
 
     public MessageOpcode Opcode => new(Group, Command);
 
