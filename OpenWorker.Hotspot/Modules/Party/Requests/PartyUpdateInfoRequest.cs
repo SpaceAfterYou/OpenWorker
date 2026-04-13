@@ -12,7 +12,7 @@ namespace OpenWorker.Hotspot.Modules.Party.Requests;
 public readonly struct PartyUpdateInfoRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
-    private const PartyOpcode Command = PartyOpcode.UpdateInfo;
+    private const PartyOpcode Command = PartyOpcode.UpdateUserInfo;
 
     public MessageOpcode Opcode => new(Group, Command);
 }

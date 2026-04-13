@@ -10,6 +10,6 @@ public readonly struct PartyRecruitInfoRequest(BinaryReader reader) : IRequestHo
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.RecruitInfo;
-    
+
     public MessageOpcode Opcode => new(Group, Command);
 }

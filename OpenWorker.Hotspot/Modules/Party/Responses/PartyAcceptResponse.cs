@@ -11,8 +11,8 @@ public readonly struct PartyAcceptResponse(BinaryReader reader) : IResponseHotsp
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Accept;
 
-    public int Identifier { get; } = reader.ReadInt32();
-    public int Result { get; } = reader.ReadInt32();
+    public int Identifier { get; init; } = reader.ReadInt32();
+    public int Result { get; init; } = reader.ReadInt32();
 
     public MessageOpcode Opcode => new(Group, Command);
 
