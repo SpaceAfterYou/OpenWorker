@@ -604,32 +604,35 @@ public static class BinaryWriterExtension
 
     #region Unicode String
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteUnicodeString(this BinaryWriter writer, string value)
+    extension(BinaryWriter writer)
     {
-        var str = Encoding.Unicode.GetBytes(value);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void WriteUnicodeString(string value)
+        {
+            var str = Encoding.Unicode.GetBytes(value);
 
-        writer.Write(str);
-        writer.Write(byte.MinValue);
+            writer.Write(str);
+            writer.Write(byte.MinValue);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteUtf8UnicodeString(string value, int max = 0)
+        {
+            var length = (short)(value.Length + 1);
+
+            writer.Write(length);
+            writer.WriteUnicodeString(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteUtf16UnicodeString(string value, int max = 0)
+        {
+            var length = (short)(2 * value.Length + 1);
+
+            writer.Write(length);
+            writer.WriteUnicodeString(value);
+        }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteUtf8UnicodeString(this BinaryWriter writer, string value, int max = 0)
-    {
-        var length = (short)(value.Length + 1);
-
-        writer.Write(length);
-        writer.WriteUnicodeString(value);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteUtf16UnicodeString(this BinaryWriter writer, string value, int max = 0)
-    {
-        var length = (short)(2 * value.Length + 1);
-
-        writer.Write(length);
-        writer.WriteUnicodeString(value);
-    }
-
-    #endregion Unicode String
+#endregion Unicode String
 }

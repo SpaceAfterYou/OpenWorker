@@ -15,7 +15,7 @@ public readonly struct MovementMoveRequest(BinaryReader reader) : IRequestHotspo
     private const MoveOpcode Command = MoveOpcode.Move;
 
     public ActorValue dwActorID { get; } = new(reader);
-    public MapValue nMapID { get; } = reader.ReadMapValue();
+    public MapValue nMapID { get; } = new(reader);
     public float fPosX { get; } = reader.ReadSingle();
     public float fPosY { get; } = reader.ReadSingle();
     public float fPosZ { get; } = reader.ReadSingle();

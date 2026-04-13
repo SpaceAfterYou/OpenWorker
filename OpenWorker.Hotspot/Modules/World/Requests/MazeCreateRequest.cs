@@ -23,8 +23,8 @@ public readonly struct MazeCreateRequest(BinaryReader reader) : IRequestHotspotM
     public int Jump { get; init; } = reader.ReadInt32();
     public int Portal { get; init; } = reader.ReadInt32();
     public short World { get; init; } = reader.ReadInt16();
-    public MapValue Map { get; init; } = reader.ReadMapValue();
-    public ChangeServerType ChangeType { get; init; } = reader.ReadChangeServerType(); 
-    
+    public MapValue Map { get; init; } = new(reader);
+    public ChangeServerType ChangeType { get; init; } = reader.ReadChangeServerType();
+
     public MessageOpcode Opcode => new(Group, Command);
 }

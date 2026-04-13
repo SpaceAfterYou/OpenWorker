@@ -1,4 +1,3 @@
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -11,6 +10,6 @@ public readonly struct PartyAcceptRequest(BinaryReader reader) : IRequestHotspot
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Accept;
-    
+
     public MessageOpcode Opcode => new(Group, Command);
 }

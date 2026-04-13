@@ -23,7 +23,7 @@ public static class BinaryReaderExtension
     {
         return new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Hero ReadHero(this BinaryReader reader)
     {
@@ -40,12 +40,6 @@ public static class BinaryReaderExtension
     internal static MessageDirection ReadMessageDirection(this BinaryReader reader)
     {
         return (MessageDirection)reader.ReadByte();
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static MapValue ReadMapValue(this BinaryReader reader)
-    {
-        return reader.ReadUInt64();
     }
 
     internal static EquipItemValueEntry[] ReadEquippedItems(this BinaryReader reader)
