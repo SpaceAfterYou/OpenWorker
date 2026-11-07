@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.Login.Extensions;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -39,6 +40,7 @@ public sealed class LoginGameplay(
     IRedisCollection<SessionCache> sessions,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
+    SecondPasswordGameplay secondPassword,
     IConfiguration configuration,
     ILogger<LoginGameplay> logger)
 {
@@ -90,6 +92,10 @@ public sealed class LoginGameplay(
         }
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
+
+        secondPassword.Load(context.Player, account);
+
+        world.Set(context.Player, account.ToTradePasswordComponent());
 
         var list = registry.CreatePersonListComponent(account.Persons);
 

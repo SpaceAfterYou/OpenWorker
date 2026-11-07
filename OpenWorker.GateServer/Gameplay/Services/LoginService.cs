@@ -20,7 +20,7 @@ public sealed class LoginService(LoginGameplay login, OptionGameplay option) :
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LoginOptionUpdateRequest request)
     {
         await option
-            .PushAsync(context, request)
+            .PushAsync(context, request.Values)
             .ConfigureAwait(false);
     }
 }

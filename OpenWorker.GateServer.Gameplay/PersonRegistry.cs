@@ -55,6 +55,29 @@ public sealed class PersonRegistry(World world, StorageFactory factory)
         };
     }
 
+    internal void RemovePerson(Entity entity, int person)
+    {
+        var component = world.Get<GatePersonComponent>(entity);
+
+        var slot = Array.FindIndex(
+            component.SlotList,
+            e => e != Entity.Null && world.Get<ActorComponent>(e).Identifier == person);
+
+        if (slot < 0)
+        {
+            return;
+        }
+
+        world.Destroy(component.SlotList[slot]);
+
+        component.SlotList[slot] = Entity.Null;
+
+        if (component.LastIndex == slot)
+        {
+            world.Set(entity, component with { LastIndex = -1 });
+        }
+    }
+
     internal int FindFreeSlotIndex(Entity entity)
     {
         var component = world.Get<GatePersonComponent>(entity);

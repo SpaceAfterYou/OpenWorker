@@ -1,9 +1,24 @@
-﻿using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Hotspot.Modules.Login.Requests;
+using Arch.Core;
+using Microsoft.EntityFrameworkCore;
+using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Persistence;
 
 namespace OpenWorker.GateServer.Gameplay;
 
-public sealed class OptionGameplay
+public sealed class OptionGameplay(World world, IDbContextFactory<PersistenceContext> factory)
 {
-    public Task PushAsync(ServiceHandleContext context, LoginOptionUpdateRequest message) => Task.CompletedTask;
+    public async Task PushAsync(ServiceHandleContext context, IReadOnlyCollection<byte> options)
+    {
+        var account = world.Get<ClaimsComponent>(context.Player).Account;
+
+        if (account == 0)
+        {
+            return;
+        }
+
+        await factory
+            .SavePersonOptionsAsync(account, options.ToArray(), context.CancellationToken)
+            .ConfigureAwait(false);
+    }
 }

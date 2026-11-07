@@ -87,6 +87,20 @@ public sealed class LoginGameplay(
         await InternalLoginAsync(context, account.Id, account.Username, message.MacAddress).ConfigureAwait(false);
     }
 
+    public async ValueTask SaveOptionsAsync(ServiceHandleContext context, IReadOnlyCollection<byte> options)
+    {
+        var account = world.Get<ClaimsComponent>(context.Player).Account;
+
+        if (account == 0)
+        {
+            return;
+        }
+
+        await factory
+            .SavePersonOptionsAsync(account, options.ToArray(), context.CancellationToken)
+            .ConfigureAwait(false);
+    }
+
     private async ValueTask InternalLoginAsync(ServiceHandleContext context, int account, string username, string mac)
     {
         var session = world.Get<ServerSessionComponent>(context.Player);

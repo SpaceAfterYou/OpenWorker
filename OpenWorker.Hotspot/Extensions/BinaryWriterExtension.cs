@@ -261,7 +261,8 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ProtectionStateValue value)
     {
-        writer.Write(value.Value);
+        writer.Write((byte)value.SecondPassword);
+        writer.Write((byte)value.TradePassword);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

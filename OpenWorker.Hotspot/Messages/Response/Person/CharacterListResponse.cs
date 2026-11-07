@@ -16,7 +16,7 @@ public readonly struct CharacterListResponse : IResponseHotspotMessage
     public MessageOpcode Opcode => new(Group, Command);
 
     public required IReadOnlyList<PersonValue> Persons { get; init; }
-    public int LastIndex { get; init; }
+    public int LastPerson { get; init; }
     public required ProtectionStateValue Protection { get; init; }
 
     public void Write(BinaryWriter writer)
@@ -28,7 +28,7 @@ public readonly struct CharacterListResponse : IResponseHotspotMessage
             writer.Write(person);
         }
 
-        writer.Write(LastIndex);
+        writer.Write(LastPerson);
         writer.Write(Protection);
     }
 }

@@ -233,9 +233,25 @@ public sealed class WorldManager(
 
         var personList = ecs.Get<GatePersonComponent>(entity);
 
-        var personComponent = personList.SlotList.First(x => Entity.Null != x && ecs.Get<ActorComponent>(x).Identifier == person);
+        var slot = Array.FindIndex(
+            personList.SlotList,
+            x => Entity.Null != x && ecs.Get<ActorComponent>(x).Identifier == person);
 
-        var worldComponent = ecs.Get<WorldComponent>(personComponent);
+        if (slot < 0)
+        {
+            session.Send(new CharacterSelectResponse { Zone = EnterMapResultValue.Failed(EnterMapResultValue.CannotEnter) });
+            return;
+        }
+
+        var worldComponent = ecs.Get<WorldComponent>(personList.SlotList[slot]);
+
+        int location = worldComponent.Location;
+
+        if (!await districts.AnyAsync(x => x.Location == location).ConfigureAwait(false))
+        {
+            session.Send(new CharacterSelectResponse { Zone = EnterMapResultValue.Failed(EnterMapResultValue.ServerUnavailable) });
+            return;
+        }
 
         var (district, channel) = await GetDistrictAsync(worldComponent.Location).ConfigureAwait(false);
 

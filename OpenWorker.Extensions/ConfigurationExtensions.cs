@@ -32,6 +32,16 @@ public static class ConfigurationExtensions
         return configuration.GetValue<short>("Gate:Id");
     }
 
+    public static string GetAuthHost(this IConfiguration configuration)
+    {
+        return configuration.GetValue("Auth:Host", "127.0.0.1");
+    }
+
+    public static short GetAuthPort(this IConfiguration configuration)
+    {
+        return configuration.GetValue<short>("Auth:Port", 10_000);
+    }
+
     public static string GetGateHost(this IConfiguration configuration)
     {
         var value = configuration.GetValue<string>("Gate:Host");

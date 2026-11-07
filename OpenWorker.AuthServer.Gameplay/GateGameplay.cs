@@ -1,3 +1,4 @@
+using Redis.OM;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 // using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,8 @@ public sealed class GateGameplay(
     IRedisCollection<GateCache> gates,
     IDbContextFactory<PersistenceContext> factory,
     List<GateInfo> gateList,
+    IRedisCollection<SessionCache> sessions,
+    ServerContent contents,
     World world)
 {
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginGateConnectRequest message)
@@ -87,6 +90,11 @@ public sealed class GateGameplay(
         var component = world.Get<ClaimsComponent>(context.Player);
         var session = world.Get<ServerSessionComponent>(context.Player);
 
+        if (component.Account == 0)
+        {
+            component = await ResumeSessionAsync(context, message.Account).ConfigureAwait(false);
+        }
+
         if (component.Account != message.Account)
         {
             session.Send(new PersonKickOutResponse
@@ -135,6 +143,45 @@ public sealed class GateGameplay(
             });
 
         session.Send(new LoginGateListResponse { Previous = 0, Values = values.ToArray() });
+
+        var options = await factory
+            .LoadPersonOptionsAsync(component.Account, context.CancellationToken)
+            .ConfigureAwait(false);
+
+        session.Send(new LoginOptionLoadResponse { PersonOptions = options, Contents = contents });
+    }
+
+    /// <summary>
+    /// A player coming back from the gate reconnects without logging in again.
+    /// </summary>
+    private async ValueTask<ClaimsComponent> ResumeSessionAsync(ServiceHandleContext context, int account)
+    {
+        var active = await sessions
+            .Where(e => e.Account == account)
+            .ToListAsync()
+            .ConfigureAwait(false);
+
+        var returning = active.FirstOrDefault(e => e.ReturnToAuth);
+
+        if (returning is null)
+        {
+            return default;
+        }
+
+        await sessions
+            .InsertAsync(new SessionCache
+            {
+                Session = returning.Session,
+                Account = returning.Account,
+                UpdatedAt = DateTime.UtcNow
+            })
+            .ConfigureAwait(false);
+
+        var claims = new ClaimsComponent(returning.Session);
+
+        world.Set(context.Player, claims);
+
+        return claims;
     }
 }
 

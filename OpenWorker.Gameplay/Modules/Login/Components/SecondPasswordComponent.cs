@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Enums;
@@ -9,5 +10,9 @@ public readonly record struct SecondPasswordComponent
 {
     public required string Password { get; init; }
     
+    public PasswordProtectionState State { get; init; }
+
+    public int FailedAttempts { get; init; }
+
     public bool Has => string.IsNullOrEmpty(Password) is false;
 }

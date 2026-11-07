@@ -22,6 +22,7 @@ public readonly struct LoginOptionLoadResponse : IResponseHotspotMessage
     public void Write(BinaryWriter writer)
     {
         var options = new byte[LoginModuleDefines.PersonOptionCount];
+        options.AsSpan().Fill((byte)'1');
         PersonOptions.AsSpan(0, Math.Min(PersonOptions.Length, options.Length)).CopyTo(options);
 
         writer.Write(options);

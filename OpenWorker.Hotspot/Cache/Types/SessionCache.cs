@@ -14,4 +14,10 @@ public sealed class SessionCache
 
     [Indexed]
     public required DateTime UpdatedAt { get; init; }
+
+    /// <summary>
+    /// Set when the player leaves the gate for the server list, so that the next
+    /// connection to the auth server can continue this session without a login.
+    /// </summary>
+    public bool ReturnToAuth { get; init; }
 }

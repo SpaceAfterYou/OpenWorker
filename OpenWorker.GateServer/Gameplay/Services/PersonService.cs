@@ -10,8 +10,24 @@ public sealed class PersonService(PersonGameplay person, SecondPasswordGameplay 
     IHotspotHandler<PersonListRequest>, 
     IHotspotHandler<PersonCreateRequest>,
     IHotspotHandler<PersonSecondPasswordRequest>,
-    IHotspotHandler<PersonSelectRequest>
+    IHotspotHandler<PersonSelectRequest>,
+    IHotspotHandler<PersonDeleteReqRequest>,
+    IHotspotHandler<PersonChangeServerRequest>
 {
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonDeleteReqRequest request)
+    {
+        await person
+            .DeleteAsync(context, request)
+            .ConfigureAwait(false);
+    }
+
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)
+    {
+        await person
+            .ChangeServerAsync(context, request)
+            .ConfigureAwait(false);
+    }
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonCreateRequest request)
     {
         await person
@@ -22,7 +38,7 @@ public sealed class PersonService(PersonGameplay person, SecondPasswordGameplay 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonSecondPasswordRequest request)
     {
         await secondPassword
-            .CheckAsync(context)
+            .HandleAsync(context, request)
             .ConfigureAwait(false);
     }
 

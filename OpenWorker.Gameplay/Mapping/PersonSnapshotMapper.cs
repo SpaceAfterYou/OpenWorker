@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Domain.Components;
@@ -136,14 +137,16 @@ public static class PersonSnapshotMapper
 
         var prot = new ProtectionStateValue
         {
-            HasSecondPassword = world.Get<SecondPasswordComponent>(gateEntity).Has,
-            HasTradePassword = world.Get<TradePasswordComponent>(gateEntity).Has
+            SecondPassword = world.Get<SecondPasswordComponent>(gateEntity).State,
+            TradePassword = world.Get<TradePasswordComponent>(gateEntity).Has
+                ? PasswordProtectionState.UnAuthenticated
+                : PasswordProtectionState.None
         };
 
         return new CharacterListResponse
         {
             Persons = persons,
-            LastIndex = c.LastIndex,
+            LastPerson = c.HasLast && c.Last != Entity.Null ? world.Get<ActorComponent>(c.Last).Identifier : 0,
             Protection = prot
         };
     }
