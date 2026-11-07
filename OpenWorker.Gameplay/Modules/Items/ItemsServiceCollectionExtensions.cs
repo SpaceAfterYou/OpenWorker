@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Hotspot;
@@ -20,6 +22,9 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<InventoryService>();
         services.AddSingleton<ItemUseService>();
         services.AddSingleton<InventoryPersistence>();
+
+        // The features that give items hand them over here.
+        services.Replace(ServiceDescriptor.Singleton<IRewardGranter, InventoryRewardGranter>());
         services.AddSingleton<ExperienceService>();
         services.AddSingleton<ISessionCloseHandler, InventorySaver>();
         services.AddHostedService<InventoryFlushService>();

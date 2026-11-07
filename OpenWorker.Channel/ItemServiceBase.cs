@@ -97,16 +97,14 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemUseRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, ItemUseRequest request)
     {
-        if (!use.Use(context.Player, request.Storage, request.Slot, request.Serial.Number))
+        if (!await use.UseAsync(context.Player, request.Storage, request.Slot, request.Serial.Number, context.CancellationToken))
         {
             world.Get<ServerSessionComponent>(context.Player).Send(new ErrorMessageResponse(
                 new MessageOpcode(GroupOpcode.Item, ItemOpcode.Use),
                 InventoryService.Refused));
         }
-
-        return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemAddSlotRequest request)

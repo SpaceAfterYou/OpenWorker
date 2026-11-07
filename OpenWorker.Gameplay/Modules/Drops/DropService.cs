@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
@@ -37,7 +39,9 @@ public sealed class DropService(
     ReadOnlyCollection<DropGroupRow> groups,
     ReadOnlyCollection<DropRateMobRow> rates,
     ReadOnlyCollection<MonsterRow> monsters,
-    IConfiguration? configuration = null)
+    IConfiguration? configuration = null,
+    DailyMissionManager? missions = null,
+    ILogger<DropService>? logger = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -232,12 +236,30 @@ public sealed class DropService(
 
         field.Objects.Remove(serial);
 
+        if (drop.Object < GoldObject && missions is not null)
+        {
+            _ = ReportItemAsync(player, drop);
+        }
+
         if (world.Has<ServerSessionComponent>(player))
         {
             world.Get<ServerSessionComponent>(player).Send(new DropPickUpResponse { Serial = serial });
         }
 
         return true;
+    }
+
+    // The missions that ask for items are told, they are saved and the pickup does not wait for it.
+    private async Task ReportItemAsync(Entity player, DropObject drop)
+    {
+        try
+        {
+            await missions!.OnItemCollectedAsync(player, drop.Object, (short)Math.Min(drop.Count, short.MaxValue), CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            logger?.LogError(exception, "Counting the item {Item} for the missions failed", drop.Object);
+        }
     }
 
     /// <summary>

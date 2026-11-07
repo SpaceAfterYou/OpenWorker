@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Requests;
@@ -402,5 +403,25 @@ public sealed class InventoryServiceTest
         f.Service.TryGive(f.Player, SecondWeapon, 1);
 
         Assert.AreEqual(before, EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru));
+    }
+
+    [TestMethod]
+    public async Task RewardGivesItemsAndMoneyOrNothing()
+    {
+        using var f = new Fixture();
+
+        var granter = new InventoryRewardGranter(f.Service);
+        var reward = new Reward([new RewardItem(Material, 60), new RewardItem(SecondWeapon, 1)], Gold: 500, Ether: 7);
+
+        Assert.IsTrue(await granter.TryGrantAsync(f.Player, reward, RewardSource.DailyMission, CancellationToken.None));
+        Assert.AreEqual(60, f.Service.CountOf(f.Player, Material));
+        Assert.AreEqual(1, f.Service.CountOf(f.Player, SecondWeapon));
+        Assert.AreEqual(500, f.Service.Gold(f.Player));
+
+        var tooMuch = new Reward([new RewardItem(Material, short.MaxValue), new RewardItem(Material, short.MaxValue)], Gold: 5);
+
+        Assert.IsFalse(await granter.TryGrantAsync(f.Player, tooMuch, RewardSource.Attendance, CancellationToken.None));
+        Assert.AreEqual(60, f.Service.CountOf(f.Player, Material));
+        Assert.AreEqual(500, f.Service.Gold(f.Player), "A reward that does not fit gives no money either");
     }
 }

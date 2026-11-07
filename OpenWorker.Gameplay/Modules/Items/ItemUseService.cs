@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
+using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Res.Types;
@@ -15,8 +16,12 @@ public sealed class ItemUseService(
     InventoryService inventory,
     ItemCatalog catalog,
     ReadOnlyCollection<ItemPackageRow> packages,
-    ReadOnlyCollection<ItemRandomBoxRow> randomBoxes)
+    ReadOnlyCollection<ItemRandomBoxRow> randomBoxes,
+    BoosterManager? boosters = null)
 {
+    // The kind of effect in the item row that names a booster.
+    private const int BoosterEffect = 3;
+
     private static readonly StorageGroup[] Usable = [StorageGroup.Common, StorageGroup.Costume, StorageGroup.Cash, StorageGroup.Cube];
 
     /// <summary>
@@ -24,7 +29,7 @@ public sealed class ItemUseService(
     /// </summary>
     public readonly record struct Reward(long Gold, long BattlePoint, long Ether, List<(int Item, int Count)> Items);
 
-    public bool Use(Entity player, StorageGroup group, short slot, long serial)
+    public async ValueTask<bool> UseAsync(Entity player, StorageGroup group, short slot, long serial, CancellationToken cancellationToken)
     {
         var bag = inventory.InventoryOf(player);
         var item = bag?.At(group, slot);
@@ -32,6 +37,20 @@ public sealed class ItemUseService(
         if (bag is null || item is null || item.Serial != serial || !Usable.Contains(group) || catalog.Classify(item.Item) is not { } classify)
         {
             return false;
+        }
+
+        // A booster item gives its booster, which the item row names; the item is used up when the person gets it.
+        if (classify.ItemUseType == ItemUseType.BOOSTER)
+        {
+            if (boosters is null || !catalog.TryGet(item.Item, out var boosterRow) || boosterRow.Field50 != BoosterEffect ||
+                !await boosters.AddAsync(player, (short)boosterRow.Field51, null, cancellationToken))
+            {
+                return false;
+            }
+
+            inventory.Spend(player, item, 1);
+
+            return true;
         }
 
         var reward = classify.ItemUseType switch
