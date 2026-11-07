@@ -8,13 +8,13 @@ namespace OpenWorker.Gameplay.Modules.Rewards;
 public readonly record struct RewardItem(int Item, short Count);
 
 /// <summary>
-/// What a feature gives to a person at once: items and money.
+/// What a feature gives to a person at once: items, money and experience.
 /// </summary>
-public sealed record Reward(IReadOnlyList<RewardItem> Items, int Gold = 0, int Ether = 0)
+public sealed record Reward(IReadOnlyList<RewardItem> Items, int Gold = 0, int Ether = 0, int BattlePoints = 0, long Experience = 0)
 {
     public static Reward Empty { get; } = new([]);
 
-    public bool IsEmpty => Items.Count == 0 && Gold == 0 && Ether == 0;
+    public bool IsEmpty => Items.Count == 0 && Gold == 0 && Ether == 0 && BattlePoints == 0 && Experience == 0;
 }
 
 /// <summary>
@@ -27,7 +27,8 @@ public enum RewardSource : byte
     Attendance = 3,
     Helper = 4,
     Vaccum = 5,
-    PlayTime = 6
+    PlayTime = 6,
+    Quest = 7
 }
 
 /// <summary>
