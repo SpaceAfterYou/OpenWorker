@@ -34,6 +34,9 @@ public sealed class PersonPersistent : BasicPersistent
     public int[] GestureList { get; set; } = [];
     public byte[] OptionList { get; set; } = [];
 
+    public int Outfit { get; set; }
+    public DateTime? LastSelectedAt { get; set; }
+
     public required short FatiguePointCommon { get; set; }
     public short FatiguePointBonus { get; set; }
     

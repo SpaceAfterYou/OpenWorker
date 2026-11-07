@@ -23,7 +23,7 @@ using OpenWorker.Gameplay.Modules.Skill.Components;
 
 namespace OpenWorker.GateServer.Gameplay;
 
-public sealed class PersonRegistry(World world, StorageFactory factory) : ISessionCloseHandler
+public sealed class PersonRegistry(World world, StorageFactory factory, CostumeFactory costumes) : ISessionCloseHandler
 {
     private ComponentType[] PersonArchetype { get; } =
     [
@@ -43,16 +43,26 @@ public sealed class PersonRegistry(World world, StorageFactory factory) : ISessi
     
     internal GatePersonComponent CreatePersonListComponent(IReadOnlyCollection<PersonPersistent> collection)
     {
-        var slots = collection
+        // The client places characters by their position in the list, so it must not change between visits.
+        var persons = collection
+            .OrderBy(e => e.Id)
             .Take(LoginModuleDefines.PersonSlotCount)
+            .ToArray();
+
+        var slots = persons
             .Select(CreatePerson)
             .Concat(Enumerable.Repeat(Entity.Null, LoginModuleDefines.PersonSlotCount))
             .Take(LoginModuleDefines.PersonSlotCount)
             .ToArray();
-        
+
+        var last = Array.FindIndex(
+            persons,
+            e => e.LastSelectedAt is not null && e.LastSelectedAt == persons.Max(p => p.LastSelectedAt));
+
         return new GatePersonComponent
         {
-            SlotList = slots
+            SlotList = slots,
+            LastIndex = last
         };
     }
 
@@ -77,6 +87,17 @@ public sealed class PersonRegistry(World world, StorageFactory factory) : ISessi
         {
             world.Set(entity, component with { LastIndex = -1 });
         }
+    }
+
+    internal void MarkLastPerson(Entity entity, int person)
+    {
+        var component = world.Get<GatePersonComponent>(entity);
+
+        var slot = Array.FindIndex(
+            component.SlotList,
+            e => e != Entity.Null && world.Get<ActorComponent>(e).Identifier == person);
+
+        world.Set(entity, component with { LastIndex = slot });
     }
 
     public ValueTask OnSessionClosedAsync(Entity player)
@@ -248,7 +269,7 @@ public sealed class PersonRegistry(World world, StorageFactory factory) : ISessi
             Jump = persistent.Location * 100 + 1
         });
         
-        world.Set(entity, new StorageComponent([CreateGearStorage(persistent.Hero), CreatesEquipStorage()]));
+        world.Set(entity, new StorageComponent([CreateGearStorage(persistent.Hero), CreatesEquipStorage(persistent.Outfit)]));
 
         world.Set(entity, persistent.ToPersonOptionComponent());
         
@@ -280,8 +301,12 @@ public sealed class PersonRegistry(World world, StorageFactory factory) : ISessi
         return storage;
     }
     
-    private Entity CreatesEquipStorage()
+    private Entity CreatesEquipStorage(int outfit)
     {
-        return factory.Create(StorageGroup.ShapeEquip); 
+        var storage = factory.Create(StorageGroup.ShapeEquip);
+
+        costumes.Dress(storage, outfit);
+
+        return storage;
     }
 }

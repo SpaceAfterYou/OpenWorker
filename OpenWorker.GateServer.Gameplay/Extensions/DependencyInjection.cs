@@ -8,6 +8,7 @@ public static class DependencyInjection
     public static void AddGameplay(this IServiceCollection services)
     {
         services.AddSingleton<LoginGameplay>();
+        services.AddSingleton<PersonCreationCatalog>();
         services.AddSingleton<PersonGameplay>();
         services.AddSingleton<OptionGameplay>();
         services.AddSingleton<SecondPasswordGameplay>();

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
@@ -22,6 +23,7 @@ using OpenWorker.Hotspot.Modules.Login.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using OpenWorker.Persistence;
+using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM;
 using Redis.OM.Searching;
 
@@ -31,6 +33,7 @@ namespace OpenWorker.AuthServer.Test;
 /// Needs Redis with the search module: set OPENWORKER_TEST_REDIS, for example redis://127.0.0.1:6379.
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public sealed class TestGateSession
 {
     private const short GateId = 1;
@@ -101,7 +104,10 @@ public sealed class TestGateSession
             var leases = new SessionLeaseManager(Sessions);
             var secondPassword = new SecondPasswordGameplay(World, Factory, new ServerContent([]));
 
-            Registry = new PersonRegistry(World, new StorageFactory(World));
+            Registry = new PersonRegistry(
+                World,
+                new StorageFactory(World),
+                new CostumeFactory(World, new ReadOnlyCollection<CreateClothRow>([]), new ReadOnlyCollection<ItemRow>([])));
 
             Login = new LoginGameplay(
                 World,
@@ -121,7 +127,12 @@ public sealed class TestGateSession
                 NullLogger<PersonGameplay>.Instance,
                 secondPassword,
                 new LeaveManager(World, configuration, Gates, leases),
-                (WorldManager)null!);
+                (WorldManager)null!,
+                new PersonCreationCatalog(
+                    new ReadOnlyCollection<CharacterInfoRow>([]),
+                    new ReadOnlyCollection<CustomizeHairRow>([]),
+                    new ReadOnlyCollection<CustomizeEyesRow>([]),
+                    new ReadOnlyCollection<CustomizeSkinRow>([])));
         }
 
         public async Task<(int ActivePerson, int OtherPerson)> SeedAsync()
@@ -149,7 +160,7 @@ public sealed class TestGateSession
             return (active.Id, hidden.Id);
         }
 
-        private static PersonPersistent CreatePerson(string name, AccountPersistent account, GatePersistent gate)
+        public static PersonPersistent CreatePerson(string name, AccountPersistent account, GatePersistent gate)
         {
             return new PersonPersistent
             {
@@ -235,6 +246,48 @@ public sealed class TestGateSession
         await harness.Login.TryJoinAsync(harness.Context, harness.CreateEnterRequest(harness.Account));
 
         CollectionAssert.AreEqual(new[] { active }, harness.VisiblePersons());
+    }
+
+    [TestMethod]
+    public async Task LastSelectedPersonIsRestored()
+    {
+        await using var harness = new Harness();
+
+        var (active, _) = await harness.SeedAsync();
+
+        await using (var database = await harness.Factory.CreateDbContextAsync())
+        {
+            var account = await database.Accounts.FirstAsync(e => e.Id == harness.Account);
+            var gate = await database.Gates.FirstAsync(e => e.Id == GateId);
+
+            var newer = Harness.CreatePerson("Newer", account, gate);
+            newer.LastSelectedAt = DateTime.UtcNow.AddHours(-2);
+
+            database.Add(newer);
+
+            (await database.Persons.FirstAsync(e => e.Id == active)).LastSelectedAt = DateTime.UtcNow;
+
+            await database.SaveChangesAsync();
+        }
+
+        await ReserveSessionAsync(harness);
+        await harness.Login.TryJoinAsync(harness.Context, harness.CreateEnterRequest(harness.Account));
+
+        var list = harness.World.Get<GatePersonComponent>(harness.Player);
+
+        Assert.AreEqual(active, harness.World.Get<ActorComponent>(list.Last).Identifier);
+    }
+
+    [TestMethod]
+    public async Task NoPersonIsMarkedAsLastBeforeTheFirstSelection()
+    {
+        await using var harness = new Harness();
+
+        await harness.SeedAsync();
+        await ReserveSessionAsync(harness);
+        await harness.Login.TryJoinAsync(harness.Context, harness.CreateEnterRequest(harness.Account));
+
+        Assert.IsFalse(harness.World.Get<GatePersonComponent>(harness.Player).HasLast);
     }
 
     [TestMethod]

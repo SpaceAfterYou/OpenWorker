@@ -42,6 +42,7 @@ await Host
 
         services.AddSingleton<StorageItemFactory>();
         services.AddSingleton<StorageFactory>();
+        services.AddSingleton<CostumeFactory>();
         services.AddSingleton<StorageManager>();
         services.AddSingleton<QuestManager>();
         services.AddPersistence();

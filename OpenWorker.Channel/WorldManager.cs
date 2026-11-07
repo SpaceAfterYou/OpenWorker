@@ -235,7 +235,7 @@ public sealed class WorldManager(
         session.Send(new WorldEnterResponse { Map = enter });
     }
 
-    public async Task SelectPerson(Entity entity, int person)
+    public async Task<bool> SelectPerson(Entity entity, int person)
     {
         var session = ecs.Get<ServerSessionComponent>(entity);
         var account = ecs.Get<ClaimsComponent>(entity);
@@ -249,7 +249,7 @@ public sealed class WorldManager(
         if (slot < 0)
         {
             session.Send(new CharacterSelectResponse { Zone = EnterMapResultValue.Failed(EnterMapResultValue.CannotEnter) });
-            return;
+            return false;
         }
 
         var worldComponent = ecs.Get<WorldComponent>(personList.SlotList[slot]);
@@ -259,7 +259,7 @@ public sealed class WorldManager(
         if (!await districts.AnyAsync(x => x.Location == location).ConfigureAwait(false))
         {
             session.Send(new CharacterSelectResponse { Zone = EnterMapResultValue.Failed(EnterMapResultValue.ServerUnavailable) });
-            return;
+            return false;
         }
 
         var (district, channel) = await GetDistrictAsync(worldComponent.Location).ConfigureAwait(false);
@@ -316,6 +316,8 @@ public sealed class WorldManager(
                 ChangeType = ChangeServerType.EnterDistrict
             }
         });
+
+        return true;
     }
 
     public async Task<Tuple<DistrictCache, ChannelCache>> GetDistrictAsync(int location)

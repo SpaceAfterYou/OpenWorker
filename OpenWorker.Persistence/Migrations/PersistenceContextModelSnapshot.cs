@@ -17,7 +17,7 @@ namespace OpenWorker.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -193,6 +193,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<int>("Hero")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("LastSelectedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("LeagueId")
                         .HasColumnType("integer");
 
@@ -208,6 +211,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<byte[]>("OptionList")
                         .IsRequired()
                         .HasColumnType("bytea");
+
+                    b.Property<int>("Outfit")
+                        .HasColumnType("integer");
 
                     b.Property<float>("PositionX")
                         .HasColumnType("real");

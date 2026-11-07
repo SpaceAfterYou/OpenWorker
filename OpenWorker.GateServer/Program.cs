@@ -26,6 +26,7 @@ await Host
         services.AddSingleton<WorldManager>();
         services.AddSingleton<LeaveManager>();
         services.AddSingleton<StorageFactory>();
+        services.AddSingleton<CostumeFactory>();
         services.AddPersistence();
         services.AddGameplay();
         

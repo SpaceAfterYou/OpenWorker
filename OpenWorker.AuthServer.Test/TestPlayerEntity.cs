@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Modules.Login.Components;
 namespace OpenWorker.AuthServer.Test;
 
 [TestClass]
+[DoNotParallelize]
 public sealed class TestPlayerEntity
 {
     [TestMethod]

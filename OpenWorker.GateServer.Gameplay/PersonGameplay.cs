@@ -38,7 +38,8 @@ public sealed class PersonGameplay(
     ILogger<PersonGameplay> logger,
     SecondPasswordGameplay secondPassword,
     LeaveManager leaving,
-    WorldManager worldManager)
+    WorldManager worldManager,
+    PersonCreationCatalog catalog)
 {
     private short Gate { get; } = configuration.GetGate();
 
@@ -60,7 +61,12 @@ public sealed class PersonGameplay(
             return;
         }
 
-        if (!Enum.IsDefined(message.Person.InfoValue.Hero))
+        var hero = message.Person.InfoValue.Hero;
+
+        if (!Enum.IsDefined(hero) ||
+            !catalog.TryGetCharacter(hero, out var character) ||
+            !catalog.IsOffered(hero, message.Person.InfoValue.AppearanceShape) ||
+            !PersonCreationCatalog.IsOffered(character, message.Outfit))
         {
             SendListError(context.Player, PersonErrorCode.CreateFailed);
             return;
@@ -91,17 +97,21 @@ public sealed class PersonGameplay(
         var person = new PersonPersistent
         {
             Name = message.Person.InfoValue.Name,
-            Hero = message.Person.InfoValue.Hero,
+            Hero = hero,
 
             DefaultHairStyle = message.Person.InfoValue.AppearanceShape.HairStyle,
             DefaultHairColor = message.Person.InfoValue.AppearanceShape.HairColor,
             DefaultEyeColor = message.Person.InfoValue.AppearanceShape.EyeColor,
             DefaultSkinColor = message.Person.InfoValue.AppearanceShape.SkinColor,
 
-            EquippedHairStyle = message.Person.InfoValue.AppearanceLook.HairStyle,
-            EquippedHairColor = message.Person.InfoValue.AppearanceLook.HairColor,
-            EquippedEyeColor = message.Person.InfoValue.AppearanceLook.EyeColor,
-            EquippedSkinColor = message.Person.InfoValue.AppearanceLook.SkinColor,
+            // A new character has no items that change its look.
+            EquippedHairStyle = 0,
+            EquippedHairColor = 0,
+            EquippedEyeColor = 0,
+            EquippedSkinColor = 0,
+
+            Outfit = message.Outfit,
+            LastSelectedAt = DateTime.UtcNow,
 
             Location = 10003,
             PositionX = 10228.605f,
@@ -224,11 +234,41 @@ public sealed class PersonGameplay(
             return;
         }
 
-        await worldManager
+        var selected = await worldManager
             .SelectPerson(context.Player, message.Actor.Identifier)
             .ConfigureAwait(false);
 
-        // session.Send(new LoginOptionLoadResponse(world, person));
+        if (selected)
+        {
+            await RememberSelectedAsync(context, message.Actor.Identifier).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// The character list highlights this person on the next visit.
+    /// </summary>
+    private async Task RememberSelectedAsync(ServiceHandleContext context, int identifier)
+    {
+        await using var database = await factory
+            .CreateDbContextAsync(context.CancellationToken)
+            .ConfigureAwait(false);
+
+        var person = await database.Persons
+            .FirstOrDefaultAsync(e => e.Id == identifier, context.CancellationToken)
+            .ConfigureAwait(false);
+
+        if (person is null)
+        {
+            return;
+        }
+
+        person.LastSelectedAt = DateTime.UtcNow;
+
+        await database
+            .SaveChangesAsync(context.CancellationToken)
+            .ConfigureAwait(false);
+
+        registry.MarkLastPerson(context.Player, identifier);
     }
 
     private void SendListError(Entity player, PersonErrorCode code)

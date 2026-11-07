@@ -44,7 +44,7 @@ enum eSTOAGE_TYPE : int
     E_STORAGE_TYPE_MAX = 0x3,
 };
 
-public sealed class PersonRegistry(World world, StorageFactory factory, StorageManager storageManager, StorageItemFactory itemFactory)
+public sealed class PersonRegistry(World world, StorageFactory factory, StorageManager storageManager, StorageItemFactory itemFactory, CostumeFactory costumes)
 {
     private ComponentType[] StorageArchetype { get; } =
     [
@@ -176,7 +176,7 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
             factory.Create(StorageGroup.CostumeStorage),
 
             CreateGearStorage(persistent.Hero),
-            CreatesEquipStorage()
+            CreatesEquipStorage(persistent.Outfit)
         ]));
 
         storageManager.TryAdd(entity, itemFactory.Create(715146322, 1), 1);
@@ -222,8 +222,12 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
         return storage;
     }
 
-    private Entity CreatesEquipStorage()
+    private Entity CreatesEquipStorage(int outfit)
     {
-        return factory.Create(StorageGroup.ShapeEquip);
+        var storage = factory.Create(StorageGroup.ShapeEquip);
+
+        costumes.Dress(storage, outfit);
+
+        return storage;
     }
 }
