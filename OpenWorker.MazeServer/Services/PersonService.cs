@@ -8,6 +8,7 @@ using Lua;
 using Lua.Standard;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Channel;
+using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
@@ -58,7 +59,8 @@ public sealed class PersonService(
     MiscStateLoader miscState,
     CreatureServices creatureServices,
     ILogger<LuaCreatureManager> creatureLogger,
-    IConfiguration configuration
+    IConfiguration configuration,
+    CommunityNetwork community
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
@@ -182,6 +184,7 @@ public sealed class PersonService(
         questManager.SendQuestEpisodeList(context.Player);
 
         await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
+        await community.EnterAsync(context.Player);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Channel;
+using OpenWorker.Channel.Community;
 using OpenWorker.DistrictServer.Server;
 using OpenWorker.DistrictServer.Server.Components;
 using OpenWorker.Extensions;
@@ -63,7 +64,8 @@ public sealed class PersonService(
     PersonRegistry registry,
     LeaveManager leaving,
     QuestManager questManager,
-    ReadOnlyCollection<CharacterInfoRow> characterInfo
+    ReadOnlyCollection<CharacterInfoRow> characterInfo,
+    CommunityNetwork community
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
@@ -216,6 +218,8 @@ public sealed class PersonService(
                 DeckSlotList = skillDeck.SlotList
             }
         });
+
+        await community.EnterAsync(context.Player);
     }
 
     /// <summary>

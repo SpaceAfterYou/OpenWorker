@@ -1,87 +1,34 @@
 ﻿using Arch.Core;
-using Arch.Core.Extensions;
 using OpenWorker.Channel;
+using OpenWorker.Channel.Community;
 using OpenWorker.Commands;
-using OpenWorker.Domain.Components;
-using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Cache.Types;
-using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Gameplay;
-using OpenWorker.Hotspot.Modules.Chat.Enums;
-using OpenWorker.Hotspot.Modules.Chat.Requests;
-using OpenWorker.Hotspot.Modules.Chat.Responses;
-using Redis.OM.Searching;
+using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.DistrictServer.Services;
 
 [HotspotHandler(HotspotHandlerType.District)]
-public sealed class ChatService(World world, CommandManager commands, ServiceChannels channels, IRedisCollection<ChannelChatCache> channelChatCache) :
-    IHotspotHandler<ChatNormalRequest>,
-    IHotspotHandler<ChatWhisperRequest>,
-    IHotspotHandler<ChatTradeRequest>,
-    IHotspotHandler<ChatMegaphoneRequest>,
-    IHotspotHandler<ChatStuffRequest>
+public sealed class ChatService(
+    World world,
+    CommandManager commands,
+    ServiceChannels channels,
+    CommunityNetwork network,
+    ChatThrottle throttle,
+    IPartyRoster parties,
+    ILeagueRoster leagues,
+    IPersonRelations relations,
+    IMegaphoneSource megaphones
+) :
+    ChatServiceBase(world, network, throttle, parties, leagues, relations, megaphones)
 {
-    public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatStuffRequest request)
+    protected override void SendNearby(Entity player, IResponseHotspotMessage message)
     {
-        if (!await commands.TryExecute(context.Player, request.Message))
-        {
-            return;
-        }
-
-        var session = world.Get<ServerSessionComponent>(context.Player);
-        var actor = world.Get<ActorComponent>(context.Player);
-
-        session.Send(new ChatNormalResponse
-        {
-            Actor = actor,
-            Appearance = ChatMessageAppearance.System,
-            Message = $"[CMD EXEC] {request.Message}"
-        });
+        channels.Get(player).Broadcast(message);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, ChatMegaphoneRequest request)
+    protected override ValueTask<bool> TryCommandAsync(Entity player, string text)
     {
-        return ValueTask.CompletedTask;
-    }
-
-    public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatNormalRequest request)
-    {
-        var channel = channels.Get(context.Player);
-        var actor = world.Get<ActorComponent>(context.Player);
-
-        channel.ForEach(e =>
-        {
-            var session = e.Get<ServerSessionComponent>();
-            session.Send(new ChatNormalResponse
-            {
-                Actor = actor,
-                Appearance = ChatMessageAppearance.Normal,
-                Message = request.Message
-            });
-        });
-
-        var cache = new ChannelChatCache
-        {
-            Channel = channel.Identifier,
-            Message = request.Message,
-            Appearance = ChatMessageAppearance.Normal,
-            Actor = actor.Identifier,
-        };
-
-        await channelChatCache
-            .InsertAsync(cache, TimeSpan.FromDays(1));
-    }
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, ChatTradeRequest request)
-    {
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, ChatWhisperRequest request)
-    {
-        return ValueTask.CompletedTask;
+        return commands.TryExecute(player, text);
     }
 }
