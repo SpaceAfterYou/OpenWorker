@@ -18,10 +18,13 @@ using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
+using OpenWorker.Hotspot.Modules.Maze.Types;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Hotspot.Modules.Chat.Responses;
+using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Lua.Managers;
@@ -50,7 +53,8 @@ public partial class LuaMaze(
     VBatchFile batch,
     IReadOnlyCollection<InteractionObjectRow> interactions,
     SkillActionProvider actions,
-    CombatTables combat
+    CombatTables combat,
+    MazeInfoRow info
 ) : ILuaUserData
 {
     public LuaState State { get; } = state;
@@ -73,10 +77,72 @@ public partial class LuaMaze(
         public Vector3 Position { get; set; } = position;
     }
 
+    /// <summary>
+    /// A timer of the script that fails must not stop the others, so errors end here.
+    /// </summary>
+    private sealed class TimerHost(LuaMaze maze) : IMazeTimerHost
+    {
+        public async ValueTask CallAsync(string function, int first, int second, int third)
+        {
+            if (maze.Closed)
+            {
+                return;
+            }
+
+            try
+            {
+                await maze.State.OnTimerExComplete(function, first, second, third, maze);
+            }
+
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                Console.WriteLine($"[Timer {function}]: {e}");
+            }
+        }
+
+        public async ValueTask CompleteAsync(int timer)
+        {
+            if (maze.Closed)
+            {
+                return;
+            }
+
+            try
+            {
+                await maze.State.OnTimerComplete(timer, maze);
+            }
+
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                Console.WriteLine($"[Timer {timer}]: {e}");
+            }
+        }
+
+        public void ShowTimer(int value, float time, float next)
+        {
+            maze.ShowTimer(value, time, next);
+        }
+    }
+
     // A monster that counts hits takes them no faster than this.
     private const long CountedHitMilliseconds = 500;
 
     private static readonly TimeSpan FlightTick = TimeSpan.FromMilliseconds(50);
+
+    private static readonly TimeSpan TimerTick = TimeSpan.FromMilliseconds(50);
+
+    /// <summary>
+    /// Townsfolk do not move here, so a script that waits for one to arrive hears of it after this long.
+    /// </summary>
+    private const float NpcMoveSeconds = 1f;
+
+    /// <summary>
+    /// A group of mazes has four episodes.
+    /// </summary>
+    private const int MaxEpisode = 4;
+
+    private const byte CutsceneStopped = 0;
+    private const byte CutscenePlaying = 2;
 
     private int SkillGeneration { get; set; }
     private int CurrentSkill { get; set; }
@@ -84,6 +150,30 @@ public partial class LuaMaze(
     private uint ProjectileSession { get; set; }
     private bool Started { get; set; }
     private bool Closed { get; set; }
+    private bool TimersRunning { get; set; }
+    private MazeTimers? _timers;
+
+    /// <summary>
+    /// What the script has stored with <c>SetLuaValue</c>: numbers that stay for as long as the maze does.
+    /// </summary>
+    private Dictionary<int, int> LuaValues { get; } = [];
+
+    private List<string> LuaKeys { get; } = [];
+    private Dictionary<int, bool> SwitchNpcs { get; } = [];
+
+    /// <summary>
+    /// The cutscene the player is watching, if any.
+    /// </summary>
+    private string? Cutscene { get; set; }
+
+    /// <summary>
+    /// The maze is won: its last sector has been cleared. Doors that open from now on say so to the client.
+    /// </summary>
+    public bool IsComplete { get; private set; }
+
+    public MazeState MazeState { get; private set; } = MazeState.None;
+
+    private MazeTimers Timers => _timers ??= new MazeTimers(new TimerHost(this));
 
     /// <summary>
     /// The player has left: timers must not touch an entity that is gone, or that belongs to someone else by now.
@@ -92,6 +182,7 @@ public partial class LuaMaze(
     {
         Closed = true;
 
+        Timers.Clear();
         creatureManager.Close();
     }
 
@@ -597,26 +688,104 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// Clearing a sector opens its gates, and what lies behind them comes to life.
+    /// A cleared sector tells its script, then the client, and opens its way out. What lies behind comes to life.
     /// </summary>
     private async ValueTask CompleteSectorAsync(int sector)
     {
         var box = Batch.EventBox.Sectors.FirstOrDefault(e => e.Id == sector);
 
-        // Other sectors are finished by their script.
-        if (box is null || box.ClearType is not (ClearType.Kill or ClearType.KillPerpect) || Progress.IsSectorCleared(sector))
+        // Sectors of other kinds are finished by their script, or by the quests of the player.
+        if (box is null || !Progress.ClearSector(sector))
         {
             return;
         }
 
-        SectorClear(sector);
+        await FinishSectorAsync(box);
+    }
 
-        foreach (var gate in Batch.EventBox.ServerGates.Where(e => e.Sector == sector))
+    private async ValueTask FinishSectorAsync(SectorBox box)
+    {
+        await State.OnCompleteSector(box.Id, this);
+
+        if (Closed)
         {
-            SetGateFlag(gate.Id, true);
+            return;
         }
 
-        await State.OnCompleteSector(sector, this);
+        player.Get<ServerSessionComponent>().Send(new MazeClearSectorResponse { Sector = box.Id, Status = true });
+
+        // The way out of the last sector leads out of the maze: the maze is won before the door says so.
+        if (IsLastSector(box))
+        {
+            await CompleteMazeAsync(box);
+        }
+
+        OpenExit(box);
+    }
+
+    /// <summary>
+    /// The client learns which maze of its group is cleared, and that the next episode is open. The mazes cleared
+    /// before are not kept anywhere yet, so only this one is told.
+    /// </summary>
+    private void SendClearInfo()
+    {
+        var group = new MazeClearValue(info.Group, (byte)Math.Min(info.Episode + 1, MaxEpisode), [(info.Id, 1)]);
+
+        player.Get<ServerSessionComponent>().Send(new MazeClearInfoResponse { Groups = [group], Person = Ecs.Get<ActorComponent>(player), IsReset = false });
+    }
+
+    /// <summary>
+    /// The way out of a sector is a door or a portal, and it opens once the sector is cleared.
+    /// </summary>
+    private void OpenExit(SectorBox box)
+    {
+        if (box.Exit == 0)
+        {
+            return;
+        }
+
+        if (box.ExitType == SectorExitType.Gate)
+        {
+            SetGateFlag(box.Exit, true);
+        }
+        else
+        {
+            SetPotalFlag(box.Exit, true);
+        }
+    }
+
+    /// <summary>
+    /// The last sector is the one with the boss, or the one whose portal leads out of the maze. The maze is won
+    /// when it is cleared, even if a calm sector with the way out lies behind it.
+    /// </summary>
+    private bool IsLastSector(SectorBox box)
+    {
+        if (box.Type == SectorType.Boss)
+        {
+            return true;
+        }
+
+        return box.ExitType == SectorExitType.Portal
+            && Batch.EventBox.Portals.FirstOrDefault(e => e.Id == box.Exit) is { JumpType: not JumpType.JumpPos };
+    }
+
+    /// <summary>
+    /// What happens once, when the last sector is cleared: the rest of its monsters go, the clock stops and the
+    /// client is told that the maze is won.
+    /// </summary>
+    private async ValueTask CompleteMazeAsync(SectorBox last)
+    {
+        if (IsComplete)
+        {
+            return;
+        }
+
+        IsComplete = true;
+        MazeState = MazeState.None;
+
+        SendClearInfo();
+
+        await DestroyAsync(creatureManager.FindMonsters((_, _) => true).Where(e => Ecs.Get<NonPlayableCreatureComponent>(e).Sector == last.Id).ToArray(), false);
     }
 
     private async Task RunLaterAsync(float seconds, Func<ValueTask> action)
@@ -658,88 +827,120 @@ public partial class LuaMaze(
         questManager.AcceptEpisode(player, episode);
     }
 
+    /// <summary>
+    /// Gives a timer with steps more time.
+    /// </summary>
     [LuaMember]
-    public void AddEventMaxTime()
+    public void AddEventMaxTime(string function, float time)
     {
-        throw new NotImplementedException();
+        Timers.Extend(function, time);
     }
 
+    /// <param name="function">Called when the time of a step is up. It also names the timer.</param>
+    /// <param name="step">Called when the script finishes a step early.</param>
+    /// <param name="ready">Called when the waiting before a step begins.</param>
+    /// <param name="type">Only timers with steps are known.</param>
+    /// <param name="time">How long a step takes.</param>
+    /// <param name="steps">How many steps there are.</param>
+    /// <param name="wait">How long it waits before each step.</param>
     [LuaMember]
-    public void AddEventTimer(string function, string step, string ready, int type, float time, int param1, int param2)
+    public void AddEventTimer(string function, string step, string ready, int type, float time, int steps, int wait)
     {
-        Console.WriteLine($"[{nameof(AddEventTimer)}]: {function}, {step}, {ready}, {type}, {time}, {param1}, {param2}");
+        if (type != MazeTimer.Stepped)
+        {
+            Console.WriteLine($"[{nameof(AddEventTimer)}]: no timer of type {type}, {function}");
+            return;
+        }
+
+        Timers.AddStepped(function, step, ready, time, steps, wait);
+        RunTimers();
     }
 
     [LuaMember]
     public void AddLuaValue(int index, int value)
     {
-        Console.WriteLine($"[{nameof(AddLuaValue)}]: {index}, {value}");
+        LuaValues[index] = LuaValues.GetValueOrDefault(index) + value;
     }
 
     [LuaMember]
     public void AddTimer(int identifier, float time)
     {
-        Console.WriteLine($"[{nameof(AddTimer)} start] {identifier} {time}");
-        
-        _ = RunLaterAsync(time, () => State.OnTimerComplete(identifier, this));
+        Timers.AddPlain(identifier, time);
+        RunTimers();
     }
 
     [LuaMember]
     public void AddTimerEx(string function, float time, int param1, int param2, int param3)
     {
-        Console.WriteLine($"[{nameof(AddTimerEx)} start] {function} {param1} {param2} {param3}");
-        
-        _ = RunLaterAsync(time, () => State.OnTimerExComplete(function, param1, param2, param3, this));
+        Timers.AddPlain(function, time, param1, param2, param3);
+        RunTimers();
+    }
+
+    /// <summary>
+    /// Everything that lives in the sector dies at once and without a reward.
+    /// </summary>
+    [LuaMember]
+    public void AllDestroySectorMonster(int sector)
+    {
+        _ = RunLaterAsync(0f, () => DestroyAsync(MonstersOf(sector), false));
     }
 
     [LuaMember]
-    public void AllDestroySectorMonster()
+    public void AllUserWarpInSector(VVector3 position, float rotation)
     {
-        throw new NotImplementedException();
-    }
+        var place = new Vector3(position.X, position.Y, position.Z);
+        var world = Ecs.Get<WorldComponent>(player);
 
-    [LuaMember]
-    public void AllUserWarpInSector()
-    {
-        throw new NotImplementedException();
+        Ecs.Set(player, world with { Position = place, Rotation = rotation });
+
+        player.Get<ServerSessionComponent>().Send(new MazeWarpInSectorResponse { Position = place, Rotation = rotation });
     }
 
     [LuaMember]
     public void ApplyBuff(int actor, int buff)
     {
         Console.WriteLine($"[{nameof(ApplyBuff)}]: {actor}, {buff}");
-        
+
         buffManager.Apply(player, actor, buff);
     }
 
+    /// <summary>
+    /// Monsters do not turn into others here: the script goes on with the old ones.
+    /// </summary>
     [LuaMember]
-    public void ChangeMonster()
+    public void ChangeMonster(string from, string to)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(ChangeMonster)}]: {from} -> {to} is not done");
     }
 
     [LuaMember]
-    public void ChangeNpcAnimation()
+    public void ChangeNpcAnimation(int npc, string animation)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(ChangeNpcAnimation)}]: {npc}, {animation} is not shown");
     }
 
+    /// <summary>
+    /// A message to one player, or to everyone when the number is zero.
+    /// </summary>
     [LuaMember]
-    public void ChatMessage()
+    public void ChatMessage(int user, string message)
     {
-        throw new NotImplementedException();
+        if (user == 0 || user == (int)Ecs.Get<ActorComponent>(player))
+        {
+            player.Get<ServerSessionComponent>().Send(new ChatNoticeResponse { Type = 0, Message = message, Color = "" });
+        }
     }
 
     [LuaMember]
     public void ClearAllTimers()
     {
-        throw new NotImplementedException();
+        Timers.Clear();
     }
 
     [LuaMember]
-    public void CompleteCondition()
+    public void CompleteCondition(int condition)
     {
-        throw new NotImplementedException();
+        questManager.TryApplyConditionProgress(player, condition, 1);
     }
 
     [LuaMember]
@@ -748,10 +949,13 @@ public partial class LuaMaze(
         questManager.CompleteEpisode(player, episode);
     }
 
+    /// <summary>
+    /// The script says a step of a timer is done before its time is up.
+    /// </summary>
     [LuaMember]
     public void CompleteTimerStep(string function, int step)
     {
-        Console.WriteLine($"[{nameof(CompleteTimerStep)}]: {function}, {step}");
+        Timers.Complete(function, step);
     }
 
     [LuaMember]
@@ -778,39 +982,47 @@ public partial class LuaMaze(
     [LuaMember("ExcutEventSpawnLua")]
     public void ExecuteEventSpawnLua(int box)
     {
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnLua)} start]: {box}");
-        
         creatureManager.Create(player, box);
-        
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnLua)} end]: {box}");
     }
 
+    /// <summary>
+    /// Makes the monsters of a table die, wherever they are. Monsters are the type 2, townsfolk the type 1.
+    /// </summary>
     [LuaMember]
     public void ExecuteDestroy(int type, string table, string animation, bool suicide = true)
     {
-        Console.WriteLine($"[{nameof(ExecuteDestroy)}]: {type}, {table}, {animation}, {suicide}");
+        if (type != 2 || !int.TryParse(table, out var identifier))
+        {
+            Console.WriteLine($"[{nameof(ExecuteDestroy)}]: {type}, {table} is not done");
+            return;
+        }
+
+        _ = RunLaterAsync(0f, () => DestroyAsync(
+            creatureManager.FindMonsters((_, _) => true).Where(e => Ecs.Get<CreatureComponent>(e).Identifier == identifier).ToArray(),
+            false));
     }
-    
+
     [LuaMember]
     public VVector3 GetCommonPositionBox(int box)
     {
-        Console.WriteLine($"[{nameof(GetCommonPositionBox)}]: {box}");
-
         return Batch.EventBox.CommonPositions
             .First(x => x.Id == box)
             .GetRandomPosition();
     }
 
     [LuaMember]
-    public void GetLuaValue(int index)
+    public int GetLuaValue(int index)
     {
-        Console.WriteLine($"[{nameof(GetLuaValue)}]: {index}");
+        return LuaValues.GetValueOrDefault(index);
     }
 
+    /// <summary>
+    /// A quest of the party. There is no party in a maze of one.
+    /// </summary>
     [LuaMember]
-    public void InitPartyQuest()
+    public void InitPartyQuest(int quest, int condition, int sector)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(InitPartyQuest)}]: {quest}, {condition}, {sector} is not done");
     }
 
     [LuaMember]
@@ -825,17 +1037,20 @@ public partial class LuaMaze(
         return questManager.HasActiveEpisode(player, episodeId);
     }
 
+    /// <summary>
+    /// The client runs a function of its own script when it hears this.
+    /// </summary>
     [LuaMember]
     public void LuaClientSync(int type, int value, int sector = 0, float time = 0)
     {
-        Console.WriteLine($"[{nameof(LuaClientSync)}]: {type}, {value}, {sector}, {time}");
+        player.Get<ServerSessionComponent>().Send(new MazeLuaClientSyncResponse { Type = type, Value = value });
     }
 
     [LuaMember]
     public void MoveNpcToWayPoint(int npc, int waypoint)
     {
         Console.WriteLine($"[{nameof(MoveNpcToWayPoint)}]: {npc}, {waypoint}");
-        
+
         creatureManager.MoveToPoint(npc, waypoint);
     }
 
@@ -845,31 +1060,34 @@ public partial class LuaMaze(
         questManager.RemoveAllActiveEpisodes(player);
     }
 
+    /// <summary>
+    /// Stops a timer without telling the script, and says how long it had left.
+    /// </summary>
     [LuaMember]
-    public void RemoveTimerEx()
+    public float RemoveTimerEx(string function)
     {
-        throw new NotImplementedException();
+        return Timers.Cancel(function);
     }
 
+    /// <summary>
+    /// A sector the script clears is finished like one that was cleared by the fight.
+    /// </summary>
     [LuaMember]
     public void SectorClear(int sector)
     {
-        if (Progress.ClearSector(sector))
-        {
-            player.Get<ServerSessionComponent>().Send(new MazeClearSectorResponse { Sector = sector, Status = true });
-        }
+        _ = RunLaterAsync(0f, () => CompleteSectorAsync(sector));
     }
 
     [LuaMember]
-    public void SetEscortCondition()
+    public void SetEscortCondition(int condition)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(SetEscortCondition)}]: {condition} is not done");
     }
 
     [LuaMember]
-    public void SetEscortMonster()
+    public void SetEscortMonster(LuaValue monster, LuaValue condition, LuaValue name)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(SetEscortMonster)}] is not done");
     }
 
     [LuaMember]
@@ -877,7 +1095,9 @@ public partial class LuaMaze(
     {
         if (Progress.SetGate(gate, open))
         {
-            player.Get<ServerSessionComponent>().Send(new WorldGateEnableResponse { Gate = gate, Open = open });
+            var next = Batch.EventBox.ServerGates.FirstOrDefault(e => e.Id == gate)?.NextSector ?? 0;
+
+            player.Get<ServerSessionComponent>().Send(new WorldGateEnableResponse { Gate = gate, Open = open, IsMazeComplete = IsComplete, NextSector = next });
 
             WakeSectorBehindGate(gate, open);
         }
@@ -892,28 +1112,19 @@ public partial class LuaMaze(
         }
     }
 
-    [LuaMember]
-    public void PrivateSetLuaValue(LuaValue keyOrIndex, LuaValue value)
+    /// <summary>
+    /// A key stays in the maze. A number goes under an index: <c>SetLuaValue(index, value)</c>.
+    /// </summary>
+    [LuaMember("SetLuaValue")]
+    public void SetLuaValue(LuaValue keyOrIndex, LuaValue value)
     {
         if (keyOrIndex.TryRead<string>(out var key))
         {
-            PrivateSetLuaValue(key);
+            LuaKeys.Add(key);
             return;
         }
-        
-        PrivateSetLuaValue(keyOrIndex.Read<int>(), value.Read<int>());
-    }
-    
-    [LuaIgnoreMember]
-    private void PrivateSetLuaValue(string key)
-    {
-        Console.WriteLine($"[{nameof(PrivateSetLuaValue)}]: {key}");
-    }
-    
-    [LuaIgnoreMember]
-    private void PrivateSetLuaValue(int index, int value)
-    {
-        Console.WriteLine($"[{nameof(PrivateSetLuaValue)}]: {index}, {value}");
+
+        LuaValues[keyOrIndex.Read<int>()] = value.Read<int>();
     }
 
     /// <summary>
@@ -932,28 +1143,48 @@ public partial class LuaMaze(
         }
     }
 
+    /// <summary>
+    /// The state only tells scripts what the maze is doing. The client does not read it, and a maze waiting
+    /// to die goes on by itself.
+    /// </summary>
     [LuaIgnoreMember]
     public void SetMazeState(MazeState state)
     {
-        Console.WriteLine($"[{nameof(SetMazeState)}]: {state}");
+        MazeState = state;
+
+        if (state == MazeState.WaitToDie)
+        {
+            _ = RunLaterAsync(0f, () =>
+            {
+                if (MazeState == MazeState.WaitToDie)
+                {
+                    MazeState = MazeState.Run;
+                }
+
+                return ValueTask.CompletedTask;
+            });
+        }
     }
 
     [LuaMember]
-    public void SetMonsterAllowPassiveType()
+    public void SetMonsterAllowPassiveType(int monster, int type)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(SetMonsterAllowPassiveType)}]: {monster}, {type} is not done");
     }
 
     [LuaMember]
-    public void SetMonsterDefenceType()
+    public void SetMonsterDefenceType(int monster, int type, float time)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(SetMonsterDefenceType)}]: {monster}, {type}, {time} is not done");
     }
 
+    /// <summary>
+    /// The townsman does not turn here, but the script gets word that it did.
+    /// </summary>
     [LuaMember]
-    public void SetNpcRotation()
+    public void SetNpcRotation(int npc, float angle, int key)
     {
-        throw new NotImplementedException();
+        _ = RunLaterAsync(NpcMoveSeconds, () => State.OnNpcRotation(npc, key, this));
     }
 
     [LuaMember]
@@ -961,7 +1192,7 @@ public partial class LuaMaze(
     {
         if (Progress.SetPortal(box, flag))
         {
-            player.Get<ServerSessionComponent>().Send(new WorldWarpEnableResponse { Box = box, Open = flag });
+            player.Get<ServerSessionComponent>().Send(new WorldWarpEnableResponse { Box = box, Open = flag, IsMazeComplete = IsComplete });
 
             if (flag && Batch.EventBox.Portals.FirstOrDefault(e => e.Id == box) is { NextSector: > 0 } portal)
             {
@@ -994,45 +1225,249 @@ public partial class LuaMaze(
         Console.WriteLine($"[{nameof(SetTrapLifeTime)}]: {index}, {time}");
     }
 
+    /// <summary>
+    /// A countdown on the screen: nothing counts without the client's own clock, so the number is the time to show.
+    /// A negative value hides it.
+    /// </summary>
     [LuaMember]
-    public void ShowCasualRaidTimer()
+    public void ShowCasualRaidTimer(int value, float time, float next = 0f)
     {
-        throw new NotImplementedException();
+        ShowTimer(value, time, next);
     }
 
+    /// <summary>
+    /// The game modes of waves and survival have tables of their own that are not read here.
+    /// </summary>
     [LuaMember]
-    public void StartDefenceMode()
+    public void StartDefenceMode(int table)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(StartDefenceMode)}]: {table} is not done");
     }
 
     [LuaMember]
     public void StartEventTimer(string function)
     {
-        Console.WriteLine($"[{nameof(StartEventTimer)}]: {function}");
+        Timers.Start(function);
     }
 
     [LuaMember]
-    public void StartOperationMode()
+    public void StartOperationMode(int table)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(StartOperationMode)}]: {table} is not done");
     }
 
     [LuaMember]
-    public void StartSurvivalMode()
+    public void StartSurvivalMode(int table)
     {
-        throw new NotImplementedException();
+        Console.WriteLine($"[{nameof(StartSurvivalMode)}]: {table} is not done");
     }
 
+    /// <summary>
+    /// No more monsters come to a sector. The sector itself is the current one when the number is zero.
+    /// </summary>
     [LuaMember]
-    public void TerminateSpawn()
+    public void TerminateSpawn(int sector)
     {
-        throw new NotImplementedException();
+        if (sector == 0)
+        {
+            sector = CurrentSector;
+        }
+
+        creatureManager.GetKillProgress(sector).Stopped = true;
+
+        foreach (var box in Batch.EventBox.MonsterSpawns.Where(e => e.Sector == sector))
+        {
+            creatureManager.Terminate(box.Id);
+        }
+
+        _ = RunLaterAsync(0f, () => CheckSectorAsync(sector));
     }
 
+    /// <summary>
+    /// A box that has not appeared yet never will. What has appeared stays.
+    /// </summary>
     [LuaMember]
-    public void TerminateSpawnBox()
+    public void TerminateSpawnBox(int box)
     {
-        throw new NotImplementedException();
+        creatureManager.Terminate(box);
+
+        if (Batch.EventBox.MonsterSpawns.FirstOrDefault(e => e.Id == box) is { } spawn)
+        {
+            _ = RunLaterAsync(0f, () => CheckSectorAsync(spawn.Sector));
+        }
+    }
+
+    /// <summary>
+    /// The sector the player stands in.
+    /// </summary>
+    private int CurrentSector => Batch.EventBox.Sectors.FirstOrDefault(e => Contains(e, Ecs.Get<WorldComponent>(player).Position))?.Id ?? 0;
+
+    private static bool Contains(SectorBox box, Vector3 position)
+    {
+        return position.X >= Math.Min(box.PosTopLeft.X, box.PosBottomRight.X) &&
+               position.X <= Math.Max(box.PosTopLeft.X, box.PosBottomRight.X) &&
+               position.Y >= Math.Min(box.PosTopLeft.Y, box.PosBottomRight.Y) &&
+               position.Y <= Math.Max(box.PosTopLeft.Y, box.PosBottomRight.Y);
+    }
+
+    private Entity[] MonstersOf(int sector)
+    {
+        return creatureManager.FindMonsters((_, _) => true).Where(e => Ecs.Get<NonPlayableCreatureComponent>(e).Sector == sector).ToArray();
+    }
+
+    /// <summary>
+    /// Kills what is given: the client sees them die, and the sector counts them.
+    /// </summary>
+    /// <param name="scripts">Whether the script hears of each death.</param>
+    private async ValueTask DestroyAsync(Entity[] targets, bool scripts)
+    {
+        var session = player.Get<ServerSessionComponent>();
+        var dead = targets.Where(Ecs.IsAlive).Select(target => RemoveDead(session, target)).ToArray();
+
+        foreach (var (identifier, place) in dead)
+        {
+            if (Closed)
+            {
+                return;
+            }
+
+            if (scripts)
+            {
+                await State.OnDie(identifier, place.SpawnBox, this);
+            }
+        }
+
+        foreach (var sector in dead.Select(e => e.Place.Sector).Distinct())
+        {
+            if (Closed)
+            {
+                return;
+            }
+
+            await CheckSectorAsync(sector);
+        }
+    }
+
+    /// <summary>
+    /// Kills what a sector holds and finishes it, for a command that wants a sector done at once.
+    /// </summary>
+    [LuaIgnoreMember]
+    public async ValueTask ClearSectorAsync(int sector)
+    {
+        if (sector == 0)
+        {
+            sector = CurrentSector;
+        }
+
+        await DestroyAsync(MonstersOf(sector), true);
+
+        if (!Closed)
+        {
+            await CompleteSectorAsync(sector);
+        }
+    }
+
+    /// <summary>
+    /// A cutscene starts or is skipped on the client. The maze waits for the boss while one plays, and its script
+    /// hears when it is over.
+    /// </summary>
+    [LuaIgnoreMember]
+    public async ValueTask UpdateCutsceneAsync(bool play, string name)
+    {
+        if (!Started)
+        {
+            return;
+        }
+
+        var session = player.Get<ServerSessionComponent>();
+
+        if (play)
+        {
+            Cutscene = name;
+
+            SetMazeState(MazeState.StartBoss);
+
+            session.Send(new PersonPlayCutsceneResponse { State = CutscenePlaying });
+
+            return;
+        }
+
+        session.Send(new PersonPlayCutsceneResponse { State = CutsceneStopped });
+
+        if (Cutscene is null)
+        {
+            return;
+        }
+
+        Cutscene = null;
+
+        SetMazeState(MazeState.WaitToDie);
+
+        await State.OnCutsceneOff(name, this);
+    }
+
+    /// <summary>
+    /// A townsman that works as a switch stands one way or the other, and a click turns it over.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void ClickSwitchNpc(int npc)
+    {
+        var status = !SwitchNpcs.GetValueOrDefault(npc);
+
+        SwitchNpcs[npc] = status;
+
+        player.Get<ServerSessionComponent>().Send(new MazeSwitchNpcStatusResponse { Npc = npc, Status = status ? (byte)1 : (byte)0 });
+    }
+
+    private void ShowTimer(int value, float time, float next)
+    {
+        player.Get<ServerSessionComponent>().Send(new MazeTimerResponse { Value = value, Time = time, Next = next });
+    }
+
+    /// <summary>
+    /// Timers count on the thread of the world, one tick at a time, while there are any.
+    /// </summary>
+    private void RunTimers()
+    {
+        if (TimersRunning || Closed)
+        {
+            return;
+        }
+
+        TimersRunning = true;
+
+        _ = RunTimersAsync();
+    }
+
+    private async Task RunTimersAsync()
+    {
+        try
+        {
+            var last = Stopwatch.GetTimestamp();
+
+            while (!Closed && !Timers.IsEmpty)
+            {
+                await Task.Delay(TimerTick);
+
+                var seconds = (float)Stopwatch.GetElapsedTime(last).TotalSeconds;
+
+                last = Stopwatch.GetTimestamp();
+
+                if (!Closed)
+                {
+                    await Timers.UpdateAsync(seconds);
+                }
+            }
+        }
+
+        catch (Exception e)
+        {
+            Console.WriteLine($"[{nameof(RunTimersAsync)}]: {e}");
+        }
+
+        finally
+        {
+            TimersRunning = false;
+        }
     }
 }

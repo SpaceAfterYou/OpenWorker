@@ -28,7 +28,7 @@ public sealed record MonsterSpawnBox : BasicEntity
         Waypoint = x.GetInt32("m_iWaypoint");
         AggroGroup = x.GetInt32("m_iAggroGroupID");
         AggroDistance = x.GetInt32("m_iAggroDistance");
-        AggroMaxCount = x.GetInt16("m_iAggroMaxCount");
+        AggroMaxCount = x.GetInt32("m_iAggroMaxCount");
         LookRatio = x.GetSingle("m_fLookRatio");
         ShowSight = x.GetBool("m_bShowSight");
         ObjectKey = x.GetString("m_szObjectKey");
@@ -36,7 +36,7 @@ public sealed record MonsterSpawnBox : BasicEntity
         CheckScriptHps = Enumerable.Range(1, 5).Select(id => x.GetByte($"m_iCheckScriptHP{id}")).ToArray();
         Sector = x.GetInt16("m_iSectorID");
         ChangeSpawnAction = x.GetEnum<ChangeSpawnActionType>("m_ChangeSpawnAction");
-        ProtectionTarget = x.GetInt16("m_ProtectionTarget");
+        ProtectionTarget = x.GetInt32("m_ProtectionTarget");
         RespawnTime = x.GetSingle("m_RespawnTime");
         Step = x.GetByte("m_iStep");
         RespawnType = x.GetEnum<RespawnType>("m_eRespawnType");
@@ -112,7 +112,7 @@ public sealed record MonsterSpawnBox : BasicEntity
     /// <summary>
     ///     AggroMaxCount.
     /// </summary>
-    public short AggroMaxCount { get; }
+    public int AggroMaxCount { get; }
 
     /// <summary>
     ///     Multiplying the value of Sight.
@@ -152,7 +152,7 @@ public sealed record MonsterSpawnBox : BasicEntity
     /// <summary>
     ///     Specifies the ID of the destination specified by the box spawn protected.
     /// </summary>
-    public short ProtectionTarget { get; }
+    public int ProtectionTarget { get; }
 
     /// <summary>
     ///     Unit [ms] (Specifies whether to create a monster, who died after a few seconds. Value of 0 is not used for the

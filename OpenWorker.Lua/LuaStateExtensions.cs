@@ -50,6 +50,18 @@ public static class LuaStateExtensions
         }
     }
     
+    /// <summary>
+    /// A cutscene is over, once for every cutscene the maze has seen.
+    /// </summary>
+    public static async ValueTask OnCutsceneOff(this LuaState state, string name, LuaMaze maze, CancellationToken cancellationToken = default)
+    {
+        if (state.Environment["OnCutsceneOff"].TryRead<LuaFunction>(out var callable))
+        {
+            await state
+                .CallAsync(callable, [new LuaValue(name), new LuaValue(maze)], cancellationToken);
+        }
+    }
+
     public static async ValueTask OnLuaFunction(this LuaState state, int function, LuaMaze maze, CancellationToken cancellationToken = default)
     {
         Console.WriteLine($"[{nameof(OnLuaFunction)}]: {function}");

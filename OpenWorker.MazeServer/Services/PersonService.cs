@@ -152,6 +152,8 @@ public sealed class PersonService(
         var state = LuaState.Create();
         state.OpenStandardLibraries();
 
+        LuaCompatibility.Apply(state);
+
         var table = new LuaTable
         {
             ["GetHelper"] = new LuaFunction((ctx, _) =>
@@ -164,11 +166,21 @@ public sealed class PersonService(
         state.Environment["Soulworker"] = new LuaValue(table);
 
 
-        await state
-            .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
+        var script = Path.Join("scripts", $"{mazeInfo.Script}.lua");
+
+        // A few mazes have no script among the files of the client, and are played without one.
+        if (File.Exists(script))
+        {
+            await state
+                .DoFileAsync(script, context.CancellationToken);
+        }
+        else
+        {
+            Console.WriteLine($"[Script]: {script} is missing, the maze runs without it");
+        }
 
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables);
+        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo);
 
         world.Add(context.Player, maze);
 

@@ -1,4 +1,5 @@
 using System.Numerics;
+using OpenWorker.Batch;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Batch.Entities.Basic;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
@@ -26,9 +27,12 @@ using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Maze.Requests;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.World.Requests;
 using OpenWorker.Hotspot.Modules.World.Responses;
+using OpenWorker.Hotspot.Modules.World.Types;
+using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Lua;
 using Redis.OM.Searching;
 
@@ -63,6 +67,11 @@ public sealed class MazeService(
     IHotspotHandler<MazeEventSpawnBoxRequest>,
     IHotspotHandler<MazeOperationEndRequest>,
     IHotspotHandler<MazeLuaFunctionRequest>,
+    IHotspotHandler<MazeSwitchNpcClickRequest>,
+    IHotspotHandler<MazeInteractionMotionRequest>,
+    IHotspotHandler<MazeMonsterClientSpawnRequest>,
+    IHotspotHandler<MazeEnterPartyAnswerRequest>,
+    IHotspotHandler<PersonUpdateCutsceneRequest>,
     IHotspotHandler<WorldEnterRequest>
 {
     private const ushort WarpFailed = 55014;
@@ -253,7 +262,8 @@ public sealed class MazeService(
     }
 
     /// <summary>
-    /// A portal that leads to another place on this map.
+    /// A portal that leads to another place on this map. It shuts behind the player, and what lies beyond is
+    /// already alive: the portal woke it when it opened.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, WorldWarpRequest request)
     {
@@ -270,14 +280,29 @@ public sealed class MazeService(
         destination ??= events.SectorStarts.FirstOrDefault(e => e.Id == request.Jump);
         destination ??= events.StartEvents.FirstOrDefault(e => e.Id == request.Jump);
 
-        if (request.Location != world.Location || !maze.Progress.IsPortalOpen(request.Portal) || destination is null)
+        // The portal of a boss sector is never shut: whoever fights the boss must be able to leave.
+        var inBossSector = FindSector(maze, world.Position)?.Type == SectorType.Boss;
+
+        if (request.Location != world.Location || !(inBossSector || maze.Progress.IsPortalOpen(request.Portal)) || destination is null)
         {
             SendError(context.Player, WorldOpcode.WarpReq, WarpFailed);
 
             return ValueTask.CompletedTask;
         }
 
-        Warp(context.Player, destination.GetRandomPosition(), destination.Rotation);
+        var position = destination.GetRandomPosition();
+
+        ecs.Set(context.Player, world with { Position = position, Rotation = destination.Rotation });
+
+        ecs.Get<ServerSessionComponent>(context.Player).Send(new WorldWarpMazeResponse
+        {
+            BoxIndex = request.Portal,
+            Warp = new WarpValue { HasError = false, Position = position, Rotation = destination.Rotation },
+            // The map says which sector the portal leads to, and sectors may lie inside one another.
+            Sector = events.Portals.FirstOrDefault(e => e.Id == request.Portal) is { NextSector: > 0 } portal ? portal.NextSector : FindSector(maze, position)?.Id ?? 0
+        });
+
+        maze.SetPotalFlag(request.Portal, false);
 
         return ValueTask.CompletedTask;
     }
@@ -425,6 +450,19 @@ public sealed class MazeService(
         await maze.State.OnInteractionObject(request.Box, maze);
     }
 
+    /// <summary>
+    /// Where a portal of the maze leads out of it, or the escape box when the client names no such portal.
+    /// </summary>
+    private static (int Field, int EventObject)? FindWayOut(VBatchFile batch, int portal)
+    {
+        if (batch.EventBox.Portals.FirstOrDefault(e => e.Id == portal && e.JumpType is JumpType.Field) is { } leaving)
+        {
+            return (leaving.JumpMap, leaving.Jump);
+        }
+
+        return batch.EventBox.MazeEscapes.FirstOrDefault() is { } escape ? (escape.Field, escape.EventObject) : null;
+    }
+
     private void Warp(Entity player, Vector3 position, float rotation)
     {
         var world = ecs.Get<WorldComponent>(player);
@@ -450,6 +488,50 @@ public sealed class MazeService(
         ecs.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Maze, command), code));
     }
 
+    public ValueTask OnHandleAsync(ServiceHandleContext context, MazeSwitchNpcClickRequest request)
+    {
+        if (ecs.Has<LuaMaze>(context.Player))
+        {
+            ecs.Get<LuaMaze>(context.Player).ClickSwitchNpc(request.Npc);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The motion of using an object is shown to the others. Nobody shares this maze, and the client
+    /// asks to use the object itself when the motion is over.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, MazeInteractionMotionRequest request)
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Monsters that a client controls and that summon others are not here: the server keeps every monster
+    /// of this maze itself.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, MazeMonsterClientSpawnRequest request)
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Nobody calls a player into a maze of one.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, MazeEnterPartyAnswerRequest request)
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonUpdateCutsceneRequest request)
+    {
+        if (ecs.Has<LuaMaze>(context.Player))
+        {
+            await ecs.Get<LuaMaze>(context.Player).UpdateCutsceneAsync(request.Play, request.Name);
+        }
+    }
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)
     {
         var claims = ecs.Get<ClaimsComponent>(context.Player);
@@ -457,15 +539,16 @@ public sealed class MazeService(
 
         var session = ecs.Get<ServerSessionComponent>(context.Player);
 
+        // The player leaves through the portal of the maze that leads out of it, or through the escape box.
         if (!batches.TryGetAndCache(world.Location, out var mazeBatch) ||
-            mazeBatch.EventBox.MazeEscapes.FirstOrDefault() is not { } escape ||
-            !await worldManager.IsDistrictRunningAsync(escape.Field))
+            FindWayOut(mazeBatch, request.Portal) is not var (field, eventObject) ||
+            !await worldManager.IsDistrictRunningAsync(field))
         {
             session.Send(new WorldEnterResponse { Map = EnterMapResultValue.Error });
             return;
         }
 
-        var (districtCache, channelCache) = await worldManager.GetDistrictAsync(escape.Field);
+        var (districtCache, channelCache) = await worldManager.GetDistrictAsync(field);
 
         if (!batches.TryGetAndCache(districtCache.Location, out var districtBatch))
         {
@@ -474,8 +557,8 @@ public sealed class MazeService(
         }
 
         // A map leads either to a portal exit or to a start point of the district.
-        BasicEntity? exit = districtBatch.EventBox.PortalExits.FirstOrDefault(x => x.Id == escape.EventObject);
-        exit ??= districtBatch.EventBox.StartEvents.FirstOrDefault(x => x.Id == escape.EventObject);
+        BasicEntity? exit = districtBatch.EventBox.PortalExits.FirstOrDefault(x => x.Id == eventObject);
+        exit ??= districtBatch.EventBox.StartEvents.FirstOrDefault(x => x.Id == eventObject);
         exit ??= districtBatch.EventBox.StartEvents.FirstOrDefault(x => x.Id == districtCache.Location * 100 + 1);
 
         if (exit is null)

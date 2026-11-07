@@ -27,7 +27,14 @@ public sealed class MazeProgress(VBatchFile batch, IReadOnlyCollection<Interacti
             (box, row) => new MazeInteractionValue(row.ShowSight == 1, row.EnableState == 1, box.Id, row.CountMax))
         .ToDictionary(e => e.Box);
 
-    private HashSet<int> ClearedSectors { get; } = [];
+    /// <summary>
+    /// Some sectors are cleared from the start, they have nothing to clear.
+    /// </summary>
+    private HashSet<int> ClearedSectors { get; } = batch.EventBox.Sectors
+        .Where(e => e.ClearType == ClearType.Always)
+        .Select(e => e.Id)
+        .ToHashSet();
+
     private HashSet<int> UsedBoxes { get; } = [];
 
     public IReadOnlyCollection<int> Cleared => ClearedSectors;

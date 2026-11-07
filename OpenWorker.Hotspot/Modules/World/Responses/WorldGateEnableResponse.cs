@@ -16,9 +16,21 @@ public readonly struct WorldGateEnableResponse : IResponseHotspotMessage
     public int Gate { get; init; }
     public bool Open { get; init; }
 
+    /// <summary>
+    /// The maze is won, and the doors that open from now on lead out of it.
+    /// </summary>
+    public bool IsMazeComplete { get; init; }
+
+    /// <summary>
+    /// The sector behind the gate, or zero.
+    /// </summary>
+    public int NextSector { get; init; }
+
     public void Write(BinaryWriter writer)
     {
         writer.Write(Gate);
         writer.Write(Open);
+        writer.Write(IsMazeComplete);
+        writer.Write(NextSector);
     }
 }
