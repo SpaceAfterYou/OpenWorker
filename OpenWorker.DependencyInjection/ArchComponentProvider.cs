@@ -14,8 +14,24 @@ public sealed class ArchComponentProvider(IConfiguration configuration, ILogger<
 {
     private ComponentType[] Components { get; } = PrivateGetComponents(configuration, logger);
 
+    private object[] Defaults => field ??= Components.Select(x => Activator.CreateInstance(x.Type)!).ToArray();
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ComponentType[] GetComponents() => Components;
+
+    /// <summary>
+    /// Creates a player entity with default components. World.Create reuses the memory of
+    /// destroyed entities without clearing it, so a new connection would otherwise inherit
+    /// the state of a previous player, including its login.
+    /// </summary>
+    public Entity CreateEntity(World world)
+    {
+        var entity = world.Create(Components);
+
+        world.SetRange(entity, Defaults);
+
+        return entity;
+    }
 
     private static ComponentType[] PrivateGetComponents(
         IConfiguration configuration,

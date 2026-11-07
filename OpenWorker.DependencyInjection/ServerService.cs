@@ -60,7 +60,7 @@ internal sealed class ServerService(
     {
         using (socket)
         {
-            var entity = world.Create(components.GetComponents());
+            var entity = components.CreateEntity(world);
 
             entity.Set(new ServerSessionComponent(socket));
 
