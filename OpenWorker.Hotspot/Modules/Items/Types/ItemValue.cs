@@ -31,17 +31,17 @@ public readonly struct ItemValue
         Serial = new SerialValue(reader);
         Count = reader.ReadInt16();
         BindType = reader.ReadItemBindType();
-        Endurance = reader.ReadByte();
         OptionList = Enumerable
             .Range(0, ItemModuleDefines.OptionCount)
             .Select(_ => new ItemOption(reader))
             .ToList();
         Upgrade = reader.ReadByte();
-        Flag = reader.ReadByte();
+        Endurance = reader.ReadByte();
         SocketActiveCount = reader.ReadByte();
         DueTo = DateTimeOffset.FromUnixTimeSeconds(reader.ReadInt64());
         UpgradeCount = reader.ReadByte();
         UpgradeLimit = reader.ReadByte();
+        Flag = reader.ReadByte();
         Exp = reader.ReadInt32();
         BroachState = reader.ReadUtf8AsciiStringWithoutTerminator();
         RestoreCount = reader.ReadByte();
