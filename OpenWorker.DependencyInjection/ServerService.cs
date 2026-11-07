@@ -18,6 +18,7 @@ internal sealed class ServerService(
     HandlerExecutor executor,
     IConfiguration configuration,
     ArchComponentProvider components,
+    IEnumerable<ISessionCloseHandler> closeHandlers,
     ILogger<ServerService> logger
 ) :
     BackgroundService
@@ -94,6 +95,18 @@ internal sealed class ServerService(
 
             finally
             {
+                foreach (var handler in closeHandlers)
+                {
+                    try
+                    {
+                        await handler.OnSessionClosedAsync(entity).ConfigureAwait(false);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogError(e, "Session close handler failed.");
+                    }
+                }
+
                 world.Destroy(entity);
             }
         }

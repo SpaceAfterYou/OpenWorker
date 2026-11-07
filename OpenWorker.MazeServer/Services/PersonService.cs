@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
@@ -38,6 +39,7 @@ public sealed class PersonService(
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
     ReadOnlyCollection<MazeInfoRow> mazeInfoCollection,
     IRedisCollection<SessionCache> sessions,
+    SessionLeaseManager leases,
     BatchManager batches,
     IRedisCollection<MazeReserveCache> mazeReserves,
     IDbContextFactory<PersistenceContext> factory,
@@ -69,7 +71,8 @@ public sealed class PersonService(
     {
         var session = world.Get<ServerSessionComponent>(context.Player);
 
-        if (!await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false))
+        if (request.Session.Account != request.Account ||
+            !await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false))
         {
             session.Disconnect();
             return;
@@ -94,6 +97,10 @@ public sealed class PersonService(
             .ConfigureAwait(false);
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
+
+        await leases
+            .AttachAsync(context.Player, request.Session.Key, request.Session.Account)
+            .ConfigureAwait(false);
 
         world.Set(context.Player, new WorldComponent
         {

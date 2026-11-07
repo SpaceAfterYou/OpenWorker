@@ -20,4 +20,14 @@ public sealed class SessionCache
     /// connection to the auth server can continue this session without a login.
     /// </summary>
     public bool ReturnToAuth { get; init; }
+
+    /// <summary>
+    /// A server holds the connection of this session right now.
+    /// </summary>
+    public bool Connected { get; init; }
+
+    /// <summary>
+    /// The connection that may renew or release this session.
+    /// </summary>
+    public string? Owner { get; init; }
 }

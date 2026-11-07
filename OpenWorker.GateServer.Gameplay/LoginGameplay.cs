@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.Gameplay.Modules.Login.Extensions;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +39,7 @@ public sealed record SceneComponent(World World)
 public sealed class LoginGameplay(
     World world,
     IRedisCollection<SessionCache> sessions,
+    SessionLeaseManager leases,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
     SecondPasswordGameplay secondPassword,
@@ -79,7 +81,7 @@ public sealed class LoginGameplay(
             .ConfigureAwait(false);
 
         var account = await database.Accounts
-            .Include(e => e.Persons)
+            .Include(e => e.Persons.Where(p => p.Gate.Id == Gate))
             .FirstOrDefaultAsync(e => e.Id == request.Account, context.CancellationToken)
             .ConfigureAwait(false);
 
@@ -92,6 +94,10 @@ public sealed class LoginGameplay(
         }
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
+
+        await leases
+            .AttachAsync(context.Player, request.Session.Key, request.Session.Account)
+            .ConfigureAwait(false);
 
         secondPassword.Load(context.Player, account);
 

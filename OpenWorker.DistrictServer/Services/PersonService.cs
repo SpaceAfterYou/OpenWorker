@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Arch.Core;
@@ -47,6 +48,7 @@ public sealed class PersonService(
     ReadOnlyCollection<TitleInfoRow> titleCollection,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
     IRedisCollection<SessionCache> sessions,
+    SessionLeaseManager leases,
     ServiceChannels channels,
     IDbContextFactory<PersistenceContext> factory,
     IConfiguration configuration,
@@ -77,7 +79,8 @@ public sealed class PersonService(
     {
         var session = ecs.Get<ServerSessionComponent>(context.Player);
 
-        if (await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false) is false)
+        if (request.Session.Account != request.Account ||
+            await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false) is false)
         {
             session.Disconnect();
             return;
@@ -96,6 +99,10 @@ public sealed class PersonService(
             .ConfigureAwait(false);
 
         ecs.Set(context.Player, new ClaimsComponent(request.Session));
+
+        await leases
+            .AttachAsync(context.Player, request.Session.Key, request.Session.Account)
+            .ConfigureAwait(false);
 
         if (!manager.TryGetAndCache(Location, out var batch, out var type) || type != BatchType.District)
         {

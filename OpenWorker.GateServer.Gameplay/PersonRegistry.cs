@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot;
 using System.Numerics;
 using Arch.Core;
 using OpenWorker.Domain.Components;
@@ -22,7 +23,7 @@ using OpenWorker.Gameplay.Modules.Skill.Components;
 
 namespace OpenWorker.GateServer.Gameplay;
 
-public sealed class PersonRegistry(World world, StorageFactory factory)
+public sealed class PersonRegistry(World world, StorageFactory factory) : ISessionCloseHandler
 {
     private ComponentType[] PersonArchetype { get; } =
     [
@@ -43,8 +44,8 @@ public sealed class PersonRegistry(World world, StorageFactory factory)
     internal GatePersonComponent CreatePersonListComponent(IReadOnlyCollection<PersonPersistent> collection)
     {
         var slots = collection
-            .Select(CreatePerson)
             .Take(LoginModuleDefines.PersonSlotCount)
+            .Select(CreatePerson)
             .Concat(Enumerable.Repeat(Entity.Null, LoginModuleDefines.PersonSlotCount))
             .Take(LoginModuleDefines.PersonSlotCount)
             .ToArray();
@@ -68,7 +69,7 @@ public sealed class PersonRegistry(World world, StorageFactory factory)
             return;
         }
 
-        world.Destroy(component.SlotList[slot]);
+        DestroyPerson(component.SlotList[slot]);
 
         component.SlotList[slot] = Entity.Null;
 
@@ -76,6 +77,42 @@ public sealed class PersonRegistry(World world, StorageFactory factory)
         {
             world.Set(entity, component with { LastIndex = -1 });
         }
+    }
+
+    public ValueTask OnSessionClosedAsync(Entity player)
+    {
+        if (world.Has<GatePersonComponent>(player))
+        {
+            foreach (var person in world.Get<GatePersonComponent>(player).SlotList ?? [])
+            {
+                DestroyPerson(person);
+            }
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    private void DestroyPerson(Entity person)
+    {
+        if (person == Entity.Null || !world.IsAlive(person))
+        {
+            return;
+        }
+
+        foreach (var storage in world.Get<StorageComponent>(person).Collection)
+        {
+            foreach (var item in world.Get<StorageContentComponent>(storage).SlotList)
+            {
+                if (item != Entity.Null && world.IsAlive(item))
+                {
+                    world.Destroy(item);
+                }
+            }
+
+            world.Destroy(storage);
+        }
+
+        world.Destroy(person);
     }
 
     internal int FindFreeSlotIndex(Entity entity)

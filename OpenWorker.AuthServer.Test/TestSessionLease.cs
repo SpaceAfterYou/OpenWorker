@@ -1,0 +1,257 @@
+using System.Net;
+using System.Net.Sockets;
+using Arch.Core;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using OpenWorker.AuthServer.App;
+using OpenWorker.Domain.Persistent;
+using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache;
+using OpenWorker.Hotspot.Cache.Types;
+using OpenWorker.Hotspot.Enums;
+using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Hotspot.Modules.Login.Requests;
+using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.Persistence;
+using OpenWorker.Persistence.Utils;
+using Redis.OM;
+using Redis.OM.Searching;
+
+namespace OpenWorker.AuthServer.Test;
+
+/// <summary>
+/// Needs Redis with the search module: set OPENWORKER_TEST_REDIS, for example redis://127.0.0.1:6379.
+/// </summary>
+[TestClass]
+public sealed class TestSessionLease
+{
+    private static RedisConnectionProvider Provider { get; set; } = null!;
+    private static IRedisCollection<SessionCache> Sessions { get; set; } = null!;
+
+    private static int _nextAccount = Random.Shared.Next(100_000, 1_000_000);
+
+    [ClassInitialize]
+    public static async Task InitializeAsync(TestContext _)
+    {
+        var connection = Environment.GetEnvironmentVariable("OPENWORKER_TEST_REDIS");
+
+        if (string.IsNullOrEmpty(connection))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_REDIS is not set.");
+        }
+
+        Provider = new RedisConnectionProvider(connection);
+        Sessions = Provider.RedisCollection<SessionCache>();
+
+        await Provider.Connection.CreateIndexAsync(typeof(SessionCache));
+    }
+
+    private static async Task<double> TimeToLiveAsync(long session)
+    {
+        var result = await Provider.Connection.ExecuteAsync("TTL", $"{typeof(SessionCache).FullName}:{session}");
+
+        return result;
+    }
+
+    private static Task<SessionCache?> FindAsync(long session)
+    {
+        return Sessions.FindByIdAsync(session.ToString());
+    }
+
+    private static long NewSession()
+    {
+        return Random.Shared.NextInt64(1, long.MaxValue);
+    }
+
+    [TestMethod]
+    public async Task AttachedSessionIsConnectedWithExpiry()
+    {
+        using var world = World.Create();
+        var leases = new SessionLeaseManager(Sessions);
+        var session = NewSession();
+
+        await leases.AttachAsync(world.Create(), session, 1);
+
+        var value = await FindAsync(session);
+
+        Assert.IsNotNull(value);
+        Assert.IsTrue(value.Connected);
+        Assert.IsGreaterThan(SessionLeaseManager.DisconnectedLease.TotalSeconds, await TimeToLiveAsync(session));
+        Assert.IsLessThanOrEqualTo(SessionLeaseManager.ConnectedLease.TotalSeconds, await TimeToLiveAsync(session));
+    }
+
+    [TestMethod]
+    public async Task ClosedConnectionKeepsSessionForTheNextServer()
+    {
+        using var world = World.Create();
+        var leases = new SessionLeaseManager(Sessions);
+        var player = world.Create();
+        var session = NewSession();
+
+        await leases.AttachAsync(player, session, 1);
+        await leases.OnSessionClosedAsync(player);
+
+        var value = await FindAsync(session);
+
+        Assert.IsNotNull(value, "A move between servers must find the session.");
+        Assert.IsFalse(value.Connected);
+
+        var ttl = await TimeToLiveAsync(session);
+
+        Assert.IsGreaterThan(0, ttl);
+        Assert.IsLessThanOrEqualTo(SessionLeaseManager.DisconnectedLease.TotalSeconds, ttl);
+    }
+
+    [TestMethod]
+    public async Task LateCloseOfThePreviousServerDoesNotReleaseTheNewOne()
+    {
+        using var world = World.Create();
+        var previous = new SessionLeaseManager(Sessions);
+        var next = new SessionLeaseManager(Sessions);
+        var session = NewSession();
+        var previousPlayer = world.Create();
+
+        await previous.AttachAsync(previousPlayer, session, 1);
+        await next.AttachAsync(world.Create(), session, 1);
+        await previous.OnSessionClosedAsync(previousPlayer);
+
+        var value = await FindAsync(session);
+
+        Assert.IsNotNull(value);
+        Assert.IsTrue(value.Connected);
+    }
+
+    [TestMethod]
+    public async Task RenewExtendsOnlyOwnedLeases()
+    {
+        using var world = World.Create();
+        var owner = new SessionLeaseManager(Sessions);
+        var session = NewSession();
+
+        await owner.AttachAsync(world.Create(), session, 1);
+
+        await Provider.Connection.ExecuteAsync("EXPIRE", $"{typeof(SessionCache).FullName}:{session}", "5");
+        await owner.RenewAsync();
+
+        Assert.IsGreaterThan(5, await TimeToLiveAsync(session));
+
+        var other = new SessionLeaseManager(Sessions);
+
+        await other.AttachAsync(world.Create(), session, 1);
+        var taken = (await FindAsync(session))!.Owner;
+
+        await owner.RenewAsync();
+
+        Assert.AreEqual(taken, (await FindAsync(session))!.Owner);
+    }
+
+    [TestMethod]
+    public async Task ReturnToAuthSurvivesCloseAndIsClearedByTheNextAttach()
+    {
+        using var world = World.Create();
+        var gate = new SessionLeaseManager(Sessions);
+        var auth = new SessionLeaseManager(Sessions);
+        var player = world.Create();
+        var session = NewSession();
+
+        await gate.AttachAsync(player, session, 1);
+        await gate.MarkReturnToAuthAsync(player);
+        await gate.OnSessionClosedAsync(player);
+
+        Assert.IsTrue((await FindAsync(session))!.ReturnToAuth);
+
+        await auth.AttachAsync(world.Create(), session, 1);
+
+        Assert.IsFalse((await FindAsync(session))!.ReturnToAuth);
+    }
+
+    [TestMethod]
+    public async Task SecondLoginIsRejectedWhileConnectedAndReplacesAfterDisconnect()
+    {
+        var account = Interlocked.Increment(ref _nextAccount);
+
+        PasswordHash.Create("password", out var hash, out var salt);
+
+        var databaseName = Guid.NewGuid().ToString();
+
+        var factory = new ServiceCollection()
+            .AddDbContextFactory<PersistenceContext>(o => o.UseInMemoryDatabase(databaseName))
+            .BuildServiceProvider()
+            .GetRequiredService<IDbContextFactory<PersistenceContext>>();
+
+        await using (var database = await factory.CreateDbContextAsync())
+        {
+            database.Accounts.Add(new AccountPersistent
+            {
+                Id = account,
+                Username = $"user{account}",
+                PasswordHash = hash,
+                SaltHash = salt
+            });
+
+            await database.SaveChangesAsync();
+        }
+
+        using var world = World.Create();
+        var leases = new SessionLeaseManager(Sessions);
+
+        var gameplay = new LoginGameplay(
+            Sessions,
+            factory,
+            world,
+            new ConfigurationBuilder().Build(),
+            NullLogger<LoginGameplay>.Instance,
+            leases);
+
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+
+        async Task<(Entity Player, LoginErrorMessageCode Code, TcpClient Client)> LoginAsync()
+        {
+            var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, ((IPEndPoint)listener.LocalEndpoint).Port);
+
+            var player = world.Create(new ServerSessionComponent(await listener.AcceptTcpClientAsync()));
+
+            await gameplay.TryJoinAsync(
+                new ServiceHandleContext(player, CancellationToken.None),
+                new LoginAuthRequest($"user{account}", "password", "00-00-00-00-00-00"));
+
+            var reader = new BinaryReader(client.GetStream());
+            var header = new MessageHeader(reader);
+            var payload = reader.ReadBytes(header.ContentLength);
+            MessageEncryption.Exchange(payload.AsSpan(), header.Version);
+
+            using var body = new BinaryReader(new MemoryStream(payload));
+
+            body.ReadBytes(2 + 4 + 1 + 18);
+            body.ReadBytes(body.ReadInt16());
+
+            return (player, (LoginErrorMessageCode)body.ReadInt32(), client);
+        }
+
+        var first = await LoginAsync();
+        Assert.AreEqual(LoginErrorMessageCode.None, first.Code);
+
+        var firstSession = (await Sessions.Where(e => e.Account == account).ToListAsync()).Single().Session;
+
+        var second = await LoginAsync();
+        Assert.AreEqual(LoginErrorMessageCode.InGameAlready, second.Code);
+
+        await leases.OnSessionClosedAsync(first.Player);
+
+        var third = await LoginAsync();
+        Assert.AreEqual(LoginErrorMessageCode.None, third.Code);
+
+        var active = await Sessions.Where(e => e.Account == account).ToListAsync();
+
+        Assert.HasCount(1, active);
+        Assert.AreNotEqual(firstSession, active.Single().Session);
+
+        first.Client.Dispose();
+        second.Client.Dispose();
+        third.Client.Dispose();
+    }
+}

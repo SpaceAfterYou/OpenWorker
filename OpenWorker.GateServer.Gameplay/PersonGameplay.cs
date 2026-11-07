@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Messages.Response.Person;
@@ -37,7 +38,7 @@ public sealed class PersonGameplay(
     IConfiguration configuration,
     ILogger<PersonGameplay> logger,
     SecondPasswordGameplay secondPassword,
-    IRedisCollection<SessionCache> sessions,
+    SessionLeaseManager leases,
     WorldManager worldManager)
 {
     private short Gate { get; } = configuration.GetGate();
@@ -160,7 +161,9 @@ public sealed class PersonGameplay(
             .ConfigureAwait(false);
 
         var persistent = await database.Persons
-            .FirstOrDefaultAsync(x => x.Id == person && x.Account.Id == claims.Account, context.CancellationToken)
+            .FirstOrDefaultAsync(
+                x => x.Id == person && x.Account.Id == claims.Account && x.Gate.Id == Gate,
+                context.CancellationToken)
             .ConfigureAwait(false);
 
         if (persistent is null)
@@ -212,14 +215,8 @@ public sealed class PersonGameplay(
             return;
         }
 
-        await sessions
-            .InsertAsync(new SessionCache
-            {
-                Session = claims.Key,
-                Account = claims.Account,
-                UpdatedAt = DateTime.UtcNow,
-                ReturnToAuth = true
-            })
+        await leases
+            .MarkReturnToAuthAsync(context.Player)
             .ConfigureAwait(false);
 
         world.Get<ServerSessionComponent>(context.Player).Send(new PersonGobackLobbyResponse

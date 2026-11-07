@@ -1,4 +1,6 @@
-﻿using Arch.Core;
+﻿using Redis.OM;
+using OpenWorker.Hotspot.Cache;
+using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -23,7 +25,8 @@ public sealed class LoginGameplay(
     IDbContextFactory<PersistenceContext> factory,
     World world,
     IConfiguration configuration,
-    ILogger<LoginGameplay> logger)
+    ILogger<LoginGameplay> logger,
+    SessionLeaseManager leases)
 {
     /// <summary>
     /// This login does not verify the ticket: it signs in as the first account in the database.
@@ -105,25 +108,31 @@ public sealed class LoginGameplay(
     {
         var session = world.Get<ServerSessionComponent>(context.Player);
 
-        // if (await sessions.AnyAsync(e => e.Account == account).ConfigureAwait(false))
-        // {
-        //     session.Send(new LoginResponse(LoginErrorMessageCode.InGameAlready));
-        //     return;
-        // }
+        var active = await sessions
+            .Where(e => e.Account == account)
+            .ToListAsync()
+            .ConfigureAwait(false);
+
+        if (active.Any(e => e.Connected))
+        {
+            session.Send(new LoginResponse(LoginErrorMessageCode.InGameAlready));
+            return;
+        }
+
+        // Nothing holds these sessions any more, the new login replaces them.
+        foreach (var previous in active)
+        {
+            await sessions
+                .DeleteAsync(previous)
+                .ConfigureAwait(false);
+        }
 
         var claims = new SessionValue(account);
 
         world.Set(context.Player, new ClaimsComponent(claims));
 
-        var cache = new SessionCache
-        {
-            Session = claims.Key,
-            Account = claims.Account,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        await sessions
-            .InsertAsync(cache)
+        await leases
+            .AttachAsync(context.Player, claims.Key, claims.Account)
             .ConfigureAwait(false);
 
         session.Send(new LoginResponse(claims, username, true, mac, LoginType.NewUser));

@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 using Redis.OM;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,7 @@ public sealed class GateGameplay(
     IDbContextFactory<PersistenceContext> factory,
     List<GateInfo> gateList,
     IRedisCollection<SessionCache> sessions,
+    SessionLeaseManager leases,
     ServerContent contents,
     World world)
 {
@@ -168,13 +170,8 @@ public sealed class GateGameplay(
             return default;
         }
 
-        await sessions
-            .InsertAsync(new SessionCache
-            {
-                Session = returning.Session,
-                Account = returning.Account,
-                UpdatedAt = DateTime.UtcNow
-            })
+        await leases
+            .AttachAsync(context.Player, returning.Session, returning.Account)
             .ConfigureAwait(false);
 
         var claims = new ClaimsComponent(returning.Session);

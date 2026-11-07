@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache;
+using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM;
 using Redis.OM.Contracts;
@@ -17,6 +19,10 @@ public static class Cache
 
     public static IServiceCollection AddSessionCache(this IServiceCollection services)
     {
+        services.AddSingleton<SessionLeaseManager>();
+        services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<SessionLeaseManager>());
+        services.AddHostedService<SessionLeaseRenewalService>();
+
         return services.AddCacheCollection<SessionCache>();
     }
 

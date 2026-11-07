@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using OpenWorker.Hotspot;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace OpenWorker.GateServer.Gameplay.Extensions;
 
@@ -12,5 +13,6 @@ public static class DependencyInjection
         services.AddSingleton<SecondPasswordGameplay>();
         
         services.AddSingleton<PersonRegistry>();
+        services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<PersonRegistry>());
     }
 }

@@ -34,7 +34,8 @@ public sealed class TestNextHumanNetworkLogin
             null!,
             world,
             new ConfigurationBuilder().Build(),
-            NullLogger<LoginGameplay>.Instance);
+            NullLogger<LoginGameplay>.Instance,
+            null!);
 
         using var request = new BinaryReader(new MemoryStream(new byte[2048 + 4096 + 21 + 18]));
 
