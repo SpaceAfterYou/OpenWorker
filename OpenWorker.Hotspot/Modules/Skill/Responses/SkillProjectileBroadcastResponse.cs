@@ -22,7 +22,7 @@ public readonly struct SkillProjectileBroadcastResponse(BinaryReader reader) : I
 #region Message: Body
 
     public ActorValue Owner { get; init; } = new(reader);
-    public SkillProjectileValue Projectile { get; init; } = new(reader);
+    public ProjectileShotValue Projectile { get; init; } = new(reader);
 
 #endregion Message: Body
 
