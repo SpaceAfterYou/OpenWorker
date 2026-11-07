@@ -30,20 +30,25 @@ public enum ExchangeOpcode : byte
     /// <summary>
     /// 
     /// </summary>
-    SellRegister = 0x5,
+    WaitRegister = 0x5,
 
     /// <summary>
     /// 
     /// </summary>
-    ItemBuy = 0x6,
+    SellRegister = 0x6,
 
     /// <summary>
     /// 
     /// </summary>
-    ItemRecall = 0x7,
+    ItemBuy = 0x7,
 
     /// <summary>
     /// 
     /// </summary>
-    MyList = 0x8,
+    ItemRecall = 0x8,
+
+    /// <summary>
+    /// 
+    /// </summary>
+    MyList = 0x9,
 }

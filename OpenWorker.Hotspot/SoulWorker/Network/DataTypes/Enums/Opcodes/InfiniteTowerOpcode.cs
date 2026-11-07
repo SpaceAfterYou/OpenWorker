@@ -7,5 +7,23 @@ namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 /// </summary>
 public enum InfiniteTowerOpcode : byte
 {
+    /// <summary>
+    /// Response
+    /// </summary>
+    LoadInfo = 0x01,
 
+    /// <summary>
+    /// Request
+    /// </summary>
+    EnterChapter = 0x02,
+
+    /// <summary>
+    /// Request
+    /// </summary>
+    EnterNextStage = 0x03,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Reward = 0x04,
 }

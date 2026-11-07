@@ -7,5 +7,88 @@ namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 /// </summary>
 public enum PostOpcode : byte
 {
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    SendList = 0x01,
 
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    RecvList = 0x02,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Send = 0x03,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Read = 0x04,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Receipt = 0x05,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    SendDel = 0x06,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    RecvDel = 0x07,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    SendBack = 0x08,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Recv = 0x09,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Info = 0x10,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Save = 0x12,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    SaveList = 0x13,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    AccountList = 0x14,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    AccountRecv = 0x15,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    AccountRead = 0x16,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    AccountReceipt = 0x17,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    AccountDel = 0x18,
 }

@@ -7,5 +7,33 @@ namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 /// </summary>
 public enum VaccumOpcode : byte
 {
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    ClickStart = 0x01,
 
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    ClickCancel = 0x02,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    ClickComplete = 0x03,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    In = 0x11,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Out = 0x12,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Infos = 0x13,
 }

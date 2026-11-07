@@ -7,5 +7,78 @@ namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 /// </summary>
 public enum MyRoomOpcode : byte
 {
+    /// <summary>
+    /// Response
+    /// </summary>
+    Load = 0x01,
 
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    EditStart = 0x05,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    EditEnd = 0x06,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    CreateReq = 0x10,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    EnterReq = 0x11,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    LoadIndex = 0x12,
+
+    /// <summary>
+    /// Request
+    /// </summary>
+    ExitReq = 0x13,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Setup = 0x14,
+
+    /// <summary>
+    /// Request
+    /// </summary>
+    KickOut = 0x15,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    ItemAdd = 0x20,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    ItemDel = 0x21,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    ItemUse = 0x22,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    ItemReleaseUsed = 0x23,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    ItemUsedUsers = 0x24,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    OutReason = 0x25,
 }

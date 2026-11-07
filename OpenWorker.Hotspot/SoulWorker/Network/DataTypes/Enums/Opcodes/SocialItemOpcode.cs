@@ -7,5 +7,38 @@ namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 /// </summary>
 public enum SocialItemOpcode : byte
 {
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Start = 0x01,
 
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Use = 0x02,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Stop = 0x03,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    End = 0x04,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    In = 0x05,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Infos = 0x06,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Out = 0x07,
 }

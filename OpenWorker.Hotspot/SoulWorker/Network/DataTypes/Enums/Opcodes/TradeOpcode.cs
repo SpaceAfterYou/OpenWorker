@@ -7,5 +7,78 @@ namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 /// </summary>
 public enum TradeOpcode : byte
 {
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Request = 0x01,
 
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Accept = 0x02,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    UpdateItem = 0x03,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    UpdateMoney = 0x04,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Check = 0x05,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Confirm = 0x06,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Result = 0x07,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    Cancel = 0x08,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    PrivateShopStart = 0x09,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    PrivateShopItem = 0x0A,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    PrivateShopState = 0x0B,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    PrivateShopBuy = 0x0C,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    PrivateShopSell = 0x0D,
+
+    /// <summary>
+    /// Request, Response
+    /// </summary>
+    PrivateShopSelect = 0x0E,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    PrivateShopName = 0x0F,
 }

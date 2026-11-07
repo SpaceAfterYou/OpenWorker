@@ -7,5 +7,83 @@ namespace OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 /// </summary>
 public enum MonsterOpcode : byte
 {
+    /// <summary>
+    /// Response
+    /// </summary>
+    Die = 0x11,
 
+    /// <summary>
+    /// Response
+    /// </summary>
+    UpdateStatList = 0x12,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    TargetChangeBt = 0x22,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    Unknown31 = 0x31,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    InvisibleBt = 0x32,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    ChangeMotionBt = 0x33,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    EscapeDamageBt = 0x34,
+
+    /// <summary>
+    /// Request
+    /// </summary>
+    DefensiveWeaponStartReq = 0x41,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    DefensiveWeaponStartBt = 0x42,
+
+    /// <summary>
+    /// Request
+    /// </summary>
+    DefensiveWeaponEndReq = 0x43,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    DefensiveWeaponEndBt = 0x44,
+
+    /// <summary>
+    /// Request
+    /// </summary>
+    DefensiveWeaponAttackReq = 0x45,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    ControlMonsterBt = 0x51,
+
+    /// <summary>
+    /// Request
+    /// </summary>
+    ControlMonsterAttackReq = 0x52,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    SuperArmorGage = 0x53,
+
+    /// <summary>
+    /// Response
+    /// </summary>
+    PartsHp = 0x54,
 }
