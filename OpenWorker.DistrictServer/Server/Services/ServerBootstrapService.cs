@@ -19,6 +19,7 @@ public sealed class ServerBootstrapService(
     private short Location { get; } = configuration.GetLocation();
     private short Group { get; } = configuration.GetGroup();
     private Guid Instance { get; } = configuration.GetInstance();
+    private (string Host, short? Port) Address { get; } = configuration.GetPublicAddress();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -47,8 +48,8 @@ public sealed class ServerBootstrapService(
             Jump = start.Id,
             Portal = start.Id,
 
-            Host = "127.0.0.1",
-            Port = GetPort(),
+            Host = Address.Host,
+            Port = Address.Port ?? GetPort(),
 
             Rotation = start.Rotation
         });

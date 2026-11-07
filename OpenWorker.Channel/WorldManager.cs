@@ -36,6 +36,7 @@ public sealed class WorldManager(
     public static TimeSpan ReservationLifetime { get; } = TimeSpan.FromSeconds(60);
 
     private short Gate { get; } = configuration.GetGate();
+    private (string Host, short Port) Maze { get; } = configuration.GetMazeAddress();
 
     /// <summary>
     /// Enters the location or tells the client that the entry failed, so that it does not wait forever.
@@ -149,8 +150,8 @@ public sealed class WorldManager(
                 Account = ecs.Get<ClaimsComponent>(player),
                 World = world,
                 Jump = start.Id,
-                Address = "127.0.0.1",
-                Port = 10101,
+                Address = Maze.Host,
+                Port = Maze.Port,
                 Type = EnterMapType.Maze,
                 Map = map
             },
