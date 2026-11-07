@@ -1,0 +1,28 @@
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+
+namespace OpenWorker.Hotspot.Modules.Vaccum.Requests;
+
+/// <summary>
+/// The person begins to take a cube.
+/// </summary>
+[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+public readonly struct VaccumClickStartRequest(BinaryReader reader) : IRequestHotspotMessage
+{
+#region Interface: IHotspotMessage
+
+    private const GroupOpcode Group = GroupOpcode.Vaccum;
+    private const VaccumOpcode Command = VaccumOpcode.ClickStart;
+
+    public MessageOpcode Opcode => new(Group, Command);
+
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public int Cube { get; } = reader.ReadInt32();
+
+#endregion Message: Body
+}

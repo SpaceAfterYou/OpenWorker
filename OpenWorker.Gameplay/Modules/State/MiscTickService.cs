@@ -1,10 +1,11 @@
-using OpenWorker.Gameplay.Modules.State;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenWorker.Hotspot;
 
-namespace OpenWorker.DistrictServer.Server.Services;
+namespace OpenWorker.Gameplay.Modules.State;
 
 /// <summary>
-/// Lets the features that keep time for their persons do their work every so often.
+/// Lets the features that keep time for their persons do their work every so often, on the world loop.
 /// </summary>
 public sealed class MiscTickService(WorldLoop loop, IEnumerable<IMiscTick> ticks, ILogger<MiscTickService> logger) : BackgroundService
 {

@@ -19,6 +19,7 @@ using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person.Enums;
@@ -53,6 +54,7 @@ public sealed class PersonService(
     QuestManager questManager,
     SkillActionProvider skillActions,
     CombatTables combatTables,
+    MiscStateLoader miscState,
     IConfiguration configuration
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -171,6 +173,8 @@ public sealed class PersonService(
         session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
 
         questManager.SendQuestEpisodeList(context.Player);
+
+        await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)

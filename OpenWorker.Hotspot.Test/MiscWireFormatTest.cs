@@ -11,6 +11,9 @@ using OpenWorker.Hotspot.Modules.Events.Requests;
 using OpenWorker.Hotspot.Modules.Events.Responses;
 using OpenWorker.Hotspot.Modules.Events.Types;
 using OpenWorker.Hotspot.Modules.Rewards.Types;
+using OpenWorker.Hotspot.Modules.Vaccum.Requests;
+using OpenWorker.Hotspot.Modules.Vaccum.Responses;
+using OpenWorker.Hotspot.Modules.Vaccum.Types;
 using OpenWorker.Hotspot.Modules.SoulMetry;
 using OpenWorker.Hotspot.Modules.SoulMetry.Requests;
 using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
@@ -369,4 +372,62 @@ public sealed class MiscWireFormatTest
     }
 
 #endregion Booster
+
+#region Vaccum
+
+    [TestMethod]
+    public void VaccumClickAnswersAreActorCubeAndResult()
+    {
+        var start = Written(new VaccumClickStartResponse { Actor = 1, Cube = 2, Result = 3 });
+        var cancel = Written(new VaccumClickCancelResponse { Actor = 1, Cube = 2, Result = 55800 });
+
+        Assert.HasCount(12, start);
+        Assert.AreEqual(2, BitConverter.ToInt32(start, 4));
+        Assert.AreEqual(3, BitConverter.ToInt32(start, 8));
+        Assert.HasCount(12, cancel);
+        Assert.AreEqual(55800, BitConverter.ToInt32(cancel, 8));
+    }
+
+    [TestMethod]
+    public void VaccumCompleteIsActorCubeRemainItemsAndResult()
+    {
+        var bytes = Written(new VaccumClickCompleteResponse
+        {
+            Actor = 1,
+            Cube = 2,
+            Remain = 3,
+            Items = [new RewardItemValue(10, 4)],
+            Result = 5
+        });
+
+        Assert.HasCount(4 + 4 + 2 + 1 + 6 + 4, bytes);
+        Assert.AreEqual((short)3, BitConverter.ToInt16(bytes, 8));
+        Assert.AreEqual((byte)1, bytes[10]);
+        Assert.AreEqual(5, BitConverter.ToInt32(bytes, 17));
+    }
+
+    [TestMethod]
+    public void VaccumCubesAreInAndOutAndAListWithByteCount()
+    {
+        Assert.HasCount(9, Written(new VaccumInResponse { Cube = 1, Value = 2, State = 3 }));
+        Assert.HasCount(5, Written(new VaccumOutResponse { Cube = 1, Flag = 0 }));
+
+        var infos = Written(new VaccumInfosResponse { Cubes = [new VaccumCubeValue(1, 2, 3), new VaccumCubeValue(4, 5, 6)] });
+
+        Assert.HasCount(1 + 2 * 9, infos);
+        Assert.AreEqual((byte)2, infos[0]);
+        Assert.AreEqual(4, BitConverter.ToInt32(infos, 10));
+    }
+
+    [TestMethod]
+    public void VaccumRequestsAreTheCube()
+    {
+        using var start = new BinaryReader(new MemoryStream(BitConverter.GetBytes(30001)));
+        using var cancel = new BinaryReader(new MemoryStream(BitConverter.GetBytes(30002)));
+
+        Assert.AreEqual(30001, new VaccumClickStartRequest(start).Cube);
+        Assert.AreEqual(30002, new VaccumClickCancelRequest(cancel).Cube);
+    }
+
+#endregion Vaccum
 }
