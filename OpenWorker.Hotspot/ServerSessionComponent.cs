@@ -10,11 +10,18 @@ namespace OpenWorker.Hotspot;
 [EntityComponent(EntityComponentService.All)]
 public readonly struct ServerSessionComponent(TcpClient client)
 {
+    private readonly SessionWriter _writer = new(client);
+
     /// <summary>
-    /// Sends one complete frame. Other connections send here too when they broadcast, so a frame is
-    /// written in one piece: mixed frames would break the stream for the client.
+    /// Queues the message for this connection. Never waits for the client, and a connection that is
+    /// already gone just drops the message.
     /// </summary>
     public void Send(IResponseHotspotMessage message)
+    {
+        TrySend(message);
+    }
+
+    public bool TrySend(IResponseHotspotMessage message)
     {
         var pool = ArrayPool<byte>.Shared;
 
@@ -42,11 +49,13 @@ public readonly struct ServerSessionComponent(TcpClient client)
 
             writer.Flush();
 
-            lock (client)
-            {
-                // Disposed in client
-                client.GetStream().Write(buffer, 0, MessageHeader.HeaderSize + header.ContentLength);
-            }
+            var length = MessageHeader.HeaderSize + header.ContentLength;
+
+            var frame = pool.Rent(length);
+
+            buffer.AsSpan(0, length).CopyTo(frame);
+
+            return _writer.TryEnqueue(frame, length);
         }
 
         finally
@@ -56,27 +65,10 @@ public readonly struct ServerSessionComponent(TcpClient client)
     }
 
     /// <summary>
-    /// Sends to another player: a connection that is gone must not break the session of the sender.
+    /// Closes the connection after everything queued has been sent.
     /// </summary>
-    public bool TrySend(IResponseHotspotMessage message)
-    {
-        try
-        {
-            Send(message);
-
-            return true;
-        }
-
-        catch (Exception e) when (e is IOException or ObjectDisposedException or InvalidOperationException)
-        {
-            client.Close();
-
-            return false;
-        }
-    }
-
     public void Disconnect()
     {
-        client.Close();
+        _writer.Complete();
     }
 }

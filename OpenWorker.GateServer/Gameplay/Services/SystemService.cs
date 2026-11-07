@@ -13,8 +13,7 @@ public sealed class SystemService(OptionGameplay option) :
     public async ValueTask OnHandleAsync(ServiceHandleContext context, SystemOptionUpdateRequest request)
     {
         await option
-            .PushAsync(context, request.OptionList)
-            .ConfigureAwait(false);
+            .PushAsync(context, request.OptionList);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SystemXignCodeRequest request)

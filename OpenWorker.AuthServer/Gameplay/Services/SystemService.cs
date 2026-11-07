@@ -16,15 +16,13 @@ internal sealed class SystemService(LoginGameplay gameplay) :
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LoginOptionUpdateRequest request)
     {
         await gameplay
-            .SaveOptionsAsync(context, request.Values)
-            .ConfigureAwait(false);
+            .SaveOptionsAsync(context, request.Values);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, SystemOptionUpdateRequest request)
     {
         await gameplay
-            .SaveOptionsAsync(context, request.OptionList)
-            .ConfigureAwait(false);
+            .SaveOptionsAsync(context, request.OptionList);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SystemXignCodeRequest request)

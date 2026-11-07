@@ -68,7 +68,7 @@ public sealed class LoginGameplay(
             return;
         }
 
-        if (await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false) is false)
+        if (await sessions.AnyAsync(e => e.Session == request.Session.Key) is false)
         {
             logger.LogDebug("Session not found.");
 
@@ -77,13 +77,11 @@ public sealed class LoginGameplay(
         }
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var account = await database.Accounts
             .Include(e => e.Persons.Where(p => p.Gate.Id == Gate))
-            .FirstOrDefaultAsync(e => e.Id == request.Account, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.Id == request.Account, context.CancellationToken);
 
         if (account is null)
         {
@@ -96,8 +94,7 @@ public sealed class LoginGameplay(
         world.Set(context.Player, new ClaimsComponent(request.Session));
 
         await leases
-            .AttachAsync(context.Player, request.Session.Key, request.Session.Account)
-            .ConfigureAwait(false);
+            .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
         secondPassword.Load(context.Player, account);
 

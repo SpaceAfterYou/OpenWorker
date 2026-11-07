@@ -56,11 +56,11 @@ public sealed class SecondPasswordGameplay(
         switch (request.CheckType)
         {
             case PasswordCheckType.Create:
-                await CreateAsync(context, request.Password).ConfigureAwait(false);
+                await CreateAsync(context, request.Password);
                 break;
 
             case PasswordCheckType.Check:
-                Check(context.Player, request.Password);
+                await CheckAsync(context.Player, request.Password);
                 break;
 
             case PasswordCheckType.Continue:
@@ -87,22 +87,20 @@ public sealed class SecondPasswordGameplay(
             return;
         }
 
-        var encoded = PasswordHash.CreateEncoded(password);
+        // Hashing takes long enough to delay everybody else on the world loop.
+        var encoded = await Task.Run(() => PasswordHash.CreateEncoded(password));
         var accountId = world.Get<ClaimsComponent>(context.Player).Account;
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var account = await database.Accounts
-            .FirstAsync(e => e.Id == accountId, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstAsync(e => e.Id == accountId, context.CancellationToken);
 
         account.SecondPassword = encoded;
 
         await database
-            .SaveChangesAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .SaveChangesAsync(context.CancellationToken);
 
         world.Set(context.Player, component with
         {
@@ -113,7 +111,7 @@ public sealed class SecondPasswordGameplay(
         Send(context.Player, PasswordProtectionState.Authenticated, 0);
     }
 
-    private void Check(Entity player, string password)
+    private async Task CheckAsync(Entity player, string password)
     {
         var component = world.Get<SecondPasswordComponent>(player);
 
@@ -123,7 +121,9 @@ public sealed class SecondPasswordGameplay(
             return;
         }
 
-        if (PasswordHash.VerifyEncoded(password, component.Password))
+        var stored = component.Password;
+
+        if (await Task.Run(() => PasswordHash.VerifyEncoded(password, stored)))
         {
             world.Set(player, component with
             {

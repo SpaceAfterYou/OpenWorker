@@ -51,7 +51,7 @@ public sealed class ServerBootstrapService(
             Port = GetPort(),
 
             Rotation = start.Rotation
-        }).ConfigureAwait(false);
+        });
     }
     
     private short GetPort() => Location switch

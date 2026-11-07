@@ -26,7 +26,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions)
 
         Leases[player] = lease;
 
-        await WriteAsync(lease, true, ConnectedLease).ConfigureAwait(false);
+        await WriteAsync(lease, true, ConnectedLease);
     }
 
     /// <summary>
@@ -43,7 +43,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions)
 
         Leases[player] = lease;
 
-        await WriteAsync(lease, true, ConnectedLease).ConfigureAwait(false);
+        await WriteAsync(lease, true, ConnectedLease);
     }
 
     public async Task RenewAsync()
@@ -51,8 +51,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions)
         foreach (var lease in Leases.Values)
         {
             var current = await sessions
-                .FindByIdAsync(lease.Session.ToString())
-                .ConfigureAwait(false);
+                .FindByIdAsync(lease.Session.ToString());
 
             // Another connection took this session over, or a new login replaced it.
             if (current?.Owner != lease.Owner)
@@ -60,7 +59,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions)
                 continue;
             }
 
-            await WriteAsync(lease, true, ConnectedLease).ConfigureAwait(false);
+            await WriteAsync(lease, true, ConnectedLease);
         }
     }
 
@@ -72,12 +71,11 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions)
         }
 
         var current = await sessions
-            .FindByIdAsync(lease.Session.ToString())
-            .ConfigureAwait(false);
+            .FindByIdAsync(lease.Session.ToString());
 
         if (current?.Owner == lease.Owner)
         {
-            await WriteAsync(lease, false, DisconnectedLease).ConfigureAwait(false);
+            await WriteAsync(lease, false, DisconnectedLease);
         }
     }
 
@@ -92,8 +90,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions)
                 Connected = connected,
                 Owner = lease.Owner,
                 ReturnToAuth = lease.ReturnToAuth
-            }, duration)
-            .ConfigureAwait(false);
+            }, duration);
     }
 
     private sealed record Lease(long Session, int Account, string Owner, bool ReturnToAuth);

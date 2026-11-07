@@ -28,15 +28,14 @@ public sealed class ChannelService(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelChangeRequest request)
     {
         await serverChannels
-            .SwitchAsync(context.Player, request.Channel)
-            .ConfigureAwait(false);
+            .SwitchAsync(context.Player, request.Channel);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelInfoRequest request)
     {
         var session = world.Get<ServerSessionComponent>(context.Player);
 
-        await serverChannels.SendListAsync(context.Player, context.CancellationToken).ConfigureAwait(false);
+        await serverChannels.SendListAsync(context.Player, context.CancellationToken);
 
         var channel = world.Get<ChannelMemberComponent>(context.Player);
         var serviceChannel = serviceChannels[channel.Index];

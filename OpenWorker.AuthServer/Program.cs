@@ -19,5 +19,4 @@ await Host
         services.AddHotspot(context, EntityComponentService.Auth);
     })
     .Build()
-    .RunAsync()
-    .ConfigureAwait(false);
+    .RunAsync();

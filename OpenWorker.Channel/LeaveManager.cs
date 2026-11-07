@@ -36,8 +36,8 @@ public sealed class LeaveManager(
 
         var (address, port, result) = destination switch
         {
-            LeaveDestination.ServerList => await LeaveToServerListAsync(player).ConfigureAwait(false),
-            LeaveDestination.CharacterSelect => await FindGateAsync().ConfigureAwait(false),
+            LeaveDestination.ServerList => await LeaveToServerListAsync(player),
+            LeaveDestination.CharacterSelect => await FindGateAsync(),
             _ => (configuration.GetAuthHost(), (short)0, false)
         };
 
@@ -57,8 +57,7 @@ public sealed class LeaveManager(
     private async ValueTask<(string Address, short Port, bool Result)> LeaveToServerListAsync(Entity player)
     {
         await leases
-            .MarkReturnToAuthAsync(player)
-            .ConfigureAwait(false);
+            .MarkReturnToAuthAsync(player);
 
         return (configuration.GetAuthHost(), configuration.GetAuthPort(), true);
     }
@@ -66,8 +65,7 @@ public sealed class LeaveManager(
     private async ValueTask<(string Address, short Port, bool Result)> FindGateAsync()
     {
         var gate = await gates
-            .FirstOrDefaultAsync(e => e.Identifier == Gate)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.Identifier == Gate);
 
         // The address is written even for a refusal because the client reads it anyway.
         return gate is null

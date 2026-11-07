@@ -14,7 +14,7 @@ public sealed class GateSyncService(IDbContextFactory<PersistenceContext> factor
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _ = Task.Factory.StartNew(
-            () => OnTickAsync(cancellationToken).ConfigureAwait(false),
+            () => OnTickAsync(cancellationToken),
             cancellationToken,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default
@@ -26,20 +26,17 @@ public sealed class GateSyncService(IDbContextFactory<PersistenceContext> factor
     private async Task OnTickAsync(CancellationToken cancellationToken)
     {
         await using var database = await factory
-            .CreateDbContextAsync(cancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(cancellationToken);
         
         while (cancellationToken.IsCancellationRequested is false)
         {
             var updatedAt = DateTime.UtcNow.AddMinutes(-1);
             
-            var cacheList = await AsyncEnumerable.ToArrayAsync(gateCache.Where(e => e.UpdatedAt > updatedAt), cancellationToken)
-                .ConfigureAwait(false);
+            var cacheList = await AsyncEnumerable.ToArrayAsync(gateCache.Where(e => e.UpdatedAt > updatedAt), cancellationToken);
             
             var persistentList = await database.Gates
                 .Include(e => e.Persons)
-                .ToArrayAsync(cancellationToken)
-                .ConfigureAwait(false);
+                .ToArrayAsync(cancellationToken);
 
             foreach (var persistent in persistentList)
             {
@@ -63,8 +60,7 @@ public sealed class GateSyncService(IDbContextFactory<PersistenceContext> factor
 
             // TODO: 15sec
             await Task
-                .Delay(TimeSpan.FromSeconds(1), cancellationToken)
-                .ConfigureAwait(false);
+                .Delay(TimeSpan.FromSeconds(1), cancellationToken);
         }
     }
 

@@ -17,7 +17,7 @@ public sealed class ChatService(World world, CommandManager commands) : IHotspot
 {
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatStuffRequest request)
     {
-        if (!await commands.TryExecute(context.Player, request.Message).ConfigureAwait(false))
+        if (!await commands.TryExecute(context.Player, request.Message))
         {
             return;
         }

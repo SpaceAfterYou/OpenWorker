@@ -15,14 +15,12 @@ public sealed class WorldService(World world, WorldManager manager) :
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeCreateRequest request)
     {
         await manager
-            .TryEnterMaze(context.Player, request.Location)
-            .ConfigureAwait(false);
+            .TryEnterMaze(context.Player, request.Location);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
     {
         await manager
-            .EnterAsync(context.Player, request.Location, request.Jump)
-            .ConfigureAwait(false);
+            .EnterAsync(context.Player, request.Location, request.Jump);
     }
 }

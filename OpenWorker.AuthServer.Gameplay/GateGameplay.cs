@@ -43,8 +43,7 @@ public sealed class GateGameplay(
         }
 
         var cache = await gates
-            .FirstOrDefaultAsync(e => e.Identifier == message.Gate)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.Identifier == message.Gate);
 
         if (cache is null)
         {
@@ -67,12 +66,10 @@ public sealed class GateGameplay(
         }
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var persistent = await database.Gates
-            .FirstOrDefaultAsync(e => e.Id == message.Gate, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.Id == message.Gate, context.CancellationToken);
 
         if (persistent is null)
         {
@@ -94,7 +91,7 @@ public sealed class GateGameplay(
 
         if (component.Account == 0)
         {
-            component = await ResumeSessionAsync(context, message.Account).ConfigureAwait(false);
+            component = await ResumeSessionAsync(context, message.Account);
         }
 
         if (component.Account != message.Account)
@@ -108,14 +105,13 @@ public sealed class GateGameplay(
         }
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var personList = await database.Persons
             .Include(e => e.Gate)
             .Include(e => e.Account)
             .Where(e => e.Account.Id == component.Account)
-            .ToArrayAsync(context.CancellationToken).ConfigureAwait(false);
+            .ToArrayAsync(context.CancellationToken);
 
         var groupList = personList.CountBy(e => e.Gate.Id);
 
@@ -147,8 +143,7 @@ public sealed class GateGameplay(
         session.Send(new LoginGateListResponse { Previous = 0, Values = values.ToArray() });
 
         var options = await factory
-            .LoadPersonOptionsAsync(component.Account, context.CancellationToken)
-            .ConfigureAwait(false);
+            .LoadPersonOptionsAsync(component.Account, context.CancellationToken);
 
         session.Send(new LoginOptionLoadResponse { PersonOptions = options, Contents = contents });
     }
@@ -160,8 +155,7 @@ public sealed class GateGameplay(
     {
         var active = await sessions
             .Where(e => e.Account == account)
-            .ToListAsync()
-            .ConfigureAwait(false);
+            .ToListAsync();
 
         var returning = active.FirstOrDefault(e => e.ReturnToAuth);
 
@@ -171,8 +165,7 @@ public sealed class GateGameplay(
         }
 
         await leases
-            .AttachAsync(context.Player, returning.Session, returning.Account)
-            .ConfigureAwait(false);
+            .AttachAsync(context.Player, returning.Session, returning.Account);
 
         var claims = new ClaimsComponent(returning.Session);
 

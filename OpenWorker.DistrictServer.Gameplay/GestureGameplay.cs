@@ -37,8 +37,7 @@ public sealed class GestureGameplay(World world, IDbContextFactory<PersistenceCo
         Array.Copy(request.GestureList, gesture.Collection, length);
 
         await using var persistence = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var actor = world.Get<ActorComponent>(context.Player);
 
@@ -49,8 +48,7 @@ public sealed class GestureGameplay(World world, IDbContextFactory<PersistenceCo
         persistence.Persons.Update(person);
 
         await persistence
-            .SaveChangesAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .SaveChangesAsync(context.CancellationToken);
 
         session.Send(new GestureSlotUpdateResponse { Gestures = gesture.Collection });
     }

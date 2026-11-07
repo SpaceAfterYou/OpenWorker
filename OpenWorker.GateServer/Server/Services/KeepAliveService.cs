@@ -31,11 +31,11 @@ public sealed class KeepAliveService(
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _ = Task.Factory.StartNew(
-            () => OnTickAsync(cancellationToken).ConfigureAwait(false),
+            () => OnTickAsync(cancellationToken),
             cancellationToken,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default
-        ).ConfigureAwait(false);
+        );
         
         return Task.CompletedTask;
     }
@@ -43,15 +43,13 @@ public sealed class KeepAliveService(
     private async Task OnTickAsync(CancellationToken cancellationToken)
     {
         await gateCollection
-            .InsertAsync(Instance)
-            .ConfigureAwait(false);
+            .InsertAsync(Instance);
         
         while (cancellationToken.IsCancellationRequested is false)
         {
             var channels = await channelCollection
                 .Where(x => x.Gate == Instance.Identifier)
-                .ToArrayAsync(cancellationToken)
-                .ConfigureAwait(false);
+                .ToArrayAsync(cancellationToken);
 
             Instance = Instance with
             {
@@ -61,12 +59,10 @@ public sealed class KeepAliveService(
             };
             
             await gateCollection
-                .InsertAsync(Instance)
-                .ConfigureAwait(false);
+                .InsertAsync(Instance);
 
             await Task
-                .Delay(TimeSpan.FromSeconds(1), cancellationToken)
-                .ConfigureAwait(false);
+                .Delay(TimeSpan.FromSeconds(1), cancellationToken);
         }
     }
     

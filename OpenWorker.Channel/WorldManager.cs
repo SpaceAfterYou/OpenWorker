@@ -42,7 +42,7 @@ public sealed class WorldManager(
     /// </summary>
     public async ValueTask EnterAsync(Entity player, short location, int jump)
     {
-        if (await TryEnter(player, location, jump).ConfigureAwait(false))
+        if (await TryEnter(player, location, jump))
         {
             return;
         }
@@ -61,18 +61,18 @@ public sealed class WorldManager(
         switch (type)
         {
             case BatchType.Maze:
-                await EnterMaze(player, location, start).ConfigureAwait(false);
+                await EnterMaze(player, location, start);
                 return true;
 
             case BatchType.District:
                 int districtLocation = location;
 
-                if (!await districts.AnyAsync(x => x.Location == districtLocation).ConfigureAwait(false))
+                if (!await districts.AnyAsync(x => x.Location == districtLocation))
                 {
                     return false;
                 }
 
-                await TryEnterDistrict(player, location, start).ConfigureAwait(false);
+                await TryEnterDistrict(player, location, start);
                 return true;
 
             case BatchType.None:
@@ -90,7 +90,7 @@ public sealed class WorldManager(
             return false;
         }
 
-        await EnterMaze(player, location, start).ConfigureAwait(false);
+        await EnterMaze(player, location, start);
         return true;
     }
 
@@ -171,8 +171,7 @@ public sealed class WorldManager(
         };
 
         await mazeReserves
-            .InsertAsync(cache, ReservationLifetime)
-            .ConfigureAwait(false);
+            .InsertAsync(cache, ReservationLifetime);
 
         session.Send(new WorldEnterResponse { Map = enter });
     }
@@ -181,7 +180,7 @@ public sealed class WorldManager(
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
-        var (district, channel) = await GetDistrictAsync(location).ConfigureAwait(false);
+        var (district, channel) = await GetDistrictAsync(location);
 
         var map = new MapValue
         {
@@ -229,8 +228,7 @@ public sealed class WorldManager(
         };
 
         await districtReserveCache
-            .InsertAsync(cache, ReservationLifetime)
-            .ConfigureAwait(false);
+            .InsertAsync(cache, ReservationLifetime);
 
         session.Send(new WorldEnterResponse { Map = enter });
     }
@@ -256,13 +254,13 @@ public sealed class WorldManager(
 
         int location = worldComponent.Location;
 
-        if (!await districts.AnyAsync(x => x.Location == location).ConfigureAwait(false))
+        if (!await districts.AnyAsync(x => x.Location == location))
         {
             session.Send(new CharacterSelectResponse { Zone = EnterMapResultValue.Failed(EnterMapResultValue.ServerUnavailable) });
             return false;
         }
 
-        var (district, channel) = await GetDistrictAsync(worldComponent.Location).ConfigureAwait(false);
+        var (district, channel) = await GetDistrictAsync(worldComponent.Location);
 
         var reserve = new DistrictReserveCache
         {
@@ -278,8 +276,7 @@ public sealed class WorldManager(
         };
 
         await districtReserveCache
-            .InsertAsync(reserve, ReservationLifetime)
-            .ConfigureAwait(false);
+            .InsertAsync(reserve, ReservationLifetime);
 
         session.Send(new CharacterSelectResponse
         {
@@ -324,8 +321,7 @@ public sealed class WorldManager(
     {
         var availableDistricts = await districts
             .Where(x => x.Location == location)
-            .ToArrayAsync()
-            .ConfigureAwait(false);
+            .ToArrayAsync();
 
         var districtGuids = availableDistricts
             .Select(d => d.Guid)
@@ -333,8 +329,7 @@ public sealed class WorldManager(
 
         var allChannels = await channels
             .Where(c => districtGuids.Contains(c.Owner))
-            .ToArrayAsync()
-            .ConfigureAwait(false);
+            .ToArrayAsync();
 
         Debug.Assert(allChannels.Length > 0);
 

@@ -15,6 +15,7 @@ namespace OpenWorker.DependencyInjection;
 
 internal sealed class ServerService(
     World world,
+    WorldLoop loop,
     HandlerExecutor executor,
     IConfiguration configuration,
     ArchComponentProvider components,
@@ -23,19 +24,14 @@ internal sealed class ServerService(
 ) :
     BackgroundService
 {
+    private Lock DumpLock { get; } = new();
     private TcpListener Listener { get; } = new(IPAddress.Any, 10_000);
     private string GameVersion { get; } = configuration.GetValue("Game:Version", "0.0.0.0");
 
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        return Task.Factory.StartNew(
-            () => AcceptLoopAsync(cancellationToken).ConfigureAwait(false),
-            cancellationToken,
-            TaskCreationOptions.LongRunning,
-            TaskScheduler.Default);
+        return Task.Run(() => AcceptLoopAsync(cancellationToken), cancellationToken);
     }
-
-    private static TimeSpan SendTimeout { get; } = TimeSpan.FromSeconds(10);
 
     private async Task AcceptLoopAsync(CancellationToken cancellationToken)
     {
@@ -45,13 +41,9 @@ internal sealed class ServerService(
 
         while (cancellationToken.IsCancellationRequested is false)
         {
-            var socket = await Listener.AcceptTcpClientAsync(cancellationToken).ConfigureAwait(false);
+            var socket = await Listener.AcceptTcpClientAsync(cancellationToken);
 
-            _ = Task.Factory.StartNew(
-                () => SessionLoopAsync(socket, cancellationToken).ConfigureAwait(false),
-                cancellationToken,
-                TaskCreationOptions.LongRunning,
-                TaskScheduler.Default);
+            _ = Task.Run(() => SessionLoopAsync(socket, cancellationToken), cancellationToken);
         }
 
         logger.LogDebug("Server shutdown.");
@@ -63,36 +55,47 @@ internal sealed class ServerService(
     {
         using (socket)
         {
-            // Movement is made of small frames that must not wait for each other. A client that stopped
-            // reading must not hold the players who broadcast to it.
+            // Movement is made of small frames that must not wait for each other.
             socket.NoDelay = true;
-            socket.SendTimeout = (int)SendTimeout.TotalMilliseconds;
 
-            var entity = components.CreateEntity(world);
+            var session = new ServerSessionComponent(socket);
 
-            entity.Set(new ServerSessionComponent(socket));
+            var entity = await loop.InvokeAsync(() =>
+            {
+                var created = components.CreateEntity(world);
+
+                created.Set(session);
+
+                return created;
+            });
 
             try
             {
                 using var memory = MemoryPool<byte>.Shared.Rent(MessageHeader.MaxContentLength);
 
                 var stream = socket.GetStream();
-
-                var reader = new BinaryReader(stream);
+                var head = new byte[MessageHeader.HeaderSize];
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    var header = new MessageHeader(reader);
+                    await stream.ReadExactlyAsync(head, cancellationToken);
+
+                    var header = new MessageHeader(head);
                     var buffer = memory.Memory[..header.ContentLength];
 
-                    await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
+                    await stream.ReadExactlyAsync(buffer, cancellationToken);
 
                     MessageEncryption.Exchange(buffer, header.Version);
 
                     DumpPacket(header, buffer);
 
-                    await executor.ExecuteAsync(buffer, entity, cancellationToken).ConfigureAwait(false);
+                    await loop.InvokeAsync(() => executor.ExecuteAsync(buffer, entity, cancellationToken));
                 }
+            }
+
+            catch (Exception e) when (e is EndOfStreamException or IOException { InnerException: SocketException } or ObjectDisposedException or OperationCanceledException)
+            {
+                logger.LogDebug("Connection closed: {Reason}", e.Message);
             }
 
             catch (Exception e)
@@ -102,37 +105,57 @@ internal sealed class ServerService(
 
             finally
             {
-                foreach (var handler in closeHandlers)
-                {
-                    try
-                    {
-                        await handler.OnSessionClosedAsync(entity).ConfigureAwait(false);
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogError(e, "Session close handler failed.");
-                    }
-                }
+                await loop.InvokeAsync(() => CloseSessionAsync(entity));
 
-                world.Destroy(entity);
+                session.Disconnect();
             }
         }
+    }
+
+    private async ValueTask CloseSessionAsync(Entity entity)
+    {
+        foreach (var handler in closeHandlers)
+        {
+            try
+            {
+                await handler.OnSessionClosedAsync(entity);
+            }
+
+            catch (Exception e)
+            {
+                logger.LogError(e, "Session close handler failed.");
+            }
+        }
+
+        world.Destroy(entity);
     }
 
     [Conditional("DEBUG")]
     private void DumpPacket(MessageHeader header, Memory<byte> buffer)
     {
         var dir = Path.Combine("test", "hotspot", GameVersion);
-        Directory.CreateDirectory(dir);
-
         var name = $"0x{buffer.Span[0]:X2},0x{buffer.Span[1]:X2}.bin";
         var path = Path.Join(dir, name);
 
-        using var file = File.Open(path, FileMode.Create);
-        using var writer = new BinaryWriter(file);
+        try
+        {
+            // Connections read at the same time and share the file of an opcode.
+            lock (DumpLock)
+            {
+                Directory.CreateDirectory(dir);
 
-        header.ToBinary(writer);
+                using var file = File.Open(path, FileMode.Create);
+                using var writer = new BinaryWriter(file);
 
-        writer.Write(buffer.Span);
+                header.ToBinary(writer);
+
+                writer.Write(buffer.Span);
+            }
+        }
+
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            logger.LogDebug(e, "Failed to save packet {Path}.", path);
+        }
     }
 }

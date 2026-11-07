@@ -28,18 +28,16 @@ internal sealed class BootstrapService(
             logger.LogDebug("Drop index for type: {Name}", type.Name);
 
             await Task
-                .Run(() => provider.Connection.DropIndexAndAssociatedRecords(type), stoppingToken)
-                .ConfigureAwait(false);
-        })).ConfigureAwait(false);
+                .Run(() => provider.Connection.DropIndexAndAssociatedRecords(type), stoppingToken);
+        }));
 
         await Task.WhenAll(types.Select(async x =>
         {
             logger.LogDebug("Create index for type: {Name}", x.Name);
 
             await provider.Connection
-                .CreateIndexAsync(x)
-                .ConfigureAwait(false);
-        })).ConfigureAwait(false);
+                .CreateIndexAsync(x);
+        }));
 
         logger.LogDebug("Cache bootstrapped.");
     }

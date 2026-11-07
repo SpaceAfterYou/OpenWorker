@@ -37,22 +37,23 @@ public sealed class LoginGameplay(
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginAuthRequest message)
     {
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var session = world.Get<ServerSessionComponent>(context.Player);
 
         var account = await database.Accounts
-            .FirstOrDefaultAsync(e => e.Username == message.Username, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.Username == message.Username, context.CancellationToken);
 
-        if (account is null || PasswordHash.Verify(message.Password, account.PasswordHash, account.SaltHash) is false)
+        var password = message.Password;
+
+        // Checking a password takes long enough to delay everybody else on the world loop.
+        if (account is null || !await Task.Run(() => PasswordHash.Verify(password, account.PasswordHash, account.SaltHash)))
         {
             session.Send(new LoginResponse(LoginErrorMessageCode.WrongUsernameOrPassword));
             return;
         }
 
-        await InternalLoginAsync(context, account.Id, account.Username, message.MacAddress).ConfigureAwait(false);
+        await InternalLoginAsync(context, account.Id, account.Username, message.MacAddress);
     }
 
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginNextHumanNetworkRequest message)
@@ -70,12 +71,10 @@ public sealed class LoginGameplay(
         }
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var account = await database.Accounts
-            .FirstOrDefaultAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(context.CancellationToken);
 
         if (account is null)
         {
@@ -87,7 +86,7 @@ public sealed class LoginGameplay(
             return;
         }
 
-        await InternalLoginAsync(context, account.Id, account.Username, message.MacAddress).ConfigureAwait(false);
+        await InternalLoginAsync(context, account.Id, account.Username, message.MacAddress);
     }
 
     public async ValueTask SaveOptionsAsync(ServiceHandleContext context, IReadOnlyCollection<byte> options)
@@ -100,8 +99,7 @@ public sealed class LoginGameplay(
         }
 
         await factory
-            .SavePersonOptionsAsync(account, options.ToArray(), context.CancellationToken)
-            .ConfigureAwait(false);
+            .SavePersonOptionsAsync(account, options.ToArray(), context.CancellationToken);
     }
 
     private async ValueTask InternalLoginAsync(ServiceHandleContext context, int account, string username, string mac)
@@ -110,8 +108,7 @@ public sealed class LoginGameplay(
 
         var active = await sessions
             .Where(e => e.Account == account)
-            .ToListAsync()
-            .ConfigureAwait(false);
+            .ToListAsync();
 
         if (active.Any(e => e.Connected))
         {
@@ -123,8 +120,7 @@ public sealed class LoginGameplay(
         foreach (var previous in active)
         {
             await sessions
-                .DeleteAsync(previous)
-                .ConfigureAwait(false);
+                .DeleteAsync(previous);
         }
 
         var claims = new SessionValue(account);
@@ -132,8 +128,7 @@ public sealed class LoginGameplay(
         world.Set(context.Player, new ClaimsComponent(claims));
 
         await leases
-            .AttachAsync(context.Player, claims.Key, claims.Account)
-            .ConfigureAwait(false);
+            .AttachAsync(context.Player, claims.Key, claims.Account);
 
         session.Send(new LoginResponse(claims, username, true, mac, LoginType.NewUser));
     }

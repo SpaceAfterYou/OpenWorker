@@ -26,7 +26,7 @@ public sealed class ChatService(World world, CommandManager commands, ServiceCha
 {
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatStuffRequest request)
     {
-        if (!await commands.TryExecute(context.Player, request.Message).ConfigureAwait(false))
+        if (!await commands.TryExecute(context.Player, request.Message))
         {
             return;
         }
@@ -72,8 +72,7 @@ public sealed class ChatService(World world, CommandManager commands, ServiceCha
         };
 
         await channelChatCache
-            .InsertAsync(cache, TimeSpan.FromDays(1))
-            .ConfigureAwait(false);
+            .InsertAsync(cache, TimeSpan.FromDays(1));
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ChatTradeRequest request)

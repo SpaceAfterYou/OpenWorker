@@ -32,8 +32,7 @@ public sealed class HandlerExecutor(
         try
         {
             await handler.Delegate
-                .Invoke(instance, player, reader, cancellationToken)
-                .ConfigureAwait(false);
+                .Invoke(instance, player, reader, cancellationToken);
         }
 
         catch (Exception ex)

@@ -18,7 +18,6 @@ public sealed class OptionGameplay(World world, IDbContextFactory<PersistenceCon
         }
 
         await factory
-            .SavePersonOptionsAsync(account, options.ToArray(), context.CancellationToken)
-            .ConfigureAwait(false);
+            .SavePersonOptionsAsync(account, options.ToArray(), context.CancellationToken);
     }
 }

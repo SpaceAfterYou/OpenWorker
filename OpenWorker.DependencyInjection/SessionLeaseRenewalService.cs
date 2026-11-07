@@ -12,11 +12,11 @@ internal sealed class SessionLeaseRenewalService(
     {
         using var timer = new PeriodicTimer(SessionLeaseManager.RenewInterval);
 
-        while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
+        while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             try
             {
-                await leases.RenewAsync().ConfigureAwait(false);
+                await leases.RenewAsync();
             }
             catch (Exception exception)
             {

@@ -20,6 +20,6 @@ public sealed partial class CommandManager
             return false;
         }
         
-        return await command.TryExecute(player, tokens[1..]).ConfigureAwait(false);
+        return await command.TryExecute(player, tokens[1..]);
     }
 }

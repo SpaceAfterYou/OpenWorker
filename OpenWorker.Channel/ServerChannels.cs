@@ -27,8 +27,7 @@ public sealed class ServerChannels(
 
         var all = await channelCache
             .Where(e => e.Owner == Owner && e.Location == Location)
-            .ToArrayAsync(cancellationToken)
-            .ConfigureAwait(false);
+            .ToArrayAsync(cancellationToken);
         
         var values = all
             .Select(e => new ChannelValue(e.Identifier, e.Workload))
@@ -50,7 +49,7 @@ public sealed class ServerChannels(
             return result;
         }
         
-        return await MoveAsync(entity, identifier).ConfigureAwait(false);
+        return await MoveAsync(entity, identifier);
     }
 
     private static ValueTask<ChannelSwitchResult> MoveAsync(Entity entity, short identifier)

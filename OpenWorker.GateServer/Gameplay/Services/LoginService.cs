@@ -13,15 +13,13 @@ public sealed class LoginService(LoginGameplay login, OptionGameplay option) :
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LoginEnterServerRequest request)
     {
         await login
-            .TryJoinAsync(context, request)
-            .ConfigureAwait(false);
+            .TryJoinAsync(context, request);
     }
     
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LoginOptionUpdateRequest request)
     {
         await option
-            .PushAsync(context, request.Values)
-            .ConfigureAwait(false);
+            .PushAsync(context, request.Values);
     }
 }
 

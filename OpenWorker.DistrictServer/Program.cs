@@ -52,5 +52,4 @@ await Host
         services.AddHostedService<KeepAliveService>();
     })
     .Build()
-    .RunAsync()
-    .ConfigureAwait(false);
+    .RunAsync();

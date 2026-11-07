@@ -75,15 +75,14 @@ public sealed class PersonService(
         var session = world.Get<ServerSessionComponent>(context.Player);
 
         if (request.Session.Account != request.Account ||
-            !await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false))
+            !await sessions.AnyAsync(e => e.Session == request.Session.Key))
         {
             session.Disconnect();
             return;
         }
 
         var mazeReserve = await mazeReserves
-            .FindByIdAsync(request.Actor.Identifier.ToString())
-            .ConfigureAwait(false);
+            .FindByIdAsync(request.Actor.Identifier.ToString());
 
         // Nobody asked to enter a maze with this person, or the reservation has expired.
         if (mazeReserve is null ||
@@ -96,13 +95,11 @@ public sealed class PersonService(
         }
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var person = await database.Persons
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken);
 
         if (person is null)
         {
@@ -111,14 +108,12 @@ public sealed class PersonService(
         }
 
         await mazeReserves
-            .DeleteAsync(mazeReserve)
-            .ConfigureAwait(false);
+            .DeleteAsync(mazeReserve);
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
 
         await leases
-            .AttachAsync(context.Player, request.Session.Key, request.Session.Account)
-            .ConfigureAwait(false);
+            .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
         world.Set(context.Player, new WorldComponent
         {
@@ -161,8 +156,7 @@ public sealed class PersonService(
 
 
         await state
-            .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken)
-            .ConfigureAwait(false);
+            .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
 
         var creatureManager = new LuaCreatureManager(world, batch);
 
@@ -177,15 +171,13 @@ public sealed class PersonService(
         questManager.SendQuestEpisodeList(context.Player);
 
         await state
-            .OnEnterPlayerAsync(world.Get<ActorComponent>(context.Player), maze)
-            .ConfigureAwait(false);
+            .OnEnterPlayerAsync(world.Get<ActorComponent>(context.Player), maze);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)
     {
         await leaving
-            .LeaveAsync(context.Player, request.Destination)
-            .ConfigureAwait(false);
+            .LeaveAsync(context.Player, request.Destination);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonLoadTitleRequest request)

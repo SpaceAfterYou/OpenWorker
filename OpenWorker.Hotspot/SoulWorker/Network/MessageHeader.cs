@@ -1,4 +1,5 @@
-﻿using OpenWorker.Hotspot.Extensions;
+﻿using System.Buffers.Binary;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.SoulWorker.Network.DataTypes.Enums;
 
 namespace OpenWorker.Hotspot.SoulWorker.Network;
@@ -34,9 +35,19 @@ public readonly struct MessageHeader
     }
 
     public MessageHeader(BinaryReader reader)
+        : this(reader.ReadBytes(HeaderSize))
     {
-        Version = reader.ReadUInt16();
-        Length = reader.ReadUInt16();
+    }
+
+    public MessageHeader(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length < HeaderSize)
+        {
+            throw new EndOfStreamException("The connection closed inside a message header.");
+        }
+
+        Version = BinaryPrimitives.ReadUInt16LittleEndian(bytes);
+        Length = BinaryPrimitives.ReadUInt16LittleEndian(bytes[2..]);
 
         // The client drops the connection on such a header too; without this check
         // ContentLength would wrap around to almost 64 KiB.
@@ -45,7 +56,7 @@ public readonly struct MessageHeader
             throw new InvalidDataException($"Message length {Length} is smaller than the header.");
         }
 
-        Direction = reader.ReadMessageDirection();
+        Direction = (MessageDirection)bytes[4];
     }
 
     public void ToBinary(BinaryWriter writer)

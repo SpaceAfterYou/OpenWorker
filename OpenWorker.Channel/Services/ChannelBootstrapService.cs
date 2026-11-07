@@ -24,8 +24,7 @@ internal sealed class ChannelBootstrapService(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await cache
-            .InsertAsync(channels.Select(CreateChannelCache))
-            .ConfigureAwait(false);
+            .InsertAsync(channels.Select(CreateChannelCache));
     }
 
 #endregion BackgroundService

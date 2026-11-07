@@ -73,26 +73,23 @@ public sealed class PersonGameplay(
         }
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var claims = world.Get<ClaimsComponent>(context.Player);
 
         var name = message.Person.InfoValue.Name;
 
-        if (await database.Persons.AnyAsync(x => x.Name == name, context.CancellationToken).ConfigureAwait(false))
+        if (await database.Persons.AnyAsync(x => x.Name == name, context.CancellationToken))
         {
             SendListError(context.Player, PersonErrorCode.NameInUse);
             return;
         }
 
         var account = await database.Accounts
-            .FirstAsync(x => x.Id == claims.Account, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstAsync(x => x.Id == claims.Account, context.CancellationToken);
 
         var gate = await database.Gates
-            .FirstAsync(x => x.Id == Gate, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstAsync(x => x.Id == Gate, context.CancellationToken);
 
         var person = new PersonPersistent
         {
@@ -136,8 +133,7 @@ public sealed class PersonGameplay(
         account.Persons.Add(person);
 
         await database
-            .SaveChangesAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .SaveChangesAsync(context.CancellationToken);
 
         registry.CreatePerson(context.Player, slotIndex, person);
 
@@ -166,14 +162,12 @@ public sealed class PersonGameplay(
         }
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var persistent = await database.Persons
             .FirstOrDefaultAsync(
                 x => x.Id == person && x.Account.Id == claims.Account && x.Gate.Id == Gate,
-                context.CancellationToken)
-            .ConfigureAwait(false);
+                context.CancellationToken);
 
         if (persistent is null)
         {
@@ -183,8 +177,7 @@ public sealed class PersonGameplay(
 
         var isLeagueMaster = await database
             .Set<LeaguePersistent>()
-            .AnyAsync(x => x.Master.Id == person, context.CancellationToken)
-            .ConfigureAwait(false);
+            .AnyAsync(x => x.Master.Id == person, context.CancellationToken);
 
         if (isLeagueMaster)
         {
@@ -197,8 +190,7 @@ public sealed class PersonGameplay(
         try
         {
             await database
-                .SaveChangesAsync(context.CancellationToken)
-                .ConfigureAwait(false);
+                .SaveChangesAsync(context.CancellationToken);
         }
         catch (DbUpdateException exception)
         {
@@ -219,7 +211,7 @@ public sealed class PersonGameplay(
         // The character selection is already here, only the server list can be left for.
         if (message.Destination is LeaveDestination.ServerList)
         {
-            await leaving.LeaveAsync(context.Player, message.Destination).ConfigureAwait(false);
+            await leaving.LeaveAsync(context.Player, message.Destination);
         }
     }
 
@@ -235,12 +227,11 @@ public sealed class PersonGameplay(
         }
 
         var selected = await worldManager
-            .SelectPerson(context.Player, message.Actor.Identifier)
-            .ConfigureAwait(false);
+            .SelectPerson(context.Player, message.Actor.Identifier);
 
         if (selected)
         {
-            await RememberSelectedAsync(context, message.Actor.Identifier).ConfigureAwait(false);
+            await RememberSelectedAsync(context, message.Actor.Identifier);
         }
     }
 
@@ -250,12 +241,10 @@ public sealed class PersonGameplay(
     private async Task RememberSelectedAsync(ServiceHandleContext context, int identifier)
     {
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         var person = await database.Persons
-            .FirstOrDefaultAsync(e => e.Id == identifier, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.Id == identifier, context.CancellationToken);
 
         if (person is null)
         {
@@ -265,8 +254,7 @@ public sealed class PersonGameplay(
         person.LastSelectedAt = DateTime.UtcNow;
 
         await database
-            .SaveChangesAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .SaveChangesAsync(context.CancellationToken);
 
         registry.MarkLastPerson(context.Player, identifier);
     }

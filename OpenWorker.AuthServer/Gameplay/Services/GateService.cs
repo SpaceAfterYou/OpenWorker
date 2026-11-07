@@ -14,15 +14,13 @@ internal sealed class GateService(GateGameplay gameplay) :
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LoginGateConnectRequest request)
     {
         await gameplay
-            .TryJoinAsync(context, request)
-            .ConfigureAwait(false);
+            .TryJoinAsync(context, request);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LoginGateListRequest request)
     {
         await gameplay
-            .GetListAsync(context, request)
-            .ConfigureAwait(false);
+            .GetListAsync(context, request);
     }
 }
 

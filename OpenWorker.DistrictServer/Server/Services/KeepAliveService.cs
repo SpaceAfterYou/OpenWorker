@@ -7,14 +7,14 @@ using OpenWorker.Hotspot.Modules.System.Responses;
 
 namespace OpenWorker.DistrictServer.Server.Services;
 
-public sealed class KeepAliveService(World world, ServiceChannels channelCollection) : BackgroundService
+public sealed class KeepAliveService(World world, WorldLoop loop, ServiceChannels channelCollection) : BackgroundService
 {
     private static TimeSpan Frequency { get; } = TimeSpan.FromMinutes(1);
 
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
         return Task.Factory.StartNew(
-            () => LoopAsync(cancellationToken).ConfigureAwait(false),
+            () => LoopAsync(cancellationToken),
             cancellationToken,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default
@@ -29,8 +29,19 @@ public sealed class KeepAliveService(World world, ServiceChannels channelCollect
         {
             var ticks = TimeSpan.FromMilliseconds(DateTime.UtcNow.Ticks) - Frequency;
 
-            stopWatch.Start();
+            stopWatch.Restart();
 
+            await loop.InvokeAsync(() => CheckPlayers(ticks));
+
+            stopWatch.Stop();
+
+            await Task
+                .Delay(Frequency - stopWatch.Elapsed, cancellationToken);
+        }
+    }
+
+    private void CheckPlayers(TimeSpan ticks)
+    {
             foreach (var channel in channelCollection)
             {
                 channel.ForEach(entity =>
@@ -57,12 +68,5 @@ public sealed class KeepAliveService(World world, ServiceChannels channelCollect
                     world.Set(entity, component with { PenaltyCount = penalty });   
                 });
             }
-
-            stopWatch.Stop();
-
-            await Task
-                .Delay(Frequency - stopWatch.Elapsed, cancellationToken)
-                .ConfigureAwait(false);
-        }
     }
 }

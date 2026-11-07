@@ -42,8 +42,7 @@ public sealed class MazeService(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
     {
         await worldManager
-            .EnterAsync(context.Player, request.Location, request.Jump)
-            .ConfigureAwait(false);
+            .EnterAsync(context.Player, request.Location, request.Jump);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)
@@ -60,8 +59,7 @@ public sealed class MazeService(
         var escape = mazeBatch.EventBox.MazeEscapes[0];
 
         var (districtCache, channelCache) = await worldManager
-            .GetDistrictAsync(escape.Field)
-            .ConfigureAwait(false);
+            .GetDistrictAsync(escape.Field);
 
         Debug.Assert(districtCache.Location == escape.Field);
 
@@ -120,8 +118,7 @@ public sealed class MazeService(
         };
 
         await districtReserves
-            .InsertAsync(cache, WorldManager.ReservationLifetime)
-            .ConfigureAwait(false);
+            .InsertAsync(cache, WorldManager.ReservationLifetime);
 
         var session = ecs.Get<ServerSessionComponent>(context.Player);
 
@@ -148,8 +145,7 @@ public sealed class MazeService(
         var maze = ecs.Get<LuaMaze>(context.Player);
 
         await maze.State
-            .CheckConditionAsync(0, request.Operation, maze)
-            .ConfigureAwait(false);
+            .CheckConditionAsync(0, request.Operation, maze);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeLuaFunctionRequest request)
@@ -167,8 +163,7 @@ public sealed class MazeService(
         var state = ecs.Get<LuaMaze>(context.Player);
 
         await state.State
-            .OnExecuteLuaFunction(function.Function, request.Box, state)
-            .ConfigureAwait(false);
+            .OnExecuteLuaFunction(function.Function, request.Box, state);
 
         session.Send(new MazeLuaFunctionResponse { Box = request.Box });
     }

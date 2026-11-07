@@ -25,8 +25,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnEnterPlayer"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(actor), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(actor), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -37,8 +36,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnInteractionObject"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(box), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(box), new LuaValue(maze)], cancellationToken);
         }
     }
     public static async ValueTask OnCompleteSector(this LuaState state, int sector, LuaMaze maze, CancellationToken cancellationToken = default)
@@ -48,8 +46,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnCompleteSector"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(sector), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(sector), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -60,8 +57,7 @@ public static class LuaStateExtensions
         if (state.Environment["LuaFunction"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(function), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(function), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -72,8 +68,7 @@ public static class LuaStateExtensions
         if (state.Environment[function].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(param1), new LuaValue(param2), new LuaValue(param3), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(param1), new LuaValue(param2), new LuaValue(param3), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -84,8 +79,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnTimerComplete"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(timer), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(timer), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -96,8 +90,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnUpdateQuest"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(user), new LuaValue((int)type), new LuaValue(identifier), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(user), new LuaValue((int)type), new LuaValue(identifier), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -108,8 +101,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnActionSkill"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(skill), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(skill), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -120,8 +112,7 @@ public static class LuaStateExtensions
         if (state.Environment["CheckCondition"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(talk), new LuaValue(operation), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(talk), new LuaValue(operation), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -132,8 +123,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnPartyQuestEvent"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(sector), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(sector), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -144,8 +134,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnNpcRotation"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(npc), new LuaValue(key), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(npc), new LuaValue(key), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -154,8 +143,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnNpcWayPoint"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(npc), new LuaValue(waypoint), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(npc), new LuaValue(waypoint), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -164,8 +152,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnCompleteSpawnStepCondition"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(sector), new LuaValue(step), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(sector), new LuaValue(step), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -174,8 +161,7 @@ public static class LuaStateExtensions
         if (state.Environment["OnRealDie"].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(monster), new LuaValue(box), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(monster), new LuaValue(box), new LuaValue(maze)], cancellationToken);
         }
     }
     
@@ -184,8 +170,7 @@ public static class LuaStateExtensions
         if (state.Environment[name].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(index), new LuaValue(maze)], cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(callable, [new LuaValue(index), new LuaValue(maze)], cancellationToken);
         }
     }
 }

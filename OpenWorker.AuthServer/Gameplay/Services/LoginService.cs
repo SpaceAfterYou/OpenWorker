@@ -14,14 +14,12 @@ internal sealed class LoginService(LoginGameplay gameplay) :
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LoginAuthRequest request)
     {
         await gameplay
-            .TryJoinAsync(context, request)
-            .ConfigureAwait(false);
+            .TryJoinAsync(context, request);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LoginNextHumanNetworkRequest request)
     {
         await gameplay
-            .TryJoinAsync(context, request)
-            .ConfigureAwait(false);
+            .TryJoinAsync(context, request);
     }
 }

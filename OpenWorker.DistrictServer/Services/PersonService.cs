@@ -86,23 +86,21 @@ public sealed class PersonService(
         var session = ecs.Get<ServerSessionComponent>(context.Player);
 
         if (request.Session.Account != request.Account ||
-            await sessions.AnyAsync(e => e.Session == request.Session.Key).ConfigureAwait(false) is false)
+            await sessions.AnyAsync(e => e.Session == request.Session.Key) is false)
         {
             session.Disconnect();
             return;
         }
 
         await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken)
-            .ConfigureAwait(false);
+            .CreateDbContextAsync(context.CancellationToken);
 
         // TODO: Gate must make a request to reserve space for the player and
         //       person loading must be done before the player is connected
         //       without using Actor
         var person = await database.Persons
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken);
 
         if (person is null)
         {
@@ -113,15 +111,14 @@ public sealed class PersonService(
         ecs.Set(context.Player, new ClaimsComponent(request.Session));
 
         await leases
-            .AttachAsync(context.Player, request.Session.Key, request.Session.Account)
-            .ConfigureAwait(false);
+            .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
         if (!manager.TryGetAndCache(Location, out var batch, out var type) || type != BatchType.District)
         {
             return;
         }
 
-        ecs.Set(context.Player, await TakeReservedPlaceAsync(request).ConfigureAwait(false) ?? GetDefaultPlace(batch));
+        ecs.Set(context.Player, await TakeReservedPlaceAsync(request) ?? GetDefaultPlace(batch));
 
         ecs.Set(context.Player, new KeepAliveComponent());
 
@@ -236,8 +233,7 @@ public sealed class PersonService(
     private async ValueTask<WorldComponent?> TakeReservedPlaceAsync(PersonEnterGameServerRequest request)
     {
         var reserve = await districtReserves
-            .FindByIdAsync(request.Account.ToString())
-            .ConfigureAwait(false);
+            .FindByIdAsync(request.Account.ToString());
 
         if (reserve is null)
         {
@@ -245,8 +241,7 @@ public sealed class PersonService(
         }
 
         await districtReserves
-            .DeleteAsync(reserve)
-            .ConfigureAwait(false);
+            .DeleteAsync(reserve);
 
         if (reserve.Person != request.Actor.Identifier || reserve.District != Instance)
         {
@@ -322,8 +317,7 @@ public sealed class PersonService(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)
     {
         await leaving
-            .LeaveAsync(context.Player, request.Destination)
-            .ConfigureAwait(false);
+            .LeaveAsync(context.Player, request.Destination);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonLoadTitleRequest request)

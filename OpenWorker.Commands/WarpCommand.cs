@@ -21,8 +21,7 @@ internal sealed partial class WarpCommand : ICommand
         }
 
         await WorldManager
-            .TryEnter(player, id)
-            .ConfigureAwait(false);
+            .TryEnter(player, id);
         
         return true;
     }

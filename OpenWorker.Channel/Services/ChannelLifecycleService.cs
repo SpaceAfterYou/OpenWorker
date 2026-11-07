@@ -22,7 +22,7 @@ internal sealed class ChannelLifecycleService(
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _ = Task.Factory.StartNew(
-            () => OnTickAsync(cancellationToken).ConfigureAwait(false),
+            () => OnTickAsync(cancellationToken),
             cancellationToken,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default
@@ -40,8 +40,7 @@ internal sealed class ChannelLifecycleService(
             foreach (var channel in channels)
             {
                 var value = await cache
-                    .FirstOrDefaultAsync(e => e.Identifier == channel.Identifier && e.Owner == Instance)
-                    .ConfigureAwait(false);
+                    .FirstOrDefaultAsync(e => e.Identifier == channel.Identifier && e.Owner == Instance);
 
                 if (value is null)
                 {
@@ -52,12 +51,10 @@ internal sealed class ChannelLifecycleService(
                 value.OnlineCount = channel.Online;
 
                 await cache
-                    .UpdateAsync(value)
-                    .ConfigureAwait(false);
+                    .UpdateAsync(value);
 
                 await Task
-                    .Delay(TimeSpan.FromSeconds(1), cancellationToken)
-                    .ConfigureAwait(false);
+                    .Delay(TimeSpan.FromSeconds(1), cancellationToken);
             }
         }
     }

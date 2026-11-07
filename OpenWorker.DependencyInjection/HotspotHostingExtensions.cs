@@ -25,6 +25,7 @@ public static class HotspotHostingExtensions
                 return new ServerContent(dbContext.ServerContents);
             })
             .AddSingleton(World.Create())
+            .AddSingleton<WorldLoop>()
             .AddSingleton<ArchComponentProvider>()
             .AddHotspotHandlers()
             .AddHostedInternalServices();

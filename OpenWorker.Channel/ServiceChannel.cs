@@ -16,8 +16,7 @@ namespace OpenWorker.Channel;
 
 public readonly record struct ServiceChannel(short Identifier)
 {
-    // Connections run on their own threads. The sessions are kept here so that a broadcast does not
-    // have to read the entity of a player who may be leaving at this moment.
+    // Changed on the world loop, but the online count is also read from background services.
     private ConcurrentDictionary<Entity, ServerSessionComponent> Members { get; } = new();
 
     public short Online => (short)Members.Count;
@@ -36,7 +35,7 @@ public readonly record struct ServiceChannel(short Identifier)
     {
         foreach (var session in Members.Values)
         {
-            session.TrySend(message);
+            session.Send(message);
         }
     }
 
@@ -46,7 +45,7 @@ public readonly record struct ServiceChannel(short Identifier)
         {
             if (member != player)
             {
-                session.TrySend(message);
+                session.Send(message);
             }
         }
     }

@@ -17,42 +17,36 @@ public sealed class PersonService(PersonGameplay person, SecondPasswordGameplay 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonDeleteReqRequest request)
     {
         await person
-            .DeleteAsync(context, request)
-            .ConfigureAwait(false);
+            .DeleteAsync(context, request);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)
     {
         await person
-            .ChangeServerAsync(context, request)
-            .ConfigureAwait(false);
+            .ChangeServerAsync(context, request);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonCreateRequest request)
     {
         await person
-            .CreateAsync(context, request)
-            .ConfigureAwait(false);
+            .CreateAsync(context, request);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonSecondPasswordRequest request)
     {
         await secondPassword
-            .HandleAsync(context, request)
-            .ConfigureAwait(false);
+            .HandleAsync(context, request);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonSelectRequest request)
     {
         await person
-            .SelectAsync(context, request)
-            .ConfigureAwait(false);
+            .SelectAsync(context, request);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonListRequest request)
     {
         await person
-            .ListAsync(context, request)
-            .ConfigureAwait(false);
+            .ListAsync(context, request);
     }
 }

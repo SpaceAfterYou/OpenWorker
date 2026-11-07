@@ -12,14 +12,12 @@ public sealed class GestureService(GestureGameplay gameplay) :
     public async ValueTask OnHandleAsync(ServiceHandleContext context, GestureShowRequest request)
     {
         await gameplay
-            .ShowAsync(context, request)
-            .ConfigureAwait(false);
+            .ShowAsync(context, request);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, GestureSlotUpdateRequest request)
     {
         await gameplay
-            .UpdateAsync(context, request)
-            .ConfigureAwait(false);
+            .UpdateAsync(context, request);
     }
 }

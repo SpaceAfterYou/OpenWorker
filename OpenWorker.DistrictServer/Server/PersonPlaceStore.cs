@@ -37,8 +37,7 @@ public sealed class PersonPlaceStore(
         }
 
         await using var database = await factory
-            .CreateDbContextAsync()
-            .ConfigureAwait(false);
+            .CreateDbContextAsync();
 
         await database.Persons
             .Where(e => e.Id == person && e.Account.Id == account)
@@ -47,7 +46,6 @@ public sealed class PersonPlaceStore(
                 .SetProperty(x => x.PositionX, place.Position.X)
                 .SetProperty(x => x.PositionY, place.Position.Y)
                 .SetProperty(x => x.PositionZ, place.Position.Z)
-                .SetProperty(x => x.RotationX, place.Rotation))
-            .ConfigureAwait(false);
+                .SetProperty(x => x.RotationX, place.Rotation));
     }
 }

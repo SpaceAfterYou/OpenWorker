@@ -81,6 +81,62 @@ public sealed class SessionSendTest
     }
 
     [TestMethod]
+    public void AClientThatDoesNotReadDoesNotHoldTheSender()
+    {
+        var (server, client, listener) = Connect();
+
+        using (server)
+        using (client)
+        using (listener)
+        {
+            var session = new ServerSessionComponent(server);
+
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+
+            // Much more than the socket buffers hold, and nobody reads it.
+            for (var frame = 0; frame < 3000; frame++)
+            {
+                session.Send(new Filler(1, 4000));
+            }
+
+            Assert.IsLessThan(5000, timer.ElapsedMilliseconds);
+        }
+    }
+
+    [TestMethod]
+    public void DisconnectSendsWhatIsAlreadyQueued()
+    {
+        var (server, client, listener) = Connect();
+
+        using (server)
+        using (client)
+        using (listener)
+        {
+            var session = new ServerSessionComponent(server);
+
+            for (var frame = 0; frame < 20; frame++)
+            {
+                session.Send(new Filler(2, 1000));
+            }
+
+            session.Disconnect();
+
+            client.ReceiveTimeout = 5000;
+
+            using var reader = new BinaryReader(client.GetStream());
+
+            for (var received = 0; received < 20; received++)
+            {
+                var header = new MessageHeader(reader);
+
+                Assert.HasCount(header.ContentLength, reader.ReadBytes(header.ContentLength));
+            }
+
+            Assert.AreEqual(0, client.GetStream().Read(new byte[1]), "The connection must close after the last frame.");
+        }
+    }
+
+    [TestMethod]
     public void TrySendToAClosedConnectionReportsFailure()
     {
         var (server, client, listener) = Connect();
