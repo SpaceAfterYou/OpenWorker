@@ -319,6 +319,12 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
                 break;
             }
 
+            case ShopCurrency.Bp:
+            {
+                Send(player, new ItemUpdateBpResponse { Actor = world.Get<ActorComponent>(player).Identifier, Total = total, Type = (byte)flow });
+                break;
+            }
+
             case ShopCurrency.Ether:
             {
                 Send(player, new ItemUpdateEtherResponse { Total = total });

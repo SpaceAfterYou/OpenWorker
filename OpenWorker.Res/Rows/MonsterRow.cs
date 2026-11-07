@@ -100,8 +100,8 @@ public readonly struct MonsterRow(BinaryReader reader)
     public int Field89 { get; } = reader.ReadInt32();
     public int Field90 { get; } = reader.ReadInt32();
     public int Field91 { get; } = reader.ReadInt32();
-    public int Field92 { get; } = reader.ReadInt32();
-    public int Field93 { get; } = reader.ReadInt32();
+    public int DropId { get; } = reader.ReadInt32();
+    public int HitDropId { get; } = reader.ReadInt32();
     public float Field94 { get; } = reader.ReadSingle();
     public byte Field95 { get; } = reader.ReadByte();
     public short CollisionRadius { get; } = reader.ReadInt16();

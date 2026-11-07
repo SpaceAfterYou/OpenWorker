@@ -24,6 +24,16 @@ public static class DependencyInjection
             Debug.Assert(attribute is not null);
 
             var path = Path.Join("res", $"{attribute.Table}.res");
+
+            if (attribute.Optional && !File.Exists(path))
+            {
+                var empty = typeof(ReadOnlyCollection<>).MakeGenericType(type);
+
+                services.AddSingleton(empty, Activator.CreateInstance(empty, Array.CreateInstance(type, 0))!);
+
+                continue;
+            }
+
             var buffer = File.ReadAllBytes(path);
 
             using var stream = new MemoryStream(buffer);

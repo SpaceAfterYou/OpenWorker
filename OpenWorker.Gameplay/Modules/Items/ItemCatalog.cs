@@ -257,6 +257,7 @@ public sealed class ItemCatalog
         StorageGroup.Common,
         StorageGroup.Costume,
         StorageGroup.Cash,
+        StorageGroup.Cube,
         StorageGroup.CommonStorage,
         StorageGroup.CostumeStorage
     ];

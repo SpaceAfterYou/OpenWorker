@@ -33,6 +33,7 @@ using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
 using OpenWorker.Persistence;
+using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
@@ -52,6 +53,7 @@ public sealed class PersonService(
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
     InventoryPersistence inventories,
+    KillRewards rewards,
     LeaveManager leaving,
     BuffManager buffManager,
     QuestManager questManager,
@@ -175,6 +177,7 @@ public sealed class PersonService(
 
         creatures.Attach(context.Player);
         creatures.Vitals.Initialize(context.Player);
+        maze.MonsterKilled += (monster, position) => rewards.OnKilled(context.Player, monster, position);
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
 

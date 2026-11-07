@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Hotspot;
 
 namespace OpenWorker.Gameplay.Modules.Items;
@@ -19,6 +20,7 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<InventoryService>();
         services.AddSingleton<ItemUseService>();
         services.AddSingleton<InventoryPersistence>();
+        services.AddSingleton<ExperienceService>();
         services.AddSingleton<ISessionCloseHandler, InventorySaver>();
         services.AddHostedService<InventoryFlushService>();
 

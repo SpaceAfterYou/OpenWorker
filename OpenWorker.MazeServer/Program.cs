@@ -9,6 +9,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Ai;
+using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
@@ -54,6 +55,10 @@ await Host
         services.AddPersistence();
         services.AddMiscGameplay();
         services.AddItems();
+        services.AddSingleton<DropService>();
+        services.AddSingleton<KillRewards>();
+        services.AddSingleton<ISessionCloseHandler, DropCleaner>();
+        services.AddHostedService<DropExpiryService>();
 
         services.AddChannels();
 

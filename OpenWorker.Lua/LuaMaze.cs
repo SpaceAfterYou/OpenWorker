@@ -70,6 +70,11 @@ public partial class LuaMaze(
 
     private static readonly TimeSpan FlightTick = TimeSpan.FromMilliseconds(50);
 
+    /// <summary>
+    /// A monster of the maze was killed: its id in the table and the place where it fell.
+    /// </summary>
+    public event Action<int, System.Numerics.Vector3>? MonsterKilled;
+
     private int SkillGeneration { get; set; }
     private uint ProjectileSession { get; set; }
     private bool Started { get; set; }
@@ -437,6 +442,8 @@ public partial class LuaMaze(
         var place = Ecs.Get<NonPlayableCreatureComponent>(target);
 
         session.Send(new MonsterDieResponse { Actor = Ecs.Get<ActorComponent>(target) });
+
+        MonsterKilled?.Invoke(identifier, Ecs.Get<WorldComponent>(target).Position);
 
         creatureManager.Remove(target);
 

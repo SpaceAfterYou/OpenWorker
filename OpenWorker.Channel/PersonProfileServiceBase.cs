@@ -1,13 +1,16 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Components;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
+using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
@@ -153,18 +156,21 @@ public abstract class PersonProfileServiceBase(
             return;
         }
 
-        // Characteristics and equipment are not kept on the server yet.
+        // The characteristics of another player are not worked out here.
         session.Send(new PersonOtherInfoResponse
         {
             CalculateStat = request.CalculateStat,
             Target = new OtherPersonValue
             {
-                Level = PersonModuleDefines.DefaultLevel,
+                Level = target.Level,
+                EchelonExperience = 0,
                 State = (CommunityState)target.CommunityState,
                 Comment = target.CommunityComment,
                 BaseStats = [],
                 Stats = [],
-                Equipment = [],
+                Equipment = (target.Gear ?? [])
+                    .Select(e => new StorageValue { Storage = (StorageGroup)e.Storage, Slot = e.Slot, Item = ItemInstance.From(e).ToValue() })
+                    .ToArray(),
                 Memo = target.CommunityMemo,
                 Class = target.Hero,
                 Name = target.Name,
