@@ -1,24 +1,21 @@
-﻿using Arch.Core;
+using Arch.Core;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Commands.Attributes;
-using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Modules.Boosters.Responses;
+using OpenWorker.Gameplay.Modules.Boosters;
 
 namespace OpenWorker.Commands.BoosterCommands;
 
 [CommandTrigger("booster", "clear")]
-[CommandDescription("Clear all player boosters")]
+[CommandDescription("Take all boosters from the player")]
 internal sealed partial class BoosterClearCommand : ICommand
 {
     [ExternalDependency]
-    private World World { get; }
+    private BoosterManager Manager { get; }
 
-    ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
+    async ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
-        var session = World.Get<ServerSessionComponent>(player);
+        await Manager.ClearAsync(player, CancellationToken.None);
 
-        session.Send(new BoosterClearResponse());
-
-        return ValueTask.FromResult(true);
+        return true;
     }
 }

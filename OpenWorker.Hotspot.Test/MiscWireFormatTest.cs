@@ -1,4 +1,7 @@
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Boosters.Enums;
+using OpenWorker.Hotspot.Modules.Boosters.Responses;
+using OpenWorker.Hotspot.Modules.Boosters.Types;
 using OpenWorker.Hotspot.Modules.DailyMissions.Enums;
 using OpenWorker.Hotspot.Modules.DailyMissions.Requests;
 using OpenWorker.Hotspot.Modules.DailyMissions.Responses;
@@ -320,4 +323,50 @@ public sealed class MiscWireFormatTest
     }
 
 #endregion Events
+
+#region Booster
+
+    [TestMethod]
+    public void BoosterListIsAreaCountAndIdWithEightBytesOfSeconds()
+    {
+        var bytes = Written(new BoosterLoadResponse
+        {
+            Area = BoosterConsumeArea.Maze,
+            Entries = [new BoosterLoadEntry(2154, 3600), new BoosterLoadEntry(101, BoosterLoadEntry.Endless)]
+        });
+
+        Assert.HasCount(1 + 2 + 2 * 10, bytes);
+        Assert.AreEqual((byte)2, bytes[0]);
+        Assert.AreEqual((short)2, BitConverter.ToInt16(bytes, 1));
+        Assert.AreEqual((short)2154, BitConverter.ToInt16(bytes, 3));
+        Assert.AreEqual(3600L, BitConverter.ToInt64(bytes, 5));
+        Assert.AreEqual((short)101, BitConverter.ToInt16(bytes, 13));
+        Assert.AreEqual(-1L, BitConverter.ToInt64(bytes, 15));
+    }
+
+    [TestMethod]
+    public void EmptyBoosterListStillClearsTheClient()
+    {
+        CollectionAssert.AreEqual(new byte[] { 1, 0, 0 }, Written(new BoosterLoadResponse { Area = BoosterConsumeArea.District, Entries = [] }));
+    }
+
+    [TestMethod]
+    public void BoosterAddIsAreaThenIdThenSeconds()
+    {
+        var bytes = Written(new BoosterAddResponse { Area = BoosterConsumeArea.District, Identifier = 2155, RemainSeconds = 7200 });
+
+        Assert.HasCount(1 + 2 + 8, bytes);
+        Assert.AreEqual((byte)1, bytes[0]);
+        Assert.AreEqual((short)2155, BitConverter.ToInt16(bytes, 1));
+        Assert.AreEqual(7200L, BitConverter.ToInt64(bytes, 3));
+    }
+
+    [TestMethod]
+    public void BoosterRemoveIsTheIdAndClearIsEmpty()
+    {
+        CollectionAssert.AreEqual(BitConverter.GetBytes((short)2155), Written(new BoosterRemoveResponse { Id = 2155 }));
+        Assert.HasCount(0, Written(new BoosterClearResponse()));
+    }
+
+#endregion Booster
 }

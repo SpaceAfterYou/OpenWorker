@@ -1,24 +1,17 @@
-using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Boosters.Types;
 
-public readonly struct BoosterLoadEntry(BinaryReader reader) : IWritableData
+/// <summary>
+/// A booster the person has and the seconds it has left; -1 means it does not run out.
+/// </summary>
+public readonly record struct BoosterLoadEntry(short Id, long RemainSeconds) : IWritableData
 {
-#region Message: Body
-
-    public short Id { get; init; } = reader.ReadInt16();
-    public TimeSpan Remaining { get; init; } = reader.ReadTimeInSeconds32();
-
-#endregion Message: Body
-
-#region Interface: IWritableData
+    public const long Endless = -1;
 
     public void Write(BinaryWriter writer)
     {
         writer.Write(Id);
-        writer.Write(Remaining);
+        writer.Write(RemainSeconds);
     }
-
-#endregion Interface: IWritableData
 }

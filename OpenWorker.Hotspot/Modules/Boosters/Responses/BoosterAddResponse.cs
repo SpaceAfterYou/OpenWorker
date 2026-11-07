@@ -1,10 +1,8 @@
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Boosters.Enums;
-using OpenWorker.Hotspot.Modules.Boosters.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Boosters.Responses;
 
@@ -22,9 +20,14 @@ public readonly struct BoosterAddResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    public short Identifier { get; init; }
-    public TimeSpan Remaining { get; init; }
     public BoosterConsumeArea Area { get; init; }
+
+    public short Identifier { get; init; }
+
+    /// <summary>
+    /// The seconds the booster has left; -1 means it does not run out.
+    /// </summary>
+    public long RemainSeconds { get; init; }
 
 #endregion Message: Body
 
@@ -32,9 +35,9 @@ public readonly struct BoosterAddResponse : IResponseHotspotMessage
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Area);
+        writer.Write((byte)Area);
         writer.Write(Identifier);
-        writer.Write(Remaining);
+        writer.Write(RemainSeconds);
     }
 
 #endregion Interface: IWritableData

@@ -34,6 +34,8 @@ using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Gameplay.Modules.Attendance;
+using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Hotspot.Modules.Boosters.Enums;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Domain.Enums;
@@ -49,6 +51,7 @@ public sealed class PersonService(
     SoulMetryManager soulMetry,
     DailyMissionManager dailyMissions,
     AttendanceManager attendance,
+    BoosterManager boosters,
     IRedisCollection<SessionCache> sessions,
     IRedisCollection<DistrictReserveCache> districtReserves,
     SessionLeaseManager leases,
@@ -177,7 +180,7 @@ public sealed class PersonService(
 
         session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.Player).Collection });
         session.Send(new PersonUpdateOriginStatListResponse { Actor = actor });
-        // session.Send(new BoosterLoadReply([], BoosterConsumeArea.None));
+        await boosters.EnterAsync(context.Player, person.Id, BoosterConsumeArea.District, context.CancellationToken);
 
         await soulMetry.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await dailyMissions.EnterAsync(context.Player, person.Id, context.CancellationToken);
