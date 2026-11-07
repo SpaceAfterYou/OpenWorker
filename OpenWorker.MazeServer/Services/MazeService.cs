@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Enums;
 using Arch.Core;
 using OpenWorker.Batch.Extensions;
@@ -66,6 +67,11 @@ public sealed class MazeService(
     private const ushort SectorWrongMap = 55005;
     private const ushort SectorNotFound = 55006;
     private const ushort InteractionFailed = 54007;
+
+    /// <summary>
+    /// Keeps whatever motion the character is in.
+    /// </summary>
+    private const short NoMotion = -1;
 
     private short Gate { get; } = configuration.GetGate();
 
@@ -160,12 +166,29 @@ public sealed class MazeService(
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// A skill that jumps the player somewhere. The new place goes back to the client.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillWarpPositionRequest request)
     {
-        if (Place.IsValid(request.Position))
+        if (!Place.IsValid(request.Position))
         {
-            ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Position = request.Position });
+            return ValueTask.CompletedTask;
         }
+
+        var place = ecs.Get<WorldComponent>(context.Player) with { Position = request.Position };
+
+        ecs.Set(context.Player, place);
+        ecs.Get<ServerSessionComponent>(context.Player).Send(new SkillWarpPositionBroadcastResponse
+        {
+            Actor = ecs.Get<ActorComponent>(context.Player),
+            PosInfo = new SkillPositionValue
+            {
+                Position = place.Position,
+                Angle = place.Rotation,
+                MotionClass = NoMotion
+            }
+        });
 
         return ValueTask.CompletedTask;
     }
