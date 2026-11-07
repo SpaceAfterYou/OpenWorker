@@ -95,7 +95,8 @@ public sealed class AiScriptLoaderTest
     {
         var profile = Parse("-- nothing here");
 
-        Assert.IsEmpty(profile.States);
+        Assert.IsEmpty(profile.Transitions);
+        Assert.IsFalse(profile.SeeksEnemies);
     }
 
     [TestMethod]
@@ -150,7 +151,7 @@ public sealed class AiScriptLoaderTest
 
             Assert.IsEmpty(recorder.Messages, name + ": " + string.Join("; ", recorder.Messages));
 
-            if (profile.States.Count > 0)
+            if (profile.SeeksEnemies || profile.Transitions.Count > 0 || profile.HasSkillGroups)
             {
                 thinking++;
             }

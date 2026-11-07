@@ -23,6 +23,7 @@ public sealed class AiMachineTest
         public bool CanMove => !IsAttacking;
         public bool CanAttack => !IsAttacking;
         public bool IsMoving => Destination is not null;
+        public bool IsRooted { get; set; }
         public bool IsAttacking { get; set; }
         public bool IsBattlePose { get; set; }
         public float Age { get; set; }

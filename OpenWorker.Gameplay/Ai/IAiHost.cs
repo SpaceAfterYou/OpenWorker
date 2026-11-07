@@ -57,6 +57,11 @@ public interface IAiHost
     bool IsMoving { get; }
 
     /// <summary>
+    /// Can never walk: it turns and attacks what comes close.
+    /// </summary>
+    bool IsRooted { get; }
+
+    /// <summary>
     /// In the middle of a skill.
     /// </summary>
     bool IsAttacking { get; }

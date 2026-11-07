@@ -13,6 +13,7 @@ public sealed class AiMachine
     private const int HistorySize = 16;
     private const int MaxNesting = 8;
     private const float SkillGiveUpTime = 30f;
+    private const float RootedGiveUpTime = 5f;
     private const float ReturnGiveUpTime = 30f;
     private const float RangeSlack = 30f;
     private const float DefaultSkillAngle = 45f;
@@ -422,16 +423,9 @@ public sealed class AiMachine
         var next = _settings.NextStates;
         var total = next.Sum(e => Math.Max(0, e.Weight));
 
-        if (next.Count == 0)
-        {
-            ChangeState(AiState.BeforeState);
-
-            return;
-        }
-
         if (total == 0)
         {
-            ChangeState(next[0].State);
+            ChangeState(_settings.DefaultNext);
 
             return;
         }
@@ -1523,6 +1517,17 @@ public sealed class AiMachine
                 _preSkillDamageCount = 0;
                 _hitCount = 0;
                 _lastSkillTime = 0f;
+            }
+
+            return;
+        }
+
+        if (_host.IsRooted)
+        {
+            // A monster that cannot walk gives up on a target that stays out of reach.
+            if (_stateTime > RootedGiveUpTime)
+            {
+                ChangeState(AiState.Wait);
             }
 
             return;

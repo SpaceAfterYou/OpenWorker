@@ -60,6 +60,11 @@ public partial class LuaMaze(
 
     public MazeProgress Progress { get; } = new(batch, interactions);
 
+    /// <summary>
+    /// The monsters of the maze and the players they fight.
+    /// </summary>
+    public LuaCreatureManager Creatures => creatureManager;
+
     // A monster that counts hits takes them no faster than this.
     private const long CountedHitMilliseconds = 500;
 
@@ -354,6 +359,8 @@ public partial class LuaMaze(
         var health = Math.Max(0, creature.Health - lost);
 
         Ecs.Set(target, creature with { Health = health });
+
+        creatureManager.OnMonsterHit(target, player, result.Damage);
 
         return default(SkillDmgValue) with
         {

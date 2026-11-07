@@ -110,6 +110,11 @@ public sealed record AiStateSettings
     public float AngleMin { get; init; }
     public float AngleMax { get; init; }
     public IReadOnlyList<(AiState State, int Weight)> NextStates { get; init; } = [];
+
+    /// <summary>
+    /// Where the state goes when its time is over and none of the weights is more than zero: the last state the script named.
+    /// </summary>
+    public AiState DefaultNext { get; init; }
 }
 
 /// <summary>
@@ -218,8 +223,46 @@ public sealed class AiProfileBuilder
     private const int WaitLifeMin = 4000;
     private const int WaitLifeMax = 5000;
 
-    private readonly HashSet<AiState> _states = [];
-    private readonly Dictionary<AiState, AiStateSettings> _settings = [];
+    /// <summary>
+    /// The states every monster has, and where each of them goes when it is over. A script adds to this.
+    /// </summary>
+    private static readonly (AiState State, AiState Next)[] Defaults =
+    [
+        (AiState.Patrol, AiState.Wait),
+        (AiState.BattleWait, AiState.SelectAction),
+        (AiState.BattleMove, AiState.SelectAction),
+        (AiState.Gaze, AiState.SelectAction),
+        (AiState.Move, AiState.SelectAction),
+        (AiState.Attack, AiState.AttackSkill1),
+        (AiState.AttackSkill1, AiState.SelectAction),
+        (AiState.AttackSkill2, AiState.SelectAction),
+        (AiState.AttackSkill3, AiState.SelectAction),
+        (AiState.AttackSkill4, AiState.SelectAction),
+        (AiState.AttackSkill5, AiState.SelectAction),
+        (AiState.AttackSkill6, AiState.SelectAction),
+        (AiState.AttackSkill7, AiState.SelectAction),
+        (AiState.AttackSkill8, AiState.SelectAction),
+        (AiState.AttackSkill9, AiState.SelectAction),
+        (AiState.AttackSkill10, AiState.SelectAction),
+        (AiState.RequestHelp, AiState.SelectAction),
+        (AiState.RequestSupport, AiState.SelectAction),
+        (AiState.Runaway, AiState.SelectAction),
+        (AiState.TraceMove, AiState.SelectAction),
+        (AiState.Return, AiState.Wait),
+        (AiState.ProtectGaze, AiState.Protection),
+        (AiState.ProtectMove, AiState.Protection),
+        (AiState.ProtectWait, AiState.Protection)
+    ];
+
+    private static readonly AiState[] DefaultStates =
+    [
+        AiState.Wait, AiState.Patrol, AiState.SelectAction, AiState.BattleWait, AiState.Move, AiState.BattleMove,
+        AiState.Gaze, AiState.AttackSkill1, AiState.Return, AiState.Runaway, AiState.Suicide, AiState.Recovery,
+        AiState.TraceMove, AiState.Protection, AiState.ProtectMove, AiState.ProtectGaze, AiState.ProtectWait
+    ];
+
+    private readonly HashSet<AiState> _states = [.. DefaultStates];
+    private readonly Dictionary<AiState, AiStateSettings> _settings = Defaults.ToDictionary(e => e.State, e => new AiStateSettings { NextStates = [(e.Next, 0)], DefaultNext = e.Next });
     private readonly Dictionary<AiState, List<AiTransition>> _transitions = [];
     private readonly AiCondition?[] _reserved = new AiCondition?[AiProfile.ReservedConditions];
     private readonly string[] _commonActions = Enumerable.Repeat(string.Empty, AiProfile.SkillSlots).ToArray();
@@ -391,7 +434,7 @@ public sealed class AiProfileBuilder
             AiStateVariable.MoveDistance => settings with { MoveDistanceMin = first, MoveDistanceMax = second },
             AiStateVariable.TargetDistance => settings with { TargetDistanceMin = first, TargetDistanceMax = second },
             AiStateVariable.Angle => settings with { AngleMin = first, AngleMax = second },
-            _ => settings with { NextStates = [.. settings.NextStates.Where(e => e.State != (AiState)first), ((AiState)first, second)] }
+            _ => settings with { NextStates = [.. settings.NextStates.Where(e => e.State != (AiState)first), ((AiState)first, second)], DefaultNext = (AiState)first }
         };
     }
 

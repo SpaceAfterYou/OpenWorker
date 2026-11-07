@@ -30,6 +30,7 @@ using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
 using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Lua;
+using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -55,6 +56,8 @@ public sealed class PersonService(
     SkillActionProvider skillActions,
     CombatTables combatTables,
     MiscStateLoader miscState,
+    CreatureServices creatureServices,
+    ILogger<LuaCreatureManager> creatureLogger,
     IConfiguration configuration
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -164,9 +167,13 @@ public sealed class PersonService(
         await state
             .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
 
-        var maze = new LuaMaze(state, world, context.Player, new LuaCreatureManager(world, batch, combatTables), buffManager, questManager, batch, interactionCollection, skillActions, combatTables);
+        var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger);
+        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables);
 
         world.Add(context.Player, maze);
+
+        creatures.Attach(context.Player);
+        creatures.Vitals.Initialize(context.Player);
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
 
