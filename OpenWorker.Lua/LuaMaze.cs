@@ -38,8 +38,6 @@ public partial class LuaMaze(
     VBatchFile batch
 ) : ILuaUserData
 {
-    public LuaTable? Metatable { get; set; }
-    
     public LuaState State { get; } = state;
     
     public World Ecs { get; } = ecs;

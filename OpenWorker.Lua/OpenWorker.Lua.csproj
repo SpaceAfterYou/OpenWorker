@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="LuaCSharp" Version="0.5.3" />
+      <PackageReference Include="LuaCSharp" Version="0.5.8" />
     </ItemGroup>
 
     <ItemGroup>

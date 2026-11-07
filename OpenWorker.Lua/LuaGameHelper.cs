@@ -5,8 +5,6 @@ namespace OpenWorker.Lua;
 [LuaObject]
 public partial class LuaGameHelper : ILuaUserData
 {
-    public LuaTable? Metatable { get; set; }
-    
     [LuaMember]
     public void CreateEntity()
     {
