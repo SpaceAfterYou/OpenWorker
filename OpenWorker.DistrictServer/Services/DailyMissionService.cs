@@ -1,4 +1,4 @@
-﻿using Arch.Core;
+﻿using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -7,17 +7,17 @@ using OpenWorker.Hotspot.Modules.DailyMissions.Requests;
 namespace OpenWorker.DistrictServer.Services;
 
 [HotspotHandler(HotspotHandlerType.District)]
-public sealed class DailyMissionService :
+public sealed class DailyMissionService(DailyMissionManager manager) :
     IHotspotHandler<DailyMissionAcceptRequest>,
     IHotspotHandler<DailyMissionHelperRequest>
 {
-    public ValueTask OnHandleAsync(ServiceHandleContext context, DailyMissionAcceptRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, DailyMissionAcceptRequest request)
     {
-        return ValueTask.CompletedTask;
+        await manager.AcceptAsync(context.Player, request.Mission, context.CancellationToken);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, DailyMissionHelperRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, DailyMissionHelperRequest request)
     {
-        return ValueTask.CompletedTask;
+        await manager.SetHelperAsync(context.Player, request.Mission, request.Helper, context.CancellationToken);
     }
 }

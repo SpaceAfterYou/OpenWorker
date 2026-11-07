@@ -53,6 +53,7 @@ await Host
 
         services.AddHostedService<ServerBootstrapService>();
         services.AddHostedService<KeepAliveService>();
+        services.AddHostedService<MiscTickService>();
     })
     .Build()
     .RunAsync();

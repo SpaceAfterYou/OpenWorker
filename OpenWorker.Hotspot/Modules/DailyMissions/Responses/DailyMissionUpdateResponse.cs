@@ -2,7 +2,6 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.DailyMissions.Extensions;
 using OpenWorker.Hotspot.Modules.DailyMissions.Types;
 
 namespace OpenWorker.Hotspot.Modules.DailyMissions.Responses;
@@ -21,7 +20,7 @@ public readonly struct DailyMissionUpdateResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    public required IReadOnlyList<DailyMissionValue> List { get; init; }
+    public required IReadOnlyCollection<DailyMissionValue> List { get; init; }
 
 #endregion Message: Body
 
@@ -29,7 +28,12 @@ public readonly struct DailyMissionUpdateResponse : IResponseHotspotMessage
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(List);
+        writer.Write(checked((short)List.Count));
+
+        foreach (var mission in List)
+        {
+            mission.Write(writer);
+        }
     }
 
 #endregion Interface: IWritableData

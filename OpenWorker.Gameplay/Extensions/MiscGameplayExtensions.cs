@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Gameplay.Modules.State;
@@ -15,11 +16,16 @@ public static class MiscGameplayExtensions
     public static IServiceCollection AddMiscGameplay(this IServiceCollection services)
     {
         services.TryAddSingleton<IRewardGranter, NoRewardGranter>();
+        services.TryAddSingleton(TimeProvider.System);
 
         services.AddSingleton<PersonStateStore>();
 
         services.AddSingleton<SoulMetryCatalog>();
         services.AddSingleton<SoulMetryManager>();
+
+        services.AddSingleton<DailyMissionCatalog>();
+        services.AddSingleton<DailyMissionManager>();
+        services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<DailyMissionManager>());
 
         return services;
     }

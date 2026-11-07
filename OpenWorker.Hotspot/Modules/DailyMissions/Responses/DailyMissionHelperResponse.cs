@@ -3,7 +3,6 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.DailyMissions.Enums;
-using OpenWorker.Hotspot.Modules.DailyMissions.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.DailyMissions.Responses;
 
@@ -22,6 +21,7 @@ public readonly struct DailyMissionHelperResponse : IResponseHotspotMessage
 #region Message: Body
 
     public int Mission { get; init; }
+
     public DailyMissionHelperState Helper { get; init; }
 
 #endregion Message: Body
@@ -31,7 +31,7 @@ public readonly struct DailyMissionHelperResponse : IResponseHotspotMessage
     public void Write(BinaryWriter writer)
     {
         writer.Write(Mission);
-        writer.Write(Helper);
+        writer.Write((byte)Helper);
     }
 
 #endregion Interface: IWritableData

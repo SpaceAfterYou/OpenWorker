@@ -36,6 +36,7 @@ using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Persistence;
@@ -48,6 +49,7 @@ public sealed class PersonService(
     World ecs,
     BatchManager manager,
     SoulMetryManager soulMetry,
+    DailyMissionManager dailyMissions,
     IRedisCollection<SessionCache> sessions,
     IRedisCollection<DistrictReserveCache> districtReserves,
     SessionLeaseManager leases,
@@ -179,6 +181,7 @@ public sealed class PersonService(
         // session.Send(new BoosterLoadReply([], BoosterConsumeArea.None));
 
         await soulMetry.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await dailyMissions.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         questManager.SendQuestEpisodeList(context.Player);
 

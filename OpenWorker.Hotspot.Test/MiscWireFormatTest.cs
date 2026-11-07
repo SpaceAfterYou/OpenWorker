@@ -1,4 +1,8 @@
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.DailyMissions.Enums;
+using OpenWorker.Hotspot.Modules.DailyMissions.Requests;
+using OpenWorker.Hotspot.Modules.DailyMissions.Responses;
+using OpenWorker.Hotspot.Modules.DailyMissions.Types;
 using OpenWorker.Hotspot.Modules.Rewards.Types;
 using OpenWorker.Hotspot.Modules.SoulMetry;
 using OpenWorker.Hotspot.Modules.SoulMetry.Requests;
@@ -116,4 +120,103 @@ public sealed class MiscWireFormatTest
     }
 
 #endregion SoulMetry
+
+#region DailyMission
+
+    private static DailyMissionValue Mission(int id) => new()
+    {
+        Mission = id,
+        Type = DailyMissionType.Guerrilla,
+        State = DailyMissionState.Accept,
+        Helper = DailyMissionHelperState.Add,
+        Value = 7,
+        Accept = DateTimeOffset.FromUnixTimeSeconds(1_000),
+        Start = DateTimeOffset.FromUnixTimeSeconds(2_000),
+        End = DateTimeOffset.FromUnixTimeSeconds(3_000),
+        Remain = 11,
+        Duration = 22
+    };
+
+    [TestMethod]
+    public void DailyMissionIs41BytesInTheOrderOfTheClient()
+    {
+        var bytes = Written(new DailyMissionUpdateResponse { List = [Mission(2100001)] });
+
+        Assert.HasCount(2 + 41, bytes);
+        Assert.AreEqual((short)1, BitConverter.ToInt16(bytes));
+        Assert.AreEqual(2100001, BitConverter.ToInt32(bytes, 2));
+        Assert.AreEqual((byte)2, bytes[6]);
+        Assert.AreEqual((byte)1, bytes[7]);
+        Assert.AreEqual((byte)1, bytes[8]);
+        Assert.AreEqual((short)7, BitConverter.ToInt16(bytes, 9));
+        Assert.AreEqual(1_000L, BitConverter.ToInt64(bytes, 11));
+        Assert.AreEqual(2_000L, BitConverter.ToInt64(bytes, 19));
+        Assert.AreEqual(3_000L, BitConverter.ToInt64(bytes, 27));
+        Assert.AreEqual(11, BitConverter.ToInt32(bytes, 35));
+        Assert.AreEqual(22, BitConverter.ToInt32(bytes, 39));
+    }
+
+    [TestMethod]
+    public void DailyMissionUpdateIsAFlatListWithShortCount()
+    {
+        var bytes = Written(new DailyMissionUpdateResponse { List = [Mission(1), Mission(2), Mission(3)] });
+
+        Assert.HasCount(2 + 3 * 41, bytes);
+        Assert.AreEqual((short)3, BitConverter.ToInt16(bytes));
+    }
+
+    [TestMethod]
+    public void DailyMissionListIsFlagThenGroupsOfADistrict()
+    {
+        var bytes = Written(new DailyMissionListResponse
+        {
+            TodayInit = true,
+            Groups =
+            [
+                new DailyMissionGroupValue { District = 10003, Missions = [Mission(1), Mission(2)] },
+                new DailyMissionGroupValue { District = 10021, Missions = [Mission(3)] }
+            ]
+        });
+
+        Assert.HasCount(1 + 2 + (4 + 2 + 2 * 41) + (4 + 2 + 41), bytes);
+        Assert.AreEqual((byte)1, bytes[0]);
+        Assert.AreEqual((short)2, BitConverter.ToInt16(bytes, 1));
+        Assert.AreEqual(10003, BitConverter.ToInt32(bytes, 3));
+        Assert.AreEqual((short)2, BitConverter.ToInt16(bytes, 7));
+        Assert.AreEqual(1, BitConverter.ToInt32(bytes, 9));
+        Assert.AreEqual(10021, BitConverter.ToInt32(bytes, 9 + 2 * 41));
+    }
+
+    [TestMethod]
+    public void EmptyDailyMissionListHasNoGroups()
+    {
+        CollectionAssert.AreEqual(new byte[] { 0, 0, 0 }, Written(new DailyMissionListResponse { Groups = [] }));
+    }
+
+    [TestMethod]
+    public void DailyMissionAcceptAndHelperAreMissionAndByte()
+    {
+        var accepted = Written(new DailyMissionAcceptResponse { Mission = 1100001, Helper = DailyMissionHelperState.Add });
+        var helper = Written(new DailyMissionHelperResponse { Mission = 1100001, Helper = DailyMissionHelperState.Del });
+
+        CollectionAssert.AreEqual(BitConverter.GetBytes(1100001).Append((byte)1).ToArray(), accepted);
+        CollectionAssert.AreEqual(BitConverter.GetBytes(1100001).Append((byte)0).ToArray(), helper);
+    }
+
+    [TestMethod]
+    public void DailyMissionRequestsAreReadLikeTheClientWritesThem()
+    {
+        using var accept = new BinaryReader(new MemoryStream(BitConverter.GetBytes(1100002)));
+        using var helper = new BinaryReader(new MemoryStream(BitConverter.GetBytes(1100003).Append((byte)1).ToArray()));
+
+        Assert.AreEqual(1100002, new DailyMissionAcceptRequest(accept).Mission);
+
+        var request = new DailyMissionHelperRequest(helper);
+
+        Assert.AreEqual(1100003, request.Mission);
+        Assert.AreEqual(DailyMissionHelperState.Add, request.Helper);
+        Assert.AreEqual(5, helper.BaseStream.Position);
+    }
+
+#endregion DailyMission
 }
