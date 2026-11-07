@@ -210,6 +210,7 @@
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
       - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
       - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - T:/Games/HanPurple/soulworker/datas/Character/ActionData:/app/action
       - T:/Games/HanPurple/soulworker/datas/Scripts/Server:/app/scripts
         
   openworker.districtserver-canduscity:

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Batch;
+using OpenWorker.Batch.Actions;
 
 namespace OpenWorker.Hotspot;
 
@@ -10,6 +11,7 @@ public static class DependencyInjection
         return services
             .AddSingleton<MazeResourceProvider>()
             .AddSingleton<DistrictResourceProvider>()
+            .AddSingleton<SkillActionProvider>()
             .AddSingleton<BatchManager>();
     }
 }
