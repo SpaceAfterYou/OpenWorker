@@ -67,10 +67,65 @@ public sealed class ActionFileTest
                     e.Write(value);
                 }
 
-                // The rest of an attack is skipped.
-                e.Write(new byte[64]);
+                WriteProjectile(e, version);
             }
         }));
+    }
+
+    private static void WriteFloats(BinaryWriter writer, params ReadOnlySpan<float> values)
+    {
+        foreach (var value in values)
+        {
+            writer.Write(value);
+        }
+    }
+
+    private static void WriteProjectile(BinaryWriter e, short version)
+    {
+        WriteFloats(e, 10f, 20f, 30f, 500f, 2f);
+        e.Write(true);
+        e.Write(1);
+        e.Write(false);
+        e.Write(75f);
+        e.Write(true);
+        WriteFloats(e, 0.2f, 0f);
+        e.Write(true);
+        WriteFloats(e, 0f, 0f);
+        e.Write((short)0);
+        e.Write(new byte[2]);
+        e.Write(version >= 218);
+        e.Write((short)0);
+        e.Write(0f);
+        e.Write(new byte[2]);
+        e.Write((short)6);
+        WriteFloats(e, -7f, 40f, 0f);
+
+        foreach (var _ in Enumerable.Range(0, 5))
+        {
+            WriteString(e, "text");
+        }
+
+        e.Write(new byte[1 + 2 + 4 + 4 + 4 + 12 + 4 + 4 + 4]);
+        e.Write(new byte[1 + 4 + 4 + 4 + 4 + 4]);
+        e.Write(new byte[8]);
+        e.Write(0.5f);
+        e.Write(0);
+        e.Write(9);
+        e.Write(new byte[12 + 4 + 20 + 2]);
+        e.Write(new byte[4 + 12 + 36]);
+        WriteString(e, "text");
+        e.Write(new byte[4 + 1 + 4]);
+        e.Write(new byte[1 + 12 + 8]);
+        WriteString(e, "text");
+        e.Write(new byte[12]);
+        WriteString(e, "text");
+        WriteString(e, "text");
+        e.Write(new byte[24]);
+        e.Write(new byte[40]);
+        e.Write(true);
+        e.Write(4);
+        // The rest of an attack is skipped.
+        e.Write(new byte[32]);
     }
 
     private static void WriteAnimation(BinaryWriter writer, short version, string name)
@@ -137,10 +192,15 @@ public sealed class ActionFileTest
 
         Assert.AreEqual(1.5f, animation.Length);
         Assert.HasCount(2, animation.Attacks);
+        var attack = animation.Attacks[0];
+
         Assert.AreEqual(
-            new AttackTrigger(1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8),
-            animation.Attacks[0]);
+            new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile),
+            attack);
         Assert.AreEqual(0.75f, animation.Attacks[1].Start);
+        Assert.AreEqual(
+            new ProjectileInfo(new Vector3(10, 20, 30), 500f, 2f, true, 1, 75f, true, 0.2f, true, version >= 218, 6, new Vector3(-7, 40, 0), true, 4),
+            attack.Projectile);
     }
 
     [TestMethod]
@@ -180,5 +240,14 @@ public sealed class ActionFileTest
         Assert.AreEqual(0.25f, attack.Start);
         Assert.AreEqual(450f, attack.Radius);
         Assert.AreEqual(new Vector3(0, 250, 0), attack.Center);
+        Assert.AreEqual(3, attack.Id);
+
+        var thrown = ActionFile.Load(Path.Join(folder, "PC_A.adf")).Animations["B_Skill_Flash_Step"].Attacks[0];
+
+        Assert.IsTrue(thrown.IsProjectile);
+        Assert.AreEqual(14, thrown.Id);
+        Assert.AreEqual(5000f, thrown.Projectile!.Speed);
+        Assert.AreEqual(100f, thrown.Projectile.Radius);
+        Assert.IsTrue(thrown.Projectile.Penetrates);
     }
 }

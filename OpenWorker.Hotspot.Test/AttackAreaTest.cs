@@ -10,8 +10,8 @@ public sealed class AttackAreaTest
     private const float Height = 200f;
 
     // A narrow slice that starts behind the attacker and reaches 200 forward.
-    private static readonly AttackTrigger Arc = new(0, 0, 0, 0.25f, 40f, new Vector3(0, 250, 0), 100, 100, 450, 200, 200);
-    private static readonly AttackTrigger Box = new(AttackTrigger.BoxRange, 0, 0, 0f, 0f, new Vector3(0, -200, 0), 100, 400, 0, 200, 0);
+    private static readonly AttackTrigger Arc = new(0, 0, 0, 0, 0.25f, 40f, new Vector3(0, 250, 0), 100, 100, 450, 200, 200);
+    private static readonly AttackTrigger Box = new(0, AttackTrigger.BoxRange, 0, 0, 0f, 0f, new Vector3(0, -200, 0), 100, 400, 0, 200, 0);
 
     private static bool Touches(in AttackTrigger trigger, float yaw, float x, float y, float z = 0)
     {
