@@ -9,6 +9,8 @@ using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
+using OpenWorker.Hotspot.Modules.Persons.Requests;
+using OpenWorker.Hotspot.Modules.Persons.Responses;
 
 namespace OpenWorker.Channel;
 
@@ -31,7 +33,8 @@ public abstract class MovementServiceBase(World world) :
     IHotspotHandler<MovementLoopMotionEndRequest>,
     IHotspotHandler<MovementAttacedEndRequest>,
     IHotspotHandler<MovementGroundStatusRequest>,
-    IHotspotHandler<MovementJumpQuickDownRequest>
+    IHotspotHandler<MovementJumpQuickDownRequest>,
+    IHotspotHandler<PersonChangeMotionReqRequest>
 {
     /// <summary>
     /// Sends to everybody who can see the player, including the player.
@@ -39,6 +42,18 @@ public abstract class MovementServiceBase(World world) :
     protected abstract void Broadcast(Entity player, IResponseHotspotMessage message);
 
     protected abstract void BroadcastToOthers(Entity player, IResponseHotspotMessage message);
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeMotionReqRequest request)
+    {
+        BroadcastToOthers(context.Player, new PersonChangeMotionBroadcastResponse
+        {
+            Actor = world.Get<ActorComponent>(context.Player).Identifier,
+            Motion = request.Motion,
+            SubMotion = request.SubMotion
+        });
+
+        return ValueTask.CompletedTask;
+    }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementMoveRequest request)
     {
