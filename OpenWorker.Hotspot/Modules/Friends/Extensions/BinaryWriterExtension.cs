@@ -44,7 +44,7 @@ internal static class BinaryWriterExtension
         writer.Write(value.State);
         writer.Write(value.CommunityState);
 
-        Debug.Assert(value.Name.Length <= FriendModuleDefines.MaxNoteLength);
+        Debug.Assert(value.Note.Length <= FriendModuleDefines.MaxNoteLength);
         writer.WriteUtf16UnicodeString(value.Note);
 
         writer.Write(value.Channel);

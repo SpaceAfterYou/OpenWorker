@@ -71,7 +71,7 @@ public sealed class FriendService(World world, ReadOnlyCollection<DistrictRow> d
 
         var session = world.Get<ServerSessionComponent>(context.Player);
 
-        session.Send(new FriendFindResponse { Values = tempFriendList });
+        session.Send(new FriendFindResponse { Values = tempFriendList, IsLast = true });
 
         return ValueTask.CompletedTask;
     }

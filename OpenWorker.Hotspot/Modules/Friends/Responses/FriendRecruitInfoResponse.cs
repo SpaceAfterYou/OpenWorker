@@ -17,10 +17,17 @@ public readonly struct FriendRecruitInfoResponse : IResponseHotspotMessage
 
 #endregion Interface: IHotspotMessage
 
+#region Message: Body
+
+    public bool IsRegistered { get; init; }
+
+#endregion Message: Body
+
 #region Interface: IWritableData
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(IsRegistered);
     }
 
 #endregion Interface: IWritableData

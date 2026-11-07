@@ -24,6 +24,11 @@ public readonly struct FriendFindResponse : IResponseHotspotMessage
 
     public required IReadOnlyCollection<FriendFindEntry> Values { get; init; }
 
+    /// <summary>
+    /// A long result can come in several messages, and the client waits for the last one.
+    /// </summary>
+    public required bool IsLast { get; init; }
+
 #endregion Message: Body
 
 #region Interface: IWritableData
@@ -45,6 +50,8 @@ public readonly struct FriendFindResponse : IResponseHotspotMessage
             writer.Write(value.World);
             writer.Write(value.IsLoggedIn);
         }
+
+        writer.Write(IsLast);
     }
 
 #endregion Interface: IWritableData
