@@ -43,6 +43,8 @@ public sealed class MazeService(
 ) :
     IHotspotHandler<MazeCompleteRequest>,
     IHotspotHandler<SkillActiveSkillRequest>,
+    IHotspotHandler<SkillPassiveRequest>,
+    IHotspotHandler<SkillPassiveEndRequest>,
     IHotspotHandler<SkillSyncPositionRequest>,
     IHotspotHandler<SkillProjectileRequest>,
     IHotspotHandler<SkillWarpPositionRequest>,
@@ -163,6 +165,25 @@ public sealed class MazeService(
         if (Place.IsValid(request.Position))
         {
             ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Position = request.Position });
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request)
+    {
+        ecs.Get<ServerSessionComponent>(context.Player).Send(new SkillPassiveResponse());
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request)
+    {
+        var place = request.Skill.Position;
+
+        if (Place.IsValid(place.Position, place.Angle))
+        {
+            ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Position = place.Position, Rotation = place.Angle });
         }
 
         return ValueTask.CompletedTask;

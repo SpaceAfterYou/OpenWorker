@@ -1,3 +1,5 @@
+using OpenWorker.Channel;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Domain.Components;
@@ -176,18 +178,22 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
+        var place = request.Skill.Position;
 
-        session.Send(new SkillPassiveResponse
+        if (Place.IsValid(place.Position, place.Angle))
         {
-            Error = 0,
-        });
+            world.Set(context.Player, world.Get<WorldComponent>(context.Player) with { Position = place.Position, Rotation = place.Angle });
+        }
 
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request) =>
-        ValueTask.CompletedTask;
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request)
+    {
+        world.Get<ServerSessionComponent>(context.Player).Send(new SkillPassiveResponse());
+
+        return ValueTask.CompletedTask;
+    }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPreTargetListRequest request) =>
         ValueTask.CompletedTask;
