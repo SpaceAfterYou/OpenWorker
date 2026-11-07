@@ -48,6 +48,35 @@ public partial class LuaMaze(
     public MazeProgress Progress { get; } = new(batch, interactions);
 
     private bool Started { get; set; }
+    private bool Closed { get; set; }
+
+    /// <summary>
+    /// The player has left: timers must not touch an entity that is gone, or that belongs to someone else by now.
+    /// </summary>
+    public void Close()
+    {
+        Closed = true;
+
+        creatureManager.Close();
+    }
+
+    private async Task RunLaterAsync(float seconds, Func<ValueTask> action)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(seconds));
+
+            if (!Closed)
+            {
+                await action();
+            }
+        }
+
+        catch (Exception e)
+        {
+            Console.WriteLine($"[{nameof(RunLaterAsync)}]: {e}");
+        }
+    }
 
     /// <summary>
     /// True only the first time: the script must see a player enter once.
@@ -93,10 +122,7 @@ public partial class LuaMaze(
     {
         Console.WriteLine($"[{nameof(AddTimer)} start] {identifier} {time}");
         
-        _ = Task
-            .Delay(TimeSpan.FromSeconds(time))
-            .ContinueWith(_ => State.OnTimerComplete(identifier, this))
-            .ContinueWith(_ => Console.WriteLine($"[{nameof(AddTimer)} end] {identifier} {time}"));
+        _ = RunLaterAsync(time, () => State.OnTimerComplete(identifier, this));
     }
 
     [LuaMember]
@@ -104,10 +130,7 @@ public partial class LuaMaze(
     {
         Console.WriteLine($"[{nameof(AddTimerEx)} start] {function} {param1} {param2} {param3}");
         
-        _ = Task
-            .Delay(TimeSpan.FromSeconds(time))
-            .ContinueWith(_ => State.OnTimerExComplete(function, param1, param2, param3, this))
-            .ContinueWith(_ => Console.WriteLine($"[{nameof(AddTimerEx)} end] {function} {param1} {param2} {param3}"));
+        _ = RunLaterAsync(time, () => State.OnTimerExComplete(function, param1, param2, param3, this));
     }
 
     [LuaMember]

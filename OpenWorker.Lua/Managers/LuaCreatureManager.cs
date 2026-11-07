@@ -24,6 +24,7 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
     ];
 
     private int Offset { get; set; } = 1;
+    private bool Closed { get; set; }
     
     private List<Entity> Creatures { get; } = [];
 
@@ -59,12 +60,7 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
                 break;
                 
             case CreationConditionType.WaitSignal:
-                Task
-                    .Delay(TimeSpan.FromSeconds(spawn.WaitCreationDelayTime))
-                    .ContinueWith(x => session.Send(new WorldOtherInfosMonsterResponse
-                    {
-                        Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e)).ToArray()
-                    }));
+                _ = ShowLaterAsync(session, monsters, TimeSpan.FromSeconds(spawn.WaitCreationDelayTime));
                 break;
         }
 
@@ -104,11 +100,42 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
         return creature;
     }
 
-    public void Emplace(Entity creature)
+    /// <summary>
+    /// The maze is over: what it has spawned goes with it.
+    /// </summary>
+    public void Close()
     {
-        ecs.Set(creature, new ActorComponent { Identifier = Offset++, Type = ActorType.User });
+        Closed = true;
+
+        foreach (var creature in Creatures.Where(ecs.IsAlive))
+        {
+            ecs.Destroy(creature);
+        }
+
+        Creatures.Clear();
     }
-    
+
+    private async Task ShowLaterAsync(ServerSessionComponent session, Entity[] monsters, TimeSpan delay)
+    {
+        try
+        {
+            await Task.Delay(delay);
+
+            if (!Closed)
+            {
+                session.Send(new WorldOtherInfosMonsterResponse
+                {
+                    Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e)).ToArray()
+                });
+            }
+        }
+
+        catch (Exception e)
+        {
+            Console.WriteLine($"[{nameof(ShowLaterAsync)}]: {e}");
+        }
+    }
+
     public void MoveToPoint(int npc, int waypoint)
     {
         var creature = Creatures.FirstOrDefault(x => ecs.Get<CreatureComponent>(x) == npc);

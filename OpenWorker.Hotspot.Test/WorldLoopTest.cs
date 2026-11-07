@@ -124,7 +124,7 @@ public sealed class WorldLoopTest
             .SelectMany(project => Directory.EnumerateFiles(Path.Join(root.FullName, project), "*.cs", SearchOption.AllDirectories))
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") &&
                            !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
-            .Where(file => File.ReadAllText(file).Contains(".ConfigureAwait(false)"))
+            .Where(file => File.ReadAllText(file) is var text && (text.Contains(".ConfigureAwait(false)") || text.Contains(".ContinueWith(")))
             .ToArray();
 
         Assert.IsEmpty(found, string.Join(", ", found));

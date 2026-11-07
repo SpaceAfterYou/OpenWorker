@@ -159,10 +159,6 @@ public sealed class PersonService(
         await state
             .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
 
-        var creatureManager = new LuaCreatureManager(world, batch);
-
-        creatureManager.Emplace(context.Player);
-
         var maze = new LuaMaze(state, world, context.Player, new LuaCreatureManager(world, batch), buffManager, questManager, batch, interactionCollection);
 
         world.Add(context.Player, maze);

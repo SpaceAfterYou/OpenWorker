@@ -317,6 +317,11 @@ public sealed class WorldManager(
         return true;
     }
 
+    public async ValueTask<bool> IsDistrictRunningAsync(int location)
+    {
+        return await districts.AnyAsync(x => x.Location == location);
+    }
+
     public async Task<Tuple<DistrictCache, ChannelCache>> GetDistrictAsync(int location)
     {
         var availableDistricts = await districts

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Numerics;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Batch.Entities.Basic;
@@ -318,25 +317,34 @@ public sealed class MazeService(
         var claims = ecs.Get<ClaimsComponent>(context.Player);
         var world = ecs.Get<WorldComponent>(context.Player);
 
-        if (!batches.TryGetAndCache(world.Location, out var mazeBatch))
+        var session = ecs.Get<ServerSessionComponent>(context.Player);
+
+        if (!batches.TryGetAndCache(world.Location, out var mazeBatch) ||
+            mazeBatch.EventBox.MazeEscapes.FirstOrDefault() is not { } escape ||
+            !await worldManager.IsDistrictRunningAsync(escape.Field))
         {
+            session.Send(new WorldEnterResponse { Map = EnterMapResultValue.Error });
             return;
         }
 
-        // var escape = mazeBatch.EventBox.MazeEscapes.First(x => x.Id == /* id of escape box for back to district */ 1001);
-        var escape = mazeBatch.EventBox.MazeEscapes[0];
-
-        var (districtCache, channelCache) = await worldManager
-            .GetDistrictAsync(escape.Field);
-
-        Debug.Assert(districtCache.Location == escape.Field);
+        var (districtCache, channelCache) = await worldManager.GetDistrictAsync(escape.Field);
 
         if (!batches.TryGetAndCache(districtCache.Location, out var districtBatch))
         {
+            session.Send(new WorldEnterResponse { Map = EnterMapResultValue.Error });
             return;
         }
 
-        var exit = districtBatch.EventBox.PortalExits.First(x => x.Id == escape.EventObject);
+        // A map leads either to a portal exit or to a start point of the district.
+        BasicEntity? exit = districtBatch.EventBox.PortalExits.FirstOrDefault(x => x.Id == escape.EventObject);
+        exit ??= districtBatch.EventBox.StartEvents.FirstOrDefault(x => x.Id == escape.EventObject);
+        exit ??= districtBatch.EventBox.StartEvents.FirstOrDefault(x => x.Id == districtCache.Location * 100 + 1);
+
+        if (exit is null)
+        {
+            session.Send(new WorldEnterResponse { Map = EnterMapResultValue.Error });
+            return;
+        }
 
         var map = new MapValue
         {
@@ -387,8 +395,6 @@ public sealed class MazeService(
 
         await districtReserves
             .InsertAsync(cache, WorldManager.ReservationLifetime);
-
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
 
         session.Send(new WorldEnterResponse { Map = enter });
     }

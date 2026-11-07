@@ -44,6 +44,7 @@ await Host
 
         services.AddSingleton<NpcManager>();
         services.AddSingleton<PersonRegistry>();
+        services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
         services.AddSingleton<ISessionCloseHandler, PersonPlaceStore>();
 
         services.AddHotspot(context, EntityComponentService.District);
