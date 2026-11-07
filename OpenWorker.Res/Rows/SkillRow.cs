@@ -43,11 +43,11 @@ public readonly struct SkillRow(BinaryReader reader)
     public byte Field32 { get; } = reader.ReadByte();
     public byte ControlType { get; } = reader.ReadByte();
     public byte Field34 { get; } = reader.ReadByte();
-    public byte Field35 { get; } = reader.ReadByte();
-    public int Field36 { get; } = reader.ReadInt32();
-    public int Field37 { get; } = reader.ReadInt32();
-    public int Field38 { get; } = reader.ReadInt32();
-    public int Field39 { get; } = reader.ReadInt32();
+    public byte ChargeCount { get; } = reader.ReadByte();
+    public int ChargeTime1 { get; } = reader.ReadInt32();
+    public int ChargeTime2 { get; } = reader.ReadInt32();
+    public int ChargeTime3 { get; } = reader.ReadInt32();
+    public int ChargeTime4 { get; } = reader.ReadInt32();
     public int Field40 { get; } = reader.ReadInt32();
     public int Field41 { get; } = reader.ReadInt32();
     public int Field42 { get; } = reader.ReadInt32();
@@ -73,7 +73,7 @@ public readonly struct SkillRow(BinaryReader reader)
     public string AnimationExtra { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public string AnimationEnd { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public byte Field64 { get; } = reader.ReadByte();
-    public int Field65 { get; } = reader.ReadInt32();
+    public int LoopTime { get; } = reader.ReadInt32();
     public short Field66 { get; } = reader.ReadInt16();
     public byte Field67 { get; } = reader.ReadByte();
     public byte Field68 { get; } = reader.ReadByte();

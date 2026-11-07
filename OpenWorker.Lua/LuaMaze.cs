@@ -147,6 +147,9 @@ public partial class LuaMaze(
     private int SkillGeneration { get; set; }
     private int CurrentSkill { get; set; }
     private TrapSite? MouseTrap { get; set; }
+    private SkillPlayback? Playback { get; set; }
+    private CancellationTokenSource? SkillWake { get; set; }
+    private Queue<bool> PressedKeys { get; } = [];
     private uint ProjectileSession { get; set; }
     private bool Started { get; set; }
     private bool Closed { get; set; }
@@ -221,18 +224,107 @@ public partial class LuaMaze(
 
         // A trap follows the cursor only while its skill is being played.
         MouseTrap = null;
+        Playback = null;
+        SkillWake?.Cancel();
 
-        foreach (var hit in actions.GetHits(skill, hero))
+        if (actions.GetAnimations(skill, hero) is not { } animations)
         {
-            _ = RunLaterAsync(hit.Time, () =>
+            return;
+        }
+
+        var playback = new SkillPlayback(animations);
+
+        Playback = playback;
+        PressedKeys.Clear();
+
+        _ = PlayAsync(skill, playback, position, generation, Stopwatch.GetTimestamp());
+    }
+
+    /// <summary>
+    /// The player holds the attack key or lets it go. What it means depends on the skill that is being played.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void PressKey(bool pressed)
+    {
+        if (Playback is { IsDone: false })
+        {
+            PressedKeys.Enqueue(pressed);
+            SkillWake?.Cancel();
+        }
+    }
+
+    /// <summary>
+    /// Follows a skill through its steps: each attack is judged at its moment, and the key can cut a step short.
+    /// </summary>
+    private async Task PlayAsync(int skill, SkillPlayback playback, SkillPositionValue position, int generation, long began)
+    {
+        try
+        {
+            while (!Closed && generation == SkillGeneration && playback.NextTime is { } next)
             {
-                if (generation != SkillGeneration)
+                var wait = next - (float)Stopwatch.GetElapsedTime(began).TotalSeconds;
+
+                if (wait > 0f && PressedKeys.Count == 0)
                 {
-                    return ValueTask.CompletedTask;
+                    using var wake = new CancellationTokenSource();
+
+                    SkillWake = wake;
+
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(wait), wake.Token);
+                    }
+
+                    catch (OperationCanceledException)
+                    {
+                    }
+
+                    finally
+                    {
+                        // The next skill may have taken its place already.
+                        if (ReferenceEquals(SkillWake, wake))
+                        {
+                            SkillWake = null;
+                        }
+                    }
+
+                    if (Closed || generation != SkillGeneration)
+                    {
+                        return;
+                    }
                 }
 
-                return hit.Trigger.IsTrap ? PlaceTrapAsync(skill, hit.Trigger, position) : ApplyHitAsync(skill, hit, position);
-            });
+                var now = (float)Stopwatch.GetElapsedTime(began).TotalSeconds;
+
+                foreach (var hit in playback.Advance(now))
+                {
+                    _ = RunLaterAsync(0f, () =>
+                    {
+                        if (generation != SkillGeneration)
+                        {
+                            return ValueTask.CompletedTask;
+                        }
+
+                        return hit.Trigger.IsTrap ? PlaceTrapAsync(skill, hit.Trigger, position) : ApplyHitAsync(skill, hit, position);
+                    });
+                }
+
+                while (PressedKeys.TryDequeue(out var pressed))
+                {
+                    playback.Press(pressed, now);
+                }
+            }
+
+            // The skill is over, and a trap that followed the cursor stays where it is.
+            if (generation == SkillGeneration)
+            {
+                MouseTrap = null;
+            }
+        }
+
+        catch (Exception e)
+        {
+            Console.WriteLine($"[{nameof(PlayAsync)}]: {e}");
         }
     }
 

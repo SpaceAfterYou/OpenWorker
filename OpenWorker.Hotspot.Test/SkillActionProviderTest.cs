@@ -82,4 +82,26 @@ public sealed class SkillActionProviderTest
         Assert.AreEqual(350f, provider.GetMaxRange(SwordSkill));
         Assert.AreEqual(0f, provider.GetMaxRange(-1));
     }
+
+    [TestMethod]
+    public void SkillPlaysTheStepsTheTableNames()
+    {
+        var provider = Open();
+        var viper = provider.GetAnimations(MouseTrapSkill, Hero.Erwin)!;
+
+        Assert.IsNotNull(viper.Start);
+        Assert.IsNotNull(viper.Loop);
+        Assert.IsNotNull(viper.Extra);
+        Assert.IsNotNull(viper.End);
+        Assert.AreEqual(8f, viper.LoopTime, "the table gives milliseconds");
+        Assert.IsFalse(viper.Start.Repeats, "a start plays once");
+        Assert.IsTrue(viper.Extra.Repeats, "a wait goes on until something ends it");
+
+        var sword = provider.GetAnimations(SwordSkill, Hero.Haru)!;
+
+        Assert.IsNull(sword.Start);
+        Assert.IsNull(sword.Loop);
+        Assert.IsNotNull(sword.End);
+        Assert.IsNull(provider.GetAnimations(-1, Hero.Haru));
+    }
 }

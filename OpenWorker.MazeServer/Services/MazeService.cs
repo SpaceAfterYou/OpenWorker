@@ -53,6 +53,7 @@ public sealed class MazeService(
     IHotspotHandler<SkillSyncPositionRequest>,
     IHotspotHandler<SkillProjectileRequest>,
     IHotspotHandler<SkillChainRequest>,
+    IHotspotHandler<SkillKeypressRequest>,
     IHotspotHandler<SkillTrapPosUpdateRequest>,
     IHotspotHandler<SkillWarpPositionRequest>,
     IHotspotHandler<WorldWarpRequest>,
@@ -232,6 +233,26 @@ public sealed class MazeService(
         {
             ecs.Get<LuaMaze>(context.Player).FireProjectile(request);
         }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player holds the key of the skill or lets it go. Nobody else shares this maze to be told about it.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillKeypressRequest request)
+    {
+        if (!ecs.Has<LuaMaze>(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        if (Place.IsValid(Vector3.Zero, request.Rotation))
+        {
+            ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Rotation = request.Rotation });
+        }
+
+        ecs.Get<LuaMaze>(context.Player).PressKey(request.IsKeyPressed);
 
         return ValueTask.CompletedTask;
     }

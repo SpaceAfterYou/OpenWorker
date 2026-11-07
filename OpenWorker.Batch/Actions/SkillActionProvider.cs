@@ -19,11 +19,20 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     private const string HeroFilePrefix = "PC_";
 
     /// <summary>
+    /// The table says this when a skill has no animation for a step.
+    /// </summary>
+    private const string NoAnimation = "0";
+
+    /// <summary>
     /// Skills that depend on the direction of movement have one animation for each. Without input a character goes forward.
     /// </summary>
     private const string ForwardSuffix = "_F";
 
     private const byte FlownByClient = 2;
+
+    private const byte Charging = 2;
+    private const byte ChargingToTheEnd = 5;
+    private const byte ChargingBothSides = 8;
 
     /// <summary>
     /// The trap this skill places follows the cursor of the player until the skill is over.
@@ -116,6 +125,38 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     public float GetAnimationLength(string actionFile, string animation)
     {
         return GetFile(actionFile) is { } file && Find(file, animation) is { } found ? found.Length : 0f;
+    }
+
+    /// <summary>
+    /// What a skill plays, step by step, and how its charge grows. Null when nothing is known about the skill.
+    /// </summary>
+    public SkillAnimations? GetAnimations(int skill, Hero hero)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(GetHeroFileName(hero)) is not { } file)
+        {
+            return null;
+        }
+
+        var charging = row.ControlType is Charging or ChargingToTheEnd;
+        var steps = charging ? ChargeSteps(row) : [];
+
+        return new SkillAnimations(
+            Find(file, row.AnimationStart),
+            Find(file, row.AnimationLoop),
+            Find(file, row.AnimationExtra),
+            Find(file, row.AnimationEnd),
+            row.LoopTime / 1000f,
+            charging || row.ControlType == ChargingBothSides,
+            steps,
+            Enumerable.Range(1, steps.Count).Select(level => Find(file, $"{row.AnimationEnd}_{level:00}", false)).ToArray());
+    }
+
+    private static List<float> ChargeSteps(SkillRow row)
+    {
+        return new[] { row.ChargeTime1, row.ChargeTime2, row.ChargeTime3, row.ChargeTime4 }
+            .Take(row.ChargeCount)
+            .Select(e => e / 1000f)
+            .ToList();
     }
 
     /// <summary>
@@ -215,14 +256,14 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
         return hits.ToArray();
     }
 
-    private static ActionAnimation? Find(ActionFile file, string name)
+    private static ActionAnimation? Find(ActionFile file, string name, bool forward = true)
     {
-        if (string.IsNullOrEmpty(name))
+        if (string.IsNullOrEmpty(name) || name == NoAnimation)
         {
             return null;
         }
 
-        return file.Animations.GetValueOrDefault(name) ?? file.Animations.GetValueOrDefault(name + ForwardSuffix);
+        return file.Animations.GetValueOrDefault(name) ?? (forward ? file.Animations.GetValueOrDefault(name + ForwardSuffix) : null);
     }
 
     private static string GetHeroFileName(Hero hero)
