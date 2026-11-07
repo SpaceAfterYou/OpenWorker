@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
@@ -284,7 +284,7 @@ public partial class LuaMaze(
         var session = player.Get<ServerSessionComponent>();
         var attacker = Ecs.Get<WorldComponent>(player);
 
-        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
+        var attackerStats = combat.GetPlayer(Ecs, player);
         var skillDamage = combat.GetSkill(skill);
         var hits = targets.Select(target => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate, trigger.ReactionType)).ToArray();
 

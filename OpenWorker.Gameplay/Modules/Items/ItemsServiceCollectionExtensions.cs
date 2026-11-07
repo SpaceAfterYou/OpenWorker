@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Hotspot;
 
 namespace OpenWorker.Gameplay.Modules.Items;
@@ -14,6 +15,7 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<DatabaseItemSerials>();
         services.AddSingleton<IItemSerials>(provider => provider.GetRequiredService<DatabaseItemSerials>());
         services.AddSingleton<InventoryFactory>();
+        services.AddSingleton<PlayerStatsService>();
         services.AddSingleton<InventoryService>();
         services.AddSingleton<ItemUseService>();
         services.AddSingleton<InventoryPersistence>();

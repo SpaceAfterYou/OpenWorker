@@ -41,6 +41,7 @@ using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Persistence;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
@@ -63,6 +64,7 @@ public sealed class PersonService(
     IConfiguration configuration,
     PersonRegistry registry,
     InventoryPersistence inventories,
+    PlayerStatsService stats,
     LeaveManager leaving,
     QuestManager questManager,
     ReadOnlyCollection<CharacterInfoRow> characterInfo
@@ -182,7 +184,7 @@ public sealed class PersonService(
         var actor = ecs.Get<ActorComponent>(context.Player);
 
         session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.Player).Collection });
-        session.Send(new PersonUpdateOriginStatListResponse { Actor = actor });
+        stats.Send(context.Player);
         await helpers.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await boosters.EnterAsync(context.Player, person.Id, BoosterConsumeArea.District, context.CancellationToken);
 

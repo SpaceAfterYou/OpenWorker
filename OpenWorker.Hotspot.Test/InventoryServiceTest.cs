@@ -3,6 +3,7 @@ using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons.Components;
@@ -367,5 +368,39 @@ public sealed class InventoryServiceTest
         Assert.IsFalse(f.Service.TryAddGold(f.Player, -101));
         Assert.AreEqual(100, f.Service.Gold(f.Player));
         Assert.IsTrue(f.Service.TryAddGold(f.Player, -100));
+    }
+
+    [TestMethod]
+    public void WornGearAddsItsAttackToTheStats()
+    {
+        using var f = new Fixture();
+
+        var before = EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru);
+
+        f.Service.TryGive(f.Player, SecondWeapon, 1);
+
+        var slot = f.Inventory.Find(StorageGroup.Common)!.Slots.OfType<ItemInstance>().Single().Slot;
+
+        f.Service.Move(
+            f.Player,
+            new MoveItemValue { Storage = StorageGroup.Common, Item = SecondWeapon, Index = slot },
+            new MoveItemValue { Storage = StorageGroup.AbilityEquip, Item = Weapon, Index = 0 });
+
+        var after = EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru);
+
+        Assert.AreEqual(1000f, after.PhysicalAttack - before.PhysicalAttack);
+        Assert.AreEqual(0f, after.MagicalAttack - before.MagicalAttack);
+    }
+
+    [TestMethod]
+    public void GearInTheBagAddsNothing()
+    {
+        using var f = new Fixture();
+
+        var before = EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru);
+
+        f.Service.TryGive(f.Player, SecondWeapon, 1);
+
+        Assert.AreEqual(before, EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru));
     }
 }

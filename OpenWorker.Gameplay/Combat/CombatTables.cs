@@ -1,5 +1,9 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using Arch.Core;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Combat;
@@ -43,7 +47,8 @@ public sealed class CombatTables(
     ReadOnlyCollection<MonsterRow> monsters,
     ReadOnlyCollection<StatusRow> statuses,
     ReadOnlyCollection<SkillRow> skills,
-    ReadOnlyCollection<CharacterInfoRow> characters)
+    ReadOnlyCollection<CharacterInfoRow> characters,
+    ItemCatalog? items = null)
 {
     private const int HeroRowStep = 1000;
 
@@ -96,6 +101,38 @@ public sealed class CombatTables(
         People.Add((hero, level), result);
 
         return result;
+    }
+
+    /// <summary>
+    /// A class at a level with the stats that its gear adds.
+    /// </summary>
+    public CombatStats GetPerson(Hero hero, byte level, in StatBonuses gear)
+    {
+        if (gear == default)
+        {
+            return GetPerson(hero, level);
+        }
+
+        var character = characters.FirstOrDefault(e => e.Id == (short)((int)hero * HeroRowStep));
+
+        return Statuses.TryGetValue((short)character.Character_Status, out var status)
+            ? CombatStatCalculator.Calculate(status, level, character.Character_Status_Type, gear)
+            : new CombatStats { Level = level };
+    }
+
+    /// <summary>
+    /// The stats of a player as they are now: the level it has reached and what it wears.
+    /// </summary>
+    public CombatStats GetPlayer(World world, Entity player)
+    {
+        var hero = world.Get<PersonInfoComponent>(player).Hero;
+        var level = world.Get<RankComponent>(player).Level;
+
+        var gear = items is null || !world.Has<InventoryComponent>(player)
+            ? default
+            : EquipmentStats.Calculate(world.Get<InventoryComponent>(player).Value, items, hero);
+
+        return GetPerson(hero, level, gear);
     }
 
     public SkillDamage GetSkill(int identifier)

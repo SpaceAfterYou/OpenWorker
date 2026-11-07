@@ -1,4 +1,5 @@
 ﻿using OpenWorker.Channel;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
@@ -34,6 +35,7 @@ await Host
         services.AddSingleton<QuestManager>();
         services.AddPersistence();
         services.AddItems();
+        services.AddSingleton<CombatTables>();
         services.AddGameplay();
         services.AddMiscGameplay();
 

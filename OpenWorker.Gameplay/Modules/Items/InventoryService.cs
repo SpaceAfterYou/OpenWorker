@@ -1,5 +1,6 @@
 using Arch.Core;
 using OpenWorker.Domain.Components;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
@@ -28,7 +29,7 @@ public readonly record struct StorageChange(StorageGroup Storage, short Slot);
 /// (pickup, rewards, shops, post, trade): it keeps the stacks right, tells the client and notes what to save.
 /// </summary>
 /// <remarks>Runs on the logic thread of the server, like everything that touches the world.</remarks>
-public sealed class InventoryService(World world, ItemCatalog catalog, IItemSerials serials)
+public sealed class InventoryService(World world, ItemCatalog catalog, IItemSerials serials, PlayerStatsService? stats = null)
 {
     /// <summary>The client has nothing more specific for a refused item request.</summary>
     public const ushort Refused = 52011;
@@ -366,6 +367,12 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
         if (other is not null)
         {
             inventory.Place(src.Storage, src.Index, other);
+        }
+
+        // What is worn decides the stats.
+        if (ItemCatalog.IsEquipment(src.Storage) || ItemCatalog.IsEquipment(dest.Storage))
+        {
+            stats?.Send(player);
         }
 
         Send(player, new ItemMoveResponse
