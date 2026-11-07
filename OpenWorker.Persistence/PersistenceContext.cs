@@ -9,12 +9,18 @@ public sealed class PersistenceContext(DbContextOptions<PersistenceContext> opti
     public DbSet<AccountPersistent> Accounts { get; init; }
     public DbSet<GatePersistent> Gates { get; init; }
     public DbSet<LeaguePersistent> Leagues { get; init; }
+    public DbSet<ItemPersistent> Items { get; init; }
     public DbSet<PersonPersistent> Persons { get; init; }
     public DbSet<PersonStatePersistent> PersonStates { get; init; }
     public DbSet<ServerContentPersistent> ServerContents { get; init; }
 
+    public const string ItemSerialSequence = "ItemSerial";
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasSequence<long>(ItemSerialSequence)
+            .StartsAt(1000);
+
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }

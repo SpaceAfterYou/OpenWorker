@@ -32,6 +32,10 @@ public sealed class PersonConfiguration : IEntityTypeConfiguration<PersonPersist
             .IsUnicode();
 
         builder
+            .Property(x => x.Level)
+            .HasDefaultValue((byte)1);
+
+        builder
             .HasOne(x => x.League)
             .WithMany(x => x.MemberList);
     }

@@ -46,7 +46,22 @@ public sealed class PersonPersistent : BasicPersistent
     public required short FatiguePointCommon { get; set; }
     public short FatiguePointBonus { get; set; }
     
-    // public List<ItemPersistent> Items { get; init; } = [];
+    public byte Level { get; set; } = 1;
+    public int Experience { get; set; }
+
+    public long Gold { get; set; }
+    public long BattlePoint { get; set; }
+    public long Ether { get; set; }
+
+    /// <summary>
+    /// How far each storage has been extended, indexed by the storage group.
+    /// </summary>
+    public byte[] StorageGrades { get; set; } = [];
+
+    public int[] QuickSlotCards { get; set; } = [];
+    public int[] QuickSlotItems { get; set; } = [];
+
+    public List<ItemPersistent> Items { get; init; } = [];
     
     public required AccountPersistent Account { get; set; }
     public required GatePersistent Gate { get; set; }
