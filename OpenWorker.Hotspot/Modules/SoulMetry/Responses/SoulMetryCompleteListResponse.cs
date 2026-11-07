@@ -17,10 +17,25 @@ public readonly struct SoulMetryCompleteListResponse : IResponseHotspotMessage
 
 #endregion Interface: IHotspotMessage
 
+#region Message: Body
+
+    /// <summary>
+    /// A bit for every finished soul metry, <see cref="SoulMetryModuleDefines.CompleteListByteLength"/> bytes.
+    /// </summary>
+    public required byte[] Complete { get; init; }
+
+#endregion Message: Body
+
 #region Interface: IWritableData
 
     public void Write(BinaryWriter writer)
     {
+        if (Complete.Length != SoulMetryModuleDefines.CompleteListByteLength)
+        {
+            throw new InvalidOperationException("The list of finished soul metries has a fixed length.");
+        }
+
+        writer.Write(Complete);
     }
 
 #endregion Interface: IWritableData

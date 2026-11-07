@@ -36,9 +36,8 @@ using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
-using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
+using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Domain.Enums;
-using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
@@ -48,7 +47,7 @@ namespace OpenWorker.DistrictServer.Services;
 public sealed class PersonService(
     World ecs,
     BatchManager manager,
-    ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
+    SoulMetryManager soulMetry,
     IRedisCollection<SessionCache> sessions,
     IRedisCollection<DistrictReserveCache> districtReserves,
     SessionLeaseManager leases,
@@ -173,13 +172,13 @@ public sealed class PersonService(
 
         session.Send(PersonProfileServiceBase.CreateCommunityResponse(ecs.Get<CommunityComponent>(context.Player)));
 
-        ref readonly var actor = ref ecs.Get<ActorComponent>(context.Player);
+        var actor = ecs.Get<ActorComponent>(context.Player);
 
         session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.Player).Collection });
         session.Send(new PersonUpdateOriginStatListResponse { Actor = actor });
         // session.Send(new BoosterLoadReply([], BoosterConsumeArea.None));
 
-        SendSoulMetryList(session);
+        await soulMetry.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         questManager.SendQuestEpisodeList(context.Player);
 
@@ -319,15 +318,6 @@ public sealed class PersonService(
     {
         await leaving
             .LeaveAsync(context.Player, request.Destination);
-    }
-
-    private void SendSoulMetryList(ServerSessionComponent session)
-    {
-        var list = soulMetryCollection
-            .Select(e => new SoulMetryValue(e.Id, 0))
-            .ToArray();
-
-        session.Send(new SoulMetryListResponse { Values = list });
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)

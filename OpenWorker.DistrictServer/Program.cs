@@ -8,6 +8,7 @@ using OpenWorker.DistrictServer.Server.Services;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
+using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Res.Extensions;
@@ -37,6 +38,7 @@ await Host
         services.AddSingleton<QuestManager>();
         services.AddPersistence();
         services.AddGameplay();
+        services.AddMiscGameplay();
 
         services.AddCommandManager();
 

@@ -10,6 +10,7 @@ public sealed class PersistenceContext(DbContextOptions<PersistenceContext> opti
     public DbSet<GatePersistent> Gates { get; init; }
     public DbSet<LeaguePersistent> Leagues { get; init; }
     public DbSet<PersonPersistent> Persons { get; init; }
+    public DbSet<PersonStatePersistent> PersonStates { get; init; }
     public DbSet<ServerContentPersistent> ServerContents { get; init; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

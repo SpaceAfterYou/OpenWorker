@@ -1,0 +1,26 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Gameplay.Modules.Rewards;
+using OpenWorker.Gameplay.Modules.SoulMetry;
+using OpenWorker.Gameplay.Modules.State;
+
+namespace OpenWorker.Gameplay.Extensions;
+
+public static class MiscGameplayExtensions
+{
+    /// <summary>
+    /// The services of the features that keep their progress in <see cref="PersonStateStore"/>. Whoever owns the
+    /// inventory registers an <see cref="IRewardGranter"/> before this call to give real items.
+    /// </summary>
+    public static IServiceCollection AddMiscGameplay(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IRewardGranter, NoRewardGranter>();
+
+        services.AddSingleton<PersonStateStore>();
+
+        services.AddSingleton<SoulMetryCatalog>();
+        services.AddSingleton<SoulMetryManager>();
+
+        return services;
+    }
+}
