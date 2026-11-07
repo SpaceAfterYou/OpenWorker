@@ -41,7 +41,11 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch, CombatTables
 
     public void Create(Entity player, int box)
     {
-        var spawn = batch.EventBox.MonsterSpawns.First(x => x.Id == box);
+        // Maps can point at boxes they no longer have, and a client walks through such a trigger like any other.
+        if (batch.EventBox.MonsterSpawns.FirstOrDefault(x => x.Id == box) is not { } spawn)
+        {
+            return;
+        }
 
         SpawnedBoxes.Add(box);
 
