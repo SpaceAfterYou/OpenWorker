@@ -110,7 +110,11 @@ public sealed class MazeService(
             return;
         }
 
+        maze.HideUnfoundSoulObjects();
+
         SendProgress(context.Player, maze);
+
+        maze.RegisterCubes();
 
         if (FindSector(maze, ecs.Get<WorldComponent>(context.Player).Position) is { } sector)
         {
@@ -467,6 +471,8 @@ public sealed class MazeService(
             Result = 0,
             Interaction = maze.Progress.UseInteraction(interaction)
         });
+
+        await maze.CollectSoulObjectAsync(request.Box);
 
         await maze.State.OnInteractionObject(request.Box, maze);
     }

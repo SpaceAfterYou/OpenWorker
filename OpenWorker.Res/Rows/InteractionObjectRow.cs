@@ -12,7 +12,7 @@ public readonly struct InteractionObjectRow(BinaryReader reader)
     public byte Field1 { get; } = reader.ReadByte();
     public string Field2 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public byte Field3 { get; } = reader.ReadByte();
-    public int Field4 { get; } = reader.ReadInt32();
+    public int ActionDelay { get; } = reader.ReadInt32();
     public byte Field5 { get; } = reader.ReadByte();
     public byte Field6 { get; } = reader.ReadByte();
     public byte Field7 { get; } = reader.ReadByte();

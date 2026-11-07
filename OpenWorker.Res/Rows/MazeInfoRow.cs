@@ -9,7 +9,7 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly struct MazeInfoRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public byte Field1 { get; } = reader.ReadByte();
+    public byte Type { get; } = reader.ReadByte();
     public short Group { get; } = reader.ReadInt16();
     public byte Field3 { get; } = reader.ReadByte();
     public byte Field4 { get; } = reader.ReadByte();

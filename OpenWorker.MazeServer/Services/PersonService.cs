@@ -56,6 +56,7 @@ public sealed class PersonService(
     SkillActionProvider skillActions,
     CombatTables combatTables,
     MiscStateLoader miscState,
+    MazeReporter reports,
     CreatureServices creatureServices,
     ILogger<LuaCreatureManager> creatureLogger,
     IConfiguration configuration
@@ -180,7 +181,7 @@ public sealed class PersonService(
         }
 
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo);
+        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo, reports);
 
         world.Add(context.Player, maze);
 

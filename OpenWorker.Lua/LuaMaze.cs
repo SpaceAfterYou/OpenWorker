@@ -54,7 +54,8 @@ public partial class LuaMaze(
     IReadOnlyCollection<InteractionObjectRow> interactions,
     SkillActionProvider actions,
     CombatTables combat,
-    MazeInfoRow info
+    MazeInfoRow info,
+    MazeReporter reports
 ) : ILuaUserData
 {
     public LuaState State { get; } = state;
@@ -124,6 +125,9 @@ public partial class LuaMaze(
         }
     }
 
+    // The boxes of the cubes that are taken by holding the click have this in the name of their object.
+    private const string CubeKey = "VaccumCube";
+
     // A monster that counts hits takes them no faster than this.
     private const long CountedHitMilliseconds = 500;
 
@@ -152,6 +156,7 @@ public partial class LuaMaze(
     private Queue<bool> PressedKeys { get; } = [];
     private uint ProjectileSession { get; set; }
     private bool Started { get; set; }
+    private long StartedAt { get; set; }
     private bool Closed { get; set; }
     private bool TimersRunning { get; set; }
     private MazeTimers? _timers;
@@ -648,21 +653,26 @@ public partial class LuaMaze(
 
         // Another hit can land while a script runs, so the dead leave the fight before the first script starts.
         var dead = targets
-            .Where(e => Ecs.Get<CreatureComponent>(e).Health == 0)
-            .Select(target => RemoveDead(session, target))
+            .Select((target, i) => (Target: target, Hit: hits[i]))
+            .Where(e => Ecs.Get<CreatureComponent>(e.Target).Health == 0)
+            .Select(e => (Removed: RemoveDead(session, e.Target), e.Hit))
             .ToArray();
 
-        foreach (var (identifier, place) in dead)
+        var kind = actions.GetPassiveType(skill);
+
+        foreach (var ((identifier, place), hit) in dead)
         {
             if (Closed)
             {
                 return;
             }
 
+            await reports.MonsterKilledAsync(player, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)DamageFlags.Critical) != 0));
+
             await State.OnDie(identifier, place.SpawnBox, this);
         }
 
-        foreach (var sector in dead.Select(e => e.Place.Sector).Distinct())
+        foreach (var sector in dead.Select(e => e.Removed.Place.Sector).Distinct())
         {
             if (Closed)
             {
@@ -877,6 +887,8 @@ public partial class LuaMaze(
 
         SendClearInfo();
 
+        await reports.MazeClearedAsync(player, info, (int)Stopwatch.GetElapsedTime(StartedAt).TotalSeconds, (int)Ecs.Get<PersonInfoComponent>(player).Hero);
+
         await DestroyAsync(creatureManager.FindMonsters((_, _) => true).Where(e => Ecs.Get<NonPlayableCreatureComponent>(e).Sector == last.Id).ToArray(), false);
     }
 
@@ -909,8 +921,54 @@ public partial class LuaMaze(
         }
 
         Started = true;
+        StartedAt = Stopwatch.GetTimestamp();
 
         return true;
+    }
+
+    /// <summary>
+    /// The objects of soul metries stand in the maze all the time, but only the ones the person is to find this
+    /// time are shown. This is called before the client is told what the maze holds.
+    /// </summary>
+    public void HideUnfoundSoulObjects()
+    {
+        var objects = reports.GetSoulObjects(info.Id);
+
+        if (objects.Count == 0)
+        {
+            return;
+        }
+
+        var shown = reports.GetSoulObjectsToShow(player, info.Id);
+
+        foreach (var box in Batch.EventBox.InterActions.Where(e => objects.Contains(e.Interaction) && !shown.Contains(e.Interaction)))
+        {
+            Progress.HideInteraction(box.Id);
+        }
+    }
+
+    /// <summary>
+    /// The person clicked an object of the maze: if it is one of a soul metry, the soul metry finds it.
+    /// </summary>
+    public async ValueTask CollectSoulObjectAsync(int box)
+    {
+        if (Batch.EventBox.InterActions.FirstOrDefault(e => e.Id == box) is { } found)
+        {
+            await reports.CollectSoulObjectAsync(player, info.Id, found.Interaction);
+        }
+    }
+
+    /// <summary>
+    /// The cubes of the maze, which the person takes by holding the click for the time the table gives the object.
+    /// </summary>
+    public void RegisterCubes()
+    {
+        foreach (var box in Batch.EventBox.InterActions.Where(e => e.ObjectKey.Contains(CubeKey, StringComparison.OrdinalIgnoreCase)))
+        {
+            var row = interactions.FirstOrDefault(e => e.Id == box.Interaction);
+
+            reports.RegisterCube(player, box.Id, box.Interaction, TimeSpan.FromMilliseconds(row.ActionDelay));
+        }
     }
     
     [LuaMember]

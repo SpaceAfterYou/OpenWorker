@@ -58,6 +58,7 @@ await Host
         services.AddSingleton<QuestManager>();
         services.AddPersistence();
         services.AddMiscGameplay();
+        services.AddSingleton<MazeReporter>();
 
         services.AddChannels();
 

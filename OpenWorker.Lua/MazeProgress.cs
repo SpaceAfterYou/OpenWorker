@@ -76,6 +76,17 @@ public sealed class MazeProgress(VBatchFile batch, IReadOnlyCollection<Interacti
         return Interactions.TryGetValue(box, out value);
     }
 
+    /// <summary>
+    /// The object is not there for the person: it is not shown and cannot be used.
+    /// </summary>
+    public void HideInteraction(int box)
+    {
+        if (Interactions.TryGetValue(box, out var value))
+        {
+            Interactions[box] = value with { Show = false, Enable = false };
+        }
+    }
+
     public MazeInteractionValue? SetInteraction(int box, bool enable)
     {
         if (!Interactions.TryGetValue(box, out var value))

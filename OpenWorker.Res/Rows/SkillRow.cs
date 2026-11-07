@@ -25,7 +25,7 @@ public readonly struct SkillRow(BinaryReader reader)
     public int Field14 { get; } = reader.ReadInt32();
     public byte Field15 { get; } = reader.ReadByte();
     public byte Field16 { get; } = reader.ReadByte();
-    public byte Field17 { get; } = reader.ReadByte();
+    public byte PassiveType { get; } = reader.ReadByte();
     public byte Field18 { get; } = reader.ReadByte();
     public short Field19 { get; } = reader.ReadInt16();
     public float BasicDamage { get; } = reader.ReadSingle();

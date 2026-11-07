@@ -196,6 +196,15 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
         return Rows.TryGetValue(skill, out var row) ? row.RangeMax : 0f;
     }
 
+    /// <summary>
+    /// What kind of attack the table says a skill is: 1 for the plain attacks, 7 for the ones from the ground, 3 for
+    /// a thrown weapon, 0 and 18 for the skills proper. Zero when the table does not know the skill.
+    /// </summary>
+    public byte GetPassiveType(int skill)
+    {
+        return Rows.TryGetValue(skill, out var row) ? row.PassiveType : (byte)0;
+    }
+
     private bool TryGet(int skill, string actionFile, int attack, Func<AttackTrigger, bool> accepts, out AttackTrigger trigger)
     {
         trigger = default;
