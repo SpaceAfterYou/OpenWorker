@@ -93,7 +93,7 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
             }
 
             hits.AddRange(animation.Attacks
-                .Where(attack => attack.HitsArea)
+                .Where(attack => attack.HitsArea || attack.IsTrap)
                 .Select(attack => new SkillHit(offset + attack.Start, attack)));
 
             offset += animation.Length;

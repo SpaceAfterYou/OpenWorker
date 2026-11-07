@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Lua;
@@ -107,7 +108,15 @@ public partial class LuaMaze(
 
         foreach (var hit in actions.GetHits(skill, hero))
         {
-            _ = RunLaterAsync(hit.Time, () => generation == SkillGeneration ? ApplyHitAsync(skill, hit, position) : ValueTask.CompletedTask);
+            _ = RunLaterAsync(hit.Time, () =>
+            {
+                if (generation != SkillGeneration)
+                {
+                    return ValueTask.CompletedTask;
+                }
+
+                return hit.Trigger.IsTrap ? PlaceTrapAsync(skill, hit.Trigger, position) : ApplyHitAsync(skill, hit, position);
+            });
         }
     }
 
@@ -118,6 +127,51 @@ public partial class LuaMaze(
         var targets = creatureManager.FindMonsters(place => area.Touches(place, MonsterHitRadius, MonsterHitHeight));
 
         return ApplyDamageAsync(skill, hit.Trigger, targets, position);
+    }
+
+    /// <summary>
+    /// A trap outlives the skill that placed it: a new skill does not take it away.
+    /// </summary>
+    private async ValueTask PlaceTrapAsync(int skill, AttackTrigger trigger, SkillPositionValue position)
+    {
+        var info = trigger.Projectile!;
+        var attacker = Ecs.Get<WorldComponent>(player);
+        var area = new AttackArea(trigger, attacker.Position, attacker.Rotation);
+        var (sin, cos) = MathF.SinCos(attacker.Rotation * MathF.PI / 180f);
+
+        if (!actions.IsFlownByClient(skill))
+        {
+            player.Get<ServerSessionComponent>().Send(new SkillProjectileBroadcastResponse
+            {
+                Owner = Ecs.Get<ActorComponent>(player),
+                Projectile = default(ProjectileShotValue) with
+                {
+                    Skill = skill,
+                    Attack = (short)trigger.Id,
+                    Position = attacker.Position,
+                    Direction = new Vector3(sin, -cos, 0f),
+                    Session = ++ProjectileSession
+                }
+            });
+        }
+
+        var left = info.LifeTime;
+
+        while (!Closed)
+        {
+            var targets = creatureManager.FindMonsters(place => area.Touches(place, MonsterHitRadius, MonsterHitHeight));
+
+            await ApplyDamageAsync(skill, trigger, targets, position);
+
+            if (!info.IsContinuous || info.ContinuousTime <= 0f || left <= info.ContinuousTime)
+            {
+                return;
+            }
+
+            left -= info.ContinuousTime;
+
+            await Task.Delay(TimeSpan.FromSeconds(info.ContinuousTime));
+        }
     }
 
     /// <summary>

@@ -25,6 +25,7 @@ public readonly record struct AttackTrigger(
 {
     private const short Melee = 0;
     private const short Thrown = 1;
+    private const short Trap = 2;
     private const short Chain = 5;
 
     public const short FromBody = 6;
@@ -36,6 +37,11 @@ public readonly record struct AttackTrigger(
     public bool HitsArea => AttackType is Melee or Chain;
 
     public bool IsProjectile => AttackType is Thrown or FromBody;
+
+    /// <summary>
+    /// Stays where it was placed and hits whoever is around.
+    /// </summary>
+    public bool IsTrap => AttackType is Trap;
 
     /// <summary>
     /// Some attacks only show something and affect nobody.
