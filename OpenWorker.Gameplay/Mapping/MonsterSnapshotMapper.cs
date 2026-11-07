@@ -1,5 +1,6 @@
 using Arch.Core;
 using OpenWorker.Domain.Components;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.World.Responses;
@@ -29,9 +30,9 @@ public static class MonsterSnapshotMapper
             nSpawnBoxID = nonPlayable.SpawnBox,
             nMotionClass = 0,
             bBattlePos = true,
-            fCurSuperArmor = 100.0f,
-            fMaxSuperArmor = 100.0f,
-            vecStat = []
+            fCurSuperArmor = 0f,
+            fMaxSuperArmor = 0f,
+            vecStat = world.Get<MonsterCombatComponent>(item).Stats.ToStatList()
         };
     }
 

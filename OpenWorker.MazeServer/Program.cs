@@ -8,6 +8,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.MazeServer.Services;
@@ -33,6 +34,7 @@ await Host
         services.AddSingleton<DistrictResourceProvider>();
         services.AddSingleton<BatchManager>();
         services.AddSingleton<BuffManager>();
+        services.AddSingleton<CombatTables>();
 
         services.AddCommandManager();
 

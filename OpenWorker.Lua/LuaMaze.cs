@@ -11,6 +11,8 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Combat;
+using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -47,7 +49,8 @@ public partial class LuaMaze(
     QuestManager questManager,
     VBatchFile batch,
     IReadOnlyCollection<InteractionObjectRow> interactions,
-    SkillActionProvider actions
+    SkillActionProvider actions,
+    CombatTables combat
 ) : ILuaUserData
 {
     public LuaState State { get; } = state;
@@ -57,10 +60,8 @@ public partial class LuaMaze(
 
     public MazeProgress Progress { get; } = new(batch, interactions);
 
-    // Until these are read from the tables every monster has the same body and every attack the same strength.
-    private const float MonsterHitRadius = 50f;
-    private const float MonsterHitHeight = 200f;
-    private const int SkillDamage = 100;
+    // A monster that counts hits takes them no faster than this.
+    private const long CountedHitMilliseconds = 500;
 
     private static readonly TimeSpan FlightTick = TimeSpan.FromMilliseconds(50);
 
@@ -85,7 +86,11 @@ public partial class LuaMaze(
     [LuaIgnoreMember]
     public void SpawnSector(int sector)
     {
-        foreach (var box in Batch.EventBox.MonsterSpawns.Where(e => e.Sector == sector && e.CreationCondition == CreationConditionType.Immediate))
+        var kills = creatureManager.GetKillProgress(sector);
+
+        kills.MarkCurrentStepSpawned();
+
+        foreach (var box in Batch.EventBox.MonsterSpawns.Where(e => e.Sector == sector && e.CreationCondition == CreationConditionType.Immediate && e.Step == kills.Step + 1))
         {
             creatureManager.SpawnOnce(player, box.Id);
         }
@@ -124,7 +129,7 @@ public partial class LuaMaze(
     {
         var attacker = Ecs.Get<WorldComponent>(player);
         var area = new AttackArea(hit.Trigger, attacker.Position, attacker.Rotation);
-        var targets = creatureManager.FindMonsters(place => area.Touches(place, MonsterHitRadius, MonsterHitHeight));
+        var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
 
         return ApplyDamageAsync(skill, hit.Trigger, targets, position);
     }
@@ -159,7 +164,7 @@ public partial class LuaMaze(
 
         while (!Closed)
         {
-            var targets = creatureManager.FindMonsters(place => area.Touches(place, MonsterHitRadius, MonsterHitHeight));
+            var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
 
             await ApplyDamageAsync(skill, trigger, targets, position);
 
@@ -230,7 +235,7 @@ public partial class LuaMaze(
 
                 last = Stopwatch.GetTimestamp();
 
-                foreach (var explosion in flight.Advance(seconds, creatureManager.GetFlightTargets(MonsterHitRadius, MonsterHitHeight)))
+                foreach (var explosion in flight.Advance(seconds, creatureManager.GetFlightTargets()))
                 {
                     await ExplodeAsync(skill, trigger, explosion, position);
 
@@ -254,7 +259,7 @@ public partial class LuaMaze(
         var area = new AttackArea(trigger, explosion.Position, yaw);
         var targets = trigger.Projectile is { TargetOnly: true }
             ? []
-            : creatureManager.FindMonsters(place => area.Touches(place, MonsterHitRadius, MonsterHitHeight));
+            : creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
 
         if (explosion.Collider is { } key && creatureManager.FindMonster(key) is { } collider && !targets.Contains(collider))
         {
@@ -274,20 +279,9 @@ public partial class LuaMaze(
         var session = player.Get<ServerSessionComponent>();
         var attacker = Ecs.Get<WorldComponent>(player);
 
-        var hits = targets.Select(target =>
-        {
-            var creature = Ecs.Get<CreatureComponent>(target);
-            var health = Math.Max(0, creature.Health - SkillDamage);
-
-            Ecs.Set(target, creature with { Health = health });
-
-            return default(SkillDmgValue) with
-            {
-                UxActorId = Ecs.Get<ActorComponent>(target),
-                Damage = creature.Health - health,
-                Health = health
-            };
-        }).ToArray();
+        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
+        var skillDamage = combat.GetSkill(skill);
+        var hits = targets.Select(target => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate)).ToArray();
 
         session.Send(new SkillActionBroadcastResponse
         {
@@ -334,10 +328,86 @@ public partial class LuaMaze(
                 return;
             }
 
-            if (!creatureManager.HasMonstersInSector(sector))
+            await CheckSectorAsync(sector);
+        }
+    }
+
+    private SkillDmgValue ApplyDamage(Entity target, in CombatStats attacker, in SkillDamage skill, float attackRate)
+    {
+        var creature = Ecs.Get<CreatureComponent>(target);
+        var body = Ecs.Get<MonsterCombatComponent>(target);
+        var result = DamageCalculator.Calculate(attacker, body.Stats, skill, body.Defense, attackRate, Random.Shared);
+        var lost = result.Damage;
+
+        if (body.CountsHits)
+        {
+            var now = Environment.TickCount64;
+
+            lost = result.Damage > 0 && now - body.LastCountedHit >= CountedHitMilliseconds ? 1 : 0;
+
+            if (lost > 0)
             {
-                await CompleteSectorAsync(sector);
+                Ecs.Set(target, body with { LastCountedHit = now });
             }
+        }
+
+        var health = Math.Max(0, creature.Health - lost);
+
+        Ecs.Set(target, creature with { Health = health });
+
+        return default(SkillDmgValue) with
+        {
+            UxActorId = Ecs.Get<ActorComponent>(target),
+            DamageFlags = (byte)result.Flags,
+            Damage = result.Damage,
+            Health = health
+        };
+    }
+
+    private async ValueTask CheckSectorAsync(int sector)
+    {
+        var kills = creatureManager.GetKillProgress(sector);
+
+        if (kills.IsCleared(creatureManager.CountBoxesToCome(sector)))
+        {
+            await CompleteSectorAsync(sector);
+        }
+
+        if (!Closed)
+        {
+            await CheckSpawnStepAsync(sector);
+        }
+    }
+
+    /// <summary>
+    /// Enough dead open the next wave of a sector, unless the script holds it back.
+    /// </summary>
+    private async ValueTask CheckSpawnStepAsync(int sector)
+    {
+        var kills = creatureManager.GetKillProgress(sector);
+
+        if (kills.Stopped)
+        {
+            return;
+        }
+
+        if (!kills.IsCurrentStepSpawned)
+        {
+            SpawnSector(sector);
+
+            return;
+        }
+
+        if (!kills.TryOpenNextStep())
+        {
+            return;
+        }
+
+        await State.OnCompleteSpawnStepCondition(sector, kills.Step, this);
+
+        if (!Closed && !kills.Stopped)
+        {
+            SpawnSector(sector);
         }
     }
 
@@ -736,9 +806,21 @@ public partial class LuaMaze(
     }
 
     [LuaMember]
-    public void SetSectorStepStop()
+    public void SetSectorStepStop(int sector, bool stop)
     {
-        throw new NotImplementedException();
+        var kills = creatureManager.GetKillProgress(sector);
+
+        if (kills.Stopped == stop)
+        {
+            return;
+        }
+
+        kills.Stopped = stop;
+
+        if (!stop)
+        {
+            _ = RunLaterAsync(0f, () => CheckSpawnStepAsync(sector));
+        }
     }
 
     [LuaMember]

@@ -9,6 +9,7 @@ using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot;
@@ -18,16 +19,17 @@ using OpenWorker.Hotspot.Modules.World.Types;
 
 namespace OpenWorker.Lua.Managers;
 
-public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
+public sealed class LuaCreatureManager(World ecs, VBatchFile batch, CombatTables tables)
 {
     private static ComponentType[] Archetype { get; } = [
         ComponentRegistry.Add<ActorComponent>(),
         ComponentRegistry.Add<CreatureComponent>(),
         ComponentRegistry.Add<NonPlayableCreatureComponent>(),
         ComponentRegistry.Add<WorldComponent>(),
+        ComponentRegistry.Add<MonsterCombatComponent>(),
     ];
 
-    private const int StartHealth = 250;
+    private const int NpcHealth = 250;
 
     private int Offset { get; set; } = 1;
     private HashSet<int> SpawnedBoxes { get; } = [];
@@ -35,10 +37,14 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
     private bool Closed { get; set; }
     
     private List<Entity> Creatures { get; } = [];
+    private Dictionary<int, SectorKillProgress> KillProgress { get; } = [];
 
     public void Create(Entity player, int box)
     {
         var spawn = batch.EventBox.MonsterSpawns.First(x => x.Id == box);
+
+        SpawnedBoxes.Add(box);
+
         Console.WriteLine($"[{nameof(Create)}]: {spawn.LayerBitmask}");
         
         var created = new List<Entity>();
@@ -120,7 +126,7 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
 
     private void Create(Entity creature, int identifier, MonsterSpawnBox spawn)
     {
-        ecs.Set(creature, new CreatureComponent { Identifier = identifier, Health = StartHealth });
+        ecs.Set(creature, new CreatureComponent { Identifier = identifier, Health = NpcHealth });
         ecs.Set(creature, new NonPlayableCreatureComponent { SpawnBox = spawn.Id, Sector = spawn.Sector, Waypoint = spawn.Waypoint });
         ecs.Set(creature, new WorldComponent { Location = 0, Position = spawn.GetPosition(), Rotation = spawn.Rotation, Jump = 0 });
     }
@@ -133,6 +139,16 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
         
         Create(creature, identifier, spawn);
         
+        var combat = tables.GetMonster(identifier);
+
+        ecs.Set(creature, combat);
+        ecs.Set(creature, ecs.Get<CreatureComponent>(creature) with { Level = combat.Stats.Level, Health = (int)combat.Stats.MaxHealth });
+
+        if (combat.HoldsSector)
+        {
+            GetKillProgress(spawn.Sector).Added();
+        }
+
         Creatures.Add(creature);
         
         return creature;
@@ -165,11 +181,11 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
         }
     }
 
-    public Entity[] FindMonsters(Func<Vector3, bool> touches)
+    public Entity[] FindMonsters(Func<Vector3, MonsterCombatComponent, bool> touches)
     {
         return Creatures
             .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
-            .Where(e => touches(ecs.Get<WorldComponent>(e).Position))
+            .Where(e => touches(ecs.Get<WorldComponent>(e).Position, ecs.Get<MonsterCombatComponent>(e)))
             .ToArray();
     }
 
@@ -188,25 +204,50 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
         return null;
     }
 
-    public FlightTarget[] GetFlightTargets(float radius, float height)
+    public FlightTarget[] GetFlightTargets()
     {
         return Creatures
             .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
-            .Select(e => new FlightTarget(ecs.Get<ActorComponent>(e).Identifier, ecs.Get<WorldComponent>(e).Position, radius, height))
+            .Select(e => new FlightTarget(ecs.Get<ActorComponent>(e).Identifier, ecs.Get<WorldComponent>(e).Position, ecs.Get<MonsterCombatComponent>(e).BodyRadius, ecs.Get<MonsterCombatComponent>(e).BodyHeight))
             .ToArray();
     }
 
-    public bool HasMonstersInSector(int sector)
+    public SectorKillProgress GetKillProgress(int sector)
     {
-        // Objects that can be broken do not hold a sector back.
-        return Creatures.Any(e =>
-            !Scenery.Contains(e) &&
-            ecs.Get<ActorComponent>(e).Type == ActorType.Monster &&
-            ecs.Get<NonPlayableCreatureComponent>(e).Sector == sector);
+        if (!KillProgress.TryGetValue(sector, out var progress))
+        {
+            var box = batch.EventBox.Sectors.FirstOrDefault(e => e.Id == sector);
+
+            progress = box is null ? new SectorKillProgress(ClearType.None, 0, []) : new SectorKillProgress(box);
+
+            KillProgress.Add(sector, progress);
+        }
+
+        return progress;
+    }
+
+    /// <summary>
+    /// Boxes of a sector that have not appeared yet and whose monsters have to die with the rest.
+    /// </summary>
+    public int CountBoxesToCome(int sector)
+    {
+        return batch.EventBox.MonsterSpawns.Count(e => e.Sector == sector && !SpawnedBoxes.Contains(e.Id) && HoldsSector(e));
+    }
+
+    private bool HoldsSector(MonsterSpawnBox box)
+    {
+        return box.MonsterList
+            .TakeWhile(e => e.Id is not 0)
+            .All(e => e.Type is not MonsterSpawnType.Npc && tables.HoldsSector(e.Id));
     }
 
     public void Remove(Entity creature)
     {
+        if (ecs.Get<ActorComponent>(creature).Type == ActorType.Monster && ecs.Get<MonsterCombatComponent>(creature).HoldsSector)
+        {
+            GetKillProgress(ecs.Get<NonPlayableCreatureComponent>(creature).Sector).Removed();
+        }
+
         Creatures.Remove(creature);
         Scenery.Remove(creature);
 

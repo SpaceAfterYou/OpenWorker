@@ -16,6 +16,7 @@ using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -51,6 +52,7 @@ public sealed class PersonService(
     BuffManager buffManager,
     QuestManager questManager,
     SkillActionProvider skillActions,
+    CombatTables combatTables,
     IConfiguration configuration
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -160,7 +162,7 @@ public sealed class PersonService(
         await state
             .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
 
-        var maze = new LuaMaze(state, world, context.Player, new LuaCreatureManager(world, batch), buffManager, questManager, batch, interactionCollection, skillActions);
+        var maze = new LuaMaze(state, world, context.Player, new LuaCreatureManager(world, batch, combatTables), buffManager, questManager, batch, interactionCollection, skillActions, combatTables);
 
         world.Add(context.Player, maze);
 

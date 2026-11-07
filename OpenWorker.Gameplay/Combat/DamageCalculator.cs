@@ -45,6 +45,7 @@ public static class DamageCalculator
         in CombatStats target,
         in SkillDamage skill,
         DefenseType defense,
+        float attackRate,
         Random random)
     {
         if (defense == DefenseType.Invincible)
@@ -103,6 +104,12 @@ public static class DamageCalculator
         result -= result * ((own.ClassDamageReduction + other.DamageReduction) * Percent);
 
         var afterDefense = ApplyDefense((int)result, other.Defense, target.Level, defense);
+
+        if (attackRate > 0)
+        {
+            afterDefense = (int)(afterDefense * attackRate);
+        }
+
         var withSkill = (afterDefense + skill.BasicDamage + skill.AddDamage) * (skill.DamageRate * Percent);
         var damage = (int)withSkill;
 
