@@ -3,6 +3,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
+using OpenWorker.Hotspot.Modules.Quests.Extensions;
 using OpenWorker.Hotspot.Modules.Quests.Types;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
@@ -28,7 +29,7 @@ public readonly struct QuestEpisodeCompleteResponse(BinaryReader reader) : IResp
     public int Ether { get; init; }  = reader.ReadInt32();
     public TitleValue Title { get; init; } = new(reader);
     public uint NpcHelper { get; init; } = reader.ReadUInt32();
-    public CreateItemValue Item { get; init; } = new(reader);
+    public CreateItemValue[] Items { get; init; } = reader.ReadCreateItems();
 
 #endregion Message: Body
 
@@ -44,7 +45,12 @@ public readonly struct QuestEpisodeCompleteResponse(BinaryReader reader) : IResp
         writer.Write(Title);
         writer.Write(NpcHelper);
         
-        Item.Write(writer);
+        writer.Write((byte)Items.Length);
+
+        foreach (var item in Items)
+        {
+            item.Write(writer);
+        }
     }
 
 #endregion Interface: IWritableData

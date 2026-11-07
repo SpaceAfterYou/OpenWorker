@@ -196,7 +196,7 @@ public sealed class QuestManager(
             Ether = 0,
             Title = new TitleValue(0, 0),
             NpcHelper = 0u,
-            Item = default
+            Items = []
         });
     }
 
