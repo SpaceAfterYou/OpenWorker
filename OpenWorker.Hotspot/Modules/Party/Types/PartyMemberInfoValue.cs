@@ -9,6 +9,11 @@ namespace OpenWorker.Hotspot.Modules.Party.Types;
 
 public readonly struct PartyMemberInfoValue(BinaryReader reader) : IWritableData
 {
+    /// <summary>
+    /// A free place in a list of fixed size.
+    /// </summary>
+    public static PartyMemberInfoValue Empty { get; } = new() { Name = string.Empty };
+
     public ActorValue Actor { get; init; } = new(reader);
     public string Name { get; init; } = reader.ReadPersonName();
     public byte Level { get; init; } = reader.ReadByte();

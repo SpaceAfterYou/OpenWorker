@@ -27,11 +27,12 @@ public static class BinaryWriterExtensions
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public void Write_Fixed(PartyMemberInfoValue[] values)
         {
-            Debug.Assert(values.Length == PartyModuleDefines.MaxMemberCount);
+            Debug.Assert(values.Length <= PartyModuleDefines.MaxMemberCount);
 
-            foreach (var value in values)
+            // The client always reads a full party.
+            for (var i = 0; i < PartyModuleDefines.MaxMemberCount; i++)
             {
-                value.Write(writer);
+                (i < values.Length ? values[i] : PartyMemberInfoValue.Empty).Write(writer);
             }
         }
 
@@ -57,6 +58,16 @@ public static class BinaryWriterExtensions
         }
 
         public void Write_Int(PartyMemberInfoValue[] values)
+        {
+            writer.Write(values.Length);
+
+            foreach (var value in values)
+            {
+                value.Write(writer);
+            }
+        }
+
+        public void Write(PartyAwaiterValue[] values)
         {
             writer.Write(values.Length);
 

@@ -24,6 +24,12 @@ public static class BinaryReaderExtensions
         public PartyApplyError ReadPartyApplyError() => (PartyApplyError)reader.ReadInt32();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public PartyAwaiterValue[] ReadPartyAwaiters() => Enumerable
+            .Range(0, reader.ReadInt32())
+            .Select(_ => new PartyAwaiterValue(reader))
+            .ToArray();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public PartyMemberInfoValue[] ReadPartyMemberInfoList_Int() => Enumerable
             .Range(0, reader.ReadInt32())
             .Select(_ => new PartyMemberInfoValue(reader))

@@ -1,7 +1,11 @@
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Extensions;
+using OpenWorker.Hotspot.Modules.Party.Extensions;
+using OpenWorker.Hotspot.Modules.Party.Types;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
@@ -13,8 +17,11 @@ public readonly struct PartyAwaiterAddResponse(BinaryReader reader) : IResponseH
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public PartyAwaiterValue Awaiter { get; init; } = new(reader);
+
     public void Write(BinaryWriter writer)
     {
+        Awaiter.Write(writer);
     }
 }
 
@@ -26,8 +33,11 @@ public readonly struct PartyAwaiterDelResponse(BinaryReader reader) : IResponseH
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public ActorValue Actor { get; init; } = new(reader);
+
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Actor);
     }
 }
 
@@ -39,21 +49,11 @@ public readonly struct PartyAwaiterListResponse(BinaryReader reader) : IResponse
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public void Write(BinaryWriter writer)
-    {
-    }
-}
-
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PartyAwaiterInfoResponse(BinaryReader reader) : IResponseHotspotMessage
-{
-    private const GroupOpcode Group = GroupOpcode.Party;
-    private const PartyOpcode Command = PartyOpcode.AwaiterInfo;
-
-    public MessageOpcode Opcode => new(Group, Command);
+    public PartyAwaiterValue[] List { get; init; } = reader.ReadPartyAwaiters();
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(List);
     }
 }
 

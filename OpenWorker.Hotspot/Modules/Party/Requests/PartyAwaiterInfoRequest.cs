@@ -1,3 +1,4 @@
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -12,4 +13,7 @@ public readonly struct PartyAwaiterInfoRequest(BinaryReader reader) : IRequestHo
     private const PartyOpcode Command = PartyOpcode.AwaiterInfo;
     
     public MessageOpcode Opcode => new(Group, Command);
+
+    public ActorValue Actor { get; } = new(reader);
+    public byte Select { get; } = reader.ReadByte();
 }

@@ -12,4 +12,6 @@ public readonly struct PartyAwaiterAddRequest(BinaryReader reader) : IRequestHot
     private const PartyOpcode Command = PartyOpcode.AwaiterAdd;
     
     public MessageOpcode Opcode => new(Group, Command);
+
+    public int Unknown { get; } = reader.ReadInt32();
 }

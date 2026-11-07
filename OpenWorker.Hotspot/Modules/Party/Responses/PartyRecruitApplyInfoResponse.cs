@@ -16,11 +16,13 @@ public readonly struct PartyRecruitApplyInfoResponse(BinaryReader reader) : IRes
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public int Party { get; init; } = reader.ReadInt32();
     public PartyMemberInfoValue[] MemberList { get; init; } = reader.ReadPartyMemberInfoList_Int();
     public ActorValue Actor { get; init; } = new(reader);
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Party);
         writer.Write_Int(MemberList);
         writer.Write(Actor);
     }

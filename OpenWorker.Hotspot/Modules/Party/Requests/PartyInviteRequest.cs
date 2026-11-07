@@ -21,6 +21,7 @@ public readonly struct PartyInviteRequest(BinaryReader reader) : IRequestHotspot
     public ActorValue TargetActor { get; } = new(reader);
     public int Server { get; } = reader.ReadInt32();
     public int Result { get; } = reader.ReadInt32();
+    public byte Select { get; } = reader.ReadByte();
 
     public void Write(BinaryWriter writer)
     {
@@ -30,5 +31,6 @@ public readonly struct PartyInviteRequest(BinaryReader reader) : IRequestHotspot
         writer.Write(TargetActor);
         writer.Write(Server);
         writer.Write(Result);
+        writer.Write(Select);
     }
 }

@@ -2,6 +2,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
@@ -69,25 +70,45 @@ public sealed class PartyService(Arch.Core.World world) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PartyAwaiterAddRequest request)
     {
-        GetSession(context).Send(new PartyAwaiterAddResponse());
+        var actor = world.Get<ActorComponent>(context.Player);
+        var info = world.Get<PersonInfoComponent>(context.Player);
+
+        GetSession(context).Send(new PartyAwaiterAddResponse
+        {
+            Awaiter = new PartyAwaiterValue
+            {
+                Actor = actor,
+                Name = info.Name,
+                Level = world.Get<RankComponent>(context.Player).Level,
+                Class = info.Hero,
+                RemainTime = AwaiterLifetime,
+            },
+        });
+
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PartyAwaiterDelRequest request)
     {
-        GetSession(context).Send(new PartyAwaiterDelResponse());
+        GetSession(context).Send(new PartyAwaiterDelResponse
+        {
+            Actor = world.Get<ActorComponent>(context.Player),
+        });
+
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// The list of those waiting for a party is always empty so far, so there is nobody to describe.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, PartyAwaiterInfoRequest request)
     {
-        GetSession(context).Send(new PartyAwaiterInfoResponse());
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PartyAwaiterListRequest request)
     {
-        GetSession(context).Send(new PartyAwaiterListResponse());
+        GetSession(context).Send(new PartyAwaiterListResponse { List = [] });
         return ValueTask.CompletedTask;
     }
 
@@ -203,7 +224,7 @@ public sealed class PartyService(Arch.Core.World world) :
         GetSession(context).Send(new PartyRecruitAddResponse()
         {
             IsSuccess = true,
-            Unknown = 60f,
+            RemainTime = 60,
             Member = CreateRecruitMember(),
         });
 
@@ -224,6 +245,7 @@ public sealed class PartyService(Arch.Core.World world) :
     {
         GetSession(context).Send(new PartyRecruitApplyInfoResponse()
         {
+            Party = 1,
             MemberList =
             [
                 CreateMemberInfo("ApplyInfoMember1", 1006),
@@ -282,7 +304,7 @@ public sealed class PartyService(Arch.Core.World world) :
         GetSession(context).Send(new PartyRecruitApplyResponse()
         {
             ErrorCode = default,
-            Type = default,
+            ApplyCount = 1,
         });
 
         return ValueTask.CompletedTask;
@@ -361,7 +383,7 @@ public sealed class PartyService(Arch.Core.World world) :
     {
         GetSession(context).Send(new PartyRecruitPenaltyResponse()
         {
-            Time = 30f,
+            Time = 30,
         });
 
         return ValueTask.CompletedTask;
@@ -416,6 +438,8 @@ public sealed class PartyService(Arch.Core.World world) :
         return ValueTask.CompletedTask;
     }
 
+    private const int AwaiterLifetime = 1800;
+
     private ServerSessionComponent GetSession(ServiceHandleContext context) => world.Get<ServerSessionComponent>(context.Player);
 
     private static PartyAcceptResponse CreateAcceptResponse(int identifier, int result) => new()
@@ -426,11 +450,11 @@ public sealed class PartyService(Arch.Core.World world) :
 
     private static PartyInviteResponse CreateInviteResponse(PartyInviteRequest request) => new()
         {
-            MasterActor = CreateActor(1000),
-            RequestActor = CreateActor(1001),
-            MasterName = request.RequesterName,
-            RequestName = request.TargetName,
-            ReqServer = 0,
+            TargetName = request.TargetName,
+            RequesterName = request.RequesterName,
+            RequesterActor = CreateActor(1000),
+            TargetActor = CreateActor(1001),
+            Server = 0,
             Result = 0,
         };
 

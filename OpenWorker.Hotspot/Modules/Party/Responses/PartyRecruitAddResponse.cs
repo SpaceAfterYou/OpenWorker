@@ -19,14 +19,14 @@ public readonly struct PartyRecruitAddResponse(BinaryReader reader) : IResponseH
     /// <summary>
     /// TODO: Time? (fTime / 60, (fTime % 60))
     /// </summary>
-    public float Unknown { get; init; } = reader.ReadSingle();
+    public int RemainTime { get; init; } = reader.ReadInt32();
 
     public PartyRecruitMemberValue Member { get; init; } = new(reader);
 
     public void Write(BinaryWriter writer)
     {
         writer.Write(IsSuccess);
-        writer.Write(Unknown);
+        writer.Write(RemainTime);
 
         Member.Write(writer);
     }

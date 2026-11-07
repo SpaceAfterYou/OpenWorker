@@ -13,7 +13,7 @@ public readonly struct PartyRecruitPenaltyResponse(BinaryReader reader) : IRespo
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public float Time { get; init; } = reader.ReadSingle();
+    public int Time { get; init; } = reader.ReadInt32();
 
     public void Write(BinaryWriter writer)
     {

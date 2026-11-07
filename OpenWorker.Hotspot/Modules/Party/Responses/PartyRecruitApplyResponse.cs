@@ -16,11 +16,11 @@ public readonly struct PartyRecruitApplyResponse(BinaryReader reader) : IRespons
     public MessageOpcode Opcode => new(Group, Command);
 
     public PartyApplyError ErrorCode { get; init; } = reader.ReadPartyApplyError();
-    public PartyType Type { get; init; } = reader.ReadPartyType();
+    public byte ApplyCount { get; init; } = reader.ReadByte();
 
     public void Write(BinaryWriter writer)
     {
         writer.Write(ErrorCode);
-        writer.Write(Type);
+        writer.Write(ApplyCount);
     }
 }
