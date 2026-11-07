@@ -6,11 +6,11 @@ namespace OpenWorker.Hotspot.SoulWorker.Network;
 
 public readonly struct MessageHeader
 {
-    public short Version { get; }
-    private short Length { get; }
+    public ushort Version { get; }
+    private ushort Length { get; }
     private MessageDirection Direction { get; }
 
-    public short ContentLength => (short)(Length - HeaderSize);
+    public ushort ContentLength => (ushort)(Length - HeaderSize);
 
     private const byte HeaderSize = 0x05;
     private const byte HeaderVersion = 0x05;
@@ -18,17 +18,17 @@ public readonly struct MessageHeader
     public MessageHeader(long length)
     {
         var size = length + HeaderSize;
-        Debug.Assert(size <= short.MaxValue, "Message size is too big");
+        Debug.Assert(size <= ushort.MaxValue, "Message size is too big");
 
         Version = HeaderVersion;
-        Length = (short)size;
+        Length = (ushort)size;
         Direction = MessageDirection.Game;
     }
 
     public MessageHeader(BinaryReader reader)
     {
-        Version = reader.ReadInt16();
-        Length = reader.ReadInt16();
+        Version = reader.ReadUInt16();
+        Length = reader.ReadUInt16();
         Direction = reader.ReadMessageDirection();
     }
 
