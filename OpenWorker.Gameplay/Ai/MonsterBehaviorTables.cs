@@ -91,8 +91,8 @@ public sealed class MonsterBehaviorTables
     {
         return new AiSkill(
             row.Id,
-            row.Field44,
-            row.Field45,
+            row.RangeMin,
+            row.RangeMax,
             row.Field52 * 0.001f,
             row.Field53,
             row.Field55 * 0.001f,

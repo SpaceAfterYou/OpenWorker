@@ -8,7 +8,7 @@ public readonly struct SkillTrapPosition(BinaryReader reader) : IWritableData
 {
 #region Message: Body
 
-    public int Skill { get; init; } = reader.ReadInt16();
+    public int Skill { get; init; } = reader.ReadInt32();
     public short TriggerIndex { get; init; } = reader.ReadInt16();
     public Vector3 Position { get; init; } = reader.ReadVector3();
 

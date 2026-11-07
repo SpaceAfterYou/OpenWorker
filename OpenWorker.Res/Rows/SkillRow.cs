@@ -41,7 +41,7 @@ public readonly struct SkillRow(BinaryReader reader)
     public int Field30 { get; } = reader.ReadInt32();
     public byte Field31 { get; } = reader.ReadByte();
     public byte Field32 { get; } = reader.ReadByte();
-    public byte Field33 { get; } = reader.ReadByte();
+    public byte ControlType { get; } = reader.ReadByte();
     public byte Field34 { get; } = reader.ReadByte();
     public byte Field35 { get; } = reader.ReadByte();
     public int Field36 { get; } = reader.ReadInt32();
@@ -52,8 +52,8 @@ public readonly struct SkillRow(BinaryReader reader)
     public int Field41 { get; } = reader.ReadInt32();
     public int Field42 { get; } = reader.ReadInt32();
     public byte Field43 { get; } = reader.ReadByte();
-    public short Field44 { get; } = reader.ReadInt16();
-    public short Field45 { get; } = reader.ReadInt16();
+    public short RangeMin { get; } = reader.ReadInt16();
+    public short RangeMax { get; } = reader.ReadInt16();
     public byte Field46 { get; } = reader.ReadByte();
     public byte Field47 { get; } = reader.ReadByte();
     public byte Field48 { get; } = reader.ReadByte();

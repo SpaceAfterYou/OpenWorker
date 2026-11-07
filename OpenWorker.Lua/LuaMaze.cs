@@ -65,12 +65,22 @@ public partial class LuaMaze(
     /// </summary>
     public LuaCreatureManager Creatures => creatureManager;
 
+    /// <summary>
+    /// Where a trap stands. It is a class because the player can move it while it hits.
+    /// </summary>
+    private sealed class TrapSite(Vector3 position)
+    {
+        public Vector3 Position { get; set; } = position;
+    }
+
     // A monster that counts hits takes them no faster than this.
     private const long CountedHitMilliseconds = 500;
 
     private static readonly TimeSpan FlightTick = TimeSpan.FromMilliseconds(50);
 
     private int SkillGeneration { get; set; }
+    private int CurrentSkill { get; set; }
+    private TrapSite? MouseTrap { get; set; }
     private uint ProjectileSession { get; set; }
     private bool Started { get; set; }
     private bool Closed { get; set; }
@@ -116,6 +126,11 @@ public partial class LuaMaze(
         var generation = ++SkillGeneration;
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
+        CurrentSkill = skill;
+
+        // A trap follows the cursor only while its skill is being played.
+        MouseTrap = null;
+
         foreach (var hit in actions.GetHits(skill, hero))
         {
             _ = RunLaterAsync(hit.Time, () =>
@@ -146,8 +161,19 @@ public partial class LuaMaze(
     {
         var info = trigger.Projectile!;
         var attacker = Ecs.Get<WorldComponent>(player);
-        var area = new AttackArea(trigger, attacker.Position, attacker.Rotation);
         var (sin, cos) = MathF.SinCos(attacker.Rotation * MathF.PI / 180f);
+        var site = new TrapSite(attacker.Position);
+
+        if (actions.FollowsMouse(skill))
+        {
+            // One trap follows the cursor at a time, a second attack of the skill only keeps it company.
+            if (MouseTrap is not null)
+            {
+                return;
+            }
+
+            MouseTrap = site;
+        }
 
         if (!actions.IsFlownByClient(skill))
         {
@@ -169,6 +195,8 @@ public partial class LuaMaze(
 
         while (!Closed)
         {
+            // The place is read again at every hit: the player may have moved the trap since the last one.
+            var area = new AttackArea(trigger, site.Position, attacker.Rotation);
             var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
 
             await ApplyDamageAsync(skill, trigger, targets, position);
@@ -219,6 +247,130 @@ public partial class LuaMaze(
         var position = default(SkillPositionValue) with { Position = request.Position, Angle = request.Yaw };
 
         _ = FlyAsync(request.Skill, trigger, flight, position);
+    }
+
+    /// <summary>
+    /// The player drags the trap of a skill with the mouse. Nobody else shares this maze to be told about it.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void MoveTrap(Vector3 place)
+    {
+        if (Started && MouseTrap is { } trap)
+        {
+            trap.Position = place;
+        }
+    }
+
+    /// <summary>
+    /// The client lets a chain go when its animation gets there. The chain jumps between monsters on the server,
+    /// and the client draws it from what it is told: who it holds and when it lets go.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void FireChain(SkillProjectileValue request)
+    {
+        var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
+
+        // Only the skill that is being played may let a chain go.
+        if (!Started || request.Skill != CurrentSkill || !actions.TryGetChain(request.Skill, hero, request.TriggerIndex, out var trigger))
+        {
+            return;
+        }
+
+        var attacker = Ecs.Get<WorldComponent>(player);
+        var chain = ChainLightning.Fire(trigger, attacker.Position, attacker.Rotation, creatureManager.GetFlightTargets());
+        var session = ++ProjectileSession;
+        var first = chain.Targets.Count > 0 ? new ActorValue(chain.Targets[0], ActorType.Monster) : (ActorValue)(-1);
+
+        player.Get<ServerSessionComponent>().Send(new SkillChainBroadcastResponse
+        {
+            Owner = Ecs.Get<ActorComponent>(player),
+            SkillChainPosition = default(SkillChainPosition) with
+            {
+                Skill = request.Skill,
+                TriggerIndex = request.TriggerIndex,
+                Position = attacker.Position,
+                Direction = new Vector3(0f, -1f, 0f) * actions.GetMaxRange(request.Skill),
+                Session = session,
+                Target = first
+            }
+        });
+
+        var position = default(SkillPositionValue) with { Position = attacker.Position, Angle = attacker.Rotation };
+
+        _ = ChainAsync(request.Skill, trigger, chain, session, position, SkillGeneration);
+    }
+
+    /// <summary>
+    /// A chain belongs to the skill that let it go: it lives its time, or until the player starts another skill.
+    /// </summary>
+    private async Task ChainAsync(int skill, AttackTrigger trigger, ChainLightning chain, uint session, SkillPositionValue position, int generation)
+    {
+        try
+        {
+            var last = Stopwatch.GetTimestamp();
+            var hits = new List<ChainHit>();
+            var changes = new List<ChainChange>();
+
+            while (!Closed && !chain.IsOver && generation == SkillGeneration)
+            {
+                await Task.Delay(FlightTick);
+
+                if (Closed || generation != SkillGeneration)
+                {
+                    return;
+                }
+
+                var seconds = (float)Stopwatch.GetElapsedTime(last).TotalSeconds;
+                var owner = Ecs.Get<WorldComponent>(player);
+
+                last = Stopwatch.GetTimestamp();
+
+                hits.Clear();
+                changes.Clear();
+
+                chain.Advance(seconds, creatureManager.GetFlightTargets(), owner.Position, owner.Rotation, hits, changes);
+
+                foreach (var change in changes)
+                {
+                    player.Get<ServerSessionComponent>().Send(new SkillChainUpdateTargetResponse
+                    {
+                        Session = session,
+                        IsAdd = change.Added,
+                        Target = new ActorValue(change.Target, ActorType.Monster)
+                    });
+                }
+
+                if (hits.Count > 0)
+                {
+                    await StrikeChainAsync(skill, trigger, hits, position);
+                }
+            }
+        }
+
+        catch (Exception e)
+        {
+            Console.WriteLine($"[{nameof(ChainAsync)}]: {e}");
+        }
+    }
+
+    /// <summary>
+    /// Everyone the chain reaches at one moment is hit together. The links after the first carry a share of the damage.
+    /// </summary>
+    private ValueTask StrikeChainAsync(int skill, AttackTrigger trigger, List<ChainHit> hits, SkillPositionValue position)
+    {
+        var targets = new List<Entity>();
+        var shares = new List<float>();
+
+        foreach (var hit in hits)
+        {
+            if (creatureManager.FindMonster(hit.Target) is { } monster)
+            {
+                targets.Add(monster);
+                shares.Add(hit.Order > 0 ? trigger.Chain!.DamageMultiple : 1f);
+            }
+        }
+
+        return ApplyDamageAsync(skill, trigger, [.. targets], position, [.. shares]);
     }
 
     private async Task FlyAsync(int skill, AttackTrigger trigger, ProjectileFlight flight, SkillPositionValue position)
@@ -274,7 +426,8 @@ public partial class LuaMaze(
         return ApplyDamageAsync(skill, trigger, targets, position);
     }
 
-    private async ValueTask ApplyDamageAsync(int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position)
+    /// <param name="shares">The share of the damage each target takes, by their place in the list. Everyone takes all of it without.</param>
+    private async ValueTask ApplyDamageAsync(int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null)
     {
         if (targets.Length == 0 || !trigger.AffectsTargets)
         {
@@ -286,7 +439,7 @@ public partial class LuaMaze(
 
         var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
         var skillDamage = combat.GetSkill(skill);
-        var hits = targets.Select(target => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate, trigger.ReactionType)).ToArray();
+        var hits = targets.Select((target, i) => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
 
         session.Send(new SkillActionBroadcastResponse
         {

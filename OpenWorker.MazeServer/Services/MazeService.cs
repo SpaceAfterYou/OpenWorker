@@ -48,6 +48,8 @@ public sealed class MazeService(
     IHotspotHandler<SkillPassiveEndRequest>,
     IHotspotHandler<SkillSyncPositionRequest>,
     IHotspotHandler<SkillProjectileRequest>,
+    IHotspotHandler<SkillChainRequest>,
+    IHotspotHandler<SkillTrapPosUpdateRequest>,
     IHotspotHandler<SkillWarpPositionRequest>,
     IHotspotHandler<WorldWarpRequest>,
     IHotspotHandler<WorldWarpOutRequest>,
@@ -220,6 +222,31 @@ public sealed class MazeService(
             ecs.Has<LuaMaze>(context.Player))
         {
             ecs.Get<LuaMaze>(context.Player).FireProjectile(request);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillChainRequest request)
+    {
+        var chain = request.Projectile;
+
+        if (Place.IsValid(chain.Position) && Place.IsValid(chain.Direction) && ecs.Has<LuaMaze>(context.Player))
+        {
+            ecs.Get<LuaMaze>(context.Player).FireChain(chain);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player moves a trap with the mouse. The trap follows, and nobody else in the maze is told.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTrapPosUpdateRequest request)
+    {
+        if (Place.IsValid(request.Position) && ecs.Has<LuaMaze>(context.Player))
+        {
+            ecs.Get<LuaMaze>(context.Player).MoveTrap(request.Position);
         }
 
         return ValueTask.CompletedTask;

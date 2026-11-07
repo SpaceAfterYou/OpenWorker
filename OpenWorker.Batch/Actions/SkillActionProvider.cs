@@ -15,7 +15,6 @@ public readonly record struct SkillHit(float Time, AttackTrigger Trigger);
 /// </summary>
 public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
 {
-    private const string Folder = "action";
     private const string Extension = ".adf";
     private const string HeroFilePrefix = "PC_";
 
@@ -25,6 +24,16 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     private const string ForwardSuffix = "_F";
 
     private const byte FlownByClient = 2;
+
+    /// <summary>
+    /// The trap this skill places follows the cursor of the player until the skill is over.
+    /// </summary>
+    private const byte FollowsCursor = 4;
+
+    /// <summary>
+    /// Where the action files of the client are.
+    /// </summary>
+    public string Folder { get; init; } = "action";
 
     private Dictionary<int, SkillRow> Rows { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<string, ActionFile?> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -119,6 +128,35 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
 
     public bool TryGetProjectile(int skill, string actionFile, int attack, out AttackTrigger trigger)
     {
+        return TryGet(skill, actionFile, attack, e => e.IsProjectile, out trigger);
+    }
+
+    /// <summary>
+    /// Finds the chain a client says it has just let go.
+    /// </summary>
+    public bool TryGetChain(int skill, Hero hero, int attack, out AttackTrigger trigger)
+    {
+        return TryGet(skill, GetHeroFileName(hero), attack, e => e.IsChain && e.Chain is not null && e.Projectile is not null, out trigger);
+    }
+
+    /// <summary>
+    /// Whether the player moves the trap of this skill with the mouse.
+    /// </summary>
+    public bool FollowsMouse(int skill)
+    {
+        return Rows.TryGetValue(skill, out var row) && row.ControlType == FollowsCursor;
+    }
+
+    /// <summary>
+    /// How far the skill reaches, as the table says.
+    /// </summary>
+    public float GetMaxRange(int skill)
+    {
+        return Rows.TryGetValue(skill, out var row) ? row.RangeMax : 0f;
+    }
+
+    private bool TryGet(int skill, string actionFile, int attack, Func<AttackTrigger, bool> accepts, out AttackTrigger trigger)
+    {
         trigger = default;
 
         if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
@@ -130,7 +168,7 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
         {
             foreach (var candidate in Find(file, name)?.Attacks ?? [])
             {
-                if (candidate.Id == attack && candidate.IsProjectile)
+                if (candidate.Id == attack && accepts(candidate))
                 {
                     trigger = candidate;
                     return true;
