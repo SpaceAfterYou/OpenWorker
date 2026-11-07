@@ -3,6 +3,7 @@ namespace OpenWorker.Domain.Components;
 public static class QuestProgressDefines
 {
     public const int MaxActiveEpisodes = 8;
+    public const int MaxHelperEpisodes = 7;
     public const int ConditionsPerEpisode = 10;
 }
 

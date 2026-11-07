@@ -151,10 +151,13 @@ public sealed class QuestManager(
             return;
         }
 
+        // The helper has room for a few episodes, and the client is told the same that is stored.
+        var isAddHelper = CountHelpers(in q) < QuestProgressDefines.MaxHelperEpisodes ? (byte)1 : (byte)0;
+
         var slot = new ActiveQuestEpisodeState
         {
             EpisodeId = episodeId,
-            IsAddHelper = 0,
+            IsAddHelper = isAddHelper,
             IsFailed = 0,
             Steps = default
         };
@@ -164,7 +167,7 @@ public sealed class QuestManager(
         world.Set(player, q);
 
         var session = world.Get<ServerSessionComponent>(player);
-        session.Send(new QuestAcceptResponse { Episode = episodeId, IsShowHelper = 1 });
+        session.Send(new QuestAcceptResponse { Episode = episodeId, IsShowHelper = isAddHelper });
     }
 
     public void CompleteEpisode(Entity player, int episodeId)
@@ -394,6 +397,21 @@ public sealed class QuestManager(
 
         maxStep = 0;
         return false;
+    }
+
+    private static int CountHelpers(in QuestProgressComponent q)
+    {
+        var count = 0;
+
+        for (var i = 0; i < q.ActiveCount; i++)
+        {
+            if (GetSlotCopy(in q, i).IsAddHelper != 0)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private static int FindEpisodeIndex(in QuestProgressComponent q, int episodeId)
