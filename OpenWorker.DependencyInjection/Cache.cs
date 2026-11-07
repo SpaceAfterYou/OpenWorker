@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM;
 using Redis.OM.Contracts;
+using Redis.OM.Searching;
 
 namespace OpenWorker.DependencyInjection;
 
@@ -51,10 +52,18 @@ public static class Cache
         return services.AddCacheCollection<LocationCache>();
     }
 
+    /// <summary>
+    /// Creates a collection that is safe to share between connections: with saved state it remembers
+    /// every record it has read in dictionaries without locks, which breaks under concurrent access
+    /// and never shrinks.
+    /// </summary>
+    public static IRedisCollection<T> CreateCollection<T>(IRedisConnectionProvider provider) where T : notnull
+    {
+        return provider.RedisCollection<T>(saveState: false);
+    }
+
     private static IServiceCollection AddCacheCollection<T>(this IServiceCollection services) where T : notnull
     {
-        return services.AddSingleton(e => e
-            .GetRequiredService<IRedisConnectionProvider>()
-            .RedisCollection<T>());
+        return services.AddSingleton(e => CreateCollection<T>(e.GetRequiredService<IRedisConnectionProvider>()));
     }
 }

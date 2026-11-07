@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.AuthServer.App;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Hotspot;
+using OpenWorker.DependencyInjection;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Enums;
@@ -43,7 +44,7 @@ public sealed class TestSessionLease
         }
 
         Provider = new RedisConnectionProvider(connection);
-        Sessions = Provider.RedisCollection<SessionCache>();
+        Sessions = Cache.CreateCollection<SessionCache>(Provider);
 
         await Provider.Connection.CreateIndexAsync(typeof(SessionCache));
     }
@@ -253,5 +254,34 @@ public sealed class TestSessionLease
         first.Client.Dispose();
         second.Client.Dispose();
         third.Client.Dispose();
+    }
+
+    [TestMethod]
+    public async Task SharedCollectionSurvivesConcurrentReads()
+    {
+        var keys = Enumerable.Range(0, 200).Select(_ => Random.Shared.NextInt64(1, long.MaxValue)).ToArray();
+
+        foreach (var key in keys)
+        {
+            await Sessions.InsertAsync(new SessionCache
+            {
+                Session = key,
+                Account = Interlocked.Increment(ref _nextAccount),
+                UpdatedAt = DateTime.UtcNow,
+                Connected = false,
+                Owner = string.Empty
+            }, TimeSpan.FromSeconds(30));
+        }
+
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, 40),
+            new ParallelOptions { MaxDegreeOfParallelism = 16 },
+            async (_, _) =>
+            {
+                foreach (var key in keys)
+                {
+                    Assert.IsNotNull(await Sessions.FindByIdAsync(key.ToString()));
+                }
+            });
     }
 }
