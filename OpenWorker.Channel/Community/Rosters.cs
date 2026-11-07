@@ -48,11 +48,6 @@ internal sealed class NoPartyRoster : IPartyRoster
     public ValueTask<IReadOnlyList<int>> MembersAsync(int person) => ValueTask.FromResult<IReadOnlyList<int>>([]);
 }
 
-internal sealed class NoLeagueRoster : ILeagueRoster
-{
-    public ValueTask<IReadOnlyList<int>> MembersAsync(int league) => ValueTask.FromResult<IReadOnlyList<int>>([]);
-}
-
 /// <summary>
 /// The bag does not keep a megaphone yet, so every use is free.
 /// </summary>

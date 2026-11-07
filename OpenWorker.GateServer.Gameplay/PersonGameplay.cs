@@ -177,7 +177,7 @@ public sealed class PersonGameplay(
 
         var isLeagueMaster = await database
             .Set<LeaguePersistent>()
-            .AnyAsync(x => x.Master.Id == person, context.CancellationToken);
+            .AnyAsync(x => x.MasterId == person, context.CancellationToken);
 
         if (isLeagueMaster)
         {

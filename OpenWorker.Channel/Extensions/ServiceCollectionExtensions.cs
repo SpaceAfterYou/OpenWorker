@@ -46,7 +46,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<ChatThrottle>());
 
         services.AddSingleton<IPartyRoster, NoPartyRoster>();
-        services.AddSingleton<ILeagueRoster, NoLeagueRoster>();
+        services.AddSingleton<LeagueBook>();
+        services.AddSingleton<ILeagueRoster>(e => e.GetRequiredService<LeagueBook>());
+        services.AddSingleton<LeagueSnapshots>();
+        services.AddSingleton<LeagueNotifier>();
+        services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<LeagueNotifier>());
+        services.AddSingleton<ICommunityModule>(e => e.GetRequiredService<LeagueNotifier>());
         services.AddSingleton<IMegaphoneSource, FreeMegaphone>();
 
         services.AddSingleton<FriendBook>();

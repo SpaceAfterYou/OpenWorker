@@ -31,8 +31,5 @@ public sealed class PersonConfiguration : IEntityTypeConfiguration<PersonPersist
             .IsRequired()
             .IsUnicode();
 
-        builder
-            .HasOne(x => x.League)
-            .WithMany(x => x.MemberList);
     }
 }

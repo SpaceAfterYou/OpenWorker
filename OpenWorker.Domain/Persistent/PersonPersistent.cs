@@ -56,5 +56,13 @@ public sealed class PersonPersistent : BasicPersistent
     public required AccountPersistent Account { get; set; }
     public required GatePersistent Gate { get; set; }
 
-    public LeaguePersistent? League { get; set; }
+    /// <summary>
+    /// After leaving a league, or being thrown out, a person cannot join another until then.
+    /// </summary>
+    public DateTime? LeagueJoinBlockedUntil { get; set; }
+
+    /// <summary>
+    /// After disbanding a league its master cannot found another until then.
+    /// </summary>
+    public DateTime? LeagueCreateBlockedUntil { get; set; }
 }
