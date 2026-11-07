@@ -1,3 +1,4 @@
+using OpenWorker.Batch.Actions;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
 using System.Numerics;
@@ -49,6 +50,7 @@ public sealed class PersonService(
     LeaveManager leaving,
     BuffManager buffManager,
     QuestManager questManager,
+    SkillActionProvider skillActions,
     IConfiguration configuration
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -159,7 +161,7 @@ public sealed class PersonService(
         await state
             .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
 
-        var maze = new LuaMaze(state, world, context.Player, new LuaCreatureManager(world, batch), buffManager, questManager, batch, interactionCollection);
+        var maze = new LuaMaze(state, world, context.Player, new LuaCreatureManager(world, batch), buffManager, questManager, batch, interactionCollection, skillActions);
 
         world.Add(context.Player, maze);
 

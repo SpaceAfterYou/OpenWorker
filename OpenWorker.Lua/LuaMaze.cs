@@ -2,6 +2,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using Lua;
 using OpenWorker.Batch;
+using OpenWorker.Batch.Actions;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Components;
@@ -17,6 +18,7 @@ using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Lua.Managers;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -41,7 +43,8 @@ public partial class LuaMaze(
     BuffManager buffManager,
     QuestManager questManager,
     VBatchFile batch,
-    IReadOnlyCollection<InteractionObjectRow> interactions
+    IReadOnlyCollection<InteractionObjectRow> interactions,
+    SkillActionProvider actions
 ) : ILuaUserData
 {
     public LuaState State { get; } = state;
@@ -51,10 +54,12 @@ public partial class LuaMaze(
 
     public MazeProgress Progress { get; } = new(batch, interactions);
 
-    // Until skill data is read from the action files every skill hits once around the player.
-    private const float SkillRadius = 500f;
+    // Until these are read from the tables every monster has the same body and every attack the same strength.
+    private const float MonsterHitRadius = 50f;
+    private const float MonsterHitHeight = 200f;
     private const int SkillDamage = 100;
 
+    private int SkillGeneration { get; set; }
     private bool Started { get; set; }
     private bool Closed { get; set; }
 
@@ -81,18 +86,32 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// The client only says that a skill has started, so the server decides what it hits.
+    /// The client only says that a skill has started, so the server decides what it hits and when.
+    /// A new skill interrupts the previous one, along with the attacks it has not reached yet.
     /// </summary>
     [LuaIgnoreMember]
-    public async ValueTask ApplySkillAsync(int skill, SkillPositionValue position)
+    public void StartSkill(int skill, SkillPositionValue position)
     {
         if (!Started)
         {
             return;
         }
 
+        var generation = ++SkillGeneration;
+        var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
+
+        foreach (var hit in actions.GetHits(skill, hero))
+        {
+            _ = RunLaterAsync(hit.Time, () => generation == SkillGeneration ? ApplyHitAsync(skill, hit, position) : ValueTask.CompletedTask);
+        }
+    }
+
+    private async ValueTask ApplyHitAsync(int skill, SkillHit hit, SkillPositionValue position)
+    {
         var session = player.Get<ServerSessionComponent>();
-        var targets = creatureManager.FindMonstersNear(position.Position, SkillRadius);
+        var attacker = Ecs.Get<WorldComponent>(player);
+        var area = new AttackArea(hit.Trigger, attacker.Position, attacker.Rotation);
+        var targets = creatureManager.FindMonsters(place => area.Touches(place, MonsterHitRadius, MonsterHitHeight));
 
         if (targets.Length == 0)
         {
@@ -124,20 +143,45 @@ public partial class LuaMaze(
                     UxActorId = Ecs.Get<ActorComponent>(player),
                     SkillPosInfo = default(SkillActionPosInfoValue) with
                     {
-                        Position = position.Position,
-                        Angle = position.Angle,
+                        Position = attacker.Position,
+                        Angle = attacker.Rotation,
                         MotionClass = position.MotionClass,
                         HasInputFlag = position.HasInputFlag
                     }
                 },
                 Skill = skill,
+                TriggerIndex = hit.TriggerIndex,
                 ContinuousHit = 1
             }
         });
 
-        foreach (var target in targets.Where(e => Ecs.Get<CreatureComponent>(e).Health == 0))
+        // Another hit can land while a script runs, so the dead leave the fight before the first script starts.
+        var dead = targets
+            .Where(e => Ecs.Get<CreatureComponent>(e).Health == 0)
+            .Select(target => RemoveDead(session, target))
+            .ToArray();
+
+        foreach (var (identifier, place) in dead)
         {
-            await KillAsync(session, target);
+            if (Closed)
+            {
+                return;
+            }
+
+            await State.OnDie(identifier, place.SpawnBox, this);
+        }
+
+        foreach (var sector in dead.Select(e => e.Place.Sector).Distinct())
+        {
+            if (Closed)
+            {
+                return;
+            }
+
+            if (!creatureManager.HasMonstersInSector(sector))
+            {
+                await CompleteSectorAsync(sector);
+            }
         }
     }
 
@@ -149,23 +193,16 @@ public partial class LuaMaze(
         }
     }
 
-    private async ValueTask KillAsync(ServerSessionComponent session, Entity target)
+    private (int Identifier, NonPlayableCreatureComponent Place) RemoveDead(ServerSessionComponent session, Entity target)
     {
-        var creature = Ecs.Get<CreatureComponent>(target);
+        var identifier = Ecs.Get<CreatureComponent>(target).Identifier;
         var place = Ecs.Get<NonPlayableCreatureComponent>(target);
 
         session.Send(new MonsterDieResponse { Actor = Ecs.Get<ActorComponent>(target) });
 
         creatureManager.Remove(target);
 
-        await State.OnDie(creature.Identifier, place.SpawnBox, this);
-
-        if (Closed || creatureManager.HasMonstersInSector(place.Sector))
-        {
-            return;
-        }
-
-        await CompleteSectorAsync(place.Sector);
+        return (identifier, place);
     }
 
     /// <summary>

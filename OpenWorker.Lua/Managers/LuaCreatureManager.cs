@@ -164,13 +164,11 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
         }
     }
 
-    public Entity[] FindMonstersNear(Vector3 position, float radius)
+    public Entity[] FindMonsters(Func<Vector3, bool> touches)
     {
         return Creatures
             .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
-            .Where(e => Vector2.Distance(
-                new Vector2(position.X, position.Y),
-                new Vector2(ecs.Get<WorldComponent>(e).Position.X, ecs.Get<WorldComponent>(e).Position.Y)) <= radius)
+            .Where(e => touches(ecs.Get<WorldComponent>(e).Position))
             .ToArray();
     }
 

@@ -122,7 +122,7 @@ public sealed class MazeService(
             position.Y <= Math.Max(e.PosTopLeft.Y, e.PosBottomRight.Y));
     }
 
-    public async ValueTask OnHandleAsync(ServiceHandleContext context, SkillActiveSkillRequest request)
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillActiveSkillRequest request)
     {
         var skill = request.Skill;
         var world = ecs.Get<WorldComponent>(context.Player);
@@ -133,8 +133,10 @@ public sealed class MazeService(
 
         if (ecs.Has<LuaMaze>(context.Player))
         {
-            await ecs.Get<LuaMaze>(context.Player).ApplySkillAsync(skill.Skill, skill.Position);
+            ecs.Get<LuaMaze>(context.Player).StartSkill(skill.Skill, skill.Position);
         }
+
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
