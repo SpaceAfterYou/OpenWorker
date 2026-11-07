@@ -65,6 +65,7 @@ public sealed class TestGateSession
         private readonly TcpClient _client = new();
         private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
         private readonly BinaryReader _reader;
+        private readonly List<TcpClient> _others = [];
 
         public World World { get; } = World.Create();
         public Entity Player { get; }
@@ -86,7 +87,8 @@ public sealed class TestGateSession
                 new ServerSessionComponent(_listener.AcceptTcpClient()),
                 new ClaimsComponent(),
                 new SecondPasswordComponent { Password = string.Empty },
-                new TradePasswordComponent { Password = string.Empty });
+                new TradePasswordComponent { Password = string.Empty },
+                new GatePersonComponent());
 
             _reader = new BinaryReader(_client.GetStream());
 
@@ -201,6 +203,22 @@ public sealed class TestGateSession
 
         public ServiceHandleContext Context => new(Player, CancellationToken.None);
 
+        /// <summary>
+        /// Another connection in the same world, the way a real server has them.
+        /// </summary>
+        public Entity ConnectAnotherPlayer()
+        {
+            _others.Add(new TcpClient());
+            _others[^1].Connect(IPAddress.Loopback, ((IPEndPoint)_listener.LocalEndpoint).Port);
+
+            return World.Create(
+                new ServerSessionComponent(_listener.AcceptTcpClient()),
+                new ClaimsComponent(),
+                new SecondPasswordComponent { Password = string.Empty },
+                new TradePasswordComponent { Password = string.Empty },
+                new GatePersonComponent());
+        }
+
         public byte[] ReadPayload()
         {
             var header = new MessageHeader(_reader);
@@ -222,6 +240,7 @@ public sealed class TestGateSession
         {
             _reader.Dispose();
             _client.Dispose();
+            _others.ForEach(e => e.Dispose());
             _listener.Stop();
             _listener.Dispose();
             World.Dispose();
@@ -288,6 +307,32 @@ public sealed class TestGateSession
         await harness.Login.TryJoinAsync(harness.Context, harness.CreateEnterRequest(harness.Account));
 
         Assert.IsFalse(harness.World.Get<GatePersonComponent>(harness.Player).HasLast);
+    }
+
+    [TestMethod]
+    public async Task EveryPlayerKeepsItsOwnPersonList()
+    {
+        await using var harness = new Harness();
+
+        var (active, _) = await harness.SeedAsync();
+        await ReserveSessionAsync(harness);
+
+        var players = Enumerable.Range(0, 4).Select(_ => harness.ConnectAnotherPlayer()).ToArray();
+
+        foreach (var player in players)
+        {
+            await harness.Login.TryJoinAsync(
+                new ServiceHandleContext(player, CancellationToken.None),
+                harness.CreateEnterRequest(harness.Account));
+        }
+
+        foreach (var player in players)
+        {
+            var list = harness.World.Get<GatePersonComponent>(player).SlotList;
+
+            Assert.IsNotNull(list);
+            Assert.AreEqual(active, harness.World.Get<ActorComponent>(list[0]).Identifier);
+        }
     }
 
     [TestMethod]

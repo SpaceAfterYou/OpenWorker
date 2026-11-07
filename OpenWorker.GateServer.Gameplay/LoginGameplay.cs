@@ -105,7 +105,7 @@ public sealed class LoginGameplay(
 
         var list = registry.CreatePersonListComponent(account.Persons);
 
-        world.Add(context.Player, list);
+        world.Set(context.Player, list);
 
         session.Send(new LoginEnterGateResponse
         {
