@@ -112,7 +112,8 @@ public sealed class ActionFileTest
         e.Write(0);
         e.Write(9);
         e.Write(new byte[12 + 4 + 20 + 2]);
-        e.Write(new byte[4 + 12 + 36]);
+        e.Write(1);
+        WriteFloats(e, 3f, 5f, 0.3f, 360f, 0f, -10f, 0f, 100f, 100f, 120f, 200f, 1f);
         WriteString(e, "text");
         e.Write(new byte[4 + 1 + 4]);
         e.Write(new byte[1 + 12 + 8]);
@@ -124,6 +125,9 @@ public sealed class ActionFileTest
         e.Write(new byte[40]);
         e.Write(true);
         e.Write(4);
+        e.Write(new byte[2 + 2 + 1 + 4 + 4]);
+        e.Write(false);
+        e.Write(true);
         // The rest of an attack is skipped.
         e.Write(new byte[32]);
     }
@@ -195,8 +199,9 @@ public sealed class ActionFileTest
         var attack = animation.Attacks[0];
 
         Assert.AreEqual(
-            new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile),
+            new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain),
             attack);
+        Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
         Assert.AreEqual(0.75f, animation.Attacks[1].Start);
         Assert.AreEqual(
             new ProjectileInfo(new Vector3(10, 20, 30), 500f, 2f, true, 1, 75f, true, 0.2f, true, version >= 218, 6, new Vector3(-7, 40, 0), true, 4),
@@ -249,5 +254,12 @@ public sealed class ActionFileTest
         Assert.AreEqual(5000f, thrown.Projectile!.Speed);
         Assert.AreEqual(100f, thrown.Projectile.Radius);
         Assert.IsTrue(thrown.Projectile.Penetrates);
+
+        var chain = ActionFile.Load(Path.Join(folder, "PC_E.adf")).Animations["B_Skill_07_Attack"].Attacks.Single(e => e.Id == 105);
+
+        Assert.IsTrue(chain.IsChain);
+        Assert.AreEqual(new ChainInfo(ChainInfo.FromFirst, 3f, 5, 1f, new Vector3(0, -10, 0), 100f, 1f, true), chain.Chain);
+        Assert.AreEqual(3500f, chain.Projectile!.Speed);
+        Assert.IsTrue(chain.Projectile.IsContinuous);
     }
 }

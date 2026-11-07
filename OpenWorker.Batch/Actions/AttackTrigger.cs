@@ -21,12 +21,13 @@ public readonly record struct AttackTrigger(
     float StartPosition,
     float DamageRate = 1f,
     int ReactionType = 1,
-    ProjectileInfo? Projectile = null)
+    ProjectileInfo? Projectile = null,
+    ChainInfo? Chain = null)
 {
     private const short Melee = 0;
     private const short Thrown = 1;
     private const short Trap = 2;
-    private const short Chain = 5;
+    private const short Chained = 5;
 
     public const short FromBody = 6;
     public const short BoxRange = 1;
@@ -34,7 +35,7 @@ public readonly record struct AttackTrigger(
     /// <summary>
     /// Other types leave it to an object they spawn: a projectile or a trap.
     /// </summary>
-    public bool HitsArea => AttackType is Melee or Chain;
+    public bool HitsArea => AttackType is Melee or Chained;
 
     public bool IsProjectile => AttackType is Thrown or FromBody;
 
@@ -42,6 +43,11 @@ public readonly record struct AttackTrigger(
     /// Stays where it was placed and hits whoever is around.
     /// </summary>
     public bool IsTrap => AttackType is Trap;
+
+    /// <summary>
+    /// Jumps from one target to the next one close to it.
+    /// </summary>
+    public bool IsChain => AttackType is Chained;
 
     /// <summary>
     /// Some attacks only show something and affect nobody.
@@ -70,4 +76,26 @@ public sealed record ProjectileInfo(
 {
     public const int ByCamera = 0;
     public const int AlongGround = 2;
+}
+
+/// <summary>
+/// How a chain finds its next target and how long it lives.
+/// </summary>
+/// <param name="ConnectionType">0 takes one target after another, 1 takes the first and then the rest from it, 2 takes them all at once.</param>
+/// <param name="Radius">How far from the last target the next one may stand.</param>
+/// <param name="DamageMultiple">The share of the damage for every target after the first.</param>
+/// <param name="RecalculatesTargets">Whether every repeated hit looks for the targets again.</param>
+public sealed record ChainInfo(
+    int ConnectionType,
+    float LifeTime,
+    int MaxCount,
+    float DamageMultiple,
+    Vector3 Center,
+    float Radius,
+    float StartPosition,
+    bool RecalculatesTargets)
+{
+    public const int OneByOne = 0;
+    public const int FromFirst = 1;
+    public const int AllAtOnce = 2;
 }

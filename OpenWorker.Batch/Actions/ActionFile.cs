@@ -19,6 +19,12 @@ public sealed class ActionFile
     private const short FiltersSinceVersion = 204;
     private const short CollisionRangeSinceVersion = 205;
     private const short PenetrationSinceVersion = 207;
+    private const short ExplodeFactionSinceVersion = 211;
+    private const short ExplodeTrapSinceVersion = 214;
+    private const short PenetrationEffectSinceVersion = 215;
+    private const short ReactionAngleSinceVersion = 216;
+    private const short RandomShootSinceVersion = 221;
+    private const short ChainRecalculationSinceVersion = 222;
     private const short RandomRadiusMinSinceVersion = 210;
     private const short TargetOnlySinceVersion = 218;
     private const short EffectVisibilitySinceVersion = 255;
@@ -164,12 +170,12 @@ public sealed class ActionFile
         var height = reader.ReadSingle();
         var startPosition = reader.ReadSingle();
 
-        var (projectile, damageRate, reactionType) = ReadProjectile(reader, version);
+        var (projectile, chain, damageRate, reactionType) = ReadProjectile(reader, version);
 
-        return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition, damageRate, reactionType, projectile);
+        return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition, damageRate, reactionType, projectile, chain);
     }
 
-    private static (ProjectileInfo Projectile, float DamageRate, int ReactionType) ReadProjectile(BinaryReader reader, short version)
+    private static (ProjectileInfo Projectile, ChainInfo Chain, float DamageRate, int ReactionType) ReadProjectile(BinaryReader reader, short version)
     {
         var start = ReadVector3(reader);
         var speed = reader.ReadSingle();
@@ -222,9 +228,26 @@ public sealed class ActionFile
 
         var reactionType = reader.ReadInt32();
 
-        // How a target reacts, then what a hit passes on to others.
+        // How a target reacts.
         Skip(reader, 3 * sizeof(float) + sizeof(int) + 5 * sizeof(float) + sizeof(short));
-        Skip(reader, sizeof(int) + 3 * sizeof(float) + 9 * sizeof(float));
+
+        var connectionType = reader.ReadInt32();
+        var chainLifeTime = reader.ReadSingle();
+        var chainMaxCount = (int)reader.ReadSingle();
+        var damageMultiple = reader.ReadSingle();
+
+        reader.ReadSingle();
+
+        var chainCenter = ReadVector3(reader);
+
+        Skip(reader, 2 * sizeof(float));
+
+        var chainRadius = reader.ReadSingle();
+
+        reader.ReadSingle();
+
+        var chainStartPosition = reader.ReadSingle();
+
         SkipStrings(reader, 1);
         Skip(reader, sizeof(int) + 1 + sizeof(float));
         Skip(reader, 1 + 3 * sizeof(int) + 2 * sizeof(float));
@@ -254,9 +277,25 @@ public sealed class ActionFile
             penetrateCount = reader.ReadInt32();
         }
 
-        var projectile = new ProjectileInfo(start, speed, lifeTime, hasGravity, directionType, radius, isContinuous, continuousTime, isGuided, targetOnly, explodeDecision, direction, penetrates, penetrateCount);
+        SkipSince(reader, version, ExplodeFactionSinceVersion, sizeof(short));
+        SkipSince(reader, version, ExplodeTrapSinceVersion, sizeof(short));
+        SkipSince(reader, version, PenetrationEffectSinceVersion, 1);
+        SkipSince(reader, version, ReactionAngleSinceVersion, sizeof(float));
+        SkipSince(reader, version, RandomShootSinceVersion, 2 * sizeof(short));
 
-        return (projectile, damageRate, reactionType);
+        var recalculates = false;
+
+        if (version >= ChainRecalculationSinceVersion)
+        {
+            // Whether the chain looks like a laser, which only matters for the picture.
+            reader.ReadBoolean();
+            recalculates = reader.ReadBoolean();
+        }
+
+        var projectile = new ProjectileInfo(start, speed, lifeTime, hasGravity, directionType, radius, isContinuous, continuousTime, isGuided, targetOnly, explodeDecision, direction, penetrates, penetrateCount);
+        var chain = new ChainInfo(connectionType, chainLifeTime, chainMaxCount, damageMultiple, chainCenter, chainRadius, chainStartPosition, recalculates);
+
+        return (projectile, chain, damageRate, reactionType);
     }
 
     private static Vector3 ReadVector3(BinaryReader reader)
@@ -267,6 +306,14 @@ public sealed class ActionFile
     private static void Skip(BinaryReader reader, int bytes)
     {
         reader.BaseStream.Seek(bytes, SeekOrigin.Current);
+    }
+
+    private static void SkipSince(BinaryReader reader, short version, short since, int bytes)
+    {
+        if (version >= since)
+        {
+            Skip(reader, bytes);
+        }
     }
 
     private static void SkipStrings(BinaryReader reader, int count)
