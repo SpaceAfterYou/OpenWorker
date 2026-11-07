@@ -6,9 +6,9 @@ using OpenWorker.UpdateContent.Res.Rows;
 namespace OpenWorker.Batch.Actions;
 
 /// <summary>
-/// One attack of a skill: when it lands after the skill starts, and which attack of its animation it is.
+/// One attack of a skill and when it lands after the skill starts.
 /// </summary>
-public readonly record struct SkillHit(float Time, short TriggerIndex, AttackTrigger Trigger);
+public readonly record struct SkillHit(float Time, AttackTrigger Trigger);
 
 /// <summary>
 /// Finds what a skill hits from the animations the table names for it.
@@ -23,6 +23,8 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     /// Skills that depend on the direction of movement have one animation for each. Without input a character goes forward.
     /// </summary>
     private const string ForwardSuffix = "_F";
+
+    private const byte FlownByClient = 2;
 
     private Dictionary<int, SkillRow> Rows { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<Hero, ActionFile?> Files { get; } = [];
@@ -42,6 +44,41 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
         return hits;
     }
 
+    /// <summary>
+    /// Finds the attack a client says it has just fired.
+    /// </summary>
+    public bool TryGetProjectile(int skill, Hero hero, int attack, out AttackTrigger trigger)
+    {
+        trigger = default;
+
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(hero) is not { } file)
+        {
+            return false;
+        }
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationExtra, row.AnimationEnd])
+        {
+            foreach (var candidate in Find(file, name)?.Attacks ?? [])
+            {
+                if (candidate.Id == attack && candidate.IsProjectile)
+                {
+                    trigger = candidate;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Some skills fly on the client alone, which then expects no word about it.
+    /// </summary>
+    public bool IsFlownByClient(int skill)
+    {
+        return Rows.TryGetValue(skill, out var row) && row.BulletSyncType == FlownByClient;
+    }
+
     private static SkillHit[] Collect(SkillRow row, ActionFile file)
     {
         var hits = new List<SkillHit>();
@@ -55,10 +92,9 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
                 continue;
             }
 
-            // The index counts every attack of the animation, because that is how the client finds it.
             hits.AddRange(animation.Attacks
-                .Select((attack, index) => new SkillHit(offset + attack.Start, (short)index, attack))
-                .Where(e => e.Trigger.HitsArea));
+                .Where(attack => attack.HitsArea)
+                .Select(attack => new SkillHit(offset + attack.Start, attack)));
 
             offset += animation.Length;
         }

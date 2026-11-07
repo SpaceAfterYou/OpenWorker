@@ -62,7 +62,7 @@ public readonly struct SkillRow(BinaryReader reader)
     public int Field51 { get; } = reader.ReadInt32();
     public int Field52 { get; } = reader.ReadInt32();
     public int Field53 { get; } = reader.ReadInt32();
-    public byte Field54 { get; } = reader.ReadByte();
+    public byte BulletSyncType { get; } = reader.ReadByte();
     public short Field55 { get; } = reader.ReadInt16();
     public string Field56 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public short Field57 { get; } = reader.ReadInt16();

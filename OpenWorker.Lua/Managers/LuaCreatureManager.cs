@@ -3,6 +3,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Batch;
+using OpenWorker.Batch.Actions;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
@@ -169,6 +170,29 @@ public sealed class LuaCreatureManager(World ecs, VBatchFile batch)
         return Creatures
             .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
             .Where(e => touches(ecs.Get<WorldComponent>(e).Position))
+            .ToArray();
+    }
+
+    public Entity? FindMonster(int identifier)
+    {
+        foreach (var creature in Creatures)
+        {
+            var actor = ecs.Get<ActorComponent>(creature);
+
+            if (actor.Type == ActorType.Monster && actor.Identifier == identifier)
+            {
+                return creature;
+            }
+        }
+
+        return null;
+    }
+
+    public FlightTarget[] GetFlightTargets(float radius, float height)
+    {
+        return Creatures
+            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
+            .Select(e => new FlightTarget(ecs.Get<ActorComponent>(e).Identifier, ecs.Get<WorldComponent>(e).Position, radius, height))
             .ToArray();
     }
 

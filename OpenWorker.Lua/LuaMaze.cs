@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Lua;
@@ -15,6 +16,7 @@ using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
@@ -59,7 +61,10 @@ public partial class LuaMaze(
     private const float MonsterHitHeight = 200f;
     private const int SkillDamage = 100;
 
+    private static readonly TimeSpan FlightTick = TimeSpan.FromMilliseconds(50);
+
     private int SkillGeneration { get; set; }
+    private uint ProjectileSession { get; set; }
     private bool Started { get; set; }
     private bool Closed { get; set; }
 
@@ -106,17 +111,114 @@ public partial class LuaMaze(
         }
     }
 
-    private async ValueTask ApplyHitAsync(int skill, SkillHit hit, SkillPositionValue position)
+    private ValueTask ApplyHitAsync(int skill, SkillHit hit, SkillPositionValue position)
     {
-        var session = player.Get<ServerSessionComponent>();
         var attacker = Ecs.Get<WorldComponent>(player);
         var area = new AttackArea(hit.Trigger, attacker.Position, attacker.Rotation);
         var targets = creatureManager.FindMonsters(place => area.Touches(place, MonsterHitRadius, MonsterHitHeight));
 
-        if (targets.Length == 0)
+        return ApplyDamageAsync(skill, hit.Trigger, targets, position);
+    }
+
+    /// <summary>
+    /// The client fires a projectile when its animation gets there, and the server follows it to see whom it hits.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void FireProjectile(SkillProjectileRequest request)
+    {
+        var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
+
+        if (!Started || !actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
         {
             return;
         }
+
+        var flight = ProjectileFlight.Launch(trigger, request.Position, request.Right, request.Yaw, request.Direction, request.Target.Identifier);
+        var session = ++ProjectileSession;
+
+        if (!actions.IsFlownByClient(request.Skill))
+        {
+            player.Get<ServerSessionComponent>().Send(new SkillProjectileBroadcastResponse
+            {
+                Owner = Ecs.Get<ActorComponent>(player),
+                Projectile = default(ProjectileShotValue) with
+                {
+                    Skill = request.Skill,
+                    Attack = request.TriggerIndex,
+                    Position = flight.Position,
+                    Direction = flight.Direction,
+                    Session = session
+                }
+            });
+        }
+
+        var position = default(SkillPositionValue) with { Position = request.Position, Angle = request.Yaw };
+
+        _ = FlyAsync(request.Skill, trigger, flight, position);
+    }
+
+    private async Task FlyAsync(int skill, AttackTrigger trigger, ProjectileFlight flight, SkillPositionValue position)
+    {
+        try
+        {
+            var last = Stopwatch.GetTimestamp();
+
+            while (!Closed && !flight.IsOver)
+            {
+                await Task.Delay(FlightTick);
+
+                if (Closed)
+                {
+                    return;
+                }
+
+                var seconds = (float)Stopwatch.GetElapsedTime(last).TotalSeconds;
+
+                last = Stopwatch.GetTimestamp();
+
+                foreach (var explosion in flight.Advance(seconds, creatureManager.GetFlightTargets(MonsterHitRadius, MonsterHitHeight)))
+                {
+                    await ExplodeAsync(skill, trigger, explosion, position);
+
+                    if (Closed)
+                    {
+                        return;
+                    }
+                }
+            }
+        }
+
+        catch (Exception e)
+        {
+            Console.WriteLine($"[{nameof(FlyAsync)}]: {e}");
+        }
+    }
+
+    private ValueTask ExplodeAsync(int skill, AttackTrigger trigger, Explosion explosion, SkillPositionValue position)
+    {
+        var yaw = Ecs.Get<WorldComponent>(player).Rotation;
+        var area = new AttackArea(trigger, explosion.Position, yaw);
+        var targets = trigger.Projectile is { TargetOnly: true }
+            ? []
+            : creatureManager.FindMonsters(place => area.Touches(place, MonsterHitRadius, MonsterHitHeight));
+
+        if (explosion.Collider is { } key && creatureManager.FindMonster(key) is { } collider && !targets.Contains(collider))
+        {
+            targets = [.. targets, collider];
+        }
+
+        return ApplyDamageAsync(skill, trigger, targets, position);
+    }
+
+    private async ValueTask ApplyDamageAsync(int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position)
+    {
+        if (targets.Length == 0 || !trigger.AffectsTargets)
+        {
+            return;
+        }
+
+        var session = player.Get<ServerSessionComponent>();
+        var attacker = Ecs.Get<WorldComponent>(player);
 
         var hits = targets.Select(target =>
         {
@@ -150,7 +252,7 @@ public partial class LuaMaze(
                     }
                 },
                 Skill = skill,
-                TriggerIndex = hit.TriggerIndex,
+                TriggerIndex = (short)trigger.Id,
                 ContinuousHit = 1
             }
         });

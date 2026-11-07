@@ -44,6 +44,7 @@ public sealed class MazeService(
     IHotspotHandler<MazeCompleteRequest>,
     IHotspotHandler<SkillActiveSkillRequest>,
     IHotspotHandler<SkillSyncPositionRequest>,
+    IHotspotHandler<SkillProjectileRequest>,
     IHotspotHandler<SkillWarpPositionRequest>,
     IHotspotHandler<WorldWarpRequest>,
     IHotspotHandler<WorldWarpOutRequest>,
@@ -162,6 +163,19 @@ public sealed class MazeService(
         if (Place.IsValid(request.Position))
         {
             ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Position = request.Position });
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillProjectileRequest request)
+    {
+        if (Place.IsValid(request.Position, request.Yaw) &&
+            Place.IsValid(request.Right) &&
+            Place.IsValid(request.Direction) &&
+            ecs.Has<LuaMaze>(context.Player))
+        {
+            ecs.Get<LuaMaze>(context.Player).FireProjectile(request);
         }
 
         return ValueTask.CompletedTask;
