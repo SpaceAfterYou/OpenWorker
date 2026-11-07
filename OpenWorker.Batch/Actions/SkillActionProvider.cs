@@ -29,6 +29,7 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     private Dictionary<int, SkillRow> Rows { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<string, ActionFile?> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<(int Skill, string File), SkillHit[]> Hits { get; } = [];
+    private Dictionary<(int Skill, string File), SkillHit[]> Shots { get; } = [];
 
     public IReadOnlyList<SkillHit> GetHits(int skill, Hero hero)
     {
@@ -50,6 +51,23 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
         Hits.Add((skill, actionFile), hits);
 
         return hits;
+    }
+
+    /// <summary>
+    /// The moments an animation of a skill sets something flying: the arrows, bullets and blasts that a monster fires.
+    /// </summary>
+    public IReadOnlyList<SkillHit> GetShots(int skill, string actionFile)
+    {
+        if (Shots.TryGetValue((skill, actionFile), out var shots))
+        {
+            return shots;
+        }
+
+        shots = Rows.TryGetValue(skill, out var row) && GetFile(actionFile) is { } file ? Collect(row, file, attack => attack.IsProjectile) : [];
+
+        Shots.Add((skill, actionFile), shots);
+
+        return shots;
     }
 
     /// <summary>
@@ -133,6 +151,11 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
 
     private static SkillHit[] Collect(SkillRow row, ActionFile file)
     {
+        return Collect(row, file, attack => attack.HitsArea || attack.IsTrap);
+    }
+
+    private static SkillHit[] Collect(SkillRow row, ActionFile file, Func<AttackTrigger, bool> wanted)
+    {
         var hits = new List<SkillHit>();
         var offset = 0f;
 
@@ -145,7 +168,7 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
             }
 
             hits.AddRange(animation.Attacks
-                .Where(attack => attack.HitsArea || attack.IsTrap)
+                .Where(wanted)
                 .Select(attack => new SkillHit(offset + attack.Start, attack)));
 
             offset += animation.Length;

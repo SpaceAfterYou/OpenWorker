@@ -59,6 +59,7 @@ public sealed class LuaCreatureManager
         this.tables = tables;
 
         Services = services;
+        Navigation = new SectorNavigation(batch.EventBox.Sectors);
         Vitals = new PlayerVitals(ecs, tables);
         Logger = logger;
     }
@@ -75,7 +76,7 @@ public sealed class LuaCreatureManager
     /// <summary>
     /// Where a monster can walk.
     /// </summary>
-    public INavigation Navigation { get; set; } = OpenNavigation.Instance;
+    public INavigation Navigation { get; set; }
 
     internal Random Random { get; } = new();
 
@@ -664,6 +665,30 @@ public sealed class LuaCreatureManager
         return new AiTarget(ecs.Get<ActorComponent>(player), place.Position, PlayerVitals.BodyRadius, place.Rotation, Vitals.Health(player), Vitals.MaxHealth(player), false);
     }
 
+    /// <summary>
+    /// The players as something a projectile can run into, named by the actor.
+    /// </summary>
+    internal FlightTarget[] GetPlayerTargets()
+    {
+        return Players
+            .Where(e => ecs.IsAlive(e) && Vitals.IsAlive(e))
+            .Select(e => new FlightTarget(ecs.Get<ActorComponent>(e).Identifier, Vitals.PositionOf(e), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight))
+            .ToArray();
+    }
+
+    internal Entity? FindPlayerEntity(int identifier)
+    {
+        foreach (var player in Players)
+        {
+            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && ecs.Get<ActorComponent>(player).Identifier == identifier)
+            {
+                return player;
+            }
+        }
+
+        return null;
+    }
+
     internal AiTarget? FindPlayer(int id)
     {
         foreach (var player in Players)
@@ -687,7 +712,7 @@ public sealed class LuaCreatureManager
             var target = Describe(player);
             var between = Vector3.Distance(from, target.Position) - target.Radius;
 
-            if (between <= nearest)
+            if (between <= nearest && Navigation.CanSee(from, target.Position))
             {
                 nearest = between;
                 best = target;

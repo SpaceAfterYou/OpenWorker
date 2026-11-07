@@ -73,7 +73,17 @@ internal sealed class MonsterBody : IAiHost
 
     private ActorComponent Actor => _ecs.Get<ActorComponent>(Entity);
 
-    private readonly record struct PendingHit(double Time, SkillHit Hit, int Skill);
+    private readonly record struct PendingHit(double Time, SkillHit Hit, int Skill, bool Shot = false);
+
+    private sealed class Flight(ProjectileFlight projectile, AttackTrigger trigger, int skill)
+    {
+        public ProjectileFlight Projectile { get; } = projectile;
+        public AttackTrigger Trigger { get; } = trigger;
+        public int Skill { get; } = skill;
+    }
+
+    private readonly List<Flight> _flights = [];
+    private uint _shotSession;
 
     // ---- The body in the world ----------------------------------------------------------------
 
@@ -139,6 +149,7 @@ internal sealed class MonsterBody : IAiHost
         _staggerEnd = _manager.Now + seconds;
         _attackEnd = 0;
         _pending.Clear();
+        _flights.Clear();
 
         if (IsMoving)
         {
@@ -155,6 +166,7 @@ internal sealed class MonsterBody : IAiHost
 
         Advance(now, elapsed);
         ResolveHits(now);
+        Fly(elapsed);
 
         Machine.Update(elapsed);
     }
@@ -420,6 +432,11 @@ internal sealed class MonsterBody : IAiHost
             _pending.Add(new PendingHit(now + hit.Time, hit, skill.Id));
         }
 
+        foreach (var shot in _actions.GetShots(skill.Id, Behavior.ActionFile))
+        {
+            _pending.Add(new PendingHit(now + shot.Time, shot, skill.Id, true));
+        }
+
         _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
         Broadcast(new SkillActiveBroadcastResponse
@@ -444,9 +461,83 @@ internal sealed class MonsterBody : IAiHost
 
             _pending.RemoveAt(0);
 
+            if (pending.Shot)
+            {
+                Fire(pending.Skill, pending.Hit.Trigger);
+
+                continue;
+            }
+
             var area = new AttackArea(pending.Hit.Trigger, Position, Yaw);
 
             _manager.HitPlayers(this, pending.Skill, pending.Hit.Trigger, _manager.PlayersTouching(area));
+        }
+    }
+
+    /// <summary>
+    /// Sets a projectile off in the direction the monster looks. A monster has no camera, so the direction of the shot
+    /// is the one the monster itself would give a player standing in its place.
+    /// </summary>
+    private void Fire(int skill, AttackTrigger trigger)
+    {
+        if (trigger.Projectile is null)
+        {
+            return;
+        }
+
+        var right = new Vector3(AiMath.Direction(Yaw - 90f), 0f);
+        var camera = new Vector3(Yaw - 180f, 0f, 0f);
+        var flight = ProjectileFlight.Launch(trigger, Position, right, Yaw, camera);
+
+        _flights.Add(new Flight(flight, trigger, skill));
+
+        if (!_actions.IsFlownByClient(skill))
+        {
+            Broadcast(new SkillProjectileBroadcastResponse
+            {
+                Owner = Actor,
+                Projectile = default(ProjectileShotValue) with
+                {
+                    Skill = skill,
+                    Attack = (short)trigger.Id,
+                    Position = flight.Position,
+                    Direction = flight.Direction,
+                    Right = right,
+                    Yaw = Yaw,
+                    Session = ++_shotSession
+                }
+            });
+        }
+    }
+
+    private void Fly(float elapsed)
+    {
+        if (_flights.Count == 0)
+        {
+            return;
+        }
+
+        var targets = _manager.GetPlayerTargets();
+
+        foreach (var flight in _flights.ToArray())
+        {
+            foreach (var explosion in flight.Projectile.Advance(elapsed, targets))
+            {
+                var area = new AttackArea(flight.Trigger, explosion.Position, Yaw);
+                List<Entity> victims = flight.Trigger.Projectile is { TargetOnly: true } ? [] : [.. _manager.PlayersTouching(area)];
+
+                if (explosion.Collider is { } key && _manager.FindPlayerEntity(key) is { } hit && !victims.Contains(hit))
+                {
+                    victims.Add(hit);
+                }
+
+                _manager.HitPlayers(this, flight.Skill, flight.Trigger, victims);
+            }
+
+            if (flight.Projectile.IsOver)
+            {
+                _flights.Remove(flight);
+            }
         }
     }
 
