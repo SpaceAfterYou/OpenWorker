@@ -16,7 +16,7 @@ public readonly struct MessageHeader
     /// </summary>
     public const int MaxContentLength = ushort.MaxValue - HeaderSize;
 
-    private const byte HeaderSize = 0x05;
+    public const byte HeaderSize = 0x05;
     private const byte HeaderVersion = 0x05;
 
     public MessageHeader(long length)

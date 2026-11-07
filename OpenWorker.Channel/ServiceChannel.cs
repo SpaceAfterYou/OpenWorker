@@ -1,10 +1,13 @@
-﻿using Arch.Core;
+﻿using System.Collections.Concurrent;
+using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Domain.Components;
+using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Dtos;
+using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
@@ -13,59 +16,74 @@ namespace OpenWorker.Channel;
 
 public readonly record struct ServiceChannel(short Identifier)
 {
-    private HashSet<Entity> InternalMemberCollection { get; } = [];
+    // Connections run on their own threads. The sessions are kept here so that a broadcast does not
+    // have to read the entity of a player who may be leaving at this moment.
+    private ConcurrentDictionary<Entity, ServerSessionComponent> Members { get; } = new();
 
-    public short Online => (short)InternalMemberCollection.Count;
+    public short Online => (short)Members.Count;
 
-    public ChannelWorkload Workload => ChannelUtils.GetWorkload(InternalMemberCollection.Count);
+    public ChannelWorkload Workload => ChannelUtils.GetWorkload(Members.Count);
 
     public void ForEach(Action<Entity> action)
     {
-        foreach (var entity in InternalMemberCollection)
+        foreach (var entity in Members.Keys)
         {
             action(entity);
+        }
+    }
+
+    public void Broadcast(IResponseHotspotMessage message)
+    {
+        foreach (var session in Members.Values)
+        {
+            session.TrySend(message);
+        }
+    }
+
+    public void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
+    {
+        foreach (var (member, session) in Members)
+        {
+            if (member != player)
+            {
+                session.TrySend(message);
+            }
         }
     }
 
     internal void Join(Entity entity, World world)
     {
         BroadcastJoin(entity, world);
-        
-        InternalMemberCollection.Add(entity);
+
+        Members[entity] = world.Get<ServerSessionComponent>(entity);
     }
 
     internal void Leave(Entity player, World world)
     {
-        InternalMemberCollection.Remove(player);
-
-        BroadcastLeave(player, world);
-    }
-
-    private void BroadcastLeave(Entity player, World world)
-    {
-        foreach (var session in InternalMemberCollection.Select(member => world.Get<ServerSessionComponent>(member)))
+        // A connection can close before its player has joined a channel.
+        if (Members.TryRemove(player, out _))
         {
-            session.Send(new WorldOutInfoPcResponse { Actors = [world.Get<ActorComponent>(player)] });
+            Broadcast(new WorldOutInfoPcResponse { Actors = [world.Get<ActorComponent>(player)] });
         }
     }
 
     private void BroadcastJoin(Entity player, World world)
     {
-        foreach (var session in InternalMemberCollection.Select(member => world.Get<ServerSessionComponent>(member)))
+        ActorValue actor = world.Get<ActorComponent>(player);
+
+        Broadcast(new WorldInInfoPcResponse
         {
-            session.Send(new WorldInInfoPcResponse
-            {
-                Person = PersonSnapshotMapper.CreatePersonValue(world, player, player),
-                World = PersonSnapshotMapper.CreateWorldValue(world, player)
-            });
-            session.Send(new PersonUpdateOriginStatListResponse { Actor = world.Get<ActorComponent>(player) });
-        }
+            Person = PersonSnapshotMapper.CreatePersonValue(world, player, player),
+            World = PersonSnapshotMapper.CreateWorldValue(world, player)
+        });
+
+        Broadcast(new PersonUpdateOriginStatListResponse { Actor = actor });
     }
 
     public void SendOthers(Entity player, World world)
     {
         var session = world.Get<ServerSessionComponent>(player);
-        var people = InternalMemberCollection
+        var people = Members.Keys
             .Where(e => e != player)
             .Select(e => new PersonWorldPair(
                 PersonSnapshotMapper.CreatePersonValue(world, e, e),

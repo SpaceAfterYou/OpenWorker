@@ -1,13 +1,14 @@
 using Arch.Core;
 using Microsoft.Extensions.Configuration;
 using OpenWorker.Extensions;
+using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
 using OpenWorker.Hotspot.Modules.Channels.Extensions;
 
 namespace OpenWorker.Channel;
 
-public sealed class ServiceChannels(IConfiguration configuration, World world) : List<ServiceChannel>(CreateCollection(configuration))
+public sealed class ServiceChannels(IConfiguration configuration, World world) : List<ServiceChannel>(CreateCollection(configuration)), ISessionCloseHandler
 {
     private Guid Owner { get; } = configuration.GetInstance();
 
@@ -68,6 +69,16 @@ public sealed class ServiceChannels(IConfiguration configuration, World world) :
         channel.Join(entity, world);
         
         world.Set(entity, new ChannelMemberComponent(index));
+    }
+
+    public ValueTask OnSessionClosedAsync(Entity player)
+    {
+        if (Count > 0 && world.Has<ChannelMemberComponent>(player))
+        {
+            Leave(player);
+        }
+
+        return ValueTask.CompletedTask;
     }
 
     private void Leave(Entity player)

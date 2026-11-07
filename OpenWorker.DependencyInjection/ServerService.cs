@@ -35,6 +35,8 @@ internal sealed class ServerService(
             TaskScheduler.Default);
     }
 
+    private static TimeSpan SendTimeout { get; } = TimeSpan.FromSeconds(10);
+
     private async Task AcceptLoopAsync(CancellationToken cancellationToken)
     {
         Listener.Start();
@@ -61,6 +63,11 @@ internal sealed class ServerService(
     {
         using (socket)
         {
+            // Movement is made of small frames that must not wait for each other. A client that stopped
+            // reading must not hold the players who broadcast to it.
+            socket.NoDelay = true;
+            socket.SendTimeout = (int)SendTimeout.TotalMilliseconds;
+
             var entity = components.CreateEntity(world);
 
             entity.Set(new ServerSessionComponent(socket));
