@@ -2,6 +2,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Maze.Types;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
+using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Hotspot.Test;
@@ -18,6 +19,40 @@ public sealed class MazeWireFormatTest
         writer.Flush();
 
         return stream.ToArray();
+    }
+
+    [TestMethod]
+    public void MonsterSuperArmorIsActorAndTwoFloats()
+    {
+        var data = Written(new MonsterSuperArmorGageResponse { Current = 1.5f, Max = 2.5f });
+
+        Assert.HasCount(12, data);
+        Assert.AreEqual(1.5f, BitConverter.ToSingle(data, 4));
+        Assert.AreEqual(2.5f, BitConverter.ToSingle(data, 8));
+    }
+
+    [TestMethod]
+    public void MonsterPartsAreActorAndFourNumbers()
+    {
+        var data = Written(new MonsterPartsHpResponse { FirstCurrent = 1, FirstMax = 2, SecondCurrent = 3, SecondMax = 4 });
+
+        Assert.HasCount(20, data);
+        Assert.AreEqual(1, BitConverter.ToInt32(data, 4));
+        Assert.AreEqual(4, BitConverter.ToInt32(data, 16));
+    }
+
+    [TestMethod]
+    public void MonsterStatListPutsTheValueBeforeTheStat()
+    {
+        var data = Written(new MonsterUpdateStatListResponse
+        {
+            Stats = [new StatKeyValuePair { byIndex = STAT_TYPE.STAT_HP_MAX, statValue = 7f }]
+        });
+
+        Assert.HasCount(4 + 1 + 4 + 2, data);
+        Assert.AreEqual(1, data[4]);
+        Assert.AreEqual(7f, BitConverter.ToSingle(data, 5));
+        Assert.AreEqual((short)STAT_TYPE.STAT_HP_MAX, BitConverter.ToInt16(data, 9));
     }
 
     [TestMethod]

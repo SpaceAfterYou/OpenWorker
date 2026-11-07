@@ -11,9 +11,9 @@ public readonly struct SkillDmgValue(BinaryReader reader) : IWritableData
 
     public ActorValue UxActorId { get; init; } = new(reader);
 
-    public bool IsDamageType { get; init; } = reader.ReadBoolean();
+    public byte ReactionType { get; init; } = reader.ReadByte();
 
-    public bool IsDamageTarget { get; init; } = reader.ReadBoolean();
+    public byte DamageFlags { get; init; } = reader.ReadByte();
 
     public int Damage { get; init; } = reader.ReadInt32();
 
@@ -38,8 +38,8 @@ public readonly struct SkillDmgValue(BinaryReader reader) : IWritableData
     public void Write(BinaryWriter writer)
     {
         writer.WriteActor(UxActorId);
-        writer.Write(IsDamageType);
-        writer.Write(IsDamageTarget);
+        writer.Write(ReactionType);
+        writer.Write(DamageFlags);
         writer.Write(Damage);
         writer.Write(Health);
         writer.Write(ExtraMove);

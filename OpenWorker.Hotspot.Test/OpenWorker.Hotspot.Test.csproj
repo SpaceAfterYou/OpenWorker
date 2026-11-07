@@ -33,6 +33,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+      <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
+      <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
     </ItemGroup>
 
 </Project>
