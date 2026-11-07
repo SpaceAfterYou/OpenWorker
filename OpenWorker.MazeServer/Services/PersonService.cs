@@ -172,7 +172,7 @@ public sealed class PersonService(
 
         session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
 
-        questManager.SendQuestEpisodeList(context.Player);
+        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
     }

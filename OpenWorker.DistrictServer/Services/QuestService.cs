@@ -1,6 +1,4 @@
-﻿using OpenWorker.Gameplay;
-using OpenWorker.Gameplay.Modules.Quests;
-using OpenWorker.Hotspot.Modules.Quests.Enums;
+﻿using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -17,39 +15,33 @@ public sealed class QuestService(QuestManager questManager) :
     IHotspotHandler<QuestHelperRequest>,
     IHotspotHandler<QuestFailRequest>
 {
-    public ValueTask OnHandleAsync(ServiceHandleContext context, QuestAcceptRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, QuestAcceptRequest request)
     {
-        questManager.AcceptEpisode(context.Player, request.Episode);
-        return ValueTask.CompletedTask;
+        await questManager.AcceptAsync(context.Player, request.Episode, context.CancellationToken);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, QuestEpisodeCompleteRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, QuestEpisodeCompleteRequest request)
     {
-        questManager.CompleteEpisode(context.Player, request.Episode);
-        return ValueTask.CompletedTask;
+        await questManager.CompleteAsync(context.Player, request.Episode, request.RewardItem, context.CancellationToken);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, QuestEventUpdateRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, QuestEventUpdateRequest request)
     {
-        questManager.AckEventUpdate(context.Player);
-        return ValueTask.CompletedTask;
+        await questManager.OnEventUpdateAsync(context.Player, request.Condition, request.Param, context.CancellationToken);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, QuestFailRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, QuestFailRequest request)
     {
-        questManager.FailEpisode(context.Player, request.Episode);
-        return ValueTask.CompletedTask;
+        await questManager.RemoveFailedAsync(context.Player, request.Episode);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, QuestGiveUpRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, QuestGiveUpRequest request)
     {
-        questManager.GiveUpEpisode(context.Player, request.Episode);
-        return ValueTask.CompletedTask;
+        await questManager.GiveUpAsync(context.Player, request.Episode, context.CancellationToken);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, QuestHelperRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, QuestHelperRequest request)
     {
-        questManager.SetHelper(context.Player, request.Type, request.Episode);
-        return ValueTask.CompletedTask;
+        await questManager.SetHelperAsync(context.Player, request.Type, request.Episode);
     }
 }
