@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
 using OpenWorker.Domain.Components;
@@ -62,6 +62,7 @@ public sealed class PlayerVitalsTest
                 Speed = new SpeedComponentEntry { Attack = 1, Move = 1 }
             },
             new PersonInfoComponent { Name = "Haru", Hero = Hero.Haru },
+            new RankComponent(25, 0),
             new WorldComponent { Location = 1, Position = new Vector3(1, 2, 3), Rotation = 0, Jump = 0 });
 
         return (world, player, new PlayerVitals(world, Tables()));

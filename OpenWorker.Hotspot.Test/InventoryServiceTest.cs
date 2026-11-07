@@ -424,4 +424,30 @@ public sealed class InventoryServiceTest
         Assert.AreEqual(60, f.Service.CountOf(f.Player, Material));
         Assert.AreEqual(500, f.Service.Gold(f.Player), "A reward that does not fit gives no money either");
     }
+
+    [TestMethod]
+    public void WornGearStrengthensTheDefenseOfThePlayerToo()
+    {
+        using var f = new Fixture(level: 20);
+
+        var items = Load<ItemRow>("tb_Item");
+        var armor = items.First(e => e.Field23 > 0 && f.Catalog.EquipPlaceOf(e.Id) is { Storage: StorageGroup.AbilityEquip } && f.Catalog.Limits(e.Id) is (<= 20, 0 or 1));
+
+        var tables = new CombatTables(
+            Load<MonsterRow>("tb_Monster"),
+            Load<StatusRow>("tb_Status"),
+            Load<SkillRow>("tb_Skill"),
+            Load<CharacterInfoRow>("tb_Character_Info"),
+            f.Catalog);
+
+        var bare = tables.GetPlayer(f.World, f.Player);
+        var place = f.Catalog.EquipPlaceOf(armor.Id)!.Value.Slots[0];
+
+        f.Inventory.Place(StorageGroup.AbilityEquip, place, f.Service.Create(armor.Id, 1));
+
+        var dressed = tables.GetPlayer(f.World, f.Player);
+
+        Assert.AreEqual(armor.Field23, dressed.Physical.Defense - bare.Physical.Defense);
+        Assert.AreEqual(20, dressed.Level, "The level is the one the player has reached");
+    }
 }
