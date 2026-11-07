@@ -66,7 +66,7 @@ internal sealed class ServerService(
 
             try
             {
-                using var memory = MemoryPool<byte>.Shared.Rent(short.MaxValue);
+                using var memory = MemoryPool<byte>.Shared.Rent(MessageHeader.MaxContentLength);
 
                 var stream = socket.GetStream();
 

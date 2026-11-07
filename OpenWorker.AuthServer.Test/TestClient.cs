@@ -16,7 +16,7 @@ internal sealed class TestClient : TcpClient
     {
         var pool = ArrayPool<byte>.Shared;
 
-        var buffer = pool.Rent(short.MaxValue);
+        var buffer = pool.Rent(MessageHeader.MaxContentLength);
 
         try
         {
