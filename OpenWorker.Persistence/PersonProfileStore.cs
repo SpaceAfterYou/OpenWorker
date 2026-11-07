@@ -40,6 +40,15 @@ public static class PersonProfileStore
                 .SetProperty(x => x.TitleSecondary, secondary));
     }
 
+    public static async Task SaveGesturesAsync(this IDbContextFactory<PersistenceContext> factory, int person, int[] gestures)
+    {
+        await using var database = await factory.CreateDbContextAsync();
+
+        await database.Persons
+            .Where(e => e.Id == person)
+            .ExecuteUpdateAsync(e => e.SetProperty(x => x.GestureList, gestures));
+    }
+
     public static async Task SaveCommunityAsync(
         this IDbContextFactory<PersistenceContext> factory,
         int person,
