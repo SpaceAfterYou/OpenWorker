@@ -1,5 +1,7 @@
 ﻿using Arch.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
@@ -16,7 +18,19 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.AuthServer.App;
 
-public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbContextFactory<PersistenceContext> factory, World world) {
+public sealed class LoginGameplay(
+    IRedisCollection<SessionCache> sessions,
+    IDbContextFactory<PersistenceContext> factory,
+    World world,
+    IConfiguration configuration,
+    ILogger<LoginGameplay> logger)
+{
+    /// <summary>
+    /// This login does not verify the ticket: it signs in as the first account in the database.
+    /// Enable it only for local development.
+    /// </summary>
+    private bool AllowNextHumanNetworkLogin { get; } = configuration.GetValue<bool>("Auth:AllowNextHumanNetworkLogin");
+
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginAuthRequest message)
     {
         await using var database = await factory
@@ -40,6 +54,18 @@ public sealed class LoginGameplay(IRedisCollection<SessionCache> sessions, IDbCo
 
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginNextHumanNetworkRequest message)
     {
+        if (AllowNextHumanNetworkLogin is false)
+        {
+            logger.LogWarning("Next Human Network login rejected: Auth:AllowNextHumanNetworkLogin is off.");
+
+            var rejected = world.Get<ServerSessionComponent>(context.Player);
+
+            rejected.Send(new LoginResponse(LoginErrorMessageCode.WrongUsernameOrPassword));
+            rejected.Disconnect();
+
+            return;
+        }
+
         await using var database = await factory
             .CreateDbContextAsync(context.CancellationToken)
             .ConfigureAwait(false);

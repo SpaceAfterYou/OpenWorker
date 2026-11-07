@@ -101,6 +101,8 @@
       - Logging__LogLevel__System=Warning
       - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
       - Game__Version=1.4.2.3
+      # Signs in without checking the ticket. Local development only.
+      # - Auth__AllowNextHumanNetworkLogin=true
     depends_on:
       redis:
         condition: service_healthy
