@@ -19,6 +19,14 @@ public interface ICommunityListener
     ValueTask OnLeftAsync(Entity player, PresenceRecord person);
 }
 
+/// <summary>
+/// A part of the game that has something to say to the other servers. It is attached once, when the server starts.
+/// </summary>
+public interface ICommunityModule
+{
+    void Attach(CommunityNetwork network);
+}
+
 /// <param name="Name">What the sender called it.</param>
 /// <param name="Persons">Those of the targets who are on this server, or empty if it was meant for everybody.</param>
 public readonly record struct CommunityEvent(string Name, IReadOnlyList<int> Persons, ReadOnlyMemory<byte> Body);

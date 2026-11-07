@@ -7,10 +7,21 @@ namespace OpenWorker.Channel.Community;
 /// <summary>
 /// Opens the way to the other servers and keeps the people of this one on the list for as long as they stay.
 /// </summary>
-internal sealed class CommunityService(CommunityNetwork network, WorldLoop loop, ILogger<CommunityService> logger) : BackgroundService
+internal sealed class CommunityService(
+    CommunityNetwork network,
+    WorldLoop loop,
+    IEnumerable<ICommunityModule> modules,
+    ILogger<CommunityService> logger
+) :
+    BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        foreach (var module in modules)
+        {
+            module.Attach(network);
+        }
+
         try
         {
             await network.StartAsync();

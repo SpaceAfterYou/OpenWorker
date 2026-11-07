@@ -54,16 +54,6 @@ internal sealed class NoLeagueRoster : ILeagueRoster
 }
 
 /// <summary>
-/// Nobody has friends or blocks anybody until lists are kept somewhere.
-/// </summary>
-internal sealed class NoRelations : IPersonRelations
-{
-    public ValueTask<bool> IsFriendAsync(int person, int other) => ValueTask.FromResult(false);
-
-    public ValueTask<bool> IsBlockedAsync(int person, int other) => ValueTask.FromResult(false);
-}
-
-/// <summary>
 /// The bag does not keep a megaphone yet, so every use is free.
 /// </summary>
 internal sealed class FreeMegaphone : IMegaphoneSource

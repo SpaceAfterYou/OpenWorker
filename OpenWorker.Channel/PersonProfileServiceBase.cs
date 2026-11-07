@@ -3,6 +3,7 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Channel.Community;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -23,7 +24,9 @@ namespace OpenWorker.Channel;
 public abstract class PersonProfileServiceBase(
     World world,
     ReadOnlyCollection<TitleInfoRow> titles,
-    IDbContextFactory<PersistenceContext> factory) :
+    IDbContextFactory<PersistenceContext> factory,
+    OtherPersonService others,
+    FriendNotifier friends) :
     IHotspotHandler<PersonLoadTitleRequest>,
     IHotspotHandler<PersonUpdateTitleRequest>,
     IHotspotHandler<PersonCommunityRequest>,
@@ -32,18 +35,8 @@ public abstract class PersonProfileServiceBase(
     private const byte PrefixTitle = 0;
     private const byte SuffixTitle = 1;
 
-    private const int OtherInfoRefused = 59200;
-
-    /// <summary>
-    /// The place of this setting among the options a player has saved, as a digit.
-    /// </summary>
-    private const int OtherInfoOption = 26;
-    private const byte OnlyFriends = (byte)'1';
-    private const byte Nobody = (byte)'2';
-
     private const int MaxCommentCharacters = PersonModuleDefines.MaxCommunityCommentLength - 1;
     private const int MaxMemoCharacters = PersonModuleDefines.MaxCommunityMemoLength - 1;
-    private const int AchievementCategories = 7;
 
     /// <summary>
     /// Titles are not earned yet, so a person has the prefixes that do not depend on the class. With suffixes the list would not fit: its size is a single byte.
@@ -132,49 +125,17 @@ public abstract class PersonProfileServiceBase(
         world.Get<ServerSessionComponent>(context.Player).Send(CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
 
         await factory.SaveCommunityAsync(person, (byte)request.State, request.Comment, request.Memo);
+
+        // The friends see it in their lists.
+        if (world.IsAlive(context.Player))
+        {
+            await friends.ChangedAsync(context.Player);
+        }
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonOtherInfoRequest request)
     {
-        var viewer = world.Get<ActorComponent>(context.Player).Identifier;
-        var profile = await factory.LoadOtherPersonAsync(request.Person, viewer);
-
-        // The connection can be gone by the time the database answers.
-        if (!world.IsAlive(context.Player))
-        {
-            return;
-        }
-
-        var session = world.Get<ServerSessionComponent>(context.Player);
-
-        if (profile is not { } target || (request.CheckOption && Refuses(target)))
-        {
-            session.Send(new PersonOtherInfoRefuseResponse { Error = OtherInfoRefused, Name = profile?.Name ?? string.Empty });
-            return;
-        }
-
-        // Characteristics and equipment are not kept on the server yet.
-        session.Send(new PersonOtherInfoResponse
-        {
-            CalculateStat = request.CalculateStat,
-            Target = new OtherPersonValue
-            {
-                Level = PersonModuleDefines.DefaultLevel,
-                State = (CommunityState)target.CommunityState,
-                Comment = target.CommunityComment,
-                BaseStats = [],
-                Stats = [],
-                Equipment = [],
-                Memo = target.CommunityMemo,
-                Class = target.Hero,
-                Name = target.Name,
-                Ability = new TitleValue(target.TitleAbilityPrimary, target.TitleAbilitySecondary),
-                Represent = new TitleValue(target.TitlePrimary, target.TitleSecondary),
-                Sockets = [],
-                Broaches = []
-            },
-            Categories = new ushort[AchievementCategories]
-        });
+        await others.AskAsync(context.Player, request.Person, OtherInfoWindow.Character, request.CheckOption, request.CalculateStat);
     }
 
     public static PersonCommunityResponse CreateCommunityResponse(CommunityComponent community)
@@ -194,21 +155,6 @@ public abstract class PersonProfileServiceBase(
             Ability = new TitleValue(title.AbilityPrimary, title.AbilitySecondary),
             Represent = new TitleValue(title.Primary, title.Secondary),
             Result = result
-        };
-    }
-
-    private static bool Refuses(OtherPersonProfile target)
-    {
-        if (target.OptionList.Length <= OtherInfoOption)
-        {
-            return false;
-        }
-
-        return target.OptionList[OtherInfoOption] switch
-        {
-            Nobody => true,
-            OnlyFriends => !target.IsFriend,
-            _ => false
         };
     }
 

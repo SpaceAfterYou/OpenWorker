@@ -43,6 +43,11 @@ public sealed class PersonPersistent : BasicPersistent
     public int Outfit { get; set; }
     public DateTime? LastSelectedAt { get; set; }
 
+    /// <summary>
+    /// When the person last left a server of the game, for the friends who look at the list.
+    /// </summary>
+    public DateTime? LastLogoutAt { get; set; }
+
     public required short FatiguePointCommon { get; set; }
     public short FatiguePointBonus { get; set; }
     
@@ -51,8 +56,5 @@ public sealed class PersonPersistent : BasicPersistent
     public required AccountPersistent Account { get; set; }
     public required GatePersistent Gate { get; set; }
 
-    public List<PersonPersistent> FriendList { get; set; } = [];
-    public List<PersonPersistent> BlockedList { get; set; } = [];
-    
     public LeaguePersistent? League { get; set; }
 }

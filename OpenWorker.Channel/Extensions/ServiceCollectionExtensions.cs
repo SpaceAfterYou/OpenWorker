@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Channel.Community;
 using OpenWorker.Channel.Services;
 
@@ -45,8 +47,18 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IPartyRoster, NoPartyRoster>();
         services.AddSingleton<ILeagueRoster, NoLeagueRoster>();
-        services.AddSingleton<IPersonRelations, NoRelations>();
         services.AddSingleton<IMegaphoneSource, FreeMegaphone>();
+
+        services.AddSingleton<FriendBook>();
+        services.AddSingleton<IPersonRelations>(e => e.GetRequiredService<FriendBook>());
+        services.AddSingleton<FriendRecruitBoard>();
+        services.AddSingleton<FriendNotifier>();
+        services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<FriendNotifier>());
+
+        // The district registers its own copy where it needs more than the tables.
+        services.TryAddSingleton<CombatTables>();
+        services.AddSingleton<OtherPersonService>();
+        services.AddSingleton<ICommunityModule>(e => e.GetRequiredService<OtherPersonService>());
 
         return services;
     }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OpenWorker.Domain.Persistent;
 
 namespace OpenWorker.Persistence;
 
@@ -86,11 +87,9 @@ public static class PersonProfileStore
             return null;
         }
 
-        var isFriend = await database.Persons
+        var isFriend = await database.Friends
             .AsNoTracking()
-            .Where(e => e.Id == viewer)
-            .SelectMany(e => e.FriendList)
-            .AnyAsync(e => e.Id == person);
+            .AnyAsync(e => e.OwnerId == viewer && e.TargetId == person && e.Kind == FriendKind.Friend);
 
         return new OtherPersonProfile(
             profile.Name,

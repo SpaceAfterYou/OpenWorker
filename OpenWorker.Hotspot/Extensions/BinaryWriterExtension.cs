@@ -185,27 +185,6 @@ public static class BinaryWriterExtension
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Write(this BinaryWriter writer, ST_OTHER_CHARINFO value)
-    {
-        writer.Write(value.shLevel);
-        writer.Write(value.byState);
-        writer.WriteCommunityComment(value.szComment);
-        writer.Write(value.m_vecBaseStat);
-        writer.Write(value.m_vecStat);
-        writer.Write(value.m_vecEquipItem);
-        writer.Write(value.byEchelonLevel);
-        writer.Write(value.nEchelonExp);
-        writer.WriteCommunityMemo(value.szMemo);
-        writer.Write(value.nEquipMemorySlot);
-        writer.Write(value.byClass);
-        writer.WritePersonName(value.szName);
-        writer.Write(value.stInsideTitle);
-        writer.Write(value.stOutsideTitle);
-        writer.Write(value.vecSocketList);
-        writer.Write(value.vecBroachList);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, EnterMapResultValue value)
     {
         writer.Write(value.Zone);
