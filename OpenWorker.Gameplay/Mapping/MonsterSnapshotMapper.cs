@@ -19,7 +19,7 @@ public static class MonsterSnapshotMapper
             {
                 uxActorID = world.Get<ActorComponent>(item),
                 stPosInfo = WorldPosition(world, item),
-                nHP = 250,
+                nHP = creature.Health,
                 nWayPointID = nonPlayable.Waypoint,
                 nSectorID = nonPlayable.Sector,
                 byLevel = creature.Level,

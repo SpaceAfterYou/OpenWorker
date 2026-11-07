@@ -1,6 +1,7 @@
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Maze.Types;
+using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Hotspot.Test;
@@ -17,6 +18,16 @@ public sealed class MazeWireFormatTest
         writer.Flush();
 
         return stream.ToArray();
+    }
+
+    [TestMethod]
+    public void MonsterDieIsActorMotionAndType()
+    {
+        var bytes = Written(new MonsterDieResponse { Actor = 7, Motion = 8, DieType = 9 });
+
+        Assert.HasCount(4 + 2 + 1, bytes);
+        Assert.AreEqual((short)8, BitConverter.ToInt16(bytes, 4));
+        Assert.AreEqual((byte)9, bytes[6]);
     }
 
     [TestMethod]

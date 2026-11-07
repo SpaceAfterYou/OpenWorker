@@ -156,15 +156,24 @@ public static class LuaStateExtensions
         }
     }
     
-    public static async ValueTask OnRealDie(this LuaState state, int monster, int box, LuaMaze maze, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Scripts compare both ids with strings.
+    /// </summary>
+    public static async ValueTask OnDie(this LuaState state, int monster, int box, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        if (state.Environment["OnRealDie"].TryRead<LuaFunction>(out var callable))
+        await CallDieAsync(state, "OnDie", monster, box, maze, cancellationToken);
+        await CallDieAsync(state, "OnRealDie", monster, box, maze, cancellationToken);
+    }
+
+    private static async ValueTask CallDieAsync(LuaState state, string name, int monster, int box, LuaMaze maze, CancellationToken cancellationToken)
+    {
+        if (state.Environment[name].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(monster), new LuaValue(box), new LuaValue(maze)], cancellationToken);
+                .CallAsync(callable, [new LuaValue(monster.ToString()), new LuaValue(box.ToString()), new LuaValue(maze)], cancellationToken);
         }
     }
-    
+
     public static async ValueTask OnExecuteLuaFunction(this LuaState state, string name, int index, LuaMaze maze, CancellationToken cancellationToken = default)
     {
         if (state.Environment[name].TryRead<LuaFunction>(out var callable))

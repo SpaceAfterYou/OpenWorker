@@ -4,6 +4,7 @@ public readonly struct CreatureComponent : IEquatable<CreatureComponent>
 {
     public int Identifier { get; init; }
     public byte Level { get; init; }
+    public int Health { get; init; }
 
     public static implicit operator int(CreatureComponent obj)
     {

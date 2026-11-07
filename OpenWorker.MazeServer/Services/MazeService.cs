@@ -5,6 +5,8 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Requests;
+using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.World.Enums;
 using Arch.Core;
 using OpenWorker.Batch.Extensions;
@@ -40,6 +42,7 @@ public sealed class MazeService(
     QuestManager questManager
 ) :
     IHotspotHandler<MazeCompleteRequest>,
+    IHotspotHandler<SkillActiveSkillRequest>,
     IHotspotHandler<WorldWarpRequest>,
     IHotspotHandler<WorldWarpOutRequest>,
     IHotspotHandler<WorldCheckSectorRequest>,
@@ -86,6 +89,11 @@ public sealed class MazeService(
 
         SendProgress(context.Player, maze);
 
+        if (FindSector(maze, ecs.Get<WorldComponent>(context.Player).Position) is { } sector)
+        {
+            maze.SpawnSector(sector.Id);
+        }
+
         await maze.State.OnEnterPlayerAsync(ecs.Get<ActorComponent>(context.Player), maze);
     }
 
@@ -112,6 +120,21 @@ public sealed class MazeService(
             position.X <= Math.Max(e.PosTopLeft.X, e.PosBottomRight.X) &&
             position.Y >= Math.Min(e.PosTopLeft.Y, e.PosBottomRight.Y) &&
             position.Y <= Math.Max(e.PosTopLeft.Y, e.PosBottomRight.Y));
+    }
+
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, SkillActiveSkillRequest request)
+    {
+        var skill = request.Skill;
+        var world = ecs.Get<WorldComponent>(context.Player);
+
+        ecs.Set(context.Player, world with { Position = skill.Position.Position, Rotation = skill.Position.Angle });
+
+        ecs.Get<ServerSessionComponent>(context.Player).Send(new SkillActiveResponse { Divergence = skill.Divergence });
+
+        if (ecs.Has<LuaMaze>(context.Player))
+        {
+            await ecs.Get<LuaMaze>(context.Player).ApplySkillAsync(skill.Skill, skill.Position);
+        }
     }
 
     /// <summary>

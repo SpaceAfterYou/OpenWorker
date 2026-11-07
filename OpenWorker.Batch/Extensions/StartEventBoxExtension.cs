@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Batch.Entities.Basic;
 using OpenWorker.Domain.Batch.Enums;
@@ -26,8 +26,7 @@ public static class StartEventBoxExtension
         return self.CreationPositionType switch
         {
             CreationPositionType.Random => self.GetRandomPosition(),
-            CreationPositionType.Center => Vector3.Lerp(self.PosTopLeft, self.PosBottomRight, 0.5f),
-            CreationPositionType.Sort => throw new NotImplementedException(),
+            CreationPositionType.Center or CreationPositionType.Sort => Vector3.Lerp(self.PosTopLeft, self.PosBottomRight, 0.5f),
             
             _ => throw new NotSupportedException("Unknown CreationPositionType")
         };

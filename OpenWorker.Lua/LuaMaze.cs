@@ -11,7 +11,11 @@ using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
+using OpenWorker.Hotspot.Modules.Monster.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua.Managers;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -47,6 +51,10 @@ public partial class LuaMaze(
 
     public MazeProgress Progress { get; } = new(batch, interactions);
 
+    // Until skill data is read from the action files every skill hits once around the player.
+    private const float SkillRadius = 500f;
+    private const int SkillDamage = 100;
+
     private bool Started { get; set; }
     private bool Closed { get; set; }
 
@@ -58,6 +66,129 @@ public partial class LuaMaze(
         Closed = true;
 
         creatureManager.Close();
+    }
+
+    /// <summary>
+    /// Spawns what a sector starts with. Boxes that wait for a signal are started by the script.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void SpawnSector(int sector)
+    {
+        foreach (var box in Batch.EventBox.MonsterSpawns.Where(e => e.Sector == sector && e.CreationCondition == CreationConditionType.Immediate))
+        {
+            creatureManager.SpawnOnce(player, box.Id);
+        }
+    }
+
+    /// <summary>
+    /// The client only says that a skill has started, so the server decides what it hits.
+    /// </summary>
+    [LuaIgnoreMember]
+    public async ValueTask ApplySkillAsync(int skill, SkillPositionValue position)
+    {
+        if (!Started)
+        {
+            return;
+        }
+
+        var session = player.Get<ServerSessionComponent>();
+        var targets = creatureManager.FindMonstersNear(position.Position, SkillRadius);
+
+        if (targets.Length == 0)
+        {
+            return;
+        }
+
+        var hits = targets.Select(target =>
+        {
+            var creature = Ecs.Get<CreatureComponent>(target);
+            var health = Math.Max(0, creature.Health - SkillDamage);
+
+            Ecs.Set(target, creature with { Health = health });
+
+            return default(SkillDmgValue) with
+            {
+                UxActorId = Ecs.Get<ActorComponent>(target),
+                Damage = creature.Health - health,
+                Health = health
+            };
+        }).ToArray();
+
+        session.Send(new SkillActionBroadcastResponse
+        {
+            SkillDmgValueList = hits,
+            SkillAction = default(SkillActionValue) with
+            {
+                SkillActorInfo = default(SkillActorInfoValue) with
+                {
+                    UxActorId = Ecs.Get<ActorComponent>(player),
+                    SkillPosInfo = default(SkillActionPosInfoValue) with
+                    {
+                        Position = position.Position,
+                        Angle = position.Angle,
+                        MotionClass = position.MotionClass,
+                        HasInputFlag = position.HasInputFlag
+                    }
+                },
+                Skill = skill,
+                ContinuousHit = 1
+            }
+        });
+
+        foreach (var target in targets.Where(e => Ecs.Get<CreatureComponent>(e).Health == 0))
+        {
+            await KillAsync(session, target);
+        }
+    }
+
+    private void WakeSectorBehindGate(int gate, bool open)
+    {
+        if (open && Batch.EventBox.ServerGates.FirstOrDefault(e => e.Id == gate) is { NextSector: > 0 } box)
+        {
+            SpawnSector(box.NextSector);
+        }
+    }
+
+    private async ValueTask KillAsync(ServerSessionComponent session, Entity target)
+    {
+        var creature = Ecs.Get<CreatureComponent>(target);
+        var place = Ecs.Get<NonPlayableCreatureComponent>(target);
+
+        session.Send(new MonsterDieResponse { Actor = Ecs.Get<ActorComponent>(target) });
+
+        creatureManager.Remove(target);
+
+        await State.OnDie(creature.Identifier, place.SpawnBox, this);
+
+        if (Closed || creatureManager.HasMonstersInSector(place.Sector))
+        {
+            return;
+        }
+
+        await CompleteSectorAsync(place.Sector);
+    }
+
+    /// <summary>
+    /// Clearing a sector opens its gates, and what lies behind them comes to life.
+    /// </summary>
+    private async ValueTask CompleteSectorAsync(int sector)
+    {
+        var box = Batch.EventBox.Sectors.FirstOrDefault(e => e.Id == sector);
+
+        // Other sectors are finished by their script.
+        if (box is null || box.ClearType is not (ClearType.Kill or ClearType.KillPerpect) || Progress.IsSectorCleared(sector))
+        {
+            return;
+        }
+
+        SectorClear(sector);
+
+        foreach (var gate in Batch.EventBox.ServerGates.Where(e => e.Sector == sector))
+        {
+            SetGateFlag(gate.Id, true);
+        }
+
+        await State.OnCompleteSector(sector, this);
     }
 
     private async Task RunLaterAsync(float seconds, Func<ValueTask> action)
@@ -319,13 +450,18 @@ public partial class LuaMaze(
         if (Progress.SetGate(gate, open))
         {
             player.Get<ServerSessionComponent>().Send(new WorldGateEnableResponse { Gate = gate, Open = open });
+
+            WakeSectorBehindGate(gate, open);
         }
     }
 
     [LuaMember]
     public void SetGateFlagNoSend(int gate, bool open)
     {
-        Progress.SetGate(gate, open);
+        if (Progress.SetGate(gate, open))
+        {
+            WakeSectorBehindGate(gate, open);
+        }
     }
 
     [LuaMember]
@@ -398,6 +534,11 @@ public partial class LuaMaze(
         if (Progress.SetPortal(box, flag))
         {
             player.Get<ServerSessionComponent>().Send(new WorldWarpEnableResponse { Box = box, Open = flag });
+
+            if (flag && Batch.EventBox.Portals.FirstOrDefault(e => e.Id == box) is { NextSector: > 0 } portal)
+            {
+                SpawnSector(portal.NextSector);
+            }
         }
     }
 
