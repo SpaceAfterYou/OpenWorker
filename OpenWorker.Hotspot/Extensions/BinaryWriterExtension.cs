@@ -278,7 +278,7 @@ public static class BinaryWriterExtension
         writer.Write(gate.BattlePoint);
         writer.Write(gate.Ether);
         writer.Write(gate.FriendPoint);
-        writer.WriteUtf16UnicodeString(gate.AccountId, 21);
+        writer.WriteUtf8AsciiString(gate.AccountId);
         writer.Write(gate.NetCafe);
         writer.Write(gate.ClassScene);
         writer.Write(gate.WorldType);

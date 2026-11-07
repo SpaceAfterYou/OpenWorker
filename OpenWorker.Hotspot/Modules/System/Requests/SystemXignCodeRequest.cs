@@ -1,7 +1,9 @@
+using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.System.Types;
 
 namespace OpenWorker.Hotspot.Modules.System.Requests;
 
@@ -20,7 +22,8 @@ public readonly struct SystemXignCodeRequest(BinaryReader reader) : IRequestHots
 #region Message: Body
 
     public int Session { get; } = reader.ReadInt32();
-    public Memory<byte> Buffer { get; } = reader.ReadBytes(reader.ReadInt16());
+    public Memory<byte> Buffer { get; } = reader.ReadBytes(SystemModuleDefines.XignCodeBufferSize);
+    public string Text { get; } = reader.ReadUtf8AsciiStringWithoutTerminator();
 
 #endregion Message: Body
 }

@@ -44,7 +44,7 @@ public readonly struct LoginGateListResponse : IResponseHotspotMessage
             writer.Write(value.Gate.Id);
             writer.Write(value.Gate.Port);
             writer.WriteUtf8AsciiString(value.Gate.Name);
-            writer.WriteUtf8AsciiString(value.Gate.Address);
+            writer.WriteUtf8AsciiStringWithoutTerminator(value.Gate.Address);
             writer.Write(value.Gate.Workload);
             writer.Write(value.Gate.OnlineCount);
             writer.Write(value.Person.Count);

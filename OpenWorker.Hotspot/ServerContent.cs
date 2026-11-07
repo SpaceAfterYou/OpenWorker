@@ -11,7 +11,8 @@ public sealed class ServerContent : List<bool>
         set => this[(int)index] = value;
     }
 
-    public ServerContent(IEnumerable<ServerContentPersistent> contents) : base(5)
+    public ServerContent(IEnumerable<ServerContentPersistent> contents)
+        : base(Enumerable.Repeat(false, Enum.GetValues<ServerContentIndex>().Length))
     {
         foreach (var content in contents)
         {

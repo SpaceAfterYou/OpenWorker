@@ -21,8 +21,8 @@ public readonly struct EquipItemValueEntry
 
     public EquipItemValueEntry(BinaryReader reader)
     {
-        Id = reader.ReadInt32();
         Upgrade = reader.ReadByte();
+        Id = reader.ReadInt32();
     }
 
     public EquipItemValueEntry(int id, byte upgrade = 0)

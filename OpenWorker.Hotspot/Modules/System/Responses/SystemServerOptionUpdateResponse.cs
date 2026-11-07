@@ -1,5 +1,6 @@
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
@@ -17,10 +18,17 @@ public readonly struct SystemServerOptionUpdateResponse : IResponseHotspotMessag
 
 #endregion Interface: IHotspotMessage
 
+#region Message: Body
+
+    public required ServerContent Contents { get; init; }
+
+#endregion Message: Body
+
 #region Interface: IWritableData
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Contents);
     }
 
 #endregion Interface: IWritableData

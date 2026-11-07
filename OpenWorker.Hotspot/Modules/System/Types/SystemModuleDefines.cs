@@ -3,4 +3,5 @@
 public static class SystemModuleDefines
 {
     public const int OptionCount = 64;
+    public const int XignCodeBufferSize = 512;
 }

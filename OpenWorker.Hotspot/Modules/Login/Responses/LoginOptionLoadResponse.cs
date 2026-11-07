@@ -4,6 +4,7 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Login.Types;
 
 namespace OpenWorker.Hotspot.Modules.Login.Responses;
 
@@ -20,7 +21,10 @@ public readonly struct LoginOptionLoadResponse : IResponseHotspotMessage
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(PersonOptions);
+        var options = new byte[LoginModuleDefines.PersonOptionCount];
+        PersonOptions.AsSpan(0, Math.Min(PersonOptions.Length, options.Length)).CopyTo(options);
+
+        writer.Write(options);
         writer.Write(Contents);
     }
 }
