@@ -286,7 +286,7 @@ public partial class LuaMaze(
 
         var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
         var skillDamage = combat.GetSkill(skill);
-        var hits = targets.Select(target => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate)).ToArray();
+        var hits = targets.Select(target => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate, trigger.ReactionType)).ToArray();
 
         session.Send(new SkillActionBroadcastResponse
         {
@@ -337,7 +337,7 @@ public partial class LuaMaze(
         }
     }
 
-    private SkillDmgValue ApplyDamage(Entity target, in CombatStats attacker, in SkillDamage skill, float attackRate)
+    private SkillDmgValue ApplyDamage(Entity target, in CombatStats attacker, in SkillDamage skill, float attackRate, int reaction)
     {
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
@@ -362,12 +362,17 @@ public partial class LuaMaze(
 
         creatureManager.OnMonsterHit(target, player, result.Damage);
 
+        var effect = creatureManager.AbsorbHit(target, skill.SuperArmorAttack, reaction, health > 0);
+
         return default(SkillDmgValue) with
         {
             UxActorId = Ecs.Get<ActorComponent>(target),
+            ReactionType = effect.Reaction,
             DamageFlags = (byte)result.Flags,
             Damage = result.Damage,
-            Health = health
+            Health = health,
+            DefenseType = effect.Defense,
+            CurSuperArmorGauge = effect.SuperArmor
         };
     }
 

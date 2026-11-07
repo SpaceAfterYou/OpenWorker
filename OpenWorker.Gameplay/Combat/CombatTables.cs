@@ -22,6 +22,18 @@ public readonly record struct MonsterCombatComponent
     public long LastCountedHit { get; init; }
 
     /// <summary>
+    /// What is left of the super armor of the monster. It takes hits without flinching while there is some.
+    /// </summary>
+    public float SuperArmor { get; init; }
+
+    public float MaxSuperArmor { get; init; }
+
+    /// <summary>
+    /// When a broken super armor comes back, in milliseconds of the clock of the process. Zero while it holds.
+    /// </summary>
+    public long SuperArmorBrokenUntil { get; init; }
+
+    /// <summary>
     /// Has to die for its sector to be finished.
     /// </summary>
     public bool HoldsSector { get; init; }

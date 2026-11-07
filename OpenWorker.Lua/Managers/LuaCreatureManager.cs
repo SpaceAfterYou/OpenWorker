@@ -20,6 +20,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
@@ -171,7 +172,7 @@ public sealed class LuaCreatureManager
         {
             session.Send(new WorldOtherInfosMonsterResponse
             {
-                Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e)).ToArray()
+                Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e, Bodies.TryGetValue(e, out var body) ? body.IsBattlePose : true)).ToArray()
             });
         }
 
@@ -223,6 +224,13 @@ public sealed class LuaCreatureManager
         Create(creature, identifier, spawn);
 
         var combat = tables.GetMonster(identifier);
+
+        if (combat.Defense == DefenseType.SuperArmor)
+        {
+            var gauge = combat.Stats.MaxHealth * SuperArmorShare;
+
+            combat = combat with { SuperArmor = gauge, MaxSuperArmor = gauge };
+        }
 
         ecs.Set(creature, combat);
         ecs.Set(creature, ecs.Get<CreatureComponent>(creature) with { Level = combat.Stats.Level, Health = (int)combat.Stats.MaxHealth });
@@ -449,6 +457,8 @@ public sealed class LuaCreatureManager
             {
                 try
                 {
+                    RestoreSuperArmor(body.Entity);
+
                     body.Update(Now, elapsed);
                 }
 
@@ -472,6 +482,86 @@ public sealed class LuaCreatureManager
     }
 
     private const float AggroPerDamage = 0.0004f;
+
+    /// <summary>
+    /// How much a monster with super armor can take before it breaks, as a share of its health. The tables of this client
+    /// do not say, so this is a guess.
+    /// </summary>
+    private const float SuperArmorShare = 0.2f;
+
+    /// <summary>
+    /// How long a broken super armor stays broken, in milliseconds.
+    /// </summary>
+    private const long SuperArmorRecovery = 3000;
+
+    /// <summary>
+    /// What a hit does to the monster that takes it, as the clients are told in the hit.
+    /// </summary>
+    public readonly record struct HitEffect(byte Reaction, byte Defense, float SuperArmor);
+
+    /// <summary>
+    /// A monster takes a hit on its super armor. As long as the armor holds it does not flinch; when it breaks it does,
+    /// and it is helpless until the armor comes back.
+    /// </summary>
+    public HitEffect AbsorbHit(Entity monster, float armorDamage, int reaction, bool survives)
+    {
+        var combat = ecs.Get<MonsterCombatComponent>(monster);
+
+        if (combat.MaxSuperArmor <= 0f)
+        {
+            return new HitEffect(Flinch(monster, reaction, survives), (byte)combat.Defense, 0f);
+        }
+
+        var now = Environment.TickCount64;
+
+        if (combat.SuperArmorBrokenUntil > now)
+        {
+            return new HitEffect(Flinch(monster, reaction, survives), (byte)DefenseType.Normal, 0f);
+        }
+
+        var gauge = Math.Max(0f, combat.SuperArmor - armorDamage);
+
+        if (gauge > 0f)
+        {
+            ecs.Set(monster, combat with { SuperArmor = gauge });
+            Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(monster), Current = gauge, Max = combat.MaxSuperArmor });
+
+            return new HitEffect(0, (byte)DefenseType.SuperArmor, gauge);
+        }
+
+        ecs.Set(monster, combat with { SuperArmor = 0f, SuperArmorBrokenUntil = now + SuperArmorRecovery });
+        Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(monster), Current = 0f, Max = combat.MaxSuperArmor });
+
+        return new HitEffect(Flinch(monster, reaction, survives), (byte)DefenseType.Normal, 0f);
+    }
+
+    private byte Flinch(Entity monster, int reaction, bool survives)
+    {
+        if (reaction != 0 && survives && Bodies.TryGetValue(monster, out var body))
+        {
+            body.Stagger(FlinchSeconds);
+        }
+
+        return (byte)reaction;
+    }
+
+    private const float FlinchSeconds = 0.6f;
+
+    /// <summary>
+    /// Armor that has had time to recover is whole again.
+    /// </summary>
+    private void RestoreSuperArmor(Entity monster)
+    {
+        var combat = ecs.Get<MonsterCombatComponent>(monster);
+
+        if (combat.SuperArmorBrokenUntil == 0 || combat.SuperArmorBrokenUntil > Environment.TickCount64)
+        {
+            return;
+        }
+
+        ecs.Set(monster, combat with { SuperArmor = combat.MaxSuperArmor, SuperArmorBrokenUntil = 0 });
+        Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(monster), Current = combat.MaxSuperArmor, Max = combat.MaxSuperArmor });
+    }
 
     internal void SetInvincible(Entity monster, bool invincible)
     {

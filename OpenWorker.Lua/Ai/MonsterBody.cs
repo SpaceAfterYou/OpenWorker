@@ -42,6 +42,7 @@ internal sealed class MonsterBody : IAiHost
     private bool _battlePose;
     private bool _gazing;
     private double _attackEnd;
+    private double _staggerEnd;
     private double _lastMoveSent;
     private float _lastYawSent = float.NaN;
     private double _born;
@@ -92,11 +93,13 @@ internal sealed class MonsterBody : IAiHost
 
     public bool IsAttacking => _manager.Now < _attackEnd;
 
-    public bool CanMove => !IsAttacking && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
+    public bool CanMove => !IsAttacking && !IsStaggered && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
+
+    private bool IsStaggered => _manager.Now < _staggerEnd;
 
     public bool IsRooted => Behavior.IsRooted;
 
-    public bool CanAttack => !IsAttacking;
+    public bool CanAttack => !IsAttacking && !IsStaggered;
 
     public bool IsMoving => _destination is not null;
 
@@ -121,6 +124,26 @@ internal sealed class MonsterBody : IAiHost
         IsRevealed = true;
 
         Machine.Start();
+    }
+
+    /// <summary>
+    /// A hit has thrown the monster off balance: whatever it was doing is over and it can do nothing for a while.
+    /// </summary>
+    public void Stagger(float seconds)
+    {
+        if (!IsRevealed)
+        {
+            return;
+        }
+
+        _staggerEnd = _manager.Now + seconds;
+        _attackEnd = 0;
+        _pending.Clear();
+
+        if (IsMoving)
+        {
+            Stop(true);
+        }
     }
 
     public void Update(double now, float elapsed)

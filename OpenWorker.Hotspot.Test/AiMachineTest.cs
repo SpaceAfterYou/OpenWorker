@@ -598,4 +598,77 @@ public sealed class AiMachineTest
         CollectionAssert.Contains(host.Log, "run");
         Assert.AreEqual(300f, Vector3.Distance(host.Position, host.Player!.Value.Position), 1f);
     }
+
+    [TestMethod]
+    public void ARootedMonsterNeverWalksAndGivesUpOnAnEnemyOutOfReach()
+    {
+        var host = new Host { Player = Player(new Vector3(900, 0, 0)), IsRooted = true };
+        var builder = Fighter();
+
+        host.Skills[0] = Skill(11, max: 150);
+
+        var machine = Create(builder, host);
+
+        machine.Start();
+        Run(machine, host, 12f);
+
+        Assert.DoesNotContain("walk", host.Log);
+        Assert.DoesNotContain("run", host.Log);
+        Assert.IsEmpty(host.Used);
+        Assert.AreEqual(Vector3.Zero, host.Position);
+    }
+
+    [TestMethod]
+    public void SelectingAnActionFollowsTheWeightsOfTheScript()
+    {
+        var attacks = 0;
+
+        for (var seed = 0; seed < 200; seed++)
+        {
+            var host = new Host { Player = Player(new Vector3(100, 0, 0)) };
+            var builder = Fighter();
+
+            builder.RegisterStateVars(AiState.SelectAction, AiStateVariable.NextState, (int)AiState.Attack, 90);
+            builder.RegisterStateVars(AiState.SelectAction, AiStateVariable.NextState, (int)AiState.BattleWait, 10);
+            builder.RegisterStateFunctions(AiState.BattleWait);
+
+            var machine = Create(builder, host, seed);
+
+            machine.Start(AiState.SelectAction);
+            machine.OnDamaged(1000, 1f);
+            Run(machine, host, 0.5f);
+
+            if (host.Visited.Contains(AiState.Attack))
+            {
+                attacks++;
+            }
+        }
+
+        Assert.IsGreaterThan(150, attacks);
+        Assert.IsLessThan(200, attacks);
+    }
+
+    [TestMethod]
+    public void AStateWithoutWeightsGoesWhereItLeadsByDefault()
+    {
+        var builder = new AiProfileBuilder();
+
+        Assert.AreEqual(AiState.Wait, builder.Build().GetSettings(AiState.Patrol).DefaultNext);
+        Assert.AreEqual(AiState.SelectAction, builder.Build().GetSettings(AiState.BattleMove).DefaultNext);
+        Assert.AreEqual(AiState.AttackSkill1, builder.Build().GetSettings(AiState.Attack).DefaultNext);
+    }
+
+    [TestMethod]
+    public void EveryMonsterStartsWithTheBasicStates()
+    {
+        var profile = new AiProfileBuilder().Build();
+
+        foreach (var state in new[] { AiState.Wait, AiState.Patrol, AiState.SelectAction, AiState.BattleMove, AiState.Gaze, AiState.Move, AiState.Return })
+        {
+            Assert.Contains(state, profile.States);
+        }
+
+        Assert.DoesNotContain(AiState.Attack, profile.States);
+        Assert.DoesNotContain(AiState.CommonAction1, profile.States);
+    }
 }
