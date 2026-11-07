@@ -17,10 +17,7 @@ internal sealed partial class ItemCommand : ICommand
     private World World { get; }
 
     [ExternalDependency]
-    private StorageItemFactory StorageItemFactory { get; }
-
-    [ExternalDependency]
-    private StorageManager StorageManager { get; }
+    private InventoryService Inventory { get; }
 
     [ExternalDependency]
     private ReadOnlyCollection<ItemRow> ItemCollection { get; }
@@ -46,17 +43,7 @@ internal sealed partial class ItemCommand : ICommand
 
     private void PrivateExecute(Entity player, int prototype)
     {
-        var session = World.Get<ServerSessionComponent>(player);
-        var item = StorageItemFactory.Create(prototype, 1);
-        var result = StorageManager.TryAdd(player, item, 1);
-
-        if (!result.State)
-        {
-            // TODO: No space message
-            return;
-        }
-
-        session.Send(ItemDtoFactory.CreateItemCreateResponse(World, result.Storage,
-            result.Info.Select(e => e.Slot).ToArray()));
+        // The service tells the client about the new items itself, or that there is no room.
+        Inventory.TryGive(player, prototype, 1);
     }
 }

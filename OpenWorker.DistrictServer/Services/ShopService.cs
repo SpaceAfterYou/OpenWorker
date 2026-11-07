@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Arch.Core;
 using Arch.Core.Extensions;
@@ -8,7 +8,6 @@ using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.Items;
-using OpenWorker.Gameplay.Modules.Items.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
@@ -27,8 +26,7 @@ public sealed class ShopService(
     ReadOnlyCollection<NPCRow> npcList,
     ReadOnlyCollection<ShopRow> shopList,
     ReadOnlyCollection<ItemRow> itemList,
-    StorageItemFactory itemFactory,
-    StorageManager storageManager) :
+    InventoryService inventory) :
     IHotspotHandler<ShopBuyRequest>,
     IHotspotHandler<ShopGachaRequest>,
     IHotspotHandler<ShopRepurchaserListRequest>,
@@ -37,58 +35,32 @@ public sealed class ShopService(
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, ShopBuyRequest request)
     {
-        // var npcEntity = npcManager.List.First(e => e.Get<ActorComponent>().Id == message.Npc.Identifier);
-        //
-        // var creature = npcEntity.Get<CreatureComponent>();
-        //
-        // var npc = npcList.First(e => e.Id == creature.Id);
         var shopRow = shopList.First(e => e.Id == request.Index); // e.Field1 == npc.Field10 group
         var itemRow = itemList.First(e => e.Id == shopRow.Item);
 
         Debug.Assert(shopRow.Count == request.Count);
 
-        var count = (short)shopRow.Count;
-        var price = (short)(itemRow.Price * count);
+        var count = shopRow.Count;
+        var price = (long)itemRow.Price * count;
 
-        var created = itemFactory.Create(shopRow.Item, count);
-
-        var response = storageManager.TryAdd(context.Player, created, count);
-
-        if (response.State is false)
+        if (inventory.Gold(context.Player) < price || !inventory.TryGive(context.Player, shopRow.Item, count, out var changes, notify: false))
         {
             return ValueTask.CompletedTask;
         }
 
+        var bag = inventory.InventoryOf(context.Player)!;
         var session = world.Get<ServerSessionComponent>(context.Player);
 
-        foreach (var info in response.Info)
+        session.Send(new ShopBuyResponse
         {
-            var item = ItemDtoFactory.FromEntity(world, created);
-
-            var storage = new StorageValue
-            {
-                Storage = world.Get<StorageGroupComponent>(response.Storage).Group,
-                Slot = info.Slot,
-                Item = item
-            };
-
-            session.Send(new ShopBuyResponse
-            {
-                StorageList = [storage],
-                Spent = price,
-                Currency = ShopCurrency.Gold
-            });
-        }
-
-        var currency = context.Player.Get<CurrencyComponent>();
-        currency.Gold -= price;
-
-        session.Send(new ItemUpdateInvenMoneyResponse
-        {
-            Total = currency.Gold,
-            Bonus = 0,
-            Type = MoneyEarnFlow.Normal
+            StorageList = changes
+                .Select(e => new StorageValue { Storage = e.Storage, Slot = e.Slot, Item = bag.At(e.Storage, e.Slot)!.ToValue() })
+                .ToArray(),
+            Spent = (short)price,
+            Currency = ShopCurrency.Gold
         });
+
+        inventory.TryAddGold(context.Player, -price);
 
         return ValueTask.CompletedTask;
     }

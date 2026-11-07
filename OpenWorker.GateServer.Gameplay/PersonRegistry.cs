@@ -1,4 +1,4 @@
-using OpenWorker.Hotspot;
+﻿using OpenWorker.Hotspot;
 using System.Numerics;
 using Arch.Core;
 using OpenWorker.Domain.Components;
@@ -9,7 +9,6 @@ using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 using OpenWorker.Gameplay.Modules.Items;
-using OpenWorker.Gameplay.Modules.Items.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Gameplay.Modules.League.Components;
@@ -23,7 +22,7 @@ using OpenWorker.Gameplay.Modules.Skill.Components;
 
 namespace OpenWorker.GateServer.Gameplay;
 
-public sealed class PersonRegistry(World world, StorageFactory factory, CostumeFactory costumes) : ISessionCloseHandler
+public sealed class PersonRegistry(World world, InventoryFactory inventories) : ISessionCloseHandler
 {
     private ComponentType[] PersonArchetype { get; } =
     [
@@ -36,7 +35,7 @@ public sealed class PersonRegistry(World world, StorageFactory factory, CostumeF
         Component.GetComponentType(typeof(ShopPrivateComponent)),
         Component.GetComponentType(typeof(RankComponent)),
         Component.GetComponentType(typeof(TitleComponent)),
-        Component.GetComponentType(typeof(StorageComponent)),
+        Component.GetComponentType(typeof(InventoryComponent)),
         Component.GetComponentType(typeof(PersonOptionComponent)),
         Component.GetComponentType(typeof(WorldComponent)),
     ];
@@ -120,19 +119,6 @@ public sealed class PersonRegistry(World world, StorageFactory factory, CostumeF
             return;
         }
 
-        foreach (var storage in world.Get<StorageComponent>(person).Collection)
-        {
-            foreach (var item in world.Get<StorageContentComponent>(storage).SlotList)
-            {
-                if (item != Entity.Null && world.IsAlive(item))
-                {
-                    world.Destroy(item);
-                }
-            }
-
-            world.Destroy(storage);
-        }
-
         world.Destroy(person);
     }
 
@@ -143,13 +129,16 @@ public sealed class PersonRegistry(World world, StorageFactory factory, CostumeF
         return Array.FindIndex(component.SlotList, e => e == Entity.Null);
     }
     
-    internal void CreatePerson(Entity entity, int slotIndex, PersonPersistent persistent)
+    internal Entity CreatePerson(Entity entity, int slotIndex, PersonPersistent persistent)
     {
         var component = world.Get<GatePersonComponent>(entity);
-        
-        component.SlotList[slotIndex] = CreatePerson(persistent);
+        var created = CreatePerson(persistent);
+
+        component.SlotList[slotIndex] = created;
         
         world.Set(entity, component with { LastIndex = slotIndex });
+
+        return created;
     }
 
     private Entity CreatePerson(PersonPersistent persistent)
@@ -249,11 +238,7 @@ public sealed class PersonRegistry(World world, StorageFactory factory, CostumeF
             Type = 0
         });
         
-        world.Set(entity, new RankComponent
-        {
-            Level = 0,
-            Experience = 0
-        });
+        world.Set(entity, new RankComponent(persistent.Level, persistent.Experience));
 
         world.Set(entity, new TitleComponent
         {
@@ -269,44 +254,13 @@ public sealed class PersonRegistry(World world, StorageFactory factory, CostumeF
             Jump = persistent.Location * 100 + 1
         });
         
-        world.Set(entity, new StorageComponent([CreateGearStorage(persistent.Hero), CreatesEquipStorage(persistent.Outfit)]));
+        // A character that has no items yet is given its first ones, they are saved by whoever created it.
+        world.Set(entity, new InventoryComponent(persistent.Items.Count == 0
+            ? inventories.CreateNew(persistent)
+            : inventories.Load(persistent, persistent.Items)));
 
         world.Set(entity, persistent.ToPersonOptionComponent());
         
         return entity;
-    }
-    
-    private Entity CreateGearStorage(Hero hero)
-    {
-        var storage = factory.Create(StorageGroup.AbilityEquip); 
-        
-        var content = world.Get<StorageContentComponent>(storage);
-        
-        var weaponIdentifier = new[]
-        {
-            /* 0 */ 0,
-            /* 1 */ 111000001,
-            /* 2 */ 112000001,
-            /* 3 */ 113000001,
-            /* 4 */ 114000001,
-            /* 5 */ 115000001,
-            /* 6 */ 116000001
-        };
-        
-        content[AbilityEquipSlot.SoulWeapon] = world.Create(
-            new StorageItemComponent(weaponIdentifier[(int)hero]), 
-            new StorageItemGradeComponent(0)
-        );
-        
-        return storage;
-    }
-    
-    private Entity CreatesEquipStorage(int outfit)
-    {
-        var storage = factory.Create(StorageGroup.ShapeEquip);
-
-        costumes.Dress(storage, outfit);
-
-        return storage;
     }
 }

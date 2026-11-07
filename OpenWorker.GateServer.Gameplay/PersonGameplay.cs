@@ -1,4 +1,4 @@
-using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Cache.Types;
@@ -21,6 +21,7 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Types;
@@ -34,6 +35,7 @@ public sealed class PersonGameplay(
     World world,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
+    InventoryPersistence inventories,
     IConfiguration configuration,
     ILogger<PersonGameplay> logger,
     SecondPasswordGameplay secondPassword,
@@ -93,6 +95,7 @@ public sealed class PersonGameplay(
 
         var person = new PersonPersistent
         {
+            Level = (byte)Math.Clamp(configuration.GetValue("Person:StartLevel", 1), 1, 100),
             Name = message.Person.InfoValue.Name,
             Hero = hero,
 
@@ -135,7 +138,10 @@ public sealed class PersonGameplay(
         await database
             .SaveChangesAsync(context.CancellationToken);
 
-        registry.CreatePerson(context.Player, slotIndex, person);
+        var created = registry.CreatePerson(context.Player, slotIndex, person);
+
+        // The first items are saved now, so the district finds them when the character enters the game.
+        await inventories.FlushAsync(created);
 
         var session = world.Get<ServerSessionComponent>(context.Player);
         session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.Player));

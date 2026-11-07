@@ -1,4 +1,4 @@
-using OpenWorker.Batch;
+﻿using OpenWorker.Batch;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands;
@@ -48,16 +48,12 @@ await Host
         services.AddSingleton<WorldManager>();
         services.AddSingleton<LeaveManager>();
         services.AddSingleton<PersonRegistry>();
-        services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
         services.AddSingleton<ISessionCloseHandler, MazeCloseHandler>();
 
-        services.AddSingleton<StorageItemFactory>();
-        services.AddSingleton<StorageFactory>();
-        services.AddSingleton<CostumeFactory>();
-        services.AddSingleton<StorageManager>();
         services.AddSingleton<QuestManager>();
         services.AddPersistence();
         services.AddMiscGameplay();
+        services.AddItems();
 
         services.AddChannels();
 

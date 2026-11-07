@@ -1,4 +1,4 @@
-using OpenWorker.Gameplay.Modules.Persons.Components;
+﻿using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
@@ -33,6 +33,7 @@ using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
 using OpenWorker.Persistence;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
 
@@ -50,6 +51,7 @@ public sealed class PersonService(
     IRedisCollection<MazeReserveCache> mazeReserves,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
+    InventoryPersistence inventories,
     LeaveManager leaving,
     BuffManager buffManager,
     QuestManager questManager,
@@ -139,11 +141,10 @@ public sealed class PersonService(
 
         world.Set(context.Player, new CurrencyComponent
         {
-            Gold = 5_000_000,
-            Cash = 7_000_000,
-            BattlePoint = 10_000_000,
-            Ether = 15_000_000
+            Cash = 7_000_000
         });
+
+        await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
         registry.PullPerson(context.Player, person);
 

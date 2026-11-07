@@ -1,11 +1,11 @@
-using OpenWorker.Hotspot.Messages.Response.Person.Enums;
+﻿using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Types;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
-using OpenWorker.Gameplay.Modules.Items.Components;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.League.Components;
 using OpenWorker.Gameplay.Modules.Maze.Components;
@@ -20,6 +20,7 @@ using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 
 namespace OpenWorker.Gameplay.Mapping;
@@ -38,7 +39,7 @@ public static class PersonSnapshotMapper
 
     public static PersonValue CreatePersonValue(World world, Entity accountEntity, Entity personEntity)
     {
-        var storage = world.Get<StorageComponent>(personEntity);
+        var inventory = world.Get<InventoryComponent>(personEntity).Value;
         var actor = (ActorValue)world.Get<ActorComponent>(personEntity);
         var personInfo = world.Get<PersonInfoComponent>(personEntity);
         var appearance = world.Get<AppearanceComponent>(personEntity);
@@ -59,16 +60,16 @@ public static class PersonSnapshotMapper
 
         var account = world.Get<ClaimsComponent>(accountEntity).Account;
 
-        var gearEntity = storage.Collection.First(x => world.Get<StorageGroupComponent>(x).Group == StorageGroup.AbilityEquip);
-        var gear = world.Get<StorageContentComponent>(gearEntity);
+        var gear = inventory?.Find(StorageGroup.AbilityEquip);
+        var shape = inventory?.Find(StorageGroup.ShapeEquip);
 
-        static EquipItemValueEntry ItemEntry(World w, Entity e) =>
-            Entity.Null == e
-                ? new EquipItemValueEntry(-1, 0)
-                : new EquipItemValueEntry(w.Get<StorageItemComponent>(e).Identifier, w.Get<StorageItemGradeComponent>(e).Level);
+        static EquipItemValueEntry ItemEntry(ItemInstance? item) =>
+            item is null ? new EquipItemValueEntry(-1, 0) : new EquipItemValueEntry(item.Item, item.Upgrade);
 
-        var shape = storage.Collection.First(x => world.Get<StorageGroupComponent>(x).Group == StorageGroup.ShapeEquip);
-        var shapeContent = world.Get<StorageContentComponent>(shape);
+        var shapeItems = Enumerable
+            .Range(0, ItemModuleDefines.EquippedItemCount)
+            .Select(i => ItemEntry(shape is not null && i < shape.Size ? shape.Slots[i] : null))
+            .ToArray();
 
         var league = world.Get<LeagueComponent>(personEntity);
 
@@ -76,13 +77,13 @@ public static class PersonSnapshotMapper
             actor,
             infoValue,
             account,
-            PersonModuleDefines.DefaultLevel,
+            world.Get<RankComponent>(personEntity).Level,
             FactionGroup.None,
             StuffLevel.GameMaster,
             0,
-            ItemEntry(world, gear[0]),
-            ItemEntry(world, gear[1]),
-            shapeContent.SlotList.Select(e => ItemEntry(world, e)).ToArray(),
+            ItemEntry(gear?.Slots[(int)AbilityEquipSlot.SoulWeapon]),
+            ItemEntry(gear?.Slots[(int)AbilityEquipSlot.SubWeapon]),
+            shapeItems,
             new TitleValue(world.Get<TitleComponent>(personEntity).Primary, world.Get<TitleComponent>(personEntity).Secondary),
             new LeagueValue(league.Id, league.Name, new PersonLeagueCardValueEntry(league.Card.Emblem, league.Card.Border)),
             FromAbility(world.Get<AbilityComponent>(personEntity)),

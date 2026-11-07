@@ -1,4 +1,4 @@
-using OpenWorker.Channel;
+﻿using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
@@ -31,12 +31,9 @@ await Host
         services.AddSingleton<WorldManager>();
         services.AddSingleton<LeaveManager>();
 
-        services.AddSingleton<StorageItemFactory>();
-        services.AddSingleton<StorageFactory>();
-        services.AddSingleton<CostumeFactory>();
-        services.AddSingleton<StorageManager>();
         services.AddSingleton<QuestManager>();
         services.AddPersistence();
+        services.AddItems();
         services.AddGameplay();
         services.AddMiscGameplay();
 
@@ -46,7 +43,6 @@ await Host
 
         services.AddSingleton<NpcManager>();
         services.AddSingleton<PersonRegistry>();
-        services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
         services.AddSingleton<ISessionCloseHandler, PersonPlaceStore>();
 
         services.AddHotspot(context, EntityComponentService.District);

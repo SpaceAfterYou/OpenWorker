@@ -1,4 +1,4 @@
-using OpenWorker.Gameplay.Modules.Persons.Components;
+﻿using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -41,6 +41,7 @@ using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Persistence;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
 namespace OpenWorker.DistrictServer.Services;
@@ -61,6 +62,7 @@ public sealed class PersonService(
     IDbContextFactory<PersistenceContext> factory,
     IConfiguration configuration,
     PersonRegistry registry,
+    InventoryPersistence inventories,
     LeaveManager leaving,
     QuestManager questManager,
     ReadOnlyCollection<CharacterInfoRow> characterInfo
@@ -128,10 +130,7 @@ public sealed class PersonService(
 
         ecs.Set(context.Player, new CurrencyComponent
         {
-            Gold = 5_000_000,
-            Cash = 7_000_000,
-            BattlePoint = 10_000_000,
-            Ether = 15_000_000
+            Cash = 7_000_000
         });
 
         ecs.Set(context.Player, new GestureComponent
@@ -149,6 +148,8 @@ public sealed class PersonService(
                 _ => person.GestureList
             }
         });
+
+        await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
         registry.PullPerson(context.Player, person);
 

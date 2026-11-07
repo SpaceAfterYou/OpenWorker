@@ -25,8 +25,11 @@ await Host
         
         services.AddSingleton<WorldManager>();
         services.AddSingleton<LeaveManager>();
-        services.AddSingleton<StorageFactory>();
-        services.AddSingleton<CostumeFactory>();
+        services.AddSingleton<ItemCatalog>();
+        services.AddSingleton<DatabaseItemSerials>();
+        services.AddSingleton<IItemSerials>(provider => provider.GetRequiredService<DatabaseItemSerials>());
+        services.AddSingleton<InventoryFactory>();
+        services.AddSingleton<InventoryPersistence>();
         services.AddPersistence();
         services.AddGameplay();
         
