@@ -11,13 +11,13 @@ namespace OpenWorker.Gameplay.Modules.Drops;
 /// <summary>
 /// What a player gets when a monster dies in its maze: experience, and things on the ground.
 /// </summary>
-public sealed class KillRewards(ExperienceService experience, DropService drops, DailyMissionManager? missions, ILogger<KillRewards> logger)
+public sealed class KillRewards(ExperienceService experience, DropService drops, DailyMissionManager? missions, MazeResults results, ILogger<KillRewards> logger)
 {
     public void OnKilled(Entity player, int monster, Vector3 position)
     {
         logger.LogDebug("Monster {Monster} killed, worth {Experience} experience", monster, experience.ForMonster(monster));
 
-        experience.GiveForMonster(player, monster);
+        results.AddKill(player, experience.GiveForMonster(player, monster));
         drops.DropForKill(player, monster, position);
 
         if (missions is not null)

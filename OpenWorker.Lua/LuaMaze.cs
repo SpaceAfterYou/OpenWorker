@@ -75,6 +75,11 @@ public partial class LuaMaze(
     /// </summary>
     public event Action<int, System.Numerics.Vector3>? MonsterKilled;
 
+    /// <summary>
+    /// Every sector of the maze has been cleared.
+    /// </summary>
+    public event Action? Completed;
+
     private int SkillGeneration { get; set; }
     private uint ProjectileSession { get; set; }
     private bool Started { get; set; }
@@ -711,6 +716,11 @@ public partial class LuaMaze(
         if (Progress.ClearSector(sector))
         {
             player.Get<ServerSessionComponent>().Send(new MazeClearSectorResponse { Sector = sector, Status = true });
+
+            if (Batch.EventBox.Sectors.All(e => Progress.IsSectorCleared(e.Id)))
+            {
+                Completed?.Invoke();
+            }
         }
     }
 

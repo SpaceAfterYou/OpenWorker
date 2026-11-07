@@ -54,6 +54,7 @@ public sealed class PersonService(
     PersonRegistry registry,
     InventoryPersistence inventories,
     KillRewards rewards,
+    MazeResults results,
     LeaveManager leaving,
     BuffManager buffManager,
     QuestManager questManager,
@@ -178,6 +179,8 @@ public sealed class PersonService(
         creatures.Attach(context.Player);
         creatures.Vitals.Initialize(context.Player);
         maze.MonsterKilled += (monster, position) => rewards.OnKilled(context.Player, monster, position);
+        maze.Completed += () => results.Complete(context.Player);
+        results.Start(context.Player);
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
 

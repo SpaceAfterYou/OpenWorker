@@ -83,19 +83,20 @@ public sealed class ExperienceService
 
     /// <summary>
     /// Gives the player the experience for a monster of this level, less of it when the player has outgrown the monster.
+    /// Returns how much it was.
     /// </summary>
-    public void GiveForMonster(Entity player, int monster)
+    public int GiveForMonster(Entity player, int monster)
     {
         if (!_monsters.TryGetValue(monster, out var row))
         {
-            return;
+            return 0;
         }
 
         var experience = (double)ForMonster(monster);
 
         if (experience <= 0)
         {
-            return;
+            return 0;
         }
 
         var interval = Math.Clamp(_world.Get<RankComponent>(player).Level - row.Level, -100, 100);
@@ -105,7 +106,11 @@ public sealed class ExperienceService
             experience *= rate;
         }
 
-        Add(player, (int)Math.Ceiling(experience * _rate));
+        var given = (int)Math.Ceiling(experience * _rate);
+
+        Add(player, given);
+
+        return given;
     }
 
     /// <summary>

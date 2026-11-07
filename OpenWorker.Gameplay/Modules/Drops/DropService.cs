@@ -41,7 +41,8 @@ public sealed class DropService(
     ReadOnlyCollection<MonsterRow> monsters,
     IConfiguration? configuration = null,
     DailyMissionManager? missions = null,
-    ILogger<DropService>? logger = null)
+    ILogger<DropService>? logger = null,
+    MazeResults? results = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -235,6 +236,15 @@ public sealed class DropService(
         }
 
         field.Objects.Remove(serial);
+
+        if (drop.Object == GoldObject)
+        {
+            results?.AddGold(player, drop.Count + drop.Bonus);
+        }
+        else if (drop.Object == EtherObject)
+        {
+            results?.AddEther(player, drop.Count);
+        }
 
         if (drop.Object < GoldObject && missions is not null)
         {

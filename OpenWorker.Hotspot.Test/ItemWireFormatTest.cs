@@ -2,6 +2,7 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Maze.Responses;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -79,5 +80,24 @@ public sealed class ItemWireFormatTest
     {
         Assert.HasCount(4, ToBytes(new ItemBankInfoResponse { List = [] }.Write));
         Assert.HasCount(4, ToBytes(new ItemUpdateResponse { List = [] }.Write));
+    }
+
+    [TestMethod]
+    public void MazeRewardWindowHasTheSizeTheClientReads()
+    {
+        // A byte, two numbers, a short, nine numbers, three pairs of a short and a number or byte.
+        Assert.HasCount(1 + 4 + 4 + 2 + 9 * 4 + 2 + 4 + 2 + 4 + 2 + 1, ToBytes(new MazeRewardInfoResponse { Rank = 5 }.Write));
+    }
+
+    [TestMethod]
+    public void MazeRewardGroupListsEachMember()
+    {
+        var bytes = ToBytes(new MazeRewardPartyInfoResponse { Members = [new MazeRewardPartyMember(1, 5, 7, "Haru", 100)] }.Write);
+
+        Assert.AreEqual(1, bytes[0]);
+        Assert.AreEqual(1, bytes[1]);
+        Assert.AreEqual(5, bytes[2]);
+        Assert.AreEqual(7, BitConverter.ToInt32(bytes, 3));
+        Assert.AreEqual(100, BitConverter.ToInt32(bytes, bytes.Length - 4));
     }
 }
