@@ -42,6 +42,23 @@ public partial class LuaMaze(
     
     public World Ecs { get; } = ecs;
     public VBatchFile Batch { get; } = batch;
+
+    private bool Started { get; set; }
+
+    /// <summary>
+    /// True only the first time: the script must see a player enter once.
+    /// </summary>
+    public bool TryStart()
+    {
+        if (Started)
+        {
+            return false;
+        }
+
+        Started = true;
+
+        return true;
+    }
     
     [LuaMember]
     public void AcceptQuest(int episode)

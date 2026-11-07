@@ -169,9 +169,6 @@ public sealed class PersonService(
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
 
         questManager.SendQuestEpisodeList(context.Player);
-
-        await state
-            .OnEnterPlayerAsync(world.Get<ActorComponent>(context.Player), maze);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)

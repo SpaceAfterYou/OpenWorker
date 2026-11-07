@@ -31,6 +31,7 @@ public sealed class MazeService(
     WorldManager worldManager,
     IConfiguration configuration
 ) :
+    IHotspotHandler<MazeCompleteRequest>,
     IHotspotHandler<MazeExitRequest>,
     IHotspotHandler<MazeEventSpawnBoxRequest>,
     IHotspotHandler<MazeOperationEndRequest>,
@@ -43,6 +44,24 @@ public sealed class MazeService(
     {
         await worldManager
             .EnterAsync(context.Player, request.Location, request.Jump);
+    }
+
+    /// <summary>
+    /// The client has finished loading the maze, so what the script does now reaches it.
+    /// </summary>
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeCompleteRequest request)
+    {
+        if (!ecs.Has<LuaMaze>(context.Player))
+        {
+            return;
+        }
+
+        var maze = ecs.Get<LuaMaze>(context.Player);
+
+        if (maze.TryStart())
+        {
+            await maze.State.OnEnterPlayerAsync(ecs.Get<ActorComponent>(context.Player), maze);
+        }
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)
