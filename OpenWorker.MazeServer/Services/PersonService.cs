@@ -39,6 +39,7 @@ public sealed class PersonService(
     ReadOnlyCollection<TitleInfoRow> titleCollection,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
     ReadOnlyCollection<MazeInfoRow> mazeInfoCollection,
+    ReadOnlyCollection<InteractionObjectRow> interactionCollection,
     IRedisCollection<SessionCache> sessions,
     SessionLeaseManager leases,
     BatchManager batches,
@@ -162,7 +163,7 @@ public sealed class PersonService(
 
         creatureManager.Emplace(context.Player);
 
-        var maze = new LuaMaze(state, world, context.Player, new LuaCreatureManager(world, batch), buffManager, questManager, batch);
+        var maze = new LuaMaze(state, world, context.Player, new LuaCreatureManager(world, batch), buffManager, questManager, batch, interactionCollection);
 
         world.Add(context.Player, maze);
 

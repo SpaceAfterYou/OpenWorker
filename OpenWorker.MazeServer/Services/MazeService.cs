@@ -1,4 +1,12 @@
 using System.Diagnostics;
+using System.Numerics;
+using OpenWorker.Batch.Entities;
+using OpenWorker.Batch.Entities.Basic;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Hotspot.Modules.World.Enums;
 using Arch.Core;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Channel;
@@ -29,15 +37,29 @@ public sealed class MazeService(
     BatchManager batches,
     IRedisCollection<DistrictReserveCache> districtReserves,
     WorldManager worldManager,
-    IConfiguration configuration
+    IConfiguration configuration,
+    QuestManager questManager
 ) :
     IHotspotHandler<MazeCompleteRequest>,
+    IHotspotHandler<WorldWarpRequest>,
+    IHotspotHandler<WorldWarpOutRequest>,
+    IHotspotHandler<WorldCheckSectorRequest>,
+    IHotspotHandler<WorldEscapeRequest>,
+    IHotspotHandler<MazeSceneDirectingRequest>,
+    IHotspotHandler<MazeCheckEventSpawnBoxRequest>,
+    IHotspotHandler<MazeQuestMoveCheckRequest>,
+    IHotspotHandler<MazeInteractionClickRequest>,
     IHotspotHandler<MazeExitRequest>,
     IHotspotHandler<MazeEventSpawnBoxRequest>,
     IHotspotHandler<MazeOperationEndRequest>,
     IHotspotHandler<MazeLuaFunctionRequest>,
     IHotspotHandler<WorldEnterRequest>
 {
+    private const ushort WarpFailed = 55014;
+    private const ushort SectorWrongMap = 55005;
+    private const ushort SectorNotFound = 55006;
+    private const ushort InteractionFailed = 54007;
+
     private short Gate { get; } = configuration.GetGate();
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
@@ -58,10 +80,237 @@ public sealed class MazeService(
 
         var maze = ecs.Get<LuaMaze>(context.Player);
 
-        if (maze.TryStart())
+        if (!maze.TryStart())
         {
-            await maze.State.OnEnterPlayerAsync(ecs.Get<ActorComponent>(context.Player), maze);
+            return;
         }
+
+        SendProgress(context.Player, maze);
+
+        await maze.State.OnEnterPlayerAsync(ecs.Get<ActorComponent>(context.Player), maze);
+    }
+
+    private void SendProgress(Entity player, LuaMaze maze)
+    {
+        var session = ecs.Get<ServerSessionComponent>(player);
+        var progress = maze.Progress;
+
+        session.Send(new MazeSectorInfosResponse
+        {
+            Cleared = progress.Cleared,
+            Current = FindSector(maze, ecs.Get<WorldComponent>(player).Position)?.Id ?? 0
+        });
+        session.Send(new MazeGateInfosResponse { ReEnter = false, Open = progress.OpenGates });
+        session.Send(new MazeDieMonstersResponse { SpawnBoxes = [] });
+        session.Send(new MazePortalInfosResponse { Open = progress.OpenPortals, Closed = progress.ClosedPortals });
+        session.Send(new MazeInteractionInfosResponse { Interactions = progress.InteractionList });
+    }
+
+    private static SectorBox? FindSector(LuaMaze maze, Vector3 position)
+    {
+        return maze.Batch.EventBox.Sectors.FirstOrDefault(e =>
+            position.X >= Math.Min(e.PosTopLeft.X, e.PosBottomRight.X) &&
+            position.X <= Math.Max(e.PosTopLeft.X, e.PosBottomRight.X) &&
+            position.Y >= Math.Min(e.PosTopLeft.Y, e.PosBottomRight.Y) &&
+            position.Y <= Math.Max(e.PosTopLeft.Y, e.PosBottomRight.Y));
+    }
+
+    /// <summary>
+    /// A portal that leads to another place on this map.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, WorldWarpRequest request)
+    {
+        if (!ecs.Has<LuaMaze>(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var maze = ecs.Get<LuaMaze>(context.Player);
+        var world = ecs.Get<WorldComponent>(context.Player);
+        var events = maze.Batch.EventBox;
+
+        BasicEntity? destination = events.PortalExits.FirstOrDefault(e => e.Id == request.Jump);
+        destination ??= events.SectorStarts.FirstOrDefault(e => e.Id == request.Jump);
+        destination ??= events.StartEvents.FirstOrDefault(e => e.Id == request.Jump);
+
+        if (request.Location != world.Location || !maze.Progress.IsPortalOpen(request.Portal) || destination is null)
+        {
+            SendError(context.Player, WorldOpcode.WarpReq, WarpFailed);
+
+            return ValueTask.CompletedTask;
+        }
+
+        Warp(context.Player, destination.GetRandomPosition(), destination.Rotation);
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Stepping out of a portal that waits for the whole party. Nothing waits while every player has a
+    /// maze of their own.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, WorldWarpOutRequest request)
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The client reached a box that opens a gate when its sector is cleared.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, WorldCheckSectorRequest request)
+    {
+        if (!ecs.Has<LuaMaze>(context.Player))
+        {
+            SendError(context.Player, WorldOpcode.CheckSectorReq, SectorNotFound);
+
+            return ValueTask.CompletedTask;
+        }
+
+        var maze = ecs.Get<LuaMaze>(context.Player);
+        var box = maze.Batch.EventBox.CheckSectors.FirstOrDefault(e => e.Id == request.Box);
+
+        if (box is null)
+        {
+            SendError(context.Player, WorldOpcode.CheckSectorReq, SectorNotFound);
+        }
+        else if (request.Location != ecs.Get<WorldComponent>(context.Player).Location)
+        {
+            SendError(context.Player, WorldOpcode.CheckSectorReq, SectorWrongMap);
+        }
+        else
+        {
+            maze.SetGateFlag(box.CheckGate, maze.Progress.IsSectorCleared(box.CheckSector));
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// A player who got stuck goes back to the start of the current sector.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, WorldEscapeRequest request)
+    {
+        if (!ecs.Has<LuaMaze>(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var maze = ecs.Get<LuaMaze>(context.Player);
+        var world = ecs.Get<WorldComponent>(context.Player);
+        var events = maze.Batch.EventBox;
+
+        var sector = FindSector(maze, world.Position);
+
+        BasicEntity? start = sector is null ? null : events.SectorStarts.FirstOrDefault(e => e.Sector == sector.Id);
+        start ??= events.StartEvents.FirstOrDefault(e => e.Id == world.Jump);
+
+        if (start is not null)
+        {
+            Warp(context.Player, start.GetRandomPosition(), start.Rotation);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, MazeSceneDirectingRequest request)
+    {
+        ecs.Get<ServerSessionComponent>(context.Player).Send(new MazeSceneDirectingResponse
+        {
+            Box = request.Box,
+            Actor = request.Actor
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, MazeCheckEventSpawnBoxRequest request)
+    {
+        if (!ecs.Has<LuaMaze>(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var maze = ecs.Get<LuaMaze>(context.Player);
+        var box = maze.Batch.EventBox.CheckEventSpawns.FirstOrDefault(e => e.Id == request.Box);
+
+        if (box is not null && maze.Progress.TryUseBox(box.Id))
+        {
+            foreach (var spawn in box.SpawnBoxList.Where(e => e != 0))
+            {
+                maze.ExecuteEventSpawnLua(spawn);
+            }
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, MazeQuestMoveCheckRequest request)
+    {
+        if (!ecs.Has<LuaMaze>(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var maze = ecs.Get<LuaMaze>(context.Player);
+        var box = maze.Batch.EventBox.QuestMoveChecks.FirstOrDefault(e => e.Id == request.Box);
+
+        if (box is not null && maze.Progress.TryUseBox(box.Id))
+        {
+            questManager.TryApplyConditionProgress(context.Player, box.EpisodeCondition, 1);
+
+            ecs.Get<ServerSessionComponent>(context.Player).Send(new MazeQuestMoveCheckResponse { Box = box.Id });
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeInteractionClickRequest request)
+    {
+        if (!ecs.Has<LuaMaze>(context.Player))
+        {
+            return;
+        }
+
+        var maze = ecs.Get<LuaMaze>(context.Player);
+
+        if (!maze.Progress.TryGetInteraction(request.Box, out var interaction) || !interaction.Enable)
+        {
+            SendError(context.Player, MazeOpcode.eSUB_CMD_MAZE_INTERACTION_CLICK_REQ, InteractionFailed);
+            return;
+        }
+
+        ecs.Get<ServerSessionComponent>(context.Player).Send(new MazeInteractionRunResponse
+        {
+            Result = 0,
+            Interaction = maze.Progress.UseInteraction(interaction)
+        });
+
+        await maze.State.OnInteractionObject(request.Box, maze);
+    }
+
+    private void Warp(Entity player, Vector3 position, float rotation)
+    {
+        var world = ecs.Get<WorldComponent>(player);
+
+        ecs.Set(player, world with { Position = position, Rotation = rotation });
+
+        ecs.Get<ServerSessionComponent>(player).Send(new WorldWarpResponse
+        {
+            Actor = ecs.Get<ActorComponent>(player),
+            Position = position,
+            Rotation = rotation,
+            Result = WorldWrapResult.Ok
+        });
+    }
+
+    private void SendError(Entity player, WorldOpcode command, ushort code)
+    {
+        ecs.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.World, command), code));
+    }
+
+    private void SendError(Entity player, MazeOpcode command, ushort code)
+    {
+        ecs.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Maze, command), code));
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)

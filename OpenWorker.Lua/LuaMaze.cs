@@ -14,6 +14,7 @@ using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua.Managers;
+using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Lua;
 
@@ -35,13 +36,16 @@ public partial class LuaMaze(
     LuaCreatureManager creatureManager,
     BuffManager buffManager,
     QuestManager questManager,
-    VBatchFile batch
+    VBatchFile batch,
+    IReadOnlyCollection<InteractionObjectRow> interactions
 ) : ILuaUserData
 {
     public LuaState State { get; } = state;
     
     public World Ecs { get; } = ecs;
     public VBatchFile Batch { get; } = batch;
+
+    public MazeProgress Progress { get; } = new(batch, interactions);
 
     private bool Started { get; set; }
 
@@ -171,17 +175,16 @@ public partial class LuaMaze(
     [LuaMember]
     public void EnableInteractionBox(int box, bool enable)
     {
-        var action = Batch.EventBox.InterActions.First(x => x.Id == box);
-
-        var session = player.Get<ServerSessionComponent>();
-        
-        session.Send(new MazeInteractionEnableResponse
+        if (Progress.SetInteraction(box, enable) is { } value)
         {
-            Show = true,
-            Enable = enable,
-            BoxIndex = action.Interaction,
-            CallCount = 1
-        });
+            player.Get<ServerSessionComponent>().Send(new MazeInteractionEnableResponse
+            {
+                Show = value.Show,
+                Enable = value.Enable,
+                BoxIndex = value.Box,
+                CallCount = value.CallCount
+            });
+        }
     }
 
     [LuaMember("ExcutEventSpawnGroupLua")]
@@ -269,7 +272,10 @@ public partial class LuaMaze(
     [LuaMember]
     public void SectorClear(int sector)
     {
-        Console.WriteLine($"[{nameof(SectorClear)}]: {sector}");
+        if (Progress.ClearSector(sector))
+        {
+            player.Get<ServerSessionComponent>().Send(new MazeClearSectorResponse { Sector = sector, Status = true });
+        }
     }
 
     [LuaMember]
@@ -285,15 +291,18 @@ public partial class LuaMaze(
     }
 
     [LuaMember]
-    public void SetGateFlag()
+    public void SetGateFlag(int gate, bool open)
     {
-        throw new NotImplementedException();
+        if (Progress.SetGate(gate, open))
+        {
+            player.Get<ServerSessionComponent>().Send(new WorldGateEnableResponse { Gate = gate, Open = open });
+        }
     }
 
     [LuaMember]
-    public void SetGateFlagNoSend()
+    public void SetGateFlagNoSend(int gate, bool open)
     {
-        throw new NotImplementedException();
+        Progress.SetGate(gate, open);
     }
 
     [LuaMember]
@@ -363,7 +372,10 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetPotalFlag(int box, bool flag)
     {
-        Console.WriteLine($"[{nameof(SetPotalFlag)}]: {box}, {flag}");
+        if (Progress.SetPortal(box, flag))
+        {
+            player.Get<ServerSessionComponent>().Send(new WorldWarpEnableResponse { Box = box, Open = flag });
+        }
     }
 
     [LuaMember]

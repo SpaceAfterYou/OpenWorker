@@ -6,7 +6,7 @@ public static class TypeExtension
 {
     internal static bool IsHotspotHandler(this Type @this)
     {
-        return @this.GetInterfaces().Any(IsImplementInterface);
+        return !@this.IsAbstract && @this.GetInterfaces().Any(IsImplementInterface);
     }
 
     private static bool IsImplementInterface(Type type)

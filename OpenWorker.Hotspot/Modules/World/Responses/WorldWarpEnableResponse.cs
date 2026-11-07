@@ -2,35 +2,25 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.World.Extensions;
-using OpenWorker.Hotspot.Modules.World.Types;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct WorldWarpEnableResponse : IResponseHotspotMessage
 {
-#region Interface: IHotspotMessage
-
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.WarpEnableRes;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-#endregion Interface: IHotspotMessage
-
-#region Message: Body
-
-    public WarpValue Warp { get; init; }
-
-#endregion Message: Body
-
-#region Interface: IWritableData
+    public int Box { get; init; }
+    public bool Open { get; init; }
+    public bool IsMazeComplete { get; init; }
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Warp);
+        writer.Write(Box);
+        writer.Write(Open);
+        writer.Write(IsMazeComplete);
     }
-
-#endregion Interface: IWritableData
 }
