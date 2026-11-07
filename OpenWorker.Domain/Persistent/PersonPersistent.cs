@@ -33,6 +33,11 @@ public sealed class PersonPersistent : BasicPersistent
     public int TitleAbilityPrimary { get; set; }
     public int TitleAbilitySecondary { get; set; }
 
+    /// <summary>
+    /// The titles the person has earned.
+    /// </summary>
+    public int[] TitleList { get; set; } = [];
+
     public byte CommunityState { get; set; }
     public string CommunityComment { get; set; } = string.Empty;
     public string CommunityMemo { get; set; } = string.Empty;

@@ -183,7 +183,7 @@ public sealed class OtherPersonService(
         var rank = world.Get<RankComponent>(target);
 
         var stats = combat
-            .GetPerson(info.Hero, PersonModuleDefines.DefaultLevel)
+            .GetPerson(info.Hero, PersonModuleDefines.DefaultLevel, title)
             .ToStatList()
             .Select(e => new ST_STAT { wStatID = (short)e.byIndex, fValue = e.statValue })
             .ToArray();

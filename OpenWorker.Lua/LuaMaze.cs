@@ -13,6 +13,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -284,7 +285,7 @@ public partial class LuaMaze(
         var session = player.Get<ServerSessionComponent>();
         var attacker = Ecs.Get<WorldComponent>(player);
 
-        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
+        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel, Ecs.Get<TitleComponent>(player));
         var skillDamage = combat.GetSkill(skill);
         var hits = targets.Select(target => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate, trigger.ReactionType)).ToArray();
 

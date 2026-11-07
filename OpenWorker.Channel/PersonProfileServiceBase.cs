@@ -1,7 +1,7 @@
-using System.Collections.ObjectModel;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Components;
+using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Channel.Community;
 using OpenWorker.Hotspot;
@@ -14,7 +14,6 @@ using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Persistence;
-using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Channel;
 
@@ -23,7 +22,7 @@ namespace OpenWorker.Channel;
 /// </summary>
 public abstract class PersonProfileServiceBase(
     World world,
-    ReadOnlyCollection<TitleInfoRow> titles,
+    TitleBook titles,
     IDbContextFactory<PersistenceContext> factory,
     OtherPersonService others,
     FriendNotifier friends) :
@@ -32,18 +31,8 @@ public abstract class PersonProfileServiceBase(
     IHotspotHandler<PersonCommunityRequest>,
     IHotspotHandler<PersonOtherInfoRequest>
 {
-    private const byte PrefixTitle = 0;
-    private const byte SuffixTitle = 1;
-
     private const int MaxCommentCharacters = PersonModuleDefines.MaxCommunityCommentLength - 1;
     private const int MaxMemoCharacters = PersonModuleDefines.MaxCommunityMemoLength - 1;
-
-    /// <summary>
-    /// Titles are not earned yet, so a person has the prefixes that do not depend on the class. With suffixes the list would not fit: its size is a single byte.
-    /// </summary>
-    private Dictionary<int, byte> OwnedTitles { get; } = titles
-        .Where(e => e is { Type: PrefixTitle, Class: 0 })
-        .ToDictionary(e => e.Id, e => e.Type);
 
     protected abstract void BroadcastToOthers(Entity player, IResponseHotspotMessage message);
 
@@ -52,7 +41,7 @@ public abstract class PersonProfileServiceBase(
         var session = world.Get<ServerSessionComponent>(context.Player);
         var title = world.Get<TitleComponent>(context.Player);
 
-        session.Send(new PersonLoadTitleResponse { TitleList = OwnedTitles.Keys, OpenList = [], Result = true });
+        titles.Send(context.Player);
 
         // Nothing else tells the client which titles are chosen.
         session.Send(CreateTitleResponse(title, true));
@@ -65,13 +54,13 @@ public abstract class PersonProfileServiceBase(
         var session = world.Get<ServerSessionComponent>(context.Player);
         var current = world.Get<TitleComponent>(context.Player);
 
-        if (!IsValid(request.Ability) || !IsValid(request.Represent))
+        if (!CanWear(context.Player, request.Ability) || !CanWear(context.Player, request.Represent))
         {
             session.Send(CreateTitleResponse(current, false));
             return;
         }
 
-        var chosen = new TitleComponent
+        var chosen = current with
         {
             AbilityPrimary = request.Ability.Primary,
             AbilitySecondary = request.Ability.Secondary,
@@ -158,13 +147,8 @@ public abstract class PersonProfileServiceBase(
         };
     }
 
-    private bool IsValid(TitleValue title)
+    private bool CanWear(Entity player, TitleValue title)
     {
-        return IsValid(title.Primary, PrefixTitle) && IsValid(title.Secondary, SuffixTitle);
-    }
-
-    private bool IsValid(int title, byte type)
-    {
-        return title <= 0 || (OwnedTitles.TryGetValue(title, out var owned) && owned == type);
+        return titles.CanWear(player, title.Primary, TitleKind.Prefix) && titles.CanWear(player, title.Secondary, TitleKind.Suffix);
     }
 }

@@ -10,4 +10,9 @@ public readonly record struct TitleComponent
     public int AbilitySecondary { get; init; }
     public required int Primary { get; init; }
     public required int Secondary { get; init; }
+
+    /// <summary>
+    /// The titles the person has earned, in the order they were earned. Null when there are none.
+    /// </summary>
+    public int[]? Owned { get; init; }
 }
