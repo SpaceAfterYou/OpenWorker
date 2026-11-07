@@ -1,0 +1,43 @@
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Hotspot.Modules.Persons.Extensions;
+
+namespace OpenWorker.Hotspot.Modules.Persons.Responses;
+
+/// <summary>
+/// What a player says about themselves.
+/// </summary>
+[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+public readonly struct PersonCommunityResponse : IResponseHotspotMessage
+{
+#region Interface: IHotspotMessage
+
+    private const GroupOpcode Group = GroupOpcode.Character;
+    private const CharacterOpcode Command = CharacterOpcode.Community;
+
+    public MessageOpcode Opcode => new(Group, Command);
+
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public CommunityState State { get; init; }
+    public string Comment { get; init; }
+    public string Memo { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((byte)State);
+        writer.WriteCommunityComment(Comment);
+        writer.WriteCommunityMemo(Memo);
+    }
+
+#endregion Interface: IWritableData
+}
