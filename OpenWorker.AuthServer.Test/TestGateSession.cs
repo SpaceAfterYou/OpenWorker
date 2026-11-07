@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.Channel;
+using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
@@ -36,6 +37,7 @@ public sealed class TestGateSession
     private const short OtherGateId = 2;
 
     private static IRedisCollection<SessionCache> Sessions { get; set; } = null!;
+    private static IRedisCollection<GateCache> Gates { get; set; } = null!;
 
     [ClassInitialize]
     public static async Task InitializeAsync(TestContext _)
@@ -49,7 +51,8 @@ public sealed class TestGateSession
 
         var provider = new RedisConnectionProvider(connection);
 
-        Sessions = provider.RedisCollection<SessionCache>();
+        Sessions = Cache.CreateCollection<SessionCache>(provider);
+        Gates = Cache.CreateCollection<GateCache>(provider);
 
         await provider.Connection.CreateIndexAsync(typeof(SessionCache));
     }
@@ -117,7 +120,7 @@ public sealed class TestGateSession
                 configuration,
                 NullLogger<PersonGameplay>.Instance,
                 secondPassword,
-                leases,
+                new LeaveManager(World, configuration, Gates, leases),
                 (WorldManager)null!);
         }
 

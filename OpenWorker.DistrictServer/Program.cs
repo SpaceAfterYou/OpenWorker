@@ -20,6 +20,7 @@ await Host
 
         services.AddCache();
         services.AddSessionCache();
+        services.AddGateCache();
         services.AddChannelCache();
         services.AddDistrictCache();
         services.AddDistrictReserveCache();
@@ -27,6 +28,7 @@ await Host
         services.AddBatch();
 
         services.AddSingleton<WorldManager>();
+        services.AddSingleton<LeaveManager>();
 
         services.AddSingleton<StorageItemFactory>();
         services.AddSingleton<StorageFactory>();

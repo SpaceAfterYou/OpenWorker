@@ -16,7 +16,7 @@ public readonly struct PersonChangeServerRequest(BinaryReader reader) : IRequest
 
     public ActorValue Actor { get; } = new(reader);
     public int Account { get; } = reader.ReadInt32();
-    public ChangeServerType Type { get; } = reader.ReadChangeServerType();
+    public LeaveDestination Destination { get; } = (LeaveDestination)reader.ReadByte();
 
     public MessageOpcode Opcode => new(Group, Command);
 }

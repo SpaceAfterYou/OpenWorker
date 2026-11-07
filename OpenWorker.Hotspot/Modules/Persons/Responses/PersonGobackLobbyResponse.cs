@@ -21,7 +21,7 @@ public readonly struct PersonGobackLobbyResponse : IResponseHotspotMessage
     public required int Account { get; init; }
     public required string Address { get; init; }
     public required short Port { get; init; }
-    public required ChangeServerType Type { get; init; }
+    public required LeaveDestination Destination { get; init; }
     public required bool Result { get; init; }
 
     public void Write(BinaryWriter writer)
@@ -30,7 +30,7 @@ public readonly struct PersonGobackLobbyResponse : IResponseHotspotMessage
         writer.Write(Account);
         writer.WriteUtf8AsciiStringWithoutTerminator(Address);
         writer.Write(Port);
-        writer.Write(Type);
+        writer.Write((byte)Destination);
         writer.Write(Result);
     }
 }

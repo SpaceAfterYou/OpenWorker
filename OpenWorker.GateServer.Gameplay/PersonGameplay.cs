@@ -1,4 +1,3 @@
-using OpenWorker.Hotspot.Cache;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Messages.Response.Person;
@@ -38,7 +37,7 @@ public sealed class PersonGameplay(
     IConfiguration configuration,
     ILogger<PersonGameplay> logger,
     SecondPasswordGameplay secondPassword,
-    SessionLeaseManager leases,
+    LeaveManager leaving,
     WorldManager worldManager)
 {
     private short Gate { get; } = configuration.GetGate();
@@ -207,27 +206,11 @@ public sealed class PersonGameplay(
 
     public async Task ChangeServerAsync(ServiceHandleContext context, PersonChangeServerRequest message)
     {
-        var claims = world.Get<ClaimsComponent>(context.Player);
-
-        // Only the way back to the server list goes through the gate.
-        if (claims.Account == 0 || message.Type is not ChangeServerType.EnterMap)
+        // The character selection is already here, only the server list can be left for.
+        if (message.Destination is LeaveDestination.ServerList)
         {
-            return;
+            await leaving.LeaveAsync(context.Player, message.Destination).ConfigureAwait(false);
         }
-
-        await leases
-            .MarkReturnToAuthAsync(context.Player)
-            .ConfigureAwait(false);
-
-        world.Get<ServerSessionComponent>(context.Player).Send(new PersonGobackLobbyResponse
-        {
-            Actor = default,
-            Account = claims.Account,
-            Address = configuration.GetAuthHost(),
-            Port = configuration.GetAuthPort(),
-            Type = ChangeServerType.EnterMap,
-            Result = true
-        });
     }
 
     public async Task SelectAsync(ServiceHandleContext context, PersonSelectRequest message)

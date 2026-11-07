@@ -24,6 +24,7 @@ await Host
         services.AddBatch();
         
         services.AddSingleton<WorldManager>();
+        services.AddSingleton<LeaveManager>();
         services.AddSingleton<StorageFactory>();
         services.AddPersistence();
         services.AddGameplay();

@@ -79,10 +79,12 @@ public sealed class MazeService(
             Server = Gate
         };
 
+        var position = exit.GetRandomPosition();
+
         var location = new WorldValue
         {
             Location = districtCache.Location,
-            Position = exit.GetRandomPosition(),
+            Position = position,
             Rotation = exit.Rotation,
             Map = map
         };
@@ -91,6 +93,7 @@ public sealed class MazeService(
         {
             Zone = new ZoneValue
             {
+                Actor = ecs.Get<ActorComponent>(context.Player).Identifier,
                 Account = claims,
                 World = location,
                 Jump = exit.Id,
@@ -103,12 +106,10 @@ public sealed class MazeService(
             ChangeType = ChangeServerType.EnterDistrict
         };
 
-        var position = exit.GetRandomPosition();
-
         var cache = new DistrictReserveCache
         {
             Account = claims,
-            Person = ecs.Get<ActorComponent>(context.Player),
+            Person = ecs.Get<ActorComponent>(context.Player).Identifier,
             District = districtCache.Guid,
             Channel = channelCache.Guid,
             Jump = exit.Id,
@@ -119,7 +120,7 @@ public sealed class MazeService(
         };
 
         await districtReserves
-            .InsertAsync(cache)
+            .InsertAsync(cache, WorldManager.ReservationLifetime)
             .ConfigureAwait(false);
 
         var session = ecs.Get<ServerSessionComponent>(context.Player);

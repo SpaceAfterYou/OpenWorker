@@ -1,9 +1,11 @@
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Numerics;
 using Arch.Core;
 using OpenWorker.Domain.Components;
 using Microsoft.EntityFrameworkCore;
+using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.DistrictServer.Server;
@@ -48,20 +50,24 @@ public sealed class PersonService(
     ReadOnlyCollection<TitleInfoRow> titleCollection,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
     IRedisCollection<SessionCache> sessions,
+    IRedisCollection<DistrictReserveCache> districtReserves,
     SessionLeaseManager leases,
     ServiceChannels channels,
     IDbContextFactory<PersistenceContext> factory,
     IConfiguration configuration,
     PersonRegistry registry,
+    LeaveManager leaving,
     QuestManager questManager,
     ReadOnlyCollection<CharacterInfoRow> characterInfo
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
     IHotspotHandler<PersonLoadTitleRequest>,
-    IHotspotHandler<PersonTradePasswordRequest>
+    IHotspotHandler<PersonTradePasswordRequest>,
+    IHotspotHandler<PersonChangeServerRequest>
 {
     private short Location { get; } = configuration.GetLocation();
+    private Guid Instance { get; } = configuration.GetInstance();
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
     {
@@ -95,8 +101,14 @@ public sealed class PersonService(
         //       without using Actor
         var person = await database.Persons
             .AsNoTracking()
-            .FirstAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken)
+            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken)
             .ConfigureAwait(false);
+
+        if (person is null)
+        {
+            session.Disconnect();
+            return;
+        }
 
         ecs.Set(context.Player, new ClaimsComponent(request.Session));
 
@@ -109,16 +121,7 @@ public sealed class PersonService(
             return;
         }
 
-        Debug.Assert(batch.EventBox.StartEvents.Count > 0);
-        var start = batch.EventBox.StartEvents.First(x => x.Id == Location * 100 + 1);
-
-        ecs.Set(context.Player, new WorldComponent
-        {
-            Location = Location,
-            Position = start.GetPosition(),
-            Rotation = start.Rotation,
-            Jump = start.Id
-        });
+        ecs.Set(context.Player, await TakeReservedPlaceAsync(request).ConfigureAwait(false) ?? GetDefaultPlace(batch));
 
         ecs.Set(context.Player, new KeepAliveComponent());
 
@@ -227,6 +230,53 @@ public sealed class PersonService(
         });
     }
 
+    /// <summary>
+    /// The place chosen by the server the person came from, if it was reserved for this district.
+    /// </summary>
+    private async ValueTask<WorldComponent?> TakeReservedPlaceAsync(PersonEnterGameServerRequest request)
+    {
+        var reserve = await districtReserves
+            .FindByIdAsync(request.Account.ToString())
+            .ConfigureAwait(false);
+
+        if (reserve is null)
+        {
+            return null;
+        }
+
+        await districtReserves
+            .DeleteAsync(reserve)
+            .ConfigureAwait(false);
+
+        if (reserve.Person != request.Actor.Identifier || reserve.District != Instance)
+        {
+            return null;
+        }
+
+        return new WorldComponent
+        {
+            Location = Location,
+            Position = new Vector3(reserve.X, reserve.Y, reserve.Z),
+            Rotation = reserve.R,
+            Jump = reserve.Jump
+        };
+    }
+
+    private WorldComponent GetDefaultPlace(VBatchFile batch)
+    {
+        Debug.Assert(batch.EventBox.StartEvents.Count > 0);
+
+        var start = batch.EventBox.StartEvents.First(x => x.Id == Location * 100 + 1);
+
+        return new WorldComponent
+        {
+            Location = Location,
+            Position = start.GetPosition(),
+            Rotation = start.Rotation,
+            Jump = start.Id
+        };
+    }
+
     private SkillInfoValue[] GetDefaultSkills(Hero hero)
     {
         var charInfo = characterInfo.FirstOrDefault(c => c.Character == (byte)hero);
@@ -267,6 +317,13 @@ public sealed class PersonService(
 
             channels.Join(index, entity);
         }
+    }
+
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)
+    {
+        await leaving
+            .LeaveAsync(context.Player, request.Destination)
+            .ConfigureAwait(false);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonLoadTitleRequest request)

@@ -21,6 +21,7 @@ await Host
 
         services.AddCache();
         services.AddSessionCache();
+        services.AddGateCache();
         services.AddChannelCache();
         services.AddDistrictCache();
         services.AddDistrictReserveCache();
@@ -36,6 +37,7 @@ await Host
         services.AddCommandManager();
 
         services.AddSingleton<WorldManager>();
+        services.AddSingleton<LeaveManager>();
         services.AddSingleton<PersonRegistry>();
 
         services.AddSingleton<StorageItemFactory>();

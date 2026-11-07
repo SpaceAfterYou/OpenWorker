@@ -5,6 +5,7 @@ using Arch.Core;
 using Lua;
 using Lua.Standard;
 using Microsoft.EntityFrameworkCore;
+using OpenWorker.Channel;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
@@ -44,6 +45,7 @@ public sealed class PersonService(
     IRedisCollection<MazeReserveCache> mazeReserves,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
+    LeaveManager leaving,
     BuffManager buffManager,
     QuestManager questManager,
     IConfiguration configuration
@@ -51,7 +53,8 @@ public sealed class PersonService(
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
     IHotspotHandler<PersonLoadTitleRequest>,
-    IHotspotHandler<PersonTradePasswordRequest>
+    IHotspotHandler<PersonTradePasswordRequest>,
+    IHotspotHandler<PersonChangeServerRequest>
 {
     private short Gate { get; } = configuration.GetGate();
 
@@ -79,11 +82,16 @@ public sealed class PersonService(
         }
 
         var mazeReserve = await mazeReserves
-            .FirstAsync(e => e.Person == request.Actor.Identifier)
+            .FindByIdAsync(request.Actor.Identifier.ToString())
             .ConfigureAwait(false);
 
-        if (!batches.TryGetAndCache(mazeReserve.Location, out var batch, out var type) || type != BatchType.Maze)
+        // Nobody asked to enter a maze with this person, or the reservation has expired.
+        if (mazeReserve is null ||
+            mazeReserve.Account != request.Account ||
+            !batches.TryGetAndCache(mazeReserve.Location, out var batch, out var type) ||
+            type != BatchType.Maze)
         {
+            session.Disconnect();
             return;
         }
 
@@ -93,7 +101,17 @@ public sealed class PersonService(
 
         var person = await database.Persons
             .AsNoTracking()
-            .FirstAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken)
+            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken)
+            .ConfigureAwait(false);
+
+        if (person is null)
+        {
+            session.Disconnect();
+            return;
+        }
+
+        await mazeReserves
+            .DeleteAsync(mazeReserve)
             .ConfigureAwait(false);
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
@@ -160,6 +178,13 @@ public sealed class PersonService(
 
         await state
             .OnEnterPlayerAsync(world.Get<ActorComponent>(context.Player), maze)
+            .ConfigureAwait(false);
+    }
+
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)
+    {
+        await leaving
+            .LeaveAsync(context.Player, request.Destination)
             .ConfigureAwait(false);
     }
 

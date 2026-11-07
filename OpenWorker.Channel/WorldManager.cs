@@ -29,6 +29,12 @@ public sealed class WorldManager(
     IRedisCollection<DistrictCache> districts,
     IRedisCollection<MazeReserveCache> mazeReserves)
 {
+    /// <summary>
+    /// How long a move between servers stays valid. The client reconnects right after the response,
+    /// so an expired reservation means that it never came.
+    /// </summary>
+    public static TimeSpan ReservationLifetime { get; } = TimeSpan.FromSeconds(60);
+
     private short Gate { get; } = configuration.GetGate();
 
     /// <summary>
@@ -139,6 +145,7 @@ public sealed class WorldManager(
         {
             Zone = new ZoneValue
             {
+                Actor = ecs.Get<ActorComponent>(player).Identifier,
                 Account = ecs.Get<ClaimsComponent>(player),
                 World = world,
                 Jump = start.Id,
@@ -155,7 +162,7 @@ public sealed class WorldManager(
         {
             Account = ecs.Get<ClaimsComponent>(player),
             Location = location,
-            Person = ecs.Get<ActorComponent>(player),
+            Person = ecs.Get<ActorComponent>(player).Identifier,
             X = world.Position.X,
             Y = world.Position.Y,
             Z = world.Position.Z,
@@ -164,7 +171,7 @@ public sealed class WorldManager(
         };
 
         await mazeReserves
-            .InsertAsync(cache)
+            .InsertAsync(cache, ReservationLifetime)
             .ConfigureAwait(false);
 
         session.Send(new WorldEnterResponse { Map = enter });
@@ -195,23 +202,25 @@ public sealed class WorldManager(
         {
             Zone = new ZoneValue
             {
+                Actor = ecs.Get<ActorComponent>(player).Identifier,
                 Account = ecs.Get<ClaimsComponent>(player),
                 World = world,
                 Jump = start.Id,
                 Address = district.Host,
                 Port = district.Port,
-                Type = EnterMapType.Maze,
+                Type = EnterMapType.EnterDistrict,
                 Map = map
             },
             ChangeServer = true,
             ChangeType = ChangeServerType.EnterDistrict
         };
 
-        var cache = new MazeReserveCache
+        var cache = new DistrictReserveCache
         {
             Account = ecs.Get<ClaimsComponent>(player),
-            Location = location,
-            Person = ecs.Get<ActorComponent>(player),
+            Person = ecs.Get<ActorComponent>(player).Identifier,
+            Channel = channel.Guid,
+            District = district.Guid,
             X = world.Position.X,
             Y = world.Position.Y,
             Z = world.Position.Z,
@@ -219,8 +228,8 @@ public sealed class WorldManager(
             Jump = start.Id
         };
 
-        await mazeReserves
-            .InsertAsync(cache)
+        await districtReserveCache
+            .InsertAsync(cache, ReservationLifetime)
             .ConfigureAwait(false);
 
         session.Send(new WorldEnterResponse { Map = enter });
@@ -269,7 +278,7 @@ public sealed class WorldManager(
         };
 
         await districtReserveCache
-            .InsertAsync(reserve, WhenKey.NotExists)
+            .InsertAsync(reserve, ReservationLifetime)
             .ConfigureAwait(false);
 
         session.Send(new CharacterSelectResponse
