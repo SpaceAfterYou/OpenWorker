@@ -3,6 +3,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Types;
+using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items.Components;
 using OpenWorker.Gameplay.Modules.Login.Components;
@@ -75,7 +76,7 @@ public static class PersonSnapshotMapper
             actor,
             infoValue,
             account,
-            25,
+            PersonModuleDefines.DefaultLevel,
             FactionGroup.None,
             StuffLevel.GameMaster,
             0,

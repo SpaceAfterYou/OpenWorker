@@ -17,7 +17,7 @@ namespace OpenWorker.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -149,6 +149,25 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<int>("AccountId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CommunityComment")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("CommunityMemo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("");
+
+                    b.Property<byte>("CommunityState")
+                        .HasColumnType("smallint");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone");
@@ -226,6 +245,12 @@ namespace OpenWorker.Persistence.Migrations
 
                     b.Property<float>("RotationX")
                         .HasColumnType("real");
+
+                    b.Property<int>("TitleAbilityPrimary")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TitleAbilitySecondary")
+                        .HasColumnType("integer");
 
                     b.Property<int>("TitlePrimary")
                         .HasColumnType("integer");

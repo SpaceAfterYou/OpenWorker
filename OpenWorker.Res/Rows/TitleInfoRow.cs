@@ -9,8 +9,8 @@ public readonly struct TitleInfoRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
     public int Field1 { get; } = reader.ReadInt32();
-    public byte Field2 { get; } = reader.ReadByte();
-    public byte Field3 { get; } = reader.ReadByte();
+    public byte Type { get; } = reader.ReadByte();
+    public byte Class { get; } = reader.ReadByte();
     public byte Field4 { get; } = reader.ReadByte();
     public byte Field5 { get; } = reader.ReadByte();
     public int Field6 { get; } = reader.ReadInt32();

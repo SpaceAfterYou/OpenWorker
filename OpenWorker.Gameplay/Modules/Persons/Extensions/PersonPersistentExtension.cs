@@ -1,5 +1,6 @@
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Hotspot.Modules.Persons.Enums;
 
 namespace OpenWorker.Gameplay.Modules.Persons.Extensions;
 
@@ -9,11 +10,23 @@ public static class PersonPersistentExtension
     {
         return new TitleComponent
         {
+            AbilityPrimary = value.TitleAbilityPrimary,
+            AbilitySecondary = value.TitleAbilitySecondary,
             Primary = value.TitlePrimary,
             Secondary = value.TitleSecondary
         };
     }
     
+    public static CommunityComponent ToCommunityComponent(this PersonPersistent value)
+    {
+        return new CommunityComponent
+        {
+            State = (CommunityState)value.CommunityState,
+            Comment = value.CommunityComment,
+            Memo = value.CommunityMemo
+        };
+    }
+
     public static AppearanceComponent ToAppearanceComponent(this PersonPersistent value)
     {
         return new AppearanceComponent

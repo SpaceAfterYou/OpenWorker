@@ -1,4 +1,5 @@
 using Arch.Core;
+using OpenWorker.Gameplay.Modules.Persons.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
@@ -160,11 +161,9 @@ public sealed class PersonRegistry(World world, StorageFactory factory, StorageM
             Experience = 0
         });
 
-        world.Set(entity, new TitleComponent
-        {
-            Primary = 0,
-            Secondary = 0
-        });
+        world.Set(entity, persistent.ToTitleComponent());
+
+        world.Set(entity, persistent.ToCommunityComponent());
 
         world.Set(entity, persistent.ToPersonOptionComponent());
 

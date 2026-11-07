@@ -18,6 +18,20 @@ public sealed class PersonConfiguration : IEntityTypeConfiguration<PersonPersist
             .IsUnicode();
 
         builder
+            .Property(x => x.CommunityComment)
+            .HasMaxLength(50)
+            .HasDefaultValue(string.Empty)
+            .IsRequired()
+            .IsUnicode();
+
+        builder
+            .Property(x => x.CommunityMemo)
+            .HasMaxLength(30)
+            .HasDefaultValue(string.Empty)
+            .IsRequired()
+            .IsUnicode();
+
+        builder
             .HasOne(x => x.League)
             .WithMany(x => x.MemberList);
     }

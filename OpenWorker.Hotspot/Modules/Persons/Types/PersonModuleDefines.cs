@@ -4,5 +4,6 @@ public static class PersonModuleDefines
 {
     public const int MaxNameLength = 21;
     public const int MaxCommunityCommentLength = 51;
+    public const byte DefaultLevel = 25;
     public const int MaxCommunityMemoLength = 31;
 }

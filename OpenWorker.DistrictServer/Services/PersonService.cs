@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -47,7 +48,6 @@ namespace OpenWorker.DistrictServer.Services;
 public sealed class PersonService(
     World ecs,
     BatchManager manager,
-    ReadOnlyCollection<TitleInfoRow> titleCollection,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
     IRedisCollection<SessionCache> sessions,
     IRedisCollection<DistrictReserveCache> districtReserves,
@@ -62,7 +62,6 @@ public sealed class PersonService(
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
-    IHotspotHandler<PersonLoadTitleRequest>,
     IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
@@ -171,6 +170,8 @@ public sealed class PersonService(
         });
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(ecs, context.Player));
+
+        session.Send(PersonProfileServiceBase.CreateCommunityResponse(ecs.Get<CommunityComponent>(context.Player)));
 
         ref readonly var actor = ref ecs.Get<ActorComponent>(context.Player);
 
@@ -318,20 +319,6 @@ public sealed class PersonService(
     {
         await leaving
             .LeaveAsync(context.Player, request.Destination);
-    }
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonLoadTitleRequest request)
-    {
-        var list = titleCollection
-            .Where(e => e is { Field2: 0, Field3: 0 })
-            .Select(e => e.Id)
-            .ToArray();
-
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
-
-        session.Send(new PersonLoadTitleResponse { TitleList = list, OpenList = [], Result = true });
-
-        return ValueTask.CompletedTask;
     }
 
     private void SendSoulMetryList(ServerSessionComponent session)

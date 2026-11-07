@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
@@ -37,7 +38,6 @@ namespace OpenWorker.MazeServer.Services;
 [HotspotHandler(HotspotHandlerType.District)]
 public sealed class PersonService(
     World world,
-    ReadOnlyCollection<TitleInfoRow> titleCollection,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
     ReadOnlyCollection<MazeInfoRow> mazeInfoCollection,
     ReadOnlyCollection<InteractionObjectRow> interactionCollection,
@@ -55,7 +55,6 @@ public sealed class PersonService(
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
-    IHotspotHandler<PersonLoadTitleRequest>,
     IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
@@ -167,6 +166,8 @@ public sealed class PersonService(
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
 
+        session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
+
         questManager.SendQuestEpisodeList(context.Player);
     }
 
@@ -174,20 +175,6 @@ public sealed class PersonService(
     {
         await leaving
             .LeaveAsync(context.Player, request.Destination);
-    }
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonLoadTitleRequest request)
-    {
-        var list = titleCollection
-            .Where(e => e is { Field2: 0, Field3: 0 })
-            .Select(e => e.Id)
-            .ToArray();
-
-        var session = world.Get<ServerSessionComponent>(context.Player);
-
-        session.Send(new PersonLoadTitleResponse { TitleList = list, OpenList = [], Result = true });
-
-        return ValueTask.CompletedTask;
     }
 
     private void SendSoulMetryList(ServerSessionComponent session)
