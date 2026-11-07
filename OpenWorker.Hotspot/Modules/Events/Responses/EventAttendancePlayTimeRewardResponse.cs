@@ -1,12 +1,14 @@
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Events.Types;
 
 namespace OpenWorker.Hotspot.Modules.Events.Responses;
 
 /// <summary>
-/// This packet doesn't have any content.
+/// The reward for the time played was given: the step the person is on now and how long it has played in it.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct EventAttendancePlayTimeRewardResponse : IResponseHotspotMessage
@@ -20,10 +22,17 @@ public readonly struct EventAttendancePlayTimeRewardResponse : IResponseHotspotM
 
 #endregion Interface: IHotspotMessage
 
+#region Message: Body
+
+    public AttendancePlayTime Time { get; init; }
+
+#endregion Message: Body
+
 #region Interface: IWritableData
 
     public void Write(BinaryWriter writer)
     {
+        Time.Write(writer);
     }
 
 #endregion Interface: IWritableData

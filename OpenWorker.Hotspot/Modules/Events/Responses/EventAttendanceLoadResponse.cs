@@ -2,7 +2,6 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Events.Extensions;
 using OpenWorker.Hotspot.Modules.Events.Types;
 
 namespace OpenWorker.Hotspot.Modules.Events.Responses;
@@ -22,6 +21,7 @@ public readonly struct EventAttendanceLoadResponse : IResponseHotspotMessage
 #region Message: Body
 
     public AttendanceInfo Info { get; init; }
+
     public AttendancePlayTime Time { get; init; }
 
 #endregion Message: Body
@@ -30,8 +30,8 @@ public readonly struct EventAttendanceLoadResponse : IResponseHotspotMessage
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Info);
-        writer.Write(Time);
+        Info.Write(writer);
+        Time.Write(writer);
     }
 
 #endregion Interface: IWritableData

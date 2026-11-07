@@ -3,6 +3,10 @@ using OpenWorker.Hotspot.Modules.DailyMissions.Enums;
 using OpenWorker.Hotspot.Modules.DailyMissions.Requests;
 using OpenWorker.Hotspot.Modules.DailyMissions.Responses;
 using OpenWorker.Hotspot.Modules.DailyMissions.Types;
+using OpenWorker.Hotspot.Modules.Events.Enums;
+using OpenWorker.Hotspot.Modules.Events.Requests;
+using OpenWorker.Hotspot.Modules.Events.Responses;
+using OpenWorker.Hotspot.Modules.Events.Types;
 using OpenWorker.Hotspot.Modules.Rewards.Types;
 using OpenWorker.Hotspot.Modules.SoulMetry;
 using OpenWorker.Hotspot.Modules.SoulMetry.Requests;
@@ -219,4 +223,101 @@ public sealed class MiscWireFormatTest
     }
 
 #endregion DailyMission
+
+#region Events
+
+    private static AttendanceInfo Attendance(int count, int table = 1001)
+    {
+        return new AttendanceInfo
+        {
+            CurrentDay = (byte)count,
+            State = Enumerable.Range(0, AttendanceInfo.Days).Select(e => e < count ? AttendanceState.Taken : AttendanceState.Available).ToArray(),
+            Table = table
+        };
+    }
+
+    [TestMethod]
+    public void AttendanceIsDayCountThenACharacterForEveryDayThenTheTable()
+    {
+        var bytes = Written(new EventAttendanceRewardResponse { Info = Attendance(2) });
+
+        Assert.HasCount(45, bytes);
+        Assert.AreEqual((byte)2, bytes[0]);
+        Assert.AreEqual((byte)'1', bytes[1]);
+        Assert.AreEqual((byte)'1', bytes[2]);
+        Assert.AreEqual((byte)'0', bytes[3]);
+        Assert.AreEqual((byte)'0', bytes[40]);
+        Assert.AreEqual(1001, BitConverter.ToInt32(bytes, 41));
+    }
+
+    [TestMethod]
+    public void AttendanceNoticeHasTheSameLayout()
+    {
+        CollectionAssert.AreEqual(
+            Written(new EventAttendanceRewardResponse { Info = Attendance(5) }),
+            Written(new EventAttendanceNoticeResponse { Info = Attendance(5) }));
+    }
+
+    [TestMethod]
+    public void AttendanceLoadIsTheAttendanceAndThePlayTime()
+    {
+        var bytes = Written(new EventAttendanceLoadResponse
+        {
+            Info = Attendance(1),
+            Time = new AttendancePlayTime { Step = 2, Seconds = 77 }
+        });
+
+        Assert.HasCount(45 + 5, bytes);
+        Assert.AreEqual((byte)2, bytes[45]);
+        Assert.AreEqual(77, BitConverter.ToInt32(bytes, 46));
+    }
+
+    [TestMethod]
+    public void AttendanceOfAnotherNumberOfDaysIsRefused()
+    {
+        var info = new AttendanceInfo { CurrentDay = 1, State = new AttendanceState[28], Table = 1 };
+
+        Assert.Throws<InvalidOperationException>(() => Written(new EventAttendanceRewardResponse { Info = info }));
+    }
+
+    [TestMethod]
+    public void PlayTimeRewardIsStepAndSeconds()
+    {
+        var bytes = Written(new EventAttendancePlayTimeRewardResponse { Time = new AttendancePlayTime { Step = 1, Seconds = 0 } });
+
+        CollectionAssert.AreEqual(new byte[] { 1, 0, 0, 0, 0 }, bytes);
+    }
+
+    [TestMethod]
+    public void PlayTimeInitHasNoContent()
+    {
+        Assert.HasCount(0, Written(new EventAttendancePlayTimeInitResponse()));
+    }
+
+    [TestMethod]
+    public void LuaValuesAreCountThenLengthAndCharacters()
+    {
+        var bytes = Written(new EventLuaValuesResponse { Scripts = ["ab", "cde"] });
+
+        CollectionAssert.AreEqual(new byte[] { 2, 2, 0, (byte)'a', (byte)'b', 3, 0, (byte)'c', (byte)'d', (byte)'e' }, bytes);
+    }
+
+    [TestMethod]
+    public void LuaValueTooLongForTheClientIsRefused()
+    {
+        Assert.Throws<InvalidOperationException>(() => Written(new EventLuaValuesResponse { Scripts = [new string('x', 30)] }));
+        Assert.Throws<InvalidOperationException>(() => Written(new EventLuaValuesResponse { Scripts = [""] }));
+        Assert.HasCount(1 + 2 + 29, Written(new EventLuaValuesResponse { Scripts = [new string('x', 29)] }));
+    }
+
+    [TestMethod]
+    public void AttendanceRewardRequestIsTheDayAndPlayTimeRequestIsEmpty()
+    {
+        using var day = new BinaryReader(new MemoryStream([7]));
+
+        Assert.AreEqual((byte)7, new EventAttendanceRewardRequest(day).DayIndex);
+        Assert.AreEqual(1, day.BaseStream.Position);
+    }
+
+#endregion Events
 }

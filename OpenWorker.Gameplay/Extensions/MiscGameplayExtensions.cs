@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Gameplay.Modules.Attendance;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.SoulMetry;
@@ -26,6 +27,10 @@ public static class MiscGameplayExtensions
         services.AddSingleton<DailyMissionCatalog>();
         services.AddSingleton<DailyMissionManager>();
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<DailyMissionManager>());
+
+        services.AddSingleton<AttendanceCatalog>();
+        services.AddSingleton<AttendanceManager>();
+        services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<AttendanceManager>());
 
         return services;
     }

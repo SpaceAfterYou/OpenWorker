@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot.Modules.DailyMissions.Enums;
 
 namespace OpenWorker.Gameplay.Modules.DailyMissions;
@@ -21,17 +22,8 @@ public static class DailyMissionRules
     /// <summary>
     /// The day that is running at <paramref name="now"/>: it started at the last reset and lasts until the next.
     /// </summary>
-    public static (DateTimeOffset Start, DateTimeOffset End) GetDay(DateTimeOffset now, TimeSpan reset)
-    {
-        var start = new DateTimeOffset(now.Date + reset, now.Offset);
-
-        if (start > now)
-        {
-            start = start.AddDays(-1);
-        }
-
-        return (start, start.AddDays(1));
-    }
+    public static (DateTimeOffset Start, DateTimeOffset End) GetDay(DateTimeOffset now, TimeSpan reset) =>
+        GameDay.Get(now, reset);
 
     /// <summary>
     /// The time a mission is open, as the person sees it today.

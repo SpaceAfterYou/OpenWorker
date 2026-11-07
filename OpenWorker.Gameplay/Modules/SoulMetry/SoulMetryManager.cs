@@ -170,7 +170,7 @@ public sealed class SoulMetryManager(
         var items = GetRewardItems(player, definition);
 
         // The items that did not fit leave the soul metry as it was, to be taken later.
-        if (!await rewards.TryGrantAsync(player, items, RewardSource.SoulMetry, cancellationToken))
+        if (!await rewards.TryGrantAsync(player, new Reward(items), RewardSource.SoulMetry, cancellationToken))
         {
             return;
         }

@@ -2,11 +2,12 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Events.Extensions;
-using OpenWorker.Hotspot.Modules.Events.Types;
 
 namespace OpenWorker.Hotspot.Modules.Events.Responses;
 
+/// <summary>
+/// The time played today starts again, which the client does by itself. This message has no content.
+/// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct EventAttendancePlayTimeInitResponse : IResponseHotspotMessage
 {
@@ -19,17 +20,10 @@ public readonly struct EventAttendancePlayTimeInitResponse : IResponseHotspotMes
 
 #endregion Interface: IHotspotMessage
 
-#region Message: Body
-
-    public AttendancePlayTime Time { get; init; }
-
-#endregion Message: Body
-
 #region Interface: IWritableData
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Time);
     }
 
 #endregion Interface: IWritableData

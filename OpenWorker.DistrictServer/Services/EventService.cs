@@ -1,30 +1,26 @@
-using Arch.Core;
-using OpenWorker.Hotspot;
+using OpenWorker.Gameplay.Modules.Attendance;
 using OpenWorker.Hotspot.Handler.Abstractions;
+using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Gameplay;
 using OpenWorker.Hotspot.Modules.Events.Requests;
-using OpenWorker.Hotspot.Modules.Events.Responses;
 
 namespace OpenWorker.DistrictServer.Services;
 
-public sealed class EventService(World world) :
+/// <summary>
+/// The rewards of attendance go to the person by themselves, so the requests of the client only make the server look again.
+/// </summary>
+[HotspotHandler(HotspotHandlerType.District)]
+public sealed class EventService(AttendanceManager attendance) :
     IHotspotHandler<EventAttendancePlayTimeRewardRequest>,
     IHotspotHandler<EventAttendanceRewardRequest>
 {
-    public ValueTask OnHandleAsync(ServiceHandleContext context, EventAttendancePlayTimeRewardRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, EventAttendancePlayTimeRewardRequest request)
     {
-        var session = world.Get<ServerSessionComponent>(context.Player);
-
-        session.Send(new EventAttendancePlayTimeRewardResponse());
-
-        return ValueTask.CompletedTask;
+        await attendance.CountPlayTimeAsync(context.Player, context.CancellationToken);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, EventAttendanceRewardRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, EventAttendanceRewardRequest request)
     {
-        // TODO: Do something
-
-        return ValueTask.CompletedTask;
+        await attendance.RefreshAsync(context.Player, context.CancellationToken);
     }
 }

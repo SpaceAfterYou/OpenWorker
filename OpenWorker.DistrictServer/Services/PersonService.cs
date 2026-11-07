@@ -23,9 +23,6 @@ using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
-using OpenWorker.Hotspot.Modules.Events.Enums;
-using OpenWorker.Hotspot.Modules.Events.Responses;
-using OpenWorker.Hotspot.Modules.Events.Types;
 using OpenWorker.Gameplay.Modules.Gestures.Components;
 using OpenWorker.Hotspot.Modules.Gestures.Responses;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
@@ -36,6 +33,7 @@ using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Gameplay.Modules.Attendance;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Domain.Enums;
@@ -50,6 +48,7 @@ public sealed class PersonService(
     BatchManager manager,
     SoulMetryManager soulMetry,
     DailyMissionManager dailyMissions,
+    AttendanceManager attendance,
     IRedisCollection<SessionCache> sessions,
     IRedisCollection<DistrictReserveCache> districtReserves,
     SessionLeaseManager leases,
@@ -187,24 +186,7 @@ public sealed class PersonService(
 
         JoinChannel(context.Player);
 
-        session.Send(new EventAttendanceLoadResponse
-        {
-            Info = new AttendanceInfo
-            {
-                Table = 1001,
-                State = Enumerable
-                    .Range(0, 40)
-                    .Select(_ => AttendanceState.Available)
-                    .ToArray(),
-                CurrentDay = 1
-            },
-
-            Time = new AttendancePlayTime
-            {
-                Step = 0,
-                Played = TimeSpan.Zero
-            }
-        });
+        await attendance.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         // Get skill components
         ref readonly var skillPoint = ref ecs.Get<SkillPointComponent>(context.Player);

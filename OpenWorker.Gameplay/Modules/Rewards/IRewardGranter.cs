@@ -8,6 +8,16 @@ namespace OpenWorker.Gameplay.Modules.Rewards;
 public readonly record struct RewardItem(int Item, short Count);
 
 /// <summary>
+/// What a feature gives to a person at once: items and money.
+/// </summary>
+public sealed record Reward(IReadOnlyList<RewardItem> Items, int Gold = 0, int Ether = 0)
+{
+    public static Reward Empty { get; } = new([]);
+
+    public bool IsEmpty => Items.Count == 0 && Gold == 0 && Ether == 0;
+}
+
+/// <summary>
 /// What the reward comes from, for the logs and for rules that depend on it.
 /// </summary>
 public enum RewardSource : byte
@@ -16,7 +26,8 @@ public enum RewardSource : byte
     DailyMission = 2,
     Attendance = 3,
     Helper = 4,
-    Vaccum = 5
+    Vaccum = 5,
+    PlayTime = 6
 }
 
 /// <summary>
@@ -26,12 +37,13 @@ public enum RewardSource : byte
 public interface IRewardGranter
 {
     /// <summary>
-    /// Gives all the items or none of them. False means they do not fit or the grant failed, and
-    /// the caller must not count the reward as taken.
+    /// Gives all of the reward or none of it. False means it does not fit or the grant failed, and
+    /// the caller must not count the reward as taken. Some rewards are meant to go by post (daily missions
+    /// do), which is up to the implementation.
     /// </summary>
     ValueTask<bool> TryGrantAsync(
         Entity player,
-        IReadOnlyList<RewardItem> items,
+        Reward reward,
         RewardSource source,
         CancellationToken cancellationToken);
 }

@@ -10,11 +10,16 @@ public sealed class NoRewardGranter(ILogger<NoRewardGranter> logger) : IRewardGr
 {
     public ValueTask<bool> TryGrantAsync(
         Entity player,
-        IReadOnlyList<RewardItem> items,
+        Reward reward,
         RewardSource source,
         CancellationToken cancellationToken)
     {
-        logger.LogDebug("No inventory: {Count} reward item(s) from {Source} are not given.", items.Count, source);
+        logger.LogDebug(
+            "No inventory: the reward from {Source} ({Count} item(s), {Gold} gold, {Ether} ether) is not given.",
+            source,
+            reward.Items.Count,
+            reward.Gold,
+            reward.Ether);
 
         return ValueTask.FromResult(true);
     }

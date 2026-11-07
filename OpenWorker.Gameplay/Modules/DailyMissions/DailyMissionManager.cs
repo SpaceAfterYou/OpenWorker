@@ -307,7 +307,7 @@ public sealed class DailyMissionManager(
     // The reward goes first, so a mission whose reward cannot be given stays open and is tried again with the next step.
     private async ValueTask<bool> TryFinishAsync(Entity player, DailyMissionEntry entry, DailyMissionDefinition definition, CancellationToken cancellationToken)
     {
-        if (!await rewards.TryGrantAsync(player, definition.Rewards, RewardSource.DailyMission, cancellationToken))
+        if (!await rewards.TryGrantAsync(player, new Reward(definition.Rewards), RewardSource.DailyMission, cancellationToken))
         {
             logger.LogDebug("The reward of the daily mission {Mission} could not be given.", entry.Mission);
             return false;
