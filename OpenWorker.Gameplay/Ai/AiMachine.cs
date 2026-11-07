@@ -57,7 +57,6 @@ public sealed class AiMachine
     private int _runawayCount;
     private AiStateSettings _settings = new();
     private Vector3 _moveStart;
-    private float _moveSum;
     private float _actionEnd;
 
     private AiSkill? _skill;
@@ -342,7 +341,6 @@ public sealed class AiMachine
     {
         _stateTime = 0f;
         _lifeTime = -1f;
-        _moveSum = 0f;
         _moveStart = _host.Position;
         _statePreviousHealth = _host.Health;
         _settings = _profile.GetSettings(_state);
