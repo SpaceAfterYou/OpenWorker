@@ -273,6 +273,31 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("Persons");
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.PersonStatePersistent", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PersonId", "Kind");
+
+                    b.ToTable("PersonStates");
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.ServerContentPersistent", b =>
                 {
                     b.Property<byte>("Index")
@@ -341,6 +366,15 @@ namespace OpenWorker.Persistence.Migrations
                     b.Navigation("Gate");
 
                     b.Navigation("League");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.PersonStatePersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("PersonPersistentPersonPersistent", b =>
