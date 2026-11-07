@@ -3,6 +3,7 @@ using Arch.Core;
 using Microsoft.Extensions.Configuration;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
+using OpenWorker.Batch.Entities;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
@@ -30,9 +31,23 @@ public sealed class WorldManager(
 {
     private short Gate { get; } = configuration.GetGate();
 
-    public async ValueTask<bool> TryEnter(Entity player, short location)
+    /// <summary>
+    /// Enters the location or tells the client that the entry failed, so that it does not wait forever.
+    /// </summary>
+    public async ValueTask EnterAsync(Entity player, short location, int jump)
     {
-        if (!provider.TryGetAndCache(location, out var batch, out var type))
+        if (await TryEnter(player, location, jump).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        ecs.Get<ServerSessionComponent>(player).Send(new WorldEnterResponse { Map = EnterMapResultValue.Error });
+    }
+
+    public async ValueTask<bool> TryEnter(Entity player, short location, int jump = 0)
+    {
+        if (!provider.TryGetAndCache(location, out var batch, out var type) ||
+            !TryGetStart(batch, location, jump, out var start))
         {
             return false;
         }
@@ -40,11 +55,18 @@ public sealed class WorldManager(
         switch (type)
         {
             case BatchType.Maze:
-                await EnterMaze(player, location, batch).ConfigureAwait(false);
+                await EnterMaze(player, location, start).ConfigureAwait(false);
                 return true;
 
             case BatchType.District:
-                await TryEnterDistrict(player, location, batch).ConfigureAwait(false);
+                int districtLocation = location;
+
+                if (!await districts.AnyAsync(x => x.Location == districtLocation).ConfigureAwait(false))
+                {
+                    return false;
+                }
+
+                await TryEnterDistrict(player, location, start).ConfigureAwait(false);
                 return true;
 
             case BatchType.None:
@@ -55,21 +77,49 @@ public sealed class WorldManager(
 
     public async ValueTask<bool> TryEnterMaze(Entity player, short location)
     {
-        if (!provider.TryGetAndCache(location, out var batch, out var type) || type != BatchType.Maze)
+        if (!provider.TryGetAndCache(location, out var batch, out var type) ||
+            type != BatchType.Maze ||
+            !TryGetStart(batch, location, 0, out var start))
         {
             return false;
         }
 
-        await EnterMaze(player, location, batch).ConfigureAwait(false);
+        await EnterMaze(player, location, start).ConfigureAwait(false);
         return true;
     }
 
-    private async ValueTask EnterMaze(Entity player, short location, VBatchFile batch)
+    /// <summary>
+    /// Finds the requested start point, or the default one of the location when none was requested
+    /// or the requested one does not exist.
+    /// </summary>
+    private static bool TryGetStart(VBatchFile batch, short location, int jump, out StartEventBox start)
+    {
+        var fallback = location * 100 + 1;
+        var found = false;
+
+        start = default!;
+
+        foreach (var box in batch.EventBox.StartEvents)
+        {
+            if (jump != 0 && box.Id == jump)
+            {
+                start = box;
+                return true;
+            }
+
+            if (box.Id == fallback)
+            {
+                start = box;
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
+    private async ValueTask EnterMaze(Entity player, short location, StartEventBox start)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
-
-        var jump = location * 100 + 1;
-        var start = batch.EventBox.StartEvents.First(x => x.Id == jump);
 
         var map = new MapValue
         {
@@ -120,12 +170,9 @@ public sealed class WorldManager(
         session.Send(new WorldEnterResponse { Map = enter });
     }
 
-    private async ValueTask TryEnterDistrict(Entity player, short location, VBatchFile batch)
+    private async ValueTask TryEnterDistrict(Entity player, short location, StartEventBox start)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
-
-        var jump = location * 100 + 1;
-        var start = batch.EventBox.StartEvents.First(x => x.Id == jump);
 
         var (district, channel) = await GetDistrictAsync(location).ConfigureAwait(false);
 

@@ -47,10 +47,23 @@ public sealed class PersonService(
     IConfiguration configuration
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
+    IHotspotHandler<PersonInfoReqRequest>,
     IHotspotHandler<PersonLoadTitleRequest>,
     IHotspotHandler<PersonTradePasswordRequest>
 {
     private short Gate { get; } = configuration.GetGate();
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
+    {
+        // The person is always taken from the session, never from the request.
+        if (world.Get<ClaimsComponent>(context.Player).Account != 0)
+        {
+            world.Get<ServerSessionComponent>(context.Player)
+                .Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
+        }
+
+        return ValueTask.CompletedTask;
+    }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonEnterGameServerRequest request)
     {
@@ -134,12 +147,7 @@ public sealed class PersonService(
 
         world.Add(context.Player, maze);
 
-        session.Send(new CharacterInfoResponse
-        {
-            Person = PersonSnapshotMapper.CreatePersonValue(world, context.Player, context.Player),
-            World = PersonSnapshotMapper.CreateWorldValue(world, context.Player),
-            Gate = PersonSnapshotMapper.CreateCharacterInfoGatePayload(world, context.Player)
-        });
+        session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
 
         questManager.SendQuestEpisodeList(context.Player);
 

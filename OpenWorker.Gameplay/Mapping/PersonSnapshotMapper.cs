@@ -24,6 +24,16 @@ namespace OpenWorker.Gameplay.Mapping;
 
 public static class PersonSnapshotMapper
 {
+    public static CharacterInfoResponse CreateCharacterInfoResponse(World world, Entity player)
+    {
+        return new CharacterInfoResponse
+        {
+            Person = CreatePersonValue(world, player, player),
+            World = CreateWorldValue(world, player),
+            Gate = CreateCharacterInfoGatePayload(world, player)
+        };
+    }
+
     public static PersonValue CreatePersonValue(World world, Entity accountEntity, Entity personEntity)
     {
         var storage = world.Get<StorageComponent>(personEntity);

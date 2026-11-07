@@ -10,5 +10,10 @@ public readonly struct EnterMapResultValue
     public bool ChangeServer { get; init; }
     public int Result { get; init; }
 
-    public static EnterMapResultValue Error => new() { Result = 1 };
+    public static EnterMapResultValue Error => new()
+    {
+        // The address is always written and must not be empty.
+        Zone = new ZoneValue { Address = "0.0.0.0" },
+        Result = 1
+    };
 }

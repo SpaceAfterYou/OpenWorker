@@ -55,10 +55,23 @@ public sealed class PersonService(
     ReadOnlyCollection<CharacterInfoRow> characterInfo
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
+    IHotspotHandler<PersonInfoReqRequest>,
     IHotspotHandler<PersonLoadTitleRequest>,
     IHotspotHandler<PersonTradePasswordRequest>
 {
     private short Location { get; } = configuration.GetLocation();
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
+    {
+        // The person is always taken from the session, never from the request.
+        if (ecs.Get<ClaimsComponent>(context.Player).Account != 0)
+        {
+            ecs.Get<ServerSessionComponent>(context.Player)
+                .Send(PersonSnapshotMapper.CreateCharacterInfoResponse(ecs, context.Player));
+        }
+
+        return ValueTask.CompletedTask;
+    }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonEnterGameServerRequest request)
     {
@@ -150,12 +163,7 @@ public sealed class PersonService(
             Values = [1, 2, 3, 4]
         });
 
-        session.Send(new CharacterInfoResponse
-        {
-            Person = PersonSnapshotMapper.CreatePersonValue(ecs, context.Player, context.Player),
-            World = PersonSnapshotMapper.CreateWorldValue(ecs, context.Player),
-            Gate = PersonSnapshotMapper.CreateCharacterInfoGatePayload(ecs, context.Player)
-        });
+        session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(ecs, context.Player));
 
         ref readonly var actor = ref ecs.Get<ActorComponent>(context.Player);
 

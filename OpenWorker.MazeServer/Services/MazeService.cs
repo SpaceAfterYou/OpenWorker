@@ -17,6 +17,7 @@ using OpenWorker.Hotspot.Modules.Maze.Requests;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Hotspot.Modules.World.Requests;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua;
 using Redis.OM.Searching;
@@ -33,9 +34,17 @@ public sealed class MazeService(
     IHotspotHandler<MazeExitRequest>,
     IHotspotHandler<MazeEventSpawnBoxRequest>,
     IHotspotHandler<MazeOperationEndRequest>,
-    IHotspotHandler<MazeLuaFunctionRequest>
+    IHotspotHandler<MazeLuaFunctionRequest>,
+    IHotspotHandler<WorldEnterRequest>
 {
     private short Gate { get; } = configuration.GetGate();
+
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
+    {
+        await worldManager
+            .EnterAsync(context.Player, request.Location, request.Jump)
+            .ConfigureAwait(false);
+    }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)
     {
