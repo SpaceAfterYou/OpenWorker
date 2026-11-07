@@ -19,7 +19,7 @@ public static class MessageEncryption
         0xFF, 0x00, 0xFF, 0xFF
     ];
 
-    public static void Exchange(Span<byte> buffer, short version)
+    public static void Exchange(Span<byte> buffer, ushort version)
     {
         foreach (var index in Enumerable.Range(0, buffer.Length))
         {
@@ -28,7 +28,7 @@ public static class MessageEncryption
         }
     }
 
-    public static void Exchange(Memory<byte> buffer, short version)
+    public static void Exchange(Memory<byte> buffer, ushort version)
     {
         Exchange(buffer.Span, version);
     }
