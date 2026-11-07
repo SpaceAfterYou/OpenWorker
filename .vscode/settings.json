@@ -4,5 +4,6 @@
         "**/bin": true,
         "**/.vs": true,
         "**/.idea": true,
-    }
+    },
+    "dotnet.defaultSolution": "OpenWorker.slnx"
 }
