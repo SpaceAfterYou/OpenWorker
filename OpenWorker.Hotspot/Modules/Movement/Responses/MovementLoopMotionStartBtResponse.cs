@@ -1,5 +1,8 @@
+using System.Numerics;
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
@@ -13,7 +16,22 @@ public readonly struct MovementLoopMotionStartBtResponse : IResponseHotspotMessa
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public ActorValue Actor { get; init; }
+    public Vector3 Pos { get; init; }
+    public float Yaw { get; init; }
+    public int StartAnimation { get; init; }
+    public int LoopAnimation { get; init; }
+    public int EndAnimation { get; init; }
+    public int IdleAnimation { get; init; }
+
     public void Write(BinaryWriter writer)
     {
+        writer.WriteActor(Actor);
+        writer.Write(Pos);
+        writer.Write(Yaw);
+        writer.Write(StartAnimation);
+        writer.Write(LoopAnimation);
+        writer.Write(EndAnimation);
+        writer.Write(IdleAnimation);
     }
 }

@@ -1,5 +1,7 @@
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
@@ -13,7 +15,14 @@ public readonly struct MovementMotionBtResponse : IResponseHotspotMessage
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public ActorValue Actor { get; init; }
+    public short MotionClass { get; init; }
+    public short SubClass { get; init; }
+
     public void Write(BinaryWriter writer)
     {
+        writer.WriteActor(Actor);
+        writer.Write(MotionClass);
+        writer.Write(SubClass);
     }
 }

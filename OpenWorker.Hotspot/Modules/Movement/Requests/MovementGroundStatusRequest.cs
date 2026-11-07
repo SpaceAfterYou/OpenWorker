@@ -1,5 +1,7 @@
+using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
@@ -10,6 +12,10 @@ public readonly struct MovementGroundStatusRequest(BinaryReader reader) : IReque
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.GroundStatus;
+
+    public ActorValue dwActorID { get; } = new(reader);
+    public int nStatus { get; } = reader.ReadInt32();
+    public float fValue { get; } = reader.ReadSingle();
 
     public MessageOpcode Opcode => new(Group, Command);
 }
