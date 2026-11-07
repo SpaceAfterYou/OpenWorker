@@ -258,10 +258,7 @@ public abstract class MovementServiceBase(World world) :
     private bool TryUpdatePlace(Entity player, ActorValue actor, Vector3 position, float rotation)
     {
         if (!IsOwnActor(player, actor) ||
-            !float.IsFinite(position.X) ||
-            !float.IsFinite(position.Y) ||
-            !float.IsFinite(position.Z) ||
-            rotation is not (>= -360f and <= 360f))
+            !Place.IsValid(position, rotation))
         {
             return false;
         }

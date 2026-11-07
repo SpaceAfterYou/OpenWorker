@@ -43,6 +43,8 @@ public sealed class MazeService(
 ) :
     IHotspotHandler<MazeCompleteRequest>,
     IHotspotHandler<SkillActiveSkillRequest>,
+    IHotspotHandler<SkillSyncPositionRequest>,
+    IHotspotHandler<SkillWarpPositionRequest>,
     IHotspotHandler<WorldWarpRequest>,
     IHotspotHandler<WorldWarpOutRequest>,
     IHotspotHandler<WorldCheckSectorRequest>,
@@ -127,13 +129,39 @@ public sealed class MazeService(
         var skill = request.Skill;
         var world = ecs.Get<WorldComponent>(context.Player);
 
-        ecs.Set(context.Player, world with { Position = skill.Position.Position, Rotation = skill.Position.Angle });
+        if (Place.IsValid(skill.Position.Position, skill.Position.Angle))
+        {
+            ecs.Set(context.Player, world with { Position = skill.Position.Position, Rotation = skill.Position.Angle });
+        }
 
         ecs.Get<ServerSessionComponent>(context.Player).Send(new SkillActiveResponse { Divergence = skill.Divergence });
 
         if (ecs.Has<LuaMaze>(context.Player))
         {
             ecs.Get<LuaMaze>(context.Player).StartSkill(skill.Skill, skill.Position);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Skills that move the player report the place along the way, and the next attack starts from there.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillSyncPositionRequest request)
+    {
+        if (Place.IsValid(request.Position, request.Yaw))
+        {
+            ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Position = request.Position, Rotation = request.Yaw });
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillWarpPositionRequest request)
+    {
+        if (Place.IsValid(request.Position))
+        {
+            ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Position = request.Position });
         }
 
         return ValueTask.CompletedTask;
