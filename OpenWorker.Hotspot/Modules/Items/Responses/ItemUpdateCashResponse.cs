@@ -13,7 +13,10 @@ public readonly struct ItemUpdateCashResponse : IResponseHotspotMessage
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public int Total { get; init; }
+
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Total);
     }
 }

@@ -13,7 +13,13 @@ public readonly struct ItemUpdateQuickslotItemResponse : IResponseHotspotMessage
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public required int[] Items { get; init; }
+
     public void Write(BinaryWriter writer)
     {
+        for (var i = 0; i < 2; i++)
+        {
+            writer.Write(i < Items.Length ? Items[i] : 0);
+        }
     }
 }

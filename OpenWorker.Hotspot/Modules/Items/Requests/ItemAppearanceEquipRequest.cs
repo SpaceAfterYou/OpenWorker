@@ -1,4 +1,4 @@
-using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -10,6 +10,9 @@ public readonly struct ItemAppearanceEquipRequest(BinaryReader reader) : IReques
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.AppearanceEquip;
+
+    public int First { get; } = reader.ReadInt32();
+    public int Second { get; } = reader.ReadInt32();
 
     public MessageOpcode Opcode => new(Group, Command);
 }

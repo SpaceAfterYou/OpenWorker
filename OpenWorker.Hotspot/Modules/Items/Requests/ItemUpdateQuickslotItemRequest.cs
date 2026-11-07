@@ -1,4 +1,4 @@
-using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -10,6 +10,8 @@ public readonly struct ItemUpdateQuickslotItemRequest(BinaryReader reader) : IRe
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.UpdateQuickslotItem;
+
+    public int[] Items { get; } = Enumerable.Range(0, 2).Select(_ => reader.ReadInt32()).ToArray();
 
     public MessageOpcode Opcode => new(Group, Command);
 }

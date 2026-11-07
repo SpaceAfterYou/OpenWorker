@@ -1,4 +1,4 @@
-using OpenWorker.Hotspot.Modules.Items.Enums;
+﻿using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Post.Extensions;
@@ -12,14 +12,14 @@ namespace OpenWorker.Hotspot.Test;
 [TestClass]
 public sealed class TradePostWireFormatTest
 {
-    private const int ItemSize = 4 + 8 + 2 + 1 + 5 * (2 + 4) + 3 + 8 + 3 + 4 + (2 + 1) + 2;
+    private const int ItemSize = 4 + 8 + 2 + 1 + 5 * (2 + 4) + 3 + 8 + 3 + 4 + (2 + 15) + 2;
 
     private static ItemValue CreateItem()
     {
         return new ItemValue
         {
             OptionList = Enumerable.Range(0, 5).Select(_ => new ItemOption(0, 0)).ToList(),
-            BroachState = string.Empty
+            BroachState = "000000000000000"
         };
     }
 
@@ -38,6 +38,24 @@ public sealed class TradePostWireFormatTest
     public void ItemHasClientSize()
     {
         Assert.HasCount(ItemSize, ToBytes(writer => writer.Write(CreateItem())));
+    }
+
+    [TestMethod]
+    [DataRow("", DisplayName = "No state is written as the default one")]
+    [DataRow("000000000000000", DisplayName = "The default state")]
+    [DataRow("1", DisplayName = "A short state")]
+    public void BroachStateFitsWhatTheClientAccepts(string state)
+    {
+        var item = CreateItem();
+
+        var bytes = ToBytes(writer => writer.Write(new ItemValue { OptionList = item.OptionList, BroachState = state }));
+
+        // The client takes between one and fifteen characters here and has no room for a terminator.
+        var length = BitConverter.ToInt16(bytes, ItemSize - 2 - 15 - 2);
+
+        Assert.IsGreaterThanOrEqualTo(1, length);
+        Assert.IsLessThanOrEqualTo(15, length);
+        Assert.AreEqual(bytes.Length, ItemSize - 15 + length);
     }
 
     [TestMethod]

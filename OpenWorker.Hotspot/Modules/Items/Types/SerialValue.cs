@@ -1,8 +1,13 @@
-namespace OpenWorker.Hotspot.Modules.Items.Types;
+﻿namespace OpenWorker.Hotspot.Modules.Items.Types;
 
 public readonly struct SerialValue
 {
     internal long Value { get; init; }
+
+    /// <summary>
+    /// The serial as the client sees it, one number for one item.
+    /// </summary>
+    public long Number => Value;
 
     public long Offset
     {
