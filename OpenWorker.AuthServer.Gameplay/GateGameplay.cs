@@ -31,6 +31,12 @@ public sealed class GateGameplay(
         var session = world.Get<ServerSessionComponent>(context.Player);
         var claims = world.Get<ClaimsComponent>(context.Player);
 
+        if (claims.Account == 0)
+        {
+            session.Send(new PersonKickOutResponse { OutReason = PersonKickOutReason.NotExistUser });
+            return;
+        }
+
         var cache = await gates
             .FirstOrDefaultAsync(e => e.Identifier == message.Gate)
             .ConfigureAwait(false);

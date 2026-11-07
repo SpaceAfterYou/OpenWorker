@@ -48,6 +48,14 @@ public sealed class LoginGameplay(
     {
         var session = world.Get<ServerSessionComponent>(context.Player);
 
+        if (request.Session.Account != request.Account)
+        {
+            logger.LogDebug("Session does not belong to the account.");
+
+            session.Send(LoginEnterGateResponse.Error);
+            return;
+        }
+
         if (request.Gate != Gate)
         {
             logger.LogDebug("Gate not found.");
