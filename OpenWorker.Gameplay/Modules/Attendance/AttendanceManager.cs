@@ -15,7 +15,7 @@ namespace OpenWorker.Gameplay.Modules.Attendance;
 /// A person who comes on a new day gets the reward of that day of the table, and one who stays in the game gets
 /// a reward after each wait. Both go to the person by themselves; the requests of the client only ask to look again.
 /// </summary>
-public sealed class AttendanceManager(
+public sealed partial class AttendanceManager(
     World world,
     PersonStateStore store,
     AttendanceCatalog catalog,
@@ -185,7 +185,7 @@ public sealed class AttendanceManager(
 
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                logger.LogError(e, "Attendance of a person failed.");
+                LogAttendanceFailed(e);
             }
         }
     }
@@ -222,4 +222,7 @@ public sealed class AttendanceManager(
             book.Gate.Release();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Attendance of a person failed.")]
+    private partial void LogAttendanceFailed(Exception exception);
 }

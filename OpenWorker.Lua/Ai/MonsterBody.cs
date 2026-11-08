@@ -153,7 +153,7 @@ internal sealed class MonsterBody : IAiHost
 
         if (IsMoving)
         {
-            Stop(true);
+            StopMoving(true);
         }
     }
 
@@ -212,7 +212,7 @@ internal sealed class MonsterBody : IAiHost
         _ecs.Set(Entity, _ecs.Get<WorldComponent>(Entity) with { Position = position, Rotation = yaw });
     }
 
-    public void Stop(bool send)
+    public void StopMoving(bool send)
     {
         var moved = _destination is not null;
 
@@ -295,7 +295,7 @@ internal sealed class MonsterBody : IAiHost
 
         if (IsMoving)
         {
-            Stop(true);
+            StopMoving(true);
         }
 
         Broadcast(new MovementBattleBtResponse
@@ -420,7 +420,7 @@ internal sealed class MonsterBody : IAiHost
             duration = AttackDefaultLength;
         }
 
-        Stop(true);
+        StopMoving(true);
 
         FaceTo(target.Position);
 

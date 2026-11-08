@@ -20,7 +20,7 @@ namespace OpenWorker.Gameplay.Modules.DailyMissions;
 /// Every day a person is given a few missions for every district: to kill something, clear a maze or collect
 /// something. The person accepts the ones it wants, and the progress counts while the mission is open.
 /// </summary>
-public sealed class DailyMissionManager(
+public sealed partial class DailyMissionManager(
     World world,
     PersonStateStore store,
     DailyMissionCatalog catalog,
@@ -310,7 +310,7 @@ public sealed class DailyMissionManager(
     {
         if (!await rewards.TryGrantAsync(player, new Reward(definition.Rewards), RewardSource.DailyMission, cancellationToken))
         {
-            logger.LogDebug("The reward of the daily mission {Mission} could not be given.", entry.Mission);
+            LogRewardNotGiven(entry.Mission);
             return false;
         }
 
@@ -463,4 +463,7 @@ public sealed class DailyMissionManager(
             book.Gate.Release();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "The reward of the daily mission {Mission} could not be given.")]
+    private partial void LogRewardNotGiven(int mission);
 }

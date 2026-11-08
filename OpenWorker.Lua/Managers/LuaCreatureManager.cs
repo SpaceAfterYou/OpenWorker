@@ -752,7 +752,7 @@ public sealed class LuaCreatureManager : ISimulation
 
             var shielded = Vitals.IsProtected(victim);
             var result = shielded
-                ? new DamageResult(0, DamageFlags.None)
+                ? new DamageResult(0, HitResults.None)
                 : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, DefenseType.Normal, trigger.DamageRate, Random);
             var left = Vitals.Hurt(victim, result.Damage);
 
