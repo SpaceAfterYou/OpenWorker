@@ -206,7 +206,8 @@ servers with the data of client 1.4.2.3 (Release builds, `docker run`, one machi
 The first runs found five faults of the bot, fixed with tests: no gate in a fresh database (`seed` now makes it), the
 names of the duration metrics, durations in seconds that the report rounded to zero, and the moves of the monsters of a
 maze counted as unmatched broadcasts (twice: monsters without a bot's number, then monsters that carry the number of a
-district bot). They also found three faults of the servers, which were not changed:
+district bot). They also found three faults of the servers; the channel fault was fixed afterwards, the other two
+are open:
 
 - The gate refuses the outfit a real client sends for Stella by default (511) with `CreateFailed`:
   `PersonCreationCatalog` reads the offered costumes from `Default_Cloth_ID_01..04` of `tb_Character_Info`, which hold
