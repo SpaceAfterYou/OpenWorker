@@ -22,7 +22,7 @@ public readonly struct MazeWarpInSectorResponse : IResponseHotspotMessage
 #region Message: Body
 
     public Vector3 Position { get; init; }
-    public int Sector { get; init; }
+    public float Rotation { get; init; }
 
 #endregion Message: Body
 
@@ -31,7 +31,7 @@ public readonly struct MazeWarpInSectorResponse : IResponseHotspotMessage
     public void Write(BinaryWriter writer)
     {
         writer.Write(Position);
-        writer.Write(Sector);
+        writer.Write(Rotation);
     }
 
 #endregion Interface: IWritableData

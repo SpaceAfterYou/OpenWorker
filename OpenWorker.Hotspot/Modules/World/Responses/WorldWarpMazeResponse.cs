@@ -21,9 +21,17 @@ public readonly struct WorldWarpMazeResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    /// <summary>
+    /// The portal that was used.
+    /// </summary>
     public int BoxIndex { get; init; }
+
     public WarpValue Warp { get; init; }
-    public int PortalIndex { get; init; }
+
+    /// <summary>
+    /// The sector where they come out.
+    /// </summary>
+    public int Sector { get; init; }
 
 #endregion Message: Body
 
@@ -33,7 +41,7 @@ public readonly struct WorldWarpMazeResponse : IResponseHotspotMessage
     {
         writer.Write(BoxIndex);
         writer.Write(Warp);
-        writer.Write(PortalIndex);
+        writer.Write(Sector);
     }
 
 #endregion Interface: IWritableData

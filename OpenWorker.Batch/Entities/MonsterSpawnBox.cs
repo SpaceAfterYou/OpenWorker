@@ -28,7 +28,7 @@ public sealed record MonsterSpawnBox : BasicEntity
         Waypoint = x.GetInt32("m_iWaypoint");
         AggroGroup = x.GetInt32("m_iAggroGroupID");
         AggroDistance = x.GetInt32("m_iAggroDistance");
-        AggroMaxCount = x.GetInt16("m_iAggroMaxCount");
+        AggroMaxCount = x.GetInt32("m_iAggroMaxCount");
         LookRatio = x.GetSingle("m_fLookRatio");
         ShowSight = x.GetBool("m_bShowSight");
         ObjectKey = x.GetString("m_szObjectKey");
@@ -112,7 +112,7 @@ public sealed record MonsterSpawnBox : BasicEntity
     /// <summary>
     ///     AggroMaxCount.
     /// </summary>
-    public short AggroMaxCount { get; }
+    public int AggroMaxCount { get; }
 
     /// <summary>
     ///     Multiplying the value of Sight.

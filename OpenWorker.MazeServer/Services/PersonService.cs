@@ -59,6 +59,7 @@ public sealed partial class PersonService(
     SkillActionProvider skillActions,
     CombatTables combatTables,
     MiscStateLoader miscState,
+    MazeReporter reports,
     CreatureServices creatureServices,
     ILogger<LuaCreatureManager> creatureLogger,
     ILogger<LuaMaze> mazeLogger,
@@ -179,6 +180,8 @@ public sealed partial class PersonService(
         var state = LuaState.Create();
         state.OpenStandardLibraries();
 
+        LuaCompatibility.Apply(state);
+
         var table = new LuaTable
         {
             ["GetHelper"] = new LuaFunction((ctx, _) =>
@@ -191,8 +194,18 @@ public sealed partial class PersonService(
         state.Environment["Soulworker"] = new LuaValue(table);
 
 
-        await state
-            .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
+        var script = Path.Join("scripts", $"{mazeInfo.Script}.lua");
+
+        // A few mazes have no script among the files of the client, and are played without one.
+        if (File.Exists(script))
+        {
+            await state
+                .DoFileAsync(script, context.CancellationToken);
+        }
+        else
+        {
+            LogNoScript(logger, script);
+        }
 
         var (mesh, meshError) = await creatureServices.Meshes.GetAsync(mazeInfo.Batch);
 
@@ -202,7 +215,7 @@ public sealed partial class PersonService(
         }
 
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeLogger);
+        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo, reports, mazeLogger);
 
         world.Add(context.Player, maze);
 
@@ -283,4 +296,7 @@ public sealed partial class PersonService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} has no navigation mesh, its monsters walk where they like: {Error}")]
     private static partial void LogNoNavigationMesh(ILogger logger, string maze, string? error);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The script {Script} of the maze is missing, the maze runs without it")]
+    private static partial void LogNoScript(ILogger logger, string script);
 }

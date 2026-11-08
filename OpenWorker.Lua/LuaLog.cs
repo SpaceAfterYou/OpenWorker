@@ -110,10 +110,37 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrapEx: box {Box}, skill {Skill}")]
     public static partial void IgnoredCreateTrapEx(this ILogger logger, int box, int skill);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrapExLoop: box {Box}, skill {Skill}, index {Index}")]
-    public static partial void IgnoredCreateTrapExLoop(this ILogger logger, int box, int skill, int index);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrapExLoop: box {Box}, skill {Skill}, count {Count}")]
+    public static partial void IgnoredCreateTrapExLoop(this ILogger logger, int box, int skill, int count);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call ChangeMonster: {Source} -> {Target}")]
+    public static partial void IgnoredChangeMonster(this ILogger logger, string source, string target);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call ChangeNpcAnimation: npc {Npc}, animation {Animation}")]
+    public static partial void IgnoredChangeNpcAnimation(this ILogger logger, int npc, string animation);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call InitPartyQuest: quest {Quest}, condition {Condition}, sector {Sector}")]
+    public static partial void IgnoredInitPartyQuest(this ILogger logger, int quest, int condition, int sector);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetEscortCondition: condition {Condition}")]
+    public static partial void IgnoredSetEscortCondition(this ILogger logger, int condition);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetEscortMonster")]
+    public static partial void IgnoredSetEscortMonster(this ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetMonsterAllowPassiveType: monster {Monster}, type {Type}")]
+    public static partial void IgnoredSetMonsterAllowPassiveType(this ILogger logger, int monster, int type);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetMonsterDefenceType: monster {Monster}, type {Type}, {Seconds} s")]
+    public static partial void IgnoredSetMonsterDefenceType(this ILogger logger, int monster, int type, float seconds);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call {Call}: table {Table}")]
+    public static partial void IgnoredStartMode(this ILogger logger, string call, int table);
 
     // ---- The script asks for something that is not there ---------------------------------------
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script added an event timer {Function} of the unknown type {Type}; it is left out")]
+    public static partial void UnknownEventTimerType(this ILogger logger, int type, string function);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script set the unknown maze state {State}")]
     public static partial void UnknownMazeState(this ILogger logger, int state);
@@ -137,6 +164,21 @@ internal static partial class LuaLog
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The flight of a projectile of skill {Skill} failed")]
     public static partial void ProjectileFlightFailed(this ILogger logger, Exception exception, int skill);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The timer function {Function} of the script failed")]
+    public static partial void TimerFunctionFailed(this ILogger logger, Exception exception, string function);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The timer {Timer} of the script failed")]
+    public static partial void TimerFailed(this ILogger logger, Exception exception, int timer);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The timers of the maze stopped after a failure")]
+    public static partial void TimersFailed(this ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Playing a skill in the maze failed")]
+    public static partial void SkillPlaybackFailed(this ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "A chain between monsters failed")]
+    public static partial void ChainFailed(this ILogger logger, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "A delayed action of the maze failed")]
     public static partial void DelayedActionFailed(this ILogger logger, Exception exception);

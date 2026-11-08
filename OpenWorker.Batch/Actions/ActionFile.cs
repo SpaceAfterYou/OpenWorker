@@ -3,7 +3,8 @@ using System.Text;
 
 namespace OpenWorker.Batch.Actions;
 
-public sealed record ActionAnimation(string Name, float Length, IReadOnlyList<AttackTrigger> Attacks);
+/// <param name="Repeats">Whether the animation starts over by itself until something stops it, like the waiting and the loop of a skill.</param>
+public sealed record ActionAnimation(string Name, float Length, IReadOnlyList<AttackTrigger> Attacks, bool Repeats = false);
 
 /// <summary>
 /// An action file of the client: what happens during each animation of a character.
@@ -107,7 +108,10 @@ public sealed class ActionFile
 
         var length = reader.ReadSingle();
 
-        reader.BaseStream.Seek(2 * sizeof(short), SeekOrigin.Current);
+        // Animations that play once are marked, those that repeat are not.
+        var repeats = reader.ReadInt16() == 0;
+
+        reader.ReadInt16();
 
         var attacks = new List<AttackTrigger>();
         var events = reader.ReadInt32();
@@ -132,7 +136,7 @@ public sealed class ActionFile
             SkipFrames(reader);
         }
 
-        return new ActionAnimation(name, length, attacks);
+        return new ActionAnimation(name, length, attacks, repeats);
     }
 
     private static AttackTrigger? ReadEvent(BinaryReader reader, short version)

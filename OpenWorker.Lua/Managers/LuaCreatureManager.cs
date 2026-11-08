@@ -308,6 +308,14 @@ public sealed class LuaCreatureManager : ISimulation
         }
     }
 
+    /// <summary>
+    /// A box that has not appeared yet never will.
+    /// </summary>
+    public void Terminate(int box)
+    {
+        SpawnedBoxes.Add(box);
+    }
+
     public Entity[] FindMonsters(Func<Vector3, MonsterCombatComponent, bool> touches)
     {
         return Creatures

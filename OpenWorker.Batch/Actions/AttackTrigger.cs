@@ -33,9 +33,9 @@ public readonly record struct AttackTrigger(
     public const short BoxRange = 1;
 
     /// <summary>
-    /// Other types leave it to an object they spawn: a projectile or a trap.
+    /// Other types leave it to an object they spawn: a projectile, a trap or a chain.
     /// </summary>
-    public bool HitsArea => AttackType is Melee or Chained;
+    public bool HitsArea => AttackType is Melee;
 
     public bool IsProjectile => AttackType is Thrown or FromBody;
 

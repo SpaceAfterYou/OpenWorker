@@ -103,6 +103,9 @@ public sealed class MazeRequestGuardTest
                 None<InteractionObjectRow>(),
                 new SkillActionProvider(None<SkillRow>(), NullLogger<SkillActionProvider>.Instance),
                 tables,
+                default,
+                // The boxes these tests name are unknown, so the maze never gets to report anything.
+                null!,
                 logger);
         }
 
