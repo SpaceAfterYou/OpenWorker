@@ -8,7 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\OpenWorker.Cache\OpenWorker.Cache.csproj" />
       <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj" />
       <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />

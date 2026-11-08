@@ -37,7 +37,6 @@
     <File Path="compose.yaml" />
   </Folder>
   <Project Path="OpenWorker.Batch/OpenWorker.Batch.csproj" />
-  <Project Path="OpenWorker.Cache/OpenWorker.Cache.csproj" />
   <Project Path="OpenWorker.Channel/OpenWorker.Channel.csproj" />
   <Project Path="OpenWorker.DependencyInjection/OpenWorker.DependencyInjection.csproj" />
   <Project Path="OpenWorker.Domain/OpenWorker.Domain.csproj" />

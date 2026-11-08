@@ -13,7 +13,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\OpenWorker.Cache\OpenWorker.Cache.csproj" />
         <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
         <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>

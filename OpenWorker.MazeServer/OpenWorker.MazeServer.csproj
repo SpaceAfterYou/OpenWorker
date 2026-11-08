@@ -20,7 +20,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\OpenWorker.Cache\OpenWorker.Cache.csproj" />
       <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
       <ProjectReference Include="..\OpenWorker.Commands\OpenWorker.Commands.csproj" />
       <ProjectReference Include="..\OpenWorker.DependencyInjection\OpenWorker.DependencyInjection.csproj" />
