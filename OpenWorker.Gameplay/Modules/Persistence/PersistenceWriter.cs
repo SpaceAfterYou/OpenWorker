@@ -41,9 +41,12 @@ public sealed partial class PersistenceWriter(
 
         if (!_queue.Writer.TryWrite(request))
         {
-            LogStopped(logger, writes.Count);
+            if (writes.Count > 0)
+            {
+                LogStopped(logger, writes.Count);
+            }
 
-            return Task.FromResult(false);
+            return Task.FromResult(writes.Count == 0);
         }
 
         return request.Done.Task;
@@ -140,10 +143,19 @@ public sealed partial class PersistenceWriter(
             }
         }
 
-        // A barrier completes once everything queued before it has been settled.
+        // A barrier completes once everything queued before it has been settled: while a write waits to be tried again, the
+        // barriers wait with it, so that a player sent to another server is not loaded there before its last write.
         foreach (var barrier in batch.Where(e => e.Write is null))
         {
-            barrier.Request.Done.TrySetResult(true);
+            if (retry.Count > 0)
+            {
+                retry.Add(barrier);
+            }
+
+            else
+            {
+                barrier.Request.Done.TrySetResult(true);
+            }
         }
     }
 
