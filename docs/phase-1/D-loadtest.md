@@ -44,9 +44,12 @@ The bots use the other login the auth server has, `LoginAuthRequest` (username, 
 the password hash. An account is created only by a Discord command of the relay, so a run needs accounts in the database
 first. That is the `seed` command: it writes the rows straight into Postgres (`AccountPersistent` through
 `PersistenceContext`, the same password hashing as the Discord command, one shared salt and hash, existing accounts
-left alone). Names are `<prefix><5 digits>` (`lt00000`...); the column holds 12 characters. This changes no server, adds
-no setting that is off by default, and weakens nothing in production: only a person with the database can add accounts.
-`eng/loadtest.sh` runs it before the bots. The character is created by the bot with the protocol, as a player does.
+left alone). Names are `<prefix><5 digits>` (`lt00000`...); the column holds 12 characters. It also makes the gate row
+the gate server registers as (`--gate`, default 1, the `Gate:Id` of `compose.yaml`) when the database has none of that
+number: gates come from a Discord command as well, the auth server lists only the gates of the database, and without the
+row every bot stopped at the gate list with `no-gate` (found in the first run against real servers). This changes no
+server, adds no setting that is off by default, and weakens nothing in production: only a person with the database can
+add accounts. `eng/loadtest.sh` runs it before the bots. The character is created by the bot with the protocol, as a player does.
 
 There is **no dev-only switch** on any server.
 
