@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
@@ -34,10 +35,16 @@ public readonly struct ProbeRequest : IRequestHotspotMessage
     public const byte ReadsText = 2;
     public const byte Waits = 3;
     public const byte Logs = 4;
+    public const byte Records = 5;
 
     public MessageOpcode Opcode => new(GroupOpcode.System, Command);
 
     public byte Mode { get; }
+
+    /// <summary>
+    /// What follows the mode, for <see cref="Records"/>.
+    /// </summary>
+    public byte[] Rest { get; } = [];
 
     public ProbeRequest(BinaryReader reader)
     {
@@ -46,6 +53,11 @@ public readonly struct ProbeRequest : IRequestHotspotMessage
         if (Mode == ReadsText)
         {
             _ = reader.ReadUtf8UnicodeString();
+        }
+
+        if (Mode == Records)
+        {
+            Rest = reader.ReadBytes((int)(reader.BaseStream.Length - reader.BaseStream.Position));
         }
     }
 }
@@ -62,9 +74,19 @@ public sealed partial class ProbeHandler(ILogger<ProbeHandler>? logger = null) :
     /// </summary>
     public static TaskCompletionSource? Gate { get; set; }
 
+    /// <summary>
+    /// What the requests of <see cref="ProbeRequest.Records"/> carried after the mode, in the order they were handled.
+    /// </summary>
+    public static ConcurrentQueue<byte[]> Recorded { get; } = new();
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ProbeRequest request)
     {
         Handled++;
+
+        if (request.Mode == ProbeRequest.Records)
+        {
+            Recorded.Enqueue(request.Rest);
+        }
 
         if (request.Mode == ProbeRequest.Logs && logger is { } log)
         {

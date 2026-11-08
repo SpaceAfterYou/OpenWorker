@@ -20,6 +20,12 @@ public readonly struct MessageHeader
     public const byte HeaderSize = 0x05;
     private const byte HeaderVersion = 0x05;
 
+    /// <summary>
+    /// The newest version the key table of <see cref="MessageEncryption" /> holds keys for: four bytes of the table per
+    /// version, three of them used, in a table of 100 bytes.
+    /// </summary>
+    public const ushort MaxVersion = 24;
+
     public MessageHeader(long length)
     {
         if (length is < 0 or > MaxContentLength)
@@ -54,6 +60,12 @@ public readonly struct MessageHeader
         if (Length < HeaderSize)
         {
             throw new InvalidDataException($"Message length {Length} is smaller than the header.");
+        }
+
+        // A version past the key table would fail the decryption; the client never sends one.
+        if (Version > MaxVersion)
+        {
+            throw new InvalidDataException($"Message version {Version} has no keys in the key table.");
         }
 
         Direction = (MessageDirection)bytes[4];
