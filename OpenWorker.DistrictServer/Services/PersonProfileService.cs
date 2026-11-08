@@ -18,6 +18,6 @@ public sealed class PersonProfileService(
 {
     protected override void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
     {
-        channels.Get(player).BroadcastToOthers(player, message);
+        channels.Get(player).BroadcastNearbyToOthers(player, message);
     }
 }

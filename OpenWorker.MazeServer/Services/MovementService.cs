@@ -1,8 +1,6 @@
 using Arch.Core;
 using OpenWorker.Channel;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Handler.Attributes;
-using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -13,12 +11,17 @@ public sealed class MovementService(World world) : MovementServiceBase(world)
 {
     private readonly World _world = world;
 
-    protected override void Broadcast(Entity player, IResponseHotspotMessage message)
+    protected override void Broadcast<T>(Entity player, in T message)
     {
-        _world.Get<ServerSessionComponent>(player).Send(message);
+        using var frame = Frame.Encode(in message);
+
+        if (frame is not null)
+        {
+            _world.Get<ServerSessionComponent>(player).Send(frame);
+        }
     }
 
-    protected override void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
+    protected override void BroadcastToOthers<T>(Entity player, in T message)
     {
     }
 }

@@ -1,6 +1,7 @@
 using System.Buffers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using OpenWorker.Hotspot.Telemetry;
@@ -106,12 +107,47 @@ internal sealed partial class FrameEncoder : IDisposable
         {
             _stream.Abandon();
 
-            OnDropped(message);
+            OnDropped(message.Opcode);
 
             return null;
         }
 
         var buffer = _stream.Detach(out var length);
+
+        return Seal(buffer, length);
+    }
+
+    /// <summary>
+    /// A message with a span format, called on its struct: nothing is boxed, nothing allocated but the frame of the pools.
+    /// </summary>
+    public Frame? Encode<T>(in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    {
+        var writer = new PacketWriter(_arrays, InitialCapacity, MaxFrameLength, MessageHeader.HeaderSize);
+
+        try
+        {
+            writer.WriteInt16(message.Opcode);
+
+            message.Write(ref writer);
+        }
+
+        catch
+        {
+            writer.Dispose();
+
+            throw;
+        }
+
+        if (writer.Overflowed)
+        {
+            writer.Dispose();
+
+            OnDropped(message.Opcode);
+
+            return null;
+        }
+
+        var buffer = writer.Detach(out var length);
 
         return Seal(buffer, length);
     }
@@ -142,7 +178,7 @@ internal sealed partial class FrameEncoder : IDisposable
         {
             writer.Dispose();
 
-            OnDropped(message);
+            OnDropped(message.Opcode);
 
             return null;
         }
@@ -174,10 +210,10 @@ internal sealed partial class FrameEncoder : IDisposable
         _writer.Dispose();
     }
 
-    private void OnDropped(IResponseHotspotMessage message)
+    private void OnDropped(MessageOpcode message)
     {
         // Only a message that is dropped pays for the name of its opcode.
-        var opcode = message.Opcode.ToFullString();
+        var opcode = message.ToFullString();
 
         _metrics?.Dropped(opcode);
 

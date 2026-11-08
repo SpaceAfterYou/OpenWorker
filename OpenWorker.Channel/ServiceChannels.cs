@@ -7,7 +7,13 @@ using OpenWorker.Hotspot.Modules.Channels.Enums;
 
 namespace OpenWorker.Channel;
 
-public sealed class ServiceChannels(IOptions<ChannelOptions> channels, IOptions<InstanceOptions> instance, World world) : List<ServiceChannel>(CreateCollection(channels.Value)), ISessionCloseHandler
+/// <param name="sight">The size of the cells of the visibility grid; the default one when <see langword="null"/>.</param>
+public sealed class ServiceChannels(
+    IOptions<ChannelOptions> channels,
+    IOptions<InstanceOptions> instance,
+    World world,
+    IOptions<WorldOptions>? sight = null
+) : List<ServiceChannel>(CreateCollection(channels.Value, sight?.Value ?? new WorldOptions())), ISessionCloseHandler
 {
     private Guid Owner { get; } = instance.Value.Identifier;
 
@@ -85,15 +91,15 @@ public sealed class ServiceChannels(IOptions<ChannelOptions> channels, IOptions<
         var component = world.Get<ChannelMemberComponent>(player);
         
         var channel = this[component.Index];
-        channel.Leave(player, world);
+        channel.Leave(player);
     }
 
-    private static ServiceChannel[] CreateCollection(ChannelOptions options)
+    private static ServiceChannel[] CreateCollection(ChannelOptions options, WorldOptions sight)
     {
         var count = options.To - options.From + 1;
 
         return Enumerable.Range(options.From, count)
-            .Select(e => new ServiceChannel((short)e))
+            .Select(e => new ServiceChannel((short)e, sight.VisibilityRadius))
             .ToArray();
     }
 }

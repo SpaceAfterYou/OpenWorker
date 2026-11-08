@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddInstanceOptions();
         services.AddGateOptions();
         services.AddChannelOptions();
+        services.AddWorldOptions();
 
         services.AddSingleton<ServiceChannels>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<ServiceChannels>());

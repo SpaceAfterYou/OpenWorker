@@ -11,6 +11,7 @@ using OpenWorker.Hotspot.Modules.Movement.Requests;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Channel;
 
@@ -39,9 +40,16 @@ public abstract class MovementServiceBase(World world) :
     /// <summary>
     /// Sends to everybody who can see the player, including the player.
     /// </summary>
-    protected abstract void Broadcast(Entity player, IResponseHotspotMessage message);
+    protected abstract void Broadcast<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable;
 
-    protected abstract void BroadcastToOthers(Entity player, IResponseHotspotMessage message);
+    protected abstract void BroadcastToOthers<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable;
+
+    /// <summary>
+    /// The place of the player has changed: where the others see it from may have too.
+    /// </summary>
+    protected virtual void OnPlaced(Entity player, Vector3 position)
+    {
+    }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeMotionReqRequest request)
     {
@@ -279,6 +287,8 @@ public abstract class MovementServiceBase(World world) :
         }
 
         world.Set(player, world.Get<WorldComponent>(player) with { Position = position, Rotation = rotation });
+
+        OnPlaced(player, position);
 
         return true;
     }

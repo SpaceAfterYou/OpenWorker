@@ -113,6 +113,14 @@ public static class OptionsServiceCollectionExtensions
     }
 
     /// <summary>
+    /// What the players of a channel see of each other: what the district and the maze have.
+    /// </summary>
+    public static IServiceCollection AddWorldOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<WorldOptions, WorldOptionsValidator>(WorldOptions.SectionName);
+    }
+
+    /// <summary>
     /// How generous the game servers are with experience and drops: what the district and the maze have.
     /// </summary>
     public static IServiceCollection AddRewardsOptions(this IServiceCollection services)
