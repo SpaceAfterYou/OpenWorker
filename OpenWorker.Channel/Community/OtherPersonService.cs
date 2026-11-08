@@ -36,7 +36,7 @@ public enum OtherInfoWindow : byte
 /// Shows a player to another. The server a player is connected to knows their equipment and what they chose, so it answers
 /// for them wherever the one who looks is. Somebody who is not connected is shown as the database remembers them.
 /// </summary>
-public sealed class OtherPersonService(
+public sealed partial class OtherPersonService(
     World world,
     CommunityNetwork network,
     IDbContextFactory<PersistenceContext> factory,
@@ -55,9 +55,9 @@ public sealed class OtherPersonService(
 
     private const int AchievementCategories = 7;
 
-    public void Attach(CommunityNetwork community)
+    public void Attach(CommunityNetwork network)
     {
-        community.On(AskEvent, OnAskedAsync);
+        network.On(AskEvent, OnAskedAsync);
     }
 
     /// <summary>
@@ -259,7 +259,7 @@ public sealed class OtherPersonService(
         catch (Exception e)
         {
             // What a player wears is not worth losing the answer for.
-            logger.LogError(e, "Could not list the equipment of a player.");
+            LogEquipmentFailed(logger, e);
 
             return [];
         }
@@ -297,4 +297,7 @@ public sealed class OtherPersonService(
 
         return true;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Could not list the equipment of a player.")]
+    private static partial void LogEquipmentFailed(ILogger logger, Exception exception);
 }

@@ -59,7 +59,7 @@ internal sealed partial class ChannelLifecycleService(
 
             if (value is null)
             {
-                logger.LogDebug("Channel not found: Owner={Guid}, Identifier={Identifier}", Instance, channel.Identifier);
+                LogChannelNotFound(logger, Instance, channel.Identifier);
                 continue;
             }
 
@@ -69,6 +69,9 @@ internal sealed partial class ChannelLifecycleService(
                 .UpdateAsync(value);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Channel not found: Owner={Owner}, Identifier={Identifier}")]
+    private static partial void LogChannelNotFound(ILogger logger, Guid owner, short identifier);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to update the online count of the channels.")]
     private static partial void LogUpdateFailed(ILogger logger, Exception exception);

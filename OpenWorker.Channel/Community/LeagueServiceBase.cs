@@ -138,7 +138,7 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (PersonModuleDefines.DefaultLevel < LeagueRules.MinLevel)
+        if (LevelOf(context) < LeagueRules.MinLevel)
         {
             Fail(context, LeagueOpcode.Create, Text.LevelTooLow);
             return;
@@ -513,7 +513,7 @@ public abstract class LeagueServiceBase(
             League = request.Applicant.League,
             Actor = me,
             Name = name,
-            Level = PersonModuleDefines.DefaultLevel,
+            Level = LevelOf(context),
             Date = LeagueMapper.ToUnix(DateTime.UtcNow),
             Class = (byte)world.Get<PersonInfoComponent>(context.Player).Hero
         };
@@ -932,6 +932,15 @@ public abstract class LeagueServiceBase(
 
         return name.All(char.IsLetterOrDigit) ? null : Text.ForbiddenText;
     }
+
+    /// <summary>
+    /// The level of the person who asks. A person has no level of their own yet: it is not saved (PersonPersistent) and no
+    /// component of the entity carries it (RankComponent is the echelon, and it is zero), so the whole server shows the one
+    /// default level. Every rule that depends on the level asks here, so the rule stays in place and is already true when
+    /// the level exists.
+    /// TODO(Phase 4, step 1-2): read the level of the person from the entity once it is persisted and loaded at the login.
+    /// </summary>
+    private static byte LevelOf(ServiceHandleContext context) => PersonModuleDefines.DefaultLevel;
 
     private int Me(ServiceHandleContext context) => world.Get<ActorComponent>(context.Player).Identifier;
 

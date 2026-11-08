@@ -36,7 +36,7 @@ public readonly record struct CommunityEvent(string Name, IReadOnlyList<int> Per
 /// whisper, a friend request or a league message has to reach a person wherever they are: a server writes the answer
 /// once, and the one the person is connected to hands it to the client. Everything runs on the world loop.
 /// </summary>
-public sealed class CommunityNetwork(
+public sealed partial class CommunityNetwork(
     World world,
     WorldLoop loop,
     IOptions<InstanceOptions> instance,
@@ -325,7 +325,7 @@ public sealed class CommunityNetwork(
 
         catch (Exception e)
         {
-            logger.LogError(e, "Failed to handle a message from another server.");
+            LogDeliveryFailed(logger, e);
         }
     }
 
@@ -371,7 +371,7 @@ public sealed class CommunityNetwork(
 
         catch (Exception e)
         {
-            logger.LogError(e, "Could not {What}.", what);
+            LogFailed(logger, e, what);
         }
     }
 
@@ -384,9 +384,15 @@ public sealed class CommunityNetwork(
 
         catch (Exception e)
         {
-            logger.LogError(e, "Could not {What}.", what);
+            LogFailed(logger, e, what);
 
             return default;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to handle a message from another server.")]
+    private static partial void LogDeliveryFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Could not {What}.")]
+    private static partial void LogFailed(ILogger logger, Exception exception, string what);
 }
