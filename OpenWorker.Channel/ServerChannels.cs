@@ -1,5 +1,5 @@
 ﻿using Arch.Core;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
@@ -12,14 +12,14 @@ using Redis.OM.Searching;
 namespace OpenWorker.Channel;
 
 public sealed class ServerChannels(
-    IConfiguration configuration,
+    IOptions<InstanceOptions> instance,
     IRedisCollection<ChannelCache> channelCache,
     // IRedisCollection<DistrictCache> districtCache,
     ServiceChannels channels,
     World world
 ) {
-    private Guid Owner { get; } = configuration.GetInstance();
-    private short Location { get; } = configuration.GetLocation();
+    private Guid Owner { get; } = instance.Value.Identifier;
+    private short Location { get; } = instance.Value.Location;
 
     public async ValueTask SendListAsync(Entity entity, CancellationToken cancellationToken)
     {

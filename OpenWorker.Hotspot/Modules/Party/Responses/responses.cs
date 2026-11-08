@@ -58,7 +58,7 @@ public readonly struct PartyAwaiterListResponse(BinaryReader reader) : IResponse
 }
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PartyUnknown5Response(BinaryReader reader) : IResponseHotspotMessage
+public readonly struct PartyUnknown5Response : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Unknown5;

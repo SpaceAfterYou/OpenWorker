@@ -25,7 +25,7 @@ public static class BinaryWriterExtensions
         public void Write(PartyApplyError value) => writer.Write((int)value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public void Write_Fixed(PartyMemberInfoValue[] values)
+        public void WriteFixed(PartyMemberInfoValue[] values)
         {
             Debug.Assert(values.Length <= PartyModuleDefines.MaxMemberCount);
 
@@ -47,7 +47,7 @@ public static class BinaryWriterExtensions
             }
         }
 
-        public void Write_Byte(PartyMemberInfoValue[] values)
+        public void WriteWithByteCount(PartyMemberInfoValue[] values)
         {
             writer.Write((byte)values.Length);
 
@@ -57,7 +57,7 @@ public static class BinaryWriterExtensions
             }
         }
 
-        public void Write_Int(PartyMemberInfoValue[] values)
+        public void WriteWithIntCount(PartyMemberInfoValue[] values)
         {
             writer.Write(values.Length);
 

@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Shop.Requests;
 /// This packet doesn't have any content.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ShopCashLoadRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct ShopCashLoadRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 

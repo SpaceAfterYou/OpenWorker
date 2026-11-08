@@ -1,9 +1,10 @@
 using Lua;
+using Microsoft.Extensions.Logging;
 
 namespace OpenWorker.Lua;
 
 [LuaObject]
-public partial class LuaGameHelper : ILuaUserData
+public partial class LuaGameHelper(ILogger<LuaGameHelper> logger) : ILuaUserData
 {
     [LuaMember]
     public void CreateEntity()
@@ -20,13 +21,13 @@ public partial class LuaGameHelper : ILuaUserData
     [LuaMember]
     public void CreateTrap(LuaMaze maze, VVector3 position, int skill)
     {
-        Console.WriteLine($"CreateTrap: {maze}, {position.X}/{position.Y}/{position.Z}, {skill}");
+        logger.IgnoredCreateTrap(position.X, position.Y, position.Z, skill);
     }
 
     [LuaMember]
     public void CreateTrapEx(int box, int skill)
     {
-        Console.WriteLine($"CreateTrapEx: {box}, {skill}");
+        logger.IgnoredCreateTrapEx(box, skill);
     }
 
     [LuaMember]
@@ -38,7 +39,7 @@ public partial class LuaGameHelper : ILuaUserData
     [LuaMember]
     public void CreateTrapExLoop(int box, int skill, int index)
     {
-        Console.WriteLine($"CreateTrapExLoop: {box}, {skill}, {index}");
+        logger.IgnoredCreateTrapExLoop(box, skill, index);
     }
 
     [LuaMember]

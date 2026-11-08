@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Channels.Requests;
 /// This packet doesn't have any content.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ChannelInfoRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct ChannelInfoRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 

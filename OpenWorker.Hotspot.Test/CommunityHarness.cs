@@ -2,12 +2,13 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.League.Components;
@@ -197,7 +198,7 @@ internal sealed class TestServer : IDisposable
         }
     }
 
-    public TestServer(MemoryCommunity community, IEnumerable<ICommunityListener>? listeners = null)
+    public TestServer(MemoryCommunity community, IEnumerable<ICommunityListener>? listeners = null, Func<IPresenceSource, IPresenceSource>? wrapSource = null)
     {
         World = World.Create();
         Loop = new WorldLoop(NullLogger<WorldLoop>.Instance);
@@ -213,12 +214,10 @@ internal sealed class TestServer : IDisposable
         Network = new CommunityNetwork(
             World,
             Loop,
-            new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?> { ["Instance:Identifier"] = Instance.ToString() })
-                .Build(),
+            Options.Create(new InstanceOptions { Identifier = Instance }),
             community,
             community,
-            new Source(World),
+            wrapSource is null ? new Source(World) : wrapSource(new Source(World)),
             services.BuildServiceProvider(),
             NullLogger<CommunityNetwork>.Instance);
 

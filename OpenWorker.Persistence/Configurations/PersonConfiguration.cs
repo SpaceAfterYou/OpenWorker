@@ -17,6 +17,12 @@ public sealed class PersonConfiguration : IEntityTypeConfiguration<PersonPersist
             .IsRequired()
             .IsUnicode();
 
+        // Players find each other by name, and servers that create characters at the same time
+        // can both see a name as free.
+        builder
+            .HasIndex(x => x.Name)
+            .IsUnique();
+
         builder
             .Property(x => x.CommunityComment)
             .HasMaxLength(50)

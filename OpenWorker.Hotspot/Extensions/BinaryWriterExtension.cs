@@ -60,27 +60,11 @@ public static class BinaryWriterExtension
         writer.Write((byte)value);
     }
 
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, ChatNotifyType value)
-    // {
-    //     @this.Write((int)value);
-    // }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, BroachSlotState value)
     {
         writer.Write((byte)value);
     }
-
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter writer, IReadOnlyCollection<ItemValue> list)
-    // {
-    //     writer.Write((short)list.Count);
-    //     foreach (var value in list)
-    //     {
-    //         writer.Write(value);
-    //     }
-    // }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, StorageValue value)
@@ -413,49 +397,6 @@ public static class BinaryWriterExtension
         writer.Write(value.Key);
     }
 
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void WriteCharacterInfoResult(this BinaryWriter @this, CharacterInfoResult value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void WriteSyncUserFlags(this BinaryWriter @this, SyncUserFlags value) => @this.Write((int)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void WriteUserFlags(this BinaryWriter @this, UserFlags value) => @this.Write((int)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, MapChangeType value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, EnterMapResult value) => @this.Write((int)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, DistrictConnectResult value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, UserOptionStatus value) => @this.Write((short)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, GateEnterResult value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, Advancement value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, ChannelLoadStatus value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, StatType value) => @this.Write((short)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, DistrictLogOutStatus value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, LogOutType value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, NpcVisablity value) => @this.Write((byte)value);
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, AccessLevel value)
     {
@@ -467,15 +408,6 @@ public static class BinaryWriterExtension
     {
         writer.Write((int)value);
     }
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, SpecialOption value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, ChatType value) => @this.Write((int)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, Character value) => @this.Write((byte)value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, GateWorkload value)
@@ -527,16 +459,6 @@ public static class BinaryWriterExtension
     }
 
     #endregion Unicode String
-
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, ProfileStatus value) => @this.Write((byte)value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, PacketMagick value) => @this.Write(value.Value);
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static void Write(this BinaryWriter @this, PacketProtocol value) => @this.Write((byte)value);
-    //
 
     #region Ascii String
 

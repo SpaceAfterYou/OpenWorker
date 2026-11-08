@@ -2,12 +2,13 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache;
@@ -85,16 +86,12 @@ public sealed class TestLeaveManager
 
             _reader = new BinaryReader(_client.GetStream());
 
-            var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Gate:Id"] = Gate.ToString(),
-                    ["Auth:Host"] = AuthHost,
-                    ["Auth:Port"] = AuthPort.ToString()
-                })
-                .Build();
-
-            Leaving = new LeaveManager(World, configuration, Gates, Leases);
+            Leaving = new LeaveManager(
+                World,
+                Options.Create(new GateOptions { Id = Gate }),
+                Options.Create(new AuthEndpointOptions { Host = AuthHost, Port = AuthPort }),
+                Gates,
+                Leases);
         }
 
         public async Task SignInAsync()

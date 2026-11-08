@@ -1,5 +1,6 @@
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -15,9 +16,9 @@ namespace OpenWorker.DistrictServer.Server;
 public sealed class PersonPlaceStore(
     World world,
     IDbContextFactory<PersistenceContext> factory,
-    IConfiguration configuration) : ISessionCloseHandler
+    IOptions<InstanceOptions> instance) : ISessionCloseHandler
 {
-    private short Location { get; } = configuration.GetLocation();
+    private short Location { get; } = instance.Value.Location;
 
     public async ValueTask OnSessionClosedAsync(Entity player)
     {

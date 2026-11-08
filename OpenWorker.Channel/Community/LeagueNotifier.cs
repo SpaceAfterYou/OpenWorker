@@ -49,7 +49,7 @@ public sealed class LeagueSnapshots(IDbContextFactory<PersistenceContext> factor
         };
     }
 
-    public async Task<LeagueMemberUpdateResponse> UpdateAsync(LeagueMemberRecord member, PresenceRecord? online)
+    public static LeagueMemberUpdateResponse Update(LeagueMemberRecord member, PresenceRecord? online)
     {
         return new LeagueMemberUpdateResponse
         {
@@ -81,9 +81,9 @@ public sealed class LeagueNotifier(
 {
     public const string SyncEvent = "league.sync";
 
-    public void Attach(CommunityNetwork community)
+    public void Attach(CommunityNetwork network)
     {
-        community.On(SyncEvent, OnSyncAsync);
+        network.On(SyncEvent, OnSyncAsync);
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public sealed class LeagueNotifier(
 
         world.Get<ServerSessionComponent>(player).Send(full);
 
-        await Others(member.League, person.Person, await snapshots.UpdateAsync(member, person));
+        await Others(member.League, person.Person, LeagueSnapshots.Update(member, person));
     }
 
     public async ValueTask OnLeftAsync(Entity player, PresenceRecord person)
@@ -140,7 +140,7 @@ public sealed class LeagueNotifier(
 
         if (member is not null)
         {
-            await Others(member.League, person.Person, await snapshots.UpdateAsync(member, null));
+            await Others(member.League, person.Person, LeagueSnapshots.Update(member, null));
         }
     }
 

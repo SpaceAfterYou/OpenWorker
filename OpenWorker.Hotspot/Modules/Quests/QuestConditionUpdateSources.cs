@@ -13,7 +13,7 @@ public static class QuestConditionUpdateSources
     /// </summary>
     public static readonly QuestConditionUpdateSource[] GeneralUpdates =
     [
-        new(QuestConditionType.Trigger, QuestConditionTarget.Object, "Interaction box click"),
+        new(QuestConditionType.Trigger, QuestConditionTarget.WorldObject, "Interaction box click"),
         new(QuestConditionType.Hunt, QuestConditionTarget.Monster, "Monster kill"),
         new(QuestConditionType.Hunt, QuestConditionTarget.MonsterGroup, "Monster kill by quest group"),
         new(QuestConditionType.Hunt, QuestConditionTarget.Maze, "Monster kill in maze"),

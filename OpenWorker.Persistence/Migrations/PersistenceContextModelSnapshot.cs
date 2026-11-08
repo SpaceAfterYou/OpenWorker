@@ -70,6 +70,9 @@ namespace OpenWorker.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Username")
+                        .IsUnique();
+
                     b.ToTable("Accounts");
                 });
 
@@ -461,6 +464,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.HasIndex("AccountId");
 
                     b.HasIndex("GateId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Persons");
                 });

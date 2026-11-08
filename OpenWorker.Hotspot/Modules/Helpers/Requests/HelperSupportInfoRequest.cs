@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Helpers.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct HelperSupportInfoRequest(BinaryReader _) : IRequestHotspotMessage
+public readonly struct HelperSupportInfoRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 

@@ -1,7 +1,8 @@
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.DailyMissions.Components;
@@ -19,13 +20,13 @@ namespace OpenWorker.Gameplay.Modules.DailyMissions;
 /// Every day a person is given a few missions for every district: to kill something, clear a maze or collect
 /// something. The person accepts the ones it wants, and the progress counts while the mission is open.
 /// </summary>
-public sealed class DailyMissionManager(
+public sealed partial class DailyMissionManager(
     World world,
     PersonStateStore store,
     DailyMissionCatalog catalog,
     IRewardGranter rewards,
     TimeProvider time,
-    IConfiguration configuration,
+    IOptions<DailyMissionOptions> options,
     ILogger<DailyMissionManager> logger) : IMiscTick
 {
     /// <summary>
@@ -45,7 +46,7 @@ public sealed class DailyMissionManager(
     /// <summary>
     /// The time of day the special missions are drawn again, in hours.
     /// </summary>
-    private TimeSpan Reset => TimeSpan.FromHours(configuration.GetValue("DailyMission:ResetHour", DailyMissionRules.DefaultResetTime.TotalHours));
+    private TimeSpan Reset => options.Value.ResetHour is { } hour ? TimeSpan.FromHours(hour) : DailyMissionRules.DefaultResetTime;
 
     private Random Random { get; } = new();
 
@@ -309,7 +310,7 @@ public sealed class DailyMissionManager(
     {
         if (!await rewards.TryGrantAsync(player, new Reward(definition.Rewards), RewardSource.DailyMission, cancellationToken))
         {
-            logger.LogDebug("The reward of the daily mission {Mission} could not be given.", entry.Mission);
+            LogRewardNotGiven(entry.Mission);
             return false;
         }
 
@@ -462,4 +463,7 @@ public sealed class DailyMissionManager(
             book.Gate.Release();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "The reward of the daily mission {Mission} could not be given.")]
+    private partial void LogRewardNotGiven(int mission);
 }

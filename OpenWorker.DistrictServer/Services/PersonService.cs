@@ -1,13 +1,12 @@
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
+using System.Globalization;
 using System.Numerics;
 using Arch.Core;
 using OpenWorker.Domain.Components;
 using Microsoft.EntityFrameworkCore;
-using OpenWorker.Batch;
-using OpenWorker.Batch.Extensions;
+using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.DistrictServer.Server;
@@ -47,9 +46,8 @@ using Redis.OM.Searching;
 namespace OpenWorker.DistrictServer.Services;
 
 [HotspotHandler(HotspotHandlerType.District)]
-public sealed class PersonService(
+public sealed partial class PersonService(
     World ecs,
-    BatchManager manager,
     SoulMetryManager soulMetry,
     DailyMissionManager dailyMissions,
     AttendanceManager attendance,
@@ -60,20 +58,22 @@ public sealed class PersonService(
     SessionLeaseManager leases,
     ServiceChannels channels,
     IDbContextFactory<PersistenceContext> factory,
-    IConfiguration configuration,
+    IOptions<InstanceOptions> instance,
     PersonRegistry registry,
     LeaveManager leaving,
     QuestManager questManager,
     ReadOnlyCollection<CharacterInfoRow> characterInfo,
-    CommunityNetwork community
+    CommunityNetwork community,
+    TimeProvider time,
+    ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
     IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
-    private short Location { get; } = configuration.GetLocation();
-    private Guid Instance { get; } = configuration.GetInstance();
+    private short Location { get; } = instance.Value.Location;
+    private Guid Instance { get; } = instance.Value.Identifier;
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
     {
@@ -98,6 +98,26 @@ public sealed class PersonService(
             return;
         }
 
+        // Every way into a district writes a reservation first (the gate, a portal or a warp of
+        // another district, the exit of a maze), so a connection without one did not come that way.
+        var reserve = await districtReserves
+            .FindByIdAsync(request.Account.ToString(CultureInfo.InvariantCulture));
+
+        if (reserve is null)
+        {
+            LogNoReservation(request.Account, request.Actor.Identifier, Location);
+            session.Disconnect();
+            return;
+        }
+
+        // The reservation of another person or another district stays: its owner still has to come.
+        if (!reserve.Admits(request.Actor.Identifier, Instance))
+        {
+            LogForeignReservation(request.Account, request.Actor.Identifier, reserve.Person, reserve.District);
+            session.Disconnect();
+            return;
+        }
+
         await using var database = await factory
             .CreateDbContextAsync(context.CancellationToken);
 
@@ -114,19 +134,18 @@ public sealed class PersonService(
             return;
         }
 
+        // A reservation is used up by the entry.
+        await districtReserves
+            .DeleteAsync(reserve);
+
         ecs.Set(context.Player, new ClaimsComponent(request.Session));
 
         await leases
             .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
-        if (!manager.TryGetAndCache(Location, out var batch, out var type) || type != BatchType.District)
-        {
-            return;
-        }
+        ecs.Set(context.Player, GetReservedPlace(reserve));
 
-        ecs.Set(context.Player, await TakeReservedPlaceAsync(request) ?? GetDefaultPlace(batch));
-
-        ecs.Set(context.Player, new KeepAliveComponent());
+        ecs.Set(context.Player, KeepAliveComponent.Start(time.GetTimestamp()));
 
         ecs.Set(context.Player, new CurrencyComponent
         {
@@ -223,47 +242,16 @@ public sealed class PersonService(
     }
 
     /// <summary>
-    /// The place chosen by the server the person came from, if it was reserved for this district.
+    /// The place chosen by the server the person came from.
     /// </summary>
-    private async ValueTask<WorldComponent?> TakeReservedPlaceAsync(PersonEnterGameServerRequest request)
+    private WorldComponent GetReservedPlace(DistrictReserveCache reserve)
     {
-        var reserve = await districtReserves
-            .FindByIdAsync(request.Account.ToString());
-
-        if (reserve is null)
-        {
-            return null;
-        }
-
-        await districtReserves
-            .DeleteAsync(reserve);
-
-        if (reserve.Person != request.Actor.Identifier || reserve.District != Instance)
-        {
-            return null;
-        }
-
         return new WorldComponent
         {
             Location = Location,
             Position = new Vector3(reserve.X, reserve.Y, reserve.Z),
             Rotation = reserve.R,
             Jump = reserve.Jump
-        };
-    }
-
-    private WorldComponent GetDefaultPlace(VBatchFile batch)
-    {
-        Debug.Assert(batch.EventBox.StartEvents.Count > 0);
-
-        var start = batch.EventBox.StartEvents.First(x => x.Id == Location * 100 + 1);
-
-        return new WorldComponent
-        {
-            Location = Location,
-            Position = start.GetPosition(),
-            Rotation = start.Rotation,
-            Jump = start.Id
         };
     }
 
@@ -329,4 +317,10 @@ public sealed class PersonService(
 
         return ValueTask.CompletedTask;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to district {Location} as person {Person} with no reservation, or with one that has expired, and is turned away")]
+    private partial void LogNoReservation(int account, int person, short location);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came as person {Person}, but its reservation is for person {ReservedPerson} in district {ReservedDistrict}, and it is turned away")]
+    private partial void LogForeignReservation(int account, int person, int reservedPerson, Guid reservedDistrict);
 }

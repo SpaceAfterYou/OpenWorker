@@ -1,5 +1,6 @@
 ﻿using Discord.Interactions;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Persistence;
 using OpenWorker.Persistence.Utils;
@@ -41,7 +42,17 @@ public sealed class AccountInteractions(IDbContextFactory<PersistenceContext> fa
                 SaltHash = saltHash
             }).ConfigureAwait(false);
 
-            await context.SaveChangesAsync().ConfigureAwait(false);
+            try
+            {
+                await context.SaveChangesAsync().ConfigureAwait(false);
+            }
+
+            // Somebody took the name between the check above and now.
+            catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                await RespondAsync($"The account with your username already exists \"{Context.User.Username}\".", ephemeral: true).ConfigureAwait(false);
+                return;
+            }
 
             await RespondAsync($"Login: {Context.User.Username}.", ephemeral: true).ConfigureAwait(false);
         }

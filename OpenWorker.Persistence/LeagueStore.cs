@@ -213,13 +213,22 @@ public static class LeagueStore
             .ToListAsync();
     }
 
+    // The comparison runs in the database, as lower("Name") = @key. Npgsql translates only the ToLower() without arguments and
+    // not string.Equals with a StringComparison, so the advice of the analyzers (culture, StringComparison) would not translate.
+#pragma warning disable CA1304, CA1311, CA1862
+    private static Task<bool> NameExistsAsync(PersistenceContext database, string key)
+    {
+        return database.Leagues.AnyAsync(e => e.Name.ToLower() == key);
+    }
+#pragma warning restore CA1304, CA1311, CA1862
+
     public static async Task<bool> NameTakenAsync(this IDbContextFactory<PersistenceContext> factory, string name)
     {
         await using var database = await factory.CreateDbContextAsync();
 
-        var key = name.Trim().ToLower();
+        var key = name.Trim().ToLowerInvariant();
 
-        return await database.Leagues.AnyAsync(e => e.Name.ToLower() == key);
+        return await NameExistsAsync(database, key);
     }
 
     /// <summary>
@@ -255,9 +264,9 @@ public static class LeagueStore
             return (LeagueCreateOutcome.InLeague, TimeSpan.Zero, null);
         }
 
-        var key = name.Trim().ToLower();
+        var key = name.Trim().ToLowerInvariant();
 
-        if (await database.Leagues.AnyAsync(e => e.Name.ToLower() == key))
+        if (await NameExistsAsync(database, key))
         {
             return (LeagueCreateOutcome.NameTaken, TimeSpan.Zero, null);
         }

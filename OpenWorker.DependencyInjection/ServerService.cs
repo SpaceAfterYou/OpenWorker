@@ -4,29 +4,48 @@ using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
 using Arch.Core.Extensions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.SoulWorker.Network;
 
 namespace OpenWorker.DependencyInjection;
 
-internal sealed class ServerService(
+internal sealed partial class ServerService(
     World world,
     WorldLoop loop,
     HandlerExecutor executor,
-    IConfiguration configuration,
+    IOptions<ServerOptions> server,
+    IOptions<GameOptions> game,
+    IOptions<HotspotOptions> hotspot,
     ArchComponentProvider components,
     IEnumerable<ISessionCloseHandler> closeHandlers,
     ILogger<ServerService> logger
 ) :
     BackgroundService
 {
+    /// <summary>
+    /// How long the server waits after a connection that could not be accepted, so a fault that stays does not fill the log.
+    /// </summary>
+    private static TimeSpan AcceptRetry { get; } = TimeSpan.FromSeconds(1);
+
     private Lock DumpLock { get; } = new();
-    private TcpListener Listener { get; } = new(IPAddress.Any, 10_000);
-    private string GameVersion { get; } = configuration.GetValue("Game:Version", "0.0.0.0");
+    private TcpListener Listener { get; } = new(IPAddress.Any, server.Value.Port);
+    private string? DumpDirectory { get; } = ResolveDumpDirectory(hotspot.Value, game.Value);
+
+    /// <summary>
+    /// Where Debug builds save every received message, one file per opcode. <c>Hotspot:PacketDumpPath</c>
+    /// set to an empty value turns the dumps off.
+    /// </summary>
+    private static string? ResolveDumpDirectory(HotspotOptions hotspot, GameOptions game)
+    {
+        return string.IsNullOrWhiteSpace(hotspot.PacketDumpPath)
+            ? null
+            : Path.Combine(hotspot.PacketDumpPath, game.Version);
+    }
 
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
@@ -39,16 +58,43 @@ internal sealed class ServerService(
 
         logger.LogDebug("Server ready.");
 
-        while (cancellationToken.IsCancellationRequested is false)
+        try
         {
-            var socket = await Listener.AcceptTcpClientAsync(cancellationToken);
+            while (cancellationToken.IsCancellationRequested is false)
+            {
+                TcpClient socket;
 
-            _ = Task.Run(() => SessionLoopAsync(socket, cancellationToken), cancellationToken);
+                try
+                {
+                    socket = await Listener.AcceptTcpClientAsync(cancellationToken);
+                }
+
+                catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+                {
+                    // One connection that cannot be accepted (the process is out of file handles, the client went away
+                    // at once) must not stop the server from accepting the others.
+                    LogAcceptFailed(logger, e);
+
+                    await Task.Delay(AcceptRetry, cancellationToken);
+
+                    continue;
+                }
+
+                _ = Task.Run(() => SessionLoopAsync(socket, cancellationToken), cancellationToken);
+            }
         }
 
-        logger.LogDebug("Server shutdown.");
+        catch (OperationCanceledException)
+        {
+            // The server is stopping.
+        }
 
-        Listener.Stop();
+        finally
+        {
+            logger.LogDebug("Server shutdown.");
+
+            Listener.Stop();
+        }
     }
 
     private async Task SessionLoopAsync(TcpClient socket, CancellationToken cancellationToken)
@@ -133,9 +179,18 @@ internal sealed class ServerService(
     [Conditional("DEBUG")]
     private void DumpPacket(MessageHeader header, Memory<byte> buffer)
     {
-        var dir = Path.Combine("test", "hotspot", GameVersion);
+        if (DumpDirectory is not { } dir || buffer.Length < 2)
+        {
+            return;
+        }
+
         var name = $"0x{buffer.Span[0]:X2},0x{buffer.Span[1]:X2}.bin";
         var path = Path.Join(dir, name);
+
+        // The dumps end up in the repository: passwords and tickets must not.
+        var content = buffer.ToArray();
+
+        PacketRedaction.Redact(content);
 
         try
         {
@@ -149,7 +204,7 @@ internal sealed class ServerService(
 
                 header.ToBinary(writer);
 
-                writer.Write(buffer.Span);
+                writer.Write(content);
             }
         }
 
@@ -158,4 +213,7 @@ internal sealed class ServerService(
             logger.LogDebug(e, "Failed to save packet {Path}.", path);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Could not accept a connection.")]
+    private static partial void LogAcceptFailed(ILogger logger, Exception exception);
 }

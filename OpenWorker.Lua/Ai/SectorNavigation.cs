@@ -30,11 +30,11 @@ public sealed class SectorNavigation : INavigation
     {
     }
 
-    public Vector3? Clamp(Vector3 from, Vector3 to)
+    public Vector3? Clamp(Vector3 from, Vector3 target)
     {
         if (Find(from) is not { } box)
         {
-            return to;
+            return target;
         }
 
         var middle = (box.Minimum + box.Maximum) / 2f;
@@ -43,12 +43,12 @@ public sealed class SectorNavigation : INavigation
         var low = new Vector2(Math.Min(box.Minimum.X + Margin, middle.X), Math.Min(box.Minimum.Y + Margin, middle.Y));
         var high = new Vector2(Math.Max(box.Maximum.X - Margin, middle.X), Math.Max(box.Maximum.Y - Margin, middle.Y));
 
-        return new Vector3(Math.Clamp(to.X, low.X, high.X), Math.Clamp(to.Y, low.Y, high.Y), to.Z);
+        return new Vector3(Math.Clamp(target.X, low.X, high.X), Math.Clamp(target.Y, low.Y, high.Y), target.Z);
     }
 
-    public bool CanSee(Vector3 from, Vector3 to)
+    public bool CanSee(Vector3 from, Vector3 target)
     {
-        return Find(from) is not { } box || Find(to) is null || Contains(box, to);
+        return Find(from) is not { } box || Find(target) is null || Contains(box, target);
     }
 
     private (Vector2 Minimum, Vector2 Maximum)? Find(Vector3 point)

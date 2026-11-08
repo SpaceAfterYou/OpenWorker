@@ -18,7 +18,7 @@ public interface IPresenceSource
     PresenceRecord Describe(Entity player, Guid instance);
 }
 
-internal sealed class PersonPresenceSource(
+internal sealed partial class PersonPresenceSource(
     World world,
     ServiceChannels channels,
     BatchManager batches,
@@ -61,9 +61,12 @@ internal sealed class PersonPresenceSource(
 
         catch (Exception e)
         {
-            logger.LogDebug(e, "Could not tell the kind of location {Location}.", location);
+            LogLocationKindUnknown(logger, e, location);
 
             return false;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Could not tell the kind of location {Location}.")]
+    private static partial void LogLocationKindUnknown(ILogger logger, Exception exception, short location);
 }

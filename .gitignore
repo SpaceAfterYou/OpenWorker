@@ -710,3 +710,9 @@ $RECYCLE.BIN/
 # Local reverse engineering material and working notes
 Reverse/
 docs/
+
+# Local settings of compose.yaml
+.env
+
+# JetBrains IDE settings of the local machine
+.idea/
