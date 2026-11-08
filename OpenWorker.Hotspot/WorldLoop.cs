@@ -25,16 +25,23 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
     private readonly Thread _thread;
 
     /// <param name="metrics">Reports the queue and the callbacks; <see langword="null"/> for a loop nobody measures.</param>
-    public WorldLoop(ILogger<WorldLoop> logger, WorldLoopMetrics? metrics = null)
+    /// <param name="sessions">Counts the messages the encoder of the loop drops; <see langword="null"/> for none.</param>
+    public WorldLoop(ILogger<WorldLoop> logger, WorldLoopMetrics? metrics = null, SessionMetrics? sessions = null)
     {
         _logger = logger;
         _metrics = metrics;
+        Encoder = new FrameEncoder(logger, sessions);
         _metrics?.ObserveQueue(QueueLength);
         _thread = new Thread(Run) { IsBackground = true, Name = nameof(WorldLoop) };
         _thread.Start();
     }
 
     public bool IsCurrent => Environment.CurrentManagedThreadId == _thread.ManagedThreadId;
+
+    /// <summary>
+    /// Encodes the messages sent on the loop, one after another: the loop has one thread, so one encoder.
+    /// </summary>
+    internal FrameEncoder Encoder { get; }
 
     /// <summary>
     /// Callbacks that wait for the thread. Safe to read from any thread, for the gauge.
@@ -139,10 +146,11 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
     {
         _queue.CompleteAdding();
 
-        // The queue cannot be disposed while the thread still reads it.
+        // The queue cannot be disposed while the thread still reads it, nor the encoder while the thread may still send.
         if (!IsCurrent && _thread.Join(StopTimeout))
         {
             _queue.Dispose();
+            Encoder.Dispose();
         }
     }
 

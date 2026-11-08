@@ -33,21 +33,51 @@ public readonly record struct ServiceChannel(short Identifier)
         }
     }
 
+    /// <summary>
+    /// Sends the message to every member, encoded once.
+    /// </summary>
     public void Broadcast(IResponseHotspotMessage message)
     {
-        foreach (var session in Members.Values)
+        if (Members.IsEmpty)
         {
-            session.Send(message);
+            return;
+        }
+
+        using var frame = Frame.Encode(message);
+
+        if (frame is null)
+        {
+            return;
+        }
+
+        foreach (var (_, session) in Members)
+        {
+            session.Send(frame);
         }
     }
 
+    /// <summary>
+    /// Sends the message to every member but the player, encoded once.
+    /// </summary>
     public void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
     {
+        if (Members.IsEmpty)
+        {
+            return;
+        }
+
+        using var frame = Frame.Encode(message);
+
+        if (frame is null)
+        {
+            return;
+        }
+
         foreach (var (member, session) in Members)
         {
             if (member != player)
             {
-                session.Send(message);
+                session.Send(frame);
             }
         }
     }

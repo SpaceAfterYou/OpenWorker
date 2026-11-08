@@ -340,11 +340,19 @@ public sealed partial class CommunityNetwork(
             ? Players.Values.ToArray()
             : envelope.Targets.Where(Players.ContainsKey).Select(e => Players[e]).ToArray();
 
+        // Written once for everyone it goes to.
+        using var frame = Frame.Encode(response);
+
+        if (frame is null)
+        {
+            return;
+        }
+
         foreach (var player in receivers)
         {
             if (world.IsAlive(player))
             {
-                world.Get<ServerSessionComponent>(player).Send(response);
+                world.Get<ServerSessionComponent>(player).Send(frame);
             }
         }
     }
