@@ -23,7 +23,9 @@ public sealed partial class HandlerExecutor(
     private readonly IHotspotHandler?[] _instances = new IHotspotHandler?[collection.Classes];
 
     // Readers that no packet uses. A handler holds its reader until it returns, awaits included, and other packets run on
-    // the loop meanwhile, so there are as many as packets in flight at once; usually one.
+    // the loop meanwhile, so there are as many as packets in flight at once. Usually that is one, the spare, taken and
+    // given back with one atomic exchange; the others wait in the stack.
+    private RequestReader? _spare;
     private readonly Stack<RequestReader> _readers = new();
     private readonly Lock _readersLock = new();
 
@@ -114,11 +116,14 @@ public sealed partial class HandlerExecutor(
 
     private RequestReader RentReader(ReadOnlyMemory<byte> packet)
     {
-        RequestReader? reader;
+        var reader = Interlocked.Exchange(ref _spare, null);
 
-        lock (_readersLock)
+        if (reader is null)
         {
-            _readers.TryPop(out reader);
+            lock (_readersLock)
+            {
+                _readers.TryPop(out reader);
+            }
         }
 
         reader ??= new RequestReader();
@@ -132,6 +137,11 @@ public sealed partial class HandlerExecutor(
     {
         // The packet goes back to the read loop with the end of the handler; the reader must not keep it.
         reader.Stream.Source = ReadOnlyMemory<byte>.Empty;
+
+        if (Interlocked.CompareExchange(ref _spare, reader, null) is null)
+        {
+            return;
+        }
 
         lock (_readersLock)
         {
