@@ -2,8 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <Nullable>enable</Nullable>
-        <ImplicitUsings>enable</ImplicitUsings>
         <UserSecretsId>dotnet-OpenWorker.DistrictServer-91ff3509-6749-4022-b796-9f63e3a4295e</UserSecretsId>
         <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>

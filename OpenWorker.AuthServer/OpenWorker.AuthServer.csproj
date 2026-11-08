@@ -2,8 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <Nullable>enable</Nullable>
-        <ImplicitUsings>enable</ImplicitUsings>
         <UserSecretsId>dotnet-OpenWorker.AuthServer-a358609d-db9d-42fc-af37-34212d5e7bff</UserSecretsId>
         <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
