@@ -2,19 +2,21 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ItemSetupMakeRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ItemSetupMakeRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
     private const ItemSetupOpcode Command = ItemSetupOpcode.Make;
 
-    public int Npc { get; } = reader.ReadInt32();
-    public int MakeIndex { get; } = reader.ReadInt32();
-    public short Unknown { get; } = reader.ReadInt16();
-    public byte MakeCount { get; } = reader.ReadByte();
+    public int Npc { get; }
+    public int MakeIndex { get; }
+    public short Unknown { get; }
+    public byte MakeCount { get; }
     
     public MessageOpcode Opcode => new(Group, Command);
 }
