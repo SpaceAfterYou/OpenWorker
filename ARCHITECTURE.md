@@ -248,6 +248,11 @@ snapshot produce two migrations that repeat each other, and the second one fails
 while `has-pending-model-changes` stays quiet; after merging such branches, apply the whole chain to an
 empty database (`dotnet ef database update`, as CI does) before pushing.
 
+Nothing reads the database while the container is built: the host builds every hosted service before it starts the
+first, so such a read would come before the migration. What a server needs from the database at start is read by a
+hosted service that starts after the migration (`ServerContentLoadService` fills `ServerContent` before the listener
+starts); a table that is still missing then stops the server.
+
 Connection settings: `ConnectionStrings:Postgres`, `ConnectionStrings:Redis` (see Settings).
 
 ## Settings

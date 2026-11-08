@@ -210,18 +210,24 @@ servers with the data of client 1.4.2.3 (Release builds, `docker run`, one machi
   and 16 at the end, after the maze bots left), so the channel fix works on the real district. Its first runs found three
   faults of the script and the override, fixed in `ee880d4`: the wait for the ports passed at once, the other servers
   started before the relay had migrated a fresh database and made the Redis indexes (the maze server died), and the first
-  second of bots found no gate because the seed ran right before them.
+  second of bots found no gate because the seed ran right before them. The maze fault was the server's: it read
+  `ServerContents` while its container was built, before its own migration. Fixed afterwards: the table is read by a
+  hosted service that starts after the migration (`ServerContentLoadService`), and a maze started alone on an empty
+  database migrates it and turns ready.
 
 The first runs found five faults of the bot, fixed with tests: no gate in a fresh database (`seed` now makes it), the
 names of the duration metrics, durations in seconds that the report rounded to zero, and the moves of the monsters of a
 maze counted as unmatched broadcasts (twice: monsters without a bot's number, then monsters that carry the number of a
-district bot). They also found three faults of the servers; the channel fault was fixed afterwards, the other two
-are open:
+district bot). They also found three faults of the servers; the costume and the channel faults were fixed afterwards,
+the third is open:
 
 - The gate refuses the outfit a real client sends for Stella by default (511) with `CreateFailed`:
   `PersonCreationCatalog` reads the offered costumes from `Default_Cloth_ID_01..04` of `tb_Character_Info`, which hold
   521, 531, 541 and 50011; the first costume, 511 (also in `tb_Create_Cloth`), is in the column before them (`Field20`),
-  so the names of the generated columns are one place off. The bot sends 521.
+  so the names of the generated columns are one place off. The bot sent 521 until it was fixed. Fixed afterwards in
+  `OpenWorker.Res/Rows/CharacterInfoRow.cs`: `Default_Cloth_ID_01..04` now name the four columns that start one place
+  earlier (111 to 141 for Haru up to 611 to 641 for Iris, the costumes of `tb_Create_Cloth`), the column after them
+  (10011 for Haru, 50011 for Stella) is `Field24`, and the bot sends the client's own 511 again.
 - The district puts every player into channel 1: `ChannelUtils.GetWorkload(IComparable)` matches the boxed `int` of
   `Members.Count` against `short` constants, which never matches, so no channel is ever Full. The baseline uses
   `--channel-fill 65` to fill the channels from the bot side. Fixed afterwards in `OpenWorker.Hotspot/Cache/ChannelUtils.cs`:
