@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    # The dashboard refers to the data source by this uid, so it works from the first start.
+    uid: openworker-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      # The servers send every 10 seconds (Telemetry:ExportInterval).
+      timeInterval: 10s

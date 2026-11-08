@@ -61,6 +61,58 @@
     networks:
       - eva-01
 
+  # Metrics. The servers push them to Prometheus over OTLP (Telemetry__Endpoint, by default
+  # http://prometheus:9090/api/v1/otlp/v1/metrics), Grafana reads them from it. See the notes at the end of the file.
+  prometheus:
+    container_name: "OpenWorker-Prometheus"
+    image: prom/prometheus:v3.15.1
+    pull_policy: missing
+    restart: on-failure
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-otlp-receiver
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+    networks:
+      - eva-01
+    volumes:
+      - ./eng/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--spider", "http://localhost:9090/-/ready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    container_name: "OpenWorker-Grafana"
+    image: grafana/grafana:12.4.14
+    pull_policy: missing
+    restart: on-failure
+    environment:
+      # Local development only: everybody who reaches the port is an administrator, there is no login.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/var/lib/grafana/dashboards/openworker.json"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - eva-01
+    volumes:
+      - ./eng/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./eng/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--spider", "http://localhost:3000/api/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   openworker.relayserver:
     container_name: "OpenWorker-RelayServer"
     build:
@@ -341,6 +393,9 @@ networks:
   eva-01:
     driver: bridge
 
+volumes:
+  prometheus-data:
+
 # Volumes with the data of the client come from SOULWORKER_DATAS, the `datas` folder of an
 # installed client: set it in the shell or in `.env` next to this file, e.g.
 # SOULWORKER_DATAS=/mnt/games/soulworker/datas
@@ -351,6 +406,15 @@ networks:
 # one. A district has no default for the port clients reach it at: Instance__PublicPort is the port it is
 # published on, as in the ports above. A server stops at start, naming the setting, when one is missing or wrong.
 # Hotspot__PacketDumpPath= (empty) turns the dumps off.
+#
+# Metrics: every server records them (the OpenWorker meter and the .NET runtime) and pushes them over OTLP to Prometheus
+# every Telemetry__ExportInterval. `docker compose up prometheus grafana` starts the two, and the servers find Prometheus at
+# prometheus:9090 by themselves. Open http://localhost:3000: Grafana has no login here, and its home page is the dashboard
+# "OpenWorker" (folder OpenWorker), provisioned from eng/observability/grafana. http://localhost:9090 is Prometheus itself,
+# for a query of your own, e.g. histogram_quantile(0.99, sum by (le) (rate(worldloop_callback_duration_seconds_bucket[1m]))).
+# Telemetry__Endpoint= (empty) turns the export of one server off; the metrics are still recorded in the process.
+# A server that runs outside compose (dotnet run) sends to http://localhost:9090/api/v1/otlp/v1/metrics:
+# Telemetry__Endpoint=http://localhost:9090/api/v1/otlp/v1/metrics
 
 # https://youtu.be/Soa3gO7tL-c?list=RDMM
 # https://youtu.be/_N66Hud_Tq4?list=RDeT2XZA8LZzM

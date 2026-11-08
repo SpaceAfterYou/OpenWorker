@@ -1,0 +1,17 @@
+# Prometheus for the local compose. The servers push their metrics over OTLP (--web.enable-otlp-receiver in
+# compose.yaml, endpoint /api/v1/otlp/v1/metrics), so there is nothing to scrape.
+#
+# The names of the metrics change on the way in: the dots become underscores, a unit becomes a suffix and a counter ends in
+# _total, so `handler.duration` (seconds) is `handler_duration_seconds` and `sessions.closed` is `sessions_closed_total`.
+# The dashboard in grafana/dashboards/openworker.json uses these names.
+
+global:
+  evaluation_interval: 15s
+
+otlp:
+  # service.name becomes `job` and service.instance.id becomes `instance`. These two attributes of the resource are
+  # what tells the districts apart, and the gate their servers belong to, so they become labels of every series.
+  promote_resource_attributes:
+    - openworker.location
+    - openworker.gate
+  translation_strategy: UnderscoreEscapingWithSuffixes
