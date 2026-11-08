@@ -4,11 +4,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonLevelResponse : IResponseHotspotMessage
+public readonly partial struct PersonLevelResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -25,14 +27,4 @@ public readonly struct PersonLevelResponse : IResponseHotspotMessage
     public byte Value { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Value);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -5,20 +5,22 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct PersonEnterGameServerRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct PersonEnterGameServerRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.EnterGameServerReq;
 
-    public int Account { get; } = reader.ReadInt32();
-    public ActorValue Actor { get; } = new(reader);
-    public MapValue Map { get; } = new(reader);
-    public bool FirstConnect { get; } = reader.ReadBoolean();
-    public SessionValue Session { get; } = new(reader);
+    public int Account { get; }
+    public ActorValue Actor { get; }
+    public MapValue Map { get; }
+    public bool FirstConnect { get; }
+    public SessionValue Session { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

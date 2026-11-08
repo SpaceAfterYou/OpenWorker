@@ -6,18 +6,22 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Friends.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct PersonCommunityRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct PersonCommunityRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.Community;
 
-    public CommunityState State { get; } = reader.ReadCommunityState();
-    public string Comment { get; } = reader.ReadCommunityComment();
-    public string Memo { get; } = reader.ReadCommunityMemo();
+    public CommunityState State { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string Comment { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string Memo { get; }
     
     public MessageOpcode Opcode => new(Group, Command);
 }

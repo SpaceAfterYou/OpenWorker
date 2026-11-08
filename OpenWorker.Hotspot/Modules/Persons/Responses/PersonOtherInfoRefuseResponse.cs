@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// Another player cannot be looked at.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonOtherInfoRefuseResponse : IResponseHotspotMessage
+public readonly partial struct PersonOtherInfoRefuseResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -24,17 +26,8 @@ public readonly struct PersonOtherInfoRefuseResponse : IResponseHotspotMessage
 #region Message: Body
 
     public int Error { get; init; }
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Error);
-        writer.WritePersonName(Name);
-    }
-
-#endregion Interface: IWritableData
 }

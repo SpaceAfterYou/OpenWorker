@@ -4,14 +4,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// Shows the motion of a player to the others.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonChangeMotionBroadcastResponse : IResponseHotspotMessage
+public readonly partial struct PersonChangeMotionBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -29,15 +31,4 @@ public readonly struct PersonChangeMotionBroadcastResponse : IResponseHotspotMes
     public short SubMotion { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Motion);
-        writer.Write(SubMotion);
-    }
-
-#endregion Interface: IWritableData
 }

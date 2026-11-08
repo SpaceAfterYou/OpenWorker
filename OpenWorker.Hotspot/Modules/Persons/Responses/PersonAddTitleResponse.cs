@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// A new title has been earned.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonAddTitleResponse : IResponseHotspotMessage
+public readonly partial struct PersonAddTitleResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -26,14 +28,4 @@ public readonly struct PersonAddTitleResponse : IResponseHotspotMessage
     public int Value { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Title);
-        writer.Write(Value);
-    }
-
-#endregion Interface: IWritableData
 }

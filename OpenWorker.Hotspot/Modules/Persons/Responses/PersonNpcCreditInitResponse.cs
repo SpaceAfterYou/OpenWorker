@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// Forgets the relations with NPCs.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonNpcCreditInitResponse : IResponseHotspotMessage
+public readonly partial struct PersonNpcCreditInitResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -19,12 +21,4 @@ public readonly struct PersonNpcCreditInitResponse : IResponseHotspotMessage
     public MessageOpcode Opcode => new(Group, Command);
 
 #endregion Interface: IHotspotMessage
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-    }
-
-#endregion Interface: IWritableData
 }
