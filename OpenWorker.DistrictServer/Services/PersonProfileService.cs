@@ -3,13 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.Hotspot.Handler.Attributes;
-using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Persistence;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class PersonProfileService(
     World world,
     TitleBook titles,

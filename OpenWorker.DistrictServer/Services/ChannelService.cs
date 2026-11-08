@@ -16,7 +16,6 @@ using OpenWorker.Hotspot.Modules.World.Types;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class ChannelService(
     World world,
     NpcManager npcManager,

@@ -9,7 +9,6 @@ namespace OpenWorker.MazeServer.Services;
 /// <summary>
 /// The client asks to take a thing it has seen on the ground.
 /// </summary>
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class DropRequestService(DropService drops) : IHotspotHandler<DropPickUpRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, DropPickUpRequest request)

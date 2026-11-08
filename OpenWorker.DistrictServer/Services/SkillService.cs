@@ -17,7 +17,6 @@ using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skills, ReadOnlyCollection<CharacterInfoRow> characterInfo) :
     IHotspotHandler<SkillDeckBonusRequest>,
     IHotspotHandler<SkillAddDeckSlotRequest>,

@@ -47,6 +47,7 @@ await Host
         services.AddSingleton<MonsterBehaviorTables>();
         services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<CreatureServices>();
+        services.AddSingleton(_ => new MazeScripts());
         services.AddSingleton<SimulationClock>();
         services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());
 
@@ -76,6 +77,7 @@ await Host
         // services.AddSingleton<NpcManager>();
         // services.AddSingleton<PersonRegistry>();
 
+        // A player in a maze is the person of the district, with the same components.
         services.AddHotspot(context, EntityComponentService.District);
         services.AddRegistrationService<MazeRegistrationService>();
 

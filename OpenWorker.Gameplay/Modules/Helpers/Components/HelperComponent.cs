@@ -7,7 +7,6 @@ namespace OpenWorker.Gameplay.Modules.Helpers.Components;
 /// The helpers of the person, null until they are loaded.
 /// </summary>
 [EntityComponent(EntityComponentService.District)]
-[EntityComponent(EntityComponentService.Maze)]
 public struct HelperComponent
 {
     public int Person;

@@ -139,8 +139,17 @@ internal static partial class LuaLog
 
     // ---- The script asks for something that is not there ---------------------------------------
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script {Script} called {Function}, which the server does not do; the call does nothing (said once for the script and the function)")]
+    public static partial void NotDoneByServer(this ILogger logger, string function, string script);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The script {Script} failed in {Function}; the maze ends for the player")]
+    public static partial void ScriptFailed(this ILogger logger, Exception exception, string function, string script);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script added an event timer {Function} of the unknown type {Type}; it is left out")]
     public static partial void UnknownEventTimerType(this ILogger logger, int type, string function);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script stored a value under something that is neither a key nor a number; nothing is stored")]
+    public static partial void UnreadableLuaValue(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script set the unknown maze state {State}")]
     public static partial void UnknownMazeState(this ILogger logger, int state);
@@ -183,6 +192,23 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Error, Message = "A delayed action of the maze failed")]
     public static partial void DelayedActionFailed(this ILogger logger, Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Showing the creatures of spawn box {Box} later failed")]
-    public static partial void LateShowFailed(this ILogger logger, Exception exception, int box);
+    // ---- Monsters ---------------------------------------------------------------------------
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No script of the AI named {Name}, the monster will not think")]
+    public static partial void NoAiScript(this ILogger logger, string name);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The script of the AI named {Name} cannot be read, the monster will not think")]
+    public static partial void AiScriptUnreadable(this ILogger logger, Exception exception, string name);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Script}: {Method} was called with something it cannot take: {Message}")]
+    public static partial void AiScriptBadArgument(this ILogger logger, string script, string method, string message);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The monster {Monster} failed to think")]
+    public static partial void MonsterFailedToThink(this ILogger logger, Exception exception, int monster);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} ({Actor}): {Old} -> {New}")]
+    public static partial void MonsterChangedState(this ILogger logger, int monster, int actor, OpenWorker.Gameplay.Ai.AiState old, OpenWorker.Gameplay.Ai.AiState @new);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} wants to die, which a maze script has to finish")]
+    public static partial void MonsterWantsToDie(this ILogger logger, int monster);
 }

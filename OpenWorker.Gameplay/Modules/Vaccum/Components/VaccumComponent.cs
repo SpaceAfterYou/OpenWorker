@@ -7,7 +7,6 @@ namespace OpenWorker.Gameplay.Modules.Vaccum;
 /// The cubes of a person and what it is taking now.
 /// </summary>
 [EntityComponent(EntityComponentService.District)]
-[EntityComponent(EntityComponentService.Maze)]
 public struct VaccumComponent
 {
     public Dictionary<int, VaccumCubeState>? Cubes;

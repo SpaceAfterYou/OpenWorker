@@ -7,7 +7,6 @@ namespace OpenWorker.Gameplay.Modules.DailyMissions.Components;
 /// The daily missions of the person, null until they are loaded.
 /// </summary>
 [EntityComponent(EntityComponentService.District)]
-[EntityComponent(EntityComponentService.Maze)]
 public struct DailyMissionComponent
 {
     public int Person;

@@ -43,7 +43,6 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.MazeServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed partial class PersonService(
     World world,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
@@ -66,6 +65,7 @@ public sealed partial class PersonService(
     MiscStateLoader miscState,
     MazeReporter reports,
     CreatureServices creatureServices,
+    MazeScripts mazeScripts,
     ILogger<LuaCreatureManager> creatureLogger,
     ILogger<LuaMaze> mazeLogger,
     ILogger<LuaGameHelper> helperLogger,
@@ -200,17 +200,20 @@ public sealed partial class PersonService(
         state.Environment["Soulworker"] = new LuaValue(table);
 
 
-        var script = Path.Join("scripts", $"{mazeInfo.Script}.lua");
-
-        // A few mazes have no script among the files of the client, and are played without one.
-        if (File.Exists(script))
+        // A few mazes have no script among the files of the client, and are played without one. The script is read and
+        // compiled once, off the loop; each maze runs the compiled chunk in its own state.
+        try
         {
-            await state
-                .DoFileAsync(script, context.CancellationToken);
+            if (!await mazeScripts.RunAsync(state, mazeInfo.Script, context.CancellationToken))
+            {
+                LogNoScript(logger, mazeScripts.PathOf(mazeInfo.Script));
+            }
         }
-        else
+
+        // A script that does not load is no fault of the client: the maze runs without it.
+        catch (Exception e) when (e is not OperationCanceledException)
         {
-            LogNoScript(logger, script);
+            LogScriptFailed(logger, e, mazeScripts.PathOf(mazeInfo.Script));
         }
 
         var (mesh, meshError) = await creatureServices.Meshes.GetAsync(mazeInfo.Batch);
@@ -221,7 +224,7 @@ public sealed partial class PersonService(
         }
 
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo, reports, mazeLogger);
+        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger);
 
         world.Add(context.Player, maze);
 
@@ -305,6 +308,9 @@ public sealed partial class PersonService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} has no navigation mesh, its monsters walk where they like: {Error}")]
     private static partial void LogNoNavigationMesh(ILogger logger, string maze, string? error);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The script {Script} of the maze failed to load, the maze runs without it")]
+    private static partial void LogScriptFailed(ILogger logger, Exception exception, string script);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The script {Script} of the maze is missing, the maze runs without it")]
     private static partial void LogNoScript(ILogger logger, string script);

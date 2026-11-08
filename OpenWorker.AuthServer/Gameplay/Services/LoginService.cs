@@ -6,7 +6,6 @@ using OpenWorker.Hotspot.Modules.Login.Requests;
 
 namespace OpenWorker.AuthServer.Gameplay.Services;
 
-[HotspotHandler(HotspotHandlerType.Auth)]
 internal sealed class LoginService(LoginGameplay gameplay) :  
     IHotspotHandler<LoginAuthRequest>,
     IHotspotHandler<LoginNextHumanNetworkRequest>

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace OpenWorker.Hotspot.Test;
@@ -70,6 +71,46 @@ public sealed class SimulationClockTest
         Assert.HasCount(1, leaving.Steps);
         Assert.HasCount(2, staying.Steps);
         Assert.AreEqual(1, clock.Count);
+    }
+
+    [TestMethod]
+    public void SimulationRemovedByAnotherDuringATickIsNotSteppedAgain()
+    {
+        var clock = Create();
+        var later = new Recorder();
+        var first = new Recorder(_ => clock.Remove(later));
+
+        clock.Add(first);
+        clock.Add(later);
+
+        clock.Tick();
+
+        Assert.IsEmpty(later.Steps);
+        Assert.AreEqual(1, clock.Count);
+    }
+
+    [TestMethod]
+    public void ScheduledActionRunsAtItsDueTickAndNotBefore()
+    {
+        var time = new FakeTimeProvider();
+        var clock = new SimulationClock(new WorldLoop(NullLogger<WorldLoop>.Instance), NullLogger<SimulationClock>.Instance, time: time);
+        var ran = new List<TimeSpan>();
+        var cancelled = clock.Schedule(SimulationClock.Period, () => ran.Add(TimeSpan.MinValue));
+
+        clock.Schedule(SimulationClock.Period * 3, () => ran.Add(clock.Now));
+        clock.Schedule(TimeSpan.Zero, () => ran.Add(clock.Now));
+        Assert.IsTrue(cancelled.Cancel());
+
+        for (var tick = 0; tick < 5; tick++)
+        {
+            time.Advance(SimulationClock.Period);
+            clock.Tick();
+        }
+
+        // A delay of nothing is the next tick, three periods are the third; the cancelled one never runs.
+        CollectionAssert.AreEqual(new[] { SimulationClock.Period, SimulationClock.Period * 3 }, ran);
+        Assert.IsFalse(cancelled.IsPending);
+        Assert.AreEqual(0, clock.Pending);
     }
 
     [TestMethod]

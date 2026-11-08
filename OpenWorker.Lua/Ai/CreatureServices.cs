@@ -11,7 +11,7 @@ namespace OpenWorker.Lua.Ai;
 public sealed class CreatureServices(AiScriptLoader scripts, MonsterBehaviorTables behaviors, SkillActionProvider actions, SimulationClock clock, NavMeshProvider meshes)
 {
     /// <summary>
-    /// Steps the monsters of every maze of the server.
+    /// Steps every maze of the server, its monsters with it, and runs what the mazes wait for.
     /// </summary>
     public SimulationClock Clock { get; } = clock;
 

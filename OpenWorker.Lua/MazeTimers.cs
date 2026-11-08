@@ -8,7 +8,7 @@ public interface IMazeTimerHost
     /// <summary>
     /// Calls a function of the script: a step of a timer or a timer with parameters.
     /// </summary>
-    ValueTask CallAsync(string function, int first, int second, int third);
+    ValueTask CallAsync(string name, int first, int second, int third);
 
     /// <summary>
     /// Calls the function the script has for every plain timer.
@@ -18,7 +18,7 @@ public interface IMazeTimerHost
     /// <summary>
     /// Shows the countdown to the player, or hides it with a negative value.
     /// </summary>
-    void ShowTimer(int value, float time, float next);
+    void ShowTimer(int value, float time, float following);
 }
 
 /// <summary>

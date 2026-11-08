@@ -66,13 +66,57 @@ internal sealed class MonsterBody : IAiHost
         HomePosition = home;
         _born = manager.Now;
 
-        Machine = new AiMachine(profile, this, manager.Random);
-        Machine.StateChanged += (old, state) => manager.Logger.LogDebug("Monster {Monster} ({Actor}): {Old} -> {New}", behavior.Id, entity.Id, old, state);
+        Machine = CreateMind(profile);
     }
 
-    public Entity Entity { get; }
-    public MonsterBehavior Behavior { get; }
-    public AiMachine Machine { get; }
+    public Entity Entity { get; private set; }
+    public MonsterBehavior Behavior { get; private set; }
+    public AiMachine Machine { get; private set; }
+
+    private AiMachine CreateMind(AiProfile profile)
+    {
+        var machine = new AiMachine(profile, this, _manager.Random);
+
+        machine.StateChanged += OnStateChanged;
+
+        return machine;
+    }
+
+    private void OnStateChanged(AiState old, AiState state)
+    {
+        _manager.Logger.MonsterChangedState(Behavior.Id, Entity.Id, old, state);
+    }
+
+    /// <summary>
+    /// The body of a monster that is gone takes a new monster of the same script: its lists are kept, everything it
+    /// knew is forgotten, and the mind starts afresh, because a mind carries too much to clear by hand.
+    /// </summary>
+    public MonsterBody Revive(Entity entity, MonsterBehavior behavior, Vector3 home)
+    {
+        Entity = entity;
+        Behavior = behavior;
+        HomePosition = home;
+        IsRevealed = false;
+
+        _pending.Clear();
+        _route.Clear();
+        _found.Clear();
+        _flights.Clear();
+        _destination = null;
+        _run = false;
+        _battlePose = false;
+        _gazing = false;
+        _attackEnd = 0;
+        _staggerEnd = 0;
+        _lastMoveSent = 0;
+        _lastYawSent = float.NaN;
+        _born = _manager.Now;
+        _shotSession = 0;
+
+        Machine = CreateMind(Machine.Profile);
+
+        return this;
+    }
 
     /// <summary>
     /// The clients know the monster and can be told what it does.
@@ -97,7 +141,7 @@ internal sealed class MonsterBody : IAiHost
 
     public Vector3 Position => _ecs.Get<WorldComponent>(Entity).Position;
 
-    public Vector3 HomePosition { get; }
+    public Vector3 HomePosition { get; private set; }
 
     public float Yaw => _ecs.Get<WorldComponent>(Entity).Rotation;
 
@@ -557,8 +601,11 @@ internal sealed class MonsterBody : IAiHost
 
         var targets = _manager.GetPlayerTargets();
 
-        foreach (var flight in _flights.ToArray())
+        // In place: a projectile that is over leaves the list after the round.
+        for (var index = 0; index < _flights.Count; index++)
         {
+            var flight = _flights[index];
+
             foreach (var explosion in flight.Projectile.Advance(elapsed, targets))
             {
                 var area = new AttackArea(flight.Trigger, explosion.Position, Yaw);
@@ -571,12 +618,9 @@ internal sealed class MonsterBody : IAiHost
 
                 _manager.HitPlayers(this, flight.Skill, flight.Trigger, victims);
             }
-
-            if (flight.Projectile.IsOver)
-            {
-                _flights.Remove(flight);
-            }
         }
+
+        _flights.RemoveAll(static e => e.Projectile.IsOver);
     }
 
     // ---- Telling the clients ------------------------------------------------------------------

@@ -9,7 +9,6 @@ namespace OpenWorker.DistrictServer.Services;
 /// <summary>
 /// The rewards of attendance go to the person by themselves, so the requests of the client only make the server look again.
 /// </summary>
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class EventService(AttendanceManager attendance) :
     IHotspotHandler<EventAttendancePlayTimeRewardRequest>,
     IHotspotHandler<EventAttendanceRewardRequest>

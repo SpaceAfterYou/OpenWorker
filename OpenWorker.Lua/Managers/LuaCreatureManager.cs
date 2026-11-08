@@ -33,7 +33,7 @@ using OpenWorker.Navigation;
 
 namespace OpenWorker.Lua.Managers;
 
-public sealed class LuaCreatureManager : ISimulation
+public sealed class LuaCreatureManager
 {
     private static ComponentType[] Archetype { get; } = [
         ComponentRegistry.Add<ActorComponent>(),
@@ -62,6 +62,11 @@ public sealed class LuaCreatureManager : ISimulation
     }
 
     internal CreatureServices? Services { get; }
+
+    /// <summary>
+    /// Where the creatures that appear later wait, the group of the maze that owns them. Without one they appear at once.
+    /// </summary>
+    public ScheduleGroup? Schedule { get; set; }
 
     internal ILogger Logger { get; }
 
@@ -95,11 +100,25 @@ public sealed class LuaCreatureManager : ISimulation
     private HashSet<int> SpawnedBoxes { get; } = [];
     private HashSet<Entity> Scenery { get; } = [];
     private bool Closed { get; set; }
-    private bool Ticking { get; set; }
 
     private List<Entity> Creatures { get; } = [];
     private List<Entity> Players { get; } = [];
     private Dictionary<Entity, MonsterBody> Bodies { get; } = [];
+
+    /// <summary>
+    /// The bodies in the order they think, walked in place by <see cref="Step"/>.
+    /// </summary>
+    private StepList<MonsterBody> Minds { get; } = new();
+
+    /// <summary>
+    /// Bodies of monsters that are gone, kept to give a mind to the next monster of the same script.
+    /// </summary>
+    private Dictionary<AiProfile, Stack<MonsterBody>> SpareBodies { get; } = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// Spare bodies of one script kept at most: a maze has a few kinds of monster and spawns them in waves.
+    /// </summary>
+    private const int MaxSpareBodies = 32;
     private Dictionary<Entity, DefenseType> Defenses { get; } = [];
     private Dictionary<int, SectorKillProgress> KillProgress { get; } = [];
 
@@ -119,7 +138,7 @@ public sealed class LuaCreatureManager : ISimulation
         Attach(player);
 
         // Maps can point at boxes they no longer have, and a client walks through such a trigger like any other.
-        if (batch.EventBox.MonsterSpawns.FirstOrDefault(x => x.Id == box) is not { } spawn)
+        if (batch.EventBox.MonsterSpawns.Find(box) is not { } spawn)
         {
             return;
         }
@@ -164,7 +183,7 @@ public sealed class LuaCreatureManager : ISimulation
                 break;
 
             case CreationConditionType.WaitSignal:
-                _ = ShowLaterAsync(session, created, box, TimeSpan.FromSeconds(spawn.WaitCreationDelayTime));
+                ShowLater(session, created, TimeSpan.FromSeconds(float.IsFinite(spawn.WaitCreationDelayTime) ? Math.Clamp(spawn.WaitCreationDelayTime, 0f, 86_400f) : 0f));
                 break;
         }
     }
@@ -279,9 +298,31 @@ public sealed class LuaCreatureManager : ISimulation
             return;
         }
 
-        Bodies.Add(creature, new MonsterBody(ecs, this, services.Actions, creature, behavior, profile, home));
+        var body = SpareBodies.TryGetValue(profile, out var spare) && spare.TryPop(out var used)
+            ? used.Revive(creature, behavior, home)
+            : new MonsterBody(ecs, this, services.Actions, creature, behavior, profile, home);
 
-        StartTicking();
+        Bodies.Add(creature, body);
+        Minds.Add(body);
+    }
+
+    /// <summary>
+    /// The mind of a monster that is gone waits for the next monster of its script.
+    /// </summary>
+    private void Retire(MonsterBody body)
+    {
+        Minds.Remove(body);
+
+        if (!SpareBodies.TryGetValue(body.Machine.Profile, out var spare))
+        {
+            spare = new Stack<MonsterBody>();
+            SpareBodies.Add(body.Machine.Profile, spare);
+        }
+
+        if (spare.Count < MaxSpareBodies)
+        {
+            spare.Push(body);
+        }
     }
 
     public Entity CreateNpc(int identifier, MonsterSpawnBox spawn)
@@ -351,7 +392,7 @@ public sealed class LuaCreatureManager : ISimulation
     {
         if (!KillProgress.TryGetValue(sector, out var progress))
         {
-            var box = batch.EventBox.Sectors.FirstOrDefault(e => e.Id == sector);
+            var box = batch.EventBox.Sectors.Find(sector);
 
             progress = box is null ? new SectorKillProgress(ClearType.None, 0, []) : new SectorKillProgress(box);
 
@@ -366,7 +407,7 @@ public sealed class LuaCreatureManager : ISimulation
     /// </summary>
     public int CountBoxesToCome(int sector)
     {
-        return batch.EventBox.MonsterSpawns.Count(e => e.Sector == sector && !SpawnedBoxes.Contains(e.Id) && HoldsSector(e));
+        return batch.EventBox.SpawnsOf(sector).Count(e => !SpawnedBoxes.Contains(e.Id) && HoldsSector(e));
     }
 
     private bool HoldsSector(MonsterSpawnBox box)
@@ -383,7 +424,11 @@ public sealed class LuaCreatureManager : ISimulation
             GetKillProgress(ecs.Get<NonPlayableCreatureComponent>(creature).Sector).Removed();
         }
 
-        Bodies.Remove(creature);
+        if (Bodies.Remove(creature, out var body))
+        {
+            Retire(body);
+        }
+
         Defenses.Remove(creature);
         Creatures.Remove(creature);
         Scenery.Remove(creature);
@@ -395,41 +440,42 @@ public sealed class LuaCreatureManager : ISimulation
     {
         Closed = true;
 
-        if (Ticking)
+        foreach (var creature in Creatures)
         {
-            Services?.Clock.Remove(this);
-
-            Ticking = false;
-        }
-
-        foreach (var creature in Creatures.Where(ecs.IsAlive))
-        {
-            ecs.Destroy(creature);
+            if (ecs.IsAlive(creature))
+            {
+                ecs.Destroy(creature);
+            }
         }
 
         Creatures.Clear();
         Scenery.Clear();
         Bodies.Clear();
+        Minds.Clear();
+        SpareBodies.Clear();
         Defenses.Clear();
         Players.Clear();
     }
 
-    private async Task ShowLaterAsync(ServerSessionComponent session, List<Entity> created, int box, TimeSpan delay)
+    /// <summary>
+    /// The creatures of a box that waits for a signal show themselves after its delay, if the maze still runs.
+    /// </summary>
+    private void ShowLater(ServerSessionComponent session, List<Entity> created, TimeSpan delay)
     {
-        try
+        if (Schedule is not { } schedule)
         {
-            await Task.Delay(delay);
+            Show(session, created);
 
+            return;
+        }
+
+        schedule.Schedule(delay, () =>
+        {
             if (!Closed)
             {
                 Show(session, created.Where(ecs.IsAlive).ToList());
             }
-        }
-
-        catch (Exception e)
-        {
-            Logger.LateShowFailed(e, box);
-        }
+        });
     }
 
     public void MoveToPoint(int npc, int waypoint)
@@ -445,22 +491,11 @@ public sealed class LuaCreatureManager : ISimulation
     // ---- Minds --------------------------------------------------------------------------------
 
     /// <summary>
-    /// The first monster with a mind puts the maze on the clock of the server; <see cref="Close"/> takes it off.
+    /// The monsters think on the thread of the world, one after another, so nothing they do can meet another change
+    /// halfway. The maze calls it at every step of the clock. A monster that goes during the step is skipped, one that
+    /// comes thinks from the next step on.
     /// </summary>
-    private void StartTicking()
-    {
-        if (!Ticking && !Closed && Services?.Clock is { } clock)
-        {
-            Ticking = true;
-
-            clock.Add(this);
-        }
-    }
-
-    /// <summary>
-    /// The monsters think on the thread of the world, one after another, so nothing they do can meet another change halfway.
-    /// </summary>
-    public void Advance(TimeSpan elapsed)
+    public void Step(TimeSpan elapsed)
     {
         if (Closed)
         {
@@ -468,20 +503,35 @@ public sealed class LuaCreatureManager : ISimulation
         }
 
         var seconds = (float)elapsed.TotalSeconds;
+        var now = Now;
+        var count = Minds.BeginStep();
 
-        foreach (var body in Bodies.Values.ToArray())
+        try
         {
-            try
+            for (var index = 0; index < count && !Closed; index++)
             {
-                RestoreSuperArmor(body.Entity);
+                if (Minds.At(index) is not { } body)
+                {
+                    continue;
+                }
 
-                body.Update(Now, seconds);
-            }
+                try
+                {
+                    RestoreSuperArmor(body.Entity);
 
-            catch (Exception e)
-            {
-                Logger.LogError(e, "The monster {Monster} failed to think", body.Behavior.Id);
+                    body.Update(now, seconds);
+                }
+
+                catch (Exception e)
+                {
+                    Logger.MonsterFailedToThink(e, body.Behavior.Id);
+                }
             }
+        }
+
+        finally
+        {
+            Minds.EndStep();
         }
     }
 
@@ -603,7 +653,7 @@ public sealed class LuaCreatureManager : ISimulation
     /// </summary>
     internal void Kill(Entity monster)
     {
-        Logger.LogDebug("Monster {Monster} wants to die, which a maze script has to finish", monster);
+        Logger.MonsterWantsToDie(monster.Id);
     }
 
     // ---- Players ------------------------------------------------------------------------------

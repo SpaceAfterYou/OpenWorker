@@ -10,7 +10,6 @@ using OpenWorker.Hotspot.Modules.System.Responses;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class SystemService(World world, TimeProvider time) :
     IHotspotHandler<SystemOptionUpdateRequest>,
     IHotspotHandler<SystemXignCodeRequest>,

@@ -18,7 +18,6 @@ namespace OpenWorker.DistrictServer.Services;
 /// <summary>
 /// Gestures: showing one to the others, and the six a player keeps ready.
 /// </summary>
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class GestureService(
     World world,
     ServiceChannels channels,

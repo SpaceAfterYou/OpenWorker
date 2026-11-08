@@ -7,7 +7,6 @@ namespace OpenWorker.Gameplay.Modules.Quests.Components;
 /// The quests of the person, null until they are loaded.
 /// </summary>
 [EntityComponent(EntityComponentService.District)]
-[EntityComponent(EntityComponentService.Maze)]
 public struct QuestComponent
 {
     public int Person;
