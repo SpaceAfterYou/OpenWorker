@@ -19,8 +19,19 @@ local compose", and the switch for the GC and JIT settings of step 7. How the co
   section, off when the endpoint is empty. The `System.Runtime` meter of .NET gives the GC and thread pool metrics.
 - Prometheus 3.15.1 and Grafana 12.4.14 in `compose.yaml`, configured under `eng/observability`, with the data source and the dashboard
   `OpenWorker` provisioned.
-- The GC and JIT settings of the servers written out in `Directory.Build.props` with today's values (step 7 switch only).
+- The GC and JIT settings of the servers written out in `Directory.Build.props` (the values chosen in step 7, below).
 - Tests with `MetricCollector<T>` for every instrument, and for the wiring of the container.
+- Step 7, the choice of the collector, on 2026-11-08 after the load bot: the servers run Server GC with DATAS
+  (`ServerGarbageCollection=true` in `Directory.Build.props`; background collections, `GarbageCollectionAdaptationMode=1`
+  and `TieredPGO` as before). Four runs of 1000 bots through `eng/loadtest.sh`, alternating workstation and Server GC
+  (`eng/loadtest/compose.servergc.yaml`, picked with `LOADTEST_COMPOSE_EXTRA`). Rocco Town: `move.echo` p99 2.37 / 2.75 ms
+  against 3.77 / 4.35 with workstation, GC pause 958 / 1461 ms in a 92 s run against 1894 / 1948 (1.0 to 1.6% of the
+  run against 2.1%), gen-0 collections 713 / 785 against 484 but 1.3 to 1.6 ms each against 3.8, working set at most
+  450 / 493 MB against 394 / 396, CPU unchanged. The maze: pause 34 / 40 ms against 118 / 129, simulation step p99
+  2.49 / 3.16 ms against 3.25 / 4.62. Every server logs the collector it runs with when it starts
+  (`RuntimeSettingsLogService`, registered by `AddTelemetry`), which is how each run was checked. Table, conditions and
+  what the runs cannot tell: `docs/phase-1/baseline/README.md`, "GC modes at 1000 bots". TieredPGO was on in every run
+  and was not compared.
 
 Checked by hand against the real thing: the auth server ran against Postgres and Redis and pushed to a real Prometheus, a load of
 connections, logins and broken packets was sent to it, and every query of the dashboard returned data in Prometheus (the simulation
@@ -29,7 +40,6 @@ data source and dashboard.
 
 ## Not done, left open
 
-- Step 7 itself (choosing Server GC / DATAS / PGO): it needs the load bot, which is another workstream. Only the switch exists.
 - ~~`shutdown` as a close reason~~: added when this work was merged into `dev` after workstream B. The read loop gives `Shutdown` when the
   drain (or the stop of the host) cancels the reading, and names it with `ServerSessionComponent.SetCloseReason` before the close handlers
   queue the kick-out, so a drained session is counted once as `shutdown` even when its client does not take the last frames and is cut

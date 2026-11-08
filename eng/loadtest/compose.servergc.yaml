@@ -3,7 +3,9 @@
 #
 #   LOADTEST_COMPOSE_EXTRA=eng/loadtest/compose.servergc.yaml eng/loadtest.sh --bots 1000 ...
 #
-# It is how step 7 of phase 1 of REFACTORING.md compares the garbage collectors without editing Directory.Build.props.
+# It is how step 7 of phase 1 of REFACTORING.md compared the garbage collectors without editing Directory.Build.props.
+# Since then Server GC with DATAS is what the props choose, so over images built from them this file changes nothing; it
+# pins the mode of a run whatever the props say. A copy with DOTNET_gcServer=0 runs the servers with workstation GC.
 # The environment variables of the runtime take precedence over the runtimeconfig.json that the props write, and compose
 # recreates the containers of the servers when their environment changes. Each server logs the collector it runs with
 # when it starts (`GC: server True, ... DATAS True`, RuntimeSettingsLogService).

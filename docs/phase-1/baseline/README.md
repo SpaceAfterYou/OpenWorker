@@ -178,3 +178,82 @@ at 19:54:42. Postgres runs with its default `max_connections` of 100, and the po
 when idle afterwards (gate 34, maze 33, Rocco Town 19, auth 5, and one each for the other servers). The sessions of every
 server still went back to zero. The measured part of the run is not affected; the state of the characters whose close
 handler failed may not have been saved. The server was not changed.
+
+## GC modes at 1000 bots
+
+Step 7 of phase 1: which garbage collector the servers run with. Four runs of `eng/loadtest.sh` on 2026-11-08 between
+20:53 and 21:06 UTC, alternating, workstation (the props as they were) and Server GC with DATAS
+(`LOADTEST_COMPOSE_EXTRA=eng/loadtest/compose.servergc.yaml`, which sets `DOTNET_gcServer=1` and
+`DOTNET_GCDynamicAdaptationMode=1` for every server). Reports in `gc-workstation-1/`, `gc-server-1/`,
+`gc-workstation-2/`, `gc-server-2/`, in the order they ran.
+
+```
+SOULWORKER_DATAS=$HOME/.cache/openworker/datas LOADTEST_NO_BUILD=1 [LOADTEST_COMPOSE_EXTRA=eng/loadtest/compose.servergc.yaml] \
+  eng/loadtest.sh --bots 1000 --ramp-up 50 --duration 60s --warmup 10s --move-rate 5 \
+  --prometheus http://127.0.0.1:9090 --prom-group-by 'job, openworker_location' --prom-query 'gc pause total (ms)=...' ...
+```
+
+Conditions, where they differ from "Run through eng/loadtest.sh" above:
+
+- Images built once from the tree of commit `0fb31ec` (the server code of `e87cbf3` and the log line below), Release; the whole of
+  `compose.yaml` with the load-test override, no `--channel-fill` (the district fills its channels). The override gives
+  Postgres `max_connections=200`; none of the four runs logged `too many clients`, and the district logged no error.
+- Every run started from `docker compose down` (volumes kept): fresh Postgres, Redis and RabbitMQ, fresh servers, so all
+  1000 accounts created their character in the ramp-up of every run. Before each run `sessions_active` was 0 for every
+  server in Prometheus, and it was 0 again after each.
+- No container has a CPU or memory limit, so every server sees the 32 threads of the machine.
+- The mode was checked in the log of each run: every server logs one line at start (`RuntimeSettingsLogService`), and
+  the override keeps that category at Information. Workstation runs: `GC: server False, concurrent True, DATAS False
+  (adaptation mode 1), latency mode Interactive, heaps 1, processors 32.` Server GC runs: `GC: server True, concurrent
+  True, DATAS True (adaptation mode 1), latency mode Interactive, heaps 32, processors 32.`, the same on the relay, auth,
+  gate, Rocco Town and maze. `heaps` is the heap count the collector was configured with; under DATAS it is the most it
+  may grow to, not the heaps in use (the runtime exports no metric of those).
+- GC figures are the `System.Runtime` meter of each server in Prometheus (`dotnet_gc_pause_time_seconds_total`,
+  `dotnet_gc_collections_total`, `dotnet_gc_heap_allocated_bytes_total`, `dotnet_process_cpu_time_seconds_total`,
+  `dotnet_process_memory_working_set_bytes`), taken as the difference between the last export before the run started and
+  the last one after it ended (exports every 10 s, so a window of 92 to 112 s that holds the ramp-up, the warm-up, the
+  measured minute and the logout). The `--prom-query` rows of the reports use `increase()` over the run, which
+  extrapolates to the edges of the window and gives about 5% more; the table uses the exact differences. The share of
+  the run is the pause over the 92 s the bot ran.
+
+| run | start (UTC) | GC | move.echo p50 / p99 | ping.after-move p99 | maze.move.echo p99 | district CPU avg / max % | district working set max (MB) | district memory max, docker (MB) | district GC pause (ms, % of 92 s) | district gen 0 / 1 / 2 | district allocated (MB) | district CPU time (s) | worldloop callback p99 district / maze (ms) | worldloop queue max district / maze | simulation step p99, maze (ms) | maze GC pause (ms) | maze gen 0 / 1 / 2 | maze working set max (MB) | errors |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| gc-workstation-1 | 20:54 | workstation | 0.53 / 4.35 | 4.99 | 2.30 | 442.2 / 478 | 396 | 282 | 1948 (2.11 %) | 484 / 27 / 3 | 8445 | 394 | 0.29 / 2.09 | 0 / 0 | 4.62 | 129 | 24 / 5 / 2 | 301 | 0 |
+| gc-workstation-2 | 21:00 | workstation | 0.46 / 3.77 | 4.48 | 1.89 | 450.8 / 485 | 394 | 275 | 1894 (2.06 %) | 484 / 27 / 3 | 8440 | 403 | 0.30 / 2.06 | 2 / 0 | 3.25 | 118 | 24 / 5 / 2 | 300 | 0 |
+| gc-server-1 | 20:57 | Server, DATAS | 0.47 / 2.75 | 3.20 | 2.05 | 453.8 / 489 | 450 | 377 | 1461 (1.59 %) | 785 / 138 / 4 | 6908 | 406 | 0.32 / 2.05 | 2 / 0 | 2.49 | 34 | 6 / 2 / 2 | 362 | 0 |
+| gc-server-2 | 21:03 | Server, DATAS | 0.45 / 2.37 | 2.62 | 1.89 | 433.8 / 489 | 493 | 400 | 958 (1.04 %) | 713 / 6 / 6 | 7003 | 402 | 0.26 / 2.07 | 5 / 0 | 3.16 | 40 | 6 / 2 / 2 | 374 | 0 |
+
+The district is Rocco Town (`openworker_location` 10003); the CPU % and the docker memory are from `docker stats`, the
+working set from the runtime. In all four runs every bot got in, every skill was answered, no error was counted, and
+the bot itself used 4.9 to 5.3 cores and paused 4.9 to 5.0 s in its own GC (the bot runs workstation GC in every run).
+
+**Decision: Server GC with DATAS.** Across the two runs of each mode:
+
+- `move.echo` p99 was 2.37 and 2.75 ms with Server GC against 3.77 and 4.35 ms with workstation. The two workstation runs
+  differ by 0.58 ms, the two Server GC runs by 0.38 ms, the modes by 1.5 ms on average; the worse Server GC run is better
+  than the better workstation run. `ping.after-move` p99 follows (2.62 / 3.20 against 4.48 / 4.99 ms). The p50 is the
+  same (0.45 to 0.53 ms).
+- The district paused for 958 and 1461 ms in a run with Server GC against 1894 and 1948 ms with workstation. It collected
+  more often (713 and 785 gen-0 collections against 484) but each pause was shorter: 1.3 to 1.6 ms per collection on
+  average against 3.8 ms. The two Server GC runs differ more from each other (503 ms; 138 gen-1 collections in one, 6 in
+  the other) than the workstation runs (54 ms), but less than the modes differ (711 ms on average).
+- The maze paused for 34 and 40 ms against 118 and 129, with 6 gen-0 collections against 24, and its simulation step p99
+  was 2.49 and 3.16 ms against 3.25 and 4.62. Its world loop callbacks did not change (p99 about 2.1 ms).
+- Memory: the district's working set peaked at 450 and 493 MB against 394 and 396 MB (1.2 times; `docker stats` 377 and
+  400 against 275 and 282 MB, 1.4 times), the maze's at 362 and 374 against 300 MB. Well under twice the workstation
+  figure: DATAS kept the heaps few. The CPU of the district is the same in both modes (394 to 406 s of CPU per run).
+- The allocated bytes differ (about 7000 MB against 8440 MB for the same work, the same moves and broadcasts). The
+  meter reads `GC.GetTotalAllocatedBytes()` without `precise`, which is not exact, and the difference was not looked
+  into; the figure is not part of the decision.
+
+So `Directory.Build.props` now sets `ServerGarbageCollection` to `true`; the other values (background collections,
+`GarbageCollectionAdaptationMode` 1, `TieredPGO`) stay as they were, and TieredPGO was not compared (it was on in all
+four runs). Images built from the props after the change, with no override and no `DOTNET_gc*` variable in
+the containers, log `GC: server True, concurrent True, DATAS True` on all five servers (checked once with
+`docker compose up --build`, no bots).
+
+What these runs cannot tell: one size (1000 bots), a minute measured, so neither a long run nor the growth of memory
+over hours is seen; the servers saw 32 threads and had no CPU or memory limit, so a container limited to a few cores, or
+a machine with fewer of them, was not tried (DATAS sizes the heaps from the load and the cores; under a memory limit
+Server GC takes a share of it); the bot and the rest of the stack share the machine and the bot's own GC pauses are
+part of every p99 in both modes; two runs per mode give a spread, not a distribution.

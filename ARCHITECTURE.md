@@ -94,6 +94,10 @@ flowchart TB
 - **ECS.** Arch holds sessions, persons and creatures as components. Arch keeps one static registry
   of component types for the whole process and it is not thread safe: touch it from the world loop only,
   and keep tests that create entities out of parallel runs.
+- **Garbage collector.** The servers run Server GC with DATAS (`Directory.Build.props`), because at 1000 bots it
+  paused the district for half to three quarters of the time workstation GC did and cut the p99 of a move by a third, for
+  about a fifth more memory (`docs/phase-1/baseline/README.md`, "GC modes at 1000 bots"); each server logs the collector
+  it runs with when it starts.
 
 ### Health
 
@@ -190,8 +194,8 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
   `dotnet_thread_pool_queue_length_total`, `dotnet_process_cpu_time_seconds_total`, and so on; `bytes.sent` is `bytes_sent_total`.
   The service is the label `job` (the name of its executable) and the process the label `instance` (its identifier); the location
   of a district and the gate are `openworker_location` and `openworker_gate` (`eng/observability/prometheus/prometheus.yml`).
-- **GC and JIT settings** of the servers are written out in `Directory.Build.props` with the values .NET uses anyway; which values to
-  run with is decided by measurements (phase 1, step 7), and `ServerGarbageCollection` is the property that flips them.
+- **GC and JIT settings** of the servers are written out in `Directory.Build.props`: Server GC with DATAS, chosen by measurement in
+  phase 1, step 7 (see "Inside one process"), the rest as .NET has them; `ServerGarbageCollection` is the property that flips the collector.
 - **To add an instrument:** create it in the metrics class of its area with the unit, a description and (for a duration)
   `CreateDuration`, which sets bucket edges in seconds; record it from the code that owns the thing; add a `MetricCollector` test next to
   the tests of that code; add the row to the table above and a panel to `eng/observability/grafana/dashboards/openworker.json`.
