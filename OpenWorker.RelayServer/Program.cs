@@ -17,7 +17,6 @@ await Host
         services.AddRes();
 
         services.AddCacheBootstrapService();
-        services.AddPersistenceBootstrapService();
         
         services.AddHostedService<DiscordService>();
     })

@@ -710,3 +710,6 @@ $RECYCLE.BIN/
 # Local reverse engineering material and working notes
 Reverse/
 docs/
+
+# Local settings of compose.yaml
+.env

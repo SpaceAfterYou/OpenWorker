@@ -37,7 +37,8 @@ public sealed class HandlerExecutor(
 
         catch (Exception ex)
         {
-            logger.LogCritical(ex, "");
+            logger.LogCritical(ex, "Handler {Class}.{Method} failed on {Opcode}.",
+                handler.Class.Name, handler.Delegate.Method.Name, opcode.ToFullString());
         }
 
         PrintSanity(handler, opcode, reader, buffer);

@@ -1,5 +1,6 @@
 ﻿using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM;
@@ -10,10 +11,16 @@ namespace OpenWorker.DependencyInjection;
 
 public static class Cache
 {
+    /// <summary>
+    /// The Redis of <c>compose.yaml</c>, used when <c>ConnectionStrings:Redis</c> is not set.
+    /// </summary>
+    private const string DefaultRedis = "redis://redis:6379";
+
     public static IServiceCollection AddCache(this IServiceCollection services)
     {
         return services
-            .AddSingleton<IRedisConnectionProvider>(new RedisConnectionProvider("redis://redis:6379"))
+            .AddSingleton<IRedisConnectionProvider>(provider => new RedisConnectionProvider(
+                provider.GetRequiredService<IConfiguration>().GetConnectionString("Redis") is { Length: > 0 } value ? value : DefaultRedis))
             .AddCacheCollection<MazeReserveCache>()
             .AddCacheCollection<ChannelChatCache>();
     }

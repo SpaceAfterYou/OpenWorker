@@ -24,9 +24,24 @@ internal sealed class ServerService(
 ) :
     BackgroundService
 {
+    private const int DefaultPort = 10_000;
+
     private Lock DumpLock { get; } = new();
-    private TcpListener Listener { get; } = new(IPAddress.Any, 10_000);
-    private string GameVersion { get; } = configuration.GetValue("Game:Version", "0.0.0.0");
+    private TcpListener Listener { get; } = new(IPAddress.Any, configuration.GetValue("Server:Port", DefaultPort));
+    private string? DumpDirectory { get; } = ResolveDumpDirectory(configuration);
+
+    /// <summary>
+    /// Where Debug builds save every received message, one file per opcode. <c>Hotspot:PacketDumpPath</c>
+    /// set to an empty value turns the dumps off.
+    /// </summary>
+    private static string? ResolveDumpDirectory(IConfiguration configuration)
+    {
+        var path = configuration["Hotspot:PacketDumpPath"] ?? Path.Combine("test", "hotspot");
+
+        return string.IsNullOrWhiteSpace(path)
+            ? null
+            : Path.Combine(path, configuration.GetValue("Game:Version", "0.0.0.0")!);
+    }
 
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
@@ -133,9 +148,18 @@ internal sealed class ServerService(
     [Conditional("DEBUG")]
     private void DumpPacket(MessageHeader header, Memory<byte> buffer)
     {
-        var dir = Path.Combine("test", "hotspot", GameVersion);
+        if (DumpDirectory is not { } dir || buffer.Length < 2)
+        {
+            return;
+        }
+
         var name = $"0x{buffer.Span[0]:X2},0x{buffer.Span[1]:X2}.bin";
         var path = Path.Join(dir, name);
+
+        // The dumps end up in the repository: passwords and tickets must not.
+        var content = buffer.ToArray();
+
+        PacketRedaction.Redact(content);
 
         try
         {
@@ -149,7 +173,7 @@ internal sealed class ServerService(
 
                 header.ToBinary(writer);
 
-                writer.Write(buffer.Span);
+                writer.Write(content);
             }
         }
 

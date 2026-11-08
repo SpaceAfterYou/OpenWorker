@@ -86,7 +86,7 @@
     networks:
       - eva-01
     volumes:
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
 
   openworker.authserver:
     container_name: "OpenWorker-AuthServer"
@@ -146,7 +146,7 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
 
   openworker.districtserver-roccotown:
     container_name: "OpenWorker-DistrictServer-RoccoTown"
@@ -178,8 +178,8 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.mazeserver:
     container_name: "OpenWorker-MazeServer"
@@ -208,10 +208,10 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
-      - T:/Games/HanPurple/soulworker/datas/Character/ActionData:/app/action
-      - T:/Games/HanPurple/soulworker/datas/Scripts/Server:/app/scripts
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
         
   openworker.districtserver-canduscity:
     container_name: "OpenWorker-DistrictServer-CandusCity"
@@ -243,8 +243,8 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-gracecity:
     container_name: "OpenWorker-DistrictServer-GraceCity"
@@ -275,8 +275,8 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-ruinfortress:
     container_name: "OpenWorker-DistrictServer-RuinFortress"
@@ -307,8 +307,8 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.updatecontent:
     container_name: "OpenWorker-UpdateContent"
@@ -328,12 +328,18 @@
     networks:
       - eva-01
     volumes:
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
 networks:
   eva-01:
     driver: bridge
+
+# Volumes with the data of the client come from SOULWORKER_DATAS, the `datas` folder of an
+# installed client: set it in the shell or in `.env` next to this file, e.g.
+# SOULWORKER_DATAS=/mnt/games/soulworker/datas
+# Servers also read ConnectionStrings__Postgres, ConnectionStrings__Redis and Server__Port;
+# the defaults match the services above. Hotspot__PacketDumpPath= (empty) turns the dumps off.
 
 # https://youtu.be/Soa3gO7tL-c?list=RDMM
 # https://youtu.be/_N66Hud_Tq4?list=RDeT2XZA8LZzM

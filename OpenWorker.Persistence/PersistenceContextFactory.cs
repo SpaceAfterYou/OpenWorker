@@ -8,7 +8,7 @@ public sealed class PersistenceContextFactory : IDesignTimeDbContextFactory<Pers
     public PersistenceContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<PersistenceContext>();
-        optionsBuilder.UseNpgsql("Host=postgres;Port=5432;Database=openworker;Username=postgres");
+        optionsBuilder.UseNpgsql(PersistenceConnection.FromEnvironment());
 
         return new PersistenceContext(optionsBuilder.Options);
     }

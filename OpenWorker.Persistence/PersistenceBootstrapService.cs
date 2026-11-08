@@ -4,37 +4,37 @@ using Microsoft.Extensions.Logging;
 
 namespace OpenWorker.Persistence;
 
-internal sealed class PersistenceBootstrapService( 
+/// <summary>
+/// Brings the database schema up to date before the server starts. The host waits for
+/// <see cref="StartAsync"/>, so nothing that starts after this service meets a missing table.
+/// Every server runs it: the provider locks the database while it migrates, so servers that
+/// start together apply each migration once.
+/// </summary>
+internal sealed class PersistenceBootstrapService(
     ILogger<PersistenceBootstrapService> logger,
     IDbContextFactory<PersistenceContext> factory
-) : 
-    BackgroundService
+) :
+    IHostedService
 {
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
-    {
-        await BootstrapPersistenceAsync(cancellationToken).ConfigureAwait(false);
-    }
-    
-    private async ValueTask BootstrapPersistenceAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         logger.LogDebug("Bootstrapping persistence...");
-        
+
         await using var context = await factory
             .CreateDbContextAsync(cancellationToken)
             .ConfigureAwait(false);
-        
+
         logger.LogDebug("Migrating database...");
-        
+
         await context.Database
             .MigrateAsync(cancellationToken)
             .ConfigureAwait(false);
-        
-        logger.LogDebug("Seeding database...");
-        
-        await context
-            .SaveChangesAsync(cancellationToken)
-            .ConfigureAwait(false);
-        
+
         logger.LogDebug("Database bootstrapped.");
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
     }
 }

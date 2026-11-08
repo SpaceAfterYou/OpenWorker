@@ -14,3 +14,6 @@ indent_size = 4
 
 [*.csproj]
 indent_size = 2
+# EF Core names the migration classes after the names given to `dotnet ef migrations add`.
+[OpenWorker.Persistence/Migrations/*.cs]
+dotnet_diagnostic.CS8981.severity = none
