@@ -32,7 +32,7 @@ namespace OpenWorker.AuthServer.Test;
 public sealed class TestSessionLease
 {
     private static RedisConnectionProvider Provider { get; set; } = null!;
-    private static IConnectionMultiplexer Redis { get; set; } = null!;
+    private static ConnectionMultiplexer Redis { get; set; } = null!;
     private static IRedisCollection<SessionCache> Sessions { get; set; } = null!;
 
     private static int _nextAccount = Random.Shared.Next(100_000, 1_000_000);
@@ -160,7 +160,8 @@ public sealed class TestSessionLease
         var commands = profiling.FinishProfiling().Select(e => e.Command).ToArray();
 
         Assert.AreEqual(sessions.Length, renewed);
-        CollectionAssert.AreEqual(new[] { "EVALSHA" }, commands, "fifty leases, one command");
+        Assert.HasCount(1, commands, "fifty leases, one command");
+        Assert.AreEqual("EVALSHA", commands[0]);
 
         foreach (var each in sessions)
         {
