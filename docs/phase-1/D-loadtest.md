@@ -210,7 +210,10 @@ servers with the data of client 1.4.2.3 (Release builds, `docker run`, one machi
   and 16 at the end, after the maze bots left), so the channel fix works on the real district. Its first runs found three
   faults of the script and the override, fixed in `ee880d4`: the wait for the ports passed at once, the other servers
   started before the relay had migrated a fresh database and made the Redis indexes (the maze server died), and the first
-  second of bots found no gate because the seed ran right before them.
+  second of bots found no gate because the seed ran right before them. The maze fault was the server's: it read
+  `ServerContents` while its container was built, before its own migration. Fixed afterwards: the table is read by a
+  hosted service that starts after the migration (`ServerContentLoadService`), and a maze started alone on an empty
+  database migrates it and turns ready.
 
 The first runs found five faults of the bot, fixed with tests: no gate in a fresh database (`seed` now makes it), the
 names of the duration metrics, durations in seconds that the report rounded to zero, and the moves of the monsters of a

@@ -1,5 +1,4 @@
 using Arch.Core;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,7 +7,6 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Extensions;
-using OpenWorker.Persistence;
 
 namespace OpenWorker.DependencyInjection;
 
@@ -20,13 +18,9 @@ public static class HotspotHostingExtensions
 
         return services
             .AddServerOptions()
-            .AddSingleton(_ =>
-            {
-                var factory = _.GetRequiredService<IDbContextFactory<PersistenceContext>>();
-                using var dbContext = factory.CreateDbContext();
-
-                return new ServerContent(dbContext.ServerContents);
-            })
+            // Filled when the server starts, after the migration: nothing reads the database while the container is built.
+            .AddSingleton<ServerContent>()
+            .AddHostedService<ServerContentLoadService>()
             .AddSingleton(World.Create())
             .AddSingleton<WorldLoop>()
             .AddSingleton<ArchComponentProvider>()

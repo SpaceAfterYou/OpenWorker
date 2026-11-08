@@ -242,6 +242,10 @@ exceptions, such as the names of client enums, live in `.editorconfig` with the 
 
 Every server migrates the database before its other services start (`PersistenceBootstrapService`);
 Npgsql locks the database while it migrates, so servers that start together apply each migration once.
+Nothing reads the database while the container is built: the host builds every hosted service before it starts the
+first, so such a read would come before the migration. What a server needs from the database at start is read by a
+hosted service that starts after the migration (`ServerContentLoadService` fills `ServerContent` before the listener
+starts); a table that is still missing then stops the server.
 EF Core refuses to migrate while the model has changes with no migration: after changing the model,
 add the migration before starting the servers.
 
