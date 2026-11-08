@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
@@ -39,6 +40,15 @@ internal sealed partial class ServerService(
     /// How long the server waits after a connection that could not be accepted, so a fault that stays does not fill the log.
     /// </summary>
     private static TimeSpan AcceptRetry { get; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How the read loop takes the bytes of a socket: the pipe's own buffers come from the shared pool, and a read waits
+    /// for data with a zero-byte read first, so a connection that sends nothing holds no buffer.
+    /// </summary>
+    private static StreamPipeReaderOptions ReaderOptions { get; } = new(leaveOpen: true, useZeroByteReads: true);
+
+    private const string ClientLeft = "the client closed the connection.";
+    private const string ClientLeftInsideAFrame = "the client closed the connection inside a frame.";
 
     private Lock DumpLock { get; } = new();
     private TcpListener Listener { get; } = new(IPAddress.Any, server.Value.Port);
@@ -230,33 +240,28 @@ internal sealed partial class ServerService(
 
             try
             {
-                using var memory = MemoryPool<byte>.Shared.Rent(MessageHeader.MaxContentLength);
+                // The pipe holds what the socket gave and no frame has used yet. A zero-byte read waits for the client
+                // without a buffer, so an idle connection holds none.
+                var pipe = PipeReader.Create(socket.GetStream(), ReaderOptions);
 
-                var stream = socket.GetStream();
-                var head = new byte[MessageHeader.HeaderSize];
-
-                // The drain cancels `reading` and not `cancellationToken`: the packet that is being handled is
-                // handled to the end, and only then does the loop stop reading.
-                while (!reading.IsCancellationRequested)
+                try
                 {
-                    await stream.ReadExactlyAsync(head, reading);
-
-                    var header = new MessageHeader(head);
-                    var buffer = memory.Memory[..header.ContentLength];
-
-                    await stream.ReadExactlyAsync(buffer, reading);
-
-                    metrics.Received(MessageHeader.HeaderSize + header.ContentLength);
-
-                    MessageEncryption.Exchange(buffer, header.Version);
-
-                    DumpPacket(header, buffer);
-
-                    await loop.InvokeAsync(() => executor.ExecuteAsync(buffer, entity, scope, cancellationToken));
+                    reason = await ReadFramesAsync(pipe, entity, scope, cancellationToken, reading);
                 }
 
-                // The loop ends without an error only when the drain has stopped the reading between two packets.
-                reason = SessionCloseReason.Shutdown;
+                finally
+                {
+                    await pipe.CompleteAsync();
+                }
+            }
+
+            catch (InvalidDataException e)
+            {
+                // Only a header that cannot be right gets here (the executor counts the faults of a body itself). The
+                // frames after it cannot be found, so the connection ends at once, with nothing more read.
+                LogMalformedHeader(logger, e.Message);
+
+                reason = SessionCloseReason.Malformed;
             }
 
             catch (Exception e) when (e is EndOfStreamException or IOException { InnerException: SocketException } or ObjectDisposedException or OperationCanceledException)
@@ -295,6 +300,112 @@ internal sealed partial class ServerService(
                     await FlushAsync(session);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Hands the frames of a connection to the world loop, one at a time and in order, until the client leaves
+    /// (<see cref="SessionCloseReason.Client"/>) or the drain stops the reading between two frames
+    /// (<see cref="SessionCloseReason.Shutdown"/>). A frame whose bytes have not all come waits for more; a header that
+    /// cannot be right throws <see cref="InvalidDataException"/>.
+    /// </summary>
+    private async Task<SessionCloseReason> ReadFramesAsync(PipeReader pipe, Entity entity, SessionLogScope scope,
+        CancellationToken cancellationToken, CancellationToken reading)
+    {
+        // The drain cancels `reading` and not `cancellationToken`: the frame that is being handled is handled to the
+        // end, and only then does the loop stop reading.
+        while (!reading.IsCancellationRequested)
+        {
+            var result = await pipe.ReadAsync(reading);
+            var buffer = result.Buffer;
+
+            try
+            {
+                while (!reading.IsCancellationRequested && TryReadFrame(ref buffer, out var header, out var body))
+                {
+                    await HandleFrameAsync(header, body, entity, scope, cancellationToken);
+                }
+            }
+
+            finally
+            {
+                // What is left is the start of a frame: kept, and looked at again only when more bytes come.
+                pipe.AdvanceTo(buffer.Start, buffer.End);
+            }
+
+            if (result.IsCompleted)
+            {
+                LogConnectionClosed(logger, buffer.IsEmpty ? ClientLeft : ClientLeftInsideAFrame);
+
+                return SessionCloseReason.Client;
+            }
+        }
+
+        return SessionCloseReason.Shutdown;
+    }
+
+    /// <summary>
+    /// Takes the first whole frame off the front of <paramref name="buffer"/>. False, with the buffer as it was, when
+    /// the bytes of the frame have not all come.
+    /// </summary>
+    private static bool TryReadFrame(ref ReadOnlySequence<byte> buffer, out MessageHeader header, out ReadOnlySequence<byte> body)
+    {
+        header = default;
+        body = default;
+
+        if (buffer.Length < MessageHeader.HeaderSize)
+        {
+            return false;
+        }
+
+        Span<byte> head = stackalloc byte[MessageHeader.HeaderSize];
+
+        buffer.Slice(0, MessageHeader.HeaderSize).CopyTo(head);
+
+        // Checked as soon as it is there: a client that claims a frame it cannot have is not waited for.
+        header = new MessageHeader(head);
+
+        var length = MessageHeader.HeaderSize + header.ContentLength;
+
+        if (buffer.Length < length)
+        {
+            return false;
+        }
+
+        body = buffer.Slice(MessageHeader.HeaderSize, header.ContentLength);
+        buffer = buffer.Slice(length);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Decrypts one frame in a buffer of its own, rented for the size of the frame, and hands it to the world loop.
+    /// The buffer goes back to the pool when the handler has finished with it.
+    /// </summary>
+    private async Task HandleFrameAsync(MessageHeader header, ReadOnlySequence<byte> body, Entity entity, SessionLogScope scope,
+        CancellationToken cancellationToken)
+    {
+        var length = header.ContentLength;
+        var rented = ArrayPool<byte>.Shared.Rent(length);
+
+        try
+        {
+            var buffer = rented.AsMemory(0, length);
+
+            body.CopyTo(buffer.Span);
+
+            metrics.Received(MessageHeader.HeaderSize + length);
+
+            MessageEncryption.Exchange(buffer.Span, header.Version);
+
+            DumpPacket(header, buffer);
+
+            await loop.InvokeAsync(() => executor.ExecuteAsync(buffer, entity, scope, cancellationToken));
+        }
+
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(rented);
         }
     }
 
@@ -421,6 +532,9 @@ internal sealed partial class ServerService(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Connection closed: {Reason}")]
     private static partial void LogConnectionClosed(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The client sent a header that cannot be right, and is cut off: {Reason}")]
+    private static partial void LogMalformedHeader(ILogger logger, string reason);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Session loop failed.")]
     private static partial void LogSessionLoopFailed(ILogger logger, Exception exception);

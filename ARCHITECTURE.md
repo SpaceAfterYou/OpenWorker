@@ -80,9 +80,12 @@ flowchart TB
   DB -.->|continuation| L
 ```
 
-- **Read loop.** One task per connection reads a frame, decrypts it and hands it to the world loop.
-  It waits for the handler to finish before it reads the next frame, so the packets of one
-  connection are handled one after another, in order.
+- **Read loop.** One task per connection reads the socket through a `PipeReader` (zero-byte reads, so an idle
+  connection holds no buffer), cuts the frames out of what arrived, copies each body into an array rented from
+  `ArrayPool<byte>.Shared` for its size, decrypts it and hands it to the world loop. It waits for the handler to finish
+  before it hands over the next frame, so the packets of one connection are handled one after another, in order. A
+  header that cannot be right (a length shorter than the header, a version past the key table) closes the connection
+  at once as `Malformed`.
 - **Write loop.** `SessionWriter` sends the frames of one connection on its own task, from a queue
   of at most 4096 frames. A client that falls that far behind is disconnected; it slows nobody else.
 - **World loop.** `WorldLoop` is a `SynchronizationContext` with one thread. Every packet handler,
