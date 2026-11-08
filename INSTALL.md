@@ -14,12 +14,31 @@ Rules for this file:
 Check each tool and record its version or path:
 
 ```bash
-dotnet --version            # SDK 10.0.1xx, see global.json
+dotnet --version            # SDK 10.0.100 or a later 10.0 feature band, see global.json
 dotnet tool restore         # installs dotnet-ef from .config/dotnet-tools.json
 docker --version && docker ps   # the test stand runs in Docker
 python3 --version           # 3.11 or newer, for docs/tools
 git --version
 ```
+
+The build and the tests also need the **ASP.NET Core runtime and targeting pack** of the same .NET version: the
+health endpoint of the servers is served by Kestrel (`FrameworkReference Microsoft.AspNetCore.App` in
+`OpenWorker.DependencyInjection`). The installers from Microsoft carry both; distribution packages often split them
+off. Check:
+
+```bash
+dotnet --list-runtimes      # must list Microsoft.AspNetCore.App 10.0.x
+```
+
+Without them `dotnet build` stops with `NETSDK1226` ("Prune Package data not found ... Microsoft.AspNetCore.App") and
+the test executables stop with "You must install or update .NET to run this application ... Microsoft.AspNetCore.App".
+Fix it in one of two ways, and record which one in `AGENTS.local.md`:
+
+- Install the distribution packages, for example `aspnet-runtime` and `aspnet-targeting-pack` (this needs root: ask
+  the user).
+- Or install a full SDK for the user with the `dotnet-install` script into `~/.dotnet`, and run every `dotnet`
+  command with `export DOTNET_ROOT=$HOME/.dotnet; export PATH=$HOME/.dotnet:$PATH`. Check `dotnet --version` and
+  `dotnet --list-runtimes` again in that shell.
 
 If `docker ps` cannot reach the daemon, it is probably stopped after a reboot. Starting it needs root
 (`sudo systemctl start docker`): ask the user to start it rather than trying yourself.
