@@ -7,7 +7,7 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.Channel.Services;
 
-internal sealed class ChannelLifecycleService(
+internal sealed partial class ChannelLifecycleService(
     IRedisCollection<ChannelCache> cache,
     ServiceChannels channels,
     IConfiguration configuration,
@@ -17,45 +17,59 @@ internal sealed class ChannelLifecycleService(
 {
     private Guid Instance { get; } = configuration.GetInstance();
 
+    private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(1);
+
 #region BackgroundService
 
-    protected override Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _ = Task.Factory.StartNew(
-            () => OnTickAsync(cancellationToken),
-            cancellationToken,
-            TaskCreationOptions.LongRunning,
-            TaskScheduler.Default
-        );
+        using var timer = new PeriodicTimer(Frequency);
 
-        return Task.CompletedTask;
+        try
+        {
+            do
+            {
+                try
+                {
+                    await UpdateAsync();
+                }
+
+                catch (Exception e) when (e is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
+                {
+                    LogUpdateFailed(logger, e);
+                }
+            }
+            while (await timer.WaitForNextTickAsync(stoppingToken));
+        }
+
+        catch (OperationCanceledException)
+        {
+            // The server is stopping.
+        }
     }
 
 #endregion BackgroundService
 
-    private async ValueTask OnTickAsync(CancellationToken cancellationToken)
+    private async Task UpdateAsync()
     {
-        while (cancellationToken.IsCancellationRequested is false)
+        foreach (var channel in channels)
         {
-            foreach (var channel in channels)
+            var value = await cache
+                .FirstOrDefaultAsync(e => e.Identifier == channel.Identifier && e.Owner == Instance);
+
+            if (value is null)
             {
-                var value = await cache
-                    .FirstOrDefaultAsync(e => e.Identifier == channel.Identifier && e.Owner == Instance);
-
-                if (value is null)
-                {
-                    logger.LogDebug("Channel not found: Owner={Guid}, Identifier={Identifier}", Instance, channel.Identifier);
-                    continue;
-                }
-
-                value.OnlineCount = channel.Online;
-
-                await cache
-                    .UpdateAsync(value);
-
-                await Task
-                    .Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                logger.LogDebug("Channel not found: Owner={Guid}, Identifier={Identifier}", Instance, channel.Identifier);
+                continue;
             }
+
+            value.OnlineCount = channel.Online;
+
+            await cache
+                .UpdateAsync(value);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to update the online count of the channels.")]
+    private static partial void LogUpdateFailed(ILogger logger, Exception exception);
 }
