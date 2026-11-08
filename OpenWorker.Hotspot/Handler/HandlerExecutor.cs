@@ -187,12 +187,25 @@ public sealed partial class HandlerExecutor(
     }
 
     /// <summary>
+    /// Counts a packet that a handler refused as impossible against the budget of the session, as a packet that fails:
+    /// logged, measured, and the connection closed once the budget runs out. Call it on the world loop.
+    /// </summary>
+    public void Charge(Entity player, MessageOpcode opcode, HandlerErrorReason reason)
+    {
+        OnError(player, opcode, reason, exception: null);
+    }
+
+    private void OnError(Entity player, MessageOpcode? opcode, Exception exception)
+    {
+        OnError(player, opcode, HandlerErrorBudget.Classify(exception), exception);
+    }
+
+    /// <summary>
     /// Counts the error for the session. The first one of a window is logged with its exception and the next
     /// ones only counted; the one that uses up the budget closes the connection and says so once.
     /// </summary>
-    private void OnError(Entity player, MessageOpcode? opcode, Exception exception)
+    private void OnError(Entity player, MessageOpcode? opcode, HandlerErrorReason reason, Exception? exception)
     {
-        var reason = HandlerErrorBudget.Classify(exception);
         var tag = HandlerErrorBudget.Tag(reason);
 
         metrics?.Error(tag);
@@ -258,20 +271,20 @@ public sealed partial class HandlerExecutor(
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
         Message = "Session {Entity} (actor {Actor}, {Remote}) sent a packet {Opcode} that failed, reason {Reason}: error {Count} of {Limit} within {Window}.")]
-    private static partial void LogFirstError(ILogger logger, Exception exception, int entity, int actor, string? remote,
+    private static partial void LogFirstError(ILogger logger, Exception? exception, int entity, int actor, string? remote,
         OpcodeText opcode, string reason, int count, int limit, TimeSpan window);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Debug,
         Message = "Session {Entity} sent another packet {Opcode} that failed, reason {Reason}: error {Count} of {Limit}.")]
-    private static partial void LogNextError(ILogger logger, Exception exception, int entity, OpcodeText opcode,
+    private static partial void LogNextError(ILogger logger, Exception? exception, int entity, OpcodeText opcode,
         string reason, int count, int limit);
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Warning,
         Message = "Closing session {Entity} (actor {Actor}, {Remote}) after {Count} failed packets within {Window}, the last was {Opcode}, reason {Reason}.")]
-    private static partial void LogSessionClosed(ILogger logger, Exception exception, int entity, int actor, string? remote,
+    private static partial void LogSessionClosed(ILogger logger, Exception? exception, int entity, int actor, string? remote,
         int count, TimeSpan window, OpcodeText opcode, string reason);
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Debug,
         Message = "A packet {Opcode} failed after session {Entity} was gone, reason {Reason}.")]
-    private static partial void LogErrorOfGoneSession(ILogger logger, Exception exception, int entity, OpcodeText opcode, string reason);
+    private static partial void LogErrorOfGoneSession(ILogger logger, Exception? exception, int entity, OpcodeText opcode, string reason);
 }

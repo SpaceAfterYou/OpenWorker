@@ -25,6 +25,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<ServiceChannels>());
         services.AddSingleton<ServerChannels>();
 
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<MovementPace>();
+
         services.AddHostedService<ChannelBootstrapService>();
         services.AddRegistrationService<ChannelLifecycleService>();
 

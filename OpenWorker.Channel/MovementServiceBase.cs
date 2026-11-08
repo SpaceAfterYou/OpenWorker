@@ -12,14 +12,23 @@ using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Wire;
+using Microsoft.Extensions.Logging;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Handler;
+using OpenWorker.Hotspot.Modules.World.Enums;
+using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Channel;
 
 /// <summary>
 /// Keeps the place of a person and shows its movement to the others on the map. The sender gets its
-/// own movement too: the client skips what it has already done and starts looped motions only from here.
+/// own movement too: the client skips what it has already done and starts looped motions only from here.<br/>
+/// A move faster than the player can run (<see cref="MovementPace"/>) is refused: the place stays, nobody else hears of
+/// it, and the player is warped back to the place the server keeps. The first refusal in a second counts against the
+/// error budget of the session.
 /// </summary>
-public abstract class MovementServiceBase(World world) :
+public abstract partial class MovementServiceBase(World world, MovementPace pace, HandlerExecutor errors, ILogger logger) :
     IHotspotHandler<MovementMoveRequest>,
     IHotspotHandler<MovementStopRequest>,
     IHotspotHandler<MovementJumpRequest>,
@@ -75,7 +84,7 @@ public abstract class MovementServiceBase(World world) :
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.dwActorID, position, request.fYaw) &&
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw) &&
             float.IsFinite(request.fTargetPosX) &&
             float.IsFinite(request.fTargetPosY))
         {
@@ -101,7 +110,7 @@ public abstract class MovementServiceBase(World world) :
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.dwActorID, position, request.fYaw))
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw))
         {
             Broadcast(context.Player, new MovementStopBtResponse
             {
@@ -122,7 +131,7 @@ public abstract class MovementServiceBase(World world) :
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.dwActorID, position, request.fYaw) &&
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw) &&
             float.IsFinite(request.fTargetPosX) &&
             float.IsFinite(request.fTargetPosY))
         {
@@ -149,6 +158,7 @@ public abstract class MovementServiceBase(World world) :
         // Only tells the server where the person is, the others do not need it.
         TryUpdatePlace(
             context.Player,
+            request.Opcode,
             request.dwActorID,
             new Vector3(request.fPosX, request.fPosY, request.fPosZ),
             request.fYaw);
@@ -160,7 +170,7 @@ public abstract class MovementServiceBase(World world) :
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.dwActorID, position, request.fYaw))
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw))
         {
             Broadcast(context.Player, new MovementIgnoreMotionDeltaResponse
             {
@@ -178,7 +188,7 @@ public abstract class MovementServiceBase(World world) :
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.dwActorID, position, request.fYaw))
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw))
         {
             Broadcast(context.Player, new MovementBattleBtResponse
             {
@@ -212,7 +222,7 @@ public abstract class MovementServiceBase(World world) :
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.dwActorID, position, request.fYaw))
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw))
         {
             Broadcast(context.Player, new MovementLoopMotionStartBtResponse
             {
@@ -244,7 +254,7 @@ public abstract class MovementServiceBase(World world) :
         var place = world.Has<WorldComponent>(context.Player) ? world.Get<WorldComponent>(context.Player).Rotation : 0;
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.dwActorID, position, place))
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, place))
         {
             BroadcastToOthers(context.Player, new MovementAttacedEndBtResponse { Actor = request.dwActorID });
         }
@@ -286,7 +296,7 @@ public abstract class MovementServiceBase(World world) :
                world.Get<ActorComponent>(player).Identifier == actor.Identifier;
     }
 
-    private bool TryUpdatePlace(Entity player, ActorValue actor, Vector3 position, float rotation)
+    private bool TryUpdatePlace(Entity player, MessageOpcode opcode, ActorValue actor, Vector3 position, float rotation)
     {
         if (!IsOwnActor(player, actor) ||
             !Place.IsValid(position, rotation))
@@ -294,10 +304,47 @@ public abstract class MovementServiceBase(World world) :
             return false;
         }
 
-        world.Set(player, world.Get<WorldComponent>(player) with { Position = position, Rotation = rotation });
+        var place = world.Get<WorldComponent>(player);
+
+        if (!pace.TryMove(world, player, place.Position, position, out var charge))
+        {
+            Refuse(player, opcode, place, position, charge);
+
+            return false;
+        }
+
+        world.Set(player, place with { Position = position, Rotation = rotation });
 
         OnPlaced(player, position);
 
         return true;
     }
+
+    /// <summary>
+    /// Warps the player back to where the server has it. The client takes a warp within the map from the server at any
+    /// time; nobody else saw the place it claimed.
+    /// </summary>
+    private void Refuse(Entity player, MessageOpcode opcode, WorldComponent place, Vector3 claimed, bool charge)
+    {
+        var actor = world.Get<ActorComponent>(player);
+        var distance = Vector3.Distance(place.Position, claimed);
+
+        LogRefused(logger, actor.Identifier, distance, charge);
+
+        world.Get<ServerSessionComponent>(player).Send(new WorldWarpResponse
+        {
+            Actor = actor,
+            Result = WorldWrapResult.Ok,
+            Position = place.Position,
+            Rotation = place.Rotation
+        });
+
+        if (charge)
+        {
+            errors.Charge(player, opcode, HandlerErrorReason.Violation);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Refused a move of actor {Actor} over {Distance} units, faster than it can run; counted against the budget: {Charged}.")]
+    private static partial void LogRefused(ILogger logger, int actor, float distance, bool charged);
 }

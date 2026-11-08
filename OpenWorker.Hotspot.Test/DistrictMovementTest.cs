@@ -1,7 +1,10 @@
 using System.Buffers.Binary;
 using System.Numerics;
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Channel;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Components;
@@ -11,6 +14,8 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Extensions;
+using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
@@ -28,19 +33,31 @@ internal sealed class DistrictHarness : IDisposable
 
     private int _next;
 
-    public DistrictHarness()
+    // Building the table looks at every handler of the loaded assemblies: once for all the tests.
+    private static readonly HandlerTable Table = new(new HandlerTableBuilder(new HandlerBuilder(), NullLogger<HandlerTable>.Instance));
+
+    /// <param name="speeds">The run speed of the heroes; with none, no move is too fast.</param>
+    /// <param name="maxErrors">The error budget of a session in a minute.</param>
+    public DistrictHarness(IReadOnlyDictionary<Hero, float>? speeds = null, int maxErrors = 10)
     {
         Channels = ChannelMembers.Channels(Ecs);
-        Movement = new MovementService(Ecs, Channels);
+
+        var budget = new HandlerErrorBudget(Time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = maxErrors, Window = TimeSpan.FromMinutes(1) }));
+        var errors = new HandlerExecutor(Table, new ServiceCollection().BuildServiceProvider(), Ecs, budget, NullLogger<HandlerExecutor>.Instance);
+        var pace = new MovementPace(speeds ?? new Dictionary<Hero, float>(), new WorldOptions(), Time);
+
+        Movement = new MovementService(Ecs, Channels, pace, errors, NullLogger<MovementService>.Instance);
     }
 
     public World Ecs { get; } = World.Create();
+
+    public FakeTimeProvider Time { get; } = new();
 
     public ServiceChannels Channels { get; }
 
     public ServiceChannel Channel => Channels[0];
 
-    public MovementService Movement { get; set; }
+    public MovementService Movement { get; }
 
     /// <summary>
     /// A player that has entered the game at the place and joined the channel.
@@ -216,9 +233,9 @@ internal sealed class Player(Entity entity, int actor, RecordingConnection conne
 /// </summary>
 [TestClass]
 [DoNotParallelize]
-public sealed class VisibilityTest
+public sealed class DistrictMovementTest
 {
-    private const float Cell = OpenWorker.Extensions.WorldOptions.DefaultVisibilityRadius;
+    private const float Cell = WorldOptions.DefaultVisibilityRadius;
 
     /// <summary>
     /// The criterion of phase 3: a move goes to the mover and the players who see it, not to the whole channel, and the
@@ -337,6 +354,57 @@ public sealed class VisibilityTest
         await WaitForMovesAsync(observer);
 
         Assert.AreEqual(140f, observer.Moves().Single().X, "The next pass sends the next move.");
+    }
+
+    /// <summary>
+    /// The criterion of phase 3: a move farther than the hero runs in the time is refused, the place stays where it was,
+    /// nobody hears of it, and the player is warped back; such refusals count against the error budget of the session,
+    /// once a second, and close it when they use it up.
+    /// </summary>
+    [TestMethod]
+    public async Task ATeleportIsRefusedThePlayerIsWarpedBackAndRepeatedOnesCloseTheSession()
+    {
+        using var district = new DistrictHarness(new Dictionary<Hero, float> { [Hero.Lily] = 560f }, maxErrors: 3);
+
+        var mover = district.Join(100f, 100f);
+        var observer = district.Join(200f, 100f);
+
+        await district.ResetAsync(mover, observer);
+
+        // Half a run in a second is a run.
+        district.Time.Advance(TimeSpan.FromSeconds(1));
+
+        await district.MoveAsync(mover, 600f, 100f);
+        await WaitForMovesAsync(mover, observer);
+
+        district.Forget(mover, observer);
+
+        // Across the map at once.
+        await district.MoveAsync(mover, 100_000f, 100f);
+
+        var warp = await FirstAsync(mover, GroupOpcode.World, (byte)WorldOpcode.WarpRes);
+
+        Assert.AreEqual(600f, BinaryPrimitives.ReadSingleLittleEndian(warp.Body.AsSpan(4 + 1)), "The player is warped back to its last place.");
+        Assert.AreEqual(600f, district.Ecs.Get<WorldComponent>(mover.Entity).Position.X, "The place stays where it was.");
+
+        await district.SettleAsync(observer);
+
+        Assert.IsEmpty(observer.Moves(), "Nobody hears of a refused move.");
+        Assert.AreEqual(1, district.Ecs.Get<HandlerErrorsComponent>(mover.Entity).Count);
+
+        // The moves the client sent before it saw the correction are one fault.
+        await district.MoveAsync(mover, 100_100f, 100f);
+
+        Assert.AreEqual(1, district.Ecs.Get<HandlerErrorsComponent>(mover.Entity).Count);
+
+        for (var second = 0; second < 2; second++)
+        {
+            district.Time.Advance(TimeSpan.FromSeconds(1));
+
+            await district.MoveAsync(mover, 100_000f, 100f);
+        }
+
+        Assert.IsTrue(district.Ecs.Get<HandlerErrorsComponent>(mover.Entity).Closed, "The third fault in a minute uses up a budget of three.");
     }
 
     private static Task WaitForMovesAsync(params Player[] players)

@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using OpenWorker.Channel;
+using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
 
 namespace OpenWorker.DistrictServer.Services;
@@ -9,7 +10,14 @@ namespace OpenWorker.DistrictServer.Services;
 /// A move is heard by the players of the channel who see the mover, once per pass of the world loop, and moves the mover
 /// across the visibility grid.
 /// </summary>
-public sealed class MovementService(World world, ServiceChannels channels) : MovementServiceBase(world)
+public sealed class MovementService(
+    World world,
+    ServiceChannels channels,
+    MovementPace pace,
+    HandlerExecutor errors,
+    ILogger<MovementService> logger
+) :
+    MovementServiceBase(world, pace, errors, logger)
 {
     private readonly World _world = world;
 
