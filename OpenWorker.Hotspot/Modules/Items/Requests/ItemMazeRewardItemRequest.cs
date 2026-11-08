@@ -4,17 +4,19 @@ using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ItemMazeRewardItemRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ItemMazeRewardItemRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.MazeRewardItem;
 
-    public StorageGroup Storage { get; } = reader.ReadStorageGroup();
-    public short Slot { get; } = reader.ReadInt16();
+    public StorageGroup Storage { get; }
+    public short Slot { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }
