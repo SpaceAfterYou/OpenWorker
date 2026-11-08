@@ -36,7 +36,7 @@ public sealed class NpcManager
 
                 var row = npcList.First(e => e.Id == monster.Id);
 
-                var npc = new CreatureComponent___Old(
+                var npc = new NpcComponent(
                     monster.Id,
                     spawn.GetPosition(),
                     spawn.Rotation,

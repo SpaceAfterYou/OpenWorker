@@ -2,7 +2,10 @@
 
 namespace OpenWorker.Domain.Components;
 
-public sealed class CreatureComponent___Old(
+/// <summary>
+/// An NPC a district map places where it stands, as the client lists it when a player enters.
+/// </summary>
+public sealed class NpcComponent(
     int prototype,
     Vector3 position,
     float rotation,
