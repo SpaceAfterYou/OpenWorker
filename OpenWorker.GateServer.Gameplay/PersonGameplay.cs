@@ -10,6 +10,7 @@ using OpenWorker.Gameplay.Modules.Login;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Channel;
@@ -132,8 +133,24 @@ public sealed class PersonGameplay(
 
         account.Persons.Add(person);
 
-        await database
-            .SaveChangesAsync(context.CancellationToken);
+        try
+        {
+            await database
+                .SaveChangesAsync(context.CancellationToken);
+        }
+
+        // The check above passed, but another server created a character with this name in the meantime.
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            SendListError(context.Player, PersonErrorCode.NameInUse);
+            return;
+        }
+
+        // The player may have left while the character was saved.
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
 
         registry.CreatePerson(context.Player, slotIndex, person);
 
