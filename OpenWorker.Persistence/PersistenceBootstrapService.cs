@@ -10,7 +10,7 @@ namespace OpenWorker.Persistence;
 /// Every server runs it: the provider locks the database while it migrates, so servers that
 /// start together apply each migration once.
 /// </summary>
-internal sealed class PersistenceBootstrapService(
+internal sealed partial class PersistenceBootstrapService(
     ILogger<PersistenceBootstrapService> logger,
     IDbContextFactory<PersistenceContext> factory
 ) :
@@ -18,23 +18,32 @@ internal sealed class PersistenceBootstrapService(
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        logger.LogDebug("Bootstrapping persistence...");
+        LogBootstrapping();
 
         await using var context = await factory
             .CreateDbContextAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        logger.LogDebug("Migrating database...");
+        LogMigrating();
 
         await context.Database
             .MigrateAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        logger.LogDebug("Database bootstrapped.");
+        LogBootstrapped();
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Bootstrapping persistence...")]
+    private partial void LogBootstrapping();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Migrating database...")]
+    private partial void LogMigrating();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Database bootstrapped.")]
+    private partial void LogBootstrapped();
 }

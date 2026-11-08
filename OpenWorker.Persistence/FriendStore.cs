@@ -130,14 +130,18 @@ public static class FriendStore
     {
         await using var database = await factory.CreateDbContextAsync();
 
-        var key = name.Trim().ToLower();
+        var key = name.Trim().ToLowerInvariant();
 
+        // The comparison runs in the database, as lower("Name") = @key. Npgsql translates only the ToLower() without arguments and
+        // not string.Equals with a StringComparison, so the advice of the analyzers (culture, StringComparison) would not translate.
+#pragma warning disable CA1304, CA1311, CA1862
         var cards = await database.Persons
             .AsNoTracking()
             .Where(e => e.Name.ToLower() == key)
             .Select(e => new PersonCard(e.Id, e.Name, (byte)e.Hero))
             .Take(1)
             .ToListAsync();
+#pragma warning restore CA1304, CA1311, CA1862
 
         return cards.Count == 0 ? null : cards[0];
     }

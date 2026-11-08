@@ -14,9 +14,15 @@ indent_size = 4
 
 [*.csproj]
 indent_size = 2
-# EF Core names the migration classes after the names given to `dotnet ef migrations add`.
+
+# The migrations are written by `dotnet ef migrations add` and keep the form the tool gives them.
+# CS8981: the classes take the names given to the command. CA1707: one of them is named by a number, and the name is part
+# of the migration history. CA1825 and CA1861: the arrays the tool emits for the column defaults and the index columns.
 [OpenWorker.Persistence/Migrations/*.cs]
 dotnet_diagnostic.CS8981.severity = none
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1825.severity = none
+dotnet_diagnostic.CA1861.severity = none
 
 # Names that mirror the client binary. The enumerations and the ST_ / PS_ structures were found by reverse engineering,
 # and they keep the spelling of the client so a name can be searched in both places; the fields of a structure are the wire
