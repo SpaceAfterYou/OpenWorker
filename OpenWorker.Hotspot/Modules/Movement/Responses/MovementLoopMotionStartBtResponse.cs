@@ -5,11 +5,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MovementLoopMotionStartBtResponse : IResponseHotspotMessage
+public readonly partial struct MovementLoopMotionStartBtResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.LoopMotionStartBt;
@@ -23,15 +25,4 @@ public readonly struct MovementLoopMotionStartBtResponse : IResponseHotspotMessa
     public int LoopAnimation { get; init; }
     public int EndAnimation { get; init; }
     public int IdleAnimation { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Pos);
-        writer.Write(Yaw);
-        writer.Write(StartAnimation);
-        writer.Write(LoopAnimation);
-        writer.Write(EndAnimation);
-        writer.Write(IdleAnimation);
-    }
 }

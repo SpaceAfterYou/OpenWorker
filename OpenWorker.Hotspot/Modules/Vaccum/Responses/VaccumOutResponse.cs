@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Vaccum.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Vaccum.Responses;
 
 /// <summary>
 /// A cube is gone.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct VaccumOutResponse : IResponseHotspotMessage
+public readonly partial struct VaccumOutResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -28,14 +30,4 @@ public readonly struct VaccumOutResponse : IResponseHotspotMessage
     public byte Flag { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Cube);
-        writer.Write(Flag);
-    }
-
-#endregion Interface: IWritableData
 }

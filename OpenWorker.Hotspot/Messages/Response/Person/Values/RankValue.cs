@@ -1,6 +1,9 @@
-﻿namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
+﻿using OpenWorker.Wire;
 
-public readonly struct RankValue
+namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
+
+[WireMessage(WireMethods.Write)]
+public readonly partial struct RankValue
 {
     public byte Level { get; }
     public int Experience { get; }

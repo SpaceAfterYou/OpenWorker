@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Helpers.Requests;
 
 /// <summary>
 /// Offers the person as support for its friends.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct HelperSupportRegisterRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct HelperSupportRegisterRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,7 +24,7 @@ public readonly struct HelperSupportRegisterRequest(BinaryReader reader) : IRequ
 
 #region Message: Body
 
-    public byte SupportType { get; } = reader.ReadByte();
+    public byte SupportType { get; }
 
 #endregion Message: Body
 }

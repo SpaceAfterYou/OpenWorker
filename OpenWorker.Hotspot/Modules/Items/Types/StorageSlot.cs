@@ -1,18 +1,15 @@
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
-using OpenWorker.Hotspot.Modules.Items.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Types;
 
-public readonly struct StorageSlot(BinaryReader reader) : IWritableData
+/// <summary>
+/// A slot of a storage, read in requests and written in responses.
+/// </summary>
+[WireMessage(WireMethods.Both)]
+public readonly partial struct StorageSlot : IWritableData
 {
-    public StorageGroup Storage { get; init; } = reader.ReadStorageGroup();
-    public short Slot { get; init; } = reader.ReadInt16();
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Storage);
-        writer.Write(Slot);
-    }
+    public StorageGroup Storage { get; init; }
+    public short Slot { get; init; }
 }

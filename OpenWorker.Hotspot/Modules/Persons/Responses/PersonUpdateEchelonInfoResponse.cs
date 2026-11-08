@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// The rank of the player and how far it has gone.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonUpdateEchelonInfoResponse : IResponseHotspotMessage
+public readonly partial struct PersonUpdateEchelonInfoResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -27,15 +29,4 @@ public readonly struct PersonUpdateEchelonInfoResponse : IResponseHotspotMessage
     public bool LevelUp { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Level);
-        writer.Write(Experience);
-        writer.Write(LevelUp);
-    }
-
-#endregion Interface: IWritableData
 }

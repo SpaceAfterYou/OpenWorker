@@ -1,9 +1,10 @@
 ﻿using System.Runtime.InteropServices;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 [StructLayout(LayoutKind.Explicit, Size = sizeof(ulong))]
-public readonly struct TitleValue
+public readonly struct TitleValue : IWireWritable
 {
     [field: FieldOffset(0)]
     public long Value { get; private init; }
@@ -27,4 +28,12 @@ public readonly struct TitleValue
 
     public static implicit operator long(TitleValue titleValue) => titleValue.Value;
     public static implicit operator TitleValue(long value) => new() { Value = value };
+
+    /// <summary>
+    /// Both titles as one 64-bit value.
+    /// </summary>
+    public void Write(ref PacketWriter writer)
+    {
+        writer.WriteInt64(Value);
+    }
 }

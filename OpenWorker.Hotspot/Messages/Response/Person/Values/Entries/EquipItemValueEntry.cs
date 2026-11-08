@@ -1,8 +1,9 @@
 ﻿using OpenWorker.Hotspot.Messages.Response.Person.Components.Entries;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
-public readonly struct EquipItemValueEntry
+public readonly struct EquipItemValueEntry : IWireWritable
 {
     public int Id { get; }
     public byte Upgrade { get; }
@@ -29,5 +30,14 @@ public readonly struct EquipItemValueEntry
     {
         Id = id;
         Upgrade = upgrade;
+    }
+
+    /// <summary>
+    /// The upgrade first, then the item: the order the client reads, not the one of the properties.
+    /// </summary>
+    public void Write(ref PacketWriter writer)
+    {
+        writer.WriteByte(Upgrade);
+        writer.WriteInt32(Id);
     }
 }

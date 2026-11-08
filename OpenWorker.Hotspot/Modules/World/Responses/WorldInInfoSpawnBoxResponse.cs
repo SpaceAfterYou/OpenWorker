@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct WorldInInfoSpawnBoxResponse : IResponseHotspotMessage
+public readonly partial struct WorldInInfoSpawnBoxResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -19,21 +21,8 @@ public readonly struct WorldInInfoSpawnBoxResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireArray(WireLength.Byte)]
     public required int[] SpawnBoxList { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write((byte)SpawnBoxList.Length);
-
-        foreach (var spawnBox in SpawnBoxList)
-        {
-            writer.Write(spawnBox);
-        }
-    }
-
-#endregion Interface: IWritableData
 }

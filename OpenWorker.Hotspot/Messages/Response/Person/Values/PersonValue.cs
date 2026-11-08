@@ -3,10 +3,11 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
-public readonly struct PersonValue
+public readonly struct PersonValue : IWireWritable
 {
     public PersonValue(
         ActorValue actor,
@@ -98,4 +99,42 @@ public readonly struct PersonValue
     public bool BattlePose { get; }
     public int Status { get; }
     public StatusEffectValueEntry[] StatusEffects { get; }
+
+    /// <summary>
+    /// In the order the client reads, which is not the one of the properties, and the worn items by their identifiers alone:
+    /// not declarative, so written by hand.
+    /// </summary>
+    public void Write(ref PacketWriter writer)
+    {
+        writer.WriteInt32(Actor);
+        InfoValue.Write(ref writer);
+        writer.WriteByte(Level);
+        writer.WriteByte((byte)Faction);
+        writer.WriteInt32(Account);
+        writer.WriteByte((byte)StuffLevel);
+        writer.WriteInt32(PvPKillCount);
+        PrimaryWeapon.Write(ref writer);
+        SecondaryWeapon.Write(ref writer);
+
+        // The worn items without their upgrades, one for every slot.
+        foreach (var item in EquipItems ?? [])
+        {
+            writer.WriteInt32(item.Id);
+        }
+
+        Title.Write(ref writer);
+        League.Write(ref writer);
+        Ability.Write(ref writer);
+        PrivateShop.Write(ref writer);
+        FatiguePoints.Write(ref writer);
+        Rank.Write(ref writer);
+        writer.WriteBoolean(BattlePose);
+        writer.WriteInt32(Status);
+        writer.WriteLength(WireLength.Byte, StatusEffects?.Length ?? 0);
+
+        foreach (var effect in StatusEffects ?? [])
+        {
+            effect.Write(ref writer);
+        }
+    }
 }

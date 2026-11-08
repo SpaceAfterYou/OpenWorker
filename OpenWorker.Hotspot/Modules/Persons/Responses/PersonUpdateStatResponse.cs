@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// Changes one characteristic of the player.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonUpdateStatResponse : IResponseHotspotMessage
+public readonly partial struct PersonUpdateStatResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -26,14 +28,4 @@ public readonly struct PersonUpdateStatResponse : IResponseHotspotMessage
     public ushort Stat { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Value);
-        writer.Write(Stat);
-    }
-
-#endregion Interface: IWritableData
 }

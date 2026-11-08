@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
 /// <summary>
 /// TODO: Unverified
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct WorldVersionResponse : IResponseHotspotMessage
+public readonly partial struct WorldVersionResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -28,16 +30,4 @@ public readonly struct WorldVersionResponse : IResponseHotspotMessage
     public required int DataVer { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Identifier);
-        writer.Write(MainVer);
-        writer.Write(SubVer);
-        writer.Write(DataVer);
-    }
-
-#endregion Interface: IWritableData
 }

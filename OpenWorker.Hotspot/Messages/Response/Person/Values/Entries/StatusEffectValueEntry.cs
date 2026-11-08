@@ -1,8 +1,10 @@
 ﻿using OpenWorker.Hotspot.Messages.Response.Person.Components.Entries;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
-public readonly struct StatusEffectValueEntry
+[WireMessage(WireMethods.Write)]
+public readonly partial struct StatusEffectValueEntry
 {
     public int Id { get; }
     public float Time { get; }

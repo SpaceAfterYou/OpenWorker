@@ -5,11 +5,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct SkillProjectileRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct SkillProjectileRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,17 +24,17 @@ public readonly struct SkillProjectileRequest(BinaryReader reader) : IRequestHot
 
 #region Message: Body
 
-    public int Skill { get; init; } = reader.ReadInt32();
-    public short TriggerIndex { get; init; } = reader.ReadInt16();
-    public Vector3 Position { get; init; } = reader.ReadVector3();
-    public Vector3 Direction { get; init; } = reader.ReadVector3();
-    public Vector3 Right { get; init; } = reader.ReadVector3();
-    public float Yaw { get; init; } = reader.ReadSingle();
-    public float Pitch { get; init; } = reader.ReadSingle();
-    public short AdditionalDirectionX { get; init; } = reader.ReadInt16();
-    public short AdditionalDirectionY { get; init; } = reader.ReadInt16();
-    public uint Session { get; init; } = reader.ReadUInt32();
-    public ActorValue Target { get; init; } = new(reader);
+    public int Skill { get; }
+    public short TriggerIndex { get; }
+    public Vector3 Position { get; }
+    public Vector3 Direction { get; }
+    public Vector3 Right { get; }
+    public float Yaw { get; }
+    public float Pitch { get; }
+    public short AdditionalDirectionX { get; }
+    public short AdditionalDirectionY { get; }
+    public uint Session { get; }
+    public ActorValue Target { get; }
 
 #endregion Message: Body
 }

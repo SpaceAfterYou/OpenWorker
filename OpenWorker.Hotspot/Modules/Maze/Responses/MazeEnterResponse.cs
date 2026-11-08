@@ -4,11 +4,13 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MazeEnterResponse : IResponseHotspotMessage
+public readonly partial struct MazeEnterResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -24,13 +26,4 @@ public readonly struct MazeEnterResponse : IResponseHotspotMessage
     public WorldValue World { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(World);
-    }
-
-#endregion Interface: IWritableData
 }

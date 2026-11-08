@@ -2,16 +2,18 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct MazeOperationEndRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct MazeOperationEndRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_OPERATION_END_REQ;
 
-    public int Operation { get; } = reader.ReadInt32();
+    public int Operation { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

@@ -18,6 +18,7 @@ using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using OpenWorker.Hotspot.Telemetry;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -204,6 +205,24 @@ public sealed class FrameTest
     }
 
     /// <summary>
+    /// <see cref="Filler"/> with a span format: the encoder writes it through <see cref="PacketWriter"/>.
+    /// </summary>
+    private sealed class WireFiller(byte value, int size) : IResponseHotspotMessage, IWireWritable
+    {
+        public MessageOpcode Opcode => FillerOpcode;
+
+        public void Write(ref PacketWriter writer)
+        {
+            for (var index = 0; index <= size; index++)
+            {
+                writer.WriteByte(value);
+            }
+        }
+
+        public void Write(BinaryWriter writer) => WireBridge.Write(writer, this);
+    }
+
+    /// <summary>
     /// Counts how many times it is written.
     /// </summary>
     private sealed class Counting : IResponseHotspotMessage
@@ -342,5 +361,43 @@ public sealed class FrameTest
         var warning = logger.Entries.Single(e => e.Level == LogLevel.Warning);
 
         Assert.AreEqual(FillerOpcode.ToFullString(), warning.Values["Opcode"]);
+    }
+
+    /// <summary>
+    /// The same for a message written through <see cref="PacketWriter"/>: the writer stops at the limit instead of
+    /// throwing, the encoder drops the message, and a message of the other path with the same body gives the same frame.
+    /// </summary>
+    [TestMethod]
+    public async Task AWireMessageLongerThanAFrameIsDroppedAndTheOthersGoOut()
+    {
+        using var metrics = new MetricsHost();
+        using var dropped = metrics.Listen<long>("frames.dropped");
+
+        var logger = new CapturingLogger<WorldLoop>();
+
+        using var loop = new WorldLoop(logger, sessions: metrics.Get<SessionMetrics>());
+
+        var connection = new RecordingConnection();
+        var session = new ServerSessionComponent(connection);
+
+        var (tooLong, full, wire, binary) = await loop.InvokeAsync(() => (
+            session.TrySend(new WireFiller(1, MessageHeader.MaxContentLength - 2)),
+            session.TrySend(new WireFiller(2, MessageHeader.MaxContentLength - 3)),
+            session.TrySend(new WireFiller(3, 300)),
+            session.TrySend(new Filler(3, 300))));
+
+        Assert.IsFalse(tooLong);
+        Assert.IsTrue(full);
+        Assert.IsTrue(wire);
+        Assert.IsTrue(binary);
+
+        await MetricAssertions.UntilAsync(() => connection.Frames.Length == 3, "The three messages that fit are sent.");
+
+        Assert.AreEqual(ushort.MaxValue, connection.Frames[0].Length);
+        CollectionAssert.AreEqual(connection.Frames[2], connection.Frames[1], "Both paths give the same frame.");
+        Assert.IsFalse(session.Closed.IsCompleted, "A message that does not fit does not close the session.");
+
+        Assert.AreEqual(1, dropped.Sum("opcode", FillerOpcode.ToFullString()));
+        Assert.AreEqual(FillerOpcode.ToFullString(), logger.Entries.Single(e => e.Level == LogLevel.Warning).Values["Opcode"]);
     }
 }

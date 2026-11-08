@@ -8,22 +8,24 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
 /// <summary>
 /// Gives a position to a member or takes it away.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct LeagueMemberPositionChangeRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct LeagueMemberPositionChangeRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.MemberPositionChange;
 
-    public int Actor { get; } = reader.ReadInt32();
-    public byte Position { get; } = reader.ReadByte();
-    public byte State { get; } = reader.ReadByte();
-    public int Result { get; } = reader.ReadInt32();
+    public int Actor { get; }
+    public byte Position { get; }
+    public byte State { get; }
+    public int Result { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

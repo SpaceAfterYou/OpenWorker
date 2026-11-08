@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Chat.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Responses;
 
 /// <summary>
 /// A line across the top of the screen. The colour is six hex digits.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct ChatNoticeResponse : IResponseHotspotMessage
+public readonly partial struct ChatNoticeResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Chat;
     private const ChatOpcode Command = ChatOpcode.Notice;
@@ -22,7 +24,9 @@ public readonly struct ChatNoticeResponse : IResponseHotspotMessage
     /// </summary>
     public byte Type { get; init; }
 
+    [WireString(WireStringFormat.Utf16Unicode)]
     public required string Message { get; init; }
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Color { get; init; }
 
     public ChatNoticeResponse()
@@ -31,11 +35,4 @@ public readonly struct ChatNoticeResponse : IResponseHotspotMessage
     }
 
     public MessageOpcode Opcode => new(Group, Command);
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Type);
-        writer.WriteChatMessage(Message);
-        writer.WriteChatColorMessage(Color);
-    }
 }

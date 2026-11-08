@@ -1,11 +1,14 @@
 ﻿using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
-public readonly struct LeagueValue
+[WireMessage(WireMethods.Write)]
+public readonly partial struct LeagueValue
 {
     public int Id { get; }
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
 
     public PersonLeagueCardValueEntry Card { get; }

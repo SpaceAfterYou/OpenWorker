@@ -1,10 +1,11 @@
 ﻿using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Domain.Types;
 
 [StructLayout(LayoutKind.Explicit, Size = sizeof(long))]
-public readonly struct SessionValue
+public readonly struct SessionValue : IWireReadable<SessionValue>, IWireWritable
 {
     [field: FieldOffset(0)]
     public long Key { get; }
@@ -36,4 +37,11 @@ public readonly struct SessionValue
     {
         Key = reader.ReadInt64();
     }
+
+    /// <summary>
+    /// The key on the wire, 64 bits.
+    /// </summary>
+    public static SessionValue Read(ref PacketReader reader) => new(reader.ReadInt64());
+
+    public void Write(ref PacketWriter writer) => writer.WriteInt64(Key);
 }

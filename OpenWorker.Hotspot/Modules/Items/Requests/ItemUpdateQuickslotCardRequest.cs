@@ -2,16 +2,19 @@
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ItemUpdateQuickslotCardRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ItemUpdateQuickslotCardRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.UpdateQuickSlotCard;
 
-    public int[] Cards { get; } = Enumerable.Range(0, 5).Select(_ => reader.ReadInt32()).ToArray();
+    [WireArray(Count = 5)]
+    public int[] Cards { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

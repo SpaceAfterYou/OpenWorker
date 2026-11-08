@@ -1,10 +1,12 @@
 ﻿using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
-public readonly struct PersonInfoValue
+[WireMessage(WireMethods.Write)]
+public readonly partial struct PersonInfoValue
 {
     public PersonInfoValue(string name, Hero hero, AppearanceValue appearanceShape, AppearanceValue appearanceLook)
     {
@@ -23,7 +25,9 @@ public readonly struct PersonInfoValue
         AppearanceLook = new AppearanceValue(reader);
     }
 
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
+    [WireAs(typeof(byte))]
     public Hero Hero { get; }
 
     public AppearanceValue AppearanceShape { get; init; }

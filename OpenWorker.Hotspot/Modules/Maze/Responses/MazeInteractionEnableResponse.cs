@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MazeInteractionEnableResponse : IResponseHotspotMessage
+public readonly partial struct MazeInteractionEnableResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_INTERACTION_ENABLE;
@@ -17,12 +19,4 @@ public readonly struct MazeInteractionEnableResponse : IResponseHotspotMessage
     public int CallCount { get; init; }
     
     public MessageOpcode Opcode => new(Group, Command);
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Show);
-        writer.Write(Enable);
-        writer.Write(BoxIndex);
-        writer.Write(CallCount);
-    }
 }

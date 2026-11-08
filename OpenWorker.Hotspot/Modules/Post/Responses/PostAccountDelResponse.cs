@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Post.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PostAccountDelResponse : IResponseHotspotMessage
+public readonly partial struct PostAccountDelResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Post;
     private const PostOpcode Command = PostOpcode.AccountDel;
@@ -15,10 +17,4 @@ public readonly struct PostAccountDelResponse : IResponseHotspotMessage
 
     public required long Serial { get; init; }
     public required short PostCount { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Serial);
-        writer.Write(PostCount);
-    }
 }

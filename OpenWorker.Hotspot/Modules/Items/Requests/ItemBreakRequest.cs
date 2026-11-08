@@ -4,19 +4,21 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ItemBreakRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ItemBreakRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.Break;
 
-    public StorageGroup Storage { get; } = reader.ReadStorageGroup();
-    public short Index { get; } = reader.ReadInt16();
-    public long Serial { get; } = reader.ReadInt64();
-    public int Count { get; } = reader.ReadInt32();
+    public StorageGroup Storage { get; }
+    public short Index { get; }
+    public long Serial { get; }
+    public int Count { get; }
     
     public MessageOpcode Opcode => new(Group, Command);
 }

@@ -15,6 +15,8 @@ public sealed partial class HandlerExecutor(
     ILogger<HandlerExecutor> logger,
     HandlerMetrics? metrics = null)
 {
+    private const int OpcodeSize = sizeof(short);
+
     /// <summary>
     /// The handlers are singletons: each class is resolved the first time a packet needs it and kept, in the place the
     /// table gives it. Resolving them all when the table is built would make every handler of the loaded assemblies,
@@ -59,14 +61,13 @@ public sealed partial class HandlerExecutor(
 
         using var logScope = scope is null ? null : logger.BeginScope(scope);
 
-        var reader = RentReader(buffer);
+        RequestReader? reader = null;
 
         MessageOpcode? opcode = null;
 
         try
         {
-            // A packet shorter than the opcode ends the stream here.
-            var current = new MessageOpcode(reader.Binary);
+            var current = ReadOpcode(buffer.Span);
 
             opcode = current;
 
@@ -81,8 +82,22 @@ public sealed partial class HandlerExecutor(
 
             try
             {
-                await found.Delegate
-                    .Invoke(instance, player, reader.Binary, cancellationToken);
+                ValueTask pending;
+
+                // A request with a span format is parsed from the packet here, whole, before its handler awaits anything;
+                // the others read from a BinaryReader over the packet, which the handler holds until it returns.
+                if (found.Packet is { } packet)
+                {
+                    pending = packet(instance, player, buffer.Span[OpcodeSize..], cancellationToken);
+                }
+
+                else
+                {
+                    reader = RentReader(buffer);
+                    pending = found.Delegate(instance, player, reader.Binary, cancellationToken);
+                }
+
+                await pending;
             }
 
             finally
@@ -104,8 +119,24 @@ public sealed partial class HandlerExecutor(
 
         finally
         {
-            ReturnReader(reader);
+            if (reader is not null)
+            {
+                ReturnReader(reader);
+            }
         }
+    }
+
+    /// <summary>
+    /// The group and the command, the first two bytes of every packet. A packet shorter than that ends here.
+    /// </summary>
+    private static MessageOpcode ReadOpcode(ReadOnlySpan<byte> packet)
+    {
+        if (packet.Length < OpcodeSize)
+        {
+            throw new EndOfStreamException($"A packet of {packet.Length} bytes is shorter than its opcode.");
+        }
+
+        return new MessageOpcode(packet[0], packet[1]);
     }
 
     private IHotspotHandler Resolve(Type type)
@@ -129,6 +160,7 @@ public sealed partial class HandlerExecutor(
         reader ??= new RequestReader();
 
         reader.Stream.Source = packet;
+        reader.Stream.Position = OpcodeSize;
 
         return reader;
     }

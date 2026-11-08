@@ -4,11 +4,13 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Ranking.Extensions;
 using OpenWorker.Hotspot.Modules.Ranking.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct RankingPvpListRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct RankingPvpListRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,9 +23,9 @@ public readonly struct RankingPvpListRequest(BinaryReader reader) : IRequestHots
 
 #region Message: Body
 
-    public int Person { get; } = reader.ReadInt32();
+    public int Person { get; }
 
-    public RankingType Type { get; } = reader.ReadRankingType();
+    public RankingType Type { get; }
 
 #endregion Message: Body
 }

@@ -4,19 +4,23 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Chat.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ChatMegaphoneRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ChatMegaphoneRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Chat;
     private const ChatOpcode Command = ChatOpcode.Megaphone;
 
-    public UseItemFrom Item { get; } = new(reader);
-    public int Person { get; } = reader.ReadInt32();
-    public string Name { get; } = reader.ReadUtf8UnicodeString();
-    public string Message { get; } = reader.ReadUtf8UnicodeString();
+    public UseItemFrom Item { get; }
+    public int Person { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string Name { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string Message { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

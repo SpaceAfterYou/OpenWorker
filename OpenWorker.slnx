@@ -53,4 +53,6 @@
   <Project Path="OpenWorker.Res/OpenWorker.Res.csproj" />
   <Project Path="OpenWorker.SourceGenerator.ResourceStructures/OpenWorker.SourceGenerator.ResourceStructures.csproj" />
   <Project Path="OpenWorker.UpdateContent/OpenWorker.UpdateContent.csproj" />
+  <Project Path="OpenWorker.Wire.SourceGenerators/OpenWorker.Wire.SourceGenerators.csproj" />
+  <Project Path="OpenWorker.Wire/OpenWorker.Wire.csproj" />
 </Solution>

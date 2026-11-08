@@ -6,6 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Modules.Party.Extensions;
 using OpenWorker.Hotspot.Modules.Party.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
@@ -57,15 +58,12 @@ public readonly struct PartyAwaiterListResponse(BinaryReader reader) : IResponse
     }
 }
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PartyUnknown5Response : IResponseHotspotMessage
+public readonly partial struct PartyUnknown5Response : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Unknown5;
 
     public MessageOpcode Opcode => new(Group, Command);
-
-    public void Write(BinaryWriter writer)
-    {
-    }
 }

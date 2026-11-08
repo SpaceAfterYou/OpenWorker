@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.DailyMissions.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.DailyMissions.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct DailyMissionHelperRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct DailyMissionHelperRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,12 +22,12 @@ public readonly struct DailyMissionHelperRequest(BinaryReader reader) : IRequest
 
 #region Message: Body
 
-    public int Mission { get; } = reader.ReadInt32();
+    public int Mission { get; }
 
     /// <summary>
     /// Whether the mission is to be shown in the tracker.
     /// </summary>
-    public DailyMissionHelperState Helper { get; } = (DailyMissionHelperState)reader.ReadByte();
+    public DailyMissionHelperState Helper { get; }
 
 #endregion Message: Body
 }

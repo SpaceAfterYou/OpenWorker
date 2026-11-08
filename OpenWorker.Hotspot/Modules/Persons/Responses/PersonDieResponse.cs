@@ -4,11 +4,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonDieResponse : IResponseHotspotMessage
+public readonly partial struct PersonDieResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -26,15 +28,4 @@ public readonly struct PersonDieResponse : IResponseHotspotMessage
     public int PvpKillCount { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Victim);
-        writer.WriteActor(Attacker);
-        writer.Write(PvpKillCount);
-    }
-
-#endregion Interface: IWritableData
 }

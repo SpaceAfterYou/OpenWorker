@@ -4,11 +4,13 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct ItemUpdateInvenMoneyResponse : IResponseHotspotMessage
+public readonly partial struct ItemUpdateInvenMoneyResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -26,15 +28,4 @@ public readonly struct ItemUpdateInvenMoneyResponse : IResponseHotspotMessage
     public MoneyEarnFlow Type { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Total);
-        writer.Write(Bonus);
-        writer.Write(Type);
-    }
-
-#endregion Interface: IWritableData
 }

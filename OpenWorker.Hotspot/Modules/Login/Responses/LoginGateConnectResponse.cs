@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Login.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct LoginGateConnectResponse : IResponseHotspotMessage
+public readonly partial struct LoginGateConnectResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,18 +22,9 @@ public readonly struct LoginGateConnectResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireString(WireStringFormat.Utf8Ascii)]
     public required string Address { get; init; }
     public short Port { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteUtf8AsciiString(Address);
-        writer.Write(Port);
-    }
-
-#endregion Interface: IWritableData
 }

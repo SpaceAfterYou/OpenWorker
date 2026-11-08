@@ -1,10 +1,14 @@
 ﻿using System.Runtime.CompilerServices;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Domain.Types;
 
-public readonly struct ActorValue
+/// <summary>
+/// An actor on the wire: one 32-bit number, the identifier in the low 29 bits and the type in the high 3.
+/// </summary>
+public readonly struct ActorValue : IWireReadable<ActorValue>, IWireWritable
 {
     /// <summary>
     /// 29 bits
@@ -17,6 +21,10 @@ public readonly struct ActorValue
     public ActorType Type { get; init; }
 
     public ActorValue(BinaryReader reader) : this(reader.ReadInt32()) {}
+
+    public static ActorValue Read(ref PacketReader reader) => new(reader.ReadInt32());
+
+    public void Write(ref PacketWriter writer) => writer.WriteInt32(this);
 
     private ActorValue(int value)
     {

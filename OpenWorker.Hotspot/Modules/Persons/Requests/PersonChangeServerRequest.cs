@@ -5,18 +5,20 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct PersonChangeServerRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct PersonChangeServerRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.GobackLobby;
 
-    public ActorValue Actor { get; } = new(reader);
-    public int Account { get; } = reader.ReadInt32();
-    public LeaveDestination Destination { get; } = (LeaveDestination)reader.ReadByte();
+    public ActorValue Actor { get; }
+    public int Account { get; }
+    public LeaveDestination Destination { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

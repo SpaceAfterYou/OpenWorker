@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct RankingInfiniteTowerListRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct RankingInfiniteTowerListRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -19,8 +21,8 @@ public readonly struct RankingInfiniteTowerListRequest(BinaryReader reader) : IR
 
 #region Message: Body
 
-    public int Person { get; } = reader.ReadInt32();
-    public int Chapter { get; } = reader.ReadInt32();
+    public int Person { get; }
+    public int Chapter { get; }
 
 #endregion Message: Body
 }

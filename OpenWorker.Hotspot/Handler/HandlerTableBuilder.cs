@@ -44,7 +44,7 @@ public sealed partial class HandlerTableBuilder(HandlerBuilder builder, ILogger<
     {
         foreach (var handler in exists)
         {
-            list[handler.Opcode] = new Handler(handler.Class, handler.Delegate, handler.Opcode.ToFullString());
+            list[handler.Opcode] = new Handler(handler.Class, handler.Delegate, handler.Opcode.ToFullString(), Packet: handler.Packet);
             LogFoundHandler(handler.Opcode, handler.Class.Name);
         }
 

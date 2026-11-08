@@ -6,11 +6,13 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Friends.Enums;
 using OpenWorker.Hotspot.Modules.Friends.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct FriendRecruitDelResponse : IResponseHotspotMessage
+public readonly partial struct FriendRecruitDelResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -24,17 +26,8 @@ public readonly struct FriendRecruitDelResponse : IResponseHotspotMessage
 #region Message: Body
 
     public int Result { get; init; }
+    [WireString(WireStringFormat.Utf16Unicode)]
     public required string Name { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Result);
-        writer.WritePersonName(Name);
-    }
-
-#endregion Interface: IWritableData
 }

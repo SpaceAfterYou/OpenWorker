@@ -6,17 +6,20 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
 using OpenWorker.Hotspot.SoulWorker.Network.DataTypes.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct PersonTradePasswordRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct PersonTradePasswordRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.TradePassword;
     
-    public PasswordCheckType CheckType { get; } = reader.ReadPasswordCheckType();
-    public string Password { get; } = reader.ReadUtf8AsciiStringWithoutTerminator();
+    public PasswordCheckType CheckType { get; }
+    [WireString(WireStringFormat.Utf8AsciiWithoutTerminator)]
+    public string Password { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

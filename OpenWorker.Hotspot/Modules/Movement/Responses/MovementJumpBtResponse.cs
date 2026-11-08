@@ -5,11 +5,13 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MovementJumpBtResponse : IResponseHotspotMessage
+public readonly partial struct MovementJumpBtResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -35,22 +37,4 @@ public readonly struct MovementJumpBtResponse : IResponseHotspotMessage
     public byte JumpDrop { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.WriteMapValue(MapId);
-        writer.Write(PosX);
-        writer.Write(PosY);
-        writer.Write(PosZ);
-        writer.Write(Yaw);
-        writer.Write(TargetPosX);
-        writer.Write(TargetPosY);
-        writer.Write(JumpingMove);
-        writer.Write(JumpDrop);
-    }
-
-#endregion Interface: IWritableData
 }

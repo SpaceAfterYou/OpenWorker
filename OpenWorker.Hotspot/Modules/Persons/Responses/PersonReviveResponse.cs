@@ -5,6 +5,7 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using System.Numerics;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
@@ -12,8 +13,9 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// A player comes back to life at a place. The client reads this one where the revive broadcast is
 /// registered, not at the code that stands before it in the list.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonReviveResponse : IResponseHotspotMessage
+public readonly partial struct PersonReviveResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -33,17 +35,4 @@ public readonly struct PersonReviveResponse : IResponseHotspotMessage
     public float Rotation { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Owner);
-        writer.Write(Type);
-        writer.Write(Position);
-        writer.Write(Rotation);
-    }
-
-#endregion Interface: IWritableData
 }

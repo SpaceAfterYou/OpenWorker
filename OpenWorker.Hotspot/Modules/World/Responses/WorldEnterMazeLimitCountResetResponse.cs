@@ -5,11 +5,13 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct WorldEnterMazeLimitCountResetResponse : IResponseHotspotMessage
+public readonly partial struct WorldEnterMazeLimitCountResetResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -25,10 +27,4 @@ public readonly struct WorldEnterMazeLimitCountResetResponse : IResponseHotspotM
     public ActorValue Actor { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer) => writer.WriteActor(Actor);
-
-#endregion Interface: IWritableData
 }

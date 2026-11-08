@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// The reward of an achievement has been given.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PersonAchieveRewardResponse : IResponseHotspotMessage
+public readonly partial struct PersonAchieveRewardResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -25,13 +27,4 @@ public readonly struct PersonAchieveRewardResponse : IResponseHotspotMessage
     public int Index { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Index);
-    }
-
-#endregion Interface: IWritableData
 }

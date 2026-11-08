@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Helpers.Requests;
 
 /// <summary>
 /// Puts an item of the inventory on a helper, or takes it off.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct HelperEquipRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct HelperEquipRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,21 +24,21 @@ public readonly struct HelperEquipRequest(BinaryReader reader) : IRequestHotspot
 
 #region Message: Body
 
-    public byte InventoryType { get; } = reader.ReadByte();
+    public byte InventoryType { get; }
 
-    public int InventoryItem { get; } = reader.ReadInt32();
+    public int InventoryItem { get; }
 
-    public short InventorySlot { get; } = reader.ReadInt16();
+    public short InventorySlot { get; }
 
-    public long InventorySerial { get; } = reader.ReadInt64();
+    public long InventorySerial { get; }
 
-    public int Helper { get; } = reader.ReadInt32();
+    public int Helper { get; }
 
-    public int HelperItem { get; } = reader.ReadInt32();
+    public int HelperItem { get; }
 
-    public short HelperSlot { get; } = reader.ReadInt16();
+    public short HelperSlot { get; }
 
-    public long HelperSerial { get; } = reader.ReadInt64();
+    public long HelperSerial { get; }
 
 #endregion Message: Body
 }

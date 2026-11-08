@@ -1,10 +1,14 @@
-﻿using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Modules.Items.Enums;
+﻿using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Types;
 
-public readonly struct UseItemFrom(BinaryReader reader)
+/// <summary>
+/// The slot of the item a request uses up.
+/// </summary>
+[WireMessage]
+public readonly partial struct UseItemFrom
 {
-    public StorageGroup Storage { get; } = reader.ReadStorageGroup();
-    public short Slot { get; } = reader.ReadInt16();
+    public StorageGroup Storage { get; }
+    public short Slot { get; }
 }

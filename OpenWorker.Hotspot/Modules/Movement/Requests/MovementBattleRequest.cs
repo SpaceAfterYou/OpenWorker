@@ -3,21 +3,24 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct MovementBattleRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct MovementBattleRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.Battle;
 
-    public ActorValue dwActorID { get; } = new(reader);
-    public float fPosX { get; } = reader.ReadSingle();
-    public float fPosY { get; } = reader.ReadSingle();
-    public float fPosZ { get; } = reader.ReadSingle();
-    public float fYaw { get; } = reader.ReadSingle();
-    public byte bBattlePose { get; } = reader.ReadByte(); // TODO: Name
-    public int bPlayMotion { get; } = reader.ReadByte(); // TODO: Name
+    public ActorValue dwActorID { get; }
+    public float fPosX { get; }
+    public float fPosY { get; }
+    public float fPosZ { get; }
+    public float fYaw { get; }
+    public byte bBattlePose { get; } // TODO: Name
+    [WireAs(typeof(byte))]
+    public int bPlayMotion { get; } // TODO: Name
     public MessageOpcode Opcode => new(Group, Command);
 }

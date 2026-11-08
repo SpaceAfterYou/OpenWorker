@@ -3,17 +3,19 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Party.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct PartyAwaiterInfoRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct PartyAwaiterInfoRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.AwaiterInfo;
     
     public MessageOpcode Opcode => new(Group, Command);
 
-    public ActorValue Actor { get; } = new(reader);
-    public byte Select { get; } = reader.ReadByte();
+    public ActorValue Actor { get; }
+    public byte Select { get; }
 }

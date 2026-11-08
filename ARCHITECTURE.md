@@ -96,6 +96,17 @@ flowchart TB
   returns the array to the pool. The encoder of the world loop (`WorldLoop.Encoder`) is reused for every message;
   a body longer than `MessageHeader.MaxContentLength` is dropped with a warning and counted in `frames.dropped`,
   and the session stays open.
+- **Messages.** A request or a response is a struct in `OpenWorker.Hotspot/Modules/<Group>` with
+  `[HotspotMessage]`. A message marked `[WireMessage]` (and `partial`) declares its format by its fields: the public
+  auto-properties in the order of declaration are the order on the wire, their types say how they go, and
+  `[WireString]`, `[WireArray]` and `[WireAs]` name a string format, a list prefix or count, another width. The generator of
+  `OpenWorker.Wire.SourceGenerators` writes `Read(ref PacketReader)` and `Write(ref PacketWriter)` from them (`OpenWorker.Wire`:
+  `ref struct`s over spans; a length the packet cannot hold is `InvalidDataException`, a write past the frame is an overflow,
+  never an exception). Two paths live side by side until every message has moved: `HandlerExecutor` parses a request
+  with a span format from the span of the packet, whole, before its handler runs, and the others through a
+  `BinaryReader`; `FrameEncoder` writes a response with a span format straight into the frame through `PacketWriter`, and
+  the others through a `BinaryWriter`. A message whose layout depends on its values keeps a hand-written reader or
+  writer. The details, the rules and what has moved: `docs/phase-2/C-wire-format.md`.
 - **World loop.** `WorldLoop` is a `SynchronizationContext` with one thread. Every packet handler,
   every timer and the closing of every connection runs there, one at a time, so the ECS world and the
   managers need no locks.

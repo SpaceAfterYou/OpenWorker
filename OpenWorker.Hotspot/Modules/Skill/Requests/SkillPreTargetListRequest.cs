@@ -4,11 +4,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Skill.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct SkillPreTargetListRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct SkillPreTargetListRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,7 +23,8 @@ public readonly struct SkillPreTargetListRequest(BinaryReader reader) : IRequest
 
 #region Message: Body
 
-    public ActorValue[] ActorList { get; init; } =  reader.ReadPreTargetList();
+    [WireArray(WireLength.Byte)]
+    public ActorValue[] ActorList { get; }
 
 #endregion Message: Body
 }

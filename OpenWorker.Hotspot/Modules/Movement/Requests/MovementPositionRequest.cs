@@ -5,22 +5,24 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct MovementPositionRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct MovementPositionRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.Position;
 
-    public ActorValue dwActorID { get; } = new(reader);
-    public MapValue nMapID { get; } = new(reader);
-    public float fPosX { get; } = reader.ReadSingle();
-    public float fPosY { get; } = reader.ReadSingle();
-    public float fPosZ { get; } = reader.ReadSingle();
-    public float fYaw { get; } = reader.ReadSingle();
-    public float fPitch { get; } = reader.ReadSingle();
+    public ActorValue dwActorID { get; }
+    public MapValue nMapID { get; }
+    public float fPosX { get; }
+    public float fPosY { get; }
+    public float fPosZ { get; }
+    public float fYaw { get; }
+    public float fPitch { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

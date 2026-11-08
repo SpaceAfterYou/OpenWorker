@@ -4,11 +4,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct SkillTrapPosUpdateRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct SkillTrapPosUpdateRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,9 +23,9 @@ public readonly struct SkillTrapPosUpdateRequest(BinaryReader reader) : IRequest
 
 #region Message: Body
 
-    public int Skill { get; init; } =  reader.ReadInt32();
-    public short TriggerIndex { get; init; } = reader.ReadInt16();
-    public Vector3 Position { get; init; } = reader.ReadVector3();
+    public int Skill { get; }
+    public short TriggerIndex { get; }
+    public Vector3 Position { get; }
 
 #endregion Message: Body
 }

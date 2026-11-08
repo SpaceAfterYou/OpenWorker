@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using OpenWorker.Hotspot.Telemetry;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot;
 
@@ -12,8 +13,11 @@ namespace OpenWorker.Hotspot;
 /// then the header, all in the array the frame keeps, with no second copy. The writer and the stream under it are
 /// made once and reused for every message, so an encoder belongs to one thread: the world loop has its own
 /// (<see cref="WorldLoop"/>), and any other thread that sends gets one of its own.<br/>
-/// A body that does not fit one frame stops the stream at the limit; the message is dropped with a warning and counted
-/// in <c>frames.dropped</c>, and nothing throws on the loop.
+/// Two paths live side by side until every message has moved: a message that writes itself through
+/// <see cref="PacketWriter"/> (<see cref="IWireWritable"/>, generated for a <c>[WireMessage]</c>) is written straight into
+/// the array of the frame; any other goes through the <see cref="BinaryWriter"/> over <see cref="FrameStream"/>.<br/>
+/// A body that does not fit one frame stops the writer or the stream at the limit; the message is dropped with a warning
+/// and counted in <c>frames.dropped</c>, and nothing throws on the loop.
 /// </summary>
 internal sealed partial class FrameEncoder : IDisposable
 {
@@ -60,6 +64,11 @@ internal sealed partial class FrameEncoder : IDisposable
     /// <returns>The frame with one reference, the caller's; <see langword="null"/> when the body does not fit.</returns>
     public Frame? Encode(IResponseHotspotMessage message)
     {
+        if (message is IWireWritable wire)
+        {
+            return Encode(message, wire);
+        }
+
         // A message that sends another one while it is written: rare enough to pay for a writer of its own.
         if (_busy)
         {
@@ -103,6 +112,51 @@ internal sealed partial class FrameEncoder : IDisposable
         }
 
         var buffer = _stream.Detach(out var length);
+
+        return Seal(buffer, length);
+    }
+
+    /// <summary>
+    /// The path of a message with a span format: the writer is a local over an array of the pool, so the encoder holds no
+    /// state of it and a message written while another one is needs no encoder of its own.
+    /// </summary>
+    private Frame? Encode(IResponseHotspotMessage message, IWireWritable wire)
+    {
+        var writer = new PacketWriter(_arrays, InitialCapacity, MaxFrameLength, MessageHeader.HeaderSize);
+
+        try
+        {
+            writer.WriteInt16(message.Opcode);
+
+            wire.Write(ref writer);
+        }
+
+        catch
+        {
+            writer.Dispose();
+
+            throw;
+        }
+
+        if (writer.Overflowed)
+        {
+            writer.Dispose();
+
+            OnDropped(message);
+
+            return null;
+        }
+
+        var buffer = writer.Detach(out var length);
+
+        return Seal(buffer, length);
+    }
+
+    /// <summary>
+    /// Encrypts the body in place and writes the header in front of it.
+    /// </summary>
+    private Frame Seal(byte[] buffer, int length)
+    {
         var header = new MessageHeader(length - MessageHeader.HeaderSize);
 
         MessageEncryption.Exchange(buffer.AsSpan(MessageHeader.HeaderSize, header.ContentLength), header.Version);

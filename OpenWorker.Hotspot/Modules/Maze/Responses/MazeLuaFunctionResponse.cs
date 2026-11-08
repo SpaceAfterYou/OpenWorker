@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MazeLuaFunctionResponse : IResponseHotspotMessage
+public readonly partial struct MazeLuaFunctionResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,13 +24,4 @@ public readonly struct MazeLuaFunctionResponse : IResponseHotspotMessage
     public int Box { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Box);
-    }
-
-#endregion Interface: IWritableData
 }

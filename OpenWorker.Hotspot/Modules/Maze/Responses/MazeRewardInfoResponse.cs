@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
 /// <summary>
 /// The window shown when a maze is finished: the rank, how long it took and what the player got for it.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MazeRewardInfoResponse : IResponseHotspotMessage
+public readonly partial struct MazeRewardInfoResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO;
@@ -39,27 +41,4 @@ public readonly struct MazeRewardInfoResponse : IResponseHotspotMessage
     public int CashItem { get; init; }
     public short EventItemCount { get; init; }
     public byte EventItemFlag { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Rank);
-        writer.Write(PlayPoint);
-        writer.Write(ClearPoint);
-        writer.Write(Difficulty);
-        writer.Write(ClearTime);
-        writer.Write(TotalCombo);
-        writer.Write(PlayExp);
-        writer.Write(PlayGold);
-        writer.Write(SpecialExp);
-        writer.Write(SpecialGold);
-        writer.Write(TotalExp);
-        writer.Write(TotalMoney);
-        writer.Write(TotalEther);
-        writer.Write(BaseItemCount);
-        writer.Write(BaseItem);
-        writer.Write(CashItemCount);
-        writer.Write(CashItem);
-        writer.Write(EventItemCount);
-        writer.Write(EventItemFlag);
-    }
 }

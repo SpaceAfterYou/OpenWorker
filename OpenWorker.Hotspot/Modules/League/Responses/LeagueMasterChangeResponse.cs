@@ -8,14 +8,16 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Responses;
 
 /// <summary>
 /// The league has another master.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct LeagueMasterChangeResponse : IResponseHotspotMessage
+public readonly partial struct LeagueMasterChangeResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.Delegate;
@@ -26,12 +28,4 @@ public readonly struct LeagueMasterChangeResponse : IResponseHotspotMessage
     public int Result { get; init; }
 
     public MessageOpcode Opcode => new(Group, Command);
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(League);
-        writer.Write(Previous);
-        writer.Write(Master);
-        writer.Write(Result);
-    }
 }

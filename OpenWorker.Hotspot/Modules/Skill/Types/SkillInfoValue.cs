@@ -1,23 +1,14 @@
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillInfoValue(BinaryReader reader) : IWritableData
+/// <summary>
+/// A skill and its divergence, read in requests and written in responses.
+/// </summary>
+[WireMessage(WireMethods.Both)]
+public readonly partial struct SkillInfoValue : IWritableData
 {
-#region Message: Body
-
-    public int Skill { get; init; } = reader.ReadInt32();
-    public int Divergence { get; init; } = reader.ReadInt32();
-
-#endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Skill);
-        writer.Write(Divergence);
-    }
-
-#endregion Interface: IWritableData
+    public int Skill { get; init; }
+    public int Divergence { get; init; }
 }

@@ -3,6 +3,7 @@ using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Enums;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.World.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Extensions;
 
@@ -15,9 +16,7 @@ internal static class BinaryWriterExtension
     
     internal static void Write(this BinaryWriter writer, WarpValue value)
     {
-        writer.Write(value.HasError);
-        writer.Write(value.Position);
-        writer.Write(value.Rotation);
+        WireBridge.Write(writer, value);
     }
 
     internal static void WriteNpc(this BinaryWriter writer, STNpcInfo value)
