@@ -124,6 +124,7 @@ public sealed class BotScenarioTest
         Assert.IsGreaterThan(0, world.Skills);
 
         Assert.IsGreaterThan(0, Total(stats, e => e.MazeMoveEcho).Count);
+        Assert.AreEqual(0L, stats.Bots().Sum(e => e.Unmatched), "The moves of the monsters of a maze are not moves of a bot left unmatched.");
 
         var skills = Total(stats, e => e.SkillResponse);
 

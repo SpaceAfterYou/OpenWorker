@@ -147,6 +147,11 @@ internal sealed class FakeWorld : IAsyncDisposable
     public const int LearnedSkill = 51641260;
 
     /// <summary>
+    /// The actor of the monster that walks in the maze, which is not a bot.
+    /// </summary>
+    public const int MonsterActor = 7_000_001;
+
+    /// <summary>
     /// Makes the district answer a request for a maze with a refusal.
     /// </summary>
     public bool RefuseMaze { get; set; }
@@ -687,6 +692,15 @@ internal sealed class FakeWorld : IAsyncDisposable
             Pitch = request.fPitch,
             MoveSpeed = request.fMoveSpeed,
             ChangeMotion = request.byChangeMotion
+        });
+
+        // And the monsters move with the same broadcast, as the real maze sends it (MonsterBody).
+        connection.Send(new MovementMoveBtResponse
+        {
+            Actor = new ActorValue(MonsterActor, ActorType.Monster),
+            Map = request.nMapID,
+            Pos = new Vector3(request.fPosX + 300f, request.fPosY - 300f, request.fPosZ),
+            MoveSpeed = request.fMoveSpeed
         });
     }
 

@@ -785,6 +785,12 @@ internal sealed class Bot : IFrameSink, IDisposable
         var own = actor == Volatile.Read(ref _actor);
         var sender = own ? this : _context.Find(actor);
 
+        // The monsters of a maze move with the same broadcast, and the bot does not measure them.
+        if (sender is null && _inMaze)
+        {
+            return;
+        }
+
         if (sender is null || !sender._trackReady)
         {
             Metrics.Unmatched++;
