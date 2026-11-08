@@ -826,8 +826,8 @@
     {
       "id": 13,
       "type": "timeseries",
-      "title": "Handler errors by reason",
-      "description": "`malformed`: the packet is not what the client should send. `handler_fault`: the handler failed on a packet that parsed.",
+      "title": "Handler errors by reason, refused packets by group",
+      "description": "`malformed`: the packet is not what the client should send. `handler_fault`: the handler failed on a packet that parsed. `violation`: the handler refused what the packet asks as impossible (a move faster than the hero runs). `refused`: packets dropped because the session sent their group faster than `Hotspot:RateLimits` allows.",
       "datasource": {
         "type": "prometheus",
         "uid": "openworker-prometheus"
@@ -900,6 +900,18 @@
           "range": true,
           "instant": false,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "openworker-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (group) (rate(handler_refused_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "legendFormat": "refused {{group}}",
+          "range": true,
+          "instant": false,
+          "refId": "B"
         }
       ]
     },

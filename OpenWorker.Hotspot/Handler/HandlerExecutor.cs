@@ -13,7 +13,8 @@ public sealed partial class HandlerExecutor(
     World world,
     HandlerErrorBudget budget,
     ILogger<HandlerExecutor> logger,
-    HandlerMetrics? metrics = null)
+    HandlerMetrics? metrics = null,
+    PacketRateLimiter? limiter = null)
 {
     private const int OpcodeSize = sizeof(short);
 
@@ -34,7 +35,8 @@ public sealed partial class HandlerExecutor(
     /// <summary>
     /// Reads the opcode of a packet, parses the request and runs its handler. A packet that cannot be read
     /// and a handler that fails never throw out of here: the error is counted for the session, and the
-    /// session is closed once it has sent too many (<see cref="HandlerErrorBudget" />).
+    /// session is closed once it has sent too many (<see cref="HandlerErrorBudget" />). A packet sent faster than its
+    /// group allows (<see cref="PacketRateLimiter" />) is dropped before it is parsed.
     /// </summary>
     /// <remarks>The scope of the logs is the one of the session's <see cref="ServerSessionComponent"/>, looked up here;
     /// the read loop, which holds the session already, passes it instead.</remarks>
@@ -70,6 +72,11 @@ public sealed partial class HandlerExecutor(
             var current = ReadOpcode(buffer.Span);
 
             opcode = current;
+
+            if (!Admit(player, current))
+            {
+                return;
+            }
 
             if (!collection.TryGet(current, out var found))
             {
@@ -179,6 +186,34 @@ public sealed partial class HandlerExecutor(
         {
             _readers.Push(reader);
         }
+    }
+
+    /// <summary>
+    /// Takes a token of the group of the packet from the session (<see cref="PacketRateLimiter"/>). A packet without one is
+    /// dropped and counted, and nothing else happens to the session.
+    /// </summary>
+    private bool Admit(Entity player, MessageOpcode opcode)
+    {
+        if (limiter is null || !world.IsAlive(player))
+        {
+            return true;
+        }
+
+        if (!world.Has<PacketRateComponent>(player))
+        {
+            world.Add<PacketRateComponent>(player);
+        }
+
+        var group = PacketRateLimiter.GroupOf(opcode.Group);
+
+        if (limiter.TryTake(ref world.Get<PacketRateComponent>(player), group))
+        {
+            return true;
+        }
+
+        metrics?.Refused(PacketRateLimiter.Tag(group));
+
+        return false;
     }
 
     private bool IsClosed(Entity player)
