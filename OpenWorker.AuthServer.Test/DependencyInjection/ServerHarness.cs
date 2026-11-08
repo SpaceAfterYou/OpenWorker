@@ -63,8 +63,7 @@ internal sealed class ServerHarness : IAsyncDisposable
         Dictionary<string, string?>? settings = null,
         CancellationToken cancellationToken = default)
     {
-        var gamePort = FreePort();
-        var healthPort = FreePort();
+        var (gamePort, healthPort) = FreePorts();
 
         var configuration = new Dictionary<string, string?>
         {
@@ -169,20 +168,28 @@ internal sealed class ServerHarness : IAsyncDisposable
         Host.Dispose();
     }
 
-    private static int FreePort()
+    /// <summary>
+    /// Two different free ports. Both listeners are open while the ports are read: a port that was just closed is
+    /// what the system hands out next, so two calls in a row could return the same port, and then the health
+    /// endpoint would be told to share the port of the game listener.
+    /// </summary>
+    private static (int Game, int Health) FreePorts()
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
+        var game = new TcpListener(IPAddress.Loopback, 0);
+        var health = new TcpListener(IPAddress.Loopback, 0);
 
-        listener.Start();
+        game.Start();
+        health.Start();
 
         try
         {
-            return ((IPEndPoint)listener.LocalEndpoint).Port;
+            return (((IPEndPoint)game.LocalEndpoint).Port, ((IPEndPoint)health.LocalEndpoint).Port);
         }
 
         finally
         {
-            listener.Stop();
+            game.Stop();
+            health.Stop();
         }
     }
 }
