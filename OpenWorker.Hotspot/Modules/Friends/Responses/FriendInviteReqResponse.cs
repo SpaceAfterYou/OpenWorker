@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct FriendInviteReqResponse : IResponseHotspotMessage
+public readonly partial struct FriendInviteReqResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,16 +22,8 @@ public readonly struct FriendInviteReqResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireString(WireStringFormat.Utf16Unicode)]
     public required string Name { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteUtf16UnicodeString(Name);
-    }
-
-#endregion Interface: IWritableData
 }
