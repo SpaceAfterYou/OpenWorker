@@ -41,7 +41,7 @@ using Redis.OM.Searching;
 namespace OpenWorker.MazeServer.Services;
 
 [HotspotHandler(HotspotHandlerType.District)]
-public sealed class PersonService(
+public sealed partial class PersonService(
     World world,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
     ReadOnlyCollection<MazeInfoRow> mazeInfoCollection,
@@ -63,7 +63,8 @@ public sealed class PersonService(
     ILogger<LuaMaze> mazeLogger,
     ILogger<LuaGameHelper> helperLogger,
     IOptions<GateOptions> gate,
-    CommunityNetwork community
+    CommunityNetwork community,
+    ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
@@ -99,11 +100,33 @@ public sealed class PersonService(
             .FindByIdAsync(request.Actor.Identifier.ToString());
 
         // Nobody asked to enter a maze with this person, or the reservation has expired.
-        if (mazeReserve is null ||
-            mazeReserve.Account != request.Account ||
-            !batches.TryGetAndCache(mazeReserve.Location, out var batch, out var type) ||
-            type != BatchType.Maze)
+        if (mazeReserve is null)
         {
+            LogNoReservation(logger, request.Account, request.Actor.Identifier);
+            session.Disconnect();
+            return;
+        }
+
+        // The reservation of another account stays: its owner still has to come.
+        if (mazeReserve.Account != request.Account)
+        {
+            LogForeignReservation(logger, request.Account, request.Actor.Identifier, mazeReserve.Account);
+            session.Disconnect();
+            return;
+        }
+
+        if (!batches.TryGetAndCache(mazeReserve.Location, out var batch, out var type) || type != BatchType.Maze)
+        {
+            LogNoMazeBatch(logger, request.Account, request.Actor.Identifier, mazeReserve.Location);
+            session.Disconnect();
+            return;
+        }
+
+        // Everything the entry needs is looked up before the reservation is used up: a client that is turned away
+        // for a row the tables do not have must not wait on the loop, and its reservation is not spent on it.
+        if (!TryGetMazeInfo(mazeInfoCollection, mazeReserve.Location, out var mazeInfo))
+        {
+            LogNoMazeInfo(logger, request.Account, request.Actor.Identifier, mazeReserve.Location);
             session.Disconnect();
             return;
         }
@@ -152,8 +175,6 @@ public sealed class PersonService(
 
         registry.PullPerson(context.Player, person);
 
-        var mazeInfo = mazeInfoCollection.First(e => e.Id == mazeReserve.Location);
-
         var state = LuaState.Create();
         state.OpenStandardLibraries();
 
@@ -196,6 +217,26 @@ public sealed class PersonService(
             .LeaveAsync(context.Player, request.Destination);
     }
 
+    /// <summary>
+    /// The row of the maze table for the location, or nothing when the table has none.
+    /// </summary>
+    public static bool TryGetMazeInfo(ReadOnlyCollection<MazeInfoRow> table, short location, out MazeInfoRow info)
+    {
+        foreach (var row in table)
+        {
+            if (row.Id == location)
+            {
+                info = row;
+
+                return true;
+            }
+        }
+
+        info = default;
+
+        return false;
+    }
+
     private void SendSoulMetryList(ServerSessionComponent session)
     {
         var list = soulMetryCollection
@@ -219,4 +260,16 @@ public sealed class PersonService(
 
         return ValueTask.CompletedTask;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person} with no reservation, or with one that has expired, and is turned away")]
+    private static partial void LogNoReservation(ILogger logger, int account, int person);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the reservation of that person belongs to account {ReservedAccount}, and it is turned away")]
+    private static partial void LogForeignReservation(ILogger logger, int account, int person, int reservedAccount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the location {Location} has no maze batch, and it is turned away")]
+    private static partial void LogNoMazeBatch(ILogger logger, int account, int person, short location);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the maze table has no row for the location {Location}, and it is turned away")]
+    private static partial void LogNoMazeInfo(ILogger logger, int account, int person, short location);
 }
