@@ -132,6 +132,8 @@ or wrong setting stops the server with a message that names the key. A setting w
 
 - `ConnectionStrings:Redis` is an address like `redis://redis:6379`. One setting serves the cache (Redis.OM) and
   the notifications between servers (StackExchange.Redis, built by `RedisOptions.ToConfigurationOptions`).
+- `Hotspot:ErrorBudget:MaxErrors` and `Hotspot:ErrorBudget:Window` (`00:01:00` is a minute) say how many packets of one
+  session may fail to parse or to handle before the server closes its connection; `HandlerErrorBudget` reads them.
 - `Credentials:DiscordToken` of the relay is a secret: no file carries it, it comes from the environment
   (`Credentials__DiscordToken`), and the relay stops at start without it.
 - `Attendance:ResetHour` and `DailyMission:ResetHour` are optional (the hour the game day starts at); the rules of the

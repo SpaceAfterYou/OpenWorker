@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Extensions;
 
 namespace OpenWorker.Hotspot.Handler.Extensions;
 
@@ -12,9 +13,9 @@ public static class ServiceCollectionExtension
             @this.AddSingleton(handler);
         }
 
-        // The limits are the defaults of the record until the configuration of the servers sets them.
+        // The limits of the error budget come from the Hotspot:ErrorBudget section.
         @this.TryAddSingleton(TimeProvider.System);
-        @this.TryAddSingleton(new HandlerErrorBudgetOptions());
+        @this.AddHandlerErrorBudgetOptions();
 
         return @this
             .AddTransient<HandlerBuilder>()

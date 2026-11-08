@@ -1,15 +1,7 @@
+using Microsoft.Extensions.Options;
+using OpenWorker.Extensions;
+
 namespace OpenWorker.Hotspot.Handler;
-
-/// <summary>
-/// The limit of <see cref="HandlerErrorBudget" />: <see cref="MaxErrors" /> errors within <see cref="Window" />
-/// close the connection. These are the defaults until the configuration of the servers names them.
-/// </summary>
-public sealed record HandlerErrorBudgetOptions
-{
-    public int MaxErrors { get; init; } = 10;
-
-    public TimeSpan Window { get; init; } = TimeSpan.FromMinutes(1);
-}
 
 /// <summary>
 /// Why a packet failed. <see cref="HandlerErrorBudget.Tag" /> is the value of the <c>reason</c> tag of the
@@ -46,13 +38,15 @@ public sealed class HandlerErrorBudget
     private readonly TimeProvider _time;
     private readonly HandlerErrorBudgetOptions _options;
 
-    public HandlerErrorBudget(TimeProvider time, HandlerErrorBudgetOptions options)
+    public HandlerErrorBudget(TimeProvider time, IOptions<HandlerErrorBudgetOptions> options)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(options.MaxErrors, 1);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.Window, TimeSpan.Zero);
+        var value = options.Value;
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(value.MaxErrors, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value.Window, TimeSpan.Zero);
 
         _time = time;
-        _options = options;
+        _options = value;
     }
 
     public HandlerErrorBudgetOptions Options => _options;

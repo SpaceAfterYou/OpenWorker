@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
@@ -143,7 +145,7 @@ public sealed class HandlerExecutorTest
                 Collection,
                 services,
                 Ecs,
-                new HandlerErrorBudget(Time, new HandlerErrorBudgetOptions()),
+                new HandlerErrorBudget(Time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = 10, Window = Minute })),
                 Logger);
 
             Player = Ecs.Create(new ActorComponent(Person, ActorType.User));
@@ -454,12 +456,21 @@ public sealed class HandlerExecutorTest
     }
 
     [TestMethod]
-    public void TheContainerBuildsTheExecutorWithTheDefaultBudget()
+    public void TheContainerBuildsTheExecutorWithTheBudgetOfTheConfiguration()
     {
         using var world = World.Create();
 
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Hotspot:ErrorBudget:MaxErrors"] = "7",
+                ["Hotspot:ErrorBudget:Window"] = "00:02:30"
+            })
+            .Build();
+
         var services = new ServiceCollection()
             .AddLogging()
+            .AddSingleton<IConfiguration>(configuration)
             .AddSingleton(world)
             .AddHotspotHandlers()
             .BuildServiceProvider();
@@ -468,7 +479,7 @@ public sealed class HandlerExecutorTest
 
         Assert.IsNotNull(services.GetRequiredService<HandlerExecutor>());
         Assert.AreSame(TimeProvider.System, services.GetRequiredService<TimeProvider>());
-        Assert.AreEqual(10, budget.Options.MaxErrors);
-        Assert.AreEqual(Minute, budget.Options.Window);
+        Assert.AreEqual(7, budget.Options.MaxErrors);
+        Assert.AreEqual(TimeSpan.FromSeconds(150), budget.Options.Window);
     }
 }

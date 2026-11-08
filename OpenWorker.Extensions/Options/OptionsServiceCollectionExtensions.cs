@@ -14,14 +14,24 @@ namespace OpenWorker.Extensions;
 public static class OptionsServiceCollectionExtensions
 {
     /// <summary>
-    /// The port the server listens on, the game version and the packet dumps: what every server has.
+    /// The port the server listens on, the game version, the packet dumps and the errors a session may cause:
+    /// what every server has.
     /// </summary>
     public static IServiceCollection AddServerOptions(this IServiceCollection services)
     {
         services.AddValidated<ServerOptions, ServerOptionsValidator>(ServerOptions.SectionName);
         services.AddValidated<GameOptions, GameOptionsValidator>(GameOptions.SectionName);
+        services.AddHandlerErrorBudgetOptions();
 
         return services.AddBound<HotspotOptions>(HotspotOptions.SectionName);
+    }
+
+    /// <summary>
+    /// How many packets of a session may fail before the server closes the connection: what the handlers read.
+    /// </summary>
+    public static IServiceCollection AddHandlerErrorBudgetOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<HandlerErrorBudgetOptions, HandlerErrorBudgetOptionsValidator>(HandlerErrorBudgetOptions.SectionName);
     }
 
     /// <summary>

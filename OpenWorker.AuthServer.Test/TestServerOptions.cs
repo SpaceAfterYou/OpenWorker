@@ -164,6 +164,67 @@ public sealed class TestServerOptions
     }
 
     [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    public void SessionMayFailTenPacketsInAMinuteByDefault(string server)
+    {
+        using var host = CreateHost(server);
+
+        Validate(host);
+
+        var budget = host.Services.GetRequiredService<IOptions<HandlerErrorBudgetOptions>>().Value;
+
+        Assert.AreEqual(10, budget.MaxErrors);
+        Assert.AreEqual(TimeSpan.FromMinutes(1), budget.Window);
+    }
+
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    public void ErrorBudgetNeedsAtLeastOneErrorAndAWindowThatHasLength(string server)
+    {
+        var none = Fails(server, new() { ["Hotspot:ErrorBudget:MaxErrors"] = "0" });
+        StringAssert.Contains(none.Message, "Hotspot:ErrorBudget:MaxErrors");
+
+        var negative = Fails(server, new() { ["Hotspot:ErrorBudget:MaxErrors"] = "-5" });
+        StringAssert.Contains(negative.Message, "Hotspot:ErrorBudget:MaxErrors");
+
+        var noWindow = Fails(server, new() { ["Hotspot:ErrorBudget:Window"] = "00:00:00" });
+        StringAssert.Contains(noWindow.Message, "Hotspot:ErrorBudget:Window");
+
+        var backwards = Fails(server, new() { ["Hotspot:ErrorBudget:Window"] = "-00:01:00" });
+        StringAssert.Contains(backwards.Message, "Hotspot:ErrorBudget:Window");
+    }
+
+    [TestMethod]
+    public void ErrorBudgetCanBeChangedFromTheEnvironment()
+    {
+        // `Hotspot__ErrorBudget__MaxErrors=3` and `Hotspot__ErrorBudget__Window=00:00:30` in the environment of a container.
+        using var host = CreateHost(District, new() { ["Hotspot:ErrorBudget:MaxErrors"] = "3", ["Hotspot:ErrorBudget:Window"] = "00:00:30" });
+
+        Validate(host);
+
+        var budget = host.Services.GetRequiredService<IOptions<HandlerErrorBudgetOptions>>().Value;
+
+        Assert.AreEqual(3, budget.MaxErrors);
+        Assert.AreEqual(TimeSpan.FromSeconds(30), budget.Window);
+    }
+
+    [TestMethod]
+    public void ErrorBudgetNeedsToBeInTheFileOfEveryServerThatHandlesPackets()
+    {
+        // No default in code: a server whose file lacks the section stops at start and names the key.
+        var error = Fails(Maze, new() { ["Hotspot:ErrorBudget:MaxErrors"] = null, ["Hotspot:ErrorBudget:Window"] = null });
+
+        StringAssert.Contains(error.Message, "Hotspot:ErrorBudget:MaxErrors");
+        StringAssert.Contains(error.Message, "Hotspot:ErrorBudget:Window");
+    }
+
+    [TestMethod]
     public void GameVersionIsNeverAPath()
     {
         // The version names the folder of the packet dumps.

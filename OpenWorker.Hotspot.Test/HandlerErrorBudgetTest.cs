@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Handler;
 
 namespace OpenWorker.Hotspot.Test;
@@ -9,16 +11,7 @@ public sealed class HandlerErrorBudgetTest
     private static readonly TimeSpan Minute = TimeSpan.FromMinutes(1);
 
     private static HandlerErrorBudget Create(FakeTimeProvider time, int maxErrors = 10) =>
-        new(time, new HandlerErrorBudgetOptions { MaxErrors = maxErrors, Window = Minute });
-
-    [TestMethod]
-    public void TheDefaultsAreTenErrorsInAMinute()
-    {
-        var options = new HandlerErrorBudgetOptions();
-
-        Assert.AreEqual(10, options.MaxErrors);
-        Assert.AreEqual(Minute, options.Window);
-    }
+        new(time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = maxErrors, Window = Minute }));
 
     [TestMethod]
     public void NineErrorsStayWithinTheBudgetAndTheTenthDoesNot()
@@ -134,7 +127,7 @@ public sealed class HandlerErrorBudgetTest
 
         Assert.Throws<ArgumentOutOfRangeException>(() => Create(time, maxErrors: 0));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new HandlerErrorBudget(time, new HandlerErrorBudgetOptions { Window = TimeSpan.Zero }));
+            new HandlerErrorBudget(time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = 10, Window = TimeSpan.Zero })));
     }
 
     [TestMethod]
