@@ -7,6 +7,7 @@ using Arch.Core;
 using Lua;
 using Lua.Standard;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Components;
@@ -61,7 +62,7 @@ public sealed class PersonService(
     ILogger<LuaCreatureManager> creatureLogger,
     ILogger<LuaMaze> mazeLogger,
     ILogger<LuaGameHelper> helperLogger,
-    IConfiguration configuration,
+    IOptions<GateOptions> gate,
     CommunityNetwork community
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -69,7 +70,7 @@ public sealed class PersonService(
     IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
-    private short Gate { get; } = configuration.GetGate();
+    private short Gate { get; } = gate.Value.Id;
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
     {

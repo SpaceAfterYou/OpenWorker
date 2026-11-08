@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Channel.Community;
@@ -14,6 +16,10 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddChannels(this IServiceCollection services)
     {
+        services.AddInstanceOptions();
+        services.AddGateOptions();
+        services.AddChannelOptions();
+
         services.AddSingleton<ServiceChannels>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<ServiceChannels>());
         services.AddSingleton<ServerChannels>();
@@ -25,16 +31,31 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// What sends a player to another server: <see cref="WorldManager"/> finds the district or the maze,
+    /// <see cref="LeaveManager"/> the server list or the character selection. They need the gate of the server
+    /// and the addresses of the auth server and of the maze servers.
+    /// </summary>
+    public static IServiceCollection AddPlayerTransfer(this IServiceCollection services)
+    {
+        services.AddGateOptions();
+        services.AddAuthEndpointOptions();
+        services.AddMazeEndpointOptions();
+
+        services.AddSingleton<WorldManager>();
+        services.AddSingleton<LeaveManager>();
+
+        return services;
+    }
+
+    /// <summary>
     /// What lets the people of one server reach the people of the others.
     /// </summary>
     private static IServiceCollection AddCommunity(this IServiceCollection services)
     {
         // The same Redis the cache uses; a server that starts before it is ready keeps trying.
-        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(new ConfigurationOptions
-        {
-            EndPoints = { "redis:6379" },
-            AbortOnConnectFail = false
-        }));
+        services.AddRedisOptions();
+        services.AddSingleton<IConnectionMultiplexer>(provider => ConnectionMultiplexer.Connect(
+            provider.GetRequiredService<IOptions<RedisOptions>>().Value.ToConfigurationOptions()));
 
         services.AddSingleton<ICommunityTransport, RedisCommunityTransport>();
         services.AddSingleton<IPresenceStore, RedisPresenceStore>();

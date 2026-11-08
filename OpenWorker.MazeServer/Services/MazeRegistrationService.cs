@@ -1,4 +1,5 @@
 using Arch.Core;
+using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
@@ -14,7 +15,9 @@ public sealed class MazeRegistrationService(
     IRedisCollection<MazeCache> mazes,
     WorldLoop loop,
     World world,
-    IConfiguration configuration,
+    IOptions<InstanceOptions> instance,
+    IOptions<GateOptions> gate,
+    IOptions<MazeEndpointOptions> maze,
     ILogger<MazeRegistrationService> logger
 ) :
     BackgroundService
@@ -28,16 +31,9 @@ public sealed class MazeRegistrationService(
 
     private static QueryDescription Players { get; } = new QueryDescription().WithAll<ServerSessionComponent>();
 
-    private Guid Instance { get; } = configuration.GetInstance();
-    private short Gate { get; } = configuration.GetGate();
-    private (string Host, short Port) Address { get; } = ResolveAddress(configuration);
-
-    private static (string Host, short Port) ResolveAddress(IConfiguration configuration)
-    {
-        var (host, port) = configuration.GetPublicAddress();
-
-        return (host, port ?? configuration.GetMazeAddress().Port);
-    }
+    private Guid Instance { get; } = instance.Value.Identifier;
+    private short Gate { get; } = gate.Value.Id;
+    private (string Host, short Port) Address { get; } = (instance.Value.PublicHost, (short)(instance.Value.PublicPort ?? maze.Value.Port));
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {

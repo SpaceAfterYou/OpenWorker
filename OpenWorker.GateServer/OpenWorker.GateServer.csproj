@@ -14,6 +14,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- The defaults of the server: the image needs them next to the assembly. -->
+        <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting" />
     </ItemGroup>
 

@@ -119,8 +119,22 @@ Npgsql locks the database while it migrates, so servers that start together appl
 EF Core refuses to migrate while the model has changes with no migration: after changing the model,
 add the migration before starting the servers.
 
-Connection settings: `ConnectionStrings:Postgres`, `ConnectionStrings:Redis`; the defaults match
-`compose.yaml`.
+Connection settings: `ConnectionStrings:Postgres`, `ConnectionStrings:Redis` (see Settings).
+
+## Settings
+
+Each server project carries an `appsettings.json` with the defaults that match `compose.yaml`; an environment
+variable named like the setting, with `__` for `:` (`Instance__PublicPort`), replaces one. Code reads settings as
+options (`IOptions<T>`, the classes in `OpenWorker.Extensions/Options`) and carries no default for an address,
+a port or a connection string. The options are validated when the host starts, before the first service: a missing
+or wrong setting stops the server with a message that names the key. A setting with no sensible default
+(`Instance:Location` and `Instance:PublicPort` of a district: every district has its own) is required.
+
+- `ConnectionStrings:Redis` is an address like `redis://redis:6379`. One setting serves the cache (Redis.OM) and
+  the notifications between servers (StackExchange.Redis, built by `RedisOptions.ToConfigurationOptions`).
+- To add a setting: add the options class with its attributes and a partial `[OptionsValidator]` class, register it
+  in `OptionsServiceCollectionExtensions`, put the default in the `appsettings.json` of the servers that need it, and
+  add the server to `TestServerOptions`.
 
 ## Known limits
 

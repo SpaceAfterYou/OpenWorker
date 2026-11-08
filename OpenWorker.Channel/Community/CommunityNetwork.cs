@@ -1,5 +1,5 @@
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Components;
@@ -39,7 +39,7 @@ public readonly record struct CommunityEvent(string Name, IReadOnlyList<int> Per
 public sealed class CommunityNetwork(
     World world,
     WorldLoop loop,
-    IConfiguration configuration,
+    IOptions<InstanceOptions> instance,
     IPresenceStore presence,
     ICommunityTransport transport,
     IPresenceSource source,
@@ -60,7 +60,7 @@ public sealed class CommunityNetwork(
 
     private IEnumerable<ICommunityListener> Listeners => services.GetServices<ICommunityListener>();
 
-    public Guid Instance { get; } = configuration.GetInstance();
+    public Guid Instance { get; } = instance.Value.Identifier;
 
     public static string InstanceChannel(Guid instance) => "ow:i:" + instance.ToString("N");
 

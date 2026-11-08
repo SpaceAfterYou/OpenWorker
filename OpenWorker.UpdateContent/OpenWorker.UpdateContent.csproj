@@ -13,6 +13,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- The defaults of the server: the image needs them next to the assembly. -->
+        <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\OpenWorker.Batch\OpenWorker.Batch.csproj"/>
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
         <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj"/>

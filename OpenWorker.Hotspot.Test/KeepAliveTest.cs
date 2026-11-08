@@ -1,11 +1,12 @@
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Channel;
+using OpenWorker.Extensions;
 using OpenWorker.DistrictServer.Server.Components;
 using OpenWorker.DistrictServer.Server.Services;
 using OpenWorker.DistrictServer.Services;
@@ -62,14 +63,10 @@ public sealed class KeepAliveTest
 
             _server = _listener.AcceptTcpClient();
 
-            Channels = new ServiceChannels(new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Instance:Identifier"] = Guid.NewGuid().ToString(),
-                    ["Channel:From"] = "1",
-                    ["Channel:To"] = "1"
-                })
-                .Build(), World);
+            Channels = new ServiceChannels(
+                Options.Create(new ChannelOptions { From = 1, To = 1 }),
+                Options.Create(new InstanceOptions { Identifier = Guid.NewGuid() }),
+                World);
 
             Player = World.Create(new ServerSessionComponent(_server), KeepAliveComponent.Start(Time.GetTimestamp()));
 

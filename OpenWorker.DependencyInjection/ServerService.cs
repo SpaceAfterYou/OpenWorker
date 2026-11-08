@@ -4,9 +4,10 @@ using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
 using Arch.Core.Extensions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.SoulWorker.Network;
@@ -17,30 +18,28 @@ internal sealed class ServerService(
     World world,
     WorldLoop loop,
     HandlerExecutor executor,
-    IConfiguration configuration,
+    IOptions<ServerOptions> server,
+    IOptions<GameOptions> game,
+    IOptions<HotspotOptions> hotspot,
     ArchComponentProvider components,
     IEnumerable<ISessionCloseHandler> closeHandlers,
     ILogger<ServerService> logger
 ) :
     BackgroundService
 {
-    private const int DefaultPort = 10_000;
-
     private Lock DumpLock { get; } = new();
-    private TcpListener Listener { get; } = new(IPAddress.Any, configuration.GetValue("Server:Port", DefaultPort));
-    private string? DumpDirectory { get; } = ResolveDumpDirectory(configuration);
+    private TcpListener Listener { get; } = new(IPAddress.Any, server.Value.Port);
+    private string? DumpDirectory { get; } = ResolveDumpDirectory(hotspot.Value, game.Value);
 
     /// <summary>
     /// Where Debug builds save every received message, one file per opcode. <c>Hotspot:PacketDumpPath</c>
     /// set to an empty value turns the dumps off.
     /// </summary>
-    private static string? ResolveDumpDirectory(IConfiguration configuration)
+    private static string? ResolveDumpDirectory(HotspotOptions hotspot, GameOptions game)
     {
-        var path = configuration["Hotspot:PacketDumpPath"] ?? Path.Combine("test", "hotspot");
-
-        return string.IsNullOrWhiteSpace(path)
+        return string.IsNullOrWhiteSpace(hotspot.PacketDumpPath)
             ? null
-            : Path.Combine(path, configuration.GetValue("Game:Version", "0.0.0.0")!);
+            : Path.Combine(hotspot.PacketDumpPath, game.Version);
     }
 
     protected override Task ExecuteAsync(CancellationToken cancellationToken)

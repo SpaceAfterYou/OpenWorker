@@ -11,8 +11,8 @@ using System.Numerics;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Mapping;
@@ -35,14 +35,14 @@ public sealed class PersonGameplay(
     World world,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
-    IConfiguration configuration,
+    IOptions<GateOptions> gate,
     ILogger<PersonGameplay> logger,
     SecondPasswordGameplay secondPassword,
     LeaveManager leaving,
     WorldManager worldManager,
     PersonCreationCatalog catalog)
 {
-    private short Gate { get; } = configuration.GetGate();
+    private short Gate { get; } = gate.Value.Id;
 
     public async Task CreateAsync(ServiceHandleContext context, PersonCreateRequest message)
     {

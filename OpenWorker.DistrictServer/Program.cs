@@ -28,8 +28,8 @@ await Host
         services.AddRes();
         services.AddBatch();
 
-        services.AddSingleton<WorldManager>();
-        services.AddSingleton<LeaveManager>();
+        services.AddDistrictOptions();
+        services.AddPlayerTransfer();
 
         services.AddSingleton<StorageItemFactory>();
         services.AddSingleton<StorageFactory>();

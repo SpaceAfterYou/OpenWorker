@@ -2,13 +2,14 @@
 
 namespace OpenWorker.Extensions;
 
+/// <summary>
+/// Reads a setting straight from the configuration. New code asks for the options of the setting instead
+/// (<see cref="InstanceOptions"/>, <see cref="GateOptions"/>, <see cref="GateEndpointOptions"/>, <see cref="MazeEndpointOptions"/>):
+/// they are checked when the host starts and have no defaults in code. What is left here is read by the classes
+/// that have not moved to the options yet.
+/// </summary>
 public static class ConfigurationExtensions
 {
-    public static string GetGame(this IConfiguration configuration)
-    {
-        return configuration.GetValue<string>("Game:Version", "0.0.0.0");
-    }
-    
     public static Guid GetInstance(this IConfiguration configuration)
     {
         var value = configuration.GetValue<string>(ConfigurationUtils.InstanceIdentifierKey);
@@ -17,11 +18,6 @@ public static class ConfigurationExtensions
         return Guid.Parse(value);
     }
 
-    public static short GetGroup(this IConfiguration configuration)
-    {
-        return configuration.GetValue<short>(ConfigurationUtils.InstanceGroupKey);
-    }
-    
     public static short GetLocation(this IConfiguration configuration)
     {
         return configuration.GetValue<short>(ConfigurationUtils.InstanceLocationKey);
@@ -30,16 +26,6 @@ public static class ConfigurationExtensions
     public static short GetGate(this IConfiguration configuration)
     {
         return configuration.GetValue<short>("Gate:Id");
-    }
-
-    public static string GetAuthHost(this IConfiguration configuration)
-    {
-        return configuration.GetValue("Auth:Host", "127.0.0.1");
-    }
-
-    public static short GetAuthPort(this IConfiguration configuration)
-    {
-        return configuration.GetValue<short>("Auth:Port", 10_000);
     }
 
     public static string GetGateHost(this IConfiguration configuration)
@@ -56,18 +42,14 @@ public static class ConfigurationExtensions
     }
 
     /// <summary>
-    /// Where clients reach this server, when it differs from the default of its location.
-    /// </summary>
-    public static (string Host, short? Port) GetPublicAddress(this IConfiguration configuration)
-    {
-        return (configuration.GetValue("Instance:PublicHost", "127.0.0.1"), configuration.GetValue<short?>("Instance:PublicPort"));
-    }
-
-    /// <summary>
-    /// Where clients reach the maze server.
+    /// Where clients reach the maze server when none has registered itself: the <c>Maze</c> section, which the
+    /// <c>appsettings.json</c> of the server carries.
     /// </summary>
     public static (string Host, short Port) GetMazeAddress(this IConfiguration configuration)
     {
-        return (configuration.GetValue("Maze:Host", "127.0.0.1"), configuration.GetValue<short>("Maze:Port", 10_101));
+        var options = configuration.GetSection(MazeEndpointOptions.SectionName).Get<MazeEndpointOptions>()
+            ?? throw new InvalidOperationException("Maze:Host and Maze:Port must be set to the address clients reach a maze server at.");
+
+        return (options.Host, (short)options.Port);
     }
 }

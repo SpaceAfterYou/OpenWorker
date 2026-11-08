@@ -47,8 +47,7 @@ await Host
 
         services.AddCommandManager();
 
-        services.AddSingleton<WorldManager>();
-        services.AddSingleton<LeaveManager>();
+        services.AddPlayerTransfer();
         services.AddSingleton<PersonRegistry>();
         services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
         services.AddSingleton<ISessionCloseHandler, MazeCloseHandler>();

@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Extensions.Options;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
@@ -17,9 +18,9 @@ public sealed class NpcManager
 {
     private short Location { get; } 
     
-    public NpcManager(World ecs, BatchManager provider, ReadOnlyCollection<NPCRow> npcList, IConfiguration configuration)
+    public NpcManager(World ecs, BatchManager provider, ReadOnlyCollection<NPCRow> npcList, IOptions<InstanceOptions> instance)
     {
-        Location = configuration.GetLocation();
+        Location = instance.Value.Location;
         
         var id = 0;
         
