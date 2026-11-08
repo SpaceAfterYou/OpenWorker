@@ -445,7 +445,12 @@ public sealed class ToolingTest
         var queries = PrometheusClient.BuildQueries(options, TimeSpan.FromSeconds(74.2));
 
         Assert.IsTrue(queries.Any(e => e.Query == "max by (job) (max_over_time(my_queue[75s]))"));
-        Assert.IsTrue(queries.Any(e => e.Query.Contains("histogram_quantile(0.99, sum by (job, le) (rate(worldloop_callback_duration_seconds_bucket[75s])))", StringComparison.Ordinal)));
+        Assert.IsTrue(queries.Any(e => e.Label == "worldloop_callback_duration_seconds (p99, ms)" && e.Query == "1000 * histogram_quantile(0.99, sum by (job, le) (rate(worldloop_callback_duration_seconds_bucket[75s])))"), "A duration in seconds is given in milliseconds.");
+        Assert.IsTrue(queries.Any(e => e.Label == "worldloop_callback_duration_seconds (per second)" && e.Query == "sum by (job) (rate(worldloop_callback_duration_seconds_count[75s]))"), "A rate is not scaled.");
+
+        options.PrometheusMetrics["handler"] = "my_handler_ms";
+
+        Assert.IsTrue(PrometheusClient.BuildQueries(options, TimeSpan.FromSeconds(10)).Any(e => e.Label == "my_handler_ms (p99)" && e.Query.StartsWith("histogram_quantile(0.99", StringComparison.Ordinal)), "Another name is taken as it is.");
         Assert.IsTrue(queries.Any(e => e.Label == "custom" && e.Query == "rate(x[75s])"));
 
         options.PrometheusGroupBy = string.Empty;

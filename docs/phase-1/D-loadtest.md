@@ -130,7 +130,7 @@ under the true value), the maximum is exact.
   workstream A adds: `worldloop.queue.length` (max, mean), and p50, p99, mean and rate of `worldloop.callback.duration`,
   `simulation.step.duration` and `handler.duration`, per `job`. The names are the ones Prometheus has after the OTLP
   translation (`worldloop_queue_length`, `worldloop_callback_duration_seconds`, ...; the servers record durations in
-  seconds, so these figures are in seconds) and are settings:
+  seconds, and a name that ends in `_seconds` is reported in milliseconds) and are settings:
   `--prom-metric worldloop-queue=<name>` (keys `worldloop-queue`, `worldloop-callback`, `simulation-step`, `handler`),
   `--prom-query label=promql` for any other query, `--prom-group-by`. A Prometheus that cannot be reached skips the step
   with a note; a metric with no data is noted in its row.

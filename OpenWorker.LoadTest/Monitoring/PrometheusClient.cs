@@ -31,7 +31,8 @@ internal static class PrometheusClient
 
     /// <summary>
     /// The metrics asked for by default, by the key that <c>--prom-metric</c> renames, with the name Prometheus has
-    /// for them: the servers record durations in seconds (unit <c>s</c>), so the figures of the report are in seconds.
+    /// for them: the servers record durations in seconds (unit <c>s</c>). A duration whose name ends in
+    /// <c>_seconds</c> is given in milliseconds, which the label says, so that the report does not round it to zero.
     /// </summary>
     public static IReadOnlyDictionary<string, string> DefaultMetrics { get; } = new Dictionary<string, string>
     {
@@ -62,10 +63,11 @@ internal static class PrometheusClient
         foreach (var key in (string[])["worldloop-callback", "simulation-step", "handler"])
         {
             var metric = Metric(key);
+            var (scale, unit) = metric.EndsWith("_seconds", StringComparison.Ordinal) ? ("1000 * ", ", ms") : ("", "");
 
-            queries.Add(($"{metric} (p50)", $"histogram_quantile(0.5, sum{byLe} (rate({metric}_bucket[{range}])))"));
-            queries.Add(($"{metric} (p99)", $"histogram_quantile(0.99, sum{byLe} (rate({metric}_bucket[{range}])))"));
-            queries.Add(($"{metric} (mean)", $"sum{by} (rate({metric}_sum[{range}])) / sum{by} (rate({metric}_count[{range}]))"));
+            queries.Add(($"{metric} (p50{unit})", $"{scale}histogram_quantile(0.5, sum{byLe} (rate({metric}_bucket[{range}])))"));
+            queries.Add(($"{metric} (p99{unit})", $"{scale}histogram_quantile(0.99, sum{byLe} (rate({metric}_bucket[{range}])))"));
+            queries.Add(($"{metric} (mean{unit})", $"{scale}sum{by} (rate({metric}_sum[{range}])) / sum{by} (rate({metric}_count[{range}]))"));
             queries.Add(($"{metric} (per second)", $"sum{by} (rate({metric}_count[{range}]))"));
         }
 
