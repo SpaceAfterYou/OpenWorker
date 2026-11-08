@@ -6,7 +6,6 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Extensions;
-using OpenWorker.Hotspot.Telemetry;
 using OpenWorker.Persistence;
 
 namespace OpenWorker.DependencyInjection;
@@ -30,7 +29,7 @@ public static class HotspotHostingExtensions
             .AddSingleton<WorldLoop>()
             .AddSingleton<ArchComponentProvider>()
             .AddHotspotHandlers()
-            .AddOpenWorkerMetrics()
+            .AddTelemetry()
             .AddHostedInternalServices();
     }
 

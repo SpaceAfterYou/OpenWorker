@@ -91,6 +91,7 @@ public sealed class TestServerOptions
             case Relay:
                 services.AddCache();
                 services.AddPersistence();
+                services.AddTelemetryOptions();
                 services.AddCredentialsOptions();
                 break;
 
@@ -222,6 +223,77 @@ public sealed class TestServerOptions
 
         StringAssert.Contains(error.Message, "Hotspot:ErrorBudget:MaxErrors");
         StringAssert.Contains(error.Message, "Hotspot:ErrorBudget:Window");
+    }
+
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    [DataRow(Relay)]
+    public void MetricsGoToTheCollectorOfComposeByDefault(string server)
+    {
+        using var host = CreateHost(server);
+
+        Validate(host);
+
+        var telemetry = host.Services.GetRequiredService<IOptions<TelemetryOptions>>().Value;
+
+        Assert.IsTrue(telemetry.IsExporting);
+        Assert.AreEqual("http://prometheus:9090/api/v1/otlp/v1/metrics", telemetry.Endpoint);
+        Assert.AreEqual(TelemetryProtocol.HttpProtobuf, telemetry.Protocol);
+        Assert.AreEqual(TimeSpan.FromSeconds(10), telemetry.ExportInterval);
+    }
+
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Relay)]
+    public void AnEmptyEndpointTurnsTheExportOff(string server)
+    {
+        // `Telemetry__Endpoint=` in the environment of a container is an empty value over the default of the file.
+        using var host = CreateHost(server, new() { ["Telemetry:Endpoint"] = "" });
+
+        Validate(host);
+
+        Assert.IsFalse(host.Services.GetRequiredService<IOptions<TelemetryOptions>>().Value.IsExporting);
+    }
+
+    [TestMethod]
+    [DataRow(Auth, "prometheus:9090")]
+    [DataRow(District, "ftp://prometheus/metrics")]
+    [DataRow(Maze, "not an address")]
+    [DataRow(Relay, "/api/v1/otlp")]
+    public void EndpointOfTheCollectorMustBeAnHttpAddress(string server, string endpoint)
+    {
+        var error = Fails(server, new() { ["Telemetry:Endpoint"] = endpoint });
+
+        StringAssert.Contains(error.Message, "Telemetry:Endpoint");
+    }
+
+    [TestMethod]
+    [DataRow(Auth, "00:00:00")]
+    [DataRow(Gate, "00:00:00.5")]
+    [DataRow(District, "-00:00:10")]
+    [DataRow(Relay, null)]
+    public void MetricsAreSentAtLeastOnceASecond(string server, string? interval)
+    {
+        var error = Fails(server, new() { ["Telemetry:ExportInterval"] = interval });
+
+        StringAssert.Contains(error.Message, "Telemetry:ExportInterval");
+    }
+
+    [TestMethod]
+    public void ProtocolOfTheExportIsOneTheExporterKnows()
+    {
+        using var grpc = CreateHost(Auth, new() { ["Telemetry:Protocol"] = "Grpc" });
+
+        Validate(grpc);
+
+        Assert.AreEqual(TelemetryProtocol.Grpc, grpc.Services.GetRequiredService<IOptions<TelemetryOptions>>().Value.Protocol);
+
+        var error = Fails(Auth, new() { ["Telemetry:Protocol"] = "7" });
+
+        StringAssert.Contains(error.Message, "Telemetry:Protocol");
     }
 
     [TestMethod]

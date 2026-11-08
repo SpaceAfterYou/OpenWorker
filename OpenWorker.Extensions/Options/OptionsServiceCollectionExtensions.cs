@@ -14,14 +14,15 @@ namespace OpenWorker.Extensions;
 public static class OptionsServiceCollectionExtensions
 {
     /// <summary>
-    /// The port the server listens on, the game version, the packet dumps and the errors a session may cause:
-    /// what every server has.
+    /// The port the server listens on, the game version, the packet dumps, the errors a session may cause and where the
+    /// metrics go: what every server has.
     /// </summary>
     public static IServiceCollection AddServerOptions(this IServiceCollection services)
     {
         services.AddValidated<ServerOptions, ServerOptionsValidator>(ServerOptions.SectionName);
         services.AddValidated<GameOptions, GameOptionsValidator>(GameOptions.SectionName);
         services.AddHandlerErrorBudgetOptions();
+        services.AddTelemetryOptions();
 
         return services.AddBound<HotspotOptions>(HotspotOptions.SectionName);
     }
@@ -32,6 +33,15 @@ public static class OptionsServiceCollectionExtensions
     public static IServiceCollection AddHandlerErrorBudgetOptions(this IServiceCollection services)
     {
         return services.AddValidated<HandlerErrorBudgetOptions, HandlerErrorBudgetOptionsValidator>(HandlerErrorBudgetOptions.SectionName);
+    }
+
+    /// <summary>
+    /// Where the metrics of the process are sent. The servers that run a world loop get it with <see cref="AddServerOptions"/>;
+    /// the relay asks for it itself.
+    /// </summary>
+    public static IServiceCollection AddTelemetryOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<TelemetryOptions, TelemetryOptionsValidator>(TelemetryOptions.SectionName);
     }
 
     /// <summary>

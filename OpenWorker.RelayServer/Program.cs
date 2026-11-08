@@ -14,6 +14,7 @@ await Host
     {
         services.AddCache();
         services.AddPersistence();
+        services.AddTelemetry();
         services.AddCredentialsOptions();
         services.AddDiscord();
         services.AddRes();
