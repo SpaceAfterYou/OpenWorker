@@ -197,16 +197,19 @@
    районе исправление подтверждено прогоном через compose (ботов в канале: 65, 64, 64, 61, 61, 60, 59, 16).
 2. **Гейт отвергает костюм по умолчанию.** `PersonCreationCatalog` берёт предлагаемые костюмы из
    `CharacterInfoRow.Default_Cloth_ID_01..04`, где лежат 521, 531, 541 и 50011; костюм 511, который шлёт
-   реальный клиент, лежит в предыдущей колонке `Field20`. Имена сгенерированных колонок сдвинуты на одну,
-   то же для всех героев. Это часть задачи фазы 6 об именах колонок, но создание персонажа ломается уже сейчас.
+   реальный клиент, лежал в предыдущей колонке `Field20`: имена четырёх колонок костюмов были сдвинуты
+   на одну, то же для всех героев. Исправлено в `e4275ec`: колонки 20–23 названы `Default_Cloth_ID_01..04`
+   по реальной таблице, тест `TestPersonCreation` на таблице клиента проверяет все шесть героев;
+   бот снова шлёт 511 (`a6e1c01`).
 3. **Список игроков канала не влезает в один кадр.** При нескольких сотнях игроков в канале `World:ObjectReq`
    падает с `Memory stream is not expandable` в `WorldOtherPersonListResponse.Write`: `TrySend` пишет в буфер
    на один кадр. При канале в 65 не проявляется; относится к кадру фазы 2.
 4. **Maze читает `ServerContents` до миграции.** Синглтон в `HotspotHostingExtensions` читает таблицу при
    построении контейнера, раньше `PersistenceBootstrapService` любого сервера. На свежей базе при одновременном
-   старте всех серверов maze умирает с `relation "ServerContents" does not exist`. В `compose.loadtest.yaml`
-   это обойдено через `depends_on` на здоровый relay; сам сервер должен читать таблицу после миграции
-   (принцип 9, фаза 4).
+   старте всех серверов maze умирал с `relation "ServerContents" does not exist`. Исправлено в `a272852`:
+   таблицу читает `ServerContentLoadService` после миграции и до слушателя, тест `TestServerContentLoad`
+   проверяет, что построение контейнера не открывает ни одного контекста; правило записано
+   в `ARCHITECTURE.md`, «Database». `depends_on` на relay в `compose.loadtest.yaml` остаётся ради индексов Redis.
 5. **Соединений Postgres не хватает при массовом выходе.** Когда 450 ботов вышли одновременно, Postgres ответил
    `53300: too many clients already`: `max_connections` по умолчанию 100, а пулы серверов стека compose держат
    около 96 соединений в простое (гейт 34, maze 33, район 19, auth 5). Три обработчика закрытия упали,
@@ -374,9 +377,9 @@
 > - Шаг 6. Базовая линия записана в разделе 6.
 > - Шаг 7. Переключатели GC и JIT выписаны в `Directory.Build.props` со значениями по умолчанию; выбор Server
 >   GC с DATAS не сделан, нужен прогон с ботом по метрикам пауз GC и p99.
-> - Прогоны нашли пять ошибок сервера (раздел 2.9): канал никогда не бывает полным (исправлено), гейт отвергает
->   костюм по умолчанию, список игроков канала не влезает в один кадр, maze читает `ServerContents` до
->   миграции, при массовом выходе кончаются соединения Postgres.
+> - Прогоны нашли пять ошибок сервера (раздел 2.9). Исправлены три: канал никогда не бывает полным, гейт
+>   отвергает костюм по умолчанию, maze читает `ServerContents` до миграции. Открыты две: список игроков
+>   канала не влезает в один кадр (фаза 2), при массовом выходе кончаются соединения Postgres (фаза 4).
 > - Открыто из A: `postgres.call.duration` без тега таблицы; `handler.duration` даёт около 200 серий
 >   на процесс; нет алертов и трейсов (план их не требовал).
 
@@ -676,7 +679,7 @@
 | `OpenWorker.Gameplay/Modules/State/PersonStateStore.cs` | `Gameplay` зависит от EF | 6 |
 | `*.csproj` | разный `LangVersion`, нет `Directory.Build.props`, анализаторов | 0 |
 | `OpenWorker.Hotspot/Cache/ChannelUtils.cs` | `IComparable` против `short`: канал никогда не полон (2.9.1, исправлено) | 1 |
-| `OpenWorker.GateServer.Gameplay/PersonCreationCatalog.cs`, `OpenWorker.Res/Rows/CharacterInfoRow.cs` | колонки костюмов сдвинуты на одну, костюм 511 отвергается (2.9.2) | 6 |
+| `OpenWorker.Res/Rows/CharacterInfoRow.cs` | колонки костюмов были сдвинуты на одну, костюм 511 отвергался (2.9.2, исправлено) | 1 |
 | `OpenWorker.Hotspot/Modules/World/Responses/WorldOtherPersonListResponse.cs` | список канала не влезает в один кадр `TrySend` (2.9.3) | 2 |
-| `OpenWorker.DependencyInjection/HotspotHostingExtensions.cs` | чтение `ServerContents` при построении контейнера, до миграции (2.9.4) | 4 |
+| `OpenWorker.DependencyInjection/ServerContentLoadService.cs` | чтение `ServerContents` было при построении контейнера, до миграции (2.9.4, исправлено) | 1 |
 | `OpenWorker.DependencyInjection/Persistence.cs`, `compose.yaml` (postgres) | пулы на 96 соединений при `max_connections` 100, отказы при массовом выходе (2.9.5) | 4 |
