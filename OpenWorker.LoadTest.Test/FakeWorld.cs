@@ -702,14 +702,20 @@ internal sealed class FakeWorld : IAsyncDisposable
             ChangeMotion = request.byChangeMotion
         });
 
-        // And the monsters move with the same broadcast, as the real maze sends it (MonsterBody).
-        connection.Send(new MovementMoveBtResponse
+        // And the monsters move with the same broadcast, as the real maze sends it (MonsterBody). The maze numbers its
+        // actors on its own, so a monster can have the number a district gave to a bot: the second one does.
+        var other = _firstDistrict.Keys.FirstOrDefault(e => e.Actor != 0 && e.Actor != connection.Actor)?.Actor ?? MonsterActor;
+
+        foreach (var monster in (int[])[MonsterActor, other])
         {
-            Actor = new ActorValue(MonsterActor, ActorType.Monster),
-            Map = request.nMapID,
-            Pos = new Vector3(request.fPosX + 300f, request.fPosY - 300f, request.fPosZ),
-            MoveSpeed = request.fMoveSpeed
-        });
+            connection.Send(new MovementMoveBtResponse
+            {
+                Actor = new ActorValue(monster, ActorType.Monster),
+                Map = request.nMapID,
+                Pos = new Vector3(request.fPosX + 300f, request.fPosY - 300f, request.fPosZ),
+                MoveSpeed = request.fMoveSpeed
+            });
+        }
     }
 
     private void OnSkill(Connection connection, BinaryReader reader)

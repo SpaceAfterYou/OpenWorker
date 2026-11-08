@@ -810,8 +810,10 @@ internal sealed class Bot : IFrameSink, IDisposable
         var own = actor == Volatile.Read(ref _actor);
         var sender = own ? this : _context.Find(actor);
 
-        // The monsters of a maze move with the same broadcast, and the bot does not measure them.
-        if (sender is null && _inMaze)
+        // A maze tells a player its own moves alone; every other move there is a monster, which moves with the same
+        // broadcast. The maze numbers its actors on its own, so a monster may carry the number a district gave to
+        // another bot: in a maze only the bot's own moves are matched.
+        if (_inMaze && !own)
         {
             return;
         }
