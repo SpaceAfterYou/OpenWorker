@@ -6,11 +6,13 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Chat.Enums;
 using OpenWorker.Hotspot.Modules.Chat.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct ChatNormalResponse : IResponseHotspotMessage
+public readonly partial struct ChatNormalResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -24,19 +26,10 @@ public readonly struct ChatNormalResponse : IResponseHotspotMessage
 #region Message: Body
 
     public ActorComponent Actor { get; init; }
+    [WireAs(typeof(int))]
     public ChatMessageAppearance Appearance { get; init; }
+    [WireString(WireStringFormat.Utf16Unicode)]
     public required string Message { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Appearance);
-        writer.WriteChatMessage(Message);
-    }
-
-#endregion Interface: IWritableData
 }

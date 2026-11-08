@@ -4,6 +4,7 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Modules.Chat.Enums;
 using OpenWorker.Hotspot.Modules.Chat.Responses;
 using OpenWorker.Hotspot.Modules.Chat.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Extensions;
 
@@ -12,8 +13,7 @@ internal static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void Write(this BinaryWriter writer, ChatMemoryStatisticsValue value)
     {
-        writer.Write(value.Count);
-        writer.Write(value.Size);
+        WireBridge.Write(writer, value);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Chat.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct ChatMemoryResponse : IResponseHotspotMessage
+public readonly partial struct ChatMemoryResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Chat;
     private const ChatOpcode Command = ChatOpcode.Memory;
@@ -28,22 +30,4 @@ public readonly struct ChatMemoryResponse : IResponseHotspotMessage
     public ChatMemoryStatisticsValue Social { get; init; }
     
     public MessageOpcode Opcode => new(Group, Command);
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(AllocatedMemory);
-        writer.Write(ResourceManagerMemory);
-        
-        writer.Write(Monster);
-        writer.Write(Npc);
-        writer.Write(Akashic);
-        writer.Write(Projectile);
-        writer.Write(Trap);
-        writer.Write(Chain);
-        writer.Write(Interaction);
-        writer.Write(Vaccum);
-        writer.Write(Maze);
-        writer.Write(MyRoom);
-        writer.Write(Social);
-    }
 }
