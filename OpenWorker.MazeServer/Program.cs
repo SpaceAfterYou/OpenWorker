@@ -59,9 +59,9 @@ await Host
         services.AddSingleton<StorageFactory>();
         services.AddSingleton<CostumeFactory>();
         services.AddSingleton<StorageManager>();
-        services.AddSingleton<QuestManager>();
         services.AddPersistence();
         services.AddMiscGameplay();
+        services.AddQuestGameplay();
 
         services.AddChannels();
 

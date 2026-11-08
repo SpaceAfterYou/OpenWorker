@@ -35,10 +35,10 @@ await Host
         services.AddSingleton<StorageFactory>();
         services.AddSingleton<CostumeFactory>();
         services.AddSingleton<StorageManager>();
-        services.AddSingleton<QuestManager>();
         services.AddPersistence();
         services.AddGameplay();
         services.AddMiscGameplay();
+        services.AddQuestGameplay();
 
         services.AddCommandManager();
 

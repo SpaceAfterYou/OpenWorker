@@ -209,7 +209,7 @@ public sealed partial class PersonService(
         await soulMetry.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await dailyMissions.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
-        questManager.SendQuestEpisodeList(context.Player);
+        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         JoinChannel(context.Player);
 

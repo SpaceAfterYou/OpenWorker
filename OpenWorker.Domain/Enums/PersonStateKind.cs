@@ -9,5 +9,6 @@ public enum PersonStateKind : byte
     DailyMission = 2,
     Booster = 3,
     Attendance = 4,
-    Helper = 5
+    Helper = 5,
+    Quest = 6
 }

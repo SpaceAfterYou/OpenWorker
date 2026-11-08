@@ -1,9 +1,9 @@
-﻿using Arch.Core;
+using Arch.Core;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Commands.Attributes;
 using OpenWorker.Gameplay.Modules.Quests;
 
-namespace OpenWorker.Commands;
+namespace OpenWorker.Commands.QuestCommands;
 
 [CommandTrigger("quest", "update")]
 [CommandDescription("Update player quest progress")]

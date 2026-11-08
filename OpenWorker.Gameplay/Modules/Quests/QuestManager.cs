@@ -1,485 +1,764 @@
-using System.Collections.ObjectModel;
 using Arch.Core;
-using Arch.Core.Extensions;
-using OpenWorker.Domain.Components;
+using Microsoft.Extensions.Logging;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Quests.Components;
+using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
+using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.Quests;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.Quests.Responses;
 using OpenWorker.Hotspot.Modules.Quests.Types;
-using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Hotspot.Modules.System.Responses;
 
 namespace OpenWorker.Gameplay.Modules.Quests;
 
-/// Central quest progress plus network sync. State lives in <see cref="QuestProgressComponent"/> on the player entity
-/// (up to <see cref="OpenWorker.Domain.Components.QuestProgressDefines.MaxActiveEpisodes"/> simultaneous episodes).
-public sealed class QuestManager(
+/// <summary>
+/// The quests of a person: which episodes the person has taken, how far each condition has come and which
+/// episodes are finished. The state is kept in the database and loaded when the person enters a server.
+/// </summary>
+/// <remarks>
+/// The rest of the game tells the manager what the person does: <see cref="OnMonsterKilledAsync"/>,
+/// <see cref="OnMazeClearedAsync"/>, <see cref="OnSectorClearedAsync"/>, <see cref="OnItemCollectedAsync"/> and
+/// <see cref="OnObjectUsedAsync"/>. The client tells what only it sees, such as talking to a character.
+/// </remarks>
+public sealed partial class QuestManager(
     World world,
-    ReadOnlyCollection<QuestEpisodeRow> questEpisodes,
-    ReadOnlyCollection<QuestConditionRow> questConditions)
+    IQuestStore store,
+    QuestCatalog catalog,
+    IRewardGranter rewards,
+    IQuestItems items,
+    HelperManager helpers,
+    BoosterManager boosters,
+    ILogger<QuestManager> logger)
 {
-    private readonly Dictionary<int, QuestEpisodeRow> _episodeById = BuildEpisodeIndex(questEpisodes);
+    /// <summary>
+    /// The conditions the client may move on by itself because the server can not see them. The rest are counted
+    /// from what the server sees, so the client can not make them up.
+    /// </summary>
+    private static readonly HashSet<QuestConditionType> ClientDriven =
+    [
+        QuestConditionType.Talk,
+        QuestConditionType.Move,
+        QuestConditionType.Trigger,
+        QuestConditionType.Deliver,
+        QuestConditionType.Protect,
+        QuestConditionType.Survival,
+        QuestConditionType.Trace,
+        QuestConditionType.Guard
+    ];
 
-    public void EnsureInitialized(Entity player)
+    #region Loading
+
+    /// <summary>
+    /// Loads the quests of the person and tells the client about them: the finished episodes first, then the ones
+    /// in progress.
+    /// </summary>
+    public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
     {
-        if (player.Has<QuestProgressComponent>())
+        var book = await store.LoadAsync(person, cancellationToken) ?? new QuestBook();
+
+        book.Normalize(catalog);
+
+        world.Set(player, new QuestComponent { Person = person, Book = book });
+
+        Send(player, new QuestCompleteListResponse { CompletedEpisodeBits = book.Finished.ToArray() });
+
+        SendQuestEpisodeList(player);
+    }
+
+    /// <summary>
+    /// Tells the client the episodes the person has taken.
+    /// </summary>
+    public void SendQuestEpisodeList(Entity player)
+    {
+        if (TryGet(player, out var book, out _))
         {
-            return;
+            Send(player, BuildQuestListResponse(book));
         }
 
-        if (questEpisodes.Count == 0)
+        else
         {
-            world.Add(player, default(QuestProgressComponent));
-            return;
+            Send(player, new QuestListResponse { List = [] });
         }
-
-        var row = questEpisodes[0];
-        var state = new ActiveQuestEpisodeState
-        {
-            EpisodeId = row.Id,
-            IsAddHelper = 0,
-            IsFailed = 0,
-            Steps = default
-        };
-
-        world.Add(player, new QuestProgressComponent { ActiveCount = 1, E0 = state });
     }
 
     public QuestListResponse BuildQuestListResponse(Entity player)
     {
-        EnsureInitialized(player);
+        return TryGet(player, out var book, out _) ? BuildQuestListResponse(book) : new QuestListResponse { List = [] };
+    }
 
-        var q = world.Get<QuestProgressComponent>(player);
-        var list = new List<QuestEpisodeEntry>(q.ActiveCount);
+    private QuestListResponse BuildQuestListResponse(QuestBook book)
+    {
+        var list = new List<QuestEpisodeEntry>(book.Episodes.Count);
 
-        for (var i = 0; i < q.ActiveCount; i++)
+        foreach (var state in book.Episodes)
         {
-            var slot = GetSlotCopy(in q, i);
-            if (!_episodeById.TryGetValue(slot.EpisodeId, out var row))
+            if (catalog.TryGetEpisode(state.Episode, out var quest))
             {
-                continue;
+                list.Add(ToEntry(quest, state));
             }
-
-            list.Add(ToEpisodeEntry(in slot, row));
         }
 
         return new QuestListResponse { List = list };
     }
 
-    /// Applies progress across every active episode that references <paramref name="conditionId"/>,
-    /// sends one <see cref="QuestUpdateResponse"/>; returns false if the condition id is unknown or step invalid.
-    public bool TryApplyConditionProgress(Entity player, int conditionId, byte step)
+    private static QuestEpisodeEntry ToEntry(QuestDefinition quest, QuestEpisodeState state)
     {
-        EnsureInitialized(player);
+        var conditions = new QuestCondition[QuestModuleDefines.ConditionsPerEpisode];
 
-        if (!TryGetMaxStep(conditionId, out var maxStep) || step > maxStep)
+        for (var slot = 0; slot < conditions.Length; slot++)
         {
-            return false;
-        }
-
-        var q = world.Get<QuestProgressComponent>(player);
-        var applied = false;
-
-        for (var ei = 0; ei < q.ActiveCount; ei++)
-        {
-            var slot = GetSlotCopy(in q, ei);
-            if (!_episodeById.TryGetValue(slot.EpisodeId, out var row))
+            conditions[slot] = new QuestCondition
             {
-                continue;
-            }
-
-            var touched = false;
-            for (var ci = 0; ci < QuestModuleDefines.ConditionsPerEpisode; ci++)
-            {
-                if (row.GetConditionId(ci) != conditionId)
-                {
-                    continue;
-                }
-
-                slot.Steps.Set(ci, step);
-                touched = true;
-            }
-
-            if (touched)
-            {
-                SetSlot(ref q, ei, slot);
-                applied = true;
-            }
-        }
-
-        if (!applied)
-        {
-            return false;
-        }
-
-        world.Set(player, q);
-
-        var session = world.Get<ServerSessionComponent>(player);
-        session.Send(new QuestUpdateResponse
-        {
-            ConditionList =
-            [
-                new QuestCondition
-                {
-                    Condition = conditionId,
-                    Step = step
-                }
-            ]
-        });
-
-        return true;
-    }
-
-    public void AcceptEpisode(Entity player, int episodeId)
-    {
-        EnsureInitialized(player);
-
-        if (!_episodeById.ContainsKey(episodeId))
-        {
-            return;
-        }
-
-        var q = world.Get<QuestProgressComponent>(player);
-        if (FindEpisodeIndex(in q, episodeId) >= 0)
-        {
-            return;
-        }
-
-        if (q.ActiveCount >= QuestProgressDefines.MaxActiveEpisodes)
-        {
-            return;
-        }
-
-        // The helper has room for a few episodes, and the client is told the same that is stored.
-        var isAddHelper = CountHelpers(in q) < QuestProgressDefines.MaxHelperEpisodes ? (byte)1 : (byte)0;
-
-        var slot = new ActiveQuestEpisodeState
-        {
-            EpisodeId = episodeId,
-            IsAddHelper = isAddHelper,
-            IsFailed = 0,
-            Steps = default
-        };
-
-        SetSlot(ref q, q.ActiveCount, slot);
-        q.ActiveCount++;
-        world.Set(player, q);
-
-        var session = world.Get<ServerSessionComponent>(player);
-        session.Send(new QuestAcceptResponse { Episode = episodeId, IsShowHelper = isAddHelper });
-    }
-
-    public void CompleteEpisode(Entity player, int episodeId)
-    {
-        EnsureInitialized(player);
-
-        if (!world.Has<QuestProgressComponent>(player))
-        {
-            return;
-        }
-
-        var q = world.Get<QuestProgressComponent>(player);
-        var idx = FindEpisodeIndex(in q, episodeId);
-        if (idx < 0)
-        {
-            return;
-        }
-
-        RemoveEpisodeAt(ref q, idx);
-        world.Set(player, q);
-
-        var session = world.Get<ServerSessionComponent>(player);
-        session.Send(new QuestEpisodeCompleteResponse
-        {
-            Episode = episodeId,
-            Exp = 0,
-            Money = 0,
-            BattlePoints = 0,
-            Ether = 0,
-            Title = new TitleValue(0, 0),
-            NpcHelper = 0u,
-            Items = []
-        });
-    }
-
-    public void GiveUpEpisode(Entity player, int episodeId)
-    {
-        if (!world.Has<QuestProgressComponent>(player))
-        {
-            return;
-        }
-
-        var q = world.Get<QuestProgressComponent>(player);
-        var idx = FindEpisodeIndex(in q, episodeId);
-        if (idx < 0)
-        {
-            return;
-        }
-
-        RemoveEpisodeAt(ref q, idx);
-        world.Set(player, q);
-
-        world.Get<ServerSessionComponent>(player).Send(new QuestGiveUpResponse { Episode = episodeId });
-    }
-
-    public void FailEpisode(Entity player, int episodeId)
-    {
-        EnsureInitialized(player);
-
-        var q = world.Get<QuestProgressComponent>(player);
-        var idx = FindEpisodeIndex(in q, episodeId);
-        if (idx < 0)
-        {
-            return;
-        }
-
-        var slot = GetSlotCopy(in q, idx);
-        slot.IsFailed = 1;
-        SetSlot(ref q, idx, slot);
-        world.Set(player, q);
-
-        world.Get<ServerSessionComponent>(player).Send(new QuestFailResponse { Episode = episodeId });
-    }
-
-    public void SetHelper(Entity player, QuestHelperType type, int episodeId)
-    {
-        EnsureInitialized(player);
-
-        var q = world.Get<QuestProgressComponent>(player);
-        var idx = FindEpisodeIndex(in q, episodeId);
-        if (idx < 0)
-        {
-            return;
-        }
-
-        var slot = GetSlotCopy(in q, idx);
-        slot.IsAddHelper = type == QuestHelperType.Add ? (byte)1 : (byte)0;
-        SetSlot(ref q, idx, slot);
-        world.Set(player, q);
-
-        world.Get<ServerSessionComponent>(player).Send(new QuestHelperResponse { Type = type, Episode = episodeId });
-    }
-
-    public void AckEventUpdate(Entity player)
-    {
-        if (!world.Has<QuestProgressComponent>(player))
-        {
-            return;
-        }
-
-        world.Get<ServerSessionComponent>(player).Send(new QuestEventUpdateResponse());
-    }
-
-    public bool HasAnyActiveEpisode(Entity player)
-    {
-        return world.Has<QuestProgressComponent>(player) && world.Get<QuestProgressComponent>(player).ActiveCount > 0;
-    }
-
-    public bool HasActiveEpisode(Entity player, int episodeId)
-    {
-        EnsureInitialized(player);
-
-        if (!world.Has<QuestProgressComponent>(player))
-        {
-            return false;
-        }
-
-        var q = world.Get<QuestProgressComponent>(player);
-        return FindEpisodeIndex(in q, episodeId) >= 0;
-    }
-
-    public bool ActiveEpisodeUsesCondition(Entity player, int conditionId)
-    {
-        EnsureInitialized(player);
-
-        if (conditionId == 0 || !world.Has<QuestProgressComponent>(player))
-        {
-            return false;
-        }
-
-        var q = world.Get<QuestProgressComponent>(player);
-        for (var ei = 0; ei < q.ActiveCount; ei++)
-        {
-            var slot = GetSlotCopy(in q, ei);
-            if (!_episodeById.TryGetValue(slot.EpisodeId, out var row))
-            {
-                continue;
-            }
-
-            for (var ci = 0; ci < QuestModuleDefines.ConditionsPerEpisode; ci++)
-            {
-                if (row.GetConditionId(ci) == conditionId)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public void RemoveAllActiveEpisodes(Entity player)
-    {
-        EnsureInitialized(player);
-
-        if (!world.Has<QuestProgressComponent>(player))
-        {
-            return;
-        }
-
-        world.Set(player, default(QuestProgressComponent));
-
-        SendQuestEpisodeList(player);
-    }
-
-    private QuestEpisodeEntry ToEpisodeEntry(in ActiveQuestEpisodeState slot, QuestEpisodeRow row)
-    {
-        var arr = new QuestCondition[QuestModuleDefines.ConditionsPerEpisode];
-        for (var i = 0; i < QuestModuleDefines.ConditionsPerEpisode; i++)
-        {
-            arr[i] = new QuestCondition
-            {
-                Condition = row.GetConditionId(i),
-                Step = slot.Steps.Get(i)
+                Condition = slot < quest.Conditions.Count ? quest.Conditions[slot] : 0,
+                Step = state.Steps[slot]
             };
         }
 
         return new QuestEpisodeEntry
         {
-            Episode = slot.EpisodeId,
+            Episode = quest.Id,
             Info = new QuestInfoEntry
             {
-                IsAddHelper = slot.IsAddHelper != 0,
-                CompleteBit = ComputeCompleteBitMask(row, in slot.Steps),
-                IsFailed = slot.IsFailed != 0,
-                Condition = arr
+                IsAddHelper = state.Helper,
+                CompleteBit = QuestRules.GetClientBits(quest, state),
+                IsFailed = state.Failed,
+                Condition = conditions
             }
         };
     }
 
-    private short ComputeCompleteBitMask(QuestEpisodeRow row, in QuestConditionStepBlock steps)
+    #endregion Loading
+
+    #region Taking, finishing and giving up
+
+    /// <summary>
+    /// The person asks to take an episode.
+    /// </summary>
+    public ValueTask<bool> AcceptAsync(Entity player, int episode, CancellationToken cancellationToken)
     {
-        short mask = 0;
+        return AcceptCoreAsync(player, episode, false, cancellationToken);
+    }
 
-        for (var i = 0; i < QuestModuleDefines.ConditionsPerEpisode; i++)
+    /// <summary>
+    /// A script gives the person an episode, without the checks of the episodes that have to come first.
+    /// </summary>
+    public void AcceptEpisode(Entity player, int episode)
+    {
+        Run(nameof(AcceptEpisode), () => AcceptCoreAsync(player, episode, true, CancellationToken.None).AsTask());
+    }
+
+    private async ValueTask<bool> AcceptCoreAsync(Entity player, int episode, bool force, CancellationToken cancellationToken)
+    {
+        if (!TryGet(player, out var book, out var person))
         {
-            var cid = row.GetConditionId(i);
-            if (cid == 0)
-            {
-                continue;
-            }
+            return false;
+        }
 
-            if (!TryGetMaxStep(cid, out var max))
-            {
-                continue;
-            }
+        if (!catalog.TryGetEpisode(episode, out var quest))
+        {
+            SendError(player, QuestOpcode.Accept, QuestErrors.UnknownEpisode);
+            return false;
+        }
 
-            if (steps.Get(i) >= max)
+        var error = QuestRules.CheckAccept(catalog, book, quest, GetLevel(player), GetHero(player), force);
+
+        if (error is { } code)
+        {
+            SendError(player, QuestOpcode.Accept, code);
+            return false;
+        }
+
+        // The episode is taken before anything is waited for, so a second request for it is refused.
+        var state = QuestRules.Start(quest, book.HelperCount < QuestRules.MaxHelperEpisodes);
+
+        book.Episodes.Add(state);
+
+        if (quest.GivenOnAccept.Count > 0 &&
+            !await rewards.TryGrantAsync(player, new Reward(ToRewardItems(quest.GivenOnAccept)), RewardSource.Quest, cancellationToken))
+        {
+            book.Episodes.Remove(state);
+
+            SendError(player, QuestOpcode.Accept, QuestErrors.ObjectsNotGiven);
+            return false;
+        }
+
+        Send(player, new QuestAcceptResponse { Episode = quest.Id, IsShowHelper = state.Helper ? (byte)1 : (byte)0 });
+
+        // Items the person already has count towards the conditions that ask for them.
+        foreach (var condition in quest.Conditions.Select(e => catalog.TryGetCondition(e, out var found) ? found : null))
+        {
+            if (condition is { Type: QuestConditionType.Collect, Target: QuestConditionTarget.Item })
             {
-                mask |= (short)(1 << i);
+                var count = await items.CountAsync(player, condition.TargetId, cancellationToken);
+
+                if (count > 0)
+                {
+                    var id = condition.Id;
+
+                    await ProgressAsync(player, e => e.Id == id, Math.Min(count, condition.Counter), false);
+                }
             }
         }
 
-        return mask;
+        await SaveAsync(person, book);
+
+        return true;
     }
 
-    private bool TryGetMaxStep(int conditionId, out byte maxStep)
+    /// <summary>
+    /// The person asks to finish an episode and take its reward. <paramref name="selected"/> is the item chosen from
+    /// the ones the episode offers, as it stands in the table.
+    /// </summary>
+    public async ValueTask<bool> CompleteAsync(Entity player, int episode, int selected, CancellationToken cancellationToken)
     {
-        foreach (var row in questConditions)
+        return await CompleteCoreAsync(player, episode, selected, false, cancellationToken);
+    }
+
+    /// <summary>
+    /// A script finishes an episode of the person, whether or not its conditions are done.
+    /// </summary>
+    public void CompleteEpisode(Entity player, int episode)
+    {
+        Run(nameof(CompleteEpisode), () => CompleteCoreAsync(player, episode, 0, true, CancellationToken.None).AsTask());
+    }
+
+    private async ValueTask<bool> CompleteCoreAsync(Entity player, int episode, int selected, bool force, CancellationToken cancellationToken)
+    {
+        if (!TryGet(player, out var book, out var person))
         {
-            if (row.Id == conditionId)
+            return false;
+        }
+
+        var state = book.Find(episode);
+
+        if (state is null || !catalog.TryGetEpisode(episode, out var quest) || !force && !QuestRules.IsReady(quest, state))
+        {
+            SendError(player, QuestOpcode.EpisodeComplete, QuestErrors.CannotFinish);
+            return false;
+        }
+
+        var payout = QuestRules.GetPayout(quest, catalog, GetHero(player), selected);
+
+        // What the boosters of the person add is paid and told too.
+        var experience = (long)boosters.Apply(player, BoosterEffect.CompleteQuestIncExp, payout.Reward.Experience);
+        var reward = payout.Reward with { Experience = experience };
+
+        // The episode is done before anything is waited for, so it can not be finished twice.
+        var index = book.Episodes.IndexOf(state);
+        var wasFinished = book.IsFinished(quest.CompleteBit);
+
+        book.Episodes.RemoveAt(index);
+
+        if (quest.Contents != QuestContents.Repeat)
+        {
+            book.SetFinished(quest.CompleteBit, true);
+        }
+
+        bool granted;
+
+        try
+        {
+            granted = await rewards.TryGrantAsync(player, reward, RewardSource.Quest, cancellationToken);
+        }
+
+        catch
+        {
+            Restore(book, state, index, quest, wasFinished);
+            throw;
+        }
+
+        if (!granted)
+        {
+            Restore(book, state, index, quest, wasFinished);
+
+            SendError(player, QuestOpcode.EpisodeComplete, QuestErrors.ItemsNotGiven);
+            return false;
+        }
+
+        uint helper = 0;
+
+        if (payout.Helper != 0 && await helpers.AddAsync(player, payout.Helper, cancellationToken))
+        {
+            helper = (uint)payout.Helper;
+        }
+
+        if (quest.TakenOnFinish.Count > 0)
+        {
+            await items.TakeAsync(player, quest.TakenOnFinish, cancellationToken);
+        }
+
+        Send(player, new QuestEpisodeCompleteResponse
+        {
+            Episode = quest.Id,
+            Exp = (int)Math.Min(experience, int.MaxValue),
+            Money = reward.Gold,
+            BattlePoints = reward.BattlePoints,
+            Ether = reward.Ether,
+            Title = new TitleValue(payout.Prefix, payout.Suffix),
+            NpcHelper = helper,
+            Items = payout.Items.Select(e => new CreateItemValue { Item = e.Item, Count = e.Count }).ToArray()
+        });
+
+        await SaveAsync(person, book);
+
+        return true;
+    }
+
+    private static void Restore(QuestBook book, QuestEpisodeState state, int index, QuestDefinition quest, bool wasFinished)
+    {
+        book.Episodes.Insert(Math.Min(index, book.Episodes.Count), state);
+
+        if (!wasFinished)
+        {
+            book.SetFinished(quest.CompleteBit, false);
+        }
+    }
+
+    /// <summary>
+    /// The person gives an episode up.
+    /// </summary>
+    public async ValueTask<bool> GiveUpAsync(Entity player, int episode, CancellationToken cancellationToken)
+    {
+        if (!TryGet(player, out var book, out var person))
+        {
+            return false;
+        }
+
+        var state = book.Find(episode);
+
+        if (state is null || !catalog.TryGetEpisode(episode, out var quest) || quest.CannotGiveUp)
+        {
+            SendError(player, QuestOpcode.GiveUp, QuestErrors.CannotGiveUp);
+            return false;
+        }
+
+        book.Remove(episode);
+
+        // What the episode gave with it goes back.
+        if (quest.GivenOnAccept.Count > 0)
+        {
+            await items.TakeAsync(player, quest.GivenOnAccept, cancellationToken);
+        }
+
+        Send(player, new QuestGiveUpResponse { Episode = episode });
+
+        await SaveAsync(person, book);
+
+        return true;
+    }
+
+    /// <summary>
+    /// The episode has failed, which the game decides: the person left a maze while escorting someone, say.
+    /// The episode stays on the list as failed until the client asks to remove it.
+    /// </summary>
+    public async ValueTask<bool> FailAsync(Entity player, int episode)
+    {
+        if (!TryGet(player, out var book, out var person) || book.Find(episode) is not { Failed: false } state)
+        {
+            return false;
+        }
+
+        state.Failed = true;
+
+        Send(player, new QuestFailResponse { Episode = episode });
+
+        await SaveAsync(person, book);
+
+        return true;
+    }
+
+    /// <summary>
+    /// The client has seen an episode fail and asks to remove it. Nothing is answered.
+    /// </summary>
+    public async ValueTask<bool> RemoveFailedAsync(Entity player, int episode)
+    {
+        if (!TryGet(player, out var book, out var person) || book.Find(episode) is not { Failed: true })
+        {
+            return false;
+        }
+
+        book.Remove(episode);
+
+        await SaveAsync(person, book);
+
+        return true;
+    }
+
+    /// <summary>
+    /// The person asks to show an episode in the helper or to hide it.
+    /// </summary>
+    public async ValueTask<bool> SetHelperAsync(Entity player, QuestHelperType type, int episode)
+    {
+        if (!TryGet(player, out var book, out var person))
+        {
+            return false;
+        }
+
+        if (book.Find(episode) is not { } state)
+        {
+            SendError(player, QuestOpcode.Helper, QuestErrors.UnknownEpisode);
+            return false;
+        }
+
+        var add = type == QuestHelperType.Add;
+
+        if (add && !state.Helper && book.HelperCount >= QuestRules.MaxHelperEpisodes)
+        {
+            SendError(player, QuestOpcode.Helper, QuestErrors.NoRoomInHelper);
+            return false;
+        }
+
+        state.Helper = add;
+
+        Send(player, new QuestHelperResponse { Type = type, Episode = episode });
+
+        await SaveAsync(person, book);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Forgets one episode as if the person had never taken it or finished it, and tells the client.
+    /// </summary>
+    public async ValueTask<bool> ResetEpisodeAsync(Entity player, int episode)
+    {
+        if (!TryGet(player, out var book, out var person) || !catalog.TryGetEpisode(episode, out var quest))
+        {
+            return false;
+        }
+
+        book.Remove(episode);
+        book.SetFinished(quest.CompleteBit, false);
+
+        Send(player, new QuestEpisodeResetResponse { Episode = episode });
+
+        await SaveAsync(person, book);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Forgets all the quests of the person, the finished ones too, and tells the client.
+    /// </summary>
+    public async ValueTask<bool> ResetAllAsync(Entity player)
+    {
+        if (!TryGet(player, out var book, out var person))
+        {
+            return false;
+        }
+
+        book.Episodes.Clear();
+        Array.Clear(book.Finished);
+
+        Send(player, new QuestResetResponse());
+
+        await SaveAsync(person, book);
+
+        return true;
+    }
+
+    /// <summary>
+    /// A script clears all the quests of the person.
+    /// </summary>
+    public void RemoveAllActiveEpisodes(Entity player)
+    {
+        Run(nameof(RemoveAllActiveEpisodes), () => ResetAllAsync(player).AsTask());
+    }
+
+    #endregion Taking, finishing and giving up
+
+    #region Progress
+
+    /// <summary>
+    /// The person has killed a monster: it counts for the conditions that name the monster, for the ones that name
+    /// a group it belongs to and for each person in the maze, which is for the caller to tell.
+    /// </summary>
+    public ValueTask OnMonsterKilledAsync(Entity player, int monster, CancellationToken cancellationToken)
+    {
+        var groups = catalog.GetMonsterGroups(monster);
+
+        return ProgressAsync(
+            player,
+            e => e.Type == QuestConditionType.Hunt &&
+                 (e.Target == QuestConditionTarget.Monster && QuestRules.AcceptsParameter(e, monster) ||
+                  e.Target == QuestConditionTarget.MonsterGroup && groups.Any(group => QuestRules.AcceptsParameter(e, group))),
+            1);
+    }
+
+    /// <summary>
+    /// The person has cleared a maze.
+    /// </summary>
+    public ValueTask OnMazeClearedAsync(Entity player, int maze, CancellationToken cancellationToken)
+    {
+        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Clear, QuestConditionTarget.Maze, maze), 1);
+    }
+
+    /// <summary>
+    /// The person has cleared a sector of a maze.
+    /// </summary>
+    public ValueTask OnSectorClearedAsync(Entity player, int maze, int sector, CancellationToken cancellationToken)
+    {
+        return ProgressAsync(
+            player,
+            e => e.Maze == maze && QuestRules.Matches(e, QuestConditionType.Clear, QuestConditionTarget.Sector, sector),
+            1);
+    }
+
+    /// <summary>
+    /// The person has got items.
+    /// </summary>
+    public ValueTask OnItemCollectedAsync(Entity player, int item, short count, CancellationToken cancellationToken)
+    {
+        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Collect, QuestConditionTarget.Item, item), count);
+    }
+
+    /// <summary>
+    /// The person has used an object of a maze, such as a box to click.
+    /// </summary>
+    public ValueTask OnObjectUsedAsync(Entity player, int box, CancellationToken cancellationToken)
+    {
+        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Trigger, QuestConditionTarget.WorldObject, box), 1);
+    }
+
+    /// <summary>
+    /// Something has happened that the conditions name as an event, such as a hidden event of a maze.
+    /// </summary>
+    public ValueTask OnEventAsync(Entity player, int eventId, CancellationToken cancellationToken)
+    {
+        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Clear, QuestConditionTarget.Event, eventId), 1);
+    }
+
+    /// <summary>
+    /// The person has done something with items that a condition names, such as buying or making them.
+    /// </summary>
+    public ValueTask OnItemUsedAsync(Entity player, QuestConditionType type, int item, CancellationToken cancellationToken)
+    {
+        return ProgressAsync(player, e => QuestRules.Matches(e, type, QuestConditionTarget.Item, item), 1);
+    }
+
+    /// <summary>
+    /// The person has stepped into a box of a map that belongs to a condition.
+    /// </summary>
+    public ValueTask OnConditionAdvancedAsync(Entity player, int condition, int count, CancellationToken cancellationToken)
+    {
+        return ProgressAsync(player, e => e.Id == condition, count);
+    }
+
+    /// <summary>
+    /// The client says it has done a step of a condition, such as talking to a character.
+    /// </summary>
+    public ValueTask OnEventUpdateAsync(Entity player, int condition, long parameter, CancellationToken cancellationToken)
+    {
+        return ProgressAsync(
+            player,
+            e => e.Id == condition && ClientDriven.Contains(e.Type) && parameter is >= int.MinValue and <= int.MaxValue && QuestRules.AcceptsParameter(e, (int)parameter),
+            1);
+    }
+
+    /// <summary>
+    /// Sets a condition to a step, for tests and for game masters. A step the condition does not reach finishes it.
+    /// </summary>
+    public bool TryApplyConditionProgress(Entity player, int conditionId, byte step)
+    {
+        if (!TryGet(player, out var book, out _) || !catalog.TryGetCondition(conditionId, out var condition) || step > condition.Counter)
+        {
+            return false;
+        }
+
+        foreach (var state in book.Episodes)
+        {
+            if (catalog.TryGetEpisode(state.Episode, out var quest) && quest.Conditions.ToList().IndexOf(conditionId) is var slot and >= 0)
             {
-                maxStep = row.Field21;
+                var missing = step - state.Steps[slot];
+
+                if (missing > 0)
+                {
+                    Run(nameof(TryApplyConditionProgress), () => ProgressAsync(player, e => e.Id == conditionId, missing).AsTask());
+                }
+
                 return true;
             }
         }
 
-        maxStep = 0;
         return false;
     }
 
-    private static int CountHelpers(in QuestProgressComponent q)
+    private async ValueTask ProgressAsync(Entity player, Func<QuestConditionDefinition, bool> matches, int count, bool save = true)
     {
-        var count = 0;
-
-        for (var i = 0; i < q.ActiveCount; i++)
+        if (!TryGet(player, out var book, out var person))
         {
-            if (GetSlotCopy(in q, i).IsAddHelper != 0)
+            return;
+        }
+
+        var steps = QuestRules.Apply(book, catalog, matches, count);
+
+        if (steps.Count == 0)
+        {
+            return;
+        }
+
+        var kept = new List<QuestStep>(steps.Count);
+
+        foreach (var step in steps)
+        {
+            // The items a condition gives when it is done must fit, or the condition is not done.
+            if (step.Completed &&
+                step.Condition.GivenOnDone.Count > 0 &&
+                !await rewards.TryGrantAsync(player, new Reward(ToRewardItems(step.Condition.GivenOnDone)), RewardSource.Quest, CancellationToken.None))
             {
-                count++;
+                step.Undo();
+
+                SendError(player, QuestOpcode.Update, QuestErrors.ItemsNotGiven);
+                continue;
             }
+
+            kept.Add(step);
         }
 
-        return count;
-    }
-
-    private static int FindEpisodeIndex(in QuestProgressComponent q, int episodeId)
-    {
-        for (var i = 0; i < q.ActiveCount; i++)
+        if (kept.Count == 0)
         {
-            if (GetSlotCopy(in q, i).EpisodeId == episodeId)
-            {
-                return i;
-            }
+            return;
         }
 
-        return -1;
-    }
-
-    private static void RemoveEpisodeAt(ref QuestProgressComponent q, int index)
-    {
-        for (var i = index; i < q.ActiveCount - 1; i++)
+        Send(player, new QuestUpdateResponse
         {
-            SetSlot(ref q, i, GetSlotCopy(in q, i + 1));
-        }
+            ConditionList = kept.Select(e => new QuestCondition { Condition = e.Condition.Id, Step = e.Value }).ToArray()
+        });
 
-        q.ActiveCount--;
-    }
-
-    private static ActiveQuestEpisodeState GetSlotCopy(in QuestProgressComponent q, int index) => index switch
-    {
-        0 => q.E0,
-        1 => q.E1,
-        2 => q.E2,
-        3 => q.E3,
-        4 => q.E4,
-        5 => q.E5,
-        6 => q.E6,
-        7 => q.E7,
-        _ => throw new ArgumentOutOfRangeException(nameof(index))
-    };
-
-    private static void SetSlot(ref QuestProgressComponent q, int index, ActiveQuestEpisodeState value)
-    {
-        switch (index)
+        foreach (var step in kept.Where(e => e.Completed && e.Condition.TakenOnDone.Count > 0))
         {
-            case 0: q.E0 = value; break;
-            case 1: q.E1 = value; break;
-            case 2: q.E2 = value; break;
-            case 3: q.E3 = value; break;
-            case 4: q.E4 = value; break;
-            case 5: q.E5 = value; break;
-            case 6: q.E6 = value; break;
-            case 7: q.E7 = value; break;
-            default: throw new ArgumentOutOfRangeException(nameof(index));
+            await items.TakeAsync(player, step.Condition.TakenOnDone, CancellationToken.None);
         }
-    }
 
-    private static Dictionary<int, QuestEpisodeRow> BuildEpisodeIndex(ReadOnlyCollection<QuestEpisodeRow> episodes)
-    {
-        var d = new Dictionary<int, QuestEpisodeRow>();
-        foreach (var e in episodes)
+        // An episode that ends by itself is finished as soon as its last condition is done.
+        foreach (var quest in kept.Where(e => e.Completed && e.Quest.FinishesByItself && QuestRules.IsReady(e.Quest, e.State)).Select(e => e.Quest).DistinctBy(e => e.Id))
         {
-            d[e.Id] = e;
+            await CompleteCoreAsync(player, quest.Id, 0, false, CancellationToken.None);
         }
 
-        return d;
+        if (save)
+        {
+            await SaveAsync(person, book);
+        }
     }
 
-    public void SendQuestEpisodeList(Entity player)
+    #endregion Progress
+
+    #region Questions
+
+    public bool HasAnyActiveEpisode(Entity player) => TryGet(player, out var book, out _) && book.Episodes.Count > 0;
+
+    public bool HasActiveEpisode(Entity player, int episodeId) => TryGet(player, out var book, out _) && book.Find(episodeId) is not null;
+
+    public bool ActiveEpisodeUsesCondition(Entity player, int conditionId)
     {
-        ref readonly var session = ref player.Get<ServerSessionComponent>();
-        session.Send(BuildQuestListResponse(player));
+        return conditionId != 0 &&
+               TryGet(player, out var book, out _) &&
+               book.Episodes.Any(e => catalog.TryGetEpisode(e.Episode, out var quest) && quest.Conditions.Contains(conditionId));
     }
+
+    /// <summary>
+    /// Whether the person has finished the episode.
+    /// </summary>
+    public bool HasFinishedEpisode(Entity player, int episodeId)
+    {
+        return TryGet(player, out var book, out _) && catalog.TryGetEpisode(episodeId, out var quest) && QuestRules.IsFinished(book, quest);
+    }
+
+    #endregion Questions
+
+    #region Helpers
+
+    // The level of a person is not kept anywhere yet, so every person has the level of a new one.
+    private static int GetLevel(Entity player) => PersonModuleDefines.DefaultLevel;
+
+    private int GetHero(Entity player)
+    {
+        return world.IsAlive(player) && world.TryGet<PersonInfoComponent>(player, out var info) ? (int)info.Hero : 0;
+    }
+
+    private static RewardItem[] ToRewardItems(IReadOnlyList<QuestItem> list)
+    {
+        return list.Select(e => new RewardItem(e.Item, e.Count)).ToArray();
+    }
+
+    private bool TryGet(Entity player, out QuestBook book, out int person)
+    {
+        if (world.IsAlive(player) && world.TryGet<QuestComponent>(player, out var component) && component.Book is not null)
+        {
+            book = component.Book;
+            person = component.Person;
+            return true;
+        }
+
+        book = null!;
+        person = 0;
+        return false;
+    }
+
+    private void Send(Entity player, IResponseHotspotMessage message)
+    {
+        if (world.IsAlive(player) && world.TryGet<ServerSessionComponent>(player, out var session))
+        {
+            session.Send(message);
+        }
+    }
+
+    private void SendError(Entity player, QuestOpcode command, ushort code)
+    {
+        Send(player, new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Quest, command), code));
+    }
+
+    /// <summary>
+    /// Saves the book. The save is not stopped when the person leaves, as the change is already told to the client.
+    /// </summary>
+    private async ValueTask SaveAsync(int person, QuestBook book)
+    {
+        await book.Gate.WaitAsync(CancellationToken.None);
+
+        try
+        {
+            await store.SaveAsync(person, book, CancellationToken.None);
+        }
+
+        finally
+        {
+            book.Gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Runs work that the caller can not wait for, such as a script. It continues on the world loop and its
+    /// failure is logged.
+    /// </summary>
+    private void Run(string what, Func<Task> work)
+    {
+        _ = RunAsync(what, work);
+    }
+
+    private async Task RunAsync(string what, Func<Task> work)
+    {
+        try
+        {
+            await work();
+        }
+
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogWorkFailed(logger, e, what);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "{Work} of the quests failed.")]
+    private static partial void LogWorkFailed(ILogger logger, Exception exception, string work);
+
+    #endregion Helpers
 }
