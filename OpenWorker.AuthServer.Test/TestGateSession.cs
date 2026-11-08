@@ -3,15 +3,16 @@ using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Types;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.GateServer.Gameplay;
@@ -99,9 +100,7 @@ public sealed class TestGateSession
                 .BuildServiceProvider()
                 .GetRequiredService<IDbContextFactory<PersistenceContext>>();
 
-            var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?> { ["Gate:Id"] = GateId.ToString() })
-                .Build();
+            var gate = Options.Create(new GateOptions { Id = GateId });
 
             var leases = new SessionLeaseManager(Sessions);
             var secondPassword = new SecondPasswordGameplay(World, Factory, new ServerContent([]));
@@ -118,17 +117,17 @@ public sealed class TestGateSession
                 Factory,
                 Registry,
                 secondPassword,
-                configuration,
+                gate,
                 NullLogger<LoginGameplay>.Instance);
 
             Person = new PersonGameplay(
                 World,
                 Factory,
                 Registry,
-                configuration,
+                gate,
                 NullLogger<PersonGameplay>.Instance,
                 secondPassword,
-                new LeaveManager(World, configuration, Gates, leases),
+                new LeaveManager(World, gate, Options.Create(new AuthEndpointOptions()), Gates, leases),
                 (WorldManager)null!,
                 new PersonCreationCatalog(
                     new ReadOnlyCollection<CharacterInfoRow>([]),

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenWorker.DependencyInjection;
+using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Persistence;
 using OpenWorker.RelayServer.DependencyInjection;
@@ -13,11 +14,11 @@ await Host
     {
         services.AddCache();
         services.AddPersistence();
+        services.AddCredentialsOptions();
         services.AddDiscord();
         services.AddRes();
 
         services.AddCacheBootstrapService();
-        services.AddPersistenceBootstrapService();
         
         services.AddHostedService<DiscordService>();
     })

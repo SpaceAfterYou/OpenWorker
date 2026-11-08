@@ -54,32 +54,23 @@ internal sealed class TestClient : TcpClient
         }
     }
     
-    // internal void SendLogin(string username, string password)
-    // {
-    //     var message = new LoginAuthRequest(username, password, "12-34-56-78-90-12");
-    //     Send(message);
-    // }
-    
+    /// <summary>
+    /// Reads from the server until cancelled. The caller owns the task: awaiting it shows how the loop ended.
+    /// </summary>
     internal Task LoopAsync(CancellationToken token)
     {
-        return Task.Factory.StartNew(
-            () => InternalLoopAsync(token).ConfigureAwait(false),
-            token,
-            TaskCreationOptions.LongRunning,
-            TaskScheduler.Default);
+        return Task.Run(() => ReadLoop(token), token);
     }
 
-    private Task InternalLoopAsync(CancellationToken token)
+    private void ReadLoop(CancellationToken token)
     {
+        /* using */ var stream = GetStream();
+
+        /* using */ var reader = new BinaryReader(stream);
+
         while (token.IsCancellationRequested is false)
         {
-            /* using */ var stream = GetStream();
-
-            /* using */ var reader = new BinaryReader(stream);
-
-            var opcode = new MessageOpcode(reader);
+            _ = new MessageOpcode(reader);
         }
-        
-        return Task.CompletedTask;
     }
 }

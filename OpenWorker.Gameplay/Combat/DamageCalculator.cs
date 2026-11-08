@@ -3,7 +3,7 @@ using OpenWorker.UpdateContent.Res.Rows;
 namespace OpenWorker.Gameplay.Combat;
 
 [Flags]
-public enum DamageFlags : byte
+public enum HitResults : byte
 {
     None = 0,
     Miss = 1,
@@ -31,7 +31,7 @@ public readonly record struct SkillDamage(byte Attribute, float BasicDamage, flo
     }
 }
 
-public readonly record struct DamageResult(int Damage, DamageFlags Flags);
+public readonly record struct DamageResult(int Damage, HitResults Flags);
 
 public static class DamageCalculator
 {
@@ -50,13 +50,13 @@ public static class DamageCalculator
     {
         if (defense == DefenseType.Invincible)
         {
-            return new DamageResult(0, DamageFlags.None);
+            return new DamageResult(0, HitResults.None);
         }
 
         var magical = skill.Attribute == SkillDamage.MagicalAttribute;
         var own = magical ? attacker.Magical : attacker.Physical;
         var other = magical ? target.Magical : target.Physical;
-        var flags = DamageFlags.None;
+        var flags = HitResults.None;
         var accuracyEdge = 0f;
 
         var hitChance = (int)((own.Accuracy - other.Evasion) * 100f);
@@ -76,27 +76,27 @@ public static class DamageCalculator
         }
         else
         {
-            flags |= DamageFlags.Miss;
+            flags |= HitResults.Miss;
         }
 
-        if ((flags & DamageFlags.Miss) == 0)
+        if ((flags & HitResults.Miss) == 0)
         {
             var criticalChance = 100 * (int)(own.CriticalChance + accuracyEdge - other.CriticalResist);
 
             if (Math.Clamp(criticalChance, 0, Certain) > random.Next(Certain))
             {
-                flags |= DamageFlags.Critical;
+                flags |= HitResults.Critical;
             }
         }
 
         float result = RollAttack(own, random);
 
-        if ((flags & DamageFlags.Miss) != 0)
+        if ((flags & HitResults.Miss) != 0)
         {
             result *= attacker.GrazeDamage * Percent;
         }
 
-        if ((flags & DamageFlags.Critical) != 0)
+        if ((flags & HitResults.Critical) != 0)
         {
             result += own.CriticalDamage;
         }

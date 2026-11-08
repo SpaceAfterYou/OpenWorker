@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Cache;
@@ -10,62 +11,72 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.GateServer.Server.Services;
 
-public sealed class KeepAliveService(
+public sealed partial class KeepAliveService(
     IRedisCollection<ChannelCache> channelCollection,
     IRedisCollection<GateCache> gateCollection,
-    IConfiguration configuration
+    IOptions<GateOptions> gate,
+    IOptions<GateEndpointOptions> endpoint,
+    ILogger<KeepAliveService> logger
 ) :
     BackgroundService
 {
     private GateCache Instance { get; set; } = new()
     {
-        Identifier = configuration.GetGate(),
+        Identifier = gate.Value.Id,
 
         OnlineCount = 0,
         Workload = GateWorkload.Low,
 
-        Host = configuration.GetGateHost(),
-        Port = configuration.GetGatePort()
+        Host = endpoint.Value.Host,
+        Port = (short)endpoint.Value.Port
     };
 
-    protected override Task ExecuteAsync(CancellationToken cancellationToken)
-    {
-        _ = Task.Factory.StartNew(
-            () => OnTickAsync(cancellationToken),
-            cancellationToken,
-            TaskCreationOptions.LongRunning,
-            TaskScheduler.Default
-        );
-        
-        return Task.CompletedTask;
-    }
+    private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(1);
 
-    private async Task OnTickAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await gateCollection
-            .InsertAsync(Instance);
-        
-        while (cancellationToken.IsCancellationRequested is false)
+        using var timer = new PeriodicTimer(Frequency);
+
+        try
         {
-            var channels = await channelCollection
-                .Where(x => x.Gate == Instance.Identifier)
-                .ToArrayAsync(cancellationToken);
-
-            Instance = Instance with
+            do
             {
-                OnlineCount = (int)channels.Sum(x => x.OnlineCount),
-                Workload = GetWorkload(channels),
-                UpdatedAt = DateTime.UtcNow,
-            };
-            
-            await gateCollection
-                .InsertAsync(Instance);
+                try
+                {
+                    await UpdateAsync(stoppingToken);
+                }
 
-            await Task
-                .Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                catch (Exception e) when (e is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
+                {
+                    LogUpdateFailed(logger, e);
+                }
+            }
+            while (await timer.WaitForNextTickAsync(stoppingToken));
+        }
+
+        catch (OperationCanceledException)
+        {
+            // The server is stopping.
         }
     }
-    
+
+    private async Task UpdateAsync(CancellationToken cancellationToken)
+    {
+        var channels = await channelCollection
+            .Where(x => x.Gate == Instance.Identifier)
+            .ToArrayAsync(cancellationToken);
+
+        Instance = Instance with
+        {
+            OnlineCount = (int)channels.Sum(x => x.OnlineCount),
+            Workload = GetWorkload(channels),
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        await gateCollection
+            .InsertAsync(Instance);
+    }
+
     private static GateWorkload GetWorkload(ChannelCache[] values)
     {
         // If district server is offline
@@ -86,4 +97,7 @@ public sealed class KeepAliveService(
             _ => GateWorkload.Offline
         };
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to update the gate record.")]
+    private static partial void LogUpdateFailed(ILogger logger, Exception exception);
 }

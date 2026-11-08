@@ -129,4 +129,35 @@ public sealed class WorldLoopTest
 
         Assert.IsEmpty(found, string.Join(", ", found));
     }
+
+    [TestMethod]
+    public async Task DisposeRunsWhatIsQueuedThenStopsTheLoop()
+    {
+        var loop = Create();
+        var ran = new List<int>();
+
+        var first = loop.InvokeAsync(() => { ran.Add(1); });
+        var second = loop.InvokeAsync(() => { ran.Add(2); });
+
+        loop.Dispose();
+
+        await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.HasCount(2, ran);
+        Assert.AreEqual(1, ran[0]);
+        Assert.AreEqual(2, ran[1]);
+    }
+
+    [TestMethod]
+    public void PostingToAStoppedLoopIsDroppedWithoutAnError()
+    {
+        var loop = Create();
+        var ran = false;
+
+        loop.Dispose();
+
+        loop.Post(_ => ran = true, null);
+
+        Assert.IsFalse(ran);
+    }
 }

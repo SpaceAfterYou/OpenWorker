@@ -1,16 +1,15 @@
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
-using OpenWorker.Hotspot.Modules.Channels.Extensions;
 
 namespace OpenWorker.Channel;
 
-public sealed class ServiceChannels(IConfiguration configuration, World world) : List<ServiceChannel>(CreateCollection(configuration)), ISessionCloseHandler
+public sealed class ServiceChannels(IOptions<ChannelOptions> channels, IOptions<InstanceOptions> instance, World world) : List<ServiceChannel>(CreateCollection(channels.Value)), ISessionCloseHandler
 {
-    private Guid Owner { get; } = configuration.GetInstance();
+    private Guid Owner { get; } = instance.Value.Identifier;
 
     public ServiceChannel Get(Entity entity)
     {
@@ -89,14 +88,11 @@ public sealed class ServiceChannels(IConfiguration configuration, World world) :
         channel.Leave(player, world);
     }
 
-    private static ServiceChannel[] CreateCollection(IConfiguration configuration)
+    private static ServiceChannel[] CreateCollection(ChannelOptions options)
     {
-        var first = configuration.GetChannelRangeStart();
-        var last  = configuration.GetChannelRangeEnd();
+        var count = options.To - options.From + 1;
 
-        var count = last - first + 1;
-
-        return Enumerable.Range(first, count)
+        return Enumerable.Range(options.From, count)
             .Select(e => new ServiceChannel((short)e))
             .ToArray();
     }

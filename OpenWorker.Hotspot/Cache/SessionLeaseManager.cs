@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using Arch.Core;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM;
@@ -51,7 +52,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions)
         foreach (var lease in Leases.Values)
         {
             var current = await sessions
-                .FindByIdAsync(lease.Session.ToString());
+                .FindByIdAsync(lease.Session.ToString(CultureInfo.InvariantCulture));
 
             // Another connection took this session over, or a new login replaced it.
             if (current?.Owner != lease.Owner)
@@ -71,7 +72,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions)
         }
 
         var current = await sessions
-            .FindByIdAsync(lease.Session.ToString());
+            .FindByIdAsync(lease.Session.ToString(CultureInfo.InvariantCulture));
 
         if (current?.Owner == lease.Owner)
         {

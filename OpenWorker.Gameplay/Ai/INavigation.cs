@@ -16,12 +16,12 @@ public interface INavigation
     /// The way for a creature of a radius from a place to another one: the place it starts at, a point for every turn and
     /// the place it ends at. Nothing when it cannot get there at all: a closed gate, a wall or the other side of a pit.
     /// </summary>
-    bool TryFindPath(Vector3 from, Vector3 to, float radius, List<Vector3> path);
+    bool TryFindPath(Vector3 from, Vector3 target, float radius, List<Vector3> path);
 
     /// <summary>
     /// Whether something at one place can notice something at another: nothing that stands behind a wall is noticed.
     /// </summary>
-    bool CanSee(Vector3 from, Vector3 to);
+    bool CanSee(Vector3 from, Vector3 target);
 }
 
 /// <summary>
@@ -38,14 +38,14 @@ public sealed class OpenNavigation : INavigation
         return true;
     }
 
-    public bool TryFindPath(Vector3 from, Vector3 to, float radius, List<Vector3> path)
+    public bool TryFindPath(Vector3 from, Vector3 target, float radius, List<Vector3> path)
     {
         path.Clear();
         path.Add(from);
-        path.Add(to);
+        path.Add(target);
 
         return true;
     }
 
-    public bool CanSee(Vector3 from, Vector3 to) => true;
+    public bool CanSee(Vector3 from, Vector3 target) => true;
 }

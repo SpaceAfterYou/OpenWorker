@@ -7,7 +7,7 @@ using Redis.OM.Modeling;
 
 namespace OpenWorker.Hotspot.Cache;
 
-internal sealed class BootstrapService(
+internal sealed partial class BootstrapService(
     IRedisConnectionProvider provider,
     ILogger<BootstrapService> logger
 ) :
@@ -15,7 +15,7 @@ internal sealed class BootstrapService(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogDebug("Bootstrapping cache...");
+        LogBootstrapping();
 
         var types = AppDomain.CurrentDomain
             .GetAssemblies()
@@ -25,7 +25,7 @@ internal sealed class BootstrapService(
 
         await Task.WhenAll(types.Select(async type =>
         {
-            logger.LogDebug("Drop index for type: {Name}", type.Name);
+            LogDropIndex(type.Name);
 
             await Task
                 .Run(() => provider.Connection.DropIndexAndAssociatedRecords(type), stoppingToken);
@@ -33,12 +33,24 @@ internal sealed class BootstrapService(
 
         await Task.WhenAll(types.Select(async x =>
         {
-            logger.LogDebug("Create index for type: {Name}", x.Name);
+            LogCreateIndex(x.Name);
 
             await provider.Connection
                 .CreateIndexAsync(x);
         }));
 
-        logger.LogDebug("Cache bootstrapped.");
+        LogBootstrapped();
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Bootstrapping cache...")]
+    private partial void LogBootstrapping();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Drop index for type: {Name}")]
+    private partial void LogDropIndex(string name);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Create index for type: {Name}")]
+    private partial void LogCreateIndex(string name);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Cache bootstrapped.")]
+    private partial void LogBootstrapped();
 }

@@ -1198,7 +1198,7 @@ public sealed class AiMachine
 
         if (_host.IsMoving)
         {
-            _host.Stop(true);
+            _host.StopMoving(true);
         }
 
         UpdateSelectAction(0f);
@@ -1304,7 +1304,7 @@ public sealed class AiMachine
 
         if (_host.IsMoving)
         {
-            _host.Stop(true);
+            _host.StopMoving(true);
         }
 
         StopGaze();
@@ -1349,7 +1349,7 @@ public sealed class AiMachine
 
         if (_host.IsMoving)
         {
-            _host.Stop(true);
+            _host.StopMoving(true);
         }
 
         _gazing = true;
@@ -1382,7 +1382,7 @@ public sealed class AiMachine
 
         if (_host.IsMoving)
         {
-            _host.Stop(true);
+            _host.StopMoving(true);
         }
     }
 
@@ -1504,7 +1504,7 @@ public sealed class AiMachine
 
             if (_host.IsMoving)
             {
-                _host.Stop(true);
+                _host.StopMoving(true);
             }
 
             if (_host.UseSkill(_skill, target.Value))
@@ -1562,7 +1562,7 @@ public sealed class AiMachine
             return;
         }
 
-        _host.Stop(true);
+        _host.StopMoving(true);
 
         _actionEnd = _host.PlayAction(name);
     }
@@ -1582,7 +1582,7 @@ public sealed class AiMachine
         if (_host.CanMove)
         {
             _host.SetBattlePose(true, false);
-            _host.Stop(false);
+            _host.StopMoving(false);
             UpdateReturn();
             _host.SetInvincible(true);
         }

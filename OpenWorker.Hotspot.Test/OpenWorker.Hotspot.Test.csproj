@@ -2,12 +2,8 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <LangVersion>latest</LangVersion>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <EnableMSTestRunner>true</EnableMSTestRunner>
         <OutputType>Exe</OutputType>
-        <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
         <!--
           Displays error on console in addition to the log file. Note that this feature comes with a performance impact.
           For more information, visit https://learn.microsoft.com/dotnet/core/testing/unit-testing-platform-integration-dotnet-test#show-failure-per-test
@@ -16,11 +12,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Arch" Version="2.1.0" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
-        <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="2.5.2" />
-        <PackageReference Include="MSTest" Version="4.5.2" />
+        <PackageReference Include="Arch" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+        <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
+        <PackageReference Include="MSTest" />
     </ItemGroup>
 
     <ItemGroup>
@@ -34,9 +31,11 @@
     <ItemGroup>
       <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
-      <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
       <ProjectReference Include="..\OpenWorker.Navigation\OpenWorker.Navigation.csproj" />
+      <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
+      <ProjectReference Include="..\OpenWorker.DistrictServer\OpenWorker.DistrictServer.csproj" />
+      <ProjectReference Include="..\OpenWorker.MazeServer\OpenWorker.MazeServer.csproj" />
     </ItemGroup>
 
 </Project>

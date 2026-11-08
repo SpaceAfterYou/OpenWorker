@@ -23,7 +23,7 @@ public readonly struct FriendRecruitAddResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    public FriendResult Result { get; init; }
+    public int Result { get; init; }
     public required string Name { get; init; }
 
 #endregion Message: Body

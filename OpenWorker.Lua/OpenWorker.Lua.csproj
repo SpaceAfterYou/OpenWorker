@@ -2,13 +2,10 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <LangVersion>preview</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="LuaCSharp" Version="0.5.8" />
+      <PackageReference Include="LuaCSharp" />
     </ItemGroup>
 
     <ItemGroup>

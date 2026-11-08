@@ -15,7 +15,6 @@ public sealed class MazeResourceProvider(ReadOnlyCollection<MazeInfoRow> resourc
             return false;
         }
 
-        file = VBatchFile.Create(resource.Batch);
-        return true;
+        return VBatchFile.TryCreate(resource.Batch, out file);
     }
 }

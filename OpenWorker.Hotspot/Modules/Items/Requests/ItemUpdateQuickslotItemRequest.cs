@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ItemUpdateQuickslotItemRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct ItemUpdateQuickslotItemRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.UpdateQuickslotItem;

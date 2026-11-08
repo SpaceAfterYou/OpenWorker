@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Party.Responses;
 /// This packet doesn't have any content.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PartyMatchingCheckResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly struct PartyMatchingCheckResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.MatchingCheck;

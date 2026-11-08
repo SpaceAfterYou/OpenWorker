@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Movement.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct MovementTransportTakeRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct MovementTransportTakeRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.TransportTake;

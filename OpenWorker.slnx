@@ -8,11 +8,6 @@
     <Project Path="OpenWorker.Commands.SourceGenerators/OpenWorker.Commands.SourceGenerators.csproj" />
     <Project Path="OpenWorker.Commands/OpenWorker.Commands.csproj" />
   </Folder>
-  <Folder Name="/Research/">
-    <Project Path="Research.Dotnet/Research.Dotnet.csproj" />
-    <Project Path="Research.Ecs/Research.Ecs.csproj" />
-    <Project Path="Research.Havok.Hkt/Research.Havok.Hkt.csproj" />
-  </Folder>
   <Folder Name="/Servers/" />
   <Folder Name="/Servers/Auth/">
     <Project Path="OpenWorker.AuthServer.Gameplay/OpenWorker.AuthServer.Gameplay.csproj" />
@@ -37,7 +32,6 @@
     <File Path="compose.yaml" />
   </Folder>
   <Project Path="OpenWorker.Batch/OpenWorker.Batch.csproj" />
-  <Project Path="OpenWorker.Cache/OpenWorker.Cache.csproj" />
   <Project Path="OpenWorker.Channel/OpenWorker.Channel.csproj" />
   <Project Path="OpenWorker.DependencyInjection/OpenWorker.DependencyInjection.csproj" />
   <Project Path="OpenWorker.Domain/OpenWorker.Domain.csproj" />
@@ -52,5 +46,4 @@
   <Project Path="OpenWorker.Res/OpenWorker.Res.csproj" />
   <Project Path="OpenWorker.SourceGenerator.ResourceStructures/OpenWorker.SourceGenerator.ResourceStructures.csproj" />
   <Project Path="OpenWorker.UpdateContent/OpenWorker.UpdateContent.csproj" />
-  <Project Path="TestLang/TestLang.csproj" />
 </Solution>

@@ -13,7 +13,8 @@ public static class PersonPersistentExtension
             AbilityPrimary = value.TitleAbilityPrimary,
             AbilitySecondary = value.TitleAbilitySecondary,
             Primary = value.TitlePrimary,
-            Secondary = value.TitleSecondary
+            Secondary = value.TitleSecondary,
+            Owned = value.TitleList
         };
     }
     

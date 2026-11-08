@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Extensions.Options;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
@@ -17,9 +18,9 @@ public sealed class NpcManager
 {
     private short Location { get; } 
     
-    public NpcManager(World ecs, BatchManager provider, ReadOnlyCollection<NPCRow> npcList, IConfiguration configuration)
+    public NpcManager(World ecs, BatchManager provider, ReadOnlyCollection<NPCRow> npcList, IOptions<InstanceOptions> instance)
     {
-        Location = configuration.GetLocation();
+        Location = instance.Value.Location;
         
         var id = 0;
         
@@ -36,7 +37,7 @@ public sealed class NpcManager
 
                 var row = npcList.First(e => e.Id == monster.Id);
 
-                var npc = new CreatureComponent___Old(
+                var npc = new NpcComponent(
                     monster.Id,
                     spawn.GetPosition(),
                     spawn.Rotation,

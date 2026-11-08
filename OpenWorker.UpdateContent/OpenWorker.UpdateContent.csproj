@@ -3,8 +3,6 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
@@ -12,6 +10,11 @@
         <Content Include="..\.dockerignore">
             <Link>.dockerignore</Link>
         </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The defaults of the server: the image needs them next to the assembly. -->
+        <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>
@@ -23,7 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.CodeDom" Version="10.0.14" />
+        <PackageReference Include="System.CodeDom" />
     </ItemGroup>
 
 </Project>

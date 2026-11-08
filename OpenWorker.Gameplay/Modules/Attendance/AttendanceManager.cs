@@ -1,7 +1,8 @@
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Attendance.Components;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.State;
@@ -14,14 +15,14 @@ namespace OpenWorker.Gameplay.Modules.Attendance;
 /// A person who comes on a new day gets the reward of that day of the table, and one who stays in the game gets
 /// a reward after each wait. Both go to the person by themselves; the requests of the client only ask to look again.
 /// </summary>
-public sealed class AttendanceManager(
+public sealed partial class AttendanceManager(
     World world,
     PersonStateStore store,
     AttendanceCatalog catalog,
     IRewardGranter rewards,
     ServerContent contents,
     TimeProvider time,
-    IConfiguration configuration,
+    IOptions<AttendanceOptions> options,
     ILogger<AttendanceManager> logger) : IMiscTick
 {
     private static readonly QueryDescription Everyone = new QueryDescription().WithAll<AttendanceComponent>();
@@ -31,7 +32,7 @@ public sealed class AttendanceManager(
     /// </summary>
     private static readonly TimeSpan LongestStep = TimeSpan.FromMinutes(2);
 
-    private TimeSpan Reset => TimeSpan.FromHours(configuration.GetValue("Attendance:ResetHour", AttendanceRules.DefaultResetTime.TotalHours));
+    private TimeSpan Reset => options.Value.ResetHour is { } hour ? TimeSpan.FromHours(hour) : AttendanceRules.DefaultResetTime;
 
     public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
     {
@@ -184,7 +185,7 @@ public sealed class AttendanceManager(
 
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                logger.LogError(e, "Attendance of a person failed.");
+                LogAttendanceFailed(e);
             }
         }
     }
@@ -221,4 +222,7 @@ public sealed class AttendanceManager(
             book.Gate.Release();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Attendance of a person failed.")]
+    private partial void LogAttendanceFailed(Exception exception);
 }

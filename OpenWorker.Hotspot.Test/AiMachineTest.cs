@@ -56,7 +56,7 @@ public sealed class AiMachineTest
         public int CountSectorMonsters() => 1;
         public int CountSpawnedMonsters() => 0;
 
-        public void Stop(bool send)
+        public void StopMoving(bool send)
         {
             Destination = null;
             Log.Add("stop");

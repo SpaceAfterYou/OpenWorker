@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Batch.Entities;
@@ -32,7 +33,7 @@ using OpenWorker.Navigation;
 
 namespace OpenWorker.Lua.Managers;
 
-public sealed class LuaCreatureManager
+public sealed class LuaCreatureManager : ISimulation
 {
     private static ComponentType[] Archetype { get; } = [
         ComponentRegistry.Add<ActorComponent>(),
@@ -43,11 +44,6 @@ public sealed class LuaCreatureManager
     ];
 
     private const int NpcHealth = 250;
-
-    /// <summary>
-    /// How often the monsters of a maze think and move, in seconds.
-    /// </summary>
-    private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly World ecs;
     private readonly VBatchFile batch;
@@ -62,12 +58,12 @@ public sealed class LuaCreatureManager
         Services = services;
         Navigation = mesh is null ? OpenNavigation.Instance : new NavMeshNavigation(mesh, batch);
         Vitals = new PlayerVitals(ecs, tables);
-        Logger = logger;
+        Logger = logger ?? NullLogger.Instance;
     }
 
     internal CreatureServices? Services { get; }
 
-    internal ILogger? Logger { get; }
+    internal ILogger Logger { get; }
 
     /// <summary>
     /// How much life the players of the maze have and who can be hurt.
@@ -130,7 +126,7 @@ public sealed class LuaCreatureManager
 
         SpawnedBoxes.Add(box);
 
-        Console.WriteLine($"[{nameof(Create)}]: {spawn.LayerBitmask}");
+        Logger.SpawnBox(box, spawn.LayerBitmask);
 
         var created = new List<Entity>();
 
@@ -154,7 +150,7 @@ public sealed class LuaCreatureManager
 
                 default:
                     // One kind of object the server cannot show must not stop the rest of the map.
-                    Console.WriteLine($"[{nameof(Create)}]: skipped {monster.Id}, type {monster.Type}");
+                    Logger.UnsupportedMonsterType(box, monster.Id, monster.Type);
                     break;
             }
         }
@@ -168,7 +164,7 @@ public sealed class LuaCreatureManager
                 break;
 
             case CreationConditionType.WaitSignal:
-                _ = ShowLaterAsync(session, created, TimeSpan.FromSeconds(spawn.WaitCreationDelayTime));
+                _ = ShowLaterAsync(session, created, box, TimeSpan.FromSeconds(spawn.WaitCreationDelayTime));
                 break;
         }
     }
@@ -391,6 +387,13 @@ public sealed class LuaCreatureManager
     {
         Closed = true;
 
+        if (Ticking)
+        {
+            Services?.Clock.Remove(this);
+
+            Ticking = false;
+        }
+
         foreach (var creature in Creatures.Where(ecs.IsAlive))
         {
             ecs.Destroy(creature);
@@ -403,7 +406,7 @@ public sealed class LuaCreatureManager
         Players.Clear();
     }
 
-    private async Task ShowLaterAsync(ServerSessionComponent session, List<Entity> created, TimeSpan delay)
+    private async Task ShowLaterAsync(ServerSessionComponent session, List<Entity> created, int box, TimeSpan delay)
     {
         try
         {
@@ -417,7 +420,7 @@ public sealed class LuaCreatureManager
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(ShowLaterAsync)}]: {e}");
+            Logger.LateShowFailed(e, box);
         }
     }
 
@@ -427,63 +430,49 @@ public sealed class LuaCreatureManager
 
         if (creature.IsAlive() is false)
         {
-            Console.WriteLine($"[{nameof(MoveToPoint)}]: creature not found - {npc}");
+            Logger.UnknownNpcToMove(npc, waypoint);
         }
     }
 
     // ---- Minds --------------------------------------------------------------------------------
 
+    /// <summary>
+    /// The first monster with a mind puts the maze on the clock of the server; <see cref="Close"/> takes it off.
+    /// </summary>
     private void StartTicking()
     {
-        if (!Ticking)
+        if (!Ticking && !Closed && Services?.Clock is { } clock)
         {
             Ticking = true;
 
-            _ = TickAsync();
+            clock.Add(this);
         }
     }
 
     /// <summary>
     /// The monsters think on the thread of the world, one after another, so nothing they do can meet another change halfway.
     /// </summary>
-    private async Task TickAsync()
+    public void Advance(TimeSpan elapsed)
     {
-        var last = Stopwatch.GetTimestamp();
+        if (Closed)
+        {
+            return;
+        }
 
-        while (!Closed)
+        var seconds = (float)elapsed.TotalSeconds;
+
+        foreach (var body in Bodies.Values.ToArray())
         {
             try
             {
-                await Task.Delay(TickInterval);
+                RestoreSuperArmor(body.Entity);
+
+                body.Update(Now, seconds);
             }
 
-            catch (OperationCanceledException)
+            catch (Exception e)
             {
-                return;
-            }
-
-            if (Closed)
-            {
-                return;
-            }
-
-            var elapsed = (float)Stopwatch.GetElapsedTime(last).TotalSeconds;
-
-            last = Stopwatch.GetTimestamp();
-
-            foreach (var body in Bodies.Values.ToArray())
-            {
-                try
-                {
-                    RestoreSuperArmor(body.Entity);
-
-                    body.Update(Now, elapsed);
-                }
-
-                catch (Exception e)
-                {
-                    Logger?.LogError(e, "The monster {Monster} failed to think", body.Behavior.Id);
-                }
+                Logger.LogError(e, "The monster {Monster} failed to think", body.Behavior.Id);
             }
         }
     }
@@ -606,7 +595,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     internal void Kill(Entity monster)
     {
-        Logger?.LogDebug("Monster {Monster} wants to die, which a maze script has to finish", monster);
+        Logger.LogDebug("Monster {Monster} wants to die, which a maze script has to finish", monster);
     }
 
     // ---- Players ------------------------------------------------------------------------------
@@ -780,7 +769,7 @@ public sealed class LuaCreatureManager
 
             var shielded = Vitals.IsProtected(victim);
             var result = shielded
-                ? new DamageResult(0, DamageFlags.None)
+                ? new DamageResult(0, HitResults.None)
                 : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, DefenseType.Normal, trigger.DamageRate, Random);
             var left = Vitals.Hurt(victim, result.Damage);
 

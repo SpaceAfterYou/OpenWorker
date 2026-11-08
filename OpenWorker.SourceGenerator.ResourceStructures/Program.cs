@@ -32,6 +32,4 @@ await Parallel.ForEachAsync(tables, async (table, ct) =>
     var modelName = $"Resource{name}";
 
     await FileHelper.WriteRes(root, tableName, modelName, $"{name}Row", types, ct);
-    // await FileHelper.WriteSeed(root, tableName, modelName, $"{name}Row", types, ct);
-    // await FileHelper.WriteModel(root, tableName, $"Resource{name}", types, ct);
 });

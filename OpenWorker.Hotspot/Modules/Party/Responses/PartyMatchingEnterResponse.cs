@@ -16,7 +16,7 @@ public readonly struct PartyMatchingEnterResponse(BinaryReader reader) : IRespon
     public MessageOpcode Opcode => new(Group, Command);
 
     public int Identifier { get; init; } = reader.ReadInt32();
-    public PartyMemberInfoValue[] MemberList { get; init; } = reader.ReadPartyMemberInfoList_Fixed();
+    public PartyMemberInfoValue[] MemberList { get; init; } = reader.ReadPartyMemberInfoListFixed();
 
     /// <summary>
     /// TODO: Remaining time for search.
@@ -26,7 +26,7 @@ public readonly struct PartyMatchingEnterResponse(BinaryReader reader) : IRespon
     public void Write(BinaryWriter writer)
     {
         writer.Write(Identifier);
-        writer.Write_Fixed(MemberList);
+        writer.WriteFixed(MemberList);
         writer.Write(RemainTick);
     }
 }

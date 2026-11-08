@@ -44,11 +44,13 @@ await Host
         services.AddSingleton<MonsterBehaviorTables>();
         services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<CreatureServices>();
+        services.AddSingleton<SimulationClock>();
+        services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());
 
         services.AddCommandManager();
 
-        services.AddSingleton<WorldManager>();
-        services.AddSingleton<LeaveManager>();
+        services.AddGateOptions();
+        services.AddPlayerTransfer();
         services.AddSingleton<PersonRegistry>();
         services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
         services.AddSingleton<ISessionCloseHandler, MazeCloseHandler>();
@@ -68,6 +70,7 @@ await Host
         // services.AddSingleton<PersonRegistry>();
 
         services.AddHotspot(context, EntityComponentService.District);
+        services.AddHostedService<MazeRegistrationService>();
 
         // services.AddHostedService<ServerBootstrapService>();
         // services.AddHostedService<KeepAliveService>();

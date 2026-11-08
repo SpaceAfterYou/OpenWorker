@@ -47,13 +47,13 @@ public sealed class NavMeshNavigation : INavigation
         return _field.TryGetFloor(position, out height);
     }
 
-    public bool TryFindPath(Vector3 from, Vector3 to, float radius, List<Vector3> path)
+    public bool TryFindPath(Vector3 from, Vector3 target, float radius, List<Vector3> path)
     {
-        return _field.TryFindPath(from, to, radius, path);
+        return _field.TryFindPath(from, target, radius, path);
     }
 
-    public bool CanSee(Vector3 from, Vector3 to)
+    public bool CanSee(Vector3 from, Vector3 target)
     {
-        return _field.CanSee(from, to);
+        return _field.CanSee(from, target);
     }
 }

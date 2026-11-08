@@ -35,9 +35,9 @@ public readonly struct RankingTimeAttackListResponse : IResponseHotspotMessage
         WriteUserRankingInfos(writer, data.aUserList);
     }
 
-    private static void WriteUserRankingInfos(BinaryWriter writer, IReadOnlyCollection<ST_RANKING_TIME_ATTACK_USER> infos)
+    private static void WriteUserRankingInfos(BinaryWriter writer, ST_RANKING_TIME_ATTACK_USER[] infos)
     {
-        writer.Write((short)infos.Count);
+        writer.Write((short)infos.Length);
 
         foreach (var info in infos)
         {

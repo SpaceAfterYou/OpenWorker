@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lua;
 using OpenWorker.Domain.Types;
 using OpenWorker.Lua.Enums;
@@ -20,7 +21,7 @@ public static class LuaStateExtensions
 {
     public static async ValueTask OnEnterPlayerAsync(this LuaState state, ActorValue actor, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnEnterPlayerAsync)}]: {actor}");
+        maze.Logger.EventEnterPlayer(actor.Identifier);
         
         if (state.Environment["OnEnterPlayer"].TryRead<LuaFunction>(out var callable))
         {
@@ -31,7 +32,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask OnInteractionObject(this LuaState state, int box, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnInteractionObject)}]: {box}");
+        maze.Logger.EventInteractionObject(box);
         
         if (state.Environment["OnInteractionObject"].TryRead<LuaFunction>(out var callable))
         {
@@ -41,7 +42,7 @@ public static class LuaStateExtensions
     }
     public static async ValueTask OnCompleteSector(this LuaState state, int sector, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnCompleteSector)}]: {sector}");
+        maze.Logger.EventCompleteSector(sector);
         
         if (state.Environment["OnCompleteSector"].TryRead<LuaFunction>(out var callable))
         {
@@ -52,7 +53,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask OnLuaFunction(this LuaState state, int function, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnLuaFunction)}]: {function}");
+        maze.Logger.EventLuaFunction(function);
         
         if (state.Environment["LuaFunction"].TryRead<LuaFunction>(out var callable))
         {
@@ -63,7 +64,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask OnTimerExComplete(this LuaState state, string function, int param1, int param2, int param3, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnTimerExComplete)}]: {function}, {param1}, {param2}, {param3}");
+        maze.Logger.EventTimerExComplete(function, param1, param2, param3);
         
         if (state.Environment[function].TryRead<LuaFunction>(out var callable))
         {
@@ -74,7 +75,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask OnTimerComplete(this LuaState state, int timer, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnTimerComplete)}]: {timer}");
+        maze.Logger.EventTimerComplete(timer);
         
         if (state.Environment["OnTimerComplete"].TryRead<LuaFunction>(out var callable))
         {
@@ -85,7 +86,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask OnUpdateQuest(this LuaState state, int user, QuestUpdateType type, int identifier, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnUpdateQuest)}]: {user}, {type}, {identifier}");
+        maze.Logger.EventUpdateQuest(user, type, identifier);
         
         if (state.Environment["OnUpdateQuest"].TryRead<LuaFunction>(out var callable))
         {
@@ -96,7 +97,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask OnActionSkill(this LuaState state, int skill, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnActionSkill)}]: {skill}");
+        maze.Logger.EventActionSkill(skill);
         
         if (state.Environment["OnActionSkill"].TryRead<LuaFunction>(out var callable))
         {
@@ -107,7 +108,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask CheckConditionAsync(this LuaState state, int talk, int operation, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(CheckConditionAsync)}]: {talk}, {operation}");
+        maze.Logger.EventCheckCondition(talk, operation);
         
         if (state.Environment["CheckCondition"].TryRead<LuaFunction>(out var callable))
         {
@@ -118,7 +119,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask OnPartyQuestEvent(this LuaState state, int sector, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnPartyQuestEvent)}]: {sector}");
+        maze.Logger.EventPartyQuest(sector);
         
         if (state.Environment["OnPartyQuestEvent"].TryRead<LuaFunction>(out var callable))
         {
@@ -129,7 +130,7 @@ public static class LuaStateExtensions
     
     public static async ValueTask OnNpcRotation(this LuaState state, int npc, int key, LuaMaze maze, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[{nameof(OnNpcRotation)}]: {npc}, {key}");
+        maze.Logger.EventNpcRotation(npc, key);
         
         if (state.Environment["OnNpcRotation"].TryRead<LuaFunction>(out var callable))
         {
@@ -170,7 +171,7 @@ public static class LuaStateExtensions
         if (state.Environment[name].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(monster.ToString()), new LuaValue(box.ToString()), new LuaValue(maze)], cancellationToken);
+                .CallAsync(callable, [new LuaValue(monster.ToString(CultureInfo.InvariantCulture)), new LuaValue(box.ToString(CultureInfo.InvariantCulture)), new LuaValue(maze)], cancellationToken);
         }
     }
 
