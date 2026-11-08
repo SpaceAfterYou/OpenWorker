@@ -1,5 +1,6 @@
 ﻿using OpenWorker.Hotspot;
 using Microsoft.Extensions.DependencyInjection;
+using OpenWorker.Extensions;
 
 namespace OpenWorker.GateServer.Gameplay.Extensions;
 
@@ -7,6 +8,8 @@ public static class DependencyInjection
 {
     public static void AddGameplay(this IServiceCollection services)
     {
+        services.AddGateOptions();
+
         services.AddSingleton<LoginGameplay>();
         services.AddSingleton<PersonCreationCatalog>();
         services.AddSingleton<PersonGameplay>();

@@ -396,7 +396,7 @@ public sealed class SocialWireFormatTest
         Assert.HasCount(4 + 1, Written(new FriendDeleteResponse()));
         Assert.HasCount(4 + TextSize("Ab") + 1, Written(new FriendBlockAddResponse { Value = new FriendBlockValue(1, "Ab", 2) }));
         Assert.HasCount(4 + TextSize("Ab"), Written(new FriendBlockDelResponse { Name = "Ab" }));
-        Assert.HasCount(4 + TextSize("Ab"), Written(new FriendRecruitAddResponse { Result = FriendResult.Success, Name = "Ab" }));
+        Assert.HasCount(4 + TextSize("Ab"), Written(new FriendRecruitAddResponse { Result = 0, Name = "Ab" }));
         Assert.HasCount(4 + TextSize("Ab"), Written(new FriendRecruitDelResponse { Name = "Ab" }));
         Assert.HasCount(1, Written(new FriendRecruitInfoResponse { IsRegistered = true }));
     }

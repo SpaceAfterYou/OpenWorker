@@ -2,20 +2,17 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <LangVersion>latest</LangVersion>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <EnableMSTestRunner>true</EnableMSTestRunner>
+        <OutputType>Exe</OutputType>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="JetBrains.Annotations" Version="2026.2.0" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.14" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-        <PackageReference Include="MSTest" Version="4.5.2" />
-        <PackageReference Include="MSTest.TestAdapter" Version="4.5.2" />
-        <PackageReference Include="MSTest.TestFramework" Version="4.5.2" />
+        <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="MSTest" />
     </ItemGroup>
 
     <ItemGroup>
@@ -27,6 +24,16 @@
       <ProjectReference Include="..\OpenWorker.DependencyInjection\OpenWorker.DependencyInjection.csproj" />
       <ProjectReference Include="..\OpenWorker.GateServer.Gameplay\OpenWorker.GateServer.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The defaults each server ships: TestServerOptions checks them. -->
+        <Content Include="..\OpenWorker.AuthServer\appsettings.json" Link="Settings\AuthServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.GateServer\appsettings.json" Link="Settings\GateServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.DistrictServer\appsettings.json" Link="Settings\DistrictServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.MazeServer\appsettings.json" Link="Settings\MazeServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.RelayServer\appsettings.json" Link="Settings\RelayServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.UpdateContent\appsettings.json" Link="Settings\UpdateContent.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

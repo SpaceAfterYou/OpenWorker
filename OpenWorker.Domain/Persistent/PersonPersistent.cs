@@ -33,6 +33,11 @@ public sealed class PersonPersistent : BasicPersistent
     public int TitleAbilityPrimary { get; set; }
     public int TitleAbilitySecondary { get; set; }
 
+    /// <summary>
+    /// The titles the person has earned.
+    /// </summary>
+    public int[] TitleList { get; set; } = [];
+
     public byte CommunityState { get; set; }
     public string CommunityComment { get; set; } = string.Empty;
     public string CommunityMemo { get; set; } = string.Empty;
@@ -43,6 +48,11 @@ public sealed class PersonPersistent : BasicPersistent
     public int Outfit { get; set; }
     public DateTime? LastSelectedAt { get; set; }
 
+    /// <summary>
+    /// When the person last left a server of the game, for the friends who look at the list.
+    /// </summary>
+    public DateTime? LastLogoutAt { get; set; }
+
     public required short FatiguePointCommon { get; set; }
     public short FatiguePointBonus { get; set; }
     
@@ -51,8 +61,13 @@ public sealed class PersonPersistent : BasicPersistent
     public required AccountPersistent Account { get; set; }
     public required GatePersistent Gate { get; set; }
 
-    public List<PersonPersistent> FriendList { get; set; } = [];
-    public List<PersonPersistent> BlockedList { get; set; } = [];
-    
-    public LeaguePersistent? League { get; set; }
+    /// <summary>
+    /// After leaving a league, or being thrown out, a person cannot join another until then.
+    /// </summary>
+    public DateTime? LeagueJoinBlockedUntil { get; set; }
+
+    /// <summary>
+    /// After disbanding a league its master cannot found another until then.
+    /// </summary>
+    public DateTime? LeagueCreateBlockedUntil { get; set; }
 }

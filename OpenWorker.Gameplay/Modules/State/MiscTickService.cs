@@ -7,13 +7,13 @@ namespace OpenWorker.Gameplay.Modules.State;
 /// <summary>
 /// Lets the features that keep time for their persons do their work every so often, on the world loop.
 /// </summary>
-public sealed class MiscTickService(WorldLoop loop, IEnumerable<IMiscTick> ticks, ILogger<MiscTickService> logger) : BackgroundService
+public sealed partial class MiscTickService(WorldLoop loop, IEnumerable<IMiscTick> ticks, ILogger<MiscTickService> logger) : BackgroundService
 {
     private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(30);
 
-    protected override Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        return Task.Run(() => LoopAsync(cancellationToken), cancellationToken);
+        return Task.Run(() => LoopAsync(stoppingToken), stoppingToken);
     }
 
     private async Task LoopAsync(CancellationToken cancellationToken)
@@ -31,9 +31,12 @@ public sealed class MiscTickService(WorldLoop loop, IEnumerable<IMiscTick> ticks
 
                 catch (Exception e) when (e is not OperationCanceledException)
                 {
-                    logger.LogError(e, "{Tick} failed.", tick.GetType().Name);
+                    LogTickFailed(e, tick.GetType().Name);
                 }
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "{Tick} failed.")]
+    private partial void LogTickFailed(Exception exception, string tick);
 }

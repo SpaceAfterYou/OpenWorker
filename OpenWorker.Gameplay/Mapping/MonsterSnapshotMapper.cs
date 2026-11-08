@@ -9,10 +9,12 @@ namespace OpenWorker.Gameplay.Mapping;
 
 public static class MonsterSnapshotMapper
 {
-    public static STMonsterInfo ToStMonsterInfo(World world, Arch.Core.Entity item)
+    /// <param name="battlePose">Whether the monster stands ready to fight.</param>
+    public static STMonsterInfo ToStMonsterInfo(World world, Arch.Core.Entity item, bool battlePose = true)
     {
         var creature = world.Get<CreatureComponent>(item);
         var nonPlayable = world.Get<NonPlayableCreatureComponent>(item);
+        var combat = world.Get<MonsterCombatComponent>(item);
 
         return new STMonsterInfo
         {
@@ -29,10 +31,10 @@ public static class MonsterSnapshotMapper
             uxParentActorID = default,
             nSpawnBoxID = nonPlayable.SpawnBox,
             nMotionClass = 0,
-            bBattlePos = true,
-            fCurSuperArmor = 0f,
-            fMaxSuperArmor = 0f,
-            vecStat = world.Get<MonsterCombatComponent>(item).Stats.ToStatList()
+            bBattlePos = battlePose,
+            fCurSuperArmor = combat.SuperArmor,
+            fMaxSuperArmor = combat.MaxSuperArmor,
+            vecStat = combat.Stats.ToStatList()
         };
     }
 

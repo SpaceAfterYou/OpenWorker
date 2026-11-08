@@ -1,5 +1,4 @@
 using Arch.Core;
-using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
@@ -20,8 +19,7 @@ namespace OpenWorker.Gameplay.Modules.Helpers;
 public sealed class HelperManager(
     World world,
     PersonStateStore store,
-    HelperCatalog catalog,
-    ILogger<HelperManager> logger)
+    HelperCatalog catalog)
 {
     /// <summary>
     /// The helper cannot be called now, which is what the client is told about a call outside a maze.

@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Events.Requests;
 /// This packet doesn't have any content.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct EventAttendancePlayTimeRewardRequest(BinaryReader _) : IRequestHotspotMessage
+public readonly struct EventAttendancePlayTimeRewardRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Event;
     private const EventOpcode Command = EventOpcode.AttendancePlayTimeReward;

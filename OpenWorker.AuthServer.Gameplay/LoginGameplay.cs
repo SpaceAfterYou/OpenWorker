@@ -2,9 +2,10 @@
 using OpenWorker.Hotspot.Cache;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Types;
+using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Enums;
@@ -24,7 +25,7 @@ public sealed class LoginGameplay(
     IRedisCollection<SessionCache> sessions,
     IDbContextFactory<PersistenceContext> factory,
     World world,
-    IConfiguration configuration,
+    IOptions<AuthOptions> auth,
     ILogger<LoginGameplay> logger,
     SessionLeaseManager leases)
 {
@@ -32,7 +33,7 @@ public sealed class LoginGameplay(
     /// This login does not verify the ticket: it signs in as the first account in the database.
     /// Enable it only for local development.
     /// </summary>
-    private bool AllowNextHumanNetworkLogin { get; } = configuration.GetValue<bool>("Auth:AllowNextHumanNetworkLogin");
+    private bool AllowNextHumanNetworkLogin { get; } = auth.Value.AllowNextHumanNetworkLogin;
 
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginAuthRequest message)
     {

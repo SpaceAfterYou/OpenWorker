@@ -86,7 +86,7 @@
     networks:
       - eva-01
     volumes:
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
 
   openworker.authserver:
     container_name: "OpenWorker-AuthServer"
@@ -146,7 +146,7 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
 
   openworker.districtserver-roccotown:
     container_name: "OpenWorker-DistrictServer-RoccoTown"
@@ -165,6 +165,7 @@
       - Channel__From=1
       - Channel__To=10
       - Instance__Location=10003
+      - Instance__PublicPort=10011
     depends_on:
       redis:
         condition: service_healthy
@@ -178,8 +179,8 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.mazeserver:
     container_name: "OpenWorker-MazeServer"
@@ -208,10 +209,10 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
-      - T:/Games/HanPurple/soulworker/datas/Character/ActionData:/app/action
-      - T:/Games/HanPurple/soulworker/datas/Scripts/Server:/app/scripts
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
         
   openworker.districtserver-canduscity:
     container_name: "OpenWorker-DistrictServer-CandusCity"
@@ -230,6 +231,7 @@
       - Channel__From=1
       - Channel__To=10
       - Instance__Location=10021
+      - Instance__PublicPort=10012
     depends_on:
       redis:
         condition: service_healthy
@@ -243,8 +245,8 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-gracecity:
     container_name: "OpenWorker-DistrictServer-GraceCity"
@@ -259,9 +261,11 @@
       - Logging__LogLevel__System=Warning
       - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
       - Game__Version=1.4.2.3
+      - Gate__Id=1
       - Channel__From=1
       - Channel__To=10
       - Instance__Location=10031
+      - Instance__PublicPort=10013
     depends_on:
       redis:
         condition: service_healthy
@@ -275,8 +279,8 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-ruinfortress:
     container_name: "OpenWorker-DistrictServer-RuinFortress"
@@ -291,9 +295,11 @@
       - Logging__LogLevel__System=Warning
       - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
       - Game__Version=1.4.2.3
+      - Gate__Id=1
       - Channel__From=1
       - Channel__To=10
       - Instance__Location=10041
+      - Instance__PublicPort=10014
     depends_on:
       redis:
         condition: service_healthy
@@ -307,8 +313,8 @@
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.updatecontent:
     container_name: "OpenWorker-UpdateContent"
@@ -328,12 +334,23 @@
     networks:
       - eva-01
     volumes:
-      - T:/Games/HanPurple/soulworker/datas/bin/Table:/app/res
-      - T:/Games/HanPurple/soulworker/datas/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
 networks:
   eva-01:
     driver: bridge
+
+# Volumes with the data of the client come from SOULWORKER_DATAS, the `datas` folder of an
+# installed client: set it in the shell or in `.env` next to this file, e.g.
+# SOULWORKER_DATAS=/mnt/games/soulworker/datas
+# Every server ships its defaults in appsettings.json, and they match the services above: the Postgres and
+# Redis containers (ConnectionStrings__Postgres, ConnectionStrings__Redis), the port inside the container
+# (Server__Port) and the addresses clients are sent to (Auth__Host, Gate__Host, Maze__Host, Instance__PublicHost,
+# all 127.0.0.1 for a local client). An environment variable named like the setting, with __ for :, replaces
+# one. A district has no default for the port clients reach it at: Instance__PublicPort is the port it is
+# published on, as in the ports above. A server stops at start, naming the setting, when one is missing or wrong.
+# Hotspot__PacketDumpPath= (empty) turns the dumps off.
 
 # https://youtu.be/Soa3gO7tL-c?list=RDMM
 # https://youtu.be/_N66Hud_Tq4?list=RDeT2XZA8LZzM

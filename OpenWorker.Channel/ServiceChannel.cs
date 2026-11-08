@@ -21,6 +21,8 @@ public readonly record struct ServiceChannel(short Identifier)
 
     public short Online => (short)Members.Count;
 
+    public bool Contains(Entity player) => Members.ContainsKey(player);
+
     public ChannelWorkload Workload => ChannelUtils.GetWorkload(Members.Count);
 
     public void ForEach(Action<Entity> action)

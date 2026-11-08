@@ -1,5 +1,8 @@
+using System.Diagnostics;
+using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
@@ -8,6 +11,9 @@ using OpenWorker.Hotspot.Modules.Persons.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
+/// <summary>
+/// Looks for a league by its name or its master.
+/// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
 public readonly struct LeagueSearchRequest(BinaryReader reader) : IRequestHotspotMessage
 {
@@ -17,11 +23,8 @@ public readonly struct LeagueSearchRequest(BinaryReader reader) : IRequestHotspo
     public byte State { get; } = reader.ReadByte();
     public string Name { get; } = reader.ReadLeagueName();
     public string Master { get; } = reader.ReadPersonName();
-    
-    public IReadOnlyList<LeagueInfo> Leagues { get; } = Enumerable
-        .Range(0, reader.ReadByte())
-        .Select(_ => new LeagueInfo(reader))
-        .ToArray();
-    
+    public int Reserved { get; } = reader.ReadInt32();
+    public IReadOnlyList<LeagueInfo> Leagues { get; } = Enumerable.Range(0, reader.ReadByte()).Select(_ => new LeagueInfo(reader)).ToArray();
+
     public MessageOpcode Opcode => new(Group, Command);
 }

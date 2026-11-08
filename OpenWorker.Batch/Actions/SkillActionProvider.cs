@@ -27,21 +27,86 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     private const byte FlownByClient = 2;
 
     private Dictionary<int, SkillRow> Rows { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
-    private Dictionary<Hero, ActionFile?> Files { get; } = [];
-    private Dictionary<(int Skill, Hero Hero), SkillHit[]> Hits { get; } = [];
+    private Dictionary<string, ActionFile?> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<(int Skill, string File), SkillHit[]> Hits { get; } = [];
+    private Dictionary<(int Skill, string File), SkillHit[]> Shots { get; } = [];
 
     public IReadOnlyList<SkillHit> GetHits(int skill, Hero hero)
     {
-        if (Hits.TryGetValue((skill, hero), out var hits))
+        return GetHits(skill, GetHeroFileName(hero));
+    }
+
+    /// <summary>
+    /// The attacks of a skill in an action file, by the name of the file without the extension. Monsters have a file each.
+    /// </summary>
+    public IReadOnlyList<SkillHit> GetHits(int skill, string actionFile)
+    {
+        if (Hits.TryGetValue((skill, actionFile), out var hits))
         {
             return hits;
         }
 
-        hits = Rows.TryGetValue(skill, out var row) && GetFile(hero) is { } file ? Collect(row, file) : [];
+        hits = Rows.TryGetValue(skill, out var row) && GetFile(actionFile) is { } file ? Collect(row, file) : [];
 
-        Hits.Add((skill, hero), hits);
+        Hits.Add((skill, actionFile), hits);
 
         return hits;
+    }
+
+    /// <summary>
+    /// The moments an animation of a skill sets something flying: the arrows, bullets and blasts that a monster fires.
+    /// </summary>
+    public IReadOnlyList<SkillHit> GetShots(int skill, string actionFile)
+    {
+        if (Shots.TryGetValue((skill, actionFile), out var shots))
+        {
+            return shots;
+        }
+
+        shots = Rows.TryGetValue(skill, out var row) && GetFile(actionFile) is { } file ? Collect(row, file, attack => attack.IsProjectile) : [];
+
+        Shots.Add((skill, actionFile), shots);
+
+        return shots;
+    }
+
+    /// <summary>
+    /// How long the animations of a skill last together, in seconds. Zero when the file has none of them.
+    /// </summary>
+    public float GetDuration(int skill, string actionFile)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
+        {
+            return 0f;
+        }
+
+        var total = 0f;
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        {
+            if (Find(file, name) is { } animation)
+            {
+                total += animation.Length;
+            }
+        }
+
+        return total;
+    }
+
+    /// <summary>
+    /// The number the clients know an animation of a file by, or zero when the file does not have it.
+    /// </summary>
+    public int GetAnimationIndex(string actionFile, string animation)
+    {
+        return GetFile(actionFile) is { } file && file.Indexes.TryGetValue(animation, out var index) ? index : 0;
+    }
+
+    /// <summary>
+    /// How long an animation lasts, in seconds. Zero when the file does not have it.
+    /// </summary>
+    public float GetAnimationLength(string actionFile, string animation)
+    {
+        return GetFile(actionFile) is { } file && Find(file, animation) is { } found ? found.Length : 0f;
     }
 
     /// <summary>
@@ -49,9 +114,14 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     /// </summary>
     public bool TryGetProjectile(int skill, Hero hero, int attack, out AttackTrigger trigger)
     {
+        return TryGetProjectile(skill, GetHeroFileName(hero), attack, out trigger);
+    }
+
+    public bool TryGetProjectile(int skill, string actionFile, int attack, out AttackTrigger trigger)
+    {
         trigger = default;
 
-        if (!Rows.TryGetValue(skill, out var row) || GetFile(hero) is not { } file)
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
         {
             return false;
         }
@@ -81,6 +151,11 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
 
     private static SkillHit[] Collect(SkillRow row, ActionFile file)
     {
+        return Collect(row, file, attack => attack.HitsArea || attack.IsTrap);
+    }
+
+    private static SkillHit[] Collect(SkillRow row, ActionFile file, Func<AttackTrigger, bool> wanted)
+    {
         var hits = new List<SkillHit>();
         var offset = 0f;
 
@@ -93,7 +168,7 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
             }
 
             hits.AddRange(animation.Attacks
-                .Where(attack => attack.HitsArea || attack.IsTrap)
+                .Where(wanted)
                 .Select(attack => new SkillHit(offset + attack.Start, attack)));
 
             offset += animation.Length;
@@ -112,26 +187,31 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
         return file.Animations.GetValueOrDefault(name) ?? file.Animations.GetValueOrDefault(name + ForwardSuffix);
     }
 
-    private ActionFile? GetFile(Hero hero)
+    private static string GetHeroFileName(Hero hero)
     {
-        if (Files.TryGetValue(hero, out var file))
+        return $"{HeroFilePrefix}{(char)('A' + (int)hero - 1)}";
+    }
+
+    private ActionFile? GetFile(string name)
+    {
+        if (Files.TryGetValue(name, out var file))
         {
             return file;
         }
 
-        var path = Path.Join(Folder, $"{HeroFilePrefix}{(char)('A' + (int)hero - 1)}{Extension}");
+        var path = Path.Join(Folder, name + Extension);
 
         try
         {
             file = ActionFile.Load(path);
         }
 
-        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or EndOfStreamException)
         {
-            logger.LogWarning(e, "Skills of {Hero} will not hit anything: cannot read {Path}", hero, path);
+            logger.LogWarning(e, "Skills of {Name} will not hit anything: cannot read {Path}", name, path);
         }
 
-        Files.Add(hero, file);
+        Files.Add(name, file);
 
         return file;
     }

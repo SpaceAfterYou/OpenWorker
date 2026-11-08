@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Attendance;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.DailyMissions;
@@ -19,6 +20,9 @@ public static class MiscGameplayExtensions
     /// </summary>
     public static IServiceCollection AddMiscGameplay(this IServiceCollection services)
     {
+        services.AddAttendanceOptions();
+        services.AddDailyMissionOptions();
+
         services.TryAddSingleton<IRewardGranter, NoRewardGranter>();
         services.TryAddSingleton(TimeProvider.System);
 

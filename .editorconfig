@@ -14,3 +14,37 @@ indent_size = 4
 
 [*.csproj]
 indent_size = 2
+
+# The migrations are written by `dotnet ef migrations add` and keep the form the tool gives them.
+# CS8981: the classes take the names given to the command. CA1707: one of them is named by a number, and the name is part
+# of the migration history. CA1825 and CA1861: the arrays the tool emits for the column defaults and the index columns.
+[OpenWorker.Persistence/Migrations/*.cs]
+dotnet_diagnostic.CS8981.severity = none
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1825.severity = none
+dotnet_diagnostic.CA1861.severity = none
+
+# Names that mirror the client binary. The enumerations and the ST_ / PS_ structures were found by reverse engineering,
+# and they keep the spelling of the client so a name can be searched in both places; the fields of a structure are the wire
+# layout in the order the client reads them. Renaming them would cost the link with the client and gain nothing.
+# CA1707: underscores in names. CA1711 and CA1712: a suffix or a prefix of the enum name. CA1051: public fields.
+[OpenWorker.Hotspot/Modules/Items/Enums/{E_BROACH_CLASSIFY_INDEX,E_EQUIP_REG_CATEGORY,EquipSlotType,ItemFlag}.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1711.severity = none
+dotnet_diagnostic.CA1712.severity = none
+
+[OpenWorker.Hotspot/Modules/Persons/Responses/STAT_TYPE.cs]
+dotnet_diagnostic.CA1707.severity = none
+
+[OpenWorker.Hotspot/Modules/*/Types/{ST_,PS_}*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1051.severity = none
+
+# The property that holds the id of a record is the field of the Redis index, which the other servers read by that name.
+[OpenWorker.Hotspot/Cache/Types/*.cs]
+dotnet_diagnostic.CA1720.severity = none
+
+# Components of the ECS are plain structs: a system reads and changes the fields in place through `ref`,
+# which a property would not allow.
+[OpenWorker.Gameplay/Modules/*/Components/*.cs]
+dotnet_diagnostic.CA1051.severity = none

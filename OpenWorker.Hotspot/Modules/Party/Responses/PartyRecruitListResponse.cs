@@ -8,14 +8,14 @@ using OpenWorker.Hotspot.Modules.Party.Types;
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PartyRecruitListResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly struct PartyRecruitListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.RecruitList;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public PartyRecruitMemberValue[] Values { get; init; }
+    public required PartyRecruitMemberValue[] Values { get; init; }
 
     public void Write(BinaryWriter writer)
     {

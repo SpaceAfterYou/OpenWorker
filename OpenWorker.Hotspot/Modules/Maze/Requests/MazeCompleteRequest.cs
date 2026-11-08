@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Maze.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct MazeCompleteRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct MazeCompleteRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_COMPLETE_MAZE_REQ;

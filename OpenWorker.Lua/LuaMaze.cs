@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Lua;
+using Microsoft.Extensions.Logging;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Batch.Entities;
@@ -13,6 +14,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -50,7 +52,8 @@ public partial class LuaMaze(
     VBatchFile batch,
     IReadOnlyCollection<InteractionObjectRow> interactions,
     SkillActionProvider actions,
-    CombatTables combat
+    CombatTables combat,
+    ILogger<LuaMaze> logger
 ) : ILuaUserData
 {
     public LuaState State { get; } = state;
@@ -58,7 +61,17 @@ public partial class LuaMaze(
     public World Ecs { get; } = ecs;
     public VBatchFile Batch { get; } = batch;
 
+    /// <summary>
+    /// Where the maze, its script events and its script calls write to.
+    /// </summary>
+    internal ILogger Logger { get; } = logger;
+
     public MazeProgress Progress { get; } = new(batch, interactions);
+
+    /// <summary>
+    /// The monsters of the maze and the players they fight.
+    /// </summary>
+    public LuaCreatureManager Creatures => creatureManager;
 
     // A monster that counts hits takes them no faster than this.
     private const long CountedHitMilliseconds = 500;
@@ -249,7 +262,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(FlyAsync)}]: {e}");
+            Logger.ProjectileFlightFailed(e, skill);
         }
     }
 
@@ -279,9 +292,9 @@ public partial class LuaMaze(
         var session = player.Get<ServerSessionComponent>();
         var attacker = Ecs.Get<WorldComponent>(player);
 
-        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
+        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel, Ecs.Get<TitleComponent>(player));
         var skillDamage = combat.GetSkill(skill);
-        var hits = targets.Select(target => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate)).ToArray();
+        var hits = targets.Select(target => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate, trigger.ReactionType)).ToArray();
 
         session.Send(new SkillActionBroadcastResponse
         {
@@ -332,7 +345,7 @@ public partial class LuaMaze(
         }
     }
 
-    private SkillDmgValue ApplyDamage(Entity target, in CombatStats attacker, in SkillDamage skill, float attackRate)
+    private SkillDmgValue ApplyDamage(Entity target, in CombatStats attacker, in SkillDamage skill, float attackRate, int reaction)
     {
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
@@ -355,12 +368,19 @@ public partial class LuaMaze(
 
         Ecs.Set(target, creature with { Health = health });
 
+        creatureManager.OnMonsterHit(target, player, result.Damage);
+
+        var effect = creatureManager.AbsorbHit(target, skill.SuperArmorAttack, reaction, health > 0);
+
         return default(SkillDmgValue) with
         {
             UxActorId = Ecs.Get<ActorComponent>(target),
+            ReactionType = effect.Reaction,
             DamageFlags = (byte)result.Flags,
             Damage = result.Damage,
-            Health = health
+            Health = health,
+            DefenseType = effect.Defense,
+            CurSuperArmorGauge = effect.SuperArmor
         };
     }
 
@@ -468,7 +488,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(RunLaterAsync)}]: {e}");
+            Logger.DelayedActionFailed(e);
         }
     }
 
@@ -502,19 +522,19 @@ public partial class LuaMaze(
     [LuaMember]
     public void AddEventTimer(string function, string step, string ready, int type, float time, int param1, int param2)
     {
-        Console.WriteLine($"[{nameof(AddEventTimer)}]: {function}, {step}, {ready}, {type}, {time}, {param1}, {param2}");
+        Logger.IgnoredAddEventTimer(function, step, ready, type, time, param1, param2);
     }
 
     [LuaMember]
     public void AddLuaValue(int index, int value)
     {
-        Console.WriteLine($"[{nameof(AddLuaValue)}]: {index}, {value}");
+        Logger.IgnoredAddLuaValue(index, value);
     }
 
     [LuaMember]
     public void AddTimer(int identifier, float time)
     {
-        Console.WriteLine($"[{nameof(AddTimer)} start] {identifier} {time}");
+        Logger.CallAddTimer(identifier, time);
         
         _ = RunLaterAsync(time, () => State.OnTimerComplete(identifier, this));
     }
@@ -522,7 +542,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void AddTimerEx(string function, float time, int param1, int param2, int param3)
     {
-        Console.WriteLine($"[{nameof(AddTimerEx)} start] {function} {param1} {param2} {param3}");
+        Logger.CallAddTimerEx(function, time, param1, param2, param3);
         
         _ = RunLaterAsync(time, () => State.OnTimerExComplete(function, param1, param2, param3, this));
     }
@@ -542,9 +562,12 @@ public partial class LuaMaze(
     [LuaMember]
     public void ApplyBuff(int actor, int buff)
     {
-        Console.WriteLine($"[{nameof(ApplyBuff)}]: {actor}, {buff}");
+        Logger.CallApplyBuff(actor, buff);
         
-        buffManager.Apply(player, actor, buff);
+        if (!buffManager.Apply(player, actor, buff))
+        {
+            Logger.UnknownBuff(actor, buff);
+        }
     }
 
     [LuaMember]
@@ -586,7 +609,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void CompleteTimerStep(string function, int step)
     {
-        Console.WriteLine($"[{nameof(CompleteTimerStep)}]: {function}, {step}");
+        Logger.IgnoredCompleteTimerStep(function, step);
     }
 
     [LuaMember]
@@ -607,39 +630,43 @@ public partial class LuaMaze(
     [LuaMember("ExcutEventSpawnGroupLua")]
     public void ExecuteEventSpawnGroupLua(int group)
     {
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnGroupLua)}]: {group}");
+        Logger.IgnoredExecuteEventSpawnGroup(group);
     }
 
     [LuaMember("ExcutEventSpawnLua")]
     public void ExecuteEventSpawnLua(int box)
     {
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnLua)} start]: {box}");
-        
+        Logger.CallExecuteEventSpawn(box);
+
         creatureManager.Create(player, box);
-        
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnLua)} end]: {box}");
     }
 
     [LuaMember]
     public void ExecuteDestroy(int type, string table, string animation, bool suicide = true)
     {
-        Console.WriteLine($"[{nameof(ExecuteDestroy)}]: {type}, {table}, {animation}, {suicide}");
+        Logger.IgnoredExecuteDestroy(type, table, animation, suicide);
     }
     
     [LuaMember]
     public VVector3 GetCommonPositionBox(int box)
     {
-        Console.WriteLine($"[{nameof(GetCommonPositionBox)}]: {box}");
+        Logger.CallGetCommonPositionBox(box);
 
-        return Batch.EventBox.CommonPositions
-            .First(x => x.Id == box)
-            .GetRandomPosition();
+        // A script that names a box the batch does not have keeps running, with the origin.
+        if (Batch.EventBox.CommonPositions.FirstOrDefault(x => x.Id == box) is not { } position)
+        {
+            Logger.UnknownPositionBox(box);
+
+            return new VVector3();
+        }
+
+        return position.GetRandomPosition();
     }
 
     [LuaMember]
     public void GetLuaValue(int index)
     {
-        Console.WriteLine($"[{nameof(GetLuaValue)}]: {index}");
+        Logger.IgnoredGetLuaValue(index);
     }
 
     [LuaMember]
@@ -663,14 +690,14 @@ public partial class LuaMaze(
     [LuaMember]
     public void LuaClientSync(int type, int value, int sector = 0, float time = 0)
     {
-        Console.WriteLine($"[{nameof(LuaClientSync)}]: {type}, {value}, {sector}, {time}");
+        Logger.IgnoredLuaClientSync(type, value, sector, time);
     }
 
     [LuaMember]
     public void MoveNpcToWayPoint(int npc, int waypoint)
     {
-        Console.WriteLine($"[{nameof(MoveNpcToWayPoint)}]: {npc}, {waypoint}");
-        
+        Logger.CallMoveNpcToWayPoint(npc, waypoint);
+
         creatureManager.MoveToPoint(npc, waypoint);
     }
 
@@ -742,13 +769,13 @@ public partial class LuaMaze(
     [LuaIgnoreMember]
     private void PrivateSetLuaValue(string key)
     {
-        Console.WriteLine($"[{nameof(PrivateSetLuaValue)}]: {key}");
+        Logger.IgnoredSetLuaValueByKey(key);
     }
     
     [LuaIgnoreMember]
     private void PrivateSetLuaValue(int index, int value)
     {
-        Console.WriteLine($"[{nameof(PrivateSetLuaValue)}]: {index}, {value}");
+        Logger.IgnoredSetLuaValueByIndex(index, value);
     }
 
     /// <summary>
@@ -763,14 +790,14 @@ public partial class LuaMaze(
         }
         else
         {
-            Console.WriteLine($"[{nameof(SetMazeState)}]: Invalid maze state ID: {state}");
+            Logger.UnknownMazeState(state);
         }
     }
 
     [LuaIgnoreMember]
     public void SetMazeState(MazeState state)
     {
-        Console.WriteLine($"[{nameof(SetMazeState)}]: {state}");
+        Logger.CallSetMazeState(state);
     }
 
     [LuaMember]
@@ -826,7 +853,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetTrapLifeTime(int index, float time)
     {
-        Console.WriteLine($"[{nameof(SetTrapLifeTime)}]: {index}, {time}");
+        Logger.IgnoredSetTrapLifeTime(index, time);
     }
 
     [LuaMember]
@@ -844,7 +871,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void StartEventTimer(string function)
     {
-        Console.WriteLine($"[{nameof(StartEventTimer)}]: {function}");
+        Logger.IgnoredStartEventTimer(function);
     }
 
     [LuaMember]

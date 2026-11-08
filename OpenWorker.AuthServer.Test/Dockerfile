@@ -5,6 +5,7 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
 COPY ["OpenWorker.AuthServer.Test/OpenWorker.AuthServer.Test.csproj", "OpenWorker.AuthServer.Test/"]
 COPY ["OpenWorker.AuthServer.Gameplay/OpenWorker.AuthServer.Gameplay.csproj", "OpenWorker.AuthServer.Gameplay/"]
 COPY ["OpenWorker.Hotspot/OpenWorker.Hotspot.csproj", "OpenWorker.Hotspot/"]

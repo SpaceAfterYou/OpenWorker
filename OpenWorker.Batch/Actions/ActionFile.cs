@@ -32,12 +32,18 @@ public sealed class ActionFile
     private const short AnimationFieldSinceVersion = 235;
     private const short RotationFramesSinceVersion = 241;
 
-    private ActionFile(Dictionary<string, ActionAnimation> animations)
+    private ActionFile(Dictionary<string, ActionAnimation> animations, Dictionary<string, int> indexes)
     {
         Animations = animations;
+        Indexes = indexes;
     }
 
     public IReadOnlyDictionary<string, ActionAnimation> Animations { get; }
+
+    /// <summary>
+    /// The place of every animation in the file: that is the number the clients use to name one.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> Indexes { get; }
 
     public static ActionFile Load(string path)
     {
@@ -73,15 +79,19 @@ public sealed class ActionFile
         Require(Open(reader), SequenceTag);
 
         var animations = new Dictionary<string, ActionAnimation>(count, StringComparer.OrdinalIgnoreCase);
+        var indexes = new Dictionary<string, int>(count, StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < count; i++)
         {
             var animation = ReadAnimation(reader, version);
 
-            animations.TryAdd(animation.Name, animation);
+            if (animations.TryAdd(animation.Name, animation))
+            {
+                indexes.Add(animation.Name, i);
+            }
         }
 
-        return new ActionFile(animations);
+        return new ActionFile(animations, indexes);
     }
 
     private static ActionAnimation ReadAnimation(BinaryReader reader, short version)

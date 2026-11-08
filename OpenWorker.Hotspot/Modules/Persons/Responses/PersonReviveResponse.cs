@@ -9,7 +9,8 @@ using System.Numerics;
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
-/// A player comes back to life at a place.
+/// A player comes back to life at a place. The client reads this one where the revive broadcast is
+/// registered, not at the code that stands before it in the list.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct PersonReviveResponse : IResponseHotspotMessage
@@ -17,7 +18,7 @@ public readonly struct PersonReviveResponse : IResponseHotspotMessage
 #region Interface: IHotspotMessage
 
     private const GroupOpcode Group = GroupOpcode.Character;
-    private const CharacterOpcode Command = CharacterOpcode.ReviveRes;
+    private const CharacterOpcode Command = CharacterOpcode.ReviveBt;
 
     public MessageOpcode Opcode => new(Group, Command);
 

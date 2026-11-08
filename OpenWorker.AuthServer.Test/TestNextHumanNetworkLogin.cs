@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using OpenWorker.AuthServer.App;
+using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -33,7 +34,7 @@ public sealed class TestNextHumanNetworkLogin
             null!,
             null!,
             world,
-            new ConfigurationBuilder().Build(),
+            Options.Create(new AuthOptions()),
             NullLogger<LoginGameplay>.Instance,
             null!);
 

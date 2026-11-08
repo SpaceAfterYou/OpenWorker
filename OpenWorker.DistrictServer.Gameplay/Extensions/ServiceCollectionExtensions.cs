@@ -6,8 +6,6 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddGameplay(this IServiceCollection services) 
     {
-        services.AddSingleton<GestureGameplay>();
-        
         return services;
     }
 }

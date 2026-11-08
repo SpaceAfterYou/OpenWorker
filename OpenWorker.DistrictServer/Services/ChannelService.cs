@@ -50,7 +50,7 @@ public sealed class ChannelService(
             .Select(e =>
             {
                 var a = e.Get<ActorComponent>();
-                var n = e.Get<CreatureComponent___Old>();
+                var n = e.Get<NpcComponent>();
                 return new WorldNpcListEntry(
                     a,
                     n.Position,

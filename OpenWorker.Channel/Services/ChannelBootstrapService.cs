@@ -1,5 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM.Searching;
@@ -9,15 +9,16 @@ namespace OpenWorker.Channel.Services;
 internal sealed class ChannelBootstrapService(
     IRedisCollection<ChannelCache> cache,
     ServiceChannels channels,
-    IConfiguration configuration
+    IOptions<InstanceOptions> instance,
+    IOptions<GateOptions> gate
 ) :
     BackgroundService
 {
-    private short Location { get; } = configuration.GetLocation();
+    private short Location { get; } = instance.Value.Location;
 
-    private short Gate { get; } = configuration.GetGate();
+    private short Gate { get; } = gate.Value.Id;
 
-    private Guid Instance { get; } = configuration.GetInstance();
+    private Guid Instance { get; } = instance.Value.Identifier;
 
 #region BackgroundService
 
