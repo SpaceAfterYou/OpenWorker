@@ -159,7 +159,7 @@ rest of the solution and runs their tests.
 ## Tests
 
 `OpenWorker.LoadTest.Test` (a separate project because the existing test projects are about the types of the server, and
-this one needs the bot, a copy of the dump folder as content, and sockets). 52+ tests: codecs of requests (against
+this one needs the bot, the dump folder as content, and sockets). 93 tests, none skipped: codecs of requests (against
 the server's readers and the dumps) and responses (against the server's writers), the cipher, the framing (a stream cut at
 many sizes, 60 KB frames, broken headers), the histogram, the move circle (all 1024 points at several coordinates),
 durations and options (invariant culture under `de-DE`), the samplers' parsers (`docker stats`, `/proc`), the Prometheus
