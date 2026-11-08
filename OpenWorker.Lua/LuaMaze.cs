@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Lua;
+using Microsoft.Extensions.Logging;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Batch.Entities;
@@ -51,13 +52,19 @@ public partial class LuaMaze(
     VBatchFile batch,
     IReadOnlyCollection<InteractionObjectRow> interactions,
     SkillActionProvider actions,
-    CombatTables combat
+    CombatTables combat,
+    ILogger<LuaMaze> logger
 ) : ILuaUserData
 {
     public LuaState State { get; } = state;
     
     public World Ecs { get; } = ecs;
     public VBatchFile Batch { get; } = batch;
+
+    /// <summary>
+    /// Where the maze, its script events and its script calls write to.
+    /// </summary>
+    internal ILogger Logger { get; } = logger;
 
     public MazeProgress Progress { get; } = new(batch, interactions);
 
@@ -255,7 +262,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(FlyAsync)}]: {e}");
+            Logger.ProjectileFlightFailed(e, skill);
         }
     }
 
@@ -481,7 +488,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(RunLaterAsync)}]: {e}");
+            Logger.DelayedActionFailed(e);
         }
     }
 
@@ -515,19 +522,19 @@ public partial class LuaMaze(
     [LuaMember]
     public void AddEventTimer(string function, string step, string ready, int type, float time, int param1, int param2)
     {
-        Console.WriteLine($"[{nameof(AddEventTimer)}]: {function}, {step}, {ready}, {type}, {time}, {param1}, {param2}");
+        Logger.IgnoredAddEventTimer(function, step, ready, type, time, param1, param2);
     }
 
     [LuaMember]
     public void AddLuaValue(int index, int value)
     {
-        Console.WriteLine($"[{nameof(AddLuaValue)}]: {index}, {value}");
+        Logger.IgnoredAddLuaValue(index, value);
     }
 
     [LuaMember]
     public void AddTimer(int identifier, float time)
     {
-        Console.WriteLine($"[{nameof(AddTimer)} start] {identifier} {time}");
+        Logger.CallAddTimer(identifier, time);
         
         _ = RunLaterAsync(time, () => State.OnTimerComplete(identifier, this));
     }
@@ -535,7 +542,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void AddTimerEx(string function, float time, int param1, int param2, int param3)
     {
-        Console.WriteLine($"[{nameof(AddTimerEx)} start] {function} {param1} {param2} {param3}");
+        Logger.CallAddTimerEx(function, time, param1, param2, param3);
         
         _ = RunLaterAsync(time, () => State.OnTimerExComplete(function, param1, param2, param3, this));
     }
@@ -555,7 +562,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void ApplyBuff(int actor, int buff)
     {
-        Console.WriteLine($"[{nameof(ApplyBuff)}]: {actor}, {buff}");
+        Logger.CallApplyBuff(actor, buff);
         
         buffManager.Apply(player, actor, buff);
     }
@@ -599,7 +606,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void CompleteTimerStep(string function, int step)
     {
-        Console.WriteLine($"[{nameof(CompleteTimerStep)}]: {function}, {step}");
+        Logger.IgnoredCompleteTimerStep(function, step);
     }
 
     [LuaMember]
@@ -620,29 +627,27 @@ public partial class LuaMaze(
     [LuaMember("ExcutEventSpawnGroupLua")]
     public void ExecuteEventSpawnGroupLua(int group)
     {
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnGroupLua)}]: {group}");
+        Logger.IgnoredExecuteEventSpawnGroup(group);
     }
 
     [LuaMember("ExcutEventSpawnLua")]
     public void ExecuteEventSpawnLua(int box)
     {
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnLua)} start]: {box}");
-        
+        Logger.CallExecuteEventSpawn(box);
+
         creatureManager.Create(player, box);
-        
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnLua)} end]: {box}");
     }
 
     [LuaMember]
     public void ExecuteDestroy(int type, string table, string animation, bool suicide = true)
     {
-        Console.WriteLine($"[{nameof(ExecuteDestroy)}]: {type}, {table}, {animation}, {suicide}");
+        Logger.IgnoredExecuteDestroy(type, table, animation, suicide);
     }
     
     [LuaMember]
     public VVector3 GetCommonPositionBox(int box)
     {
-        Console.WriteLine($"[{nameof(GetCommonPositionBox)}]: {box}");
+        Logger.CallGetCommonPositionBox(box);
 
         return Batch.EventBox.CommonPositions
             .First(x => x.Id == box)
@@ -652,7 +657,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void GetLuaValue(int index)
     {
-        Console.WriteLine($"[{nameof(GetLuaValue)}]: {index}");
+        Logger.IgnoredGetLuaValue(index);
     }
 
     [LuaMember]
@@ -676,14 +681,14 @@ public partial class LuaMaze(
     [LuaMember]
     public void LuaClientSync(int type, int value, int sector = 0, float time = 0)
     {
-        Console.WriteLine($"[{nameof(LuaClientSync)}]: {type}, {value}, {sector}, {time}");
+        Logger.IgnoredLuaClientSync(type, value, sector, time);
     }
 
     [LuaMember]
     public void MoveNpcToWayPoint(int npc, int waypoint)
     {
-        Console.WriteLine($"[{nameof(MoveNpcToWayPoint)}]: {npc}, {waypoint}");
-        
+        Logger.CallMoveNpcToWayPoint(npc, waypoint);
+
         creatureManager.MoveToPoint(npc, waypoint);
     }
 
@@ -755,13 +760,13 @@ public partial class LuaMaze(
     [LuaIgnoreMember]
     private void PrivateSetLuaValue(string key)
     {
-        Console.WriteLine($"[{nameof(PrivateSetLuaValue)}]: {key}");
+        Logger.IgnoredSetLuaValueByKey(key);
     }
     
     [LuaIgnoreMember]
     private void PrivateSetLuaValue(int index, int value)
     {
-        Console.WriteLine($"[{nameof(PrivateSetLuaValue)}]: {index}, {value}");
+        Logger.IgnoredSetLuaValueByIndex(index, value);
     }
 
     /// <summary>
@@ -776,14 +781,14 @@ public partial class LuaMaze(
         }
         else
         {
-            Console.WriteLine($"[{nameof(SetMazeState)}]: Invalid maze state ID: {state}");
+            Logger.UnknownMazeState(state);
         }
     }
 
     [LuaIgnoreMember]
     public void SetMazeState(MazeState state)
     {
-        Console.WriteLine($"[{nameof(SetMazeState)}]: {state}");
+        Logger.CallSetMazeState(state);
     }
 
     [LuaMember]
@@ -839,7 +844,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetTrapLifeTime(int index, float time)
     {
-        Console.WriteLine($"[{nameof(SetTrapLifeTime)}]: {index}, {time}");
+        Logger.IgnoredSetTrapLifeTime(index, time);
     }
 
     [LuaMember]
@@ -857,7 +862,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void StartEventTimer(string function)
     {
-        Console.WriteLine($"[{nameof(StartEventTimer)}]: {function}");
+        Logger.IgnoredStartEventTimer(function);
     }
 
     [LuaMember]

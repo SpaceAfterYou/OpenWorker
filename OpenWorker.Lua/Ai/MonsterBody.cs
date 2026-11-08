@@ -59,7 +59,7 @@ internal sealed class MonsterBody : IAiHost
         _born = manager.Now;
 
         Machine = new AiMachine(profile, this, manager.Random);
-        Machine.StateChanged += (old, state) => manager.Logger?.LogDebug("Monster {Monster} ({Actor}): {Old} -> {New}", behavior.Id, entity.Id, old, state);
+        Machine.StateChanged += (old, state) => manager.Logger.LogDebug("Monster {Monster} ({Actor}): {Old} -> {New}", behavior.Id, entity.Id, old, state);
     }
 
     public Entity Entity { get; }

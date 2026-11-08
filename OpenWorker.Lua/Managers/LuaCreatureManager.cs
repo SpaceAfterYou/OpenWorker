@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Batch.Entities;
@@ -56,12 +57,12 @@ public sealed class LuaCreatureManager : ISimulation
         Services = services;
         Navigation = new SectorNavigation(batch.EventBox.Sectors);
         Vitals = new PlayerVitals(ecs, tables);
-        Logger = logger;
+        Logger = logger ?? NullLogger.Instance;
     }
 
     internal CreatureServices? Services { get; }
 
-    internal ILogger? Logger { get; }
+    internal ILogger Logger { get; }
 
     /// <summary>
     /// How much life the players of the maze have and who can be hurt.
@@ -116,7 +117,7 @@ public sealed class LuaCreatureManager : ISimulation
 
         SpawnedBoxes.Add(box);
 
-        Console.WriteLine($"[{nameof(Create)}]: {spawn.LayerBitmask}");
+        Logger.SpawnBox(box, spawn.LayerBitmask);
 
         var created = new List<Entity>();
 
@@ -140,7 +141,7 @@ public sealed class LuaCreatureManager : ISimulation
 
                 default:
                     // One kind of object the server cannot show must not stop the rest of the map.
-                    Console.WriteLine($"[{nameof(Create)}]: skipped {monster.Id}, type {monster.Type}");
+                    Logger.UnsupportedMonsterType(box, monster.Id, monster.Type);
                     break;
             }
         }
@@ -154,7 +155,7 @@ public sealed class LuaCreatureManager : ISimulation
                 break;
 
             case CreationConditionType.WaitSignal:
-                _ = ShowLaterAsync(session, created, TimeSpan.FromSeconds(spawn.WaitCreationDelayTime));
+                _ = ShowLaterAsync(session, created, box, TimeSpan.FromSeconds(spawn.WaitCreationDelayTime));
                 break;
         }
     }
@@ -388,7 +389,7 @@ public sealed class LuaCreatureManager : ISimulation
         Players.Clear();
     }
 
-    private async Task ShowLaterAsync(ServerSessionComponent session, List<Entity> created, TimeSpan delay)
+    private async Task ShowLaterAsync(ServerSessionComponent session, List<Entity> created, int box, TimeSpan delay)
     {
         try
         {
@@ -402,7 +403,7 @@ public sealed class LuaCreatureManager : ISimulation
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(ShowLaterAsync)}]: {e}");
+            Logger.LateShowFailed(e, box);
         }
     }
 
@@ -412,7 +413,7 @@ public sealed class LuaCreatureManager : ISimulation
 
         if (creature.IsAlive() is false)
         {
-            Console.WriteLine($"[{nameof(MoveToPoint)}]: creature not found - {npc}");
+            Logger.UnknownNpcToMove(npc, waypoint);
         }
     }
 
@@ -454,7 +455,7 @@ public sealed class LuaCreatureManager : ISimulation
 
             catch (Exception e)
             {
-                Logger?.LogError(e, "The monster {Monster} failed to think", body.Behavior.Id);
+                Logger.LogError(e, "The monster {Monster} failed to think", body.Behavior.Id);
             }
         }
     }
@@ -577,7 +578,7 @@ public sealed class LuaCreatureManager : ISimulation
     /// </summary>
     internal void Kill(Entity monster)
     {
-        Logger?.LogDebug("Monster {Monster} wants to die, which a maze script has to finish", monster);
+        Logger.LogDebug("Monster {Monster} wants to die, which a maze script has to finish", monster);
     }
 
     // ---- Players ------------------------------------------------------------------------------

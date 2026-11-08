@@ -59,6 +59,8 @@ public sealed class PersonService(
     MiscStateLoader miscState,
     CreatureServices creatureServices,
     ILogger<LuaCreatureManager> creatureLogger,
+    ILogger<LuaMaze> mazeLogger,
+    ILogger<LuaGameHelper> helperLogger,
     IConfiguration configuration,
     CommunityNetwork community
 ) :
@@ -158,7 +160,7 @@ public sealed class PersonService(
         {
             ["GetHelper"] = new LuaFunction((ctx, _) =>
             {
-                ctx.Return(new LuaGameHelper());
+                ctx.Return(new LuaGameHelper(helperLogger));
                 return ValueTask.FromResult(1);
             })
         };
@@ -170,7 +172,7 @@ public sealed class PersonService(
             .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
 
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables);
+        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeLogger);
 
         world.Add(context.Player, maze);
 
