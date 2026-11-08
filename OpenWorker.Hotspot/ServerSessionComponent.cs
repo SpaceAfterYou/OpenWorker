@@ -1,19 +1,34 @@
-﻿using System.Buffers;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.SoulWorker.Network;
 using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.Hotspot;
 
-/// <param name="client">The connection of the session.</param>
-/// <param name="metrics">Counts the connection and what goes through it; <see langword="null"/> for a session nobody measures.</param>
 [EntityComponent(EntityComponentService.All)]
-public readonly struct ServerSessionComponent(TcpClient client, SessionMetrics? metrics = null)
+public readonly struct ServerSessionComponent
 {
-    private readonly SessionWriter _writer = new(client, metrics);
+    private readonly SessionWriter _writer;
+
+    /// <param name="client">The connection of the session.</param>
+    /// <param name="metrics">Counts the connection and what goes through it; <see langword="null"/> for a session nobody measures.</param>
+    public ServerSessionComponent(TcpClient client, SessionMetrics? metrics = null)
+    {
+        _writer = new SessionWriter(client, metrics);
+
+        LogScope = new SessionLogScope(DescribeRemote(client));
+    }
+
+    /// <summary>
+    /// A session whose connection is a stream, for the benchmarks and the tests: what is sent is written to the stream.
+    /// </summary>
+    internal ServerSessionComponent(Stream connection, SessionMetrics? metrics = null)
+    {
+        _writer = new SessionWriter(connection, metrics);
+
+        LogScope = new SessionLogScope(null);
+    }
 
     /// <summary>
     /// Where the client connected from, for the logs. Empty when the socket was not connected or is gone.
@@ -24,7 +39,7 @@ public readonly struct ServerSessionComponent(TcpClient client, SessionMetrics? 
     /// The scope of the log lines about this session, one for its whole life; see <see cref="SessionLogScope"/>.
     /// <see langword="null"/> only on a default component, the one <c>TryGet</c> gives for an entity without a session.
     /// </summary>
-    public SessionLogScope? LogScope { get; } = new(DescribeRemote(client));
+    public SessionLogScope? LogScope { get; }
 
     private static string? DescribeRemote(TcpClient client)
     {
@@ -43,52 +58,34 @@ public readonly struct ServerSessionComponent(TcpClient client, SessionMetrics? 
     /// Queues the message for this connection. Never waits for the client, and a connection that is
     /// already gone just drops the message.
     /// </summary>
+    /// <remarks>To send one message to many connections, encode it once with <see cref="Frame.Encode"/> and send the frame.</remarks>
     public void Send(IResponseHotspotMessage message)
     {
         TrySend(message);
     }
 
+    /// <returns><see langword="false"/> when the message is not queued: the connection is gone or too far behind, or the
+    /// body of the message does not fit one frame (the connection stays open then).</returns>
     public bool TrySend(IResponseHotspotMessage message)
     {
-        var pool = ArrayPool<byte>.Shared;
+        using var frame = Frame.Encode(message);
 
-        var buffer = pool.Rent(MessageHeader.HeaderSize + MessageHeader.MaxContentLength);
+        return frame is not null && _writer.TryEnqueue(frame);
+    }
 
-        try
-        {
-            /* using */ var stream = new MemoryStream(buffer);
+    /// <summary>
+    /// Queues a frame that is already encoded; the connection takes a reference of its own, so the caller still disposes
+    /// its own after queueing the frame to everyone.
+    /// </summary>
+    public void Send(Frame frame)
+    {
+        TrySend(frame);
+    }
 
-            /* using */ var writer = new BinaryWriter(stream);
-
-            stream.Position = MessageHeader.HeaderSize;
-
-            writer.Write(message.Opcode);
-
-            message.Write(writer);
-
-            var header = new MessageHeader(stream.Position - MessageHeader.HeaderSize);
-
-            MessageEncryption.Exchange(buffer.AsSpan(MessageHeader.HeaderSize, header.ContentLength), header.Version);
-
-            stream.Position = 0;
-
-            header.ToBinary(writer);
-
-            writer.Flush();
-
-            var length = MessageHeader.HeaderSize + header.ContentLength;
-
-            var frame = pool.Rent(length);
-
-            buffer.AsSpan(0, length).CopyTo(frame);
-
-            return _writer.TryEnqueue(frame, length);
-        }
-
-        finally
-        {
-            pool.Return(buffer);
-        }
+    /// <inheritdoc cref="Send(Frame)"/>
+    public bool TrySend(Frame frame)
+    {
+        return _writer.TryEnqueue(frame);
     }
 
     /// <summary>

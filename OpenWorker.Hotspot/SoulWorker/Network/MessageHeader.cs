@@ -77,4 +77,15 @@ public readonly struct MessageHeader
         writer.Write(Length);
         writer.Write(Direction);
     }
+
+    /// <summary>
+    /// Writes the header into the first <see cref="HeaderSize"/> bytes, as <see cref="ToBinary"/> does.
+    /// </summary>
+    public void Write(Span<byte> destination)
+    {
+        BinaryPrimitives.WriteUInt16LittleEndian(destination, Version);
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[2..], Length);
+
+        destination[4] = (byte)Direction;
+    }
 }

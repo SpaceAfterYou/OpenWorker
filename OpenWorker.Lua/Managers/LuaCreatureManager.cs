@@ -663,11 +663,24 @@ public sealed class LuaCreatureManager : ISimulation
 
     internal void Broadcast(IResponseHotspotMessage message)
     {
+        if (Players.Count == 0)
+        {
+            return;
+        }
+
+        // Written once for every player of the maze.
+        using var frame = Frame.Encode(message);
+
+        if (frame is null)
+        {
+            return;
+        }
+
         foreach (var player in Players)
         {
             if (ecs.IsAlive(player) && ecs.Has<ServerSessionComponent>(player))
             {
-                ecs.Get<ServerSessionComponent>(player).Send(message);
+                ecs.Get<ServerSessionComponent>(player).Send(frame);
             }
         }
     }

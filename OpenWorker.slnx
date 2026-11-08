@@ -4,6 +4,9 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/Benchmarks/">
+    <Project Path="OpenWorker.Benchmarks/OpenWorker.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/OpenWorker Commands/">
     <Project Path="OpenWorker.Commands.SourceGenerators/OpenWorker.Commands.SourceGenerators.csproj" />
     <Project Path="OpenWorker.Commands/OpenWorker.Commands.csproj" />

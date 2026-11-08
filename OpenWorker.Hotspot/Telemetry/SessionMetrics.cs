@@ -13,6 +13,7 @@ public sealed class SessionMetrics
     private readonly Counter<long> _closed;
     private readonly UpDownCounter<long> _writerQueue;
     private readonly Counter<long> _framesSent;
+    private readonly Counter<long> _framesDropped;
     private readonly Counter<long> _bytesSent;
     private readonly Counter<long> _bytesReceived;
 
@@ -41,6 +42,11 @@ public sealed class SessionMetrics
             "frames.sent",
             unit: "{frame}",
             description: "Frames written to a socket.");
+
+        _framesDropped = meter.CreateCounter<long>(
+            "frames.dropped",
+            unit: "{frame}",
+            description: "Messages dropped because the body does not fit one frame. Tag opcode.");
 
         _bytesSent = meter.CreateCounter<long>(
             "bytes.sent",
@@ -100,6 +106,12 @@ public sealed class SessionMetrics
     {
         _framesSent.Add(1);
         _bytesSent.Add(bytes);
+    }
+
+    /// <param name="opcode">The name of the opcode of the message, the tag.</param>
+    internal void Dropped(string opcode)
+    {
+        _framesDropped.Add(1, new KeyValuePair<string, object?>("opcode", opcode));
     }
 
     public void Received(int bytes)

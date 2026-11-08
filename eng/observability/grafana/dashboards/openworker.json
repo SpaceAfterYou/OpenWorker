@@ -1507,7 +1507,7 @@
       "id": 23,
       "type": "timeseries",
       "title": "Frames sent per second",
-      "description": "",
+      "description": "Frames written to sockets, and the messages dropped because they do not fit one frame, by opcode.",
       "datasource": {
         "type": "prometheus",
         "uid": "openworker-prometheus"
@@ -1580,6 +1580,18 @@
           "range": true,
           "instant": false,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "openworker-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (job, instance, openworker_location, opcode) (rate(frames_dropped_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "legendFormat": "dropped {{opcode}} {{job}} {{openworker_location}}",
+          "range": true,
+          "instant": false,
+          "refId": "B"
         }
       ]
     },

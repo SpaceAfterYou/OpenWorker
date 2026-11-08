@@ -1,5 +1,4 @@
 ﻿using Arch.Core;
-using CommunityToolkit.HighPerformance;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
@@ -16,6 +15,20 @@ public sealed partial class HandlerExecutor(
     ILogger<HandlerExecutor> logger,
     HandlerMetrics? metrics = null)
 {
+    /// <summary>
+    /// The handlers are singletons: each class is resolved the first time a packet needs it and kept, in the place the
+    /// table gives it. Resolving them all when the table is built would make every handler of the loaded assemblies,
+    /// those whose services this server does not register among them.
+    /// </summary>
+    private readonly IHotspotHandler?[] _instances = new IHotspotHandler?[collection.Classes];
+
+    // Readers that no packet uses. A handler holds its reader until it returns, awaits included, and other packets run on
+    // the loop meanwhile, so there are as many as packets in flight at once. Usually that is one, the spare, taken and
+    // given back with one atomic exchange; the others wait in the stack.
+    private RequestReader? _spare;
+    private readonly Stack<RequestReader> _readers = new();
+    private readonly Lock _readersLock = new();
+
     /// <summary>
     /// Reads the opcode of a packet, parses the request and runs its handler. A packet that cannot be read
     /// and a handler that fails never throw out of here: the error is counted for the session, and the
@@ -46,17 +59,14 @@ public sealed partial class HandlerExecutor(
 
         using var logScope = scope is null ? null : logger.BeginScope(scope);
 
-        // Will be disposed in reader
-        /* using */ var stream = buffer.AsStream();
-
-        using var reader = new BinaryReader(stream);
+        var reader = RentReader(buffer);
 
         MessageOpcode? opcode = null;
 
         try
         {
             // A packet shorter than the opcode ends the stream here.
-            var current = new MessageOpcode(reader);
+            var current = new MessageOpcode(reader.Binary);
 
             opcode = current;
 
@@ -65,16 +75,14 @@ public sealed partial class HandlerExecutor(
                 throw new InvalidDataException($"The opcode {current} has no place in the handler table.");
             }
 
-            // TODO: refactor handler's bc too complicated
-            var instance = provider.GetService(found.Class) as IHotspotHandler
-                ?? throw new InvalidOperationException($"The handler {found.Class.Name} is not registered.");
+            var instance = _instances[found.Instance] ??= Resolve(found.Class);
 
             var started = metrics?.Start() ?? 0;
 
             try
             {
                 await found.Delegate
-                    .Invoke(instance, player, reader, cancellationToken);
+                    .Invoke(instance, player, reader.Binary, cancellationToken);
             }
 
             finally
@@ -92,6 +100,52 @@ public sealed partial class HandlerExecutor(
         catch (Exception ex)
         {
             OnError(player, opcode, ex);
+        }
+
+        finally
+        {
+            ReturnReader(reader);
+        }
+    }
+
+    private IHotspotHandler Resolve(Type type)
+    {
+        return provider.GetService(type) as IHotspotHandler
+            ?? throw new InvalidOperationException($"The handler {type.Name} is not registered.");
+    }
+
+    private RequestReader RentReader(ReadOnlyMemory<byte> packet)
+    {
+        var reader = Interlocked.Exchange(ref _spare, null);
+
+        if (reader is null)
+        {
+            lock (_readersLock)
+            {
+                _readers.TryPop(out reader);
+            }
+        }
+
+        reader ??= new RequestReader();
+
+        reader.Stream.Source = packet;
+
+        return reader;
+    }
+
+    private void ReturnReader(RequestReader reader)
+    {
+        // The packet goes back to the read loop with the end of the handler; the reader must not keep it.
+        reader.Stream.Source = ReadOnlyMemory<byte>.Empty;
+
+        if (Interlocked.CompareExchange(ref _spare, reader, null) is null)
+        {
+            return;
+        }
+
+        lock (_readersLock)
+        {
+            _readers.Push(reader);
         }
     }
 

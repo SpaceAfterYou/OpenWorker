@@ -88,6 +88,14 @@ flowchart TB
   at once as `Malformed`.
 - **Write loop.** `SessionWriter` sends the frames of one connection on its own task, from a queue
   of at most 4096 frames. A client that falls that far behind is disconnected; it slows nobody else.
+- **Frames.** A message is encoded once into a `Frame` (header and encrypted body in an array of
+  `ArrayPool<byte>.Shared`), and a broadcast queues that one frame to every recipient
+  (`ServiceChannel.Broadcast`, `CommunityNetwork`, the maze): `Frame.Encode`, then `ServerSessionComponent.Send(frame)`
+  per recipient, then `Dispose` the frame. The frame counts references: the encoder gives the caller one, each
+  writer that queues the frame takes one and lets it go when the frame is written or dropped, and the last one
+  returns the array to the pool. The encoder of the world loop (`WorldLoop.Encoder`) is reused for every message;
+  a body longer than `MessageHeader.MaxContentLength` is dropped with a warning and counted in `frames.dropped`,
+  and the session stays open.
 - **World loop.** `WorldLoop` is a `SynchronizationContext` with one thread. Every packet handler,
   every timer and the closing of every connection runs there, one at a time, so the ECS world and the
   managers need no locks.
@@ -170,6 +178,7 @@ the metrics class as the last, optional constructor parameter: `null` is a part 
 | `sessions.closed` | counter | `reason`: `client`, `server`, `backpressure`, `timeout`, `malformed`, `shutdown` | connections that ended, once each |
 | `writer.queue.length` | up-down counter, frames | | frames queued in the `SessionWriter`s of the process |
 | `frames.sent`, `bytes.sent`, `bytes.received` | counters | | frames written to sockets and bytes on the wire, headers included |
+| `frames.dropped` | counter | `opcode` | messages dropped because the body does not fit one frame |
 | `redis.call.duration` | histogram, s | `operation`: the Redis command | a command, from the moment it is made to its answer |
 | `postgres.call.duration` | histogram, s | `operation`: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `OTHER` | a command, until the database starts to answer |
 

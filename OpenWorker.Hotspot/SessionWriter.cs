@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Net.Sockets;
 using System.Threading.Channels;
 using OpenWorker.Hotspot.Telemetry;
@@ -8,6 +7,7 @@ namespace OpenWorker.Hotspot;
 /// <summary>
 /// Sends the frames of one connection in order on its own task, so that a client that has stopped
 /// reading delays nobody but itself.<br/>
+/// It holds a reference to every <see cref="Frame"/> in its queue and lets it go once the frame is written or dropped.<br/>
 /// It is also where the end of the connection is counted: the write loop ends exactly once, and the first
 /// <see cref="SessionCloseReason"/> given to the writer is the one reported.
 /// </summary>
@@ -17,19 +17,38 @@ internal sealed class SessionWriter
 
     private static TimeSpan WriteTimeout { get; } = TimeSpan.FromSeconds(10);
 
-    private readonly TcpClient _client;
+    // A connection is a socket, or (in the benchmarks and tests) a stream that stands for one.
+    private readonly TcpClient? _client;
+    private readonly Stream? _stream;
     private readonly SessionMetrics? _metrics;
 
-    private readonly Channel<(byte[] Buffer, int Length)> _queue = Channel.CreateBounded<(byte[], int)>(
+    private readonly Channel<Frame> _queue = Channel.CreateBounded<Frame>(
         new BoundedChannelOptions(MaxQueuedFrames) { SingleReader = true });
 
     // A SessionCloseReason, set by the first writer to claim it. Zero is no reason yet.
     private int _closeReason;
 
+    // Set once the stream that stands for a connection is closed.
+    private int _streamClosed;
+
     /// <param name="metrics">Counts the connection; <see langword="null"/> for a connection nobody measures.</param>
     public SessionWriter(TcpClient client, SessionMetrics? metrics = null)
+        : this(client, null, metrics)
+    {
+    }
+
+    /// <summary>
+    /// A connection that is only a stream: it is open until the writer closes it.
+    /// </summary>
+    public SessionWriter(Stream stream, SessionMetrics? metrics = null)
+        : this(null, stream, metrics)
+    {
+    }
+
+    private SessionWriter(TcpClient? client, Stream? stream, SessionMetrics? metrics)
     {
         _client = client;
+        _stream = stream;
         _metrics = metrics;
 
         _metrics?.Opened();
@@ -37,7 +56,7 @@ internal sealed class SessionWriter
         Completed = Task.Run(WriteLoopAsync);
     }
 
-    public bool IsOpen => _client.Connected;
+    public bool IsOpen => _client?.Connected ?? Volatile.Read(ref _streamClosed) == 0;
 
     /// <summary>
     /// Completes when the write loop has ended: everything queued is sent (or dropped, for a client that went away)
@@ -46,18 +65,21 @@ internal sealed class SessionWriter
     public Task Completed { get; }
 
     /// <summary>
-    /// Takes over the buffer, which must come from the shared array pool.
+    /// Queues the frame with a reference of its own, which the writer lets go after the frame is written or dropped. A frame
+    /// that cannot be queued is let go at once.
     /// </summary>
-    public bool TryEnqueue(byte[] buffer, int length)
+    public bool TryEnqueue(Frame frame)
     {
-        if (IsOpen && _queue.Writer.TryWrite((buffer, length)))
+        frame.AddReference();
+
+        if (IsOpen && _queue.Writer.TryWrite(frame))
         {
             _metrics?.Queued();
 
             return true;
         }
 
-        ArrayPool<byte>.Shared.Return(buffer);
+        frame.Release();
 
         // A client this far behind will not catch up; a connection that is already gone has its reason already.
         Close(IsOpen ? SessionCloseReason.Backpressure : SessionCloseReason.Client);
@@ -97,29 +119,48 @@ internal sealed class SessionWriter
         SetCloseReason(reason);
 
         _queue.Writer.TryComplete();
-        _client.Close();
+
+        if (_client is not null)
+        {
+            _client.Close();
+        }
+
+        else if (Interlocked.Exchange(ref _streamClosed, 1) == 0)
+        {
+            _stream!.Dispose();
+        }
     }
 
     private async Task WriteLoopAsync()
     {
+        // One source for every write: a write that ends in time leaves it as it was, so no frame makes a source or a timer.
+        var timeout = new CancellationTokenSource();
+
         try
         {
-            await foreach (var (buffer, length) in _queue.Reader.ReadAllAsync())
+            await foreach (var frame in _queue.Reader.ReadAllAsync())
             {
                 _metrics?.Dequeued();
 
                 try
                 {
-                    using var timeout = new CancellationTokenSource(WriteTimeout);
+                    timeout.CancelAfter(WriteTimeout);
 
-                    await _client.GetStream().WriteAsync(buffer.AsMemory(0, length), timeout.Token);
+                    await (_client?.GetStream() ?? _stream!).WriteAsync(frame.Memory, timeout.Token);
 
-                    _metrics?.Sent(length);
+                    _metrics?.Sent(frame.Length);
                 }
 
                 finally
                 {
-                    ArrayPool<byte>.Shared.Return(buffer);
+                    frame.Release();
+                }
+
+                // The time ran out just as the write ended: the next write needs a source that is not cancelled.
+                if (!timeout.TryReset())
+                {
+                    timeout.Dispose();
+                    timeout = new CancellationTokenSource();
                 }
             }
         }
@@ -132,6 +173,8 @@ internal sealed class SessionWriter
 
         finally
         {
+            timeout.Dispose();
+
             Finish();
         }
     }
@@ -148,7 +191,7 @@ internal sealed class SessionWriter
         {
             _metrics?.Dequeued();
 
-            ArrayPool<byte>.Shared.Return(frame.Buffer);
+            frame.Release();
         }
 
         _metrics?.Closed((SessionCloseReason)Volatile.Read(ref _closeReason));
