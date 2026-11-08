@@ -1,0 +1,778 @@
+{
+  "tool": "OpenWorker.LoadTest",
+  "startedAt": "2026-11-08T18:58:50.5677836+00:00",
+  "totalSeconds": 90.108105,
+  "measuredSeconds": 60.0001392,
+  "interrupted": false,
+  "machine": {
+    "os": "CachyOS",
+    "framework": ".NET 10.0.14",
+    "cores": 32
+  },
+  "options": {
+    "bots": "1000",
+    "ramp-up": "50 per second",
+    "duration": "1m",
+    "warmup": "10s",
+    "move-rate": "5 per second",
+    "chat-rate": "0.05 per second",
+    "maze-share": "0.1",
+    "maze-location": "21311",
+    "skill-rate": "1 per second",
+    "probe-every": "1",
+    "auth": "127.0.0.1:10000",
+    "accounts": "lt00000 ..."
+  },
+  "bots": {
+    "requested": 1000,
+    "started": 1000,
+    "reachedTheWorld": 1000,
+    "activeAtEnd": 0,
+    "peakActive": 1000,
+    "failedToEnter": 0,
+    "lost": 0,
+    "mazeBots": 100,
+    "inMazeAtEnd": 0
+  },
+  "stages": [
+    {
+      "name": "auth.login",
+      "succeeded": 1000,
+      "failed": 0,
+      "duration": {
+        "count": 1000,
+        "meanMs": 46.097756000000004,
+        "p50Ms": 46.079,
+        "p95Ms": 54.271,
+        "p99Ms": 56.319,
+        "maxMs": 65.771
+      }
+    },
+    {
+      "name": "auth.gate-list",
+      "succeeded": 1000,
+      "failed": 0,
+      "duration": {
+        "count": 1000,
+        "meanMs": 2.713619,
+        "p50Ms": 2.495,
+        "p95Ms": 4.351,
+        "p99Ms": 6.399,
+        "maxMs": 11.575
+      }
+    },
+    {
+      "name": "gate.enter",
+      "succeeded": 1000,
+      "failed": 0,
+      "duration": {
+        "count": 1000,
+        "meanMs": 3.628311,
+        "p50Ms": 3.391,
+        "p95Ms": 5.247,
+        "p99Ms": 10.751,
+        "maxMs": 13.091
+      }
+    },
+    {
+      "name": "gate.character",
+      "succeeded": 1000,
+      "failed": 0,
+      "duration": {
+        "count": 1000,
+        "meanMs": 9.510506,
+        "p50Ms": 6.271,
+        "p95Ms": 13.823,
+        "p99Ms": 188.415,
+        "maxMs": 285.218
+      }
+    },
+    {
+      "name": "district.enter",
+      "succeeded": 1000,
+      "failed": 0,
+      "duration": {
+        "count": 1000,
+        "meanMs": 10.340948000000001,
+        "p50Ms": 8.447,
+        "p95Ms": 19.967,
+        "p99Ms": 43.007,
+        "maxMs": 277.354
+      }
+    },
+    {
+      "name": "district.travel",
+      "succeeded": 0,
+      "failed": 0,
+      "duration": {
+        "count": 0,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0
+      }
+    },
+    {
+      "name": "maze.enter",
+      "succeeded": 100,
+      "failed": 0,
+      "duration": {
+        "count": 100,
+        "meanMs": 6.320930000000001,
+        "p50Ms": 5.631,
+        "p95Ms": 11.007,
+        "p99Ms": 15.103,
+        "maxMs": 17.478
+      }
+    }
+  ],
+  "latency": {
+    "move.echo": {
+      "count": 270012,
+      "meanMs": 0.5972349858524806,
+      "p50Ms": 0.431,
+      "p95Ms": 1.631,
+      "p99Ms": 3.519,
+      "maxMs": 12.322
+    },
+    "move.delivery": {
+      "count": 15294655,
+      "meanMs": 0.6011021895557631,
+      "p50Ms": 0.431,
+      "p95Ms": 1.631,
+      "p99Ms": 3.519,
+      "maxMs": 12.487
+    },
+    "ping.after-move": {
+      "count": 270011,
+      "meanMs": 0.6897759832006845,
+      "p50Ms": 0.487,
+      "p95Ms": 1.759,
+      "p99Ms": 4.223,
+      "maxMs": 12.495
+    },
+    "chat.echo": {
+      "count": 2700,
+      "meanMs": 0.6092588888888889,
+      "p50Ms": 0.431,
+      "p95Ms": 1.599,
+      "p99Ms": 3.583,
+      "maxMs": 9.886
+    },
+    "chat.delivery": {
+      "count": 152940,
+      "meanMs": 0.6186279194455342,
+      "p50Ms": 0.431,
+      "p95Ms": 1.599,
+      "p99Ms": 3.647,
+      "maxMs": 10.904
+    },
+    "maze.move.echo": {
+      "count": 30000,
+      "meanMs": 0.29498243333333335,
+      "p50Ms": 0.179,
+      "p95Ms": 0.959,
+      "p99Ms": 1.823,
+      "maxMs": 5.287
+    },
+    "maze.skill.response": {
+      "count": 6001,
+      "meanMs": 0.3111586402266289,
+      "p50Ms": 0.187,
+      "p95Ms": 1.007,
+      "p99Ms": 1.919,
+      "maxMs": 4.25
+    },
+    "bot.send-lag": {
+      "count": 300001,
+      "meanMs": 0.08463733120889597,
+      "p50Ms": 0,
+      "p95Ms": 0.623,
+      "p99Ms": 1.375,
+      "maxMs": 11.74
+    }
+  },
+  "traffic": {
+    "movesSent": 400092,
+    "pingsSent": 362387,
+    "chatsSent": 3621,
+    "skillsSent": 7542,
+    "skillsAnswered": 7542,
+    "framesReceived": 21959059,
+    "movesSentWhileMeasured": 300001,
+    "movesPerSecond": 5000.005066654912,
+    "deliveriesPerSecond": 254910.32527471203,
+    "averageListeners": 51.88205039316536,
+    "unmatched": 47
+  },
+  "errors": [],
+  "self": {
+    "cpuAverageCores": 5.155642226694595,
+    "cpuPeakCores": 5.794103514093274,
+    "workingSetMaxMegabytes": 168.8203125,
+    "gcGen0": 3319,
+    "gcGen1": 790,
+    "gcGen2": 6,
+    "gcPauseMilliseconds": 5089.256,
+    "threadsMax": 33,
+    "pendingWorkMax": 1
+  },
+  "servers": [
+    {
+      "name": "ow-lt-auth",
+      "source": "docker stats",
+      "samples": 18,
+      "cpuAveragePercent": 58.21444444444444,
+      "cpuMaxPercent": 278.98,
+      "memoryAverageMegabytes": 153.28888845443726,
+      "memoryMaxMegabytes": 158.39999961853027
+    },
+    {
+      "name": "ow-lt-district",
+      "source": "docker stats",
+      "samples": 18,
+      "cpuAveragePercent": 421.4483333333333,
+      "cpuMaxPercent": 466.12,
+      "memoryAverageMegabytes": 343.1833329730564,
+      "memoryMaxMegabytes": 354.79999923706055
+    },
+    {
+      "name": "ow-lt-gate",
+      "source": "docker stats",
+      "samples": 18,
+      "cpuAveragePercent": 11.01111111111111,
+      "cpuMaxPercent": 63.5,
+      "memoryAverageMegabytes": 198.9166661898295,
+      "memoryMaxMegabytes": 204
+    },
+    {
+      "name": "ow-lt-maze",
+      "source": "docker stats",
+      "samples": 18,
+      "cpuAveragePercent": 25.57111111111111,
+      "cpuMaxPercent": 30.76,
+      "memoryAverageMegabytes": 254.9555551211039,
+      "memoryMaxMegabytes": 259.19999980926514
+    }
+  ],
+  "prometheus": {
+    "address": "http://127.0.0.1:9090",
+    "results": [
+      {
+        "label": "worldloop_queue_length (max)",
+        "query": "max by (job) (max_over_time(worldloop_queue_length[93s]))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 0
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 0
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 2
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 0
+          }
+        ]
+      },
+      {
+        "label": "worldloop_queue_length (mean)",
+        "query": "avg by (job) (avg_over_time(worldloop_queue_length[93s]))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 0
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 0
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 0.3333333333333333
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 0
+          }
+        ]
+      },
+      {
+        "label": "worldloop_callback_duration_seconds (p50, ms)",
+        "query": "1000 * histogram_quantile(0.5, sum by (job, le) (rate(worldloop_callback_duration_seconds_bucket[93s])))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 0.07806461507003375
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 0.08225447316103379
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 0.05148644443638824
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 0.05319248264304525
+          }
+        ]
+      },
+      {
+        "label": "worldloop_callback_duration_seconds (p99, ms)",
+        "query": "1000 * histogram_quantile(0.99, sum by (job, le) (rate(worldloop_callback_duration_seconds_bucket[93s])))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 0.41050735294117535
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 0.49954168640454716
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 0.2105663820765523
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 2.0228239329268276
+          }
+        ]
+      },
+      {
+        "label": "worldloop_callback_duration_seconds (mean, ms)",
+        "query": "1000 * sum by (job) (rate(worldloop_callback_duration_seconds_sum[93s])) / sum by (job) (rate(worldloop_callback_duration_seconds_count[93s]))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 0.08003396634143276
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 0.1116762942910987
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 0.03828764817807866
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 0.06438147939779414
+          }
+        ]
+      },
+      {
+        "label": "worldloop_callback_duration_seconds (per second)",
+        "query": "sum by (job) (rate(worldloop_callback_duration_seconds_count[93s]))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 169.67777777777778
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 229.85555555555555
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 8521.2125
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 555.4625
+          }
+        ]
+      },
+      {
+        "label": "simulation_step_duration_seconds (p50, ms)",
+        "query": "1000 * histogram_quantile(0.5, sum by (job, le) (rate(simulation_step_duration_seconds_bucket[93s])))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 1.6089449541284402
+          }
+        ]
+      },
+      {
+        "label": "simulation_step_duration_seconds (p99, ms)",
+        "query": "1000 * histogram_quantile(0.99, sum by (job, le) (rate(simulation_step_duration_seconds_bucket[93s])))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 3.4210526315789296
+          }
+        ]
+      },
+      {
+        "label": "simulation_step_duration_seconds (mean, ms)",
+        "query": "1000 * sum by (job) (rate(simulation_step_duration_seconds_sum[93s])) / sum by (job) (rate(simulation_step_duration_seconds_count[93s]))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 1.3349083750000004
+          }
+        ]
+      },
+      {
+        "label": "simulation_step_duration_seconds (per second)",
+        "query": "sum by (job) (rate(simulation_step_duration_seconds_count[93s]))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 20
+          }
+        ]
+      },
+      {
+        "label": "handler_duration_seconds (p50, ms)",
+        "query": "1000 * histogram_quantile(0.5, sum by (job, le) (rate(handler_duration_seconds_bucket[93s])))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 1.8599514563106796
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 3.431446731234867
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 0.05073598702729164
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 0.05029362826661447
+          }
+        ]
+      },
+      {
+        "label": "handler_duration_seconds (p99, ms)",
+        "query": "1000 * histogram_quantile(0.99, sum by (job, le) (rate(handler_duration_seconds_bucket[93s])))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 93.68243243243242
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 24.07631578947365
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 0.155515973254086
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 0.09958138396789665
+          }
+        ]
+      },
+      {
+        "label": "handler_duration_seconds (mean, ms)",
+        "query": "1000 * sum by (job) (rate(handler_duration_seconds_sum[93s])) / sum by (job) (rate(handler_duration_seconds_count[93s]))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 16.083390516934063
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 4.354089633958779
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 0.04702100626864031
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 0.02406641772890775
+          }
+        ]
+      },
+      {
+        "label": "handler_duration_seconds (per second)",
+        "query": "sum by (job) (rate(handler_duration_seconds_count[93s]))",
+        "series": [
+          {
+            "labels": {
+              "job": "OpenWorker.AuthServer"
+            },
+            "value": 31.166666666666668
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.GateServer"
+            },
+            "value": 36.12222222222223
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.DistrictServer"
+            },
+            "value": 8291.275
+          },
+          {
+            "labels": {
+              "job": "OpenWorker.MazeServer"
+            },
+            "value": 513.85
+          }
+        ]
+      }
+    ]
+  },
+  "warnings": [],
+  "notes": [],
+  "timeline": [
+    {
+      "seconds": 5.0179564,
+      "phase": "RampUp",
+      "active": 248,
+      "entering": 2,
+      "failed": 0,
+      "movesSent": 3060,
+      "botCpuCores": 1.4990142256896108
+    },
+    {
+      "seconds": 10.0177522,
+      "phase": "RampUp",
+      "active": 497,
+      "entering": 3,
+      "failed": 0,
+      "movesSent": 12374,
+      "botCpuCores": 2.821965923278669
+    },
+    {
+      "seconds": 15.0175861,
+      "phase": "RampUp",
+      "active": 746,
+      "entering": 4,
+      "failed": 0,
+      "movesSent": 27898,
+      "botCpuCores": 4.063932982230928
+    },
+    {
+      "seconds": 20.0178285,
+      "phase": "RampUp",
+      "active": 996,
+      "entering": 4,
+      "failed": 0,
+      "movesSent": 49670,
+      "botCpuCores": 4.59417435001505
+    },
+    {
+      "seconds": 25.0177951,
+      "phase": "WarmUp",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 74672,
+      "botCpuCores": 5.510411315799146
+    },
+    {
+      "seconds": 30.017693,
+      "phase": "WarmUp",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 99672,
+      "botCpuCores": 5.474456667422583
+    },
+    {
+      "seconds": 35.0173912,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 124671,
+      "botCpuCores": 5.721995655000191
+    },
+    {
+      "seconds": 40.0179988,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 149674,
+      "botCpuCores": 5.726188594929789
+    },
+    {
+      "seconds": 45.017952,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 174672,
+      "botCpuCores": 5.756863116576709
+    },
+    {
+      "seconds": 50.0174215,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 199671,
+      "botCpuCores": 5.746086070599248
+    },
+    {
+      "seconds": 55.0181998,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 224676,
+      "botCpuCores": 5.713952047929907
+    },
+    {
+      "seconds": 60.0172868,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 249670,
+      "botCpuCores": 5.794103514093274
+    },
+    {
+      "seconds": 65.0175856,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 274671,
+      "botCpuCores": 5.7175143830563595
+    },
+    {
+      "seconds": 70.0180268,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 299674,
+      "botCpuCores": 5.776738029415283
+    },
+    {
+      "seconds": 75.0178905,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 324674,
+      "botCpuCores": 5.779544192222313
+    },
+    {
+      "seconds": 80.017893,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 349674,
+      "botCpuCores": 5.745649862008534
+    },
+    {
+      "seconds": 85.0174421,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 374671,
+      "botCpuCores": 5.631667648394857
+    },
+    {
+      "seconds": 90.0174031,
+      "phase": "Measuring",
+      "active": 1000,
+      "entering": 0,
+      "failed": 0,
+      "movesSent": 399671,
+      "botCpuCores": 5.727301501840254
+    }
+  ]
+}

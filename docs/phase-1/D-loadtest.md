@@ -19,9 +19,9 @@ not be checked.
    online (or `--gate`), and follow the redirect.
 2. Gate: enter with the session, ask for the characters, create one when there is none (the looks of a real client's
    creation), select it, and follow the redirect to the district.
-3. District: enter with the reservation the gate wrote, ask who is around, optionally change the channel (`--channel`) or
-   travel to another district (`--district`). Then move along a circle at `--move-rate`, say a line at `--chat-rate`, and,
-   behind every `--probe-every`-th move, send a ping.
+3. District: enter with the reservation the gate wrote, ask who is around, optionally change the channel (`--channel`,
+   or `--channel-fill n`: bot k asks for channel 1 + k / n) or travel to another district (`--district`). Then move
+   along a circle at `--move-rate`, say a line at `--chat-rate`, and, behind every `--probe-every`-th move, send a ping.
 4. A share of the bots (`--maze-share`, spread evenly over the bot numbers) asks for the maze `--maze-location` after
    `--maze-delay` (plus up to as much again), follows the redirect, enters, tells the server it has loaded the maze, and
    then moves and uses a skill at `--skill-rate`. A refusal leaves the bot in the district.
@@ -117,7 +117,9 @@ under the true value), the maximum is exact.
   request is answered, i.e. when the server has finished the whole entry.
 - **Average listeners**: (echoes + deliveries) / moves sent while measured: the number of bots that heard a move, the
   sender included, i.e. the size of the channel. A channel holds 65 players (Full above 64) and the district puts a player in
-  the first channel that is not full, so a thousand bots need at least sixteen channels (the override sets twenty).
+  the first channel that is not full, so a thousand bots need at least sixteen channels (the override sets twenty). The
+  district of phase 1 does not do that (it puts everybody into channel 1, see below); `--channel-fill 65` does it from
+  the bot side.
 - **Errors**: counted by `step: kind` with one example, e.g. `auth.login: refused-InGameAlready`, `district.enter:
   closed-by-server` (the server turned the connection away), `maze.enter: refused-50003`, `session: disconnected`.
 - **The bot itself**: CPU in cores (average and peak), memory, collections and pause time of the GC, thread pool size
@@ -164,7 +166,7 @@ rest of the solution and runs their tests.
 ## Tests
 
 `OpenWorker.LoadTest.Test` (a separate project because the existing test projects are about the types of the server, and
-this one needs the bot, the dump folder as content, and sockets). 93 tests, none skipped: codecs of requests (against
+this one needs the bot, the dump folder as content, and sockets). 94 tests, none skipped: codecs of requests (against
 the server's readers and the dumps) and responses (against the server's writers), the cipher, the framing (a stream cut at
 many sizes, 60 KB frames, broken headers), the histogram, the move circle (all 1024 points at several coordinates),
 durations and options (invariant culture under `de-DE`), the samplers' parsers (`docker stats`, `/proc`), the Prometheus
@@ -174,25 +176,57 @@ Results are in the final report of the workstream.
 ## Not done
 
 - An end-to-end test against a real in-process auth server with Redis: not written. The stand-in servers cover the flow
-  with the server's types, and the codecs are checked against the server's types and dumps; the real handlers of the auth
-  server (database, Redis index of sessions) are not exercised by the bot in any test.
-- A run at 1000 bots has not been done on this machine (the stand-in servers would be the bottleneck, and the real ones
-  cannot start without client data). The design is for it; the CPU and send lag the report prints are how to see it.
+  with the server's types, and the codecs are checked against the server's types and dumps. The real handlers of the
+  auth server (database, Redis index of sessions) are not exercised by any test. They were exercised by hand in the
+  baseline runs (below).
 - Server-side hops back from a maze to a district (the bots stay in the maze until the end).
 - Characters are always created with the template of one hero; the hero cannot be chosen.
+- The run through `eng/loadtest.sh` and compose: `docker compose` is not installed on the machine of the baseline, so
+  the servers were started with `docker run` (see `baseline/README.md`).
 
-## Unverified for lack of client data
+## Verified against the real servers (the baseline)
 
-- Anything against the real gate, district and maze servers. In particular: that the template of the character creation
-  is accepted by the tables of the installed client (it is the packet of a real client, so it should be); that
-  `--maze-location 21311` (the maze a real client asked for in the dumps) has a row in the maze table and a batch file;
-  that the maze runs for a bot that only stands near its start and uses the first learned skill (a monster in range is not
-  needed for the answer to a skill, but `StartSkill` needs the skill id the district sent in `SkillLoadInfo`).
-- The relay with a placeholder Discord token: whether it stays up long enough to create the Redis indexes and what it does
-  when the login to Discord fails. It is set not to restart. If it exits, the indexes are already made; if it fails before
-  making them, set `LOADTEST_DISCORD_TOKEN`.
-- The names Prometheus gives the metrics of workstream A (assumed from the OTLP translation rules with unit `ms`).
+`docs/phase-1/baseline/` holds runs of 100, 250, 500 and 1000 bots against the real auth, gate, district and maze
+servers with the data of client 1.4.2.3 (Release builds, `docker run`, one machine). They verified:
+
+- The whole scenario: login with a seeded account, gate list, gate entry, character creation and selection, district
+  entry, channel change, moves, pings, chat, maze request, maze entry and skills. In all four runs every bot got in and
+  stayed, every skill was answered, and no error was counted.
+- The protocol of the bot against the real servers: every request was accepted, every response the bot reads was read,
+  and the move broadcasts were matched to their moves (at most 47 unmatched out of 15.3 million deliveries).
+- `--maze-location 21311` has a maze row and a batch file, and a bot that stands near the start and uses the first skill
+  it learned gets an answer to every skill.
+- The relay with a placeholder Discord token stays up, migrates the database and makes the Redis indexes.
+- The names Prometheus gives the metrics of workstream A: `worldloop_queue_length`, and
+  `worldloop_callback_duration_seconds`, `simulation_step_duration_seconds`, `handler_duration_seconds` (with `_bucket`,
+  `_sum`, `_count`): the unit is seconds, not milliseconds as assumed, which the bot now follows.
+- 1000 connections from one address: the hops (auth, gate, district, and maze for a tenth) of 1000 bots started at 50
+  a second did not run out of ports.
+
+The first runs found five faults of the bot, fixed with tests: no gate in a fresh database (`seed` now makes it), the
+names of the duration metrics, durations in seconds that the report rounded to zero, and the moves of the monsters of a
+maze counted as unmatched broadcasts (twice: monsters without a bot's number, then monsters that carry the number of a
+district bot). They also found three faults of the servers, which were not changed:
+
+- The gate refuses the outfit a real client sends for Stella by default (511) with `CreateFailed`:
+  `PersonCreationCatalog` reads the offered costumes from `Default_Cloth_ID_01..04` of `tb_Character_Info`, which hold
+  521, 531, 541 and 50011; the first costume, 511 (also in `tb_Create_Cloth`), is in the column before them (`Field20`),
+  so the names of the generated columns are one place off. The bot sends 521.
+- The district puts every player into channel 1: `ChannelUtils.GetWorkload(IComparable)` matches the boxed `int` of
+  `Members.Count` against `short` constants, which never matches, so no channel is ever Full. The baseline uses
+  `--channel-fill 65` to fill the channels from the bot side.
+- With several hundred players in one channel, `World:ObjectReq` fails with `Memory stream is not expandable` in
+  `WorldOtherPersonListResponse.Write`: the list of the others does not fit one frame (`MessageHeader.MaxContentLength`).
+  Only seen because of the previous fault.
+
+## Still unverified
+
 - `docker compose` through the script as a whole (only the override was checked with `config`, the shell syntax with
-  `bash -n`; `shellcheck` is not installed here).
-- The behaviour of the real servers under 1000 connections from one address (ephemeral ports of the bot machine: a hop
-  closes a connection and opens another, and closed ones stay in TIME_WAIT).
+  `bash -n`; `shellcheck` is not installed here), including the navigation meshes now mounted into the maze service.
+- Other heroes, other mazes, a maze with more than one bot, a maze fought through to its end, and a hop back from a maze.
+- That the hot path of the bot allocates nothing: at 1000 bots its garbage collector ran 3319 gen-0 collections in 90 s
+  and paused it for 5.1 s in all, so something allocates. Where was not profiled.
+- Runs on separate machines (bots and servers), with a real network between them, and runs repeated to know their
+  spread.
+- More than 1000 bots, more than one district, and the sizes at which the servers stop keeping up when the channels are
+  filled as the district means to fill them.
