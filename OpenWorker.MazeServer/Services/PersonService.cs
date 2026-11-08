@@ -221,7 +221,7 @@ public sealed partial class PersonService(
         }
 
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo, reports, mazeLogger);
+        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger);
 
         world.Add(context.Player, maze);
 

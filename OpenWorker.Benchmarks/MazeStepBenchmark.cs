@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
+using Lua;
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.Batch;
@@ -8,6 +9,7 @@ using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -23,8 +25,8 @@ using OpenWorker.UpdateContent.Res.Rows;
 namespace OpenWorker.Benchmarks;
 
 /// <summary>
-/// One step of the simulation of a maze with <see cref="Monsters"/> monsters that think and <see cref="Timers"/> timers
-/// of its script waiting: what the world loop does every 50 ms for one maze. The monsters stand round a player who
+/// One step of the simulation of a maze with <see cref="Monsters"/> monsters that think, <see cref="Timers"/> timers
+/// of its script counting and as many actions waiting on the clock: what the world loop does every 50 ms for one maze. The monsters stand round a player who
 /// cannot die, so they see him, walk and fight. It reads the client data: OPENWORKER_TEST_RES (tables),
 /// OPENWORKER_TEST_AI (monster scripts) and OPENWORKER_BENCH_BATCH (a map, M04_RSQUARE_EP_01.vbatch by default from the
 /// stand data).
@@ -34,17 +36,6 @@ namespace OpenWorker.Benchmarks;
 public class MazeStepBenchmark
 #pragma warning restore CA1001
 {
-    private sealed class SilentTimers : IMazeTimerHost
-    {
-        public ValueTask CallAsync(string function, int first, int second, int third) => ValueTask.CompletedTask;
-
-        public ValueTask CompleteAsync(int timer) => ValueTask.CompletedTask;
-
-        public void ShowTimer(int value, float time, float next)
-        {
-        }
-    }
-
     [Params(10, 100)]
     public int Monsters { get; set; }
 
@@ -53,8 +44,7 @@ public class MazeStepBenchmark
 
     private World _world = null!;
     private SimulationClock _clock = null!;
-    private LuaCreatureManager _creatures = null!;
-    private MazeTimers _timers = null!;
+    private LuaMaze _maze = null!;
     private ServerSessionComponent _session;
 
     [GlobalSetup]
@@ -84,23 +74,39 @@ public class MazeStepBenchmark
             e.MonsterList.Where(m => m.Id != 0).All(m => m.Type == MonsterSpawnType.Monster && Thinks(services, m.Id)));
 
         _session = new ServerSessionComponent(Stream.Null);
-        _creatures = new LuaCreatureManager(_world, batch, combat, services, NullLogger.Instance);
-
+        var creatures = new LuaCreatureManager(_world, batch, combat, services, NullLogger.Instance);
         var player = Player(box.GetPosition());
 
-        _creatures.Attach(player);
+        _maze = new LuaMaze(
+            LuaState.Create(),
+            _world,
+            player,
+            creatures,
+            new BuffManager(_world, new ReadOnlyCollection<BuffRow>([])),
+            null!,
+            batch,
+            new ReadOnlyCollection<InteractionObjectRow>([]),
+            services.Actions,
+            combat,
+            default,
+            null!,
+            _clock,
+            NullLogger<LuaMaze>.Instance);
 
-        while (_creatures.FindMonsters((_, _) => true).Length < Monsters)
+        creatures.Attach(player);
+
+        _maze.TryStart();
+
+        while (creatures.FindMonsters((_, _) => true).Length < Monsters)
         {
-            _creatures.Create(player, box.Id);
+            creatures.Create(player, box.Id);
         }
-
-        _timers = new MazeTimers(new SilentTimers());
 
         for (var timer = 0; timer < Timers; timer++)
         {
-            // Long enough that none runs out while it is measured.
-            _timers.AddPlain(timer, 1_000_000f);
+            // Long enough that none runs out while it is measured: a timer of the script, and an action of the maze.
+            _maze.AddTimer(timer, 1_000_000f);
+            _maze.SetNpcRotation(timer, 0f, 0);
         }
 
         // The monsters come to life and the timers start before the measured steps.
@@ -138,27 +144,19 @@ public class MazeStepBenchmark
     }
 
     /// <summary>
-    /// What the maze server does in 50 ms for this maze: the clock steps the monsters, and the loop of the timers of the
-    /// script counts them down.
+    /// What the maze server does in 50 ms for this maze: one tick of the clock, which runs what is due (nothing here)
+    /// and steps the maze: its timers, then its monsters.
     /// </summary>
     [Benchmark]
     public void Step()
     {
         _clock.Tick();
-
-        var counted = _timers.UpdateAsync(0.05f);
-
-        // Every timer waits for a long time and nothing is called, so the round is over at once.
-        if (!counted.IsCompletedSuccessfully)
-        {
-            throw new InvalidOperationException("A round of the timers waited.");
-        }
     }
 
     [GlobalCleanup]
     public void Cleanup()
     {
-        _creatures.Close();
+        _maze.Close();
         _session.Disconnect();
 
         World.Destroy(_world);

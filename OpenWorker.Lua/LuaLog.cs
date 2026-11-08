@@ -183,6 +183,14 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Error, Message = "A delayed action of the maze failed")]
     public static partial void DelayedActionFailed(this ILogger logger, Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Showing the creatures of spawn box {Box} later failed")]
-    public static partial void LateShowFailed(this ILogger logger, Exception exception, int box);
+    // ---- Monsters ---------------------------------------------------------------------------
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The monster {Monster} failed to think")]
+    public static partial void MonsterFailedToThink(this ILogger logger, Exception exception, int monster);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} ({Actor}): {Old} -> {New}")]
+    public static partial void MonsterChangedState(this ILogger logger, int monster, int actor, OpenWorker.Gameplay.Ai.AiState old, OpenWorker.Gameplay.Ai.AiState @new);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} wants to die, which a maze script has to finish")]
+    public static partial void MonsterWantsToDie(this ILogger logger, int monster);
 }

@@ -42,24 +42,6 @@ public sealed class MazeRequestGuardTest
         }
     }
 
-    private static ReadOnlyCollection<T> None<T>() => new([]);
-
-    /// <summary>
-    /// Quests with no episodes: the requests under test never get to them.
-    /// </summary>
-    private static QuestManager Quests(World world)
-    {
-        return new QuestManager(
-            world,
-            null!,
-            QuestCatalog.From([], []),
-            null!,
-            null!,
-            null!,
-            null!,
-            NullLogger<QuestManager>.Instance);
-    }
-
     private static BinaryReader Box(int box) => new(new MemoryStream(BitConverter.GetBytes(box)));
 
     private static ServiceHandleContext Context(Entity player) => new(player, CancellationToken.None);
@@ -73,47 +55,14 @@ public sealed class MazeRequestGuardTest
             null!,
             null!,
             Options.Create(new GateOptions { Id = 1 }),
-            Quests(world),
+            TestMazes.Quests(world),
             NullLogger<MazeService>.Instance);
     }
 
     /// <summary>
     /// A maze whose map has no boxes at all, so that every box a client names is unknown.
     /// </summary>
-    private static LuaMaze Maze(World world, Entity player, ILogger<LuaMaze> logger)
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.vbatch");
-
-        File.WriteAllText(path, "<root><Batchs eventtype=\"EventBox\"/><Batchs eventtype=\"EventPoint\"/></root>");
-
-        try
-        {
-            var batch = VBatchFile.CreateFromPath(path);
-            var tables = new CombatTables(None<MonsterRow>(), None<StatusRow>(), None<SkillRow>(), None<CharacterInfoRow>());
-            var quests = Quests(world);
-
-            return new LuaMaze(
-                LuaState.Create(),
-                world,
-                player,
-                new LuaCreatureManager(world, batch, tables),
-                new BuffManager(world, None<BuffRow>()),
-                quests,
-                batch,
-                None<InteractionObjectRow>(),
-                new SkillActionProvider(None<SkillRow>(), NullLogger<SkillActionProvider>.Instance),
-                tables,
-                default,
-                // The boxes these tests name are unknown, so the maze never gets to report anything.
-                null!,
-                logger);
-        }
-
-        finally
-        {
-            File.Delete(path);
-        }
-    }
+    private static LuaMaze Maze(World world, Entity player, ILogger<LuaMaze> logger) => TestMazes.Create(world, player, logger);
 
     [TestMethod]
     public async Task PlayerWhoIsNotInAMazeIsIgnored()
@@ -191,7 +140,7 @@ public sealed class MazeRequestGuardTest
 
         try
         {
-            var buffs = new BuffManager(world, None<BuffRow>());
+            var buffs = new BuffManager(world, TestMazes.None<BuffRow>());
 
             Assert.IsFalse(buffs.Apply(world.Create(), default, 12345));
         }
