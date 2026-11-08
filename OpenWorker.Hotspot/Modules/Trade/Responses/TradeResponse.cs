@@ -5,11 +5,13 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Trade.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct TradeResponse : IResponseHotspotMessage
+public readonly partial struct TradeResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.Request;
@@ -17,11 +19,6 @@ public readonly struct TradeResponse : IResponseHotspotMessage
     public MessageOpcode Opcode => new(Group, Command);
 
     public required ActorValue Actor { get; init; }
+    [WireString(WireStringFormat.Utf16Unicode)]
     public required string Name { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Actor);
-        writer.WritePersonName(Name);
-    }
 }

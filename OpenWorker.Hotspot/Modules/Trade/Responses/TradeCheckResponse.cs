@@ -4,11 +4,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Trade.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct TradeCheckResponse : IResponseHotspotMessage
+public readonly partial struct TradeCheckResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.Check;
@@ -17,10 +19,4 @@ public readonly struct TradeCheckResponse : IResponseHotspotMessage
 
     public required ActorValue Actor { get; init; }
     public required byte IsChecked { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Actor);
-        writer.Write(IsChecked);
-    }
 }
