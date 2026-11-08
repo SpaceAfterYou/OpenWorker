@@ -8,7 +8,7 @@ public static class ServiceCollectionExtension
 {
     public static IServiceCollection AddHotspotHandlers(this IServiceCollection @this)
     {
-        foreach (var handler in HandlerCollectionBuilder.InDomain)
+        foreach (var handler in HandlerTableBuilder.InDomain)
         {
             @this.AddSingleton(handler);
         }
@@ -19,11 +19,11 @@ public static class ServiceCollectionExtension
 
         return @this
             .AddTransient<HandlerBuilder>()
-            .AddTransient<HandlerCollectionBuilder>()
+            .AddTransient<HandlerTableBuilder>()
 
             .AddSingleton<EmptyHandler>()
             .AddSingleton<HandlerErrorBudget>()
             .AddSingleton<HandlerExecutor>()
-            .AddSingleton<HandlerCollection>();
+            .AddSingleton<HandlerTable>();
     }
 }

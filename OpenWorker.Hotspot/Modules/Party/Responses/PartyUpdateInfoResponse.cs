@@ -23,7 +23,7 @@ public readonly struct PartyUpdateInfoResponse(BinaryReader reader) : IResponseH
     public MapValue Maze { get; init; } = new(reader);
     public PartyUpdateType UpdateType { get; init; } = reader.ReadPartyUpdateType();
     public PartyType Type { get; init; } = reader.ReadPartyType();
-    public PartyMemberInfoValue[] InfoList { get; init; } = reader.ReadPartyMemberInfoList_Byte();
+    public PartyMemberInfoValue[] InfoList { get; init; } = reader.ReadPartyMemberInfoListWithByteCount();
 
     public void Write(BinaryWriter writer)
     {
@@ -32,6 +32,6 @@ public readonly struct PartyUpdateInfoResponse(BinaryReader reader) : IResponseH
         writer.Write(Maze);
         writer.Write(UpdateType);
         writer.Write(Type);
-        writer.Write_Byte(InfoList);
+        writer.WriteWithByteCount(InfoList);
     }
 }

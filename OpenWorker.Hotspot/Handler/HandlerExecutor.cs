@@ -10,7 +10,7 @@ using OpenWorker.Hotspot.Handler.Abstractions;
 namespace OpenWorker.Hotspot.Handler;
 
 public sealed partial class HandlerExecutor(
-    HandlerCollection collection,
+    HandlerTable collection,
     IServiceProvider provider,
     World world,
     HandlerErrorBudget budget,
@@ -183,12 +183,15 @@ public sealed partial class HandlerExecutor(
 
         // if (handler.Class.Name == nameof(EmptyHandler) || reader.BaseStream.Position != buffer.Length)
         // {
-            var source = opcode.ToFullString();
-            var @class = handler.Class.Name;
-            var method = handler.Delegate.Method.Name;
-
-            logger.LogDebug("[ ExecuteAsync ] [{Source}] [{Class}.{Method}]", source, @class, method);
-            logger.LogDebug("Packet Read Length: {Position} / Total: {Length}", reader.BaseStream.Position, buffer.Length);
+            LogExecuted(new OpcodeText(opcode), handler.Class.Name, handler.Delegate.Method.Name);
+            LogPacketRead(reader.BaseStream.Position, buffer.Length);
         // }
     }
+
+    // PrintSanity is the debugging aid of a Debug build only, and is due to go in phase 1 of REFACTORING.md.
+    [LoggerMessage(Level = LogLevel.Debug, Message = "[ ExecuteAsync ] [{Source}] [{Class}.{Method}]")]
+    private partial void LogExecuted(OpcodeText source, string @class, string method);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Packet Read Length: {Position} / Total: {Length}")]
+    private partial void LogPacketRead(long position, int length);
 }

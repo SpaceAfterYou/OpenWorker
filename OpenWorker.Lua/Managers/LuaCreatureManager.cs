@@ -435,7 +435,7 @@ public sealed class LuaCreatureManager : ISimulation
     /// <summary>
     /// The monsters think on the thread of the world, one after another, so nothing they do can meet another change halfway.
     /// </summary>
-    public void Step(TimeSpan elapsed)
+    public void Advance(TimeSpan elapsed)
     {
         if (Closed)
         {

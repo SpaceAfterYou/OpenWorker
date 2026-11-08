@@ -13,7 +13,7 @@ public interface ISimulation
     /// Runs on the world loop. <paramref name="elapsed"/> is the time since the previous step,
     /// never more than <see cref="SimulationClock.MaxStep"/>.
     /// </summary>
-    void Step(TimeSpan elapsed);
+    void Advance(TimeSpan elapsed);
 }
 
 /// <summary>
@@ -22,7 +22,7 @@ public interface ISimulation
 /// When the loop falls behind, steps are skipped rather than repeated to catch up, and the time
 /// of one step is capped, so a stall slows the game down instead of making monsters jump.
 /// </summary>
-public sealed class SimulationClock(WorldLoop loop, ILogger<SimulationClock> logger) : BackgroundService
+public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationClock> logger) : BackgroundService
 {
     public static TimeSpan Period { get; } = TimeSpan.FromMilliseconds(50);
     public static TimeSpan MaxStep { get; } = Period * 4;
@@ -67,9 +67,9 @@ public sealed class SimulationClock(WorldLoop loop, ILogger<SimulationClock> log
 
     private bool IsRunning { get; set; }
 
-    protected override Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        return Task.Run(() => RunAsync(cancellationToken), cancellationToken);
+        return Task.Run(() => RunAsync(stoppingToken), stoppingToken);
     }
 
     private async Task RunAsync(CancellationToken cancellationToken)
@@ -112,12 +112,12 @@ public sealed class SimulationClock(WorldLoop loop, ILogger<SimulationClock> log
         {
             try
             {
-                simulation.Step(elapsed);
+                simulation.Advance(elapsed);
             }
 
             catch (Exception e)
             {
-                logger.LogError(e, "Simulation {Simulation} failed to step.", simulation.GetType().Name);
+                LogStepFailed(e, simulation.GetType().Name);
             }
         }
 
@@ -143,12 +143,17 @@ public sealed class SimulationClock(WorldLoop loop, ILogger<SimulationClock> log
             return;
         }
 
-        logger.LogWarning(
-            "{Count} steps took longer than {Budget} ms in the last {Interval} s, the worst {Worst} ms, with {Simulations} simulations.",
-            _overBudget, Period.TotalMilliseconds, ReportInterval.TotalSeconds, _worst.TotalMilliseconds, _simulations.Count);
+        LogOverBudget(_overBudget, Period.TotalMilliseconds, ReportInterval.TotalSeconds, _worst.TotalMilliseconds, _simulations.Count);
 
         _overBudget = 0;
         _worst = TimeSpan.Zero;
         _lastReport = Stopwatch.GetTimestamp();
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Simulation {Simulation} failed to step.")]
+    private partial void LogStepFailed(Exception exception, string simulation);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "{Count} steps took longer than {Budget} ms in the last {Interval} s, the worst {Worst} ms, with {Simulations} simulations.")]
+    private partial void LogOverBudget(int count, double budget, double interval, double worst, int simulations);
 }

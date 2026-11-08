@@ -6,7 +6,7 @@ public enum QuestConditionTarget : byte
     Monster = 0x1,
     Pc = 0x2,
     Item = 0x3,
-    Object = 0x4,
+    WorldObject = 0x4,
     Collision = 0x5,
     Trigger = 0x6,
     Maze = 0x7,

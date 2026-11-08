@@ -2,7 +2,7 @@
 
 namespace OpenWorker.Hotspot.Handler;
 
-public sealed class HandlerCollection(HandlerCollectionBuilder builder)
+public sealed class HandlerTable(HandlerTableBuilder builder)
 {
     private Handler[] Collection { get; } = builder.Build();
 

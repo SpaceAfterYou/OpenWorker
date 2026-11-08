@@ -9,7 +9,7 @@ public sealed class SimulationClockTest
     {
         public List<TimeSpan> Steps { get; } = [];
 
-        public void Step(TimeSpan elapsed)
+        public void Advance(TimeSpan elapsed)
         {
             Steps.Add(elapsed);
 

@@ -1,7 +1,7 @@
 ﻿namespace OpenWorker.Hotspot.Modules.Shop.Enums;
 
 [Flags]
-public enum CashHopInfoFlags
+public enum CashShopMarks
 {
     IconHot = 0x1,
     IconNew = 0x2,

@@ -30,13 +30,13 @@ public static class BinaryReaderExtensions
             .ToArray();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public PartyMemberInfoValue[] ReadPartyMemberInfoList_Int() => Enumerable
+        public PartyMemberInfoValue[] ReadPartyMemberInfoListWithIntCount() => Enumerable
             .Range(0, reader.ReadInt32())
             .Select(_ => new PartyMemberInfoValue(reader))
             .ToArray();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public PartyMemberInfoValue[] ReadPartyMemberInfoList_Byte() => Enumerable
+        public PartyMemberInfoValue[] ReadPartyMemberInfoListWithByteCount() => Enumerable
             .Range(0, reader.ReadByte())
             .Select(_ => new PartyMemberInfoValue(reader))
             .ToArray();
@@ -48,7 +48,7 @@ public static class BinaryReaderExtensions
             .ToArray();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public PartyMemberInfoValue[] ReadPartyMemberInfoList_Fixed() => Enumerable
+        public PartyMemberInfoValue[] ReadPartyMemberInfoListFixed() => Enumerable
             .Range(0, PartyModuleDefines.MaxMemberCount)
             .Select(_ => new PartyMemberInfoValue(reader))
             .ToArray();

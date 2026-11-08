@@ -105,7 +105,7 @@ public sealed class HandlerExecutorTest
 {
     private static readonly TimeSpan Minute = TimeSpan.FromMinutes(1);
 
-    private static readonly HandlerCollection Collection = new(new HandlerCollectionBuilder(new HandlerBuilder(), NullLogger<HandlerCollection>.Instance));
+    private static readonly HandlerTable Collection = new(new HandlerTableBuilder(new HandlerBuilder(), NullLogger<HandlerTable>.Instance));
 
     private static readonly byte[] OpcodeBytes = [(byte)GroupOpcode.System, (byte)ProbeRequest.Command];
 
@@ -137,7 +137,7 @@ public sealed class HandlerExecutorTest
             Logger = new CapturingLogger<HandlerExecutor>();
 
             // The slot of an opcode nobody handles holds the empty handler, which the container has to know.
-            var empty = typeof(HandlerCollection).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
+            var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
 
             var services = new ServiceCollection().AddSingleton<ProbeHandler>().AddSingleton(empty).BuildServiceProvider();
 

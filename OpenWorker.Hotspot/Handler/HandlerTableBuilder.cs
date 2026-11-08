@@ -4,7 +4,7 @@ using OpenWorker.Hotspot.Handler.Extensions;
 
 namespace OpenWorker.Hotspot.Handler;
 
-public sealed class HandlerCollectionBuilder(HandlerBuilder builder, ILogger<HandlerCollection> logger)
+public sealed partial class HandlerTableBuilder(HandlerBuilder builder, ILogger<HandlerTable> logger)
 {
     internal static IEnumerable<Type> InDomain =>
         AppDomain.CurrentDomain.GetAssemblies()
@@ -21,7 +21,7 @@ public sealed class HandlerCollectionBuilder(HandlerBuilder builder, ILogger<Han
         foreach (var handler in exists)
         {
             list[handler.Opcode] = new Handler(handler.Class, handler.Delegate);
-            logger.LogDebug("[ Found Hotspot Handler ]: [{Opcode}] {Name}", handler.Opcode, handler.Class.Name);
+            LogFoundHandler(handler.Opcode, handler.Class.Name);
         }
 
         return list;
@@ -48,4 +48,7 @@ public sealed class HandlerCollectionBuilder(HandlerBuilder builder, ILogger<Han
     {
         return short.MaxValue;
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "[ Found Hotspot Handler ]: [{Opcode}] {Name}")]
+    private partial void LogFoundHandler(MessageOpcode opcode, string name);
 }
