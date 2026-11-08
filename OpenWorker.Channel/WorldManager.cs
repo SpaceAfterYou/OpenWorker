@@ -27,7 +27,8 @@ public sealed class WorldManager(
     World ecs,
     IRedisCollection<ChannelCache> channels,
     IRedisCollection<DistrictCache> districts,
-    IRedisCollection<MazeReserveCache> mazeReserves)
+    IRedisCollection<MazeReserveCache> mazeReserves,
+    IRedisCollection<MazeCache> mazes)
 {
     /// <summary>
     /// How long a move between servers stays valid. The client reconnects right after the response,
@@ -36,7 +37,24 @@ public sealed class WorldManager(
     public static TimeSpan ReservationLifetime { get; } = TimeSpan.FromSeconds(60);
 
     private short Gate { get; } = configuration.GetGate();
-    private (string Host, short Port) Maze { get; } = configuration.GetMazeAddress();
+    /// <summary>
+    /// Where players go when no maze server of the gate has registered itself.
+    /// </summary>
+    private (string Host, short Port) DefaultMaze { get; } = configuration.GetMazeAddress();
+
+    /// <summary>
+    /// The maze server of this gate with the fewest players.
+    /// </summary>
+    private async ValueTask<(string Host, short Port)> GetMazeAsync()
+    {
+        int gate = Gate;
+
+        var running = await mazes
+            .Where(x => x.Gate == gate)
+            .ToListAsync();
+
+        return running.MinBy(x => x.Players) is { } maze ? (maze.Host, maze.Port) : DefaultMaze;
+    }
 
     /// <summary>
     /// Enters the location or tells the client that the entry failed, so that it does not wait forever.
@@ -127,6 +145,13 @@ public sealed class WorldManager(
     private async ValueTask EnterMaze(Entity player, short location, StartEventBox start)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
+        var maze = await GetMazeAsync();
+
+        // The player may have left while the servers were looked up.
+        if (!ecs.IsAlive(player))
+        {
+            return;
+        }
 
         var map = new MapValue
         {
@@ -150,8 +175,8 @@ public sealed class WorldManager(
                 Account = ecs.Get<ClaimsComponent>(player),
                 World = world,
                 Jump = start.Id,
-                Address = Maze.Host,
-                Port = Maze.Port,
+                Address = maze.Host,
+                Port = maze.Port,
                 Type = EnterMapType.Maze,
                 Map = map
             },

@@ -68,6 +68,7 @@ await Host
         // services.AddSingleton<PersonRegistry>();
 
         services.AddHotspot(context, EntityComponentService.District);
+        services.AddHostedService<MazeRegistrationService>();
 
         // services.AddHostedService<ServerBootstrapService>();
         // services.AddHostedService<KeepAliveService>();
