@@ -16,17 +16,6 @@ public readonly struct MapValue
         Server = (short)((value >> 48) & 0xFFFFUL);
     }
 
-    // public static implicit operator MapValue(ulong value)
-    // {
-    //     return new MapValue
-    //     {
-    //         // Sequence = value & 0xFFFFFFUL,
-    //         Channel = (byte)((value >> 24) & 0xFFUL),
-    //         Location = (short)((value >> 32) & 0xFFFFUL),
-    //         Server = (short)((value >> 48) & 0xFFFFUL),
-    //     };
-    // }
-    
     public static implicit operator ulong(MapValue value)
     {
         ulong result = 0;

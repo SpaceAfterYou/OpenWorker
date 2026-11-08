@@ -54,12 +54,6 @@ internal sealed class TestClient : TcpClient
         }
     }
     
-    // internal void SendLogin(string username, string password)
-    // {
-    //     var message = new LoginAuthRequest(username, password, "12-34-56-78-90-12");
-    //     Send(message);
-    // }
-    
     internal Task LoopAsync(CancellationToken token)
     {
         return Task.Factory.StartNew(

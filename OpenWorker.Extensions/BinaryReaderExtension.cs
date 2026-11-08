@@ -68,16 +68,6 @@ public static class BinaryReaderExtension
         return Enumerable.Repeat(0, count).Select(_ => reader.ReadByte());
     }
 
-    // public static IEnumerable<BoosterMazeEffectType> ReadBoosterEffectTypeAsEnumerable(this BinaryReader reader, int count)
-    // {
-    //     return Enumerable.Repeat(0, count).Select(_ => (BoosterMazeEffectType)reader.ReadByte());
-    // }
-    //
-    // public static IEnumerable<string> ReadByteLengthUnicodeStringAsEnumerable(this BinaryReader reader, int count)
-    // {
-    //     return Enumerable.Repeat(0, count).Select(_ => reader.ReadUTF16UnicodeString());
-    // }
-
 #endregion Enumerable
 
 #region Arrays
@@ -101,11 +91,6 @@ public static class BinaryReaderExtension
     {
         return Enumerable.Repeat(0, count).Select(_ => reader.ReadSingle()).ToArray();
     }
-
-    // public static string[] ReadByteLengthUnicodeStringAsArray(this BinaryReader reader, int count)
-    // {
-    //     return reader.ReadByteLengthUnicodeStringAsEnumerable(count).ToArray();
-    // }
 
 #endregion Arrays
 
