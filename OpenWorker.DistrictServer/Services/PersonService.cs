@@ -47,7 +47,6 @@ using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed partial class PersonService(
     World ecs,
     SoulMetryManager soulMetry,

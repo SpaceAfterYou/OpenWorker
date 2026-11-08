@@ -43,7 +43,6 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.MazeServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed partial class PersonService(
     World world,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,

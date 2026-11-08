@@ -9,7 +9,6 @@ namespace OpenWorker.MazeServer.Services;
 /// <summary>
 /// Cubes are taken in mazes. Which cubes there are is told to <see cref="VaccumManager"/> by the maze.
 /// </summary>
-[HotspotHandler(HotspotHandlerType.Maze)]
 public sealed class VaccumService(VaccumManager manager) :
     IHotspotHandler<VaccumClickStartRequest>,
     IHotspotHandler<VaccumClickCancelRequest>

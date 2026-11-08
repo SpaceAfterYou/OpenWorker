@@ -9,7 +9,6 @@ namespace OpenWorker.MazeServer.Services;
 /// <summary>
 /// The requests about quests that the client sends in a maze: the same as in a district.
 /// </summary>
-[HotspotHandler(HotspotHandlerType.Maze)]
 public sealed class QuestService(QuestManager questManager) :
     IHotspotHandler<QuestAcceptRequest>,
     IHotspotHandler<QuestEpisodeCompleteRequest>,

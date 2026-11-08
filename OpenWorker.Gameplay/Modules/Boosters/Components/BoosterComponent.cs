@@ -8,7 +8,6 @@ namespace OpenWorker.Gameplay.Modules.Boosters.Components;
 /// The boosters of the person, null until they are loaded.
 /// </summary>
 [EntityComponent(EntityComponentService.District)]
-[EntityComponent(EntityComponentService.Maze)]
 public struct BoosterComponent
 {
     public int Person;

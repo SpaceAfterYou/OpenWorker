@@ -6,7 +6,6 @@ using OpenWorker.Hotspot.Modules.Quests.Requests;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class QuestService(QuestManager questManager) :
     IHotspotHandler<QuestAcceptRequest>,
     IHotspotHandler<QuestEpisodeCompleteRequest>,

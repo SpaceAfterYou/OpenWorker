@@ -3,12 +3,10 @@ using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.Commands;
 using OpenWorker.Hotspot.Handler.Attributes;
-using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class ChatService(
     World world,
     CommandManager commands,

@@ -10,7 +10,6 @@ namespace OpenWorker.DistrictServer.Services;
 /// <summary>
 /// Helpers are called in mazes only, so the district just keeps the list and refuses the rest.
 /// </summary>
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class HelperService(HelperManager manager) :
     IHotspotHandler<HelperSummonRequest>,
     IHotspotHandler<HelperSupportInfoRequest>,

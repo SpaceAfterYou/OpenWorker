@@ -7,7 +7,6 @@ namespace OpenWorker.Gameplay.Modules.SoulMetry.Components;
 /// The soul metries of the person, null until they are loaded.
 /// </summary>
 [EntityComponent(EntityComponentService.District)]
-[EntityComponent(EntityComponentService.Maze)]
 public struct SoulMetryComponent
 {
     public int Person;

@@ -5,7 +5,6 @@ using OpenWorker.Hotspot.Modules.Persons.Requests;
 
 namespace OpenWorker.GateServer.Gameplay.Services;
 
-[HotspotHandler(HotspotHandlerType.Gate)]
 public sealed class PersonService(PersonGameplay person, SecondPasswordGameplay secondPassword) :
     IHotspotHandler<PersonListRequest>, 
     IHotspotHandler<PersonCreateRequest>,

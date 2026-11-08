@@ -77,6 +77,7 @@ await Host
         // services.AddSingleton<NpcManager>();
         // services.AddSingleton<PersonRegistry>();
 
+        // A player in a maze is the person of the district, with the same components.
         services.AddHotspot(context, EntityComponentService.District);
         services.AddRegistrationService<MazeRegistrationService>();
 
