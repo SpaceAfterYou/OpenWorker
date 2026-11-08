@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ShopBuyRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ShopBuyRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
     
@@ -20,9 +22,9 @@ public readonly struct ShopBuyRequest(BinaryReader reader) : IRequestHotspotMess
         
 #region Message: Body
     
-    public ActorValue Npc { get; } = new(reader);
-    public int Index { get; } = reader.ReadInt32();
-    public short Count { get; } = reader.ReadInt16();
+    public ActorValue Npc { get; }
+    public int Index { get; }
+    public short Count { get; }
 
 #endregion Message: Body
 }
