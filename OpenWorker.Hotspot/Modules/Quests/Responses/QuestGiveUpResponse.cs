@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct QuestGiveUpResponse : IResponseHotspotMessage
+public readonly partial struct QuestGiveUpResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,13 +24,4 @@ public readonly struct QuestGiveUpResponse : IResponseHotspotMessage
     public int Episode { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Episode);
-    }
-
-#endregion Interface: IWritableData
 }
