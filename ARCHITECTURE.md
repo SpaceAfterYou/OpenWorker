@@ -112,6 +112,31 @@ flowchart TB
 4. **Changes that span rows run in one transaction** in the store (`LeagueStore`, `FriendStore`).
 5. **No blocking calls** (`.Result`, `.Wait()`, `WorldLoop.Send`): the loop would wait for itself.
 
+## Rules for the rest of the code
+
+1. **Background services look the same.** `protected override async Task ExecuteAsync` with a `PeriodicTimer`
+   (built on the injected `TimeProvider` where a test drives it); one failed round is logged and the next one
+   runs; cancellation on stop ends the loop quietly. `Task.Factory.StartNew` with an async lambda is forbidden:
+   it returns a `Task<Task>` whose failure nobody sees. A one-shot start-up service may throw: a server that
+   cannot start must not run.
+2. **`Debug.Assert` only for invariants of our own code.** Anything that comes from Redis, the database, the
+   settings, the batch files or the client is checked in Release and answered (a failure response to the client,
+   a refused start of the server), with a log line.
+3. **Data of the client is hostile.** A length or an index is checked before it is used; a packet that fails to
+   parse or a handler that throws counts against the error budget of the session (`HandlerErrorBudget`,
+   `Hotspot:ErrorBudget`), which closes the connection when it runs out. That is a `Warning`; `Critical` is for the
+   state of the process. A handler that needs a component the client may not have yet (`LuaMaze`, a reservation)
+   checks for it with `Has`/`TryGet` and ignores or refuses the request.
+4. **Logs are structured.** Message templates through `[LoggerMessage]` methods, never string interpolation and
+   never `Console`.
+5. **Data is parsed and formatted with `CultureInfo.InvariantCulture`.** A server under a culture with a decimal
+   comma reads `1.5` from a batch file otherwise.
+
+The build enforces part of this: `Directory.Build.props` turns on the analyzers (`latest-recommended`), the
+projects `Hotspot`, `Channel`, `Gameplay` and `Persistence` treat warnings as errors, and `eng/check-forbidden.sh`
+(run by CI) fails on `Task.Factory.StartNew` and `Console` in product code. Path-scoped exceptions, such as the
+names of client enums, live in `.editorconfig` with the reason next to them.
+
 ## Database
 
 Every server migrates the database before its other services start (`PersistenceBootstrapService`);
