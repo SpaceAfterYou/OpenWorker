@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Modules.Persons;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Combat;
@@ -43,7 +45,8 @@ public sealed class CombatTables(
     ReadOnlyCollection<MonsterRow> monsters,
     ReadOnlyCollection<StatusRow> statuses,
     ReadOnlyCollection<SkillRow> skills,
-    ReadOnlyCollection<CharacterInfoRow> characters)
+    ReadOnlyCollection<CharacterInfoRow> characters,
+    TitleCatalog? titles = null)
 {
     private const int HeroRowStep = 1000;
 
@@ -59,6 +62,7 @@ public sealed class CombatTables(
     private Dictionary<short, StatusRow> Statuses { get; } = statuses.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<int, SkillRow> Skills { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<(Hero Hero, byte Level), CombatStats> People { get; } = [];
+    private Dictionary<(Hero Hero, byte Level, int Prefix, int Suffix), CombatStats> Titled { get; } = [];
     private Dictionary<int, MonsterCombatComponent> MonsterStats { get; } = [];
 
     public MonsterCombatComponent GetMonster(int identifier)
@@ -98,6 +102,36 @@ public sealed class CombatTables(
         return result;
     }
 
+    /// <summary>
+    /// What a character is capable of with the titles it has chosen for its abilities.
+    /// </summary>
+    public CombatStats GetPerson(Hero hero, byte level, in TitleComponent title)
+    {
+        if (titles is null || (title.AbilityPrimary <= 0 && title.AbilitySecondary <= 0))
+        {
+            return GetPerson(hero, level);
+        }
+
+        var key = (hero, level, title.AbilityPrimary, title.AbilitySecondary);
+
+        if (Titled.TryGetValue(key, out var result))
+        {
+            return result;
+        }
+
+        StatEffect[] effects =
+        [
+            .. Effects(titles, title.AbilityPrimary, hero),
+            .. Effects(titles, title.AbilitySecondary, hero)
+        ];
+
+        result = StatEffects.Apply(GetPerson(hero, level), effects);
+
+        Titled.Add(key, result);
+
+        return result;
+    }
+
     public SkillDamage GetSkill(int identifier)
     {
         return Skills.TryGetValue(identifier, out var row) ? SkillDamage.From(row) : default;
@@ -109,6 +143,13 @@ public sealed class CombatTables(
     public bool HoldsSector(int identifier)
     {
         return Monsters.TryGetValue(identifier, out var row) && HoldsSector(row);
+    }
+
+    private static StatEffect[] Effects(TitleCatalog catalog, int title, Hero hero)
+    {
+        return title > 0 && catalog.TryGet(title, out var definition) && definition.CanBeUsedBy(hero)
+            ? definition.Effects
+            : [];
     }
 
     private MonsterCombatComponent Create(in MonsterRow row)

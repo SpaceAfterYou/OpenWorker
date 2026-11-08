@@ -1,4 +1,5 @@
 using Lua;
+using Microsoft.Extensions.Logging;
 
 namespace OpenWorker.Lua;
 
@@ -26,7 +27,7 @@ public partial class LuaTrap : ILuaUserData
 /// nothing here does yet, so the traps are accepted and then forgotten: a script goes on as if they were there.
 /// </summary>
 [LuaObject]
-public partial class LuaGameHelper : ILuaUserData
+public partial class LuaGameHelper(ILogger<LuaGameHelper> logger) : ILuaUserData
 {
     [LuaMember]
     public void CreateEntity(LuaMaze maze, VVector3 position, string kind, string name, string animation)
@@ -41,12 +42,16 @@ public partial class LuaGameHelper : ILuaUserData
     [LuaMember]
     public LuaTrap CreateTrap(LuaMaze maze, VVector3 position, int skill)
     {
+        logger.IgnoredCreateTrap(position.X, position.Y, position.Z, skill);
+
         return new LuaTrap();
     }
 
     [LuaMember]
     public LuaTrap CreateTrapEx(LuaMaze maze, int box, int skill)
     {
+        logger.IgnoredCreateTrapEx(box, skill);
+
         return new LuaTrap();
     }
 
@@ -59,6 +64,8 @@ public partial class LuaGameHelper : ILuaUserData
     [LuaMember]
     public LuaTrap CreateTrapExLoop(LuaMaze maze, int box, int skill, int count)
     {
+        logger.IgnoredCreateTrapExLoop(box, skill, count);
+
         return new LuaTrap();
     }
 

@@ -6,7 +6,7 @@ namespace OpenWorker.Gameplay.Modules.SoulMetry;
 /// <summary>
 /// One thing to find in a maze: the interaction object, the maze it stands in and how often it shows up.
 /// </summary>
-public readonly record struct SoulMetryObject(int Object, int Maze, int SpawnRate);
+public readonly record struct SoulMetryObject(int ObjectId, int Maze, int SpawnRate);
 
 /// <summary>
 /// A reward of a soul metry. The type tells what the item column holds: 1 is an item, 2 is a row of the

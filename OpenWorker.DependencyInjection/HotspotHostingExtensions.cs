@@ -17,6 +17,7 @@ public static class HotspotHostingExtensions
         context.Configuration[ConfigurationUtils.InstanceTargetKey] = service.ToString();
 
         return services
+            .AddServerOptions()
             .AddSingleton(_ =>
             {
                 var factory = _.GetRequiredService<IDbContextFactory<PersistenceContext>>();

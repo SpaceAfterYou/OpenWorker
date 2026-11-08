@@ -126,7 +126,7 @@ public sealed class AiScriptLoaderTest
     {
         if (Folder is null || !Directory.Exists(Folder))
         {
-            Assert.Inconclusive("OPENWORKER_TEST_AI is not set.");
+            Assert.Inconclusive("OPENWORKER_TEST_AI is not set to the folder with the AI scripts of the client.");
         }
 
         var recorder = new Recorder();
@@ -170,7 +170,7 @@ public sealed class AiScriptLoaderTest
     {
         if (Folder is null || !File.Exists(Path.Combine(Folder, "Ai_MOB_0021_Nastypuppet.lua")))
         {
-            Assert.Inconclusive("OPENWORKER_TEST_AI is not set.");
+            Assert.Inconclusive("OPENWORKER_TEST_AI is not set to the folder with the AI scripts of the client.");
         }
 
         var profile = new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, Folder).Get("ai_mob_0021_nastypuppet");

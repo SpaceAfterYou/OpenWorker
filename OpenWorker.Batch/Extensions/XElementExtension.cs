@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using System.Drawing;
+﻿using System.Drawing;
+using System.Globalization;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -20,31 +20,31 @@ internal static class XElementExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static float GetSingle(this XElement @this, string xpath)
     {
-        return float.Parse(@this.GetRawValue(xpath));
+        return float.Parse(@this.GetRawValue(xpath), CultureInfo.InvariantCulture);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int GetUInt32(this XElement @this, string xpath)
     {
-        return int.Parse(@this.GetRawValue(xpath));
+        return int.Parse(@this.GetRawValue(xpath), CultureInfo.InvariantCulture);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int GetInt32(this XElement @this, string xpath)
     {
-        return int.Parse(@this.GetRawValue(xpath));
+        return int.Parse(@this.GetRawValue(xpath), CultureInfo.InvariantCulture);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static short GetInt16(this XElement @this, string xpath)
     {
-        return short.Parse(@this.GetRawValue(xpath));
+        return short.Parse(@this.GetRawValue(xpath), CultureInfo.InvariantCulture);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static byte GetByte(this XElement @this, string xpath)
     {
-        return byte.Parse(@this.GetRawValue(xpath));
+        return byte.Parse(@this.GetRawValue(xpath), CultureInfo.InvariantCulture);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -56,8 +56,12 @@ internal static class XElementExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static Vector3 GetVector3(this XElement @this, string xpath)
     {
-        var values = @this.Split(xpath, float.Parse);
-        Debug.Assert(values.Length == 3);
+        var values = @this.Split(xpath, e => float.Parse(e, CultureInfo.InvariantCulture));
+
+        if (values.Length != 3)
+        {
+            throw new XmlParsingException($"Expected 3 components for {xpath}, found {values.Length}");
+        }
 
         return new Vector3(values[0], values[1], values[2]);
     }
@@ -65,8 +69,12 @@ internal static class XElementExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static Color GetColor(this XElement @this, string xpath)
     {
-        var values = @this.Split(xpath, byte.Parse);
-        Debug.Assert(values.Length == 4);
+        var values = @this.Split(xpath, e => byte.Parse(e, CultureInfo.InvariantCulture));
+
+        if (values.Length != 4)
+        {
+            throw new XmlParsingException($"Expected 4 components for {xpath}, found {values.Length}");
+        }
 
         return Color.FromArgb(red: values[0], green: values[1], blue: values[2], alpha: values[3]);
     }

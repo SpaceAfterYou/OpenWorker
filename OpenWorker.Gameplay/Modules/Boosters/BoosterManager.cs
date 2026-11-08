@@ -14,7 +14,7 @@ namespace OpenWorker.Gameplay.Modules.Boosters;
 /// Boosters change what a person earns or spends for a while. They come from items, events and parties, last for
 /// a time that is used up in districts, in mazes or everywhere, and only one of a group can be active.
 /// </summary>
-public sealed class BoosterManager(
+public sealed partial class BoosterManager(
     World world,
     PersonStateStore store,
     BoosterCatalog catalog,
@@ -66,7 +66,7 @@ public sealed class BoosterManager(
         // A booster that runs out needs a time to run for.
         if (definition.Time != BoosterTime.Endless && milliseconds <= 0)
         {
-            logger.LogDebug("The booster {Booster} has no time to run for.", booster);
+            LogNoTime(booster);
             return false;
         }
 
@@ -200,7 +200,7 @@ public sealed class BoosterManager(
 
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                logger.LogError(e, "Boosters of a person failed.");
+                LogBoostersFailed(e);
             }
         }
     }
@@ -307,4 +307,10 @@ public sealed class BoosterManager(
             book.Gate.Release();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "The booster {Booster} has no time to run for.")]
+    private partial void LogNoTime(short booster);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Boosters of a person failed.")]
+    private partial void LogBoostersFailed(Exception exception);
 }

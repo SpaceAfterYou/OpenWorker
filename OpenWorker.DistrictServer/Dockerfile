@@ -5,6 +5,7 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
 COPY ["OpenWorker.DistrictServer/OpenWorker.DistrictServer.csproj", "OpenWorker.DistrictServer/"]
 RUN dotnet restore "OpenWorker.DistrictServer/OpenWorker.DistrictServer.csproj"
 COPY . .

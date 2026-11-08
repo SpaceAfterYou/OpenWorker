@@ -32,7 +32,7 @@ public sealed class DamageCalculatorTest
     public void DefenseScalesWithTheLevelOfTheTarget()
     {
         // Without defense a single point of armor stands against 50 per level.
-        Assert.AreEqual(new DamageResult(98, DamageFlags.None), DamageCalculator.Calculate(Attacker, Target, Skill, DefenseType.Normal, 1f, Plain));
+        Assert.AreEqual(new DamageResult(98, HitResults.None), DamageCalculator.Calculate(Attacker, Target, Skill, DefenseType.Normal, 1f, Plain));
 
         var armored = Target with { Physical = new DamageStats { Defense = 50 } };
 
@@ -65,7 +65,7 @@ public sealed class DamageCalculatorTest
         var blind = Attacker with { Physical = Weapon with { Accuracy = 0 } };
         var result = DamageCalculator.Calculate(blind, Target, Skill, DefenseType.Normal, 1f, Lucky);
 
-        Assert.AreEqual(DamageFlags.Miss, result.Flags);
+        Assert.AreEqual(HitResults.Miss, result.Flags);
         Assert.AreEqual(49, result.Damage);
     }
 
@@ -75,8 +75,8 @@ public sealed class DamageCalculatorTest
         // The chance is a tenth of the difference, in hundredths of a percent.
         var dodging = Target with { Physical = new DamageStats { Evasion = 900 } };
 
-        Assert.AreEqual(DamageFlags.Miss, DamageCalculator.Calculate(Attacker, dodging, Skill, DefenseType.Normal, 1f, new FixedRandom(1000)).Flags & DamageFlags.Miss);
-        Assert.AreEqual(DamageFlags.None, DamageCalculator.Calculate(Attacker, dodging, Skill, DefenseType.Normal, 1f, new FixedRandom(999)).Flags & DamageFlags.Miss);
+        Assert.AreEqual(HitResults.Miss, DamageCalculator.Calculate(Attacker, dodging, Skill, DefenseType.Normal, 1f, new FixedRandom(1000)).Flags & HitResults.Miss);
+        Assert.AreEqual(HitResults.None, DamageCalculator.Calculate(Attacker, dodging, Skill, DefenseType.Normal, 1f, new FixedRandom(999)).Flags & HitResults.Miss);
     }
 
     [TestMethod]
@@ -84,7 +84,7 @@ public sealed class DamageCalculatorTest
     {
         var result = DamageCalculator.Calculate(Attacker, Target, Skill, DefenseType.Normal, 1f, Lucky);
 
-        Assert.AreEqual(DamageFlags.Critical, result.Flags);
+        Assert.AreEqual(HitResults.Critical, result.Flags);
         Assert.AreEqual(147, result.Damage);
     }
 
@@ -99,7 +99,7 @@ public sealed class DamageCalculatorTest
     [TestMethod]
     public void InvincibleTakesNothingAndGuardAFifth()
     {
-        Assert.AreEqual(new DamageResult(0, DamageFlags.None), DamageCalculator.Calculate(Attacker, Target, Skill, DefenseType.Invincible, 1f, Plain));
+        Assert.AreEqual(new DamageResult(0, HitResults.None), DamageCalculator.Calculate(Attacker, Target, Skill, DefenseType.Invincible, 1f, Plain));
         Assert.AreEqual(19, DamageCalculator.Calculate(Attacker, Target, Skill, DefenseType.Guard, 1f, Plain).Damage);
     }
 

@@ -70,7 +70,48 @@ namespace OpenWorker.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Username")
+                        .IsUnique();
+
                     b.ToTable("Accounts");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.FriendPersistent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("OwnerId")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Point")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TargetId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetId");
+
+                    b.HasIndex("OwnerId", "TargetId")
+                        .IsUnique();
+
+                    b.ToTable("Friends");
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.GatePersistent", b =>
@@ -100,6 +141,107 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("Gates");
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.LeagueApplicantPersistent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LeagueId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonId");
+
+                    b.HasIndex("LeagueId", "PersonId")
+                        .IsUnique();
+
+                    b.ToTable("LeagueApplicants");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.LeagueBoardPersistent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LeagueId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeagueId");
+
+                    b.HasIndex("PersonId");
+
+                    b.ToTable("LeagueBoards");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.LeagueMemberPersistent", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Exp")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LeagueId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("Position")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PersonId");
+
+                    b.HasIndex("LeagueId");
+
+                    b.ToTable("LeagueMembers");
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.LeaguePersistent", b =>
                 {
                     b.Property<int>("Id")
@@ -107,6 +249,10 @@ namespace OpenWorker.Persistence.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.PrimitiveCollection<int[]>("Auth")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
 
                     b.Property<short>("CardBorder")
                         .HasColumnType("smallint");
@@ -118,14 +264,52 @@ namespace OpenWorker.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("Exp")
+                        .HasColumnType("bigint");
+
+                    b.PrimitiveCollection<int[]>("LimitGoldOut")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
                     b.Property<int>("MasterId")
                         .HasColumnType("integer");
 
+                    b.Property<long>("Money")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(12)
+                        .HasMaxLength(8)
                         .IsUnicode(true)
-                        .HasColumnType("character varying(12)");
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Notice")
+                        .IsRequired()
+                        .HasMaxLength(800)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(800)");
+
+                    b.Property<DateTime?>("NoticeAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Open")
+                        .HasColumnType("boolean");
+
+                    b.PrimitiveCollection<string[]>("PositionNames")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<byte>("Rating")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("RecruitNotice")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("RecruitNoticeAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnUpdate()
@@ -134,6 +318,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("MasterId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Leagues");
                 });
@@ -212,11 +399,17 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<int>("Hero")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("LastLogoutAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("LastSelectedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int?>("LeagueId")
-                        .HasColumnType("integer");
+                    b.Property<DateTime?>("LeagueCreateBlockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LeagueJoinBlockedUntil")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<short>("Location")
                         .HasColumnType("smallint");
@@ -252,6 +445,10 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<int>("TitleAbilitySecondary")
                         .HasColumnType("integer");
 
+                    b.PrimitiveCollection<int[]>("TitleList")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
                     b.Property<int>("TitlePrimary")
                         .HasColumnType("integer");
 
@@ -268,7 +465,8 @@ namespace OpenWorker.Persistence.Migrations
 
                     b.HasIndex("GateId");
 
-                    b.HasIndex("LeagueId");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Persons");
                 });
@@ -298,6 +496,47 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("PersonStates");
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.RankingEntryPersistent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Time")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonId");
+
+                    b.HasIndex("Kind", "Scope", "PersonId")
+                        .IsUnique();
+
+                    b.ToTable("RankingEntries");
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.ServerContentPersistent", b =>
                 {
                     b.Property<byte>("Index")
@@ -317,30 +556,64 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("ServerContents");
                 });
 
-            modelBuilder.Entity("PersonPersistentPersonPersistent", b =>
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.FriendPersistent", b =>
                 {
-                    b.Property<int>("BlockedListId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("FriendListId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("BlockedListId", "FriendListId");
-
-                    b.HasIndex("FriendListId");
-
-                    b.ToTable("PersonPersistentPersonPersistent");
-                });
-
-            modelBuilder.Entity("OpenWorker.Domain.Persistent.LeaguePersistent", b =>
-                {
-                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", "Master")
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
                         .WithMany()
-                        .HasForeignKey("MasterId")
+                        .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Master");
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("TargetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.LeagueApplicantPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.LeaguePersistent", null)
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.LeagueBoardPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.LeaguePersistent", null)
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.LeagueMemberPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.LeaguePersistent", null)
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithOne()
+                        .HasForeignKey("OpenWorker.Domain.Persistent.LeagueMemberPersistent", "PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.PersonPersistent", b =>
@@ -357,15 +630,9 @@ namespace OpenWorker.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("OpenWorker.Domain.Persistent.LeaguePersistent", "League")
-                        .WithMany("MemberList")
-                        .HasForeignKey("LeagueId");
-
                     b.Navigation("Account");
 
                     b.Navigation("Gate");
-
-                    b.Navigation("League");
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.PersonStatePersistent", b =>
@@ -377,17 +644,11 @@ namespace OpenWorker.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("PersonPersistentPersonPersistent", b =>
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.RankingEntryPersistent", b =>
                 {
                     b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
                         .WithMany()
-                        .HasForeignKey("BlockedListId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
-                        .WithMany()
-                        .HasForeignKey("FriendListId")
+                        .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -400,11 +661,6 @@ namespace OpenWorker.Persistence.Migrations
             modelBuilder.Entity("OpenWorker.Domain.Persistent.GatePersistent", b =>
                 {
                     b.Navigation("Persons");
-                });
-
-            modelBuilder.Entity("OpenWorker.Domain.Persistent.LeaguePersistent", b =>
-                {
-                    b.Navigation("MemberList");
                 });
 #pragma warning restore 612, 618
         }

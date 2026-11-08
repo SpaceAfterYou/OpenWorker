@@ -9,58 +9,70 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.AuthServer.Server.Services;
 
-public sealed class GateSyncService(IDbContextFactory<PersistenceContext> factory, IRedisCollection<GateCache> gateCache, List<GateInfo> registry, ILogger<GateSyncService> logger) : BackgroundService
+public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext> factory, IRedisCollection<GateCache> gateCache, List<GateInfo> registry, ILogger<GateSyncService> logger) : BackgroundService
 {
-    protected override Task ExecuteAsync(CancellationToken cancellationToken)
-    {
-        _ = Task.Factory.StartNew(
-            () => OnTickAsync(cancellationToken),
-            cancellationToken,
-            TaskCreationOptions.LongRunning,
-            TaskScheduler.Default
-        );
-        
-        return Task.CompletedTask;
-    }
+    // TODO: 15sec
+    private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(1);
 
-    private async Task OnTickAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await using var database = await factory
-            .CreateDbContextAsync(cancellationToken);
-        
-        while (cancellationToken.IsCancellationRequested is false)
+        using var timer = new PeriodicTimer(Frequency);
+
+        try
         {
-            var updatedAt = DateTime.UtcNow.AddMinutes(-1);
-            
-            var cacheList = await AsyncEnumerable.ToArrayAsync(gateCache.Where(e => e.UpdatedAt > updatedAt), cancellationToken);
-            
-            var persistentList = await database.Gates
-                .Include(e => e.Persons)
-                .ToArrayAsync(cancellationToken);
-
-            foreach (var persistent in persistentList)
+            do
             {
-                var gate = GetGateInfo(persistent, cacheList);
-                
-                var index = registry.FindIndex(e => e.Id == persistent.Id);
-                
-                if (index == -1)
+                try
                 {
-                    logger.LogWarning("Gate not found in list: {}", persistent.Id);
-                    
-                    registry.Add(gate);
-                    
-                    logger.LogDebug("Gate added: {}", persistent.Id);
-                    
-                    continue;
+                    await SyncAsync(stoppingToken);
                 }
 
-                registry[index] = gate;
+                catch (Exception e) when (e is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
+                {
+                    LogSyncFailed(logger, e);
+                }
+            }
+            while (await timer.WaitForNextTickAsync(stoppingToken));
+        }
+
+        catch (OperationCanceledException)
+        {
+            // The server is stopping.
+        }
+    }
+
+    private async Task SyncAsync(CancellationToken cancellationToken)
+    {
+        // A context of its own for every round: one that failed in the middle is not used again.
+        await using var database = await factory
+            .CreateDbContextAsync(cancellationToken);
+
+        var updatedAt = DateTime.UtcNow.AddMinutes(-1);
+
+        var cacheList = await AsyncEnumerable.ToArrayAsync(gateCache.Where(e => e.UpdatedAt > updatedAt), cancellationToken);
+
+        var persistentList = await database.Gates
+            .Include(e => e.Persons)
+            .ToArrayAsync(cancellationToken);
+
+        foreach (var persistent in persistentList)
+        {
+            var gate = GetGateInfo(persistent, cacheList);
+
+            var index = registry.FindIndex(e => e.Id == persistent.Id);
+
+            if (index == -1)
+            {
+                logger.LogWarning("Gate not found in list: {Gate}", persistent.Id);
+
+                registry.Add(gate);
+
+                logger.LogDebug("Gate added: {Gate}", persistent.Id);
+
+                continue;
             }
 
-            // TODO: 15sec
-            await Task
-                .Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            registry[index] = gate;
         }
     }
 
@@ -81,7 +93,7 @@ public sealed class GateSyncService(IDbContextFactory<PersistenceContext> factor
             };
         }
 
-        logger.LogWarning("Gate not found in cache: {}", persistent.Id);
+        logger.LogWarning("Gate not found in cache: {Gate}", persistent.Id);
         
         return new GateInfo
         {
@@ -93,4 +105,7 @@ public sealed class GateSyncService(IDbContextFactory<PersistenceContext> factor
             OnlineCount = 0,
         };
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to synchronize the gates.")]
+    private static partial void LogSyncFailed(ILogger logger, Exception exception);
 }

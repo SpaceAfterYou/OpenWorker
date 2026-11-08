@@ -44,7 +44,6 @@ public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessag
         foreach (var friend in Data.BestOfStage)
         {
             writer.Write(friend.MyClearTime);
-            writer.Write(friend.Chapter);
             writer.Write(friend.Stage);
             writer.Write(friend.Person);
             writer.Write(friend.Hero);
@@ -58,28 +57,31 @@ public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessag
 
 #endregion Interface: IWritableData
 
+    /// <summary>
+    /// Nobody has climbed the tower on this server yet, so it has nothing to show but the chapter that was asked for.
+    /// </summary>
     public static RankingInfiniteTowerListResponse Create(int chapter)
     {
-        var data = new RankingInfiniteTowerClearInfo
+        return new RankingInfiniteTowerListResponse
         {
-            Chapter = chapter,
-            FriendPassedPerFloor = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            BestOfStage = Enumerable
-                .Range(0, 5)
-                .Select(x => new RankingInfiniteTowerRankingInfo
-                {
-                    MyClearTime = 100 * (1 + x),
-                    Chapter = chapter,
-                    Stage = 1 + x,
-                    Person = 10_000 + x,
-                    Hero = (Hero)Random.Shared.Next(1, 7),
-                    Level = (byte)Random.Shared.Next(1, byte.MaxValue),
-                    Name = $"cool girl {1 + x}",
-                    ClearTime = Random.Shared.Next(1_000, 10_000)
-                })
-                .ToArray()
+            Data = new RankingInfiniteTowerClearInfo
+            {
+                Chapter = chapter,
+                FriendPassedPerFloor = new int[15],
+                BestOfStage = Enumerable
+                    .Range(0, 5)
+                    .Select(_ => new RankingInfiniteTowerRankingInfo
+                    {
+                        MyClearTime = 0,
+                        Stage = 0,
+                        Person = 0,
+                        Hero = 0,
+                        Level = 0,
+                        Name = string.Empty,
+                        ClearTime = 0
+                    })
+                    .ToArray()
+            }
         };
-
-        return new RankingInfiniteTowerListResponse { Data = data };
     }
 }

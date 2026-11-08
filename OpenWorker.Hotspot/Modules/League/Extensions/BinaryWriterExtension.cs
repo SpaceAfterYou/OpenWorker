@@ -86,6 +86,16 @@ public static class BinaryWriterExtension
         writer.Write(value.RecruitNoticeDate);
     }
 
+    internal static void Write(this BinaryWriter writer, LeagueApplicant value)
+    {
+        value.Write(writer);
+    }
+
+    internal static void Write(this BinaryWriter writer, LeagueBoardEntry value)
+    {
+        value.Write(writer);
+    }
+
     internal static void Write(this BinaryWriter writer, LeagueInfoForMember value)
     {
         writer.Write(value.League);

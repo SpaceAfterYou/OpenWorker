@@ -2,71 +2,93 @@
 using OpenWorker.Channel;
 using OpenWorker.DistrictServer.Server.Components;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Modules.Channels;
 using OpenWorker.Hotspot.Modules.System.Responses;
 
 namespace OpenWorker.DistrictServer.Server.Services;
 
-public sealed class KeepAliveService(World world, WorldLoop loop, ServiceChannels channelCollection) : BackgroundService
+/// <summary>
+/// Asks a player that has gone quiet to answer, and disconnects the one that never does.<br/>
+/// Every <see cref="Frequency"/> a player that has not answered during the last period is sent a keep-alive
+/// and counts one more miss; an answer (see <c>SystemService</c>) forgives all misses.
+/// A player that missed <see cref="MaxMissedAnswers"/> keep-alives in a row is disconnected at the next check.
+/// </summary>
+public sealed partial class KeepAliveService(
+    World world,
+    WorldLoop loop,
+    ServiceChannels channelCollection,
+    TimeProvider time,
+    ILogger<KeepAliveService> logger
+) :
+    BackgroundService
 {
-    private static TimeSpan Frequency { get; } = TimeSpan.FromMinutes(1);
+    public static TimeSpan Frequency { get; } = TimeSpan.FromMinutes(1);
 
-    protected override Task ExecuteAsync(CancellationToken cancellationToken)
+    public const byte MaxMissedAnswers = 5;
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        return Task.Factory.StartNew(
-            () => LoopAsync(cancellationToken),
-            cancellationToken,
-            TaskCreationOptions.LongRunning,
-            TaskScheduler.Default
-        );
-    }
+        using var timer = new PeriodicTimer(Frequency, time);
 
-    private async Task LoopAsync(CancellationToken cancellationToken)
-    {
-        var stopWatch = new System.Diagnostics.Stopwatch();
-
-        while (cancellationToken.IsCancellationRequested is false)
+        try
         {
-            var ticks = TimeSpan.FromMilliseconds(DateTime.UtcNow.Ticks) - Frequency;
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                try
+                {
+                    await loop.InvokeAsync(CheckPlayers);
+                }
 
-            stopWatch.Restart();
+                catch (Exception e) when (e is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
+                {
+                    LogCheckFailed(logger, e);
+                }
+            }
+        }
 
-            await loop.InvokeAsync(() => CheckPlayers(ticks));
-
-            stopWatch.Stop();
-
-            await Task
-                .Delay(Frequency - stopWatch.Elapsed, cancellationToken);
+        catch (OperationCanceledException)
+        {
+            // The server is stopping.
         }
     }
 
-    private void CheckPlayers(TimeSpan ticks)
+    private void CheckPlayers()
     {
-            foreach (var channel in channelCollection)
-            {
-                channel.ForEach(entity =>
-                {
-                    var component = world.Get<KeepAliveComponent>(entity);
-
-                    if (component.LastTickCount >= ticks)
-                    {
-                        return;
-                    }
-
-                    var session = world.Get<ServerSessionComponent>(entity);
-                    
-                    var penalty = (byte)(1 + component.PenaltyCount);
-                    
-                    if (penalty > 5)
-                    {
-                        session.Disconnect();
-                        return;
-                    }
-
-                    session.Send(new SystemKeepAliveResponse { Time = component.LastTickCount });
-                    
-                    world.Set(entity, component with { PenaltyCount = penalty });   
-                });
-            }
+        foreach (var channel in channelCollection)
+        {
+            channel.ForEach(CheckPlayer);
+        }
     }
+
+    /// <summary>
+    /// One step of the check for one player. Runs on the world loop.
+    /// </summary>
+    public void CheckPlayer(Entity player)
+    {
+        var component = world.Get<KeepAliveComponent>(player);
+
+        if (time.GetElapsedTime(component.AnsweredAt) < Frequency)
+        {
+            return;
+        }
+
+        var session = world.Get<ServerSessionComponent>(player);
+
+        if (component.PenaltyCount >= MaxMissedAnswers)
+        {
+            LogDisconnected(logger, player.Id, component.PenaltyCount);
+
+            session.Disconnect();
+            return;
+        }
+
+        session.Send(new SystemKeepAliveResponse { Time = new TimeSpan(component.ClientTickCount) });
+
+        world.Set(player, component with { PenaltyCount = (byte)(component.PenaltyCount + 1) });
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Keep-alive check failed.")]
+    private static partial void LogCheckFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Player {Player} did not answer {Missed} keep-alives and is disconnected.")]
+    private static partial void LogDisconnected(ILogger logger, int player, byte missed);
 }

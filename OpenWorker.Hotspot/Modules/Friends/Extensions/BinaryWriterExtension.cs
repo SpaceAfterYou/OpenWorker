@@ -21,12 +21,6 @@ internal static class BinaryWriterExtension
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, FriendResult value)
-    {
-        writer.Write((int)value);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void Write(this BinaryWriter writer, FriendState value)
     {
         writer.Write((byte)value);

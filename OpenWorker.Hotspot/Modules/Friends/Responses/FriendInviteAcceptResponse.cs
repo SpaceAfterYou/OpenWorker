@@ -24,7 +24,10 @@ public readonly struct FriendInviteAcceptResponse : IResponseHotspotMessage
 #region Message: Body
 
     public required string Name { get; init; }
-    public FriendResult Result { get; init; }
+    /// <summary>
+    /// Zero for an answer that needs no words, otherwise the number of the text the client shows.
+    /// </summary>
+    public int Result { get; init; }
 
 #endregion Message: Body
 

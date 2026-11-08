@@ -1,4 +1,5 @@
 using Arch.Core;
+using Microsoft.Extensions.Logging;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Gameplay.Modules.Vaccum;
@@ -11,7 +12,12 @@ namespace OpenWorker.Lua;
 /// What the maze tells the rest of the game: who was killed, which maze was cleared, and which of its objects
 /// belong to soul metries and cubes. A failure on the other side never reaches the fight.
 /// </summary>
-public sealed class MazeReporter(DailyMissionManager missions, SoulMetryManager soulMetries, SoulMetryCatalog soulCatalog, VaccumManager cubes)
+public sealed partial class MazeReporter(
+    DailyMissionManager missions,
+    SoulMetryManager soulMetries,
+    SoulMetryCatalog soulCatalog,
+    VaccumManager cubes,
+    ILogger<MazeReporter> logger)
 {
     // The kinds of attack the table calls plain, from the ground, thrown and skills proper.
     private const byte PlainAttack = 1;
@@ -51,7 +57,7 @@ public sealed class MazeReporter(DailyMissionManager missions, SoulMetryManager 
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(MazeReporter)}]: {e}");
+            LogReportFailed(logger, e, "MonsterKilled");
         }
     }
 
@@ -70,7 +76,7 @@ public sealed class MazeReporter(DailyMissionManager missions, SoulMetryManager 
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(MazeReporter)}]: {e}");
+            LogReportFailed(logger, e, "MazeCleared");
         }
     }
 
@@ -82,7 +88,7 @@ public sealed class MazeReporter(DailyMissionManager missions, SoulMetryManager 
         return soulCatalog.All
             .SelectMany(e => e.Objects)
             .Where(e => e.Maze == maze)
-            .Select(e => e.Object)
+            .Select(e => e.ObjectId)
             .ToHashSet();
     }
 
@@ -104,7 +110,7 @@ public sealed class MazeReporter(DailyMissionManager missions, SoulMetryManager 
     {
         try
         {
-            var found = soulCatalog.All.FirstOrDefault(e => e.Objects.Any(o => o.Maze == maze && o.Object == interaction));
+            var found = soulCatalog.All.FirstOrDefault(e => e.Objects.Any(o => o.Maze == maze && o.ObjectId == interaction));
 
             if (found is not null)
             {
@@ -114,7 +120,7 @@ public sealed class MazeReporter(DailyMissionManager missions, SoulMetryManager 
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(MazeReporter)}]: {e}");
+            LogReportFailed(logger, e, "CollectSoulObject");
         }
     }
 
@@ -125,4 +131,7 @@ public sealed class MazeReporter(DailyMissionManager missions, SoulMetryManager 
     {
         cubes.Register(player, box, interaction, duration);
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The report {Report} of the maze failed; the fight goes on")]
+    private static partial void LogReportFailed(ILogger logger, Exception exception, string report);
 }

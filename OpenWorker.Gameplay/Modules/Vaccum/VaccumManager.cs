@@ -1,8 +1,6 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
-using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Components;
-using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Rewards.Types;
@@ -27,26 +25,6 @@ public sealed class VaccumCubeState(int cube, int value, TimeSpan duration)
 }
 
 /// <summary>
-/// The cubes of a person and what it is taking now.
-/// </summary>
-[EntityComponent(EntityComponentService.District)]
-[EntityComponent(EntityComponentService.Maze)]
-public struct VaccumComponent
-{
-    public Dictionary<int, VaccumCubeState>? Cubes;
-
-    /// <summary>
-    /// The cube being taken, 0 for none.
-    /// </summary>
-    public int Taking;
-
-    /// <summary>
-    /// Changes whenever a take starts or stops, so a wait that belongs to an earlier take finds out.
-    /// </summary>
-    public int Ticket;
-}
-
-/// <summary>
 /// What a cube gives. The table that tells is not part of the client, so whoever has it provides this.
 /// </summary>
 public interface IVaccumRewards
@@ -66,7 +44,7 @@ public sealed class NoVaccumRewards : IVaccumRewards
 /// Cubes lie in mazes. A person clicks one and has to stay with it for a while; if it stops, the cube is free again,
 /// if it holds out, the cube gives its reward and is gone. The maze tells the manager which cubes there are.
 /// </summary>
-public sealed class VaccumManager(
+public sealed partial class VaccumManager(
     World world,
     IRewardGranter rewards,
     IVaccumRewards cubeRewards,
@@ -233,10 +211,13 @@ public sealed class VaccumManager(
 
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            logger.LogError(e, "Taking a cube failed.");
+            LogTakeFailed(e);
         }
     }
 
     private VaccumComponent Get(Entity player) =>
         world.IsAlive(player) && world.TryGet<VaccumComponent>(player, out var component) ? component : default;
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Taking a cube failed.")]
+    private partial void LogTakeFailed(Exception exception);
 }

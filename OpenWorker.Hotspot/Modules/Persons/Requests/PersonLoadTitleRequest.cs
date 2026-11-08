@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 /// This packet doesn't have any content.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct PersonLoadTitleRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct PersonLoadTitleRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.LoadTitle;

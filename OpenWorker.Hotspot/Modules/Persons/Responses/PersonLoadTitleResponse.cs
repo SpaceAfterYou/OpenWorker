@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -8,6 +9,11 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct PersonLoadTitleResponse : IResponseHotspotMessage
 {
+    /// <summary>
+    /// The client reads the length of a list as a signed byte, and takes nothing from a longer one.
+    /// </summary>
+    public const int MaxListLength = sbyte.MaxValue;
+
 #region Interface: IHotspotMessage
 
     private const GroupOpcode Group = GroupOpcode.Character;
@@ -37,6 +43,8 @@ public readonly struct PersonLoadTitleResponse : IResponseHotspotMessage
 
     private static void Write(BinaryWriter writer, IReadOnlyCollection<int> list)
     {
+        Debug.Assert(list.Count <= MaxListLength);
+
         writer.Write((byte)list.Count);
 
         foreach (var item in list)

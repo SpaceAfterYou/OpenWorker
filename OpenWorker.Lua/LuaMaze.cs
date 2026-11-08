@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Lua;
+using Microsoft.Extensions.Logging;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Batch.Entities;
@@ -13,6 +14,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -55,13 +57,19 @@ public partial class LuaMaze(
     SkillActionProvider actions,
     CombatTables combat,
     MazeInfoRow info,
-    MazeReporter reports
+    MazeReporter reports,
+    ILogger<LuaMaze> logger
 ) : ILuaUserData
 {
     public LuaState State { get; } = state;
     
     public World Ecs { get; } = ecs;
     public VBatchFile Batch { get; } = batch;
+
+    /// <summary>
+    /// Where the maze, its script events and its script calls write to.
+    /// </summary>
+    internal ILogger Logger { get; } = logger;
 
     public MazeProgress Progress { get; } = new(batch, interactions);
 
@@ -97,7 +105,7 @@ public partial class LuaMaze(
 
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                Console.WriteLine($"[Timer {function}]: {e}");
+                maze.Logger.TimerFunctionFailed(e, function);
             }
         }
 
@@ -115,7 +123,7 @@ public partial class LuaMaze(
 
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                Console.WriteLine($"[Timer {timer}]: {e}");
+                maze.Logger.TimerFailed(e, timer);
             }
         }
 
@@ -329,7 +337,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(PlayAsync)}]: {e}");
+            Logger.SkillPlaybackFailed(e);
         }
     }
 
@@ -537,7 +545,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(ChainAsync)}]: {e}");
+            Logger.ChainFailed(e);
         }
     }
 
@@ -594,7 +602,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(FlyAsync)}]: {e}");
+            Logger.ProjectileFlightFailed(e, skill);
         }
     }
 
@@ -625,7 +633,7 @@ public partial class LuaMaze(
         var session = player.Get<ServerSessionComponent>();
         var attacker = Ecs.Get<WorldComponent>(player);
 
-        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
+        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel, Ecs.Get<TitleComponent>(player));
         var skillDamage = combat.GetSkill(skill);
         var hits = targets.Select((target, i) => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
 
@@ -667,7 +675,7 @@ public partial class LuaMaze(
                 return;
             }
 
-            await reports.MonsterKilledAsync(player, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)DamageFlags.Critical) != 0));
+            await reports.MonsterKilledAsync(player, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)HitResults.Critical) != 0));
 
             await State.OnDie(identifier, place.SpawnBox, this);
         }
@@ -906,7 +914,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(RunLaterAsync)}]: {e}");
+            Logger.DelayedActionFailed(e);
         }
     }
 
@@ -998,7 +1006,7 @@ public partial class LuaMaze(
     {
         if (type != MazeTimer.Stepped)
         {
-            Console.WriteLine($"[{nameof(AddEventTimer)}]: no timer of type {type}, {function}");
+            Logger.UnknownEventTimerType(type, function);
             return;
         }
 
@@ -1015,6 +1023,8 @@ public partial class LuaMaze(
     [LuaMember]
     public void AddTimer(int identifier, float time)
     {
+        Logger.CallAddTimer(identifier, time);
+
         Timers.AddPlain(identifier, time);
         RunTimers();
     }
@@ -1022,6 +1032,8 @@ public partial class LuaMaze(
     [LuaMember]
     public void AddTimerEx(string function, float time, int param1, int param2, int param3)
     {
+        Logger.CallAddTimerEx(function, time, param1, param2, param3);
+
         Timers.AddPlain(function, time, param1, param2, param3);
         RunTimers();
     }
@@ -1049,9 +1061,12 @@ public partial class LuaMaze(
     [LuaMember]
     public void ApplyBuff(int actor, int buff)
     {
-        Console.WriteLine($"[{nameof(ApplyBuff)}]: {actor}, {buff}");
-
-        buffManager.Apply(player, actor, buff);
+        Logger.CallApplyBuff(actor, buff);
+        
+        if (!buffManager.Apply(player, actor, buff))
+        {
+            Logger.UnknownBuff(actor, buff);
+        }
     }
 
     /// <summary>
@@ -1060,13 +1075,13 @@ public partial class LuaMaze(
     [LuaMember]
     public void ChangeMonster(string from, string to)
     {
-        Console.WriteLine($"[{nameof(ChangeMonster)}]: {from} -> {to} is not done");
+        Logger.IgnoredChangeMonster(from, to);
     }
 
     [LuaMember]
     public void ChangeNpcAnimation(int npc, string animation)
     {
-        Console.WriteLine($"[{nameof(ChangeNpcAnimation)}]: {npc}, {animation} is not shown");
+        Logger.IgnoredChangeNpcAnimation(npc, animation);
     }
 
     /// <summary>
@@ -1126,12 +1141,14 @@ public partial class LuaMaze(
     [LuaMember("ExcutEventSpawnGroupLua")]
     public void ExecuteEventSpawnGroupLua(int group)
     {
-        Console.WriteLine($"[{nameof(ExecuteEventSpawnGroupLua)}]: {group}");
+        Logger.IgnoredExecuteEventSpawnGroup(group);
     }
 
     [LuaMember("ExcutEventSpawnLua")]
     public void ExecuteEventSpawnLua(int box)
     {
+        Logger.CallExecuteEventSpawn(box);
+
         creatureManager.Create(player, box);
     }
 
@@ -1143,7 +1160,7 @@ public partial class LuaMaze(
     {
         if (type != 2 || !int.TryParse(table, out var identifier))
         {
-            Console.WriteLine($"[{nameof(ExecuteDestroy)}]: {type}, {table} is not done");
+            Logger.IgnoredExecuteDestroy(type, table, animation, suicide);
             return;
         }
 
@@ -1155,9 +1172,17 @@ public partial class LuaMaze(
     [LuaMember]
     public VVector3 GetCommonPositionBox(int box)
     {
-        return Batch.EventBox.CommonPositions
-            .First(x => x.Id == box)
-            .GetRandomPosition();
+        Logger.CallGetCommonPositionBox(box);
+
+        // A script that names a box the batch does not have keeps running, with the origin.
+        if (Batch.EventBox.CommonPositions.FirstOrDefault(x => x.Id == box) is not { } position)
+        {
+            Logger.UnknownPositionBox(box);
+
+            return new VVector3();
+        }
+
+        return position.GetRandomPosition();
     }
 
     [LuaMember]
@@ -1172,7 +1197,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void InitPartyQuest(int quest, int condition, int sector)
     {
-        Console.WriteLine($"[{nameof(InitPartyQuest)}]: {quest}, {condition}, {sector} is not done");
+        Logger.IgnoredInitPartyQuest(quest, condition, sector);
     }
 
     [LuaMember]
@@ -1199,7 +1224,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void MoveNpcToWayPoint(int npc, int waypoint)
     {
-        Console.WriteLine($"[{nameof(MoveNpcToWayPoint)}]: {npc}, {waypoint}");
+        Logger.CallMoveNpcToWayPoint(npc, waypoint);
 
         creatureManager.MoveToPoint(npc, waypoint);
     }
@@ -1231,13 +1256,13 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetEscortCondition(int condition)
     {
-        Console.WriteLine($"[{nameof(SetEscortCondition)}]: {condition} is not done");
+        Logger.IgnoredSetEscortCondition(condition);
     }
 
     [LuaMember]
     public void SetEscortMonster(LuaValue monster, LuaValue condition, LuaValue name)
     {
-        Console.WriteLine($"[{nameof(SetEscortMonster)}] is not done");
+        Logger.IgnoredSetEscortMonster();
     }
 
     [LuaMember]
@@ -1289,7 +1314,7 @@ public partial class LuaMaze(
         }
         else
         {
-            Console.WriteLine($"[{nameof(SetMazeState)}]: Invalid maze state ID: {state}");
+            Logger.UnknownMazeState(state);
         }
     }
 
@@ -1300,6 +1325,8 @@ public partial class LuaMaze(
     [LuaIgnoreMember]
     public void SetMazeState(MazeState state)
     {
+        Logger.CallSetMazeState(state);
+
         MazeState = state;
 
         if (state == MazeState.WaitToDie)
@@ -1319,13 +1346,13 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetMonsterAllowPassiveType(int monster, int type)
     {
-        Console.WriteLine($"[{nameof(SetMonsterAllowPassiveType)}]: {monster}, {type} is not done");
+        Logger.IgnoredSetMonsterAllowPassiveType(monster, type);
     }
 
     [LuaMember]
     public void SetMonsterDefenceType(int monster, int type, float time)
     {
-        Console.WriteLine($"[{nameof(SetMonsterDefenceType)}]: {monster}, {type}, {time} is not done");
+        Logger.IgnoredSetMonsterDefenceType(monster, type, time);
     }
 
     /// <summary>
@@ -1372,7 +1399,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetTrapLifeTime(int index, float time)
     {
-        Console.WriteLine($"[{nameof(SetTrapLifeTime)}]: {index}, {time}");
+        Logger.IgnoredSetTrapLifeTime(index, time);
     }
 
     /// <summary>
@@ -1391,7 +1418,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void StartDefenceMode(int table)
     {
-        Console.WriteLine($"[{nameof(StartDefenceMode)}]: {table} is not done");
+        Logger.IgnoredStartMode(nameof(StartDefenceMode), table);
     }
 
     [LuaMember]
@@ -1403,13 +1430,13 @@ public partial class LuaMaze(
     [LuaMember]
     public void StartOperationMode(int table)
     {
-        Console.WriteLine($"[{nameof(StartOperationMode)}]: {table} is not done");
+        Logger.IgnoredStartMode(nameof(StartOperationMode), table);
     }
 
     [LuaMember]
     public void StartSurvivalMode(int table)
     {
-        Console.WriteLine($"[{nameof(StartSurvivalMode)}]: {table} is not done");
+        Logger.IgnoredStartMode(nameof(StartSurvivalMode), table);
     }
 
     /// <summary>
@@ -1612,7 +1639,7 @@ public partial class LuaMaze(
 
         catch (Exception e)
         {
-            Console.WriteLine($"[{nameof(RunTimersAsync)}]: {e}");
+            Logger.TimersFailed(e);
         }
 
         finally

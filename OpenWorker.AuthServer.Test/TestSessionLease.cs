@@ -2,11 +2,12 @@ using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using OpenWorker.AuthServer.App;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Hotspot.Cache;
@@ -202,7 +203,7 @@ public sealed class TestSessionLease
             Sessions,
             factory,
             world,
-            new ConfigurationBuilder().Build(),
+            Options.Create(new AuthOptions()),
             NullLogger<LoginGameplay>.Instance,
             leases);
 

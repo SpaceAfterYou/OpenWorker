@@ -1,35 +1,36 @@
 using Arch.Core;
+using OpenWorker.Channel.Community;
 using OpenWorker.Commands;
-using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
-using OpenWorker.Gameplay;
-using OpenWorker.Hotspot.Modules.Chat.Enums;
-using OpenWorker.Hotspot.Modules.Chat.Requests;
-using OpenWorker.Hotspot.Modules.Chat.Responses;
+using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.MazeServer.Services;
 
 [HotspotHandler(HotspotHandlerType.District)]
-public sealed class ChatService(World world, CommandManager commands) : IHotspotHandler<ChatStuffRequest>
+public sealed class ChatService(
+    World world,
+    CommandManager commands,
+    CommunityNetwork network,
+    ChatThrottle throttle,
+    IPartyRoster parties,
+    ILeagueRoster leagues,
+    IPersonRelations relations,
+    IMegaphoneSource megaphones
+) :
+    ChatServiceBase(world, network, throttle, parties, leagues, relations, megaphones)
 {
-    public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatStuffRequest request)
+    /// <summary>
+    /// Every player has a maze of their own, so there is nobody close by to hear but the player.
+    /// </summary>
+    protected override void SendNearby(Entity player, IResponseHotspotMessage message)
     {
-        if (!await commands.TryExecute(context.Player, request.Message))
-        {
-            return;
-        }
+        world.Get<ServerSessionComponent>(player).Send(message);
+    }
 
-        var session = world.Get<ServerSessionComponent>(context.Player);
-        var actor = world.Get<ActorComponent>(context.Player);
-
-        session.Send(new ChatNormalResponse
-        {
-            Actor = actor,
-            Appearance = ChatMessageAppearance.System,
-            Message = $"[CMD EXEC] {request.Message}"
-        });
+    protected override ValueTask<bool> TryCommandAsync(Entity player, string text)
+    {
+        return commands.TryExecute(player, text);
     }
 }
