@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.DependencyInjection;
@@ -725,6 +727,32 @@ public sealed class TestServerOptions
         {
             Assert.IsTrue(File.Exists(AppSettings(server)), $"{server} has no appsettings.json next to the tests.");
         }
+    }
+
+    /// <summary>
+    /// The console prints the scope of a session (<c>SessionLogScope</c>) after each line. The options of the formatter
+    /// are the place for it: the older <c>Logging:Console:IncludeScopes</c> replaces them with defaults.
+    /// </summary>
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    [DataRow(Relay)]
+    public void TheConsolePrintsTheScopes(string server)
+    {
+        using var host = new HostBuilder()
+            .ConfigureAppConfiguration(configuration => configuration.AddJsonFile(AppSettings(server), optional: false))
+            .ConfigureLogging((context, logging) => logging
+                .AddConfiguration(context.Configuration.GetSection("Logging"))
+                .AddConsole())
+            .Build();
+
+        var console = host.Services.GetRequiredService<IOptionsMonitor<ConsoleLoggerOptions>>().CurrentValue;
+        var simple = host.Services.GetRequiredService<IOptionsMonitor<SimpleConsoleFormatterOptions>>().CurrentValue;
+
+        Assert.AreEqual(ConsoleFormatterNames.Simple, console.FormatterName);
+        Assert.IsTrue(simple.IncludeScopes, $"{server} does not print the scopes of its log lines.");
     }
 
     public TestContext TestContext { get; set; } = null!;
