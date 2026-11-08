@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct SkillResetTagetRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct SkillResetTagetRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,9 +22,9 @@ public readonly struct SkillResetTagetRequest(BinaryReader reader) : IRequestHot
 
 #region Message: Body
 
-    public int SkillGroup { get; init; } = reader.ReadInt32();
-    public int Divergence { get; init; } = reader.ReadInt32();
-    public StorageSlot StorageSlot { get; init; } = new(reader);
+    public int SkillGroup { get; }
+    public int Divergence { get; }
+    public StorageSlot StorageSlot { get; }
 
 #endregion Message: Body
 }
