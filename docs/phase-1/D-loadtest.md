@@ -129,7 +129,8 @@ under the true value), the maximum is exact.
 - **Loop lag (Prometheus)**: with `--prometheus <url>`, instant queries over the length of the run for the metrics
   workstream A adds: `worldloop.queue.length` (max, mean), and p50, p99, mean and rate of `worldloop.callback.duration`,
   `simulation.step.duration` and `handler.duration`, per `job`. The names are the ones Prometheus has after the OTLP
-  translation (`worldloop_queue_length`, `worldloop_callback_duration_milliseconds`, ...) and are settings:
+  translation (`worldloop_queue_length`, `worldloop_callback_duration_seconds`, ...; the servers record durations in
+  seconds, so these figures are in seconds) and are settings:
   `--prom-metric worldloop-queue=<name>` (keys `worldloop-queue`, `worldloop-callback`, `simulation-step`, `handler`),
   `--prom-query label=promql` for any other query, `--prom-group-by`. A Prometheus that cannot be reached skips the step
   with a note; a metric with no data is noted in its row.

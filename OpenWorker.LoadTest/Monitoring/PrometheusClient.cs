@@ -22,7 +22,7 @@ internal sealed record PrometheusReport(string? Address, string? Note, IReadOnly
 /// <summary>
 /// Asks Prometheus, after the run, what the servers saw: how long the world loop was in the way, and how long the
 /// handlers took. The names of the metrics are the ones the servers export, which Prometheus rewrites when it takes
-/// them over OpenTelemetry: dots become underscores, the unit may be added (<c>_milliseconds</c>), and a histogram
+/// them over OpenTelemetry: dots become underscores, the unit is added (<c>_seconds</c> for the durations, which the servers record in seconds), and a histogram
 /// is stored as <c>_bucket</c>, <c>_sum</c> and <c>_count</c>. The names are settings, not guesses in the code.
 /// </summary>
 internal static class PrometheusClient
@@ -31,14 +31,14 @@ internal static class PrometheusClient
 
     /// <summary>
     /// The metrics asked for by default, by the key that <c>--prom-metric</c> renames, with the name Prometheus has
-    /// for them when the servers export the unit in milliseconds.
+    /// for them: the servers record durations in seconds (unit <c>s</c>), so the figures of the report are in seconds.
     /// </summary>
     public static IReadOnlyDictionary<string, string> DefaultMetrics { get; } = new Dictionary<string, string>
     {
         ["worldloop-queue"] = "worldloop_queue_length",
-        ["worldloop-callback"] = "worldloop_callback_duration_milliseconds",
-        ["simulation-step"] = "simulation_step_duration_milliseconds",
-        ["handler"] = "handler_duration_milliseconds"
+        ["worldloop-callback"] = "worldloop_callback_duration_seconds",
+        ["simulation-step"] = "simulation_step_duration_seconds",
+        ["handler"] = "handler_duration_seconds"
     };
 
     /// <summary>

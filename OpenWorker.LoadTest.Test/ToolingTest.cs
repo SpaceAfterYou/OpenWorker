@@ -445,7 +445,7 @@ public sealed class ToolingTest
         var queries = PrometheusClient.BuildQueries(options, TimeSpan.FromSeconds(74.2));
 
         Assert.IsTrue(queries.Any(e => e.Query == "max by (job) (max_over_time(my_queue[75s]))"));
-        Assert.IsTrue(queries.Any(e => e.Query.Contains("histogram_quantile(0.99, sum by (job, le) (rate(worldloop_callback_duration_milliseconds_bucket[75s])))", StringComparison.Ordinal)));
+        Assert.IsTrue(queries.Any(e => e.Query.Contains("histogram_quantile(0.99, sum by (job, le) (rate(worldloop_callback_duration_seconds_bucket[75s])))", StringComparison.Ordinal)));
         Assert.IsTrue(queries.Any(e => e.Label == "custom" && e.Query == "rate(x[75s])"));
 
         options.PrometheusGroupBy = string.Empty;
