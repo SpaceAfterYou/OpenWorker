@@ -84,4 +84,48 @@ public sealed class MazeScheduleTest
             World.Destroy(world);
         }
     }
+
+    [TestMethod]
+    public async Task ScriptThatFailsEndsTheMazeOfItsPlayerAndNotTheLoop()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var time = new FakeTimeProvider();
+            var clock = TestMazes.Clock(time);
+            var state = LuaState.Create();
+
+            await state.DoStringAsync("""
+                function OnTimerComplete(timer, maze) error("the script is broken") end
+                function OnNpcRotation(npc, key, maze) heard = true end
+                """);
+
+            var player = world.Create();
+            var maze = TestMazes.Create(world, player, clock: clock, state: state);
+
+            world.Add(player, maze);
+            Assert.IsTrue(maze.TryStart());
+
+            maze.AddTimer(1, 0.05f);
+            maze.SetNpcRotation(3, 0f, 1);
+
+            for (var tick = 0; tick < 40; tick++)
+            {
+                time.Advance(SimulationClock.Period);
+                clock.Tick();
+            }
+
+            // The maze is over for the player: it is off the clock, nothing it waited for runs, and the player is in no maze.
+            Assert.IsFalse(world.Has<LuaMaze>(player));
+            Assert.AreEqual(0, clock.Count);
+            Assert.AreEqual(0, maze.Scheduled);
+            Assert.IsTrue(state.Environment["heard"].Type == LuaValueType.Nil);
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
 }

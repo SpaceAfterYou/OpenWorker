@@ -32,17 +32,20 @@ public partial class LuaGameHelper(ILogger<LuaGameHelper> logger) : ILuaUserData
     [LuaMember]
     public void CreateEntity(LuaMaze maze, VVector3 position, string kind, string name, string animation)
     {
+        NotDone(maze, nameof(CreateEntity));
     }
 
     [LuaMember]
     public void CreateProjectile(LuaMaze maze, VVector3 position, VVector3 direction, int skill, float speed)
     {
+        NotDone(maze, nameof(CreateProjectile));
     }
 
     [LuaMember]
     public LuaTrap CreateTrap(LuaMaze maze, VVector3 position, int skill)
     {
-        logger.IgnoredCreateTrap(position.X, position.Y, position.Z, skill);
+        NotDone(maze, nameof(CreateTrap));
+        logger.IgnoredCreateTrap(position?.X ?? 0f, position?.Y ?? 0f, position?.Z ?? 0f, skill);
 
         return new LuaTrap();
     }
@@ -50,6 +53,7 @@ public partial class LuaGameHelper(ILogger<LuaGameHelper> logger) : ILuaUserData
     [LuaMember]
     public LuaTrap CreateTrapEx(LuaMaze maze, int box, int skill)
     {
+        NotDone(maze, nameof(CreateTrapEx));
         logger.IgnoredCreateTrapEx(box, skill);
 
         return new LuaTrap();
@@ -58,12 +62,15 @@ public partial class LuaGameHelper(ILogger<LuaGameHelper> logger) : ILuaUserData
     [LuaMember]
     public LuaTrap CreateTrapLoop(LuaMaze maze, VVector3 position, int skill, int count)
     {
+        NotDone(maze, nameof(CreateTrapLoop));
+
         return new LuaTrap();
     }
 
     [LuaMember]
     public LuaTrap CreateTrapExLoop(LuaMaze maze, int box, int skill, int count)
     {
+        NotDone(maze, nameof(CreateTrapExLoop));
         logger.IgnoredCreateTrapExLoop(box, skill, count);
 
         return new LuaTrap();
@@ -72,7 +79,24 @@ public partial class LuaGameHelper(ILogger<LuaGameHelper> logger) : ILuaUserData
     [LuaMember]
     public LuaTrap CreateTrapGroup(LuaMaze maze, int box, int skill, int count)
     {
+        NotDone(maze, nameof(CreateTrapGroup));
+
         return new LuaTrap();
+    }
+
+    /// <summary>
+    /// A script may hand over no maze at all; the warning then names no script.
+    /// </summary>
+    private void NotDone(LuaMaze? maze, string function)
+    {
+        if (maze is not null)
+        {
+            maze.NotDone(function);
+        }
+        else if (ScriptWarnings.First(string.Empty, function))
+        {
+            logger.NotDoneByServer(function, string.Empty);
+        }
     }
 
     /// <summary>

@@ -139,8 +139,17 @@ internal static partial class LuaLog
 
     // ---- The script asks for something that is not there ---------------------------------------
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script {Script} called {Function}, which the server does not do; the call does nothing (said once for the script and the function)")]
+    public static partial void NotDoneByServer(this ILogger logger, string function, string script);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The script {Script} failed in {Function}; the maze ends for the player")]
+    public static partial void ScriptFailed(this ILogger logger, Exception exception, string function, string script);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script added an event timer {Function} of the unknown type {Type}; it is left out")]
     public static partial void UnknownEventTimerType(this ILogger logger, int type, string function);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script stored a value under something that is neither a key nor a number; nothing is stored")]
+    public static partial void UnreadableLuaValue(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script set the unknown maze state {State}")]
     public static partial void UnknownMazeState(this ILogger logger, int state);

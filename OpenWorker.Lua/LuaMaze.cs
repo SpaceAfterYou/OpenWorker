@@ -328,6 +328,65 @@ public partial class LuaMaze(
     }
 
     /// <summary>
+    /// The name of the script of the maze, as the maze table gives it.
+    /// </summary>
+    internal string Script => info.Script ?? string.Empty;
+
+    /// <summary>
+    /// The player has left or the script has failed: nothing of the maze runs any more.
+    /// </summary>
+    internal bool IsClosed => Closed;
+
+    /// <summary>
+    /// The script called something the server does not do: the call does nothing, and the log says so once for the
+    /// script and the function, however many mazes of the script call it how often.
+    /// </summary>
+    internal void NotDone(string function)
+    {
+        if (ScriptWarnings.First(Script, function))
+        {
+            Logger.NotDoneByServer(function, Script);
+        }
+    }
+
+    /// <summary>
+    /// What the player reads when the script of the maze has failed.
+    /// </summary>
+    private const string FailureNotice = "The maze has stopped: its script failed. Leave it through the menu.";
+
+    /// <summary>
+    /// The script failed inside a call of the server: the maze ends for the player. Nothing of it runs any more, its
+    /// requests are refused as those of a player who is in no maze, the player is told, and the way out of the maze
+    /// stays open.
+    /// </summary>
+    internal void Fail(string function, Exception exception)
+    {
+        if (Closed)
+        {
+            return;
+        }
+
+        Logger.ScriptFailed(exception, function, Script);
+
+        Close();
+
+        if (!Ecs.IsAlive(player))
+        {
+            return;
+        }
+
+        if (Ecs.TryGet(player, out LuaMaze? current) && ReferenceEquals(current, this))
+        {
+            Ecs.Remove<LuaMaze>(player);
+        }
+
+        if (Ecs.TryGet(player, out ServerSessionComponent session))
+        {
+            session.Send(new ChatNoticeResponse { Type = 0, Message = FailureNotice, Color = "" });
+        }
+    }
+
+    /// <summary>
     /// How long to wait for a number of seconds a script or a table gives: nothing for what is not a number or not
     /// positive, a day at most.
     /// </summary>
@@ -1313,12 +1372,14 @@ public partial class LuaMaze(
     [LuaMember]
     public void ChangeMonster(string from, string to)
     {
+        NotDone("ChangeMonster");
         Logger.IgnoredChangeMonster(from, to);
     }
 
     [LuaMember]
     public void ChangeNpcAnimation(int npc, string animation)
     {
+        NotDone("ChangeNpcAnimation");
         Logger.IgnoredChangeNpcAnimation(npc, animation);
     }
 
@@ -1379,6 +1440,7 @@ public partial class LuaMaze(
     [LuaMember("ExcutEventSpawnGroupLua")]
     public void ExecuteEventSpawnGroupLua(int group)
     {
+        NotDone("ExcutEventSpawnGroupLua");
         Logger.IgnoredExecuteEventSpawnGroup(group);
     }
 
@@ -1398,6 +1460,7 @@ public partial class LuaMaze(
     {
         if (type != 2 || !int.TryParse(table, out var identifier))
         {
+            NotDone("ExecuteDestroy");
             Logger.IgnoredExecuteDestroy(type, table, animation, suicide);
             return;
         }
@@ -1435,6 +1498,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void InitPartyQuest(int quest, int condition, int sector)
     {
+        NotDone("InitPartyQuest");
         Logger.IgnoredInitPartyQuest(quest, condition, sector);
     }
 
@@ -1462,6 +1526,8 @@ public partial class LuaMaze(
     [LuaMember]
     public void MoveNpcToWayPoint(int npc, int waypoint)
     {
+        // Townsfolk do not walk here yet: the call only checks that the creature is there.
+        NotDone(nameof(MoveNpcToWayPoint));
         Logger.CallMoveNpcToWayPoint(npc, waypoint);
 
         creatureManager.MoveToPoint(npc, waypoint);
@@ -1494,12 +1560,14 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetEscortCondition(int condition)
     {
+        NotDone("SetEscortCondition");
         Logger.IgnoredSetEscortCondition(condition);
     }
 
     [LuaMember]
     public void SetEscortMonster(LuaValue monster, LuaValue condition, LuaValue name)
     {
+        NotDone("SetEscortMonster");
         Logger.IgnoredSetEscortMonster();
     }
 
@@ -1537,7 +1605,15 @@ public partial class LuaMaze(
             return;
         }
 
-        LuaValues[keyOrIndex.Read<int>()] = value.Read<int>();
+        // A script that gives no number under no index stores nothing; a value that is no number is zero, as in the scripts
+        // that compare what they stored with numbers.
+        if (!keyOrIndex.TryRead<int>(out var index))
+        {
+            Logger.UnreadableLuaValue();
+            return;
+        }
+
+        LuaValues[index] = value.TryRead<int>(out var number) ? number : 0;
     }
 
     /// <summary>
@@ -1584,12 +1660,14 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetMonsterAllowPassiveType(int monster, int type)
     {
+        NotDone("SetMonsterAllowPassiveType");
         Logger.IgnoredSetMonsterAllowPassiveType(monster, type);
     }
 
     [LuaMember]
     public void SetMonsterDefenceType(int monster, int type, float time)
     {
+        NotDone("SetMonsterDefenceType");
         Logger.IgnoredSetMonsterDefenceType(monster, type, time);
     }
 
@@ -1637,6 +1715,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void SetTrapLifeTime(int index, float time)
     {
+        NotDone("SetTrapLifeTime");
         Logger.IgnoredSetTrapLifeTime(index, time);
     }
 
@@ -1656,6 +1735,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void StartDefenceMode(int table)
     {
+        NotDone(nameof(StartDefenceMode));
         Logger.IgnoredStartMode(nameof(StartDefenceMode), table);
     }
 
@@ -1668,12 +1748,14 @@ public partial class LuaMaze(
     [LuaMember]
     public void StartOperationMode(int table)
     {
+        NotDone(nameof(StartOperationMode));
         Logger.IgnoredStartMode(nameof(StartOperationMode), table);
     }
 
     [LuaMember]
     public void StartSurvivalMode(int table)
     {
+        NotDone(nameof(StartSurvivalMode));
         Logger.IgnoredStartMode(nameof(StartSurvivalMode), table);
     }
 

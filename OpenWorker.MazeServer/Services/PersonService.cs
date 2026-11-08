@@ -205,8 +205,17 @@ public sealed partial class PersonService(
         // A few mazes have no script among the files of the client, and are played without one.
         if (File.Exists(script))
         {
-            await state
-                .DoFileAsync(script, context.CancellationToken);
+            try
+            {
+                await state
+                    .DoFileAsync(script, context.CancellationToken);
+            }
+
+            // A script that does not load is no fault of the client: the maze runs without it.
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                LogScriptFailed(logger, e, script);
+            }
         }
         else
         {
@@ -305,6 +314,9 @@ public sealed partial class PersonService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} has no navigation mesh, its monsters walk where they like: {Error}")]
     private static partial void LogNoNavigationMesh(ILogger logger, string maze, string? error);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The script {Script} of the maze failed to load, the maze runs without it")]
+    private static partial void LogScriptFailed(ILogger logger, Exception exception, string script);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The script {Script} of the maze is missing, the maze runs without it")]
     private static partial void LogNoScript(ILogger logger, string script);
