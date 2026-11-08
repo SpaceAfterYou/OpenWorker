@@ -4,14 +4,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Monster.Responses;
 
 /// <summary>
 /// A monster looks at somebody else now. No target is the actor with every bit set.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MonsterTargetChangeResponse : IResponseHotspotMessage
+public readonly partial struct MonsterTargetChangeResponse : IResponseHotspotMessage
 {
     public const int NoTarget = -1;
 
@@ -26,10 +28,4 @@ public readonly struct MonsterTargetChangeResponse : IResponseHotspotMessage
     /// The actor in the form the client keeps it in a packet.
     /// </summary>
     public int Target { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Target);
-    }
 }
