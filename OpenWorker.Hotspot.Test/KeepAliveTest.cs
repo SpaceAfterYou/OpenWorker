@@ -362,7 +362,7 @@ public sealed class KeepAliveTest
         using var fixture = new Fixture();
 
         // A channel that cannot be walked: every check of the players fails on it.
-        fixture.Channels.Add(default);
+        fixture.Channels.Add(null!);
 
         await fixture.Service.StartAsync(CancellationToken.None);
 
