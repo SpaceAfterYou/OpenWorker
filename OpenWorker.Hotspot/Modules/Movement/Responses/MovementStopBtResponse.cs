@@ -5,11 +5,13 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MovementStopBtResponse : IResponseHotspotMessage
+public readonly partial struct MovementStopBtResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -32,19 +34,4 @@ public readonly struct MovementStopBtResponse : IResponseHotspotMessage
     public float Pitch { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.WriteMapValue(MapId);
-        writer.Write(PosX);
-        writer.Write(PosY);
-        writer.Write(PosZ);
-        writer.Write(Yaw);
-        writer.Write(Pitch);
-    }
-
-#endregion Interface: IWritableData
 }

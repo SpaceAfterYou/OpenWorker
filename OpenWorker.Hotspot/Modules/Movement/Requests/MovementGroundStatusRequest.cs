@@ -4,18 +4,20 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct MovementGroundStatusRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct MovementGroundStatusRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.GroundStatus;
 
-    public ActorValue dwActorID { get; } = new(reader);
-    public int nStatus { get; } = reader.ReadInt32();
-    public float fValue { get; } = reader.ReadSingle();
+    public ActorValue dwActorID { get; }
+    public int nStatus { get; }
+    public float fValue { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

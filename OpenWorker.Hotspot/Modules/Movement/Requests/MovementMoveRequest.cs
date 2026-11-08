@@ -5,27 +5,29 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct MovementMoveRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct MovementMoveRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.Move;
 
-    public ActorValue dwActorID { get; } = new(reader);
-    public MapValue nMapID { get; } = new(reader);
-    public float fPosX { get; } = reader.ReadSingle();
-    public float fPosY { get; } = reader.ReadSingle();
-    public float fPosZ { get; } = reader.ReadSingle();
-    public float fYaw { get; } = reader.ReadSingle();
-    public float fTargetPosX { get; } = reader.ReadSingle();
-    public float fTargetPosY { get; } = reader.ReadSingle();
-    public byte byRunBit { get; } = reader.ReadByte();
-    public float fPitch { get; } = reader.ReadSingle();
-    public float fMoveSpeed { get; } = reader.ReadSingle();
-    public byte byChangeMotion { get; } = reader.ReadByte();
+    public ActorValue dwActorID { get; }
+    public MapValue nMapID { get; }
+    public float fPosX { get; }
+    public float fPosY { get; }
+    public float fPosZ { get; }
+    public float fYaw { get; }
+    public float fTargetPosX { get; }
+    public float fTargetPosY { get; }
+    public byte byRunBit { get; }
+    public float fPitch { get; }
+    public float fMoveSpeed { get; }
+    public byte byChangeMotion { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

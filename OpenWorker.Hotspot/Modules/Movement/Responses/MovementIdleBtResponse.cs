@@ -5,14 +5,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
 /// <summary>
 /// A monster stands still and plays an animation of its own.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MovementIdleBtResponse : IResponseHotspotMessage
+public readonly partial struct MovementIdleBtResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.IdleBt;
@@ -34,14 +36,4 @@ public readonly struct MovementIdleBtResponse : IResponseHotspotMessage
     /// How long the client waits before it moves again. A negative value tells it to play the animation to the end.
     /// </summary>
     public float Delay { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Position);
-        writer.Write(Yaw);
-        writer.Write(Animation);
-        writer.Write(DefaultStep);
-        writer.Write(Delay);
-    }
 }

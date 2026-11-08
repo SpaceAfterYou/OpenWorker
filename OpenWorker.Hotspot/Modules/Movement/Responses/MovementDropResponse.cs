@@ -5,14 +5,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
 /// <summary>
 /// An actor falls down to a place.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MovementDropResponse : IResponseHotspotMessage
+public readonly partial struct MovementDropResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.Drop;
@@ -27,12 +29,4 @@ public readonly struct MovementDropResponse : IResponseHotspotMessage
     /// The client puts the actor on the place at once.
     /// </summary>
     public bool Sync { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Position);
-        writer.Write(Yaw);
-        writer.Write(Sync);
-    }
 }

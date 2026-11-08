@@ -6,11 +6,13 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MovementMoveBtResponse : IResponseHotspotMessage
+public readonly partial struct MovementMoveBtResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.MoveBt;
@@ -27,18 +29,4 @@ public readonly struct MovementMoveBtResponse : IResponseHotspotMessage
     public float Pitch { get; init; }
     public float MoveSpeed { get; init; }
     public byte ChangeMotion { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.WriteMapValue(Map);
-        writer.Write(Pos);
-        writer.Write(Yaw);
-        writer.Write(TargetPosX);
-        writer.Write(TargetPosY);
-        writer.Write(RunBit);
-        writer.Write(Pitch);
-        writer.Write(MoveSpeed);
-        writer.Write(ChangeMotion);
-    }
 }

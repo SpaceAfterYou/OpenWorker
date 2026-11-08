@@ -5,14 +5,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
 /// <summary>
 /// An actor is held at a place.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MovementGrapResponse : IResponseHotspotMessage
+public readonly partial struct MovementGrapResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.Grap;
@@ -21,10 +23,4 @@ public readonly struct MovementGrapResponse : IResponseHotspotMessage
 
     public ActorValue Actor { get; init; }
     public Vector3 Position { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Position);
-    }
 }
