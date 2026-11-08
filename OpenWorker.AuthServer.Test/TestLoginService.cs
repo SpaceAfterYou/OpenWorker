@@ -91,7 +91,9 @@ public sealed class TestLoginService
         var client = provider.GetRequiredService<TestClient>();
         await client.ConnectAsync((IPEndPoint)server.LocalEndpoint, TestContext.CancellationToken).ConfigureAwait(false);
 
-        entity.Set(world, new ServerSessionComponent(client));
+        // The world goes first: `entity.Set(world, component)` binds to the overload that sets two components, the
+        // first of them a World, and writes past the end of the chunk.
+        world.Set(entity, new ServerSessionComponent(client));
         
         var gameplay = provider.GetRequiredService<LoginGameplay>();
         
