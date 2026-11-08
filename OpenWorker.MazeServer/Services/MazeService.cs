@@ -34,13 +34,14 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.MazeServer.Services;
 
-public sealed class MazeService(
+public sealed partial class MazeService(
     World ecs,
     BatchManager batches,
     IRedisCollection<DistrictReserveCache> districtReserves,
     WorldManager worldManager,
     IConfiguration configuration,
-    QuestManager questManager
+    QuestManager questManager,
+    ILogger<MazeService> logger
 ) :
     IHotspotHandler<MazeCompleteRequest>,
     IHotspotHandler<SkillActiveSkillRequest>,
@@ -431,14 +432,29 @@ public sealed class MazeService(
         var session = ecs.Get<ServerSessionComponent>(context.Player);
 
         if (!batches.TryGetAndCache(world.Location, out var mazeBatch) ||
-            mazeBatch.EventBox.MazeEscapes.FirstOrDefault() is not { } escape ||
-            !await worldManager.IsDistrictRunningAsync(escape.Field))
+            mazeBatch.EventBox.MazeEscapes.FirstOrDefault() is not { } escape)
         {
             session.Send(new WorldEnterResponse { Map = EnterMapResultValue.Error });
             return;
         }
 
-        var (districtCache, channelCache) = await worldManager.GetDistrictAsync(escape.Field);
+        var placement = await worldManager.GetDistrictAsync(escape.Field);
+
+        // The player may have left while the servers were looked up.
+        if (!ecs.IsAlive(context.Player))
+        {
+            return;
+        }
+
+        if (placement is null)
+        {
+            LogNoDistrictToExit(world.Location, escape.Field);
+
+            session.Send(new WorldEnterResponse { Map = EnterMapResultValue.Failed(EnterMapResultValue.ServerUnavailable) });
+            return;
+        }
+
+        var (districtCache, channelCache) = placement;
 
         if (!batches.TryGetAndCache(districtCache.Location, out var districtBatch))
         {
@@ -552,4 +568,7 @@ public sealed class MazeService(
 
         session.Send(new MazeLuaFunctionResponse { Box = request.Box });
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} leads to location {Location}, but no district of it can take a player")]
+    private partial void LogNoDistrictToExit(int maze, int location);
 }

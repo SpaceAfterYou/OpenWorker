@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using Arch.Core;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Batch.Entities;
@@ -20,7 +20,7 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.Channel;
 
-public sealed class WorldManager(
+public sealed partial class WorldManager(
     IConfiguration configuration,
     BatchManager provider,
     IRedisCollection<DistrictReserveCache> districtReserveCache,
@@ -28,7 +28,8 @@ public sealed class WorldManager(
     IRedisCollection<ChannelCache> channels,
     IRedisCollection<DistrictCache> districts,
     IRedisCollection<MazeReserveCache> mazeReserves,
-    IRedisCollection<MazeCache> mazes)
+    IRedisCollection<MazeCache> mazes,
+    ILogger<WorldManager> logger)
 {
     /// <summary>
     /// How long a move between servers stays valid. The client reconnects right after the response,
@@ -57,46 +58,76 @@ public sealed class WorldManager(
     }
 
     /// <summary>
+    /// How an attempt to enter a location ended.
+    /// </summary>
+    private enum EnterOutcome
+    {
+        Entered,
+
+        /// <summary>
+        /// The client asked for something that cannot be entered.
+        /// </summary>
+        Failed,
+
+        /// <summary>
+        /// The location exists, but no server is running it.
+        /// </summary>
+        Unavailable
+    }
+
+    /// <summary>
     /// Enters the location or tells the client that the entry failed, so that it does not wait forever.
     /// </summary>
     public async ValueTask EnterAsync(Entity player, short location, int jump)
     {
-        if (await TryEnter(player, location, jump))
+        var outcome = await EnterCoreAsync(player, location, jump);
+
+        // The player may have left while the servers were looked up.
+        if (outcome is EnterOutcome.Entered || !ecs.IsAlive(player))
         {
             return;
         }
 
-        ecs.Get<ServerSessionComponent>(player).Send(new WorldEnterResponse { Map = EnterMapResultValue.Error });
+        var result = outcome is EnterOutcome.Unavailable
+            ? EnterMapResultValue.Failed(EnterMapResultValue.ServerUnavailable)
+            : EnterMapResultValue.Error;
+
+        ecs.Get<ServerSessionComponent>(player).Send(new WorldEnterResponse { Map = result });
     }
 
     public async ValueTask<bool> TryEnter(Entity player, short location, int jump = 0)
     {
-        if (!provider.TryGetAndCache(location, out var batch, out var type) ||
-            !TryGetStart(batch, location, jump, out var start))
+        return await EnterCoreAsync(player, location, jump) is EnterOutcome.Entered;
+    }
+
+    private async ValueTask<EnterOutcome> EnterCoreAsync(Entity player, short location, int jump)
+    {
+        if (!provider.TryGetAndCache(location, out var batch, out var type))
         {
-            return false;
+            LogUnknownLocation(location);
+
+            return EnterOutcome.Failed;
+        }
+
+        if (!TryGetStart(batch, location, jump, out var start))
+        {
+            LogNoStart(location, jump);
+
+            return EnterOutcome.Failed;
         }
 
         switch (type)
         {
             case BatchType.Maze:
                 await EnterMaze(player, location, start);
-                return true;
+                return EnterOutcome.Entered;
 
             case BatchType.District:
-                int districtLocation = location;
-
-                if (!await districts.AnyAsync(x => x.Location == districtLocation))
-                {
-                    return false;
-                }
-
-                await TryEnterDistrict(player, location, start);
-                return true;
+                return await TryEnterDistrict(player, location, start);
 
             case BatchType.None:
             default:
-                return false;
+                return EnterOutcome.Failed;
         }
     }
 
@@ -202,11 +233,22 @@ public sealed class WorldManager(
         session.Send(new WorldEnterResponse { Map = enter });
     }
 
-    private async ValueTask TryEnterDistrict(Entity player, short location, StartEventBox start)
+    private async ValueTask<EnterOutcome> TryEnterDistrict(Entity player, short location, StartEventBox start)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
-        var (district, channel) = await GetDistrictAsync(location);
+        if (await GetDistrictAsync(location) is not { } placement)
+        {
+            return EnterOutcome.Unavailable;
+        }
+
+        // The player may have left while the servers were looked up.
+        if (!ecs.IsAlive(player))
+        {
+            return EnterOutcome.Failed;
+        }
+
+        var (district, channel) = placement;
 
         var map = new MapValue
         {
@@ -257,6 +299,8 @@ public sealed class WorldManager(
             .InsertAsync(cache, ReservationLifetime);
 
         session.Send(new WorldEnterResponse { Map = enter });
+
+        return EnterOutcome.Entered;
     }
 
     public async Task<bool> SelectPerson(Entity entity, int person)
@@ -278,15 +322,13 @@ public sealed class WorldManager(
 
         var worldComponent = ecs.Get<WorldComponent>(personList.SlotList[slot]);
 
-        int location = worldComponent.Location;
-
-        if (!await districts.AnyAsync(x => x.Location == location))
+        if (await GetDistrictAsync(worldComponent.Location) is not { } placement)
         {
             session.Send(new CharacterSelectResponse { Zone = EnterMapResultValue.Failed(EnterMapResultValue.ServerUnavailable) });
             return false;
         }
 
-        var (district, channel) = await GetDistrictAsync(worldComponent.Location);
+        var (district, channel) = placement;
 
         var reserve = new DistrictReserveCache
         {
@@ -343,16 +385,22 @@ public sealed class WorldManager(
         return true;
     }
 
-    public async ValueTask<bool> IsDistrictRunningAsync(int location)
-    {
-        return await districts.AnyAsync(x => x.Location == location);
-    }
-
-    public async Task<Tuple<DistrictCache, ChannelCache>> GetDistrictAsync(int location)
+    /// <summary>
+    /// The district of the location with the fewest players and the emptiest of its channels, or null
+    /// when no district of the location is running or none of them has a channel yet.
+    /// </summary>
+    public async Task<DistrictPlacement?> GetDistrictAsync(int location)
     {
         var availableDistricts = await districts
             .Where(x => x.Location == location)
             .ToArrayAsync();
+
+        if (availableDistricts.Length == 0)
+        {
+            LogNoDistrict(location);
+
+            return null;
+        }
 
         var districtGuids = availableDistricts
             .Select(d => d.Guid)
@@ -362,31 +410,60 @@ public sealed class WorldManager(
             .Where(c => districtGuids.Contains(c.Owner))
             .ToArrayAsync();
 
-        Debug.Assert(allChannels.Length > 0);
+        var placement = Pick(availableDistricts, allChannels);
 
-        var districtChannelStats = allChannels
+        if (placement is null)
+        {
+            LogNoChannel(location);
+        }
+
+        return placement;
+    }
+
+    /// <summary>
+    /// The district with the fewest players, then with the most channels, then with the lowest workload,
+    /// and the emptiest channel of it. Districts without a channel cannot take a player.
+    /// </summary>
+    public static DistrictPlacement? Pick(IReadOnlyCollection<DistrictCache> availableDistricts, IReadOnlyCollection<ChannelCache> allChannels)
+    {
+        var best = allChannels
             .GroupBy(c => c.Owner)
             .Select(g => new
             {
-                DistrictGuid = g.Key,
+                District = availableDistricts.FirstOrDefault(d => d.Guid == g.Key),
                 TotalOnlineCount = g.Sum(c => c.OnlineCount),
                 ChannelCount = g.Count(),
                 AverageWorkload = g.Average(c => (int)c.Workload),
                 Channels = g.ToArray()
             })
-            .ToArray();
-
-        var bestDistrict = districtChannelStats
+            .Where(d => d.District is not null)
             .OrderBy(d => d.TotalOnlineCount)
             .ThenByDescending(d => d.ChannelCount)
             .ThenBy(d => d.AverageWorkload)
-            .First();
+            .FirstOrDefault();
 
-        var bestChannel = bestDistrict.Channels
+        if (best is null)
+        {
+            return null;
+        }
+
+        var bestChannel = best.Channels
             .OrderBy(c => c.OnlineCount)
             .ThenBy(c => c.Workload)
             .First();
 
-        return Tuple.Create(availableDistricts.First(d => d.Guid == bestDistrict.DistrictGuid), bestChannel);
+        return new DistrictPlacement(best.District!, bestChannel);
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "No batch for location {Location}")]
+    private partial void LogUnknownLocation(int location);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The batch of location {Location} has neither the start point {Jump} nor the default one")]
+    private partial void LogNoStart(int location, int jump);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No district of location {Location} is running")]
+    private partial void LogNoDistrict(int location);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The districts of location {Location} have no channel to take a player")]
+    private partial void LogNoChannel(int location);
 }

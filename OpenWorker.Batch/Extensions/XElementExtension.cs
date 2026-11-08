@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -57,7 +56,11 @@ internal static class XElementExtension
     internal static Vector3 GetVector3(this XElement @this, string xpath)
     {
         var values = @this.Split(xpath, float.Parse);
-        Debug.Assert(values.Length == 3);
+
+        if (values.Length != 3)
+        {
+            throw new XmlParsingException($"Expected 3 components for {xpath}, found {values.Length}");
+        }
 
         return new Vector3(values[0], values[1], values[2]);
     }
@@ -66,7 +69,11 @@ internal static class XElementExtension
     internal static Color GetColor(this XElement @this, string xpath)
     {
         var values = @this.Split(xpath, byte.Parse);
-        Debug.Assert(values.Length == 4);
+
+        if (values.Length != 4)
+        {
+            throw new XmlParsingException($"Expected 4 components for {xpath}, found {values.Length}");
+        }
 
         return Color.FromArgb(red: values[0], green: values[1], blue: values[2], alpha: values[3]);
     }
