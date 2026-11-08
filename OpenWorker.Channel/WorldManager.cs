@@ -7,6 +7,7 @@ using OpenWorker.Batch.Entities;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -30,7 +31,7 @@ public sealed partial class WorldManager(
     IRedisCollection<ChannelCache> channels,
     IRedisCollection<DistrictCache> districts,
     IRedisCollection<MazeReserveCache> mazeReserves,
-    IRedisCollection<MazeCache> mazes,
+    MazeDirectory mazes,
     IPersonFlush persons,
     ILogger<WorldManager> logger)
 {
@@ -47,17 +48,11 @@ public sealed partial class WorldManager(
     private (string Host, short Port) DefaultMaze { get; } = (mazeEndpoint.Value.Host, (short)mazeEndpoint.Value.Port);
 
     /// <summary>
-    /// The maze server of this gate with the fewest players.
+    /// The maze server of this gate with the fewest players: one call to the sorted set of <see cref="MazeDirectory"/>.
     /// </summary>
     private async ValueTask<(string Host, short Port)> GetMazeAsync()
     {
-        int gate = Gate;
-
-        var running = await mazes
-            .Where(x => x.Gate == gate)
-            .ToListAsync();
-
-        return running.MinBy(x => x.Players) is { } maze ? (maze.Host, maze.Port) : DefaultMaze;
+        return await mazes.PickAsync(Gate) ?? DefaultMaze;
     }
 
     /// <summary>
@@ -382,9 +377,18 @@ public sealed partial class WorldManager(
     /// </summary>
     public async Task<DistrictPlacement?> GetDistrictAsync(int location)
     {
-        var availableDistricts = await districts
+        // Both searches by the location at once: one round trip instead of two after each other. A channel whose district
+        // is not among the districts is left out by Pick.
+        var districtsOfLocation = districts
             .Where(x => x.Location == location)
             .ToArrayAsync();
+
+        var channelsOfLocation = channels
+            .Where(c => c.Location == location)
+            .ToArrayAsync();
+
+        var availableDistricts = await districtsOfLocation;
+        var allChannels = await channelsOfLocation;
 
         if (availableDistricts.Length == 0)
         {
@@ -392,14 +396,6 @@ public sealed partial class WorldManager(
 
             return null;
         }
-
-        var districtGuids = availableDistricts
-            .Select(d => d.Guid)
-            .ToArray();
-
-        var allChannels = await channels
-            .Where(c => districtGuids.Contains(c.Owner))
-            .ToArrayAsync();
 
         var placement = Pick(availableDistricts, allChannels);
 

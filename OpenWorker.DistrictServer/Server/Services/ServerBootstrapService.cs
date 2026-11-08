@@ -10,8 +10,9 @@ namespace OpenWorker.DistrictServer.Server.Services;
 
 /// <summary>
 /// Tells the other servers that this district runs, where it is and where a player enters it.
-/// A district that cannot say so cannot serve anybody, so the host does not start. The record has no lifetime:
-/// when the server drains it is removed, and no player is sent to a district that is going away.
+/// A district that cannot say so cannot serve anybody, so the host does not start. The record expires unless the
+/// server renews it, so a district that crashed drops out by itself; when the server drains it is removed, and no
+/// player is sent to a district that is going away.
 /// </summary>
 public sealed partial class ServerBootstrapService(
     IRedisCollection<DistrictCache> cache,
@@ -22,6 +23,13 @@ public sealed partial class ServerBootstrapService(
 ) :
     RegistrationService
 {
+    public static TimeSpan RenewInterval { get; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// Three missed renewals and the district is taken for gone.
+    /// </summary>
+    public static TimeSpan Lifetime { get; } = RenewInterval * 3;
+
     private DistrictCache? _record;
 
     private short Gate { get; } = gate.Value.Id;
@@ -73,9 +81,32 @@ public sealed partial class ServerBootstrapService(
             Rotation = start.Rotation
         };
 
-        await cache.InsertAsync(record);
+        await cache.InsertAsync(record, Lifetime);
 
         _record = record;
+
+        using var timer = new PeriodicTimer(RenewInterval);
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                try
+                {
+                    await cache.InsertAsync(record, Lifetime);
+                }
+
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    LogRenewFailed(e);
+                }
+            }
+        }
+
+        catch (OperationCanceledException)
+        {
+            // The server is stopping.
+        }
     }
 
     protected override async Task RemoveAsync(CancellationToken cancellationToken)
@@ -102,6 +133,9 @@ public sealed partial class ServerBootstrapService(
 
         return new InvalidOperationException(reason);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to renew the record of the district in Redis.")]
+    private partial void LogRenewFailed(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to remove the record of the district from Redis.")]
     private partial void LogRemoveFailed(Exception exception);

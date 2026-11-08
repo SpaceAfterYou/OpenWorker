@@ -11,20 +11,29 @@ namespace OpenWorker.Channel.Services;
 
 /// <summary>
 /// Keeps the online count of the channels of this server in Redis. The records themselves are written by
-/// <see cref="ChannelBootstrapService"/>, and taken back here when the server drains: a channel that stays in Redis
-/// after its server has gone sends the players of the next login to a server that is not there.
+/// <see cref="ChannelBootstrapService"/> with a lifetime that every update renews, and taken back here when the server
+/// drains: a channel that stays in Redis after its server has gone sends the players of the next login to a server that
+/// is not there, and the lifetime makes the records of a server that crashed go by themselves.
 /// </summary>
 internal sealed partial class ChannelLifecycleService(
     IRedisCollection<ChannelCache> cache,
     ServiceChannels channels,
     IOptions<InstanceOptions> instance,
+    IOptions<GateOptions> gate,
     ILogger<ChannelLifecycleService> logger
 ) :
     RegistrationService
 {
     private Guid Instance { get; } = instance.Value.Identifier;
+    private short Location { get; } = instance.Value.Location;
+    private short Gate { get; } = gate.Value.Id;
 
     private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How long the record of a channel lives without an update.
+    /// </summary>
+    internal static TimeSpan Lifetime { get; } = TimeSpan.FromSeconds(30);
 
 #region BackgroundService
 
@@ -85,16 +94,28 @@ internal sealed partial class ChannelLifecycleService(
             var value = await cache
                 .FirstOrDefaultAsync(e => e.Identifier == channel.Identifier && e.Owner == Instance);
 
+            // The record expired (Redis was away longer than its lifetime): it is written again.
             if (value is null)
             {
                 LogChannelNotFound(logger, Instance, channel.Identifier);
+
+                await cache.InsertAsync(new ChannelCache
+                {
+                    Owner = Instance,
+                    Gate = Gate,
+                    Location = Location,
+                    Identifier = channel.Identifier,
+                    OnlineCount = channel.Online
+                }, Lifetime);
+
                 continue;
             }
 
             value.OnlineCount = channel.Online;
 
+            // Written whole with its lifetime: the update renews the record.
             await cache
-                .UpdateAsync(value);
+                .InsertAsync(value, Lifetime);
         }
     }
 

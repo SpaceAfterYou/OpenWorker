@@ -17,6 +17,7 @@ using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using Redis.OM;
 using Redis.OM.Searching;
+using StackExchange.Redis;
 using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.AuthServer.Test;
@@ -34,6 +35,7 @@ public sealed class TestLeaveManager
     private const short GatePort = 10_010;
 
     private static IRedisCollection<SessionCache> Sessions { get; set; } = null!;
+    private static IConnectionMultiplexer Redis { get; set; } = null!;
     private static IRedisCollection<GateCache> Gates { get; set; } = null!;
 
     [ClassInitialize]
@@ -46,7 +48,9 @@ public sealed class TestLeaveManager
             Assert.Inconclusive("OPENWORKER_TEST_REDIS is not set.");
         }
 
-        var provider = new RedisConnectionProvider(connection);
+        Redis = await ConnectionMultiplexer.ConnectAsync(new RedisOptions { ConnectionString = connection }.ToConfigurationOptions());
+
+        var provider = new RedisConnectionProvider(Redis);
 
         Sessions = Cache.CreateCollection<SessionCache>(provider);
         Gates = Cache.CreateCollection<GateCache>(provider);
@@ -69,7 +73,7 @@ public sealed class TestLeaveManager
         public int Person { get; } = Random.Shared.Next(1, 1_000_000);
         public short Gate { get; } = (short)Random.Shared.Next(1_000, short.MaxValue);
         public SessionValue Session { get; }
-        public SessionLeaseManager Leases { get; } = new(Sessions);
+        public SessionLeaseManager Leases { get; } = new(Sessions, Redis);
         public LeaveManager Leaving { get; }
 
         public Harness()
