@@ -8,19 +8,21 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
 /// <summary>
 /// Leaves the league.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct LeagueWithdrawRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct LeagueWithdrawRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.Withdraw;
 
-    public int Actor { get; } = reader.ReadInt32();
+    public int Actor { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

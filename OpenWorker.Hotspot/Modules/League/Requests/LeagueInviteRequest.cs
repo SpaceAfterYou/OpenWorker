@@ -8,25 +8,30 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
 /// <summary>
 /// Asks a player to join the league.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct LeagueInviteRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct LeagueInviteRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.Invite;
 
-    public string LeagueName { get; } = reader.ReadLeagueName();
-    public string TargetName { get; } = reader.ReadPersonName();
-    public string RequesterName { get; } = reader.ReadPersonName();
-    public int Actor { get; } = reader.ReadInt32();
-    public int TargetActor { get; } = reader.ReadInt32();
-    public int League { get; } = reader.ReadInt32();
-    public int Result { get; } = reader.ReadInt32();
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string LeagueName { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string TargetName { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string RequesterName { get; }
+    public int Actor { get; }
+    public int TargetActor { get; }
+    public int League { get; }
+    public int Result { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

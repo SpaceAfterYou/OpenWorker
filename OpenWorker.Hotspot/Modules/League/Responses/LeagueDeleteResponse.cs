@@ -8,14 +8,16 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Responses;
 
 /// <summary>
 /// The league is gone, or the number of the text that says why not.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct LeagueDeleteResponse : IResponseHotspotMessage
+public readonly partial struct LeagueDeleteResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.Delete;
@@ -23,9 +25,4 @@ public readonly struct LeagueDeleteResponse : IResponseHotspotMessage
     public int Result { get; init; }
 
     public MessageOpcode Opcode => new(Group, Command);
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Result);
-    }
 }

@@ -8,22 +8,25 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
 /// <summary>
 /// Turns an invitation down.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct LeagueInviteRejectRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct LeagueInviteRejectRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.InviteReject;
 
-    public string TargetName { get; } = reader.ReadPersonName();
-    public int Requester { get; } = reader.ReadInt32();
-    public int Target { get; } = reader.ReadInt32();
-    public int Result { get; } = reader.ReadInt32();
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string TargetName { get; }
+    public int Requester { get; }
+    public int Target { get; }
+    public int Result { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }

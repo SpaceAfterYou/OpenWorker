@@ -8,22 +8,26 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
 /// <summary>
 /// Renames a position.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct LeaguePositionNameChangeRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct LeaguePositionNameChangeRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.PositionNameChange;
 
-    public int Position { get; } = reader.ReadInt32();
-    public string Name { get; } = reader.ReadUtf8UnicodeString(11);
-    public int Result { get; } = reader.ReadInt32();
-    public string PreviousName { get; } = reader.ReadUtf8UnicodeString(11);
+    public int Position { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string Name { get; }
+    public int Result { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string PreviousName { get; }
 
     public MessageOpcode Opcode => new(Group, Command);
 }
