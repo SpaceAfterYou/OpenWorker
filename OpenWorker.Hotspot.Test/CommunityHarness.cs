@@ -198,7 +198,7 @@ internal sealed class TestServer : IDisposable
         }
     }
 
-    public TestServer(MemoryCommunity community, IEnumerable<ICommunityListener>? listeners = null)
+    public TestServer(MemoryCommunity community, IEnumerable<ICommunityListener>? listeners = null, Func<IPresenceSource, IPresenceSource>? wrapSource = null)
     {
         World = World.Create();
         Loop = new WorldLoop(NullLogger<WorldLoop>.Instance);
@@ -217,7 +217,7 @@ internal sealed class TestServer : IDisposable
             Options.Create(new InstanceOptions { Identifier = Instance }),
             community,
             community,
-            new Source(World),
+            wrapSource is null ? new Source(World) : wrapSource(new Source(World)),
             services.BuildServiceProvider(),
             NullLogger<CommunityNetwork>.Instance);
 

@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConnectionMultiplexer>(provider => ConnectionMultiplexer.Connect(
             provider.GetRequiredService<IOptions<RedisOptions>>().Value.ToConfigurationOptions()));
 
+        services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<ICommunityTransport, RedisCommunityTransport>();
         services.AddSingleton<IPresenceStore, RedisPresenceStore>();
         services.AddSingleton<IPresenceSource, PersonPresenceSource>();

@@ -14,7 +14,7 @@ using OpenWorker.Hotspot.SoulWorker.Network;
 
 namespace OpenWorker.DependencyInjection;
 
-internal sealed class ServerService(
+internal sealed partial class ServerService(
     World world,
     WorldLoop loop,
     HandlerExecutor executor,
@@ -27,6 +27,11 @@ internal sealed class ServerService(
 ) :
     BackgroundService
 {
+    /// <summary>
+    /// How long the server waits after a connection that could not be accepted, so a fault that stays does not fill the log.
+    /// </summary>
+    private static TimeSpan AcceptRetry { get; } = TimeSpan.FromSeconds(1);
+
     private Lock DumpLock { get; } = new();
     private TcpListener Listener { get; } = new(IPAddress.Any, server.Value.Port);
     private string? DumpDirectory { get; } = ResolveDumpDirectory(hotspot.Value, game.Value);
@@ -53,16 +58,43 @@ internal sealed class ServerService(
 
         logger.LogDebug("Server ready.");
 
-        while (cancellationToken.IsCancellationRequested is false)
+        try
         {
-            var socket = await Listener.AcceptTcpClientAsync(cancellationToken);
+            while (cancellationToken.IsCancellationRequested is false)
+            {
+                TcpClient socket;
 
-            _ = Task.Run(() => SessionLoopAsync(socket, cancellationToken), cancellationToken);
+                try
+                {
+                    socket = await Listener.AcceptTcpClientAsync(cancellationToken);
+                }
+
+                catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+                {
+                    // One connection that cannot be accepted (the process is out of file handles, the client went away
+                    // at once) must not stop the server from accepting the others.
+                    LogAcceptFailed(logger, e);
+
+                    await Task.Delay(AcceptRetry, cancellationToken);
+
+                    continue;
+                }
+
+                _ = Task.Run(() => SessionLoopAsync(socket, cancellationToken), cancellationToken);
+            }
         }
 
-        logger.LogDebug("Server shutdown.");
+        catch (OperationCanceledException)
+        {
+            // The server is stopping.
+        }
 
-        Listener.Stop();
+        finally
+        {
+            logger.LogDebug("Server shutdown.");
+
+            Listener.Stop();
+        }
     }
 
     private async Task SessionLoopAsync(TcpClient socket, CancellationToken cancellationToken)
@@ -181,4 +213,7 @@ internal sealed class ServerService(
             logger.LogDebug(e, "Failed to save packet {Path}.", path);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Could not accept a connection.")]
+    private static partial void LogAcceptFailed(ILogger logger, Exception exception);
 }
