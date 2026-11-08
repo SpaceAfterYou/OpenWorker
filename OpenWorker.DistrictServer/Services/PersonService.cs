@@ -144,6 +144,8 @@ public sealed partial class PersonService(
 
         ecs.Set(context.Player, new ClaimsComponent(request.Session));
 
+        ecs.SetLogAccount(context.Player, request.Session.Account);
+
         await leases
             .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 

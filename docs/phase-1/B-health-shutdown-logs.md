@@ -1,7 +1,8 @@
 # Phase 1, workstream B: health checks, graceful shutdown, structured logs
 
-Scope: steps 2, 3 and 4 of phase 1 in `REFACTORING.md`. Steps 2 and 3 are done. **Step 4 (structured logs) was not
-started**: the work was stopped before it, and nothing of it is in the code.
+Scope: steps 2, 3 and 4 of phase 1 in `REFACTORING.md`. Steps 2 and 3 were done in this workstream; step 4 (structured
+logs) was stopped before it started and was built afterwards, on the design written here (branch
+`refactor/phase-1-logs`, see "Step 4" below).
 
 ## Done
 
@@ -63,25 +64,68 @@ server is unknown. The place is `ServerService.NotifyShuttingDown`; swapping the
 The close caused by the shutdown is the `shuttingDown` flag in `ServerService.SessionLoopAsync` / `CloseSessionAsync`;
 since the merge of workstream A, `sessions.closed` counts such a session under the reason `shutdown`.
 
+### Step 4. Structured logs
+
+- **The scope.** `SessionLogScope` (`OpenWorker.Hotspot`) is one object per session, made with its
+  `ServerSessionComponent` (`LogScope`), and implements `IReadOnlyList<KeyValuePair<string, object?>>` with four fixed
+  keys: `Session` (the entity, set by the read loop when it creates it), `Remote`, `Account` and `Person` (null until
+  known). The values are boxed once when they are set, and `ToString` (what the simple console prints after `=>`)
+  is built once per change, under a version, so a line written off the loop while a value changes cannot keep a stale
+  text. A packet builds no state object of its own.
+- **Where it begins.** Inside the callback of the world loop: `HandlerExecutor.ExecuteAsync` around the parse and the
+  handler (a new overload takes the scope; the read loop passes the one it holds, the old overload looks it up in the
+  component) and `ServerService.CloseSessionAsync` around the shutdown notice and the close handlers. The read loop
+  also begins it for its own lines (`Connection closed`, a failed loop, a flush that timed out); the queue of
+  `WorldLoop` does not carry the execution context of whoever posts, so that one never reaches the loop. Both
+  methods are `async`: the builder restores the execution context of the caller when the method returns, so a callback
+  that awaits leaves nothing behind for the next callback of the loop, while its own continuations keep the scope.
+- **Account and person.** The account is set where the claims are set: `SetLogAccount` in the login and the return of a
+  session to the auth server, the entry to the gate, the district and the maze (five places; there is no shared place
+  that has the world, `SessionLeaseManager.AttachAsync` has the account but no world). The person is set by
+  `SetLogPerson` in the two `PersonRegistry.PullPerson` of the district and the maze, which duplicate each other. The
+  gate keeps its persons on entities of their own, so a gate session carries the account only, as an auth session does.
+- **Settings.** `Logging:Console:FormatterName: simple` and `Logging:Console:FormatterOptions:IncludeScopes: true` in the
+  `appsettings.json` of the auth, gate, district, maze and relay servers; `TestServerOptions.TheConsolePrintsTheScopes`
+  reads each file and checks what the formatter gets.
+- **`PrintSanity` is gone** (the per-packet Debug dump of `HandlerExecutor`). `DumpPacket` of `ServerService` stays, governed
+  by `Hotspot:PacketDumpPath`.
+- **Cost per packet, to measure in the phase 2 benchmark.** `BeginScope` allocates on every call; measured with
+  `GC.GetAllocatedBytesForCurrentThread` over 100,000 calls of `BeginScope` and `Dispose` (also inside an `async
+  ValueTask` that completes at once, as `ExecuteAsync` does), Microsoft.Extensions.Logging 10.0.14: **200 B** with the
+  providers of `Host.CreateDefaultBuilder` on Linux (Console, Debug, EventSource: the logger wraps the scopes of the
+  providers without an external scope provider in a `Scope` with an array) and **120 B** with the console alone (the
+  `Scope` node of `LoggerExternalScopeProvider` and two changes of its `AsyncLocal`, each a new execution context). The
+  same method without the scope allocates nothing. A formatter that enumerates the scope (the JSON one) also allocates
+  its enumerator per line; the simple formatter calls `ToString`, which is cached.
+- **Smoke test.** The auth server built in Release, on the host, with Debug logs, a TCP client that sent three frames of
+  garbage after a valid header:
+
+  ```
+  warn: OpenWorker.Hotspot.Handler.HandlerExecutor[1]
+        => Session=0 Remote=127.0.0.1:46922
+        Session 0 (actor 0, 127.0.0.1:46922) sent a packet 73:0xFA that failed, reason malformed: error 1 of 10 within 00:01:00.
+  dbug: OpenWorker.DependencyInjection.ServerService[1672666189]
+        => Session=0 Remote=127.0.0.1:46922
+        Connection closed: Unable to read beyond the end of the stream.
+  ```
+
+  The lines of the background services in the same run (the gate list query of EF Core) carry no scope.
+- **Tests.** `SessionLogScopeTest` (Hotspot.Test), on `FakeLoggerProvider` behind one `LoggerFactory`, so the scope
+  begun by the executor reaches the logger of the handler: the lines of a handler before and after an await carry the
+  one scope object of the session; a callback that runs while the handler waits and one that runs after it carry none;
+  the account and the person appear once set (and not before: the text of the scope is taken when the line is
+  written); a warning of the error budget carries it; the close handler and the read loop of a real `ServerService`
+  carry the same object as the handler of that session. `ProbeHandler` got a `Logs` mode for them. Full run with
+  Redis: 1012 tests, 935 passed, 77 skipped (the tables of the client), 0 failed. Warnings of a clean Release build:
+  196 before and after.
+
 ## Not done / open
 
-- **Step 4, structured logs: nothing is in the code.** Planned design: a `SessionLogScope` (entity id, remote endpoint,
-  actor id once known) implementing `IReadOnlyList<KeyValuePair<string, object?>>`, kept once per session in
-  `ServerSessionComponent`; `BeginScope` in `HandlerExecutor.ExecuteAsync` and in `ServerService.CloseSessionAsync`
-  (inside the loop callback: the `AsyncLocal` of the read loop does not reach `WorldLoop.Post`, while a scope begun
-  inside the callback flows through the awaits of the handler and is restored when the callback returns);
-  `Logging:Console:FormatterOptions:IncludeScopes` (with `FormatterName: simple`, because the legacy `IncludeScopes`
-  replaces the formatter options) in the `appsettings.json` files; `PrintSanity` removed; a test with `FakeLogger`
-  (`Microsoft.Extensions.Diagnostics.Testing` 10.9.0 exists on NuGet) that checks the scope on the loop and that it does not
-  leak into the next callback. The logging rule of `ARCHITECTURE.md` was not written for the same reason: that file
-  describes the code as it is.
 - A close with unread data from the client can end in a reset instead of a FIN, which may throw away the last frames
   the client has not read yet. The notice goes first in the close, so the client has normally read it. A half-close
   (`Shutdown(Send)`, then read until the client hangs up, with a short limit) would remove the doubt.
 - The district and channel records have no lifetime in Redis and are not renewed: after a crash (`kill -9`) they stay
   until the relay clears Redis. Withdrawal fixes the orderly stop only. A lifetime and a renewal are phase 3/4 work.
-- Auth and gate sessions carry no `ActorComponent` (it is a district component); the scope of step 4 would have to
-  carry the account for them.
 - The ASP.NET Core runtime and targeting pack are now a prerequisite of the build and the tests (see below).
 - Not validated: a build of the images and a run in compose (`mcr.microsoft.com` unreachable from here), the
   `Overriding address(es)` warning of Kestrel when the base image's `ASPNETCORE_HTTP_PORTS` is set (not expected, since
@@ -128,4 +172,6 @@ later metrics endpoint is likely to need, and the checks do not depend on the tr
 `Cache.cs`, `Persistence.cs`, the five `Program.cs`, the five `Dockerfile`s, `compose.yaml` (the `x-openworker-server`
 block and `<<: *openworker-server` in eight services), the five `appsettings.json` (`Health`, `Shutdown`),
 `OpenWorker.DependencyInjection.csproj` (framework reference, `InternalsVisibleTo`), `OptionsServiceCollectionExtensions.cs`.
-`HandlerExecutor.cs` is untouched. Kestrel already listens on `Health:Port`; a metrics endpoint can share it.
+Kestrel already listens on `Health:Port`; a metrics endpoint can share it. Step 4 touched `HandlerExecutor.cs`,
+`ServerService.cs` (session loop, `CloseSessionAsync`), `ServerSessionComponent.cs`, the five places that set
+`ClaimsComponent`, the two `PersonRegistry.PullPerson` and the five `appsettings.json` (`Logging`).

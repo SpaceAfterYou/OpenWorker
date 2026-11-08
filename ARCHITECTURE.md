@@ -229,7 +229,12 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
    state of the process. A handler that needs a component the client may not have yet (`LuaMaze`, a reservation)
    checks for it with `Has`/`TryGet` and ignores or refuses the request.
 4. **Logs are structured.** Message templates through `[LoggerMessage]` methods, never string interpolation and
-   never `Console`.
+   never `Console`. A line about a session carries its scope, one `SessionLogScope` per session kept in
+   `ServerSessionComponent`: `Session` (the entity), `Remote`, and `Account` and `Person` once the server knows them
+   (`SetLogAccount`, `SetLogPerson`). It begins on the world loop, inside the callback (`HandlerExecutor.ExecuteAsync`
+   around the handler, `ServerService.CloseSessionAsync` around the close handlers), flows through the awaits of the
+   handler and ends with the callback, so timers and other sessions do not inherit it; the read loop begins it for its
+   own lines, and the queue of the loop does not carry that one over.
 5. **Data is parsed and formatted with `CultureInfo.InvariantCulture`.** A server under a culture with a decimal
    comma reads `1.5` from a batch file otherwise.
 
@@ -269,6 +274,9 @@ or wrong setting stops the server with a message that names the key. A setting w
   by `RedisOptions.ToConfigurationOptions`).
 - `Hotspot:ErrorBudget:MaxErrors` and `Hotspot:ErrorBudget:Window` (`00:01:00` is a minute) say how many packets of one
   session may fail to parse or to handle before the server closes its connection; `HandlerErrorBudget` reads them.
+- `Logging:Console:FormatterName` (`simple`) and `Logging:Console:FormatterOptions:IncludeScopes` (`true`) make the
+  console print the scope of a line after `=>`. The older `Logging:Console:IncludeScopes` replaces the formatter
+  options with its own and is not used. `Logging__LogLevel__Default=Debug` shows the debug lines.
 - `Health:Port`, `Health:LoopTimeout` and `Health:CheckTimeout` (`00:00:05` is five seconds) say where the health endpoint
   listens and how long its checks wait; `Health:Port` must differ from `Server:Port`.
 - `Shutdown:Timeout` and `Shutdown:DrainTimeout` say how long the host and the drain of a stopping server may take;

@@ -3,6 +3,7 @@ using OpenWorker.Gameplay.Modules.Persons.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Login.Extensions;
@@ -23,6 +24,9 @@ public sealed class PersonRegistry(World world)
             Identifier = persistent.Id,
             Type = ActorType.User
         });
+
+        // The lines about this session name the person from here on.
+        world.SetLogPerson(entity, persistent.Id);
 
         world.Set(entity, new AbilityComponent
         {

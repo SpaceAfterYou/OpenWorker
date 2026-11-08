@@ -33,6 +33,7 @@ public readonly struct ProbeRequest : IRequestHotspotMessage
     public const byte Fails = 1;
     public const byte ReadsText = 2;
     public const byte Waits = 3;
+    public const byte Logs = 4;
 
     public MessageOpcode Opcode => new(GroupOpcode.System, Command);
 
@@ -49,14 +50,39 @@ public readonly struct ProbeRequest : IRequestHotspotMessage
     }
 }
 
-public sealed class ProbeHandler : IHotspotHandler<ProbeRequest>
+/// <param name="logger">Where <see cref="ProbeRequest.Logs"/> writes; only the tests of the log scope give one.</param>
+public sealed partial class ProbeHandler(ILogger<ProbeHandler>? logger = null) : IHotspotHandler<ProbeRequest>
 {
     // The tests that use it do not run side by side.
     public static int Handled { get; set; }
 
+    /// <summary>
+    /// What <see cref="ProbeRequest.Logs"/> waits for between its two lines; <see langword="null"/> to wait for nothing
+    /// but a round through the loop.
+    /// </summary>
+    public static TaskCompletionSource? Gate { get; set; }
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ProbeRequest request)
     {
         Handled++;
+
+        if (request.Mode == ProbeRequest.Logs && logger is { } log)
+        {
+            LogBefore(log);
+
+            // Off the loop and back: the line after the wait is written by a continuation of its own.
+            if (Gate is { } gate)
+            {
+                await gate.Task;
+            }
+
+            else
+            {
+                await Task.Delay(1, context.CancellationToken);
+            }
+
+            LogAfter(log);
+        }
 
         if (request.Mode == ProbeRequest.Fails)
         {
@@ -68,6 +94,12 @@ public sealed class ProbeHandler : IHotspotHandler<ProbeRequest>
             await Task.Delay(Timeout.Infinite, context.CancellationToken);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Probe before the wait.")]
+    private static partial void LogBefore(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Probe after the wait.")]
+    private static partial void LogAfter(ILogger logger);
 }
 
 internal sealed record LogEntry(LogLevel Level, string Message, Exception? Exception, IReadOnlyDictionary<string, object?> Values);

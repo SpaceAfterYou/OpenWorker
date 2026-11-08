@@ -1,10 +1,8 @@
-﻿using System.Diagnostics;
-using Arch.Core;
+﻿using Arch.Core;
 using CommunityToolkit.HighPerformance;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
-using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Telemetry;
 
@@ -23,7 +21,22 @@ public sealed partial class HandlerExecutor(
     /// and a handler that fails never throw out of here: the error is counted for the session, and the
     /// session is closed once it has sent too many (<see cref="HandlerErrorBudget" />).
     /// </summary>
-    public async ValueTask ExecuteAsync(ReadOnlyMemory<byte> buffer, Entity player, CancellationToken cancellationToken)
+    /// <remarks>The scope of the logs is the one of the session's <see cref="ServerSessionComponent"/>, looked up here;
+    /// the read loop, which holds the session already, passes it instead.</remarks>
+    public ValueTask ExecuteAsync(ReadOnlyMemory<byte> buffer, Entity player, CancellationToken cancellationToken)
+    {
+        var scope = world.IsAlive(player) && world.TryGet(player, out ServerSessionComponent session) ? session.LogScope : null;
+
+        return ExecuteAsync(buffer, player, scope, cancellationToken);
+    }
+
+    /// <inheritdoc cref="ExecuteAsync(ReadOnlyMemory{byte}, Entity, CancellationToken)"/>
+    /// <param name="scope">The scope every log line of the packet is written under, the handler's own lines among them;
+    /// <see langword="null"/> for none.</param>
+    /// <remarks>Must run on the world loop, inside the callback that handles the packet: the scope begins here, flows
+    /// through the awaits of the handler, and ends with it. A scope begun on the read loop would not reach the world loop,
+    /// whose queue does not carry the execution context of whoever posts to it.</remarks>
+    public async ValueTask ExecuteAsync(ReadOnlyMemory<byte> buffer, Entity player, SessionLogScope? scope, CancellationToken cancellationToken)
     {
         if (IsClosed(player))
         {
@@ -31,13 +44,14 @@ public sealed partial class HandlerExecutor(
             return;
         }
 
+        using var logScope = scope is null ? null : logger.BeginScope(scope);
+
         // Will be disposed in reader
         /* using */ var stream = buffer.AsStream();
 
         using var reader = new BinaryReader(stream);
 
         MessageOpcode? opcode = null;
-        Handler? handler = null;
 
         try
         {
@@ -50,8 +64,6 @@ public sealed partial class HandlerExecutor(
             {
                 throw new InvalidDataException($"The opcode {current} has no place in the handler table.");
             }
-
-            handler = found;
 
             // TODO: refactor handler's bc too complicated
             var instance = provider.GetService(found.Class) as IHotspotHandler
@@ -80,11 +92,6 @@ public sealed partial class HandlerExecutor(
         catch (Exception ex)
         {
             OnError(player, opcode, ex);
-        }
-
-        if (handler is { } resolved && opcode is { } read)
-        {
-            PrintSanity(resolved, read, reader, buffer);
         }
     }
 
@@ -181,31 +188,4 @@ public sealed partial class HandlerExecutor(
     [LoggerMessage(EventId = 4, Level = LogLevel.Debug,
         Message = "A packet {Opcode} failed after session {Entity} was gone, reason {Reason}.")]
     private static partial void LogErrorOfGoneSession(ILogger logger, Exception exception, int entity, OpcodeText opcode, string reason);
-
-    [Conditional("DEBUG")]
-    private void PrintSanity(Handler handler, MessageOpcode opcode, BinaryReader reader, ReadOnlyMemory<byte> buffer)
-    {
-        if (opcode is { Group: (byte)GroupOpcode.System, Command: (byte)SystemOpcode.KeepAlive or (byte)SystemOpcode.Ping })
-        {
-            return;
-        }
-
-        if (opcode.Group == (byte)GroupOpcode.Move)
-        {
-            return;
-        }
-
-        // if (handler.Class.Name == nameof(EmptyHandler) || reader.BaseStream.Position != buffer.Length)
-        // {
-            LogExecuted(new OpcodeText(opcode), handler.Class.Name, handler.Delegate.Method.Name);
-            LogPacketRead(reader.BaseStream.Position, buffer.Length);
-        // }
-    }
-
-    // PrintSanity is the debugging aid of a Debug build only, and is due to go in phase 1 of REFACTORING.md.
-    [LoggerMessage(Level = LogLevel.Debug, Message = "[ ExecuteAsync ] [{Source}] [{Class}.{Method}]")]
-    private partial void LogExecuted(OpcodeText source, string @class, string method);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Packet Read Length: {Position} / Total: {Length}")]
-    private partial void LogPacketRead(long position, int length);
 }

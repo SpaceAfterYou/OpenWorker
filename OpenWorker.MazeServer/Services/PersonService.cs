@@ -156,6 +156,8 @@ public sealed partial class PersonService(
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
 
+        world.SetLogAccount(context.Player, request.Session.Account);
+
         await leases
             .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 

@@ -128,6 +128,8 @@ public sealed class LoginGameplay(
 
         world.Set(context.Player, new ClaimsComponent(claims));
 
+        world.SetLogAccount(context.Player, claims.Account);
+
         await leases
             .AttachAsync(context.Player, claims.Key, claims.Account);
 

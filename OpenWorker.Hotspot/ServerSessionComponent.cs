@@ -18,7 +18,13 @@ public readonly struct ServerSessionComponent(TcpClient client, SessionMetrics? 
     /// <summary>
     /// Where the client connected from, for the logs. Empty when the socket was not connected or is gone.
     /// </summary>
-    public string? RemoteEndPoint { get; } = DescribeRemote(client);
+    public string? RemoteEndPoint => LogScope?.Remote;
+
+    /// <summary>
+    /// The scope of the log lines about this session, one for its whole life; see <see cref="SessionLogScope"/>.
+    /// <see langword="null"/> only on a default component, the one <c>TryGet</c> gives for an entity without a session.
+    /// </summary>
+    public SessionLogScope? LogScope { get; } = new(DescribeRemote(client));
 
     private static string? DescribeRemote(TcpClient client)
     {
