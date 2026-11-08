@@ -31,7 +31,7 @@ using OpenWorker.Lua.Ai;
 
 namespace OpenWorker.Lua.Managers;
 
-public sealed class LuaCreatureManager
+public sealed class LuaCreatureManager : ISimulation
 {
     private static ComponentType[] Archetype { get; } = [
         ComponentRegistry.Add<ActorComponent>(),
@@ -42,11 +42,6 @@ public sealed class LuaCreatureManager
     ];
 
     private const int NpcHealth = 250;
-
-    /// <summary>
-    /// How often the monsters of a maze think and move, in seconds.
-    /// </summary>
-    private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly World ecs;
     private readonly VBatchFile batch;
@@ -374,6 +369,13 @@ public sealed class LuaCreatureManager
     {
         Closed = true;
 
+        if (Ticking)
+        {
+            Services?.Clock.Remove(this);
+
+            Ticking = false;
+        }
+
         foreach (var creature in Creatures.Where(ecs.IsAlive))
         {
             ecs.Destroy(creature);
@@ -416,57 +418,43 @@ public sealed class LuaCreatureManager
 
     // ---- Minds --------------------------------------------------------------------------------
 
+    /// <summary>
+    /// The first monster with a mind puts the maze on the clock of the server; <see cref="Close"/> takes it off.
+    /// </summary>
     private void StartTicking()
     {
-        if (!Ticking)
+        if (!Ticking && !Closed && Services?.Clock is { } clock)
         {
             Ticking = true;
 
-            _ = TickAsync();
+            clock.Add(this);
         }
     }
 
     /// <summary>
     /// The monsters think on the thread of the world, one after another, so nothing they do can meet another change halfway.
     /// </summary>
-    private async Task TickAsync()
+    public void Step(TimeSpan elapsed)
     {
-        var last = Stopwatch.GetTimestamp();
+        if (Closed)
+        {
+            return;
+        }
 
-        while (!Closed)
+        var seconds = (float)elapsed.TotalSeconds;
+
+        foreach (var body in Bodies.Values.ToArray())
         {
             try
             {
-                await Task.Delay(TickInterval);
+                RestoreSuperArmor(body.Entity);
+
+                body.Update(Now, seconds);
             }
 
-            catch (OperationCanceledException)
+            catch (Exception e)
             {
-                return;
-            }
-
-            if (Closed)
-            {
-                return;
-            }
-
-            var elapsed = (float)Stopwatch.GetElapsedTime(last).TotalSeconds;
-
-            last = Stopwatch.GetTimestamp();
-
-            foreach (var body in Bodies.Values.ToArray())
-            {
-                try
-                {
-                    RestoreSuperArmor(body.Entity);
-
-                    body.Update(Now, elapsed);
-                }
-
-                catch (Exception e)
-                {
-                    Logger?.LogError(e, "The monster {Monster} failed to think", body.Behavior.Id);
-                }
+                Logger?.LogError(e, "The monster {Monster} failed to think", body.Behavior.Id);
             }
         }
     }

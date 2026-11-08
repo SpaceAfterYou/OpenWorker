@@ -42,6 +42,8 @@ await Host
         services.AddSingleton(provider => new AiScriptLoader(provider.GetRequiredService<ILogger<AiScriptLoader>>()));
         services.AddSingleton<MonsterBehaviorTables>();
         services.AddSingleton<CreatureServices>();
+        services.AddSingleton<SimulationClock>();
+        services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());
 
         services.AddCommandManager();
 
