@@ -21,13 +21,30 @@ public sealed partial class HandlerExecutor(
     /// and a handler that fails never throw out of here: the error is counted for the session, and the
     /// session is closed once it has sent too many (<see cref="HandlerErrorBudget" />).
     /// </summary>
-    public async ValueTask ExecuteAsync(ReadOnlyMemory<byte> buffer, Entity player, CancellationToken cancellationToken)
+    /// <remarks>The scope of the logs is the one of the session's <see cref="ServerSessionComponent"/>, looked up here;
+    /// the read loop, which holds the session already, passes it instead.</remarks>
+    public ValueTask ExecuteAsync(ReadOnlyMemory<byte> buffer, Entity player, CancellationToken cancellationToken)
+    {
+        var scope = world.IsAlive(player) && world.TryGet(player, out ServerSessionComponent session) ? session.LogScope : null;
+
+        return ExecuteAsync(buffer, player, scope, cancellationToken);
+    }
+
+    /// <inheritdoc cref="ExecuteAsync(ReadOnlyMemory{byte}, Entity, CancellationToken)"/>
+    /// <param name="scope">The scope every log line of the packet is written under, the handler's own lines among them;
+    /// <see langword="null"/> for none.</param>
+    /// <remarks>Must run on the world loop, inside the callback that handles the packet: the scope begins here, flows
+    /// through the awaits of the handler, and ends with it. A scope begun on the read loop would not reach the world loop,
+    /// whose queue does not carry the execution context of whoever posts to it.</remarks>
+    public async ValueTask ExecuteAsync(ReadOnlyMemory<byte> buffer, Entity player, SessionLogScope? scope, CancellationToken cancellationToken)
     {
         if (IsClosed(player))
         {
             // The budget ran out and the connection is closing; what was read before that is dropped.
             return;
         }
+
+        using var logScope = scope is null ? null : logger.BeginScope(scope);
 
         // Will be disposed in reader
         /* using */ var stream = buffer.AsStream();

@@ -95,6 +95,8 @@ public sealed class LoginGameplay(
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
 
+        world.SetLogAccount(context.Player, request.Session.Account);
+
         await leases
             .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 

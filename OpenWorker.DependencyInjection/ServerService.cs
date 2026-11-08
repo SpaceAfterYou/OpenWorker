@@ -206,14 +206,23 @@ internal sealed partial class ServerService(
 
             var session = new ServerSessionComponent(socket, metrics);
 
+            // A component built from a socket always has its scope.
+            var scope = session.LogScope!;
+
             var entity = await loop.InvokeAsync(() =>
             {
                 var created = components.CreateEntity(world);
 
                 created.Set(session);
 
+                scope.Session = created.Id;
+
                 return created;
             });
+
+            // The lines of the read loop itself. The callbacks of the world loop do not inherit it: each one that is
+            // about this session begins the scope again, inside the callback (HandlerExecutor, CloseSessionAsync).
+            using var readScope = logger.BeginScope(scope);
 
             // The reader of the socket ends the connection when the client does, or when the server has already closed it
             // and given its own reason first; the first reason of a connection is the one that counts.
@@ -243,7 +252,7 @@ internal sealed partial class ServerService(
 
                     DumpPacket(header, buffer);
 
-                    await loop.InvokeAsync(() => executor.ExecuteAsync(buffer, entity, cancellationToken));
+                    await loop.InvokeAsync(() => executor.ExecuteAsync(buffer, entity, scope, cancellationToken));
                 }
 
                 // The loop ends without an error only when the drain has stopped the reading between two packets.
@@ -277,7 +286,7 @@ internal sealed partial class ServerService(
                 // client that cannot take them is still counted under the reason of the close, once, when the writer ends.
                 session.SetCloseReason(reason);
 
-                await loop.InvokeAsync(() => CloseSessionAsync(entity, shuttingDown));
+                await loop.InvokeAsync(() => CloseSessionAsync(entity, scope, shuttingDown));
 
                 session.Disconnect(reason);
 
@@ -291,9 +300,12 @@ internal sealed partial class ServerService(
 
     /// <summary>
     /// Runs on the world loop, as every close does: the close handlers of the modules, then the end of the entity.
+    /// The lines of the close handlers carry the scope of the session, begun here, inside the callback of the loop.
     /// </summary>
-    private async ValueTask CloseSessionAsync(Entity entity, bool shuttingDown)
+    private async ValueTask CloseSessionAsync(Entity entity, SessionLogScope scope, bool shuttingDown)
     {
+        using var logScope = logger.BeginScope(scope);
+
         if (shuttingDown)
         {
             NotifyShuttingDown(entity);

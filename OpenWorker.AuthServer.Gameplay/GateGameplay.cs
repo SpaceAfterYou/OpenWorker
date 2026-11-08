@@ -171,6 +171,8 @@ public sealed class GateGameplay(
 
         world.Set(context.Player, claims);
 
+        world.SetLogAccount(context.Player, claims.Account);
+
         return claims;
     }
 }
