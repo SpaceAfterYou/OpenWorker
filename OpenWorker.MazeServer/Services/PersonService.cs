@@ -66,6 +66,7 @@ public sealed partial class PersonService(
     MiscStateLoader miscState,
     MazeReporter reports,
     CreatureServices creatureServices,
+    MazeScripts mazeScripts,
     ILogger<LuaCreatureManager> creatureLogger,
     ILogger<LuaMaze> mazeLogger,
     ILogger<LuaGameHelper> helperLogger,
@@ -200,26 +201,20 @@ public sealed partial class PersonService(
         state.Environment["Soulworker"] = new LuaValue(table);
 
 
-        var script = Path.Join("scripts", $"{mazeInfo.Script}.lua");
-
-        // A few mazes have no script among the files of the client, and are played without one.
-        if (File.Exists(script))
+        // A few mazes have no script among the files of the client, and are played without one. The script is read and
+        // compiled once, off the loop; each maze runs the compiled chunk in its own state.
+        try
         {
-            try
+            if (!await mazeScripts.RunAsync(state, mazeInfo.Script, context.CancellationToken))
             {
-                await state
-                    .DoFileAsync(script, context.CancellationToken);
-            }
-
-            // A script that does not load is no fault of the client: the maze runs without it.
-            catch (Exception e) when (e is not OperationCanceledException)
-            {
-                LogScriptFailed(logger, e, script);
+                LogNoScript(logger, mazeScripts.PathOf(mazeInfo.Script));
             }
         }
-        else
+
+        // A script that does not load is no fault of the client: the maze runs without it.
+        catch (Exception e) when (e is not OperationCanceledException)
         {
-            LogNoScript(logger, script);
+            LogScriptFailed(logger, e, mazeScripts.PathOf(mazeInfo.Script));
         }
 
         var (mesh, meshError) = await creatureServices.Meshes.GetAsync(mazeInfo.Batch);

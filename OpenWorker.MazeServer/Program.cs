@@ -47,6 +47,7 @@ await Host
         services.AddSingleton<MonsterBehaviorTables>();
         services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<CreatureServices>();
+        services.AddSingleton(_ => new MazeScripts());
         services.AddSingleton<SimulationClock>();
         services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());
 
