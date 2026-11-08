@@ -8,6 +8,10 @@
     <Project Path="OpenWorker.Commands.SourceGenerators/OpenWorker.Commands.SourceGenerators.csproj" />
     <Project Path="OpenWorker.Commands/OpenWorker.Commands.csproj" />
   </Folder>
+  <Folder Name="/Load test/">
+    <Project Path="OpenWorker.LoadTest.Test/OpenWorker.LoadTest.Test.csproj" />
+    <Project Path="OpenWorker.LoadTest/OpenWorker.LoadTest.csproj" />
+  </Folder>
   <Folder Name="/Servers/" />
   <Folder Name="/Servers/Auth/">
     <Project Path="OpenWorker.AuthServer.Gameplay/OpenWorker.AuthServer.Gameplay.csproj" />
