@@ -46,6 +46,10 @@ public sealed class PersonCreationCatalog(
                    skinRow.Field26, skinRow.Field27, skinRow.Field28, skinRow.Field29, skinRow.Field30);
     }
 
+    /// <summary>
+    /// The four costumes of the creation screen, the ones of <c>tb_Create_Cloth</c>; the first is the one the client sends
+    /// when the player has not chosen.
+    /// </summary>
     public static bool IsOffered(in CharacterInfoRow character, int outfit)
     {
         return IsOffered(

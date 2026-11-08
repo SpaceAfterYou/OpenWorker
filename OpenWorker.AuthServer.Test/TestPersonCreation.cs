@@ -103,6 +103,65 @@ public sealed class TestPersonCreation
         Assert.IsFalse(PersonCreationCatalog.IsOffered(haru, 221));
     }
 
+    /// <summary>
+    /// The creation screen offers four costumes per hero, the ones of <c>tb_Create_Cloth</c>; the first is the one the
+    /// client picks when the player touches nothing (511 for Stella).
+    /// </summary>
+    [TestMethod]
+    [DataRow(Hero.Haru)]
+    [DataRow(Hero.Erwin)]
+    [DataRow(Hero.Lily)]
+    [DataRow(Hero.Jin)]
+    [DataRow(Hero.Stella)]
+    [DataRow(Hero.Iris)]
+    public void EveryCostumeOfTheCreationScreenIsOffered(Hero hero)
+    {
+        Assert.IsTrue(Catalog.TryGetCharacter(hero, out var character));
+
+        var first = (int)hero * 100 + 11;
+
+        Assert.IsTrue(PersonCreationCatalog.IsOffered(character, first), $"The first costume of {hero}, {first}, is refused.");
+
+        foreach (var outfit in (int[])[first + 10, first + 20, first + 30])
+        {
+            Assert.IsTrue(PersonCreationCatalog.IsOffered(character, outfit), $"The costume {outfit} of {hero} is refused.");
+        }
+
+        var cloth = Load<CreateClothRow>("tb_Create_Cloth").Select(e => (int)e.Id).Where(e => e / 100 == (int)hero).Order();
+
+        Assert.AreEqual(
+            string.Join(", ", cloth),
+            string.Join(", ", (int[])[character.Default_Cloth_ID_01, character.Default_Cloth_ID_02, character.Default_Cloth_ID_03, character.Default_Cloth_ID_04]),
+            "The costumes of the character table are not those of tb_Create_Cloth.");
+    }
+
+    [TestMethod]
+    [DataRow(Hero.Haru, 211)]
+    [DataRow(Hero.Stella, 111)]
+    [DataRow(Hero.Stella, 611)]
+    [DataRow(Hero.Iris, 541)]
+    public void CostumeOfAnotherHeroIsRefused(Hero hero, int outfit)
+    {
+        Assert.IsTrue(Catalog.TryGetCharacter(hero, out var character));
+
+        Assert.IsFalse(PersonCreationCatalog.IsOffered(character, outfit));
+    }
+
+    /// <summary>
+    /// The column after the four costumes (50011 for Stella) was read as the fourth costume while the names of the columns
+    /// were one place off; it is not a costume, no row of <c>tb_Create_Cloth</c> has it.
+    /// </summary>
+    [TestMethod]
+    [DataRow(Hero.Haru, 10011)]
+    [DataRow(Hero.Stella, 50011)]
+    public void TheColumnAfterTheCostumesIsNotOffered(Hero hero, int outfit)
+    {
+        Assert.IsTrue(Catalog.TryGetCharacter(hero, out var character));
+
+        Assert.AreEqual(outfit, character.Field24);
+        Assert.IsFalse(PersonCreationCatalog.IsOffered(character, outfit));
+    }
+
     private static InventoryFactory CreateInventories()
     {
         var catalog = new ItemCatalog(

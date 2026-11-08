@@ -28,11 +28,11 @@ public readonly struct CharacterInfoRow(BinaryReader reader)
     public short Field17 { get; } = reader.ReadInt16();
     public short Field18 { get; } = reader.ReadInt16();
     public int Field19 { get; } = reader.ReadInt32();
-    public int Field20 { get; } = reader.ReadInt32();
     public int Default_Cloth_ID_01 { get; } = reader.ReadInt32();
     public int Default_Cloth_ID_02 { get; } = reader.ReadInt32();
     public int Default_Cloth_ID_03 { get; } = reader.ReadInt32();
     public int Default_Cloth_ID_04 { get; } = reader.ReadInt32();
+    public int Field24 { get; } = reader.ReadInt32();
     public short District_ID { get; } = reader.ReadInt16();
     public short Field26 { get; } = reader.ReadInt16();
     public short District_Position_X { get; } = reader.ReadInt16();
