@@ -11,6 +11,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\OpenWorker.Wire\OpenWorker.Wire.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Folder Include="Batch\"/>
         <Folder Include="Extensions\" />
     </ItemGroup>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The wire format of a message: PacketReader and PacketWriter over spans, the attributes a message declares its format
+      with, and the interfaces the generator (OpenWorker.Wire.SourceGenerators) implements. Nothing here knows a message,
+      an opcode or a session, so the value types of OpenWorker.Domain can carry their format too.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+</Project>
