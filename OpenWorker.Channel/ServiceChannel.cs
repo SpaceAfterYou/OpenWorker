@@ -78,7 +78,7 @@ public readonly record struct ServiceChannel(short Identifier)
             World = PersonSnapshotMapper.CreateWorldValue(world, player)
         });
 
-        Broadcast(new PersonUpdateOriginStatListResponse { Actor = actor });
+        Broadcast(new PersonUpdateOriginStatListResponse { Actor = actor, Stats = [] });
     }
 
     public void SendOthers(Entity player, World world)

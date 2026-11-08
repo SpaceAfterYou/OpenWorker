@@ -20,6 +20,7 @@ using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 
 namespace OpenWorker.Channel.Community;
 
@@ -934,13 +935,12 @@ public abstract class LeagueServiceBase(
     }
 
     /// <summary>
-    /// The level of the person who asks. A person has no level of their own yet: it is not saved (PersonPersistent) and no
-    /// component of the entity carries it (RankComponent is the echelon, and it is zero), so the whole server shows the one
-    /// default level. Every rule that depends on the level asks here, so the rule stays in place and is already true when
-    /// the level exists.
-    /// TODO(Phase 4, step 1-2): read the level of the person from the entity once it is persisted and loaded at the login.
+    /// The level of the person who asks. Every rule that depends on the level asks here.
     /// </summary>
-    private static byte LevelOf(ServiceHandleContext context) => PersonModuleDefines.DefaultLevel;
+    private byte LevelOf(ServiceHandleContext context)
+    {
+        return world.TryGet<LevelComponent>(context.Player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel;
+    }
 
     private int Me(ServiceHandleContext context) => world.Get<ActorComponent>(context.Player).Identifier;
 

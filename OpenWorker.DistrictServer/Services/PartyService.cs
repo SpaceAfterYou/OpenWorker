@@ -4,6 +4,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -79,7 +80,7 @@ public sealed class PartyService(Arch.Core.World world) :
             {
                 Actor = actor,
                 Name = info.Name,
-                Level = world.Get<RankComponent>(context.Player).Level,
+                Level = world.Get<LevelComponent>(context.Player).Level,
                 Class = info.Hero,
                 RemainTime = AwaiterLifetime,
             },

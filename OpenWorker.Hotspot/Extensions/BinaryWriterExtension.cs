@@ -77,14 +77,20 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ST_ITEM_BROACH value)
     {
+        Debug.Assert(value.dwItemID is { Length: ST_ITEM_BROACH.ItemCount });
+
         writer.Write(value.biSerial);
-        writer.Write(value.dwItemID);
+
+        foreach (var item in value.dwItemID)
+        {
+            writer.Write(item);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, IReadOnlyCollection<ST_ITEM_BROACH> list)
     {
-        writer.Write((short)list.Count);
+        writer.Write(checked((byte)list.Count));
         foreach (var value in list)
         {
             writer.Write(value);
@@ -94,6 +100,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ST_SOCKET_DATA value)
     {
+        writer.Write(value.biEquipSerial);
         writer.Write(value.dwSocketID);
         writer.Write(value.bySocketPos);
         writer.Write(value.stExtendOption);
@@ -102,7 +109,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, IReadOnlyCollection<ST_SOCKET_DATA> list)
     {
-        writer.Write((short)list.Count);
+        writer.Write(checked((byte)list.Count));
         foreach (var value in list)
         {
             writer.Write(value);

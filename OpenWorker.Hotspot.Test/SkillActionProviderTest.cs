@@ -22,9 +22,15 @@ public sealed class SkillActionProviderTest
         var tables = Environment.GetEnvironmentVariable(TablesVariable);
         var actions = Environment.GetEnvironmentVariable(ActionsVariable);
 
-        if (tables is null || actions is null)
+        // One reason per variable, as CI reads the reasons of a skip.
+        if (string.IsNullOrEmpty(tables))
         {
-            Assert.Inconclusive($"{TablesVariable} and {ActionsVariable} are not set.");
+            Assert.Inconclusive($"{TablesVariable} is not set.");
+        }
+
+        if (string.IsNullOrEmpty(actions))
+        {
+            Assert.Inconclusive($"{ActionsVariable} is not set.");
         }
 
         using var reader = new BinaryReader(File.OpenRead(Path.Join(tables, "tb_Skill.res")));

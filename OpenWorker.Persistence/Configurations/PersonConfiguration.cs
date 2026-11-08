@@ -37,5 +37,9 @@ public sealed class PersonConfiguration : IEntityTypeConfiguration<PersonPersist
             .IsRequired()
             .IsUnicode();
 
+        builder
+            .Property(x => x.Level)
+            .HasDefaultValue((byte)1);
+
     }
 }

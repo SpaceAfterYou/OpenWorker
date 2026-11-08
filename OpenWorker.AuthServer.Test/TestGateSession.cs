@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
@@ -105,10 +105,15 @@ public sealed class TestGateSession
             var leases = new SessionLeaseManager(Sessions);
             var secondPassword = new SecondPasswordGameplay(World, Factory, new ServerContent([]));
 
-            Registry = new PersonRegistry(
-                World,
-                new StorageFactory(World),
-                new CostumeFactory(World, new ReadOnlyCollection<CreateClothRow>([]), new ReadOnlyCollection<ItemRow>([])));
+            var catalog = new ItemCatalog(
+                new ReadOnlyCollection<ItemRow>([]),
+                new ReadOnlyCollection<ItemClassifyRow>([]),
+                new ReadOnlyCollection<InvenSlotExtendRow>([]),
+                new ReadOnlyCollection<BankSlotExtendRow>([]));
+
+            var inventories = new InventoryFactory(catalog, new ReadOnlyCollection<CreateClothRow>([]), new LocalItemSerials());
+
+            Registry = new PersonRegistry(World, inventories);
 
             Login = new LoginGameplay(
                 World,
@@ -124,6 +129,8 @@ public sealed class TestGateSession
                 World,
                 Factory,
                 Registry,
+                new InventoryPersistence(World, Factory, inventories, NullLogger<InventoryPersistence>.Instance),
+                Options.Create(new PersonCreationOptions()),
                 gate,
                 NullLogger<PersonGameplay>.Instance,
                 secondPassword,

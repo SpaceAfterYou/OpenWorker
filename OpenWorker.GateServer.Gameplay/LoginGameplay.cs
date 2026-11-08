@@ -1,4 +1,4 @@
-using OpenWorker.Hotspot.Cache;
+﻿using OpenWorker.Hotspot.Cache;
 using OpenWorker.Gameplay.Modules.Login.Extensions;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +15,7 @@ using OpenWorker.Hotspot.Messages.Response.World;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Requests;
 using OpenWorker.Hotspot.Modules.Login.Responses;
+using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Persistence;
 using Redis.OM.Searching;
 
@@ -81,6 +82,7 @@ public sealed class LoginGameplay(
 
         var account = await database.Accounts
             .Include(e => e.Persons.Where(p => p.Gate.Id == Gate))
+            .ThenInclude(p => p.Items.Where(i => i.Storage <= (byte)StorageGroup.AbilityEquip))
             .FirstOrDefaultAsync(e => e.Id == request.Account, context.CancellationToken);
 
         if (account is null)

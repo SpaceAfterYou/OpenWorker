@@ -161,6 +161,9 @@ or wrong setting stops the server with a message that names the key. A setting w
   session may fail to parse or to handle before the server closes its connection; `HandlerErrorBudget` reads them.
 - `Credentials:DiscordToken` of the relay is a secret: no file carries it, it comes from the environment
   (`Credentials__DiscordToken`), and the relay stops at start without it.
+- `PersonCreation:StartLevel` of the gate is the level a new character starts at, 1 unless set (1 to 100).
+- `Rewards:ExpRate` and `Rewards:DropRate` of the district and the maze multiply the experience of a kill and the
+  chances of a drop; 1 unless set, never negative.
 - `Attendance:ResetHour` and `DailyMission:ResetHour` are optional (the hour the game day starts at); the rules of the
   feature decide when they are not set.
 - To add a setting: add the options class with its attributes and a partial `[OptionsValidator]` class, register it

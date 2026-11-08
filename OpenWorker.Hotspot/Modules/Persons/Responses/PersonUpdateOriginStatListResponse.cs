@@ -1,9 +1,10 @@
-using OpenWorker.Domain.Types;
+﻿using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
@@ -17,17 +18,20 @@ public readonly struct PersonUpdateOriginStatListResponse : IResponseHotspotMess
 
     public required ActorValue Actor { get; init; }
 
+    /// <summary>
+    /// The stats the status window shows, the ones left out are zero.
+    /// </summary>
+    public required StatKeyValuePair[] Stats { get; init; }
+
     public void Write(BinaryWriter writer)
     {
-        var stats = Enumerable.Repeat(100.0f, 60).ToArray();
-
         writer.WriteActor(Actor);
-        writer.Write((byte)stats.Length);
+        writer.Write((byte)Stats.Length);
 
-        foreach (var stat in stats.Select((value, index) => new { Value = value, Index = index }))
+        foreach (var stat in Stats)
         {
-            writer.Write(stat.Value);
-            writer.Write((short)stat.Index);
+            writer.Write(stat.statValue);
+            writer.Write((short)stat.byIndex);
         }
     }
 }

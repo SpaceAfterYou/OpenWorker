@@ -95,8 +95,7 @@ jobs:
       # need Redis skip themselves when OPENWORKER_TEST_REDIS is not set, so it is set here and the check below
       # fails the run if any of them is skipped.
       # The tests that read the tables and navigation meshes of the client (OPENWORKER_TEST_RES, _AI, _ACTION, _NAVMESH)
-      # stay skipped:
-      # the client files are not in the repository.
+      # and the tables only the server has (OPENWORKER_TEST_SERVER_RES) stay skipped: the files are not in the repository.
       - name: Test
         id: test
         env:
@@ -113,8 +112,8 @@ jobs:
           path: TestResults/*.trx
           if-no-files-found: warn
 
-      # Fails on a failed test, on a run with no results, and on a skip for any reason but the client files.
+      # Fails on a failed test, on a run with no results, and on a skip for any reason but the tables.
       # Prints the skipped tests per reason, and writes the same to the job summary.
       - name: Check test results
         if: ${{ !cancelled() && steps.test.outcome != 'skipped' }}
-        run: python3 eng/check-trx.py --allow-skip 'OPENWORKER_TEST_(RES|AI|ACTION|NAVMESH) is not set' TestResults
+        run: python3 eng/check-trx.py --allow-skip 'OPENWORKER_TEST_(RES|AI|ACTION|NAVMESH|SERVER_RES) is not set' TestResults

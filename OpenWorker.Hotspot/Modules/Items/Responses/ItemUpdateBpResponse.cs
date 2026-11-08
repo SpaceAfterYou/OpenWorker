@@ -1,10 +1,14 @@
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Items.Responses;
 
+/// <summary>
+/// The battle points of the player after they changed.
+/// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
 public readonly struct ItemUpdateBpResponse : IResponseHotspotMessage
 {
@@ -13,7 +17,15 @@ public readonly struct ItemUpdateBpResponse : IResponseHotspotMessage
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public int Actor { get; init; }
+    public long Total { get; init; }
+    public byte Type { get; init; }
+
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Actor);
+        writer.Write(Total);
+        writer.WriteUtf16UnicodeString(string.Empty);
+        writer.Write(Type);
     }
 }

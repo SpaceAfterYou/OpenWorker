@@ -2,7 +2,7 @@
 # Fails when product code uses a pattern the project forbids. CI runs it on every push and pull request;
 # run it before you push: eng/check-forbidden.sh
 #
-# Only product projects are checked: the test projects (*.Test), obj/ and bin/ are skipped.
+# Only product projects are checked: the test projects (*.Test), obj/, bin/ and the worktrees of agents (.claude/) are skipped.
 # To add a rule, add a line to RULES: "regex<TAB>why". The regex is an extended regular expression.
 
 set -u
@@ -23,7 +23,7 @@ for rule in "${RULES[@]}"; do
 
   matches=$(grep -rnE "$pattern" . \
     --include='*.cs' \
-    --exclude-dir=obj --exclude-dir=bin --exclude-dir=.git --exclude-dir='*.Test' \
+    --exclude-dir=obj --exclude-dir=bin --exclude-dir=.git --exclude-dir=.claude --exclude-dir='*.Test' \
     | sed 's|^\./||')
 
   if [[ -n "$matches" ]]; then

@@ -1,8 +1,8 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Modules.Items;
-using OpenWorker.Gameplay.Modules.Items.Components;
 using OpenWorker.GateServer.Gameplay;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -103,39 +103,83 @@ public sealed class TestPersonCreation
         Assert.IsFalse(PersonCreationCatalog.IsOffered(haru, 221));
     }
 
+    private static InventoryFactory CreateInventories()
+    {
+        var catalog = new ItemCatalog(
+            Load<ItemRow>("tb_Item"),
+            Load<ItemClassifyRow>("tb_Item_Classify"),
+            Load<InvenSlotExtendRow>("tb_Inven_Slot_Extend"),
+            Load<BankSlotExtendRow>("tb_Bank_Slot_Extend"));
+
+        return new InventoryFactory(catalog, Load<CreateClothRow>("tb_Create_Cloth"), new LocalItemSerials());
+    }
+
+    private static PersonPersistent Person(int outfit)
+    {
+        return new PersonPersistent
+        {
+            Id = 1,
+            Name = "Test",
+            Hero = Hero.Haru,
+            Outfit = outfit,
+            DefaultHairStyle = 0,
+            DefaultHairColor = 0,
+            DefaultEyeColor = 0,
+            DefaultSkinColor = 0,
+            EquippedHairStyle = 0,
+            EquippedHairColor = 0,
+            EquippedEyeColor = 0,
+            EquippedSkinColor = 0,
+            Location = 0,
+            PositionX = 0,
+            PositionY = 0,
+            PositionZ = 0,
+            RotationX = 0,
+            FatiguePointCommon = 0,
+            Account = null!,
+            Gate = null!
+        };
+    }
+
     [TestMethod]
     public void OutfitIsPutIntoTheSlotsOfItsItems()
     {
-        using var world = World.Create();
+        var inventory = CreateInventories().CreateNew(Person(121));
+        var shape = inventory.Find(StorageGroup.ShapeEquip)!;
 
-        var costumes = new CostumeFactory(world, Load<CreateClothRow>("tb_Create_Cloth"), Load<ItemRow>("tb_Item"));
-        var storage = new StorageFactory(world).Create(StorageGroup.ShapeEquip);
-
-        costumes.Dress(storage, 121);
-
-        var content = world.Get<StorageContentComponent>(storage);
-
-        int Item(int slot) => world.Get<StorageItemComponent>(content[slot]).Identifier;
+        int Item(int slot) => shape.Slots[slot]!.Item;
 
         Assert.AreEqual(211020701, Item(6));
         Assert.AreEqual(211021101, Item(8));
         Assert.AreEqual(211021201, Item(9));
         Assert.AreEqual(211020801, Item(11));
-        Assert.AreEqual(4, content.SlotList.Count(e => e != Entity.Null));
+        Assert.AreEqual(4, shape.Slots.Count(e => e is not null));
+    }
+
+    [TestMethod]
+    public void CharacterStartsWithTheWeaponOfItsClass()
+    {
+        var inventory = CreateInventories().CreateNew(Person(121));
+
+        Assert.AreEqual(111000001, inventory.At(StorageGroup.AbilityEquip, (int)AbilityEquipSlot.SoulWeapon)!.Item);
     }
 
     [TestMethod]
     [DataRow(10011, DisplayName = "An outfit without a table row")]
-    [DataRow(421, DisplayName = "An outfit made of items that cannot be worn")]
+    [DataRow(0, DisplayName = "No outfit")]
     public void OutfitWithoutWearableItemsLeavesTheCharacterWithoutClothes(int outfit)
     {
-        using var world = World.Create();
+        var inventory = CreateInventories().CreateNew(Person(outfit));
 
-        var costumes = new CostumeFactory(world, Load<CreateClothRow>("tb_Create_Cloth"), Load<ItemRow>("tb_Item"));
-        var storage = new StorageFactory(world).Create(StorageGroup.ShapeEquip);
+        Assert.IsTrue(inventory.Find(StorageGroup.ShapeEquip)!.Slots.All(e => e is null));
+    }
 
-        costumes.Dress(storage, outfit);
+    [TestMethod]
+    public void OutfitOfOtherHeroesIsWornInTheSlotOfEachItem()
+    {
+        var shape = CreateInventories().CreateNew(Person(421)).Find(StorageGroup.ShapeEquip)!;
 
-        Assert.IsTrue(world.Get<StorageContentComponent>(storage).SlotList.All(e => e == Entity.Null));
+        Assert.IsTrue(shape.Slots.Any(e => e is not null));
+        Assert.IsTrue(shape.Slots.OfType<ItemInstance>().All(e => e.Slot >= 0 && shape.Slots[e.Slot] == e));
     }
 }

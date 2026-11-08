@@ -30,7 +30,7 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
 
     public CombatStats StatsOf(Entity player)
     {
-        return tables.GetPerson(ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
+        return tables.GetPlayer(ecs, player);
     }
 
     public int Health(Entity player) => ecs.Get<AbilityComponent>(player).Health.Current;

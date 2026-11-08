@@ -64,6 +64,7 @@ public sealed class TestServerOptions
                 services.AddPlayerTransfer();
                 services.AddGateOptions();
                 services.AddGateEndpointOptions();
+                services.AddPersonCreationOptions();
                 break;
 
             case District:
@@ -74,6 +75,7 @@ public sealed class TestServerOptions
                 services.AddPlayerTransfer();
                 services.AddChannels();
                 services.AddAttendanceOptions();
+                services.AddRewardsOptions();
                 services.AddDailyMissionOptions();
                 break;
 
@@ -85,6 +87,7 @@ public sealed class TestServerOptions
                 services.AddPlayerTransfer();
                 services.AddChannels();
                 services.AddAttendanceOptions();
+                services.AddRewardsOptions();
                 services.AddDailyMissionOptions();
                 break;
 
@@ -433,6 +436,38 @@ public sealed class TestServerOptions
         using var halfPast = CreateHost(server, new() { [key] = "9.5" });
 
         Validate(halfPast);
+    }
+
+    [TestMethod]
+    public void StartLevelIsALevelOfTheGame()
+    {
+        var zero = Fails(Gate, new() { ["PersonCreation:StartLevel"] = "0" });
+        StringAssert.Contains(zero.Message, "PersonCreation:StartLevel");
+
+        var tooHigh = Fails(Gate, new() { ["PersonCreation:StartLevel"] = "101" });
+        StringAssert.Contains(tooHigh.Message, "PersonCreation:StartLevel");
+
+        using var host = CreateHost(Gate);
+
+        Validate(host);
+
+        // A new character starts at the first level unless the file says otherwise.
+        Assert.AreEqual((byte)1, host.Services.GetRequiredService<IOptions<PersonCreationOptions>>().Value.StartLevel);
+    }
+
+    [TestMethod]
+    [DataRow(District, "Rewards:ExpRate")]
+    [DataRow(District, "Rewards:DropRate")]
+    [DataRow(Maze, "Rewards:ExpRate")]
+    [DataRow(Maze, "Rewards:DropRate")]
+    public void RewardRatesAreNotNegative(string server, string key)
+    {
+        var negative = Fails(server, new() { [key] = "-1" });
+        StringAssert.Contains(negative.Message, key);
+
+        using var doubled = CreateHost(server, new() { [key] = "2.5" });
+
+        Validate(doubled);
     }
 
     [TestMethod]

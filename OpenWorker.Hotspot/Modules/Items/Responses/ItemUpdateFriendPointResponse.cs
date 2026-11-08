@@ -13,7 +13,10 @@ public readonly struct ItemUpdateFriendPointResponse : IResponseHotspotMessage
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    public long Total { get; init; }
+
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Total);
     }
 }

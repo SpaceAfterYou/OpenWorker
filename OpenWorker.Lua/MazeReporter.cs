@@ -67,11 +67,11 @@ public sealed partial class MazeReporter(
     /// <summary>
     /// The person has won a maze. Nothing ranks a run yet, so a run has no rank.
     /// </summary>
-    public async ValueTask MazeClearedAsync(Entity player, MazeInfoRow info, int seconds, int hero)
+    public async ValueTask MazeClearedAsync(Entity player, MazeInfoRow info, int seconds, int hero, byte level)
     {
         try
         {
-            var clear = new DailyMissionMazeClear(info.Id, 0, seconds, info.Type, PersonModuleDefines.DefaultLevel, hero, []);
+            var clear = new DailyMissionMazeClear(info.Id, 0, seconds, info.Type, level, hero, []);
 
             await missions.OnMazeClearedAsync(player, clear, false, CancellationToken.None);
             await soulMetries.OnMazeClearedAsync(player, info.Group, CancellationToken.None);

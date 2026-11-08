@@ -1,4 +1,4 @@
-using OpenWorker.Batch;
+﻿using OpenWorker.Batch;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands;
@@ -9,6 +9,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Ai;
+using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
@@ -52,17 +53,20 @@ await Host
         services.AddGateOptions();
         services.AddPlayerTransfer();
         services.AddSingleton<PersonRegistry>();
-        services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
         services.AddSingleton<ISessionCloseHandler, MazeCloseHandler>();
 
-        services.AddSingleton<StorageItemFactory>();
-        services.AddSingleton<StorageFactory>();
-        services.AddSingleton<CostumeFactory>();
-        services.AddSingleton<StorageManager>();
         services.AddPersistence();
         services.AddMiscGameplay();
         services.AddQuestGameplay();
         services.AddSingleton<MazeReporter>();
+        services.AddItems();
+        services.AddRewardsOptions();
+        services.AddSingleton<DropService>();
+        services.AddSingleton<KillRewards>();
+        services.AddSingleton<MazeResults>();
+        services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<MazeResults>());
+        services.AddSingleton<ISessionCloseHandler, DropCleaner>();
+        services.AddHostedService<DropExpiryService>();
 
         services.AddChannels();
 

@@ -5,6 +5,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Quests.Components;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Hotspot;
@@ -677,8 +678,10 @@ public sealed partial class QuestManager(
 
     #region Helpers
 
-    // The level of a person is not kept anywhere yet, so every person has the level of a new one.
-    private static int GetLevel(Entity player) => PersonModuleDefines.DefaultLevel;
+    private int GetLevel(Entity player)
+    {
+        return world.IsAlive(player) && world.TryGet<LevelComponent>(player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel;
+    }
 
     private int GetHero(Entity player)
     {

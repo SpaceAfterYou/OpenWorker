@@ -62,7 +62,9 @@ public static class BinaryWriteExtension
         writer.Write(value.UpgradeLimit);
         writer.Write(value.Flag);
         writer.Write(value.Exp);
-        writer.WriteUtf8AsciiString(value.BroachState);
+
+        // The client takes between one and fifteen characters here and has no room for a terminator.
+        writer.WriteUtf8AsciiStringWithoutTerminator(string.IsNullOrEmpty(value.BroachState) ? "000000000000000" : value.BroachState);
         writer.Write(value.RestoreCount);
         writer.Write(value.SealCount);
     }

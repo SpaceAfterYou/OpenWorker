@@ -1,4 +1,5 @@
-using OpenWorker.Channel;
+﻿using OpenWorker.Channel;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
@@ -31,11 +32,10 @@ await Host
         services.AddDistrictOptions();
         services.AddPlayerTransfer();
 
-        services.AddSingleton<StorageItemFactory>();
-        services.AddSingleton<StorageFactory>();
-        services.AddSingleton<CostumeFactory>();
-        services.AddSingleton<StorageManager>();
         services.AddPersistence();
+        services.AddItems();
+        services.AddRewardsOptions();
+        services.AddSingleton<CombatTables>();
         services.AddGameplay();
         services.AddMiscGameplay();
         services.AddQuestGameplay();
@@ -46,7 +46,6 @@ await Host
 
         services.AddSingleton<NpcManager>();
         services.AddSingleton<PersonRegistry>();
-        services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
         services.AddSingleton<ISessionCloseHandler, PersonPlaceStore>();
 
         services.AddHotspot(context, EntityComponentService.District);

@@ -90,6 +90,22 @@ public static class OptionsServiceCollectionExtensions
     }
 
     /// <summary>
+    /// How generous the game servers are with experience and drops: what the district and the maze have.
+    /// </summary>
+    public static IServiceCollection AddRewardsOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<RewardsOptions, RewardsOptionsValidator>(RewardsOptions.SectionName);
+    }
+
+    /// <summary>
+    /// How a new character starts: what the gate, which creates characters, has.
+    /// </summary>
+    public static IServiceCollection AddPersonCreationOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<PersonCreationOptions, PersonCreationOptionsValidator>(PersonCreationOptions.SectionName);
+    }
+
+    /// <summary>
     /// When the day of the attendance rewards starts: what the servers that give them have.
     /// </summary>
     public static IServiceCollection AddAttendanceOptions(this IServiceCollection services)

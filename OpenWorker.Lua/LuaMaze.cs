@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
@@ -155,6 +155,16 @@ public partial class LuaMaze(
 
     private const byte CutsceneStopped = 0;
     private const byte CutscenePlaying = 2;
+
+    /// <summary>
+    /// A monster of the maze was killed: its id in the table and the place where it fell.
+    /// </summary>
+    public event Action<int, System.Numerics.Vector3>? MonsterKilled;
+
+    /// <summary>
+    /// The maze has been won: its last sector is cleared.
+    /// </summary>
+    public event Action? Completed;
 
     private int SkillGeneration { get; set; }
     private int CurrentSkill { get; set; }
@@ -633,7 +643,7 @@ public partial class LuaMaze(
         var session = player.Get<ServerSessionComponent>();
         var attacker = Ecs.Get<WorldComponent>(player);
 
-        var attackerStats = combat.GetPerson(Ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel, Ecs.Get<TitleComponent>(player));
+        var attackerStats = combat.GetPlayer(Ecs, player);
         var skillDamage = combat.GetSkill(skill);
         var hits = targets.Select((target, i) => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
 
@@ -666,9 +676,15 @@ public partial class LuaMaze(
             .Select(e => (Removed: RemoveDead(session, e.Target), e.Hit))
             .ToArray();
 
+        // What the player killed pays out at once; monsters that a script or the end of the maze takes away do not.
+        foreach (var ((identifier, _, fell), _) in dead)
+        {
+            MonsterKilled?.Invoke(identifier, fell);
+        }
+
         var kind = actions.GetPassiveType(skill);
 
-        foreach (var ((identifier, place), hit) in dead)
+        foreach (var ((identifier, place, _), hit) in dead)
         {
             if (Closed)
             {
@@ -787,16 +803,17 @@ public partial class LuaMaze(
         }
     }
 
-    private (int Identifier, NonPlayableCreatureComponent Place) RemoveDead(ServerSessionComponent session, Entity target)
+    private (int Identifier, NonPlayableCreatureComponent Place, System.Numerics.Vector3 Position) RemoveDead(ServerSessionComponent session, Entity target)
     {
         var identifier = Ecs.Get<CreatureComponent>(target).Identifier;
         var place = Ecs.Get<NonPlayableCreatureComponent>(target);
+        var position = Ecs.Get<WorldComponent>(target).Position;
 
         session.Send(new MonsterDieResponse { Actor = Ecs.Get<ActorComponent>(target) });
 
         creatureManager.Remove(target);
 
-        return (identifier, place);
+        return (identifier, place, position);
     }
 
     /// <summary>
@@ -904,7 +921,14 @@ public partial class LuaMaze(
 
         SendClearInfo();
 
-        await reports.MazeClearedAsync(player, info, (int)Stopwatch.GetElapsedTime(StartedAt).TotalSeconds, (int)Ecs.Get<PersonInfoComponent>(player).Hero);
+        Completed?.Invoke();
+
+        await reports.MazeClearedAsync(
+            player,
+            info,
+            (int)Stopwatch.GetElapsedTime(StartedAt).TotalSeconds,
+            (int)Ecs.Get<PersonInfoComponent>(player).Hero,
+            Ecs.TryGet<LevelComponent>(player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel);
 
         await DestroyAsync(creatureManager.FindMonsters((_, _) => true).Where(e => Ecs.Get<NonPlayableCreatureComponent>(e).Sector == last.Id).ToArray(), false);
     }
@@ -1518,7 +1542,7 @@ public partial class LuaMaze(
         var session = player.Get<ServerSessionComponent>();
         var dead = targets.Where(Ecs.IsAlive).Select(target => RemoveDead(session, target)).ToArray();
 
-        foreach (var (identifier, place) in dead)
+        foreach (var (identifier, place, _) in dead)
         {
             if (Closed)
             {
