@@ -13,6 +13,24 @@ public readonly struct ServerSessionComponent(TcpClient client)
     private readonly SessionWriter _writer = new(client);
 
     /// <summary>
+    /// Where the client connected from, for the logs. Empty when the socket was not connected or is gone.
+    /// </summary>
+    public string? RemoteEndPoint { get; } = DescribeRemote(client);
+
+    private static string? DescribeRemote(TcpClient client)
+    {
+        try
+        {
+            return client.Client?.RemoteEndPoint?.ToString();
+        }
+
+        catch (Exception e) when (e is ObjectDisposedException or SocketException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Queues the message for this connection. Never waits for the client, and a connection that is
     /// already gone just drops the message.
     /// </summary>

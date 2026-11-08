@@ -408,7 +408,8 @@ public readonly struct MessageOpcode
         GroupOpcode.ServerForce => $"{(ServerForceOpcode)Command}",
         GroupOpcode.ServerWorldMode => $"{(ServerWorldModeOpcode)Command}",
         GroupOpcode.ServerModeMaze => $"{(ServerModeMazeOpcode)Command}",
-        _ => throw new ArgumentOutOfRangeException(nameof(Group), Group, null)
+        // The client picks the group; a name for a log must not throw on one nobody knows.
+        _ => $"0x{Command:X2}"
     };
 }
 

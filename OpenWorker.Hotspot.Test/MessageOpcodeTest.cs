@@ -75,4 +75,13 @@ public sealed class MessageOpcodeTest
         Assert.AreEqual(Group, opcode.Group);
         Assert.AreEqual(Command, opcode.Command);
     }
+
+    [TestMethod]
+    public void NamesAnOpcodeOfAGroupNobodyKnowsWithoutThrowing()
+    {
+        var opcode = new MessageOpcode(0xF0, 0x01);
+
+        Assert.AreEqual("240:0x01", opcode.ToFullString());
+        Assert.AreEqual("System:Ping", new MessageOpcode(GroupOpcode.System, SystemOpcode.Ping).ToFullString());
+    }
 }
