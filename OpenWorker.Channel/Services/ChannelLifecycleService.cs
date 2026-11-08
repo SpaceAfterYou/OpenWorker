@@ -1,6 +1,6 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM.Searching;
@@ -10,12 +10,12 @@ namespace OpenWorker.Channel.Services;
 internal sealed partial class ChannelLifecycleService(
     IRedisCollection<ChannelCache> cache,
     ServiceChannels channels,
-    IConfiguration configuration,
+    IOptions<InstanceOptions> instance,
     ILogger<ChannelLifecycleService> logger
 ) :
     BackgroundService
 {
-    private Guid Instance { get; } = configuration.GetInstance();
+    private Guid Instance { get; } = instance.Value.Identifier;
 
     private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(1);
 

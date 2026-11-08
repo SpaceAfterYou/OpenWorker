@@ -6,6 +6,7 @@ using System.Numerics;
 using Arch.Core;
 using OpenWorker.Domain.Components;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.DistrictServer.Server;
@@ -57,7 +58,7 @@ public sealed partial class PersonService(
     SessionLeaseManager leases,
     ServiceChannels channels,
     IDbContextFactory<PersistenceContext> factory,
-    IConfiguration configuration,
+    IOptions<InstanceOptions> instance,
     PersonRegistry registry,
     LeaveManager leaving,
     QuestManager questManager,
@@ -71,8 +72,8 @@ public sealed partial class PersonService(
     IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
-    private short Location { get; } = configuration.GetLocation();
-    private Guid Instance { get; } = configuration.GetInstance();
+    private short Location { get; } = instance.Value.Location;
+    private Guid Instance { get; } = instance.Value.Identifier;
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
     {

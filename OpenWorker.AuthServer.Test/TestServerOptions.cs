@@ -38,6 +38,7 @@ public sealed class TestServerOptions
             ["Instance:PublicPort"] = "10011"
         },
         Maze => new() { [ConfigurationUtils.InstanceIdentifierKey] = Guid.NewGuid().ToString() },
+        Relay => new() { ["Credentials:DiscordToken"] = "test-token" },
         _ => []
     };
 
@@ -61,6 +62,7 @@ public sealed class TestServerOptions
                 services.AddPersistence();
                 OpenWorker.GateServer.Gameplay.Extensions.DependencyInjection.AddGameplay(services);
                 services.AddPlayerTransfer();
+                services.AddGateOptions();
                 services.AddGateEndpointOptions();
                 break;
 
@@ -71,19 +73,25 @@ public sealed class TestServerOptions
                 services.AddDistrictOptions();
                 services.AddPlayerTransfer();
                 services.AddChannels();
+                services.AddAttendanceOptions();
+                services.AddDailyMissionOptions();
                 break;
 
             case Maze:
                 services.AddServerOptions();
                 services.AddCache();
                 services.AddPersistence();
+                services.AddGateOptions();
                 services.AddPlayerTransfer();
                 services.AddChannels();
+                services.AddAttendanceOptions();
+                services.AddDailyMissionOptions();
                 break;
 
             case Relay:
                 services.AddCache();
                 services.AddPersistence();
+                services.AddCredentialsOptions();
                 break;
 
             case UpdateContent:
@@ -338,16 +346,81 @@ public sealed class TestServerOptions
     }
 
     [TestMethod]
-    public void MazeAddressForTheClassesThatReadTheConfigurationStillComesFromTheFile()
+    public void RelayNeedsTheDiscordToken()
     {
-        // WorldManager reads it through the configuration until it moves to the options.
-        var configuration = new ConfigurationBuilder().AddJsonFile(AppSettings(District), optional: false).Build();
+        // The token is a secret, so no file carries it and the relay stops at start when the environment has none.
+        var missing = Fails(Relay, new() { ["Credentials:DiscordToken"] = null });
+        StringAssert.Contains(missing.Message, "Credentials:DiscordToken");
 
-        Assert.AreEqual(("127.0.0.1", (short)10101), configuration.GetMazeAddress());
+        var empty = Fails(Relay, new() { ["Credentials:DiscordToken"] = "" });
+        StringAssert.Contains(empty.Message, "Credentials:DiscordToken");
+    }
 
-        var empty = new ConfigurationBuilder().Build();
+    [TestMethod]
+    [DataRow(District, "Attendance:ResetHour")]
+    [DataRow(District, "DailyMission:ResetHour")]
+    [DataRow(Maze, "Attendance:ResetHour")]
+    [DataRow(Maze, "DailyMission:ResetHour")]
+    public void ResetHourIsAnHourOfTheDay(string server, string key)
+    {
+        var tooLate = Fails(server, new() { [key] = "24" });
+        StringAssert.Contains(tooLate.Message, key);
 
-        Assert.ThrowsExactly<InvalidOperationException>(() => empty.GetMazeAddress());
+        var negative = Fails(server, new() { [key] = "-1" });
+        StringAssert.Contains(negative.Message, key);
+
+        using var halfPast = CreateHost(server, new() { [key] = "9.5" });
+
+        Validate(halfPast);
+    }
+
+    [TestMethod]
+    public void ResetHoursAreOptional()
+    {
+        // Without them the rules of the features decide.
+        using var host = CreateHost(District);
+
+        Validate(host);
+
+        Assert.IsNull(host.Services.GetRequiredService<IOptions<AttendanceOptions>>().Value.ResetHour);
+        Assert.IsNull(host.Services.GetRequiredService<IOptions<DailyMissionOptions>>().Value.ResetHour);
+    }
+
+    [TestMethod]
+    public void MazeAddressOfAPlayerTransferComesFromTheFile()
+    {
+        // WorldManager sends players here while no maze server has registered itself.
+        using var host = CreateHost(District);
+
+        Validate(host);
+
+        var maze = host.Services.GetRequiredService<IOptions<MazeEndpointOptions>>().Value;
+
+        Assert.AreEqual("127.0.0.1", maze.Host);
+        Assert.AreEqual(10101, maze.Port);
+    }
+
+    /// <summary>
+    /// The classes of a server take these as <see cref="IOptions{TOptions}"/>: one that the server does not register
+    /// would stop the class from being built when the first player connects, not when the host starts.
+    /// </summary>
+    [TestMethod]
+    [DataRow(Gate, typeof(GateOptions), typeof(GateEndpointOptions), typeof(MazeEndpointOptions), typeof(AuthEndpointOptions))]
+    [DataRow(District, typeof(InstanceOptions), typeof(GateOptions), typeof(MazeEndpointOptions), typeof(ChannelOptions))]
+    [DataRow(Maze, typeof(InstanceOptions), typeof(GateOptions), typeof(MazeEndpointOptions), typeof(ChannelOptions))]
+    public void ServerRegistersTheOptionsItsClassesRead(string server, params Type[] options)
+    {
+        using var host = CreateHost(server);
+
+        Validate(host);
+
+        foreach (var type in options)
+        {
+            var service = host.Services.GetRequiredService(typeof(IOptions<>).MakeGenericType(type));
+            var value = service.GetType().GetProperty(nameof(IOptions<object>.Value))!.GetValue(service);
+
+            Assert.IsNotNull(value, $"{server} has no {type.Name}.");
+        }
     }
 
     private static void AssertEndpoint(string host, int port, StackExchange.Redis.ConfigurationOptions options)

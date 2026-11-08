@@ -80,6 +80,30 @@ public static class OptionsServiceCollectionExtensions
     }
 
     /// <summary>
+    /// When the day of the attendance rewards starts: what the servers that give them have.
+    /// </summary>
+    public static IServiceCollection AddAttendanceOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<AttendanceOptions, AttendanceOptionsValidator>(AttendanceOptions.SectionName);
+    }
+
+    /// <summary>
+    /// When the special daily missions are drawn again: what the servers that give them have.
+    /// </summary>
+    public static IServiceCollection AddDailyMissionOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<DailyMissionOptions, DailyMissionOptionsValidator>(DailyMissionOptions.SectionName);
+    }
+
+    /// <summary>
+    /// The secrets of the relay server.
+    /// </summary>
+    public static IServiceCollection AddCredentialsOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<CredentialsOptions, CredentialsOptionsValidator>(CredentialsOptions.SectionName);
+    }
+
+    /// <summary>
     /// <c>ConnectionStrings:Redis</c>, shared by the cache and the notifications between servers.
     /// </summary>
     public static IServiceCollection AddRedisOptions(this IServiceCollection services)

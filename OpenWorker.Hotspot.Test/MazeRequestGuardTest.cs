@@ -1,12 +1,13 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
 using Lua;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Domain.Components;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Quests;
@@ -49,17 +50,13 @@ public sealed class MazeRequestGuardTest
 
     private static MazeService Service(World world)
     {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Gate:Id"] = "1" })
-            .Build();
-
         // The handlers under test never reach Redis, the batches or the other server.
         return new MazeService(
             world,
             null!,
             null!,
             null!,
-            configuration,
+            Options.Create(new GateOptions { Id = 1 }),
             new QuestManager(world, None<QuestEpisodeRow>(), None<QuestConditionRow>()),
             NullLogger<MazeService>.Instance);
     }

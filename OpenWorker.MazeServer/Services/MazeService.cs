@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using OpenWorker.Batch.Entities;
+using Microsoft.Extensions.Options;
 using OpenWorker.Batch.Entities.Basic;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
@@ -40,7 +41,7 @@ public sealed partial class MazeService(
     BatchManager batches,
     IRedisCollection<DistrictReserveCache> districtReserves,
     WorldManager worldManager,
-    IConfiguration configuration,
+    IOptions<GateOptions> gate,
     QuestManager questManager,
     ILogger<MazeService> logger
 ) :
@@ -75,7 +76,7 @@ public sealed partial class MazeService(
     /// </summary>
     private const short NoMotion = -1;
 
-    private short Gate { get; } = configuration.GetGate();
+    private short Gate { get; } = gate.Value.Id;
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
     {

@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Cache;
@@ -14,20 +14,21 @@ namespace OpenWorker.GateServer.Server.Services;
 public sealed partial class KeepAliveService(
     IRedisCollection<ChannelCache> channelCollection,
     IRedisCollection<GateCache> gateCollection,
-    IConfiguration configuration,
+    IOptions<GateOptions> gate,
+    IOptions<GateEndpointOptions> endpoint,
     ILogger<KeepAliveService> logger
 ) :
     BackgroundService
 {
     private GateCache Instance { get; set; } = new()
     {
-        Identifier = configuration.GetGate(),
+        Identifier = gate.Value.Id,
 
         OnlineCount = 0,
         Workload = GateWorkload.Low,
 
-        Host = configuration.GetGateHost(),
-        Port = configuration.GetGatePort()
+        Host = endpoint.Value.Host,
+        Port = (short)endpoint.Value.Port
     };
 
     private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(1);

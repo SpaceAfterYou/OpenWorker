@@ -30,6 +30,7 @@ await Host
         services.AddPersistence();
         services.AddGameplay();
         
+        services.AddGateOptions();
         services.AddGateEndpointOptions();
         services.AddHostedService<KeepAliveService>();
 

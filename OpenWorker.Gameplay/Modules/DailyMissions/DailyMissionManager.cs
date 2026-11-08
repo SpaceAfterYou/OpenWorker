@@ -1,7 +1,8 @@
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.DailyMissions.Components;
@@ -25,7 +26,7 @@ public sealed class DailyMissionManager(
     DailyMissionCatalog catalog,
     IRewardGranter rewards,
     TimeProvider time,
-    IConfiguration configuration,
+    IOptions<DailyMissionOptions> options,
     ILogger<DailyMissionManager> logger) : IMiscTick
 {
     /// <summary>
@@ -45,7 +46,7 @@ public sealed class DailyMissionManager(
     /// <summary>
     /// The time of day the special missions are drawn again, in hours.
     /// </summary>
-    private TimeSpan Reset => TimeSpan.FromHours(configuration.GetValue("DailyMission:ResetHour", DailyMissionRules.DefaultResetTime.TotalHours));
+    private TimeSpan Reset => options.Value.ResetHour is { } hour ? TimeSpan.FromHours(hour) : DailyMissionRules.DefaultResetTime;
 
     private Random Random { get; } = new();
 

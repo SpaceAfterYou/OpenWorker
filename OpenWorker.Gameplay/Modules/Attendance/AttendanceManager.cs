@@ -1,7 +1,8 @@
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Attendance.Components;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.State;
@@ -21,7 +22,7 @@ public sealed class AttendanceManager(
     IRewardGranter rewards,
     ServerContent contents,
     TimeProvider time,
-    IConfiguration configuration,
+    IOptions<AttendanceOptions> options,
     ILogger<AttendanceManager> logger) : IMiscTick
 {
     private static readonly QueryDescription Everyone = new QueryDescription().WithAll<AttendanceComponent>();
@@ -31,7 +32,7 @@ public sealed class AttendanceManager(
     /// </summary>
     private static readonly TimeSpan LongestStep = TimeSpan.FromMinutes(2);
 
-    private TimeSpan Reset => TimeSpan.FromHours(configuration.GetValue("Attendance:ResetHour", AttendanceRules.DefaultResetTime.TotalHours));
+    private TimeSpan Reset => options.Value.ResetHour is { } hour ? TimeSpan.FromHours(hour) : AttendanceRules.DefaultResetTime;
 
     public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
     {

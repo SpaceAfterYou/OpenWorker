@@ -2,16 +2,17 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OpenWorker.Extensions;
 
 namespace OpenWorker.RelayServer.Services;
 
 public sealed class DiscordService(
     DiscordSocketClient client,
     IServiceProvider serviceProvider,
-    IConfiguration configuration,
+    IOptions<CredentialsOptions> credentials,
     ILogger<DiscordService> logger
 ) :
     BackgroundService
@@ -49,7 +50,7 @@ public sealed class DiscordService(
         };
 
         await client
-            .LoginAsync(TokenType.Bot, configuration["Credentials:DiscordToken"])
+            .LoginAsync(TokenType.Bot, credentials.Value.DiscordToken)
             .ConfigureAwait(false);
         
         await client

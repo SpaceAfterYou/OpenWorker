@@ -132,6 +132,10 @@ or wrong setting stops the server with a message that names the key. A setting w
 
 - `ConnectionStrings:Redis` is an address like `redis://redis:6379`. One setting serves the cache (Redis.OM) and
   the notifications between servers (StackExchange.Redis, built by `RedisOptions.ToConfigurationOptions`).
+- `Credentials:DiscordToken` of the relay is a secret: no file carries it, it comes from the environment
+  (`Credentials__DiscordToken`), and the relay stops at start without it.
+- `Attendance:ResetHour` and `DailyMission:ResetHour` are optional (the hour the game day starts at); the rules of the
+  feature decide when they are not set.
 - To add a setting: add the options class with its attributes and a partial `[OptionsValidator]` class, register it
   in `OptionsServiceCollectionExtensions`, put the default in the `appsettings.json` of the servers that need it, and
   add the server to `TestServerOptions`.

@@ -1,6 +1,6 @@
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Batch.Entities;
@@ -21,7 +21,8 @@ using Redis.OM.Searching;
 namespace OpenWorker.Channel;
 
 public sealed partial class WorldManager(
-    IConfiguration configuration,
+    IOptions<GateOptions> gate,
+    IOptions<MazeEndpointOptions> mazeEndpoint,
     BatchManager provider,
     IRedisCollection<DistrictReserveCache> districtReserveCache,
     World ecs,
@@ -37,11 +38,11 @@ public sealed partial class WorldManager(
     /// </summary>
     public static TimeSpan ReservationLifetime { get; } = TimeSpan.FromSeconds(60);
 
-    private short Gate { get; } = configuration.GetGate();
+    private short Gate { get; } = gate.Value.Id;
     /// <summary>
     /// Where players go when no maze server of the gate has registered itself.
     /// </summary>
-    private (string Host, short Port) DefaultMaze { get; } = configuration.GetMazeAddress();
+    private (string Host, short Port) DefaultMaze { get; } = (mazeEndpoint.Value.Host, (short)mazeEndpoint.Value.Port);
 
     /// <summary>
     /// The maze server of this gate with the fewest players.

@@ -47,6 +47,7 @@ await Host
 
         services.AddCommandManager();
 
+        services.AddGateOptions();
         services.AddPlayerTransfer();
         services.AddSingleton<PersonRegistry>();
         services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
