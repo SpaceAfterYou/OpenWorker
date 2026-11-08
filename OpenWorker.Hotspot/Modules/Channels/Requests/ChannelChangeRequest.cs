@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Channels.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct ChannelChangeRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ChannelChangeRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -19,7 +21,7 @@ public readonly struct ChannelChangeRequest(BinaryReader reader) : IRequestHotsp
 
 #region Message: Body
 
-    public short Channel { get; } = reader.ReadInt16();
+    public short Channel { get; }
 
 #endregion Message: Body
 }
