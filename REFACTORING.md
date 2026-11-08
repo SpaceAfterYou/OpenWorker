@@ -1,0 +1,572 @@
+# План рефакторинга OpenWorker
+
+Анализ сделан по ветке `dev`, коммит `037d171` (2026-11-08). Документ описывает текущее состояние,
+найденные проблемы, принципы для высоконагруженного сервера и фазы работ с критериями готовности.
+Правила для кода на мировой петле и описание процессов живут в [ARCHITECTURE.md](ARCHITECTURE.md);
+этот файл их не повторяет, а опирается на них.
+
+Когда фаза закрыта, отмечайте это здесь и переносите устоявшиеся правила в `ARCHITECTURE.md`.
+
+## 1. Исходное состояние
+
+### 1.1. Цифры
+
+| Показатель | Значение |
+|---|---|
+| Платформа | .NET 10, C# preview, 29 проектов в `OpenWorker.slnx` |
+| Продуктовый код | ~70 000 строк C# (86 000 с тестами и миграциями) |
+| История | 530 коммитов с 2020-12-02 |
+| `dotnet build -c Release` | 0 ошибок, 119 предупреждений |
+| `dotnet test` | 447 тестов: 405 прошли, 42 пропущены (нужны `OPENWORKER_TEST_REDIS` и `OPENWORKER_TEST_RES`) |
+| Типы сообщений протокола | 271 запрос, 397 ответов |
+| Запросы без обработчика | 68 (молча проглатываются `EmptyHandler`) |
+| TODO / `NotImplementedException` / закомментированный код | 47 / 34 / ~160 строк |
+| Миграции EF Core | 11 |
+| CI | нет; только dependabot с интервалом `yearly` |
+
+### 1.2. Что уже сделано правильно
+
+Эти решения сохраняем и развиваем, а не переписываем.
+
+- **Один поток игровой логики на процесс.** `WorldLoop` как `SynchronizationContext`: обработчики,
+  таймеры и закрытие соединений выполняются по одному, ECS без блокировок. Правила записаны и
+  проверяются тестами (`WorldLoopTest`).
+- **Backpressure на запись.** `SessionWriter` держит ограниченную очередь кадров и отключает клиента,
+  который не читает, не замедляя остальных.
+- **Фиксированный шаг симуляции.** `SimulationClock` шагает каждые 50 мс, режет шаг после стопа,
+  пропускает тики вместо наверстывания и репортит перебор бюджета.
+- **Переходы между серверами через резервации с TTL** и лизы сессий с владельцем в Redis.
+- **Уникальность и лимиты в базе**, транзакции в сторах, обработка `UniqueViolation`.
+- **Wire-формат под тестами**: 432 тест-метода, дампы пакетов с редактированием паролей и тикетов.
+- **Пароли**: PBKDF2 на SHA3-512 с константным сравнением.
+- **Пулы в сетевом слое**: `ArrayPool` при отправке, `ReadExactlyAsync` при чтении, `NoDelay`.
+
+## 2. Найденные проблемы
+
+Сгруппированы по теме. Внутри группы первым идёт самое влиятельное для нагрузки.
+Ссылки ведут на место в коде на момент анализа.
+
+### 2.1. Горячий путь: рассылка и сериализация
+
+1. **Нет interest management.** [`ServiceChannel.Broadcast`](OpenWorker.Channel/ServiceChannel.cs)
+   отправляет каждое движение всем участникам канала. При N игроках в канале и M движений
+   в секунду это N·M сериализаций и отправок, рост квадратичный. Это главное узкое место района.
+2. **Сериализация на каждого получателя.** `ServerSessionComponent.TrySend`
+   ([файл](OpenWorker.Hotspot/ServerSessionComponent.cs)) на каждый вызов арендует буфер
+   64 КБ, создаёт `MemoryStream` и `BinaryWriter`, шифрует, затем копирует во второй арендованный
+   буфер. Бродкаст на 100 игроков это 100 одинаковых сериализаций и 200 аренд.
+3. **Шифрование через LINQ.** `MessageEncryption.Exchange`
+   ([файл](OpenWorker.Hotspot/SoulWorker/Network/MessageEncryption.cs)) обходит байты через
+   `Enumerable.Range`, таблица ключей объявлена как `IReadOnlyList<byte>`: интерфейсный вызов
+   и аллокация перечислителя в самом горячем цикле процесса.
+4. **Разбор запроса аллоцирует.** [`HandlerExecutor`](OpenWorker.Hotspot/Handler/HandlerExecutor.cs)
+   создаёт поток и `BinaryReader` на каждый пакет и достаёт обработчик через
+   `provider.GetService` (строка 28) при каждом вызове, хотя обработчики синглтоны.
+   Читатели массивов в [`BinaryReaderExtension`](OpenWorker.Extensions/BinaryReaderExtension.cs)
+   собраны из `Enumerable.Repeat(...).Select(...).ToArray()`.
+5. **64 КБ на соединение навсегда.** `ServerService.SessionLoopAsync`
+   ([файл](OpenWorker.DependencyInjection/ServerService.cs)) арендует `MaxContentLength` из
+   `MemoryPool` на всё время жизни соединения: 10 000 соединений это 640 МБ закреплённой памяти.
+6. **`ToArray()` на каждый тик.** `SimulationClock.Tick` копирует список симуляций,
+   `LuaCreatureManager.Step` ([строка 446](OpenWorker.Lua/Managers/LuaCreatureManager.cs#L446))
+   копирует словарь тел каждые 50 мс на каждый лабиринт.
+
+### 2.2. Масштабирование симуляции
+
+1. **Таймеры через `Task.Delay`.** `LuaMaze.RunLaterAsync`
+   ([строка 470](OpenWorker.Lua/LuaMaze.cs#L470)) создаёт задачу и таймер на каждый удар
+   скилла, полёт снаряда (`FlyAsync`, шаг 50 мс) и Lua-таймер (`AddTimer`, `AddTimerEx`).
+   Таймеры не отменяются при закрытии лабиринта, а только проверяют флаг `Closed`.
+2. **Линейные поиски по батчу на каждый запрос.** `MazeService` ищет боксы через
+   `FirstOrDefault` по спискам `EventBox` (порталы, старты секторов, чекпоинты, Lua-функции).
+   `First(...)` для `CheckMonsterSpawns` и `LuaFunctions` бросает исключение, если бокс не найден.
+3. **`Get<LuaMaze>` без `Has`.** Обработчик `MazeEventSpawnBoxRequest`
+   ([строка 513](OpenWorker.MazeServer/Services/MazeService.cs#L513)) и `MazeOperationEndRequest`
+   берут компонент без проверки: клиент, не вошедший в лабиринт, вызывает исключение на петле.
+4. **Скрипты бросают на петле.** `AddEventMaxTime`, `AllDestroySectorMonster`,
+   `AllUserWarpInSector` и другие `[LuaMember]` бросают `NotImplementedException`;
+   `LuaGameHelper` и `LuaMaze` пишут через `Console.WriteLine` (10 мест).
+5. **Один `LuaState` на игрока** плюс свой `LuaCreatureManager` и `SectorNavigation`.
+   `state.DoFileAsync` читает файл скрипта при каждом входе. Память и время входа не измерены.
+6. **Выбор типа сервера не работает для Maze.** `MazeServer/Program.cs` регистрирует
+   `EntityComponentService.District`, значение `Maze` в перечислении не используется.
+   Атрибут `HotspotHandler` не читается ни одним кодом: `HandlerCollectionBuilder` берёт все типы
+   с `IHotspotHandler<>` из домена.
+
+### 2.3. Redis и Postgres
+
+1. **Опрос вместо событий.** [`ChannelLifecycleService`](OpenWorker.Channel/Services/ChannelLifecycleService.cs)
+   делает запрос и обновление в Redis на каждый канал раз в секунду бесконечно.
+   [`GateSyncService`](OpenWorker.AuthServer/Server/Services/GateSyncService.cs) каждую секунду
+   грузит все гейты вместе со всеми персонажами через `Include(e => e.Persons)` на одном
+   `DbContext`, живущем всё время работы сервиса.
+2. **Последовательные round-trip.** `SessionLeaseManager.RenewAsync` делает `FindByIdAsync` и
+   `InsertAsync` на каждую лизу по очереди каждые 30 секунд.
+   `WorldManager.GetDistrictAsync` делает два запроса RediSearch с `Contains` по списку Guid
+   на каждый вход в район, и перед ним ещё `AnyAsync`.
+3. **Инлайн Lua-скрипт.** `RedisPresenceStore.RemoveAsync` отправляет текст скрипта в каждом
+   `EVAL`; нужен `LuaScript.Prepare` и `EVALSHA`.
+4. **Чтение-изменение-запись.** `PersonStateStore.SaveAsync` читает строку, меняет и сохраняет;
+   `PersonOptionStore.Save` загружает всех персонажей аккаунта и обновляет каждого.
+5. **Разрушающий bootstrap.** `Hotspot/Cache/BootstrapService` в Relay удаляет индексы вместе
+   с записями при каждом старте; документировано как известный предел, но ломает работающие
+   серверы.
+6. **Адрес Redis в двух местах.** `AddCache` читает `ConnectionStrings:Redis`,
+   `AddCommunity` ([файл](OpenWorker.Channel/Extensions/ServiceCollectionExtensions.cs))
+   зашивает `redis:6379`.
+
+### 2.4. Персистентность
+
+1. **Состояние не сохраняется.** Золото, предметы, навыки, уровень и опыт захардкожены при входе
+   в [`PersonRegistry`](OpenWorker.DistrictServer/Server/PersonRegistry.cs) и `PersonService`.
+   `ItemPersistent` не имеет `DbSet` и нигде не используется.
+2. **Позиция пишется только при закрытии соединения** (`PersonPlaceStore`). Падение процесса
+   теряет её. Write-behind указан в архитектуре как не сделанный.
+3. **Вход в район без резервации разрешён.**
+   [`PersonService.cs:127`](OpenWorker.DistrictServer/Services/PersonService.cs#L127) берёт
+   место из резервации, а при её отсутствии ставит игрока на точку по умолчанию. Лабиринт
+   резервацию требует. Поведение должно быть одинаковым.
+
+### 2.5. Корректность и скрытые ошибки
+
+1. **Keep-alive мёртв.** [`KeepAliveService.cs:30`](OpenWorker.DistrictServer/Server/Services/KeepAliveService.cs#L30)
+   передаёт тики `DateTime` (единицы по 100 нс) в `TimeSpan.FromMilliseconds`; результат больше
+   `TimeSpan.MaxValue`, и первая итерация бросает `OverflowException`. Цикл запущен через
+   `Task.Factory.StartNew` с async-лямбдой, поэтому возвращается `Task<Task>`, внутренняя задача
+   падает незамеченной, и сервис молча умирает. Никто не отключается по таймауту.
+2. **Тот же паттерн** `Task.Factory.StartNew(async ...)` в `ChannelLifecycleService`,
+   `GateSyncService` и тестовом `TestClient`: исключения внутри цикла не наблюдаются.
+3. **`Debug.Assert` перед `.First()`.** [`WorldManager.cs:365`](OpenWorker.Channel/WorldManager.cs#L365)
+   и `ServerBootstrapService` (`StartEvents[0]`): в Release пустая коллекция даёт исключение
+   внутри обработчика, клиент остаётся висеть.
+4. **Порт района захардкожен по локации** в `ServerBootstrapService.GetPort` с
+   `NotImplementedException` для любой новой локации.
+5. **Ошибка в сгенерированном `MessageOpcode`.** Неявные операторы приводят `value.Group`
+   к перечислениям команд вместо `value.Command`.
+6. **Исключение парсера логируется как `Critical`.** Любой кривой пакет даёт запись уровня
+   Critical и ничего больше; клиент может слать их без ограничений.
+7. **Длины из сети не проверяются.** `ReadUtf16UnicodeString` умножает `ReadInt16()` на 2 и
+   режет `length - 1`: отрицательная или нулевая длина даёт исключение, а не отказ.
+
+### 2.6. Защита от клиента
+
+1. Позиция проверяется только на конечность чисел (`Place.IsValid`). Нет проверки скорости,
+   телепортов и попадания в геометрию.
+2. Нет лимита пакетов в секунду на соединение. Единственный rate-limit это `ChatThrottle`
+   (5 сообщений за 3 секунды).
+3. Протокол шифруется XOR с фиксированной таблицей: это ограничение клиента, изменить нельзя,
+   но сервер не должен полагаться на него как на защиту.
+
+### 2.7. Наблюдаемость и эксплуатация
+
+1. Нет метрик, трейсинга и health-check. Единственный источник правды это логи.
+2. В Debug каждая входящая команда пишется в лог (`PrintSanity`) и на диск (`DumpPacket`).
+3. Нет CI, `.idea` в репозитории, `qodana.yaml` со стартовым профилем не запускается.
+4. Настройки GC и JIT по умолчанию (нет `ServerGarbageCollection`, `TieredPGO` не задан явно).
+5. `compose.yaml` собирает Debug, Postgres с `trust`, Redis без пароля. Для разработки
+   нормально, но прод-профиля нет.
+
+### 2.8. Структура кода
+
+1. **Слои перемешаны.** `OpenWorker.Hotspot` это одновременно протокол, рантайм петли и
+   Redis-кэш и ссылается на EF Core и Batch. `OpenWorker.Gameplay` ходит в EF напрямую
+   (`PersonStateStore`). `OpenWorker.Channel` зависит от всего.
+2. **Дубли.** `PersonRegistry` района и лабиринта идентичны на 312 строк, различие только
+   в namespace. `ChatService`, `FriendService`, `LeagueService`, `MovementService`,
+   `PersonProfileService` дублируются тонкими обёртками.
+3. **Шум.** `HotspotMessageAttribute` это 50 одинаковых конструкторов на 511 строк.
+   Колонки ресурсов зовутся `Field1..Field49`, поэтому `inventory.First(e => e.Field1 == grade)`
+   нечитаем и линеен. Проекты `Research.*`, `TestLang`, класс `CreatureComponent___Old`,
+   закомментированный `WorldChannelManager`.
+4. **Сборка.** `LangVersion` в каждом csproj свой (`preview`, `13`, `latest`, не задан),
+   нет `Directory.Build.props`, анализаторов, центрального управления пакетами.
+5. **ECS как мешок свойств.** Arch используется как типизированный набор компонентов на
+   сущность; запросов и систем почти нет, но `ServiceChannel` держит `ConcurrentDictionary`
+   ради чтения счётчика из фоновых сервисов.
+
+## 3. Принципы для высоконагруженного сервера
+
+Правила ниже дополняют раздел «Rules for code on the world loop» в `ARCHITECTURE.md`.
+Каждая фаза плана закрепляет одно или несколько из них.
+
+1. **Сначала измерение, потом оптимизация.** Любое изменение горячего пути сопровождается
+   BenchmarkDotNet до и после и прогоном нагрузочных ботов. Цифры записываются в этот документ.
+2. **Горячий путь без аллокаций.** Приём, разбор, обработка движения, сериализация и отправка
+   не выделяют память в установившемся режиме: `Span<byte>`, `ref struct`, пулы, никакого LINQ,
+   `MemoryStream`, `BinaryReader` и `BinaryWriter`.
+3. **Сериализуй один раз.** Сообщение для многих получателей кодируется в один кадр, который
+   кладётся во все очереди. Кадр пулируется и освобождается по счётчику ссылок.
+4. **Данные клиента враждебны.** Каждая длина и индекс проверяются до использования. Ошибка
+   разбора это отказ с бюджетом на сессию, а не исключение уровня Critical. Позиция и скорость
+   авторитетны на сервере.
+5. **Игровое время только через `SimulationClock`.** Ни `Task.Delay`, ни `Timer` для логики
+   игры: отложенные действия живут в очереди часов, детерминированно и отменяемо.
+6. **Фоновые сервисы пишутся одинаково.** `async Task ExecuteAsync` с `PeriodicTimer`,
+   исключение одной итерации логируется и не убивает цикл. `Task.Factory.StartNew`
+   с async-лямбдой запрещён.
+7. **`Debug.Assert` только для внутренних инвариантов.** Всё, что зависит от Redis, базы,
+   конфигурации или файлов батча, проверяется в Release и даёт клиенту внятный ответ.
+8. **Конфигурация через `IOptions<T>` с `ValidateOnStart`.** Никаких магических дефолтов
+   вроде `127.0.0.1` и таблиц портов в коде.
+9. **Инфраструктура идемпотентна.** Старт любого процесса безопасен при работающих соседях;
+   остановка дренирует очереди, сбрасывает состояние и снимает регистрацию.
+10. **Write-behind с гарантиями.** Изменения состояния помечают сущность грязной; сброс идёт
+    периодически, при логауте и при остановке. Уникальность и лимиты остаются в базе.
+11. **Слои направлены в одну сторону.** `Protocol` ← `Runtime` ← `Gameplay` ← серверы.
+    Протокол не знает о базе и Redis; игровая логика не знает о EF.
+12. **Каждая найденная ошибка закрывается тестом.** Традиция wire-тестов распространяется
+    на сервисы, фоновые циклы и нагрузочные сценарии.
+13. **CI обязателен.** Сборка, тесты с Redis и Postgres, анализаторы. Красный CI блокирует merge.
+14. **Логи структурированы.** Scope с сессией и персонажем, `Critical` только для состояния
+    процесса, `Console.WriteLine` отсутствует.
+
+## 4. Фазы
+
+Порядок: 0 → 1 → 2 → 3 → 4 → 5, фаза 6 идёт параллельно с остальными. Фазы 0 и 1 можно
+делать одновременно. Без фазы 1 фазы 2, 3 и 5 превращаются в оптимизацию вслепую, поэтому она
+стоит раньше всех изменений горячего пути.
+
+### Фаза 0. Гигиена и страховка
+
+Срок: 1–2 недели. Цель: единые правила сборки, рабочий CI, устранение скрытых ошибок,
+которые исказят измерения следующих фаз.
+
+Шаги:
+
+1. Добавить `Directory.Build.props` в корень: единый `LangVersion`, `Nullable`,
+   `ImplicitUsings`, `EnforceCodeStyleInBuild`, `AnalysisLevel=latest-recommended`.
+   `TreatWarningsAsErrors` включать по проектам, начиная с `Hotspot`, `Channel`, `Gameplay`.
+2. Добавить `Directory.Packages.props` и перевести все `PackageReference` на центральные
+   версии. Dependabot переключить на `weekly`.
+3. GitHub Actions `ci.yml`: `dotnet build`, `dotnet test --solution` с сервис-контейнерами
+   `redis/redis-stack` и `postgres`, переменные `OPENWORKER_TEST_REDIS` и строка подключения
+   Postgres заданы, чтобы все 447 тестов выполнялись. Тесты, зависящие от таблиц клиента
+   (`OPENWORKER_TEST_RES`), остаются пропущенными с явной пометкой.
+4. Удалить `Research.Dotnet`, `Research.Ecs`, `Research.Havok.Hkt`, `TestLang`,
+   `CreatureComponent___Old`, `WorldChannelManager`, закомментированный код. Убрать `.idea`
+   из индекса (`git rm -r --cached .idea`, добавить в `.gitignore`).
+5. Исправить `KeepAliveService`: хранить время последнего ответа как `long` из
+   `Environment.TickCount64` или `Stopwatch.GetTimestamp()`, цикл как `async ExecuteAsync`
+   с `PeriodicTimer`. Переписать так же `ChannelLifecycleService` и `GateSyncService`.
+   Тест: сервис отключает клиента после пяти пропущенных ответов.
+6. Заменить `Debug.Assert` в `WorldManager.GetDistrictAsync` и `ServerBootstrapService` на
+   проверки с ответом клиенту (`ServerUnavailable`) и логом.
+7. Исправить неявные операторы `MessageOpcode` (использовать `Command`). Поскольку файл
+   сгенерирован, править генератор или пометить файл как ручной.
+8. Ввести `ServerOptions`, `RedisOptions`, `PersistenceOptions` через `IOptions<T>` с
+   валидацией при старте. Вынести порт района, адрес Redis в `AddCommunity`, адреса Auth,
+   Gate и Maze из кода в конфигурацию. Добавить `appsettings.json` с дефолтами compose.
+9. Политика кривых пакетов в `HandlerExecutor`: исключение разбора или обработчика
+   увеличивает счётчик ошибок сессии; после N (например 10 за минуту) соединение закрывается;
+   лог уровня `Warning` с rate-limit, `Critical` остаётся только для сбоев процесса.
+10. Заменить `Console.WriteLine` в `OpenWorker.Lua` на `ILogger` (логгер уже передаётся
+    в `LuaCreatureManager`).
+11. Добавить `Has<LuaMaze>` в обработчики `MazeEventSpawnBoxRequest`,
+    `MazeOperationEndRequest`, `MazeLuaFunctionRequest`; `First` по боксам заменить на
+    `FirstOrDefault` с ответом об ошибке.
+12. Требовать резервацию при входе в район так же, как в лабиринте, либо явно задокументировать
+    в `ARCHITECTURE.md`, почему район её не требует.
+
+Критерии готовности:
+
+- CI зелёный на каждом PR, 0 пропущенных тестов кроме зависящих от таблиц клиента.
+- `TreatWarningsAsErrors` включён как минимум в `Hotspot`, `Channel`, `Gameplay`, `Persistence`.
+- Ни одного `Task.Factory.StartNew` с async-лямбдой, ни одного `Console.WriteLine` в
+  продуктовых проектах (проверяется grep-шагом в CI).
+- Тест на `KeepAliveService` и тест на бюджет ошибок сессии.
+
+Риски: включение анализаторов даст волну предупреждений; включать поэтапно по проектам.
+
+### Фаза 1. Наблюдаемость и базовая линия
+
+Срок: 1–2 недели, параллельно с фазой 0. Цель: видеть нагрузку и иметь воспроизводимый
+нагрузочный сценарий до того, как трогать горячий путь.
+
+Шаги:
+
+1. Добавить `Meter` «OpenWorker» через `System.Diagnostics.Metrics` и экспорт OpenTelemetry
+   (OTLP или Prometheus-эндпоинт). Метрики:
+   - `worldloop.queue.length` и `worldloop.callback.duration` (гистограмма);
+   - `handler.duration` с тегом опкода, `handler.errors` с тегом причины;
+   - `simulation.step.duration`, `simulation.count`, `simulation.overbudget`;
+   - `sessions.active`, `sessions.closed` с тегом причины (`backpressure`, `timeout`,
+     `malformed`, `client`);
+   - `writer.queue.length`, `frames.sent`, `bytes.sent`, `bytes.received`;
+   - `redis.call.duration`, `postgres.call.duration` с тегом операции;
+   - `gc.*` и `threadpool.*` из рантайма.
+2. Health-check: небольшой HTTP-эндпоинт `/healthz` и `/readyz` через
+   `Microsoft.Extensions.Diagnostics.HealthChecks` (Redis, Postgres, петля отвечает за
+   разумное время). Подключить в `compose.yaml`.
+3. Graceful shutdown: по `IHostApplicationLifetime.ApplicationStopping` прекратить приём,
+   отправить клиентам ответ о перезапуске, дренировать `SessionWriter`, снять регистрацию
+   в Redis (как уже делает `MazeRegistrationService`), затем остановить петлю.
+4. Структурированные логи: `BeginScope` с идентификатором сессии и персонажа в
+   `ServerService` и `HandlerExecutor`; убрать `PrintSanity` или перевести на `Trace`.
+5. Нагрузочный бот `OpenWorker.LoadTest` на базе `TestClient`: логин, выбор персонажа, вход
+   в район, движение с заданной частотой, чат, вход в лабиринт и бой. Параметры: число ботов,
+   частота движения, доля ботов в лабиринтах. Выход: p50/p99 задержки ответа на движение,
+   лаг петли, CPU и память процессов.
+6. Записать базовую линию в раздел 6 этого документа: при каком числе ботов район и лабиринт
+   перестают укладываться в бюджет.
+7. Оценить Server GC с DATAS и `TieredPGO` (включён по умолчанию, но проверить) по метрикам
+   пауз GC и p99; зафиксировать выбор в `Directory.Build.props`.
+
+Критерии готовности:
+
+- Дашборд с перечисленными метриками на локальном compose.
+- Нагрузочный сценарий запускается одной командой и выдаёт отчёт; ночной прогон в CI.
+- Базовая линия записана в разделе 6.
+
+### Фаза 2. Горячий путь: сериализация, приём и разбор
+
+Срок: 2–3 недели. Цель: нулевые аллокации на пути движения, одна сериализация на бродкаст.
+
+Шаги:
+
+1. **Кадр как общая единица отправки.** Ввести тип `Frame`: пулируемый буфер с заголовком,
+   зашифрованным телом и счётчиком ссылок. `IResponseHotspotMessage` кодируется в `Frame`
+   один раз; `SessionWriter` принимает `Frame`, уменьшает счётчик после записи в сокет.
+   `ServiceChannel.Broadcast` и `CommunityNetwork.Deliver` кодируют однажды.
+2. **Писатель поверх `Span<byte>`.** `ref struct PacketWriter` с методами для всех типов,
+   которые сейчас есть в `BinaryWriterExtension`. Пишет сразу в буфер кадра с местом под
+   заголовок; второе копирование и `MemoryStream` исчезают. При переполнении 64 КБ кадр
+   отбрасывается с логом, а не бросает.
+3. **Шифрование.** `MessageEncryption.Exchange` переписать на цикл по `ReadOnlySpan<byte>`
+   таблицы ключей; при желании векторизовать (`Vector128`), так как ключ периодичен с шагом 3.
+4. **Приём через `System.IO.Pipelines`.** `PipeReader` поверх сокета (или `SocketConnection`
+   из `Microsoft.AspNetCore.Connections` без веб-стека), заголовок и тело читаются из
+   `ReadOnlySequence<byte>`, расшифровка на месте, срез передаётся на петлю. Постоянная аренда
+   64 КБ на соединение исчезает; буфер растёт только под реальный пакет.
+5. **Читатель поверх `ReadOnlySpan<byte>`.** `ref struct PacketReader` с проверкой каждой
+   длины (отрицательная или выходящая за буфер длина это отказ, не исключение). Все
+   `ReadInt32AsArray`, `ReadUtf16UnicodeString` и подобные переезжают на него без LINQ.
+6. **Source generator для сообщений.** Для структур с `[HotspotMessage]` генерировать
+   `Read(ref PacketReader)` и `Write(ref PacketWriter)` по полям, по образцу существующего
+   `OpenWorker.Commands.SourceGenerators`. Ручные реализации остаются там, где формат
+   нестандартный. Так закрывается и задача одной декларации формата для запроса и ответа.
+7. **Диспетчер.** `HandlerCollection` хранит готовые экземпляры обработчиков (они синглтоны),
+   `HandlerExecutor` работает со `ReadOnlySpan<byte>` и не создаёт потоков. `HandlerDelegate`
+   принимает `ref PacketReader`.
+8. **Фоновые читатели счётчиков.** `ServiceChannel` переходит на обычный `Dictionary` на
+   петле, счётчик онлайна отдаётся через `Volatile.Read` для `ChannelLifecycleService`.
+
+Критерии готовности:
+
+- BenchmarkDotNet с `MemoryDiagnoser`: 0 байт аллокаций на цикл «принять движение → обработать →
+  разослать 50 получателям» в установившемся режиме (кроме аренды кадра из пула).
+- Один вызов сериализации на бродкаст (unit-тест на счётчик ссылок `Frame`).
+- Все 432 wire-теста проходят без изменений ожидаемых байтов; дампы из
+  `OpenWorker.Hotspot.Test/Datas` разбираются новым читателем.
+- Нагрузочный сценарий: p99 ответа на движение и CPU на бота меньше базовой линии; цифры в разделе 6.
+
+Риски: переписывание разбора затрагивает все 668 типов сообщений. Смягчение: генератор плюс
+существующие wire-тесты и дампы; переход по модулям, старый и новый читатель живут рядом до конца фазы.
+
+### Фаза 3. Interest management и каналы
+
+Срок: 3–4 недели. Цель: стоимость движения растёт с числом соседей, а не с числом игроков канала.
+
+Шаги:
+
+1. **Сетка видимости.** На канал заводится сетка клеток (размер клетки подбирается по
+   дистанции отрисовки клиента). `WorldComponent` обновляет клетку при движении; переход между
+   клетками рассылает `WorldInInfoPc` и `WorldOutInfoPc` новым и потерянным наблюдателям.
+   `Broadcast(player, message)` становится `BroadcastNearby(player, message)` по соседним клеткам.
+2. **Коалесценция движения.** Входящие движения одного актора за тик петли сводятся к
+   последнему; наблюдатель получает не более одного обновления позиции актора за тик.
+3. **Серверная валидация движения.** Расстояние за `dt` сравнивается со скоростью из таблиц
+   с допуском; при нарушении позиция откатывается и клиенту отправляется коррекция; повторные
+   нарушения считаются в бюджет ошибок сессии. Проверка попадания в геометрию уровня
+   откладывается до появления навигационных данных.
+4. **Token bucket по группам опкодов** на сессию: движение, чат, предметы, прочее. Лимиты
+   в `ServerOptions`. Превышение это отказ и счётчик, не исключение.
+5. **Счётчики каналов событийно.** `ChannelCache.OnlineCount` обновляется при join и leave
+   с debounce 1–2 секунды одним запросом, опрос раз в секунду удаляется.
+6. **Переключение каналов между процессами.** Заглушка `ServerChannels.MoveAsync` либо
+   реализуется через резервацию (как вход в район), либо удаляется с ответом `NotFound`.
+
+Критерии готовности:
+
+- Тест: движение доставляется только наблюдателям в радиусе; вход и выход из видимости
+  рассылаются при пересечении клеток.
+- Тест: телепорт отклоняется, позиция откатывается.
+- Нагрузка: при фиксированной плотности игроков стоимость движения на бота не растёт с
+  числом ботов в канале (сравнить с базовой линией).
+
+Риски: поведение видимости заметно клиенту; нужна ручная проверка на реальном клиенте
+на границах клеток и при массовых скоплениях у NPC.
+
+### Фаза 4. Персистентность и состояние
+
+Срок: 3–5 недель. Цель: всё, что видит игрок, переживает логаут и падение процесса.
+
+Шаги:
+
+1. **Модель.** Таблицы предметов (по `StorageGroup`, слот, прототип, количество, опции,
+   заточка, серийник), валют, уровня и опыта, навыков и колоды, прогресса квестов.
+   `ItemPersistent` заменить рабочей моделью или удалить. Миграции с индексами по персонажу.
+2. **Загрузка при входе** заменяет захардкоженные значения в `PersonRegistry` и
+   `PersonService`; тестовые предметы переезжают в сид разработки или команду GM.
+3. **Write-behind.** Компонент `DirtyComponent` с битовой маской изменённых разделов;
+   `PersistenceFlushService` раз в 30–60 секунд собирает грязные сущности на петле,
+   снимает снимок в DTO и пишет батчем вне петли (`ExecuteUpdateAsync`, bulk upsert через
+   Npgsql `COPY` или `MERGE`). Сброс при логауте, при переходе между серверами и при остановке
+   хоста. Это снимает большинство «дверей» `await` из правила 2 архитектуры.
+4. **Позиция** переходит в write-behind; `PersonPlaceStore` остаётся как сброс при закрытии.
+5. **Postgres.** `MaxPoolSize` под число петель, `UseQueryTrackingBehavior(NoTracking)` по
+   умолчанию, `EF.CompileAsyncQuery` для выборки персонажа и аккаунта, уникальный индекс
+   `PersonStates(PersonId, Kind)`, ревизия остальных индексов по планам запросов.
+6. **Redis.** Продление лиз одним `IBatch` или Lua-скриптом «renew-if-owner»;
+   `GateSyncService` с 1 секунды до 15 и без `Include(Persons)`; выбор наименее загруженного
+   Maze через sorted set по числу игроков вместо выборки всех записей; `LuaScript.Prepare`
+   в `RedisPresenceStore`.
+7. **Идемпотентный bootstrap Relay.** Создавать индексы только при отсутствии, не трогая
+   записи; версионировать схему индексов.
+8. **Опции аккаунта** хранить на аккаунте, а не на каждом персонаже (`PersonOptionStore`).
+
+Критерии готовности:
+
+- Логаут и повторный вход сохраняют инвентарь, валюты, уровень, навыки, квесты (интеграционный
+  тест с контейнером Postgres).
+- `kill -9` процесса теряет не больше одного интервала сброса (тест с ботами).
+- Нагрузка: число запросов к Postgres на бота в минуту измерено и записано; при 1000 ботах
+  Postgres не является узким местом по метрикам длительности вызовов.
+- Старт Relay при работающих серверах не роняет их сессии.
+
+Риски: миграции схемы на существующих данных; делать аддитивно, с бэкфиллом отдельной командой.
+
+### Фаза 5. Масштабирование симуляции
+
+Срок: 3–4 недели. Цель: лабиринты укладываются в бюджет 50 мс при целевом числе игроков,
+масштабирование горизонтальное и измеримое.
+
+Шаги:
+
+1. **Очередь отложенных действий на `SimulationClock`.** Приоритетная очередь по времени
+   (`PriorityQueue<Scheduled, long>`), API `Schedule(TimeSpan delay, Action)` с токеном отмены.
+   `RunLaterAsync`, `FlyAsync`, `AddTimer`, `AddTimerEx` переезжают на неё; `LuaMaze.Close()`
+   отменяет всё своё. Шаг снаряда идёт в `Step`, а не в собственном таймере.
+2. **Шаг без копий.** `SimulationClock` и `LuaCreatureManager.Step` итерируют списки
+   с отложенным удалением; `MonsterBody` и сущности монстров пулируются внутри лабиринта.
+3. **Индексы батча.** При загрузке `VBatchFile` строить словари по `Id` для всех списков
+   `EventBox`, которые сейчас ищутся через `FirstOrDefault` в `MazeService`, `LuaMaze`,
+   `LuaCreatureManager`, `WorldManager.TryGetStart`.
+4. **Безопасные скрипты.** Все `[LuaMember]`, бросающие `NotImplementedException`, либо
+   реализуются, либо становятся no-op с предупреждением один раз на скрипт. Ошибка внутри
+   `LuaState` логируется и завершает лабиринт для игрока, а не падает на петле.
+5. **Стоимость входа.** Измерить память `LuaState` и время `DoFileAsync` на вход. Кэшировать
+   байткод скриптов, читать файл вне петли (`Task.Run`), рассмотреть один `LuaState` на шаблон
+   лабиринта с таблицей состояния на экземпляр.
+6. **Тип сервера Maze.** Зарегистрировать `EntityComponentService.Maze` и дать Maze свой
+   набор компонентов; либо удалить `HotspotHandlerAttribute` и значение `Maze`, если фильтрация
+   не нужна.
+7. **Горизонтальное масштабирование.** Для инстансного контента правильный путь уже есть:
+   несколько процессов Maze на гейт через `MazeCache`. Несколько `WorldLoop` в одном процессе
+   рассматривать только после измерений, когда процесс-на-ядро окажется операционно
+   неудобным; это потребует отказа от синглтона `World` в пользу `World` на шард.
+
+Критерии готовности:
+
+- В `OpenWorker.Lua` и `OpenWorker.MazeServer` нет `Task.Delay` и `Timer`.
+- `simulation.step.duration` p99 меньше 50 мс при числе лабиринтов на процесс, равном
+  удвоенной базовой линии фазы 1.
+- Тест: закрытие лабиринта отменяет все его отложенные действия.
+- Ни один `[LuaMember]` не бросает `NotImplementedException` (тест обходит все члены).
+
+Риски: смена механизма таймеров может сдвинуть тайминги ударов; покрытие `ActionFileTest`,
+`AttackAreaTest`, `ProjectileFlightTest` расширить сравнением с дампами боя.
+
+### Фаза 6. Структура (параллельно с остальными)
+
+Цель: границы между слоями, которые можно проверить автоматически, и отсутствие дублей.
+
+Шаги:
+
+1. Разделить `OpenWorker.Hotspot` на `OpenWorker.Protocol` (опкоды, сообщения, кадр,
+   шифрование, читатель и писатель; без зависимостей на EF, Batch, Redis),
+   `OpenWorker.Runtime` (`WorldLoop`, `SessionWriter`, `SimulationClock`, диспетчер,
+   `ServerService`) и `OpenWorker.Infrastructure.Redis` (кэши, лизы, pub/sub).
+2. Интерфейсы сторов объявить в `OpenWorker.Domain`, реализации оставить в
+   `OpenWorker.Persistence`; `OpenWorker.Gameplay` перестаёт ссылаться на EF Core.
+3. Общий проект `OpenWorker.Server.Shared` для района и лабиринта: `PersonRegistry`,
+   `KeepAlive`, обёртки `ChatService`, `FriendService`, `LeagueService`,
+   `PersonProfileService`.
+4. `HotspotMessageAttribute` с одним конструктором `(GroupOpcode, byte, Direction)` и
+   типизированными статическими фабриками, либо генерация атрибута. `MessageOpcode`
+   без 50 неявных операторов.
+5. Имена колонок ресурсов: расширить `Structures.json` именами, перегенерировать строки
+   `Res`; на старте строить словари по ключу (`ItemRow` по `Id`, `InvenSlotExtendRow`
+   по уровню), заменяя линейные `First`.
+6. Тест на зависимости проектов (NetArchTest или проверка ссылок csproj в CI): `Protocol`
+   не ссылается на EF, Batch, Redis; `Gameplay` не ссылается на EF.
+7. Решение по ECS записать в `ARCHITECTURE.md`: для сессий Arch остаётся типизированным
+   набором компонентов; для монстров и видимости используются запросы и системы.
+
+Критерии готовности:
+
+- Граф зависимостей направлен в одну сторону и проверяется тестом.
+- Нет файлов с идентичным содержимым в разных серверах (проверка в CI).
+- `HotspotMessageAttribute` и `MessageOpcode` меньше 100 строк каждый.
+
+## 5. Порядок, сроки и зависимости
+
+| Фаза | Срок | Зависит от | Главный результат |
+|---|---|---|---|
+| 0. Гигиена | 1–2 нед. | нет | CI, единая сборка, скрытые ошибки закрыты |
+| 1. Наблюдаемость | 1–2 нед. | нет | метрики, health, нагрузочный бот, базовая линия |
+| 2. Горячий путь | 2–3 нед. | 0, 1 | одна сериализация на бродкаст, 0 аллокаций на движение |
+| 3. Interest management | 3–4 нед. | 2 | стоимость движения не растёт с размером канала |
+| 4. Персистентность | 3–5 нед. | 0, 1 | состояние переживает логаут и падение, write-behind |
+| 5. Симуляция | 3–4 нед. | 1, 2 | таймеры на часах, бюджет 50 мс при 2× базовой линии |
+| 6. Структура | параллельно | нет | проверяемые слои, без дублей |
+
+Общая длительность последовательных фаз: 13–20 недель при одном разработчике полной занятости.
+Фазы 3 и 4 независимы и могут идти параллельно при двух разработчиках.
+
+## 6. Измерения
+
+Раздел заполняется по ходу фазы 1 и обновляется после каждой фазы.
+Условия прогона фиксируются рядом с цифрами: железо, число ботов, частота движения, профиль
+compose.
+
+| Метрика | Базовая линия (фаза 1) | После фазы 2 | После фазы 3 | После фазы 5 |
+|---|---|---|---|---|
+| Ботов в одном канале района до p99 движения > 100 мс | | | | |
+| CPU на бота в районе, мс/с | | | | |
+| Аллокаций на пакет движения, байт | | 0 | | |
+| Лабиринтов на процесс до p99 шага > 50 мс | | | | |
+| Память на лабиринт, МБ | | | | |
+| Запросов к Postgres на бота в минуту | | | | |
+| Запросов к Redis на бота в минуту | | | | |
+
+## 7. Приложение: карта мест в коде
+
+| Место | Проблема | Фаза |
+|---|---|---|
+| `OpenWorker.Hotspot/ServerSessionComponent.cs` `TrySend` | сериализация на получателя, два буфера, `MemoryStream` | 2 |
+| `OpenWorker.Hotspot/SoulWorker/Network/MessageEncryption.cs` | `Enumerable.Range`, `IReadOnlyList<byte>` | 2 |
+| `OpenWorker.Hotspot/Handler/HandlerExecutor.cs` | поток и `BinaryReader` на пакет, `GetService` на пакет, `Critical` на кривой пакет | 0, 2 |
+| `OpenWorker.DependencyInjection/ServerService.cs` | 64 КБ на соединение, `TcpClient` | 2 |
+| `OpenWorker.Extensions/BinaryReaderExtension.cs` | LINQ-читатели массивов, непроверенные длины | 2 |
+| `OpenWorker.Channel/ServiceChannel.cs` | бродкаст всем, `ConcurrentDictionary` | 2, 3 |
+| `OpenWorker.Channel/MovementServiceBase.cs` | нет валидации скорости | 3 |
+| `OpenWorker.Channel/Services/ChannelLifecycleService.cs` | опрос раз в секунду, `StartNew(async)` | 0, 3 |
+| `OpenWorker.Channel/WorldManager.cs:365` | `Debug.Assert` перед `.First()`, три запроса Redis на вход | 0, 4 |
+| `OpenWorker.Channel/Extensions/ServiceCollectionExtensions.cs` | зашитый `redis:6379` | 0 |
+| `OpenWorker.DistrictServer/Server/Services/KeepAliveService.cs:30` | переполнение `TimeSpan`, сервис мёртв | 0 |
+| `OpenWorker.DistrictServer/Server/Services/ServerBootstrapService.cs` | таблица портов, `Debug.Assert` | 0 |
+| `OpenWorker.DistrictServer/Services/PersonService.cs:127` | вход без резервации, захардкоженные валюты и навыки | 0, 4 |
+| `OpenWorker.DistrictServer/Server/PersonRegistry.cs` и `OpenWorker.MazeServer/Services/PersonRegistry.cs` | идентичный дубль, тестовые предметы | 4, 6 |
+| `OpenWorker.AuthServer/Server/Services/GateSyncService.cs` | опрос 1 с с `Include(Persons)`, `StartNew(async)` | 0, 4 |
+| `OpenWorker.Hotspot/Cache/SessionLeaseManager.cs` | последовательные round-trip при продлении | 4 |
+| `OpenWorker.Hotspot/Cache/BootstrapService.cs` | удаление записей при старте | 4 |
+| `OpenWorker.Lua/LuaMaze.cs:470` | `Task.Delay` на удар, `Console.WriteLine`, `NotImplementedException` в `[LuaMember]` | 0, 5 |
+| `OpenWorker.Lua/Managers/LuaCreatureManager.cs:446` | `ToArray()` на шаг, линейные поиски | 5 |
+| `OpenWorker.MazeServer/Services/MazeService.cs:513` | `Get<LuaMaze>` без `Has`, `First` по боксам | 0, 5 |
+| `OpenWorker.MazeServer/Services/PersonService.cs` | `LuaState` и чтение файла на вход, `EntityComponentService.District` | 5 |
+| `OpenWorker.Hotspot/SoulWorker/Network/DataTypes/MessageOpcode.cs` | операторы приводят `Group` вместо `Command` | 0, 6 |
+| `OpenWorker.Hotspot/Handler/Attributes/HotspotMessageAttribute.cs` | 50 конструкторов | 6 |
+| `OpenWorker.Res/Rows/*.cs` | колонки `Field1..FieldN`, линейные `First` | 6 |
+| `OpenWorker.Persistence/PersonOptionStore.cs` | опции аккаунта на каждом персонаже | 4 |
+| `OpenWorker.Gameplay/Modules/State/PersonStateStore.cs` | `Gameplay` зависит от EF | 6 |
+| `*.csproj` | разный `LangVersion`, нет `Directory.Build.props`, анализаторов | 0 |
