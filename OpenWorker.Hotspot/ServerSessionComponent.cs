@@ -4,13 +4,16 @@ using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.Hotspot;
 
+/// <param name="client">The connection of the session.</param>
+/// <param name="metrics">Counts the connection and what goes through it; <see langword="null"/> for a session nobody measures.</param>
 [EntityComponent(EntityComponentService.All)]
-public readonly struct ServerSessionComponent(TcpClient client)
+public readonly struct ServerSessionComponent(TcpClient client, SessionMetrics? metrics = null)
 {
-    private readonly SessionWriter _writer = new(client);
+    private readonly SessionWriter _writer = new(client, metrics);
 
     /// <summary>
     /// Where the client connected from, for the logs. Empty when the socket was not connected or is gone.
@@ -85,9 +88,21 @@ public readonly struct ServerSessionComponent(TcpClient client)
     /// <summary>
     /// Closes the connection after everything queued has been sent.
     /// </summary>
-    public void Disconnect()
+    /// <param name="reason">Why, for <c>sessions.closed</c>. The first reason a connection is given is kept, and a close that
+    /// has no name of its own is the server's.</param>
+    public void Disconnect(SessionCloseReason reason = SessionCloseReason.Server)
     {
-        _writer.Complete();
+        _writer.Complete(reason);
+    }
+
+    /// <summary>
+    /// Gives the connection the reason it is about to close for, without closing it yet: a close that sends its last
+    /// messages first (the notice of a shutdown, what the close handlers send) keeps its reason even when the client
+    /// fails to take them. The first reason a connection is given is kept.
+    /// </summary>
+    public void SetCloseReason(SessionCloseReason reason)
+    {
+        _writer.SetCloseReason(reason);
     }
 
     /// <summary>

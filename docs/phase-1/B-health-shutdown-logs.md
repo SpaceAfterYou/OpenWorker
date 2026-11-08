@@ -60,8 +60,8 @@ longer accepts them. The world loop still stops last.
 logged in. **It has not been tried against a real client**: what the client shows for 0xB on a district or a maze
 server is unknown. The place is `ServerService.NotifyShuttingDown`; swapping the message is a one-line change.
 
-The close caused by the shutdown is the `shuttingDown` flag in `ServerService.SessionLoopAsync` / `CloseSessionAsync`
-(the place for a `shutdown` reason of the `sessions.closed` metric).
+The close caused by the shutdown is the `shuttingDown` flag in `ServerService.SessionLoopAsync` / `CloseSessionAsync`;
+since the merge of workstream A, `sessions.closed` counts such a session under the reason `shutdown`.
 
 ## Not done / open
 

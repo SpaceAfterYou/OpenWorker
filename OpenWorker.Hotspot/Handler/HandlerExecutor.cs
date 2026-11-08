@@ -6,6 +6,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Abstractions;
+using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.Hotspot.Handler;
 
@@ -14,7 +15,8 @@ public sealed partial class HandlerExecutor(
     IServiceProvider provider,
     World world,
     HandlerErrorBudget budget,
-    ILogger<HandlerExecutor> logger)
+    ILogger<HandlerExecutor> logger,
+    HandlerMetrics? metrics = null)
 {
     /// <summary>
     /// Reads the opcode of a packet, parses the request and runs its handler. A packet that cannot be read
@@ -55,8 +57,18 @@ public sealed partial class HandlerExecutor(
             var instance = provider.GetService(found.Class) as IHotspotHandler
                 ?? throw new InvalidOperationException($"The handler {found.Class.Name} is not registered.");
 
-            await found.Delegate
-                .Invoke(instance, player, reader, cancellationToken);
+            var started = metrics?.Start() ?? 0;
+
+            try
+            {
+                await found.Delegate
+                    .Invoke(instance, player, reader, cancellationToken);
+            }
+
+            finally
+            {
+                metrics?.Finish(found.Opcode, started);
+            }
         }
 
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -90,6 +102,8 @@ public sealed partial class HandlerExecutor(
         var reason = HandlerErrorBudget.Classify(exception);
         var tag = HandlerErrorBudget.Tag(reason);
 
+        metrics?.Error(tag);
+
         // A handler may have destroyed the entity before it failed; there is no session left to charge.
         if (!world.IsAlive(player))
         {
@@ -122,7 +136,7 @@ public sealed partial class HandlerExecutor(
             // An entity that never got a session has no connection to close.
             if (hasSession)
             {
-                session.Disconnect();
+                session.Disconnect(SessionCloseReason.Malformed);
             }
         }
 

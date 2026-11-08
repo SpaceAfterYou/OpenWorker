@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.Hotspot;
 
@@ -20,16 +21,37 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
 
     private readonly BlockingCollection<(SendOrPostCallback Callback, object? State)> _queue = new();
     private readonly ILogger<WorldLoop> _logger;
+    private readonly WorldLoopMetrics? _metrics;
     private readonly Thread _thread;
 
-    public WorldLoop(ILogger<WorldLoop> logger)
+    /// <param name="metrics">Reports the queue and the callbacks; <see langword="null"/> for a loop nobody measures.</param>
+    public WorldLoop(ILogger<WorldLoop> logger, WorldLoopMetrics? metrics = null)
     {
         _logger = logger;
+        _metrics = metrics;
+        _metrics?.ObserveQueue(QueueLength);
         _thread = new Thread(Run) { IsBackground = true, Name = nameof(WorldLoop) };
         _thread.Start();
     }
 
     public bool IsCurrent => Environment.CurrentManagedThreadId == _thread.ManagedThreadId;
+
+    /// <summary>
+    /// Callbacks that wait for the thread. Safe to read from any thread, for the gauge.
+    /// </summary>
+    private int QueueLength()
+    {
+        try
+        {
+            return _queue.Count;
+        }
+
+        catch (ObjectDisposedException)
+        {
+            // The loop has been stopped and its queue is gone.
+            return 0;
+        }
+    }
 
     public override void Post(SendOrPostCallback d, object? state)
     {
@@ -130,6 +152,8 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
 
         foreach (var (callback, state) in _queue.GetConsumingEnumerable())
         {
+            var started = _metrics?.Start() ?? 0;
+
             try
             {
                 callback(state);
@@ -140,6 +164,8 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
                 // One broken continuation must not stop the whole server.
                 LogCallbackFailed(e);
             }
+
+            _metrics?.Finish(started);
         }
     }
 

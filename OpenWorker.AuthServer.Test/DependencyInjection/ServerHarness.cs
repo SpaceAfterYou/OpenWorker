@@ -1,14 +1,17 @@
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Hosting;
 using OpenWorker.DependencyInjection;
 using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.AuthServer.Test.DependencyInjection;
 
@@ -45,6 +48,14 @@ internal sealed class ServerHarness : IAsyncDisposable
     public World World => Host.Services.GetRequiredService<World>();
 
     /// <summary>
+    /// Listens to one instrument of the <c>OpenWorker</c> meter of this host, from now on.
+    /// </summary>
+    public MetricCollector<T> Listen<T>(string instrument) where T : struct
+    {
+        return new MetricCollector<T>(Host.Services.GetRequiredService<IMeterFactory>(), OpenWorkerMeter.Name, instrument);
+    }
+
+    /// <summary>
     /// Starts the host and returns when it listens.
     /// </summary>
     public static async Task<ServerHarness> StartAsync(
@@ -66,7 +77,11 @@ internal sealed class ServerHarness : IAsyncDisposable
             ["Health:LoopTimeout"] = "00:00:02",
             ["Health:CheckTimeout"] = "00:00:02",
             ["Shutdown:Timeout"] = "00:00:20",
-            ["Shutdown:DrainTimeout"] = "00:00:10"
+            ["Shutdown:DrainTimeout"] = "00:00:10",
+            // The metrics are recorded for a test that listens to them, and sent nowhere.
+            ["Telemetry:Endpoint"] = "",
+            ["Telemetry:Protocol"] = "HttpProtobuf",
+            ["Telemetry:ExportInterval"] = "00:00:10"
         };
 
         foreach (var (key, value) in settings ?? [])

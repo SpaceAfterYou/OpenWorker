@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Text.Json;
 using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using OpenWorker.DependencyInjection;
@@ -162,12 +163,44 @@ public sealed class TestGracefulShutdown
         }
     }
 
+    /// <summary>
+    /// The sessions counted closed so far under one reason, or under all of them.
+    /// </summary>
+    private static long Closed(MetricCollector<long> closed, string? reason = null)
+    {
+        return closed.GetMeasurementSnapshot()
+            .Where(e => reason is null || (e.Tags.TryGetValue("reason", out var found) && Equals(found, reason)))
+            .Sum(e => e.Value);
+    }
+
+    /// <summary>
+    /// The writer counts its session when its write loop ends, which may be a moment after the stop has returned for a
+    /// session that was cut off.
+    /// </summary>
+    private async Task UntilClosedAsync(MetricCollector<long> closed, long count)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.CancellationToken);
+
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+
+        while (Closed(closed) < count)
+        {
+            await Task.Delay(10, timeout.Token);
+        }
+
+        // Long enough for a second count of the same session to show.
+        await Task.Delay(100, TestContext.CancellationToken);
+    }
+
     [TestMethod]
     public async Task EverythingQueuedReachesTheClientsBeforeTheConnectionsCloseAndTheHandlersRunForEverySession()
     {
         await using var server = await StartAsync(cancellationToken: TestContext.CancellationToken);
 
         var handler = server.Host.Services.GetRequiredService<RecordingCloseHandler>();
+
+        using var closed = server.Listen<long>("sessions.closed");
+        using var active = server.Listen<long>("sessions.active");
 
         using var first = await server.ConnectAsync(TestContext.CancellationToken);
         using var second = await server.ConnectAsync(TestContext.CancellationToken);
@@ -205,6 +238,37 @@ public sealed class TestGracefulShutdown
         Assert.IsTrue(handler.EntityWasAlive.All(e => e), "A close handler finds the entity of its session.");
 
         Assert.AreEqual(0, await server.CountSessionsAsync(), "The close of a session ends with its entity.");
+
+        // Each drained session is counted once, as closed by the shutdown, and none is left open.
+        await UntilClosedAsync(closed, 3);
+
+        Assert.AreEqual(3, Closed(closed));
+        Assert.AreEqual(3, Closed(closed, "shutdown"));
+        Assert.AreEqual(0, active.GetMeasurementSnapshot().Sum(e => e.Value), "Every session that opened has closed.");
+    }
+
+    [TestMethod]
+    public async Task ClientThatLeftBeforeTheStopIsCountedOnceAsTheClientAndTheOthersAsTheShutdown()
+    {
+        await using var server = await StartAsync(cancellationToken: TestContext.CancellationToken);
+
+        using var closed = server.Listen<long>("sessions.closed");
+
+        using var staying = await server.ConnectAsync(TestContext.CancellationToken);
+        var leaving = await server.ConnectAsync(TestContext.CancellationToken);
+
+        leaving.Dispose();
+
+        await server.WaitForSessionsAsync(1, TestContext.CancellationToken);
+        await UntilClosedAsync(closed, 1);
+
+        await server.StopAsync(TestContext.CancellationToken);
+
+        await UntilClosedAsync(closed, 2);
+
+        Assert.AreEqual(2, Closed(closed));
+        Assert.AreEqual(1, Closed(closed, "client"));
+        Assert.AreEqual(1, Closed(closed, "shutdown"));
     }
 
     [TestMethod]
@@ -325,6 +389,8 @@ public sealed class TestGracefulShutdown
 
         var handler = server.Host.Services.GetRequiredService<RecordingCloseHandler>();
 
+        using var closed = server.Listen<long>("sessions.closed");
+
         // Never read: the writer cannot get rid of what is queued.
         using var silent = await server.ConnectAsync(TestContext.CancellationToken);
 
@@ -339,6 +405,12 @@ public sealed class TestGracefulShutdown
         // The session was closed for all that: the handler ran and the entity is gone.
         Assert.AreEqual(1, handler.Closed);
         Assert.AreEqual(0, await server.CountSessionsAsync());
+
+        // Cut off, and still closed by the shutdown: not a client that does not read (backpressure), and once.
+        await UntilClosedAsync(closed, 1);
+
+        Assert.AreEqual(1, Closed(closed));
+        Assert.AreEqual(1, Closed(closed, "shutdown"));
     }
 
     [TestMethod]

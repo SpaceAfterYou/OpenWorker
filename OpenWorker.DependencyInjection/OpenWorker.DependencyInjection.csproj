@@ -14,6 +14,13 @@
         <PackageReference Include="Arch" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <PackageReference Include="Microsoft.Extensions.Hosting" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The tests drive the accept and read loops of the server over a socket. -->
+        <InternalsVisibleTo Include="OpenWorker.Hotspot.Test" />
     </ItemGroup>
 
     <ItemGroup>

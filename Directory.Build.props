@@ -9,4 +9,31 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
   </PropertyGroup>
 
+  <!--
+    Garbage collector and JIT settings of the server executables (the projects named *Server). They end up in the
+    runtimeconfig.json next to each server, and so in its image.
+
+    Every value below is what .NET does without them: workstation GC with background collections, tiered compilation with
+    dynamic PGO. Writing them out changes nothing today; it makes the choice visible and flips it with one property.
+    Which values the servers should run with is decided by measurements, in step 7 of phase 1 of REFACTORING.md: GC pause
+    time and the p99 of the movement and of the simulation step, under the load bot. Until then leave them alone.
+
+    To try another setting without editing this file: dotnet publish -p:ServerGarbageCollection=true
+    Server GC with DATAS (ServerGarbageCollection=true, GarbageCollectionAdaptationMode=1) is the candidate.
+  -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Server'))">
+    <!-- true: Server GC, one heap and one GC thread per core. false: workstation GC. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+
+    <!-- Background collections of generation 2 on a thread of their own. Meaningful for either GC. -->
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+
+    <!-- Dynamic adaptation to application sizes (DATAS): Server GC that starts with one heap and grows with the load.
+         1 is on, 0 is off. Only Server GC reads it. -->
+    <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
+
+    <!-- Profile guided optimization of the tiered JIT. On by default since .NET 8, written out so that it is on on purpose. -->
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
 </Project>

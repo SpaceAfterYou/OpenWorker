@@ -14,6 +14,7 @@ using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.DependencyInjection;
 
@@ -29,6 +30,7 @@ internal sealed partial class ServerService(
     ServerState state,
     SessionTracker sessions,
     IEnumerable<ISessionCloseHandler> closeHandlers,
+    SessionMetrics metrics,
     ILogger<ServerService> logger
 ) :
     BackgroundService
@@ -202,7 +204,7 @@ internal sealed partial class ServerService(
             // Movement is made of small frames that must not wait for each other.
             socket.NoDelay = true;
 
-            var session = new ServerSessionComponent(socket);
+            var session = new ServerSessionComponent(socket, metrics);
 
             var entity = await loop.InvokeAsync(() =>
             {
@@ -212,6 +214,10 @@ internal sealed partial class ServerService(
 
                 return created;
             });
+
+            // The reader of the socket ends the connection when the client does, or when the server has already closed it
+            // and given its own reason first; the first reason of a connection is the one that counts.
+            var reason = SessionCloseReason.Client;
 
             try
             {
@@ -231,33 +237,49 @@ internal sealed partial class ServerService(
 
                     await stream.ReadExactlyAsync(buffer, reading);
 
+                    metrics.Received(MessageHeader.HeaderSize + header.ContentLength);
+
                     MessageEncryption.Exchange(buffer, header.Version);
 
                     DumpPacket(header, buffer);
 
                     await loop.InvokeAsync(() => executor.ExecuteAsync(buffer, entity, cancellationToken));
                 }
+
+                // The loop ends without an error only when the drain has stopped the reading between two packets.
+                reason = SessionCloseReason.Shutdown;
             }
 
             catch (Exception e) when (e is EndOfStreamException or IOException { InnerException: SocketException } or ObjectDisposedException or OperationCanceledException)
             {
                 LogConnectionClosed(logger, e.Message);
+
+                // The client did not leave: the drain stopped the reading, or the server is stopping.
+                if (e is OperationCanceledException)
+                {
+                    reason = reading.IsCancellationRequested ? SessionCloseReason.Shutdown : SessionCloseReason.Server;
+                }
             }
 
             catch (Exception e)
             {
                 LogSessionLoopFailed(logger, e);
+
+                reason = SessionCloseReason.Server;
             }
 
             finally
             {
-                // The server closes this session because it stops, not because the client left or misbehaved: the place
-                // of the "shutdown" reason of a closed session.
+                // The server closes this session because it stops, not because the client left or misbehaved.
                 var shuttingDown = reading.IsCancellationRequested;
+
+                // Named before the close handlers queue their last messages (the notice of the shutdown first), so a
+                // client that cannot take them is still counted under the reason of the close, once, when the writer ends.
+                session.SetCloseReason(reason);
 
                 await loop.InvokeAsync(() => CloseSessionAsync(entity, shuttingDown));
 
-                session.Disconnect();
+                session.Disconnect(reason);
 
                 if (shuttingDown)
                 {

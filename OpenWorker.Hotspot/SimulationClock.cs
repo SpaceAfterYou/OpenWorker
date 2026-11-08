@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.Hotspot;
 
@@ -22,7 +23,8 @@ public interface ISimulation
 /// When the loop falls behind, steps are skipped rather than repeated to catch up, and the time
 /// of one step is capped, so a stall slows the game down instead of making monsters jump.
 /// </summary>
-public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationClock> logger) : BackgroundService
+/// <param name="metrics">Reports the steps and the simulations; <see langword="null"/> for a clock nobody measures.</param>
+public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationClock> logger, SimulationMetrics? metrics = null) : BackgroundService
 {
     public static TimeSpan Period { get; } = TimeSpan.FromMilliseconds(50);
     public static TimeSpan MaxStep { get; } = Period * 4;
@@ -52,6 +54,8 @@ public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationCl
         if (!_simulations.Contains(simulation))
         {
             _simulations.Add(simulation);
+
+            metrics?.SetCount(_simulations.Count);
         }
     }
 
@@ -63,6 +67,8 @@ public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationCl
         Debug.Assert(loop.IsCurrent || !IsRunning, "Simulations are removed on the world loop.");
 
         _simulations.Remove(simulation);
+
+        metrics?.SetCount(_simulations.Count);
     }
 
     private bool IsRunning { get; set; }
@@ -126,10 +132,14 @@ public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationCl
 
     private void Measure(TimeSpan duration)
     {
+        metrics?.Step(duration);
+
         if (duration <= Period)
         {
             return;
         }
+
+        metrics?.OverBudget();
 
         _overBudget++;
 

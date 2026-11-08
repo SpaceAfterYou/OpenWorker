@@ -32,6 +32,7 @@ public static class HotspotHostingExtensions
             .AddSingleton<ArchComponentProvider>()
             .AddHotspotHandlers()
             .AddServerHealthChecks()
+            .AddTelemetry()
             .AddHostedInternalServices();
     }
 
