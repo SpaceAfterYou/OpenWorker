@@ -159,6 +159,8 @@ or wrong setting stops the server with a message that names the key. A setting w
   the notifications between servers (StackExchange.Redis, built by `RedisOptions.ToConfigurationOptions`).
 - `Hotspot:ErrorBudget:MaxErrors` and `Hotspot:ErrorBudget:Window` (`00:01:00` is a minute) say how many packets of one
   session may fail to parse or to handle before the server closes its connection; `HandlerErrorBudget` reads them.
+- `Telemetry:Endpoint`, `Telemetry:Protocol` and `Telemetry:ExportInterval` say where the metrics are sent (see Metrics). An empty
+  endpoint (`Telemetry__Endpoint=`) turns the export off; the metrics are still recorded in the process.
 - `Credentials:DiscordToken` of the relay is a secret: no file carries it, it comes from the environment
   (`Credentials__DiscordToken`), and the relay stops at start without it.
 - `Attendance:ResetHour` and `DailyMission:ResetHour` are optional (the hour the game day starts at); the rules of the
@@ -166,6 +168,63 @@ or wrong setting stops the server with a message that names the key. A setting w
 - To add a setting: add the options class with its attributes and a partial `[OptionsValidator]` class, register it
   in `OptionsServiceCollectionExtensions`, put the default in the `appsettings.json` of the servers that need it, and
   add the server to `TestServerOptions`.
+
+## Metrics
+
+Every server records its numbers on one `Meter` named `OpenWorker` (`OpenWorkerMeter.Name`), plus the `System.Runtime` meter of
+.NET (GC, thread pool, process: `dotnet.gc.*`, `dotnet.thread_pool.*`). A process with `Telemetry:Endpoint` set pushes both over OTLP to
+Prometheus (`AddTelemetry`, called by `AddHotspot`; the relay calls it itself); with no endpoint nothing is exported and the
+instruments stay switched off. The compose file starts Prometheus and Grafana, and the dashboard `OpenWorker` is provisioned from
+`eng/observability` (how to open it: the notes at the end of `compose.yaml`).
+
+The meters come from the `IMeterFactory` of the container, and each area has a small class that creates its instruments on it:
+`WorldLoopMetrics`, `HandlerMetrics`, `SimulationMetrics`, `SessionMetrics`, `RedisMetrics` and `PostgresMetrics` in
+`OpenWorker.Hotspot/Telemetry`, all registered by `AddOpenWorkerMetrics`. A test makes its own container and listens with
+`MetricCollector<T>` (`MetricsHost` in `OpenWorker.Hotspot.Test`), so it sees only its own measurements. The classes that measure take
+the metrics class as the last, optional constructor parameter: `null` is a part nobody measures, as in most tests.
+
+| Instrument | Kind, unit | Tags | Measured |
+|---|---|---|---|
+| `worldloop.queue.length` | gauge, callbacks | | callbacks posted to the loop that have not started |
+| `worldloop.callback.duration` | histogram, s | | how long one callback holds the loop thread |
+| `handler.duration` | histogram, s | `opcode` | the task of a handler, from start to end, awaits included |
+| `handler.errors` | counter | `reason`: `malformed`, `handler_fault` | packets that failed to parse or to handle |
+| `simulation.step.duration` | histogram, s | | one tick of `SimulationClock`, all simulations |
+| `simulation.count` | gauge, simulations | | simulations (mazes) the clock steps |
+| `simulation.overbudget` | counter | | ticks longer than the 50 ms period |
+| `sessions.active` | up-down counter | | open connections |
+| `sessions.closed` | counter | `reason`: `client`, `server`, `backpressure`, `timeout`, `malformed` | connections that ended, once each |
+| `writer.queue.length` | up-down counter, frames | | frames queued in the `SessionWriter`s of the process |
+| `frames.sent`, `bytes.sent`, `bytes.received` | counters | | frames written to sockets and bytes on the wire, headers included |
+| `redis.call.duration` | histogram, s | `operation`: the Redis command | a command, from the moment it is made to its answer |
+| `postgres.call.duration` | histogram, s | `operation`: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `OTHER` | a command, until the database starts to answer |
+
+Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_total`, `handler.duration` is `handler_duration_seconds_bucket`.
+
+- **Why a connection closed.** `SessionWriter` ends once per connection and counts it there; the first `SessionCloseReason` given to the
+  writer is the one reported. `ServerSessionComponent.Disconnect(reason)` is how code gives one (`Timeout` in the keep-alive of a district,
+  `Malformed` in `HandlerExecutor` when the error budget runs out; `Disconnect()` alone is `Server`). The writer gives `Backpressure` for a
+  full queue or a write that times out, and `Client` for a socket that fails; the read loop in `ServerService` gives `Client` for the end
+  of the stream. To add a reason: add it to `SessionCloseReason` and give it a name in `SessionMetrics.Tag` (a test fails if a reason has no
+  name of its own).
+- **Redis** is measured on the connection, not around the calls: the process has one `IConnectionMultiplexer` (`AddRedisConnection`),
+  used by Redis.OM and by the code that calls StackExchange.Redis, and the profiler of that connection reports every command with the time
+  the multiplexer measured. `RedisMetricsService` turns what it collected into measurements once a second, and while nobody listens the
+  profiler collects nothing. **Postgres** is measured by `PostgresCommandInterceptor`, an interceptor of EF Core registered in
+  `AddPersistence`, which takes the duration EF Core already measures.
+- **Cost on the hot path.** Recording must cost nothing noticeable while nobody listens and allocate nothing while somebody does:
+  `Stopwatch.GetTimestamp()` for times, taken only when the instrument is `Enabled`; tags are `KeyValuePair` values of strings made once
+  (the name of an opcode is built when the handler table is, not per packet); no LINQ, no closure, no `string.Format` on the way.
+- **Names in Prometheus.** The `System.Runtime` metrics arrive as `dotnet_gc_pause_time_seconds_total`,
+  `dotnet_gc_collections_total{gc_heap_generation}`, `dotnet_gc_heap_allocated_bytes_total`,
+  `dotnet_thread_pool_queue_length_total`, `dotnet_process_cpu_time_seconds_total`, and so on; `bytes.sent` is `bytes_sent_total`.
+  The service is the label `job` (the name of its executable) and the process the label `instance` (its identifier); the location
+  of a district and the gate are `openworker_location` and `openworker_gate` (`eng/observability/prometheus/prometheus.yml`).
+- **GC and JIT settings** of the servers are written out in `Directory.Build.props` with the values .NET uses anyway; which values to
+  run with is decided by measurements (phase 1, step 7), and `ServerGarbageCollection` is the property that flips them.
+- **To add an instrument:** create it in the metrics class of its area with the unit, a description and (for a duration)
+  `CreateDuration`, which sets bucket edges in seconds; record it from the code that owns the thing; add a `MetricCollector` test next to
+  the tests of that code; add the row to the table above and a panel to `eng/observability/grafana/dashboards/openworker.json`.
 
 ## Known limits
 
