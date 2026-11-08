@@ -19,6 +19,7 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Handler.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -124,6 +125,37 @@ public sealed partial class ProbeHandler(ILogger<ProbeHandler>? logger = null) :
     private static partial void LogAfter(ILogger logger);
 }
 
+/// <summary>
+/// A request with a span format, on an opcode no real message uses: a list of numbers with an int count.
+/// </summary>
+[HotspotMessage(GroupOpcode.System, WireProbeRequest.Command, HotspotMessageDirection.Request)]
+public readonly struct WireProbeRequest : IRequestHotspotMessage, IWireReadable<WireProbeRequest>
+{
+    public const SystemOpcode Command = (SystemOpcode)0x7C;
+
+    public MessageOpcode Opcode => new(GroupOpcode.System, Command);
+
+    public int[] Values { get; init; }
+
+    public static WireProbeRequest Read(ref PacketReader reader)
+    {
+        return new WireProbeRequest { Values = reader.ReadInt32Array(reader.ReadLength(WireLength.Signed32, sizeof(int))) };
+    }
+}
+
+public sealed class WireProbeHandler : IHotspotHandler<WireProbeRequest>
+{
+    // The tests that use it do not run side by side.
+    public static int[]? Last { get; set; }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, WireProbeRequest request)
+    {
+        Last = request.Values;
+
+        return ValueTask.CompletedTask;
+    }
+}
+
 internal sealed record LogEntry(LogLevel Level, string Message, Exception? Exception, IReadOnlyDictionary<string, object?> Values);
 
 internal sealed class CapturingLogger<T> : ILogger<T>
@@ -193,7 +225,11 @@ public sealed class HandlerExecutorTest
             // The slot of an opcode nobody handles holds the empty handler, which the container has to know.
             var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
 
-            var services = new ServiceCollection().AddSingleton<ProbeHandler>().AddSingleton(empty).BuildServiceProvider();
+            var services = new ServiceCollection()
+                .AddSingleton<ProbeHandler>()
+                .AddSingleton<WireProbeHandler>()
+                .AddSingleton(empty)
+                .BuildServiceProvider();
 
             Executor = new HandlerExecutor(
                 Collection,
@@ -443,6 +479,39 @@ public sealed class HandlerExecutorTest
         Assert.IsInstanceOfType<InvalidDataException>(entry.Exception);
         Assert.AreEqual("malformed", entry.Values["Reason"]);
         Assert.AreEqual(0, ProbeHandler.Handled, "The handler must not run on a request that did not parse.");
+    }
+
+    /// <summary>
+    /// A request with a span format goes the other way through the executor: it is parsed from the span of the packet,
+    /// whole, before its handler runs. A count it cannot hold is malformed and counted like any other, and the handler does
+    /// not run.
+    /// </summary>
+    [TestMethod]
+    public async Task ARequestWithASpanFormatIsParsedFromThePacketAndAHostileCountIsMalformed()
+    {
+        using var harness = new Harness();
+
+        byte[] opcode = [(byte)GroupOpcode.System, (byte)WireProbeRequest.Command];
+
+        WireProbeHandler.Last = null;
+
+        await harness.SendAsync([.. opcode, 0x02, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00]);
+
+        int[] values = [7, 8];
+
+        CollectionAssert.AreEqual(values, WireProbeHandler.Last);
+        Assert.AreEqual(0, harness.Errors.Count);
+
+        WireProbeHandler.Last = null;
+
+        await harness.SendAsync([.. opcode, 0xFF, 0xFF, 0xFF, 0x7F, 0x07, 0x00, 0x00, 0x00]);
+
+        var entry = harness.Warnings.Single();
+
+        Assert.IsInstanceOfType<InvalidDataException>(entry.Exception);
+        Assert.AreEqual("malformed", entry.Values["Reason"]);
+        Assert.AreEqual(1, harness.Errors.Count);
+        Assert.IsNull(WireProbeHandler.Last, "The handler must not run on a request that did not parse.");
     }
 
     [TestMethod]

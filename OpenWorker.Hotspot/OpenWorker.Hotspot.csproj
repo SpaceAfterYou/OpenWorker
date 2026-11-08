@@ -12,6 +12,8 @@
         <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>
         <ProjectReference Include="..\OpenWorker.Persistence\OpenWorker.Persistence.csproj"/>
         <ProjectReference Include="..\OpenWorker.Wire\OpenWorker.Wire.csproj"/>
+        <!-- Read and Write of the [WireMessage] structs, from their fields. -->
+        <ProjectReference Include="..\OpenWorker.Wire.SourceGenerators\OpenWorker.Wire.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
     <ItemGroup>
