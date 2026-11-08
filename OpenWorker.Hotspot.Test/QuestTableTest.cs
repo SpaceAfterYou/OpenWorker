@@ -135,7 +135,7 @@ public sealed class QuestTableTest
             {
                 QuestConditionType.Talk => QuestConditionTarget.Npc,
                 QuestConditionType.Collect => QuestConditionTarget.Item,
-                QuestConditionType.Trigger => QuestConditionTarget.Object,
+                QuestConditionType.Trigger => QuestConditionTarget.WorldObject,
                 _ => condition.Target
             };
 

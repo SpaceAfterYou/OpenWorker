@@ -44,6 +44,22 @@ public sealed class MazeRequestGuardTest
 
     private static ReadOnlyCollection<T> None<T>() => new([]);
 
+    /// <summary>
+    /// Quests with no episodes: the requests under test never get to them.
+    /// </summary>
+    private static QuestManager Quests(World world)
+    {
+        return new QuestManager(
+            world,
+            null!,
+            QuestCatalog.From([], []),
+            null!,
+            null!,
+            null!,
+            null!,
+            NullLogger<QuestManager>.Instance);
+    }
+
     private static BinaryReader Box(int box) => new(new MemoryStream(BitConverter.GetBytes(box)));
 
     private static ServiceHandleContext Context(Entity player) => new(player, CancellationToken.None);
@@ -57,7 +73,7 @@ public sealed class MazeRequestGuardTest
             null!,
             null!,
             Options.Create(new GateOptions { Id = 1 }),
-            new QuestManager(world, None<QuestEpisodeRow>(), None<QuestConditionRow>()),
+            Quests(world),
             NullLogger<MazeService>.Instance);
     }
 
@@ -74,7 +90,7 @@ public sealed class MazeRequestGuardTest
         {
             var batch = VBatchFile.CreateFromPath(path);
             var tables = new CombatTables(None<MonsterRow>(), None<StatusRow>(), None<SkillRow>(), None<CharacterInfoRow>());
-            var quests = new QuestManager(world, None<QuestEpisodeRow>(), None<QuestConditionRow>());
+            var quests = Quests(world);
 
             return new LuaMaze(
                 LuaState.Create(),

@@ -28,7 +28,7 @@ namespace OpenWorker.Gameplay.Modules.Quests;
 /// <see cref="OnMazeClearedAsync"/>, <see cref="OnSectorClearedAsync"/>, <see cref="OnItemCollectedAsync"/> and
 /// <see cref="OnObjectUsedAsync"/>. The client tells what only it sees, such as talking to a character.
 /// </remarks>
-public sealed class QuestManager(
+public sealed partial class QuestManager(
     World world,
     IQuestStore store,
     QuestCatalog catalog,
@@ -109,7 +109,7 @@ public sealed class QuestManager(
         return new QuestListResponse { List = list };
     }
 
-    private QuestEpisodeEntry ToEntry(QuestDefinition quest, QuestEpisodeState state)
+    private static QuestEpisodeEntry ToEntry(QuestDefinition quest, QuestEpisodeState state)
     {
         var conditions = new QuestCondition[QuestModuleDefines.ConditionsPerEpisode];
 
@@ -525,7 +525,7 @@ public sealed class QuestManager(
     /// </summary>
     public ValueTask OnObjectUsedAsync(Entity player, int box, CancellationToken cancellationToken)
     {
-        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Trigger, QuestConditionTarget.Object, box), 1);
+        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Trigger, QuestConditionTarget.WorldObject, box), 1);
     }
 
     /// <summary>
@@ -685,7 +685,7 @@ public sealed class QuestManager(
         return world.IsAlive(player) && world.TryGet<PersonInfoComponent>(player, out var info) ? (int)info.Hero : 0;
     }
 
-    private static IReadOnlyList<RewardItem> ToRewardItems(IReadOnlyList<QuestItem> list)
+    private static RewardItem[] ToRewardItems(IReadOnlyList<QuestItem> list)
     {
         return list.Select(e => new RewardItem(e.Item, e.Count)).ToArray();
     }
@@ -753,9 +753,12 @@ public sealed class QuestManager(
 
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            logger.LogError(e, "{Work} of the quests failed.", what);
+            LogWorkFailed(logger, e, what);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "{Work} of the quests failed.")]
+    private static partial void LogWorkFailed(ILogger logger, Exception exception, string work);
 
     #endregion Helpers
 }

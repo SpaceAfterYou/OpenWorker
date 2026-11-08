@@ -207,7 +207,7 @@ public sealed class QuestManagerTest
             World = Arch.Core.World.Create();
 
             // The stores of helpers and boosters are never reached: the person has neither.
-            var helpers = new HelperManager(World, null!, HelperCatalog.From([]), NullLogger<HelperManager>.Instance);
+            var helpers = new HelperManager(World, null!, HelperCatalog.From([]));
             var boosters = new BoosterManager(World, null!, null!, TimeProvider.System, NullLogger<BoosterManager>.Instance);
 
             Manager = new QuestManager(World, Store, Catalog, Granter, Inventory, helpers, boosters, NullLogger<QuestManager>.Instance);
