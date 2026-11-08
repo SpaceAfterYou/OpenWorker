@@ -1,46 +1,41 @@
+using System.Collections.Concurrent;
+
 namespace OpenWorker.Navigation;
 
 /// <summary>
-/// Gives the navigation mesh of a map by the name of its batch file. A mesh does not change, so it is read once and the
-/// maps that are alive share it.
+/// The navigation mesh of a map, or the reason there is none.
 /// </summary>
-public sealed class NavMeshProvider
+public readonly record struct NavMeshLoad(NavMesh? Mesh, string? Error);
+
+/// <summary>
+/// Gives the navigation mesh of a map by the name of its batch file. A mesh does not change, so it is read once and the
+/// maps that are alive share it. The file is read on the thread pool, never on the thread that asks: that is the world loop.
+/// </summary>
+public sealed class NavMeshProvider(string folder = "navmesh")
 {
-    private readonly object _lock = new();
-    private readonly Dictionary<string, (NavMesh? Mesh, string? Error)> _loaded = [];
+    private readonly ConcurrentDictionary<string, Lazy<Task<NavMeshLoad>>> _loaded = new();
 
     /// <summary>
-    /// The mesh of a map, or nothing when the map has none or its file is broken: the error says which.
+    /// The mesh of a map, or nothing when the map has none or its file is broken: the error says which. Everyone who asks
+    /// for a map while it is being read waits for the same reading.
     /// </summary>
-    public NavMesh? Get(string name, out string? error)
+    public Task<NavMeshLoad> GetAsync(string name)
     {
-        lock (_lock)
-        {
-            if (!_loaded.TryGetValue(name, out var entry))
-            {
-                entry = Load(name);
-
-                _loaded.Add(name, entry);
-            }
-
-            error = entry.Error;
-
-            return entry.Mesh;
-        }
+        return _loaded.GetOrAdd(name, e => new Lazy<Task<NavMeshLoad>>(() => Task.Run(() => Load(e)))).Value;
     }
 
-    private static (NavMesh? Mesh, string? Error) Load(string name)
+    private NavMeshLoad Load(string name)
     {
-        var path = Path.Join("navmesh", $"{name}.hkt");
+        var path = Path.Join(folder, $"{name}.hkt");
 
         try
         {
-            return File.Exists(path) ? (NavMesh.Load(path), null) : (null, $"{path} does not exist");
+            return File.Exists(path) ? new NavMeshLoad(NavMesh.Load(path), null) : new NavMeshLoad(null, $"{path} does not exist");
         }
 
         catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
         {
-            return (null, $"{path} cannot be read: {e.Message}");
+            return new NavMeshLoad(null, $"{path} cannot be read: {e.Message}");
         }
     }
 }

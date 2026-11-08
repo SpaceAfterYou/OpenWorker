@@ -167,7 +167,14 @@ public sealed class PersonService(
         await state
             .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
 
-        var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger);
+        var (mesh, meshError) = await creatureServices.Meshes.GetAsync(mazeInfo.Batch);
+
+        if (mesh is null)
+        {
+            creatureLogger.LogWarning("The maze {Maze} has no navigation mesh, its monsters walk where they like: {Error}", mazeInfo.Batch, meshError);
+        }
+
+        var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
         var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables);
 
         world.Add(context.Player, maze);

@@ -28,6 +28,7 @@ using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.World.Types;
 using OpenWorker.Lua.Ai;
+using OpenWorker.Navigation;
 
 namespace OpenWorker.Lua.Managers;
 
@@ -52,14 +53,14 @@ public sealed class LuaCreatureManager
     private readonly VBatchFile batch;
     private readonly CombatTables tables;
 
-    public LuaCreatureManager(World ecs, VBatchFile batch, CombatTables tables, CreatureServices? services = null, ILogger? logger = null)
+    public LuaCreatureManager(World ecs, VBatchFile batch, CombatTables tables, CreatureServices? services = null, ILogger? logger = null, NavMesh? mesh = null)
     {
         this.ecs = ecs;
         this.batch = batch;
         this.tables = tables;
 
         Services = services;
-        Navigation = new SectorNavigation(batch.EventBox.Sectors);
+        Navigation = mesh is null ? OpenNavigation.Instance : new NavMeshNavigation(mesh, batch);
         Vitals = new PlayerVitals(ecs, tables);
         Logger = logger;
     }
@@ -77,6 +78,14 @@ public sealed class LuaCreatureManager
     /// Where a monster can walk.
     /// </summary>
     public INavigation Navigation { get; set; }
+
+    /// <summary>
+    /// A gate has been opened or closed, which opens or closes the way for the monsters.
+    /// </summary>
+    public void SetGate(int gate, bool open)
+    {
+        (Navigation as NavMeshNavigation)?.SetGate(gate, open);
+    }
 
     internal Random Random { get; } = new();
 
@@ -213,7 +222,15 @@ public sealed class LuaCreatureManager
     {
         ecs.Set(creature, new CreatureComponent { Identifier = identifier, Health = NpcHealth });
         ecs.Set(creature, new NonPlayableCreatureComponent { SpawnBox = spawn.Id, Sector = spawn.Sector, Waypoint = spawn.Waypoint });
-        ecs.Set(creature, new WorldComponent { Location = 0, Position = spawn.GetPosition(), Rotation = spawn.Rotation, Jump = 0 });
+        ecs.Set(creature, new WorldComponent { Location = 0, Position = OnFloor(spawn.GetPosition()), Rotation = spawn.Rotation, Jump = 0 });
+    }
+
+    /// <summary>
+    /// A box says where in it a creature appears, not how high: the creature stands on the floor under that place.
+    /// </summary>
+    private Vector3 OnFloor(Vector3 position)
+    {
+        return Navigation.TryGetFloor(position, out var height) ? position with { Z = height } : position;
     }
 
     public Entity CreateMonster(int identifier, MonsterSpawnBox spawn)
@@ -243,7 +260,7 @@ public sealed class LuaCreatureManager
 
         Creatures.Add(creature);
 
-        GiveMind(creature, identifier, spawn.GetPosition());
+        GiveMind(creature, identifier, ecs.Get<WorldComponent>(creature).Position);
 
         return creature;
     }

@@ -425,6 +425,8 @@ public partial class LuaMaze(
 
     private void WakeSectorBehindGate(int gate, bool open)
     {
+        creatureManager.SetGate(gate, open);
+
         if (open && Batch.EventBox.ServerGates.FirstOrDefault(e => e.Id == gate) is { NextSector: > 0 } box)
         {
             SpawnSector(box.NextSector);

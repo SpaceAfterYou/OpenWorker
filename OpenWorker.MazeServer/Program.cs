@@ -15,6 +15,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
+using OpenWorker.Navigation;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.Res.Extensions;
 
@@ -41,6 +42,7 @@ await Host
         services.AddSingleton<CombatTables>();
         services.AddSingleton(provider => new AiScriptLoader(provider.GetRequiredService<ILogger<AiScriptLoader>>()));
         services.AddSingleton<MonsterBehaviorTables>();
+        services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<CreatureServices>();
 
         services.AddCommandManager();

@@ -272,6 +272,24 @@ public sealed class NavMeshTest
         Assert.IsFalse(field.IsWalkable(new Vector3(50, 500, 0), 100f));
     }
 
+    [TestMethod]
+    public void WhatIsBehindAWallOrAClosedGateIsNotSeen()
+    {
+        var field = new NavField(Corner());
+
+        // The corner of the L stands between the first square and the last one.
+        Assert.IsTrue(field.CanSee(new Vector3(500, 500, 0), new Vector3(2500, 500, 0)));
+        Assert.IsFalse(field.CanSee(new Vector3(500, 500, 0), new Vector3(2500, 2500, 0)));
+
+        var gate = field.AddBlocker(new Vector3(1500, 500, 0), new Vector3(100, 1000, 300), 0f, enabled: true);
+
+        Assert.IsFalse(field.CanSee(new Vector3(500, 500, 0), new Vector3(2500, 500, 0)));
+
+        field.SetBlocker(gate, false);
+
+        Assert.IsTrue(field.CanSee(new Vector3(500, 500, 0), new Vector3(2500, 500, 0)));
+    }
+
     // ---- The files of the client ------------------------------------------------------------
 
     private static IEnumerable<string> Files()
@@ -366,6 +384,35 @@ public sealed class NavMeshTest
         foreach (var length in new[] { 9, 40, 200, 700, data.Length / 2, data.Length - 1 })
         {
             Assert.Throws<InvalidDataException>(() => NavMesh.Parse(data.AsSpan(0, length)), $"cut at {length}");
+        }
+    }
+
+    [TestMethod]
+    public async Task AMapWithoutAFileOrWithABrokenOneHasNoMeshAndSaysWhy()
+    {
+        var folder = Directory.CreateTempSubdirectory("navmesh-").FullName;
+
+        try
+        {
+            await File.WriteAllBytesAsync(Path.Join(folder, "broken.hkt"), new byte[64]);
+
+            var provider = new NavMeshProvider(folder);
+
+            var missing = await provider.GetAsync("missing");
+            var broken = await provider.GetAsync("broken");
+
+            Assert.IsNull(missing.Mesh);
+            Assert.Contains("does not exist", missing.Error!);
+            Assert.IsNull(broken.Mesh);
+            Assert.Contains("cannot be read", broken.Error!);
+
+            // A map is read once: the second question gets the same answer without reading again.
+            Assert.AreSame(provider.GetAsync("broken"), provider.GetAsync("broken"));
+        }
+
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
         }
     }
 }

@@ -28,6 +28,11 @@ internal sealed class MonsterBody : IAiHost
     private const double MoveResend = 0.6;
 
     private const float TurnToReport = 1f;
+
+    /// <summary>
+    /// How wide a way a monster needs at most: the body of a monster that fills a room does not make it walk round the walls.
+    /// </summary>
+    private const float MaxWayRadius = 100f;
     private const float Arrived = 3f;
     private const float AttackDefaultLength = 1f;
     private const short NoMotion = -1;
@@ -36,6 +41,9 @@ internal sealed class MonsterBody : IAiHost
     private readonly LuaCreatureManager _manager;
     private readonly SkillActionProvider _actions;
     private readonly List<PendingHit> _pending = [];
+
+    private readonly List<Vector3> _route = [];
+    private readonly List<Vector3> _found = [];
 
     private Vector3? _destination;
     private bool _run;
@@ -175,36 +183,54 @@ internal sealed class MonsterBody : IAiHost
 
     private void Advance(double now, float elapsed)
     {
-        if (_destination is not { } destination)
+        if (_destination is null)
         {
             return;
         }
 
-        var position = Position;
-        var offset = new Vector2(destination.X - position.X, destination.Y - position.Y);
-        var distance = offset.Length();
-        var step = Speed * elapsed;
+        var left = Speed * elapsed;
+        var turned = false;
 
-        if (distance <= Math.Max(step, Arrived))
+        while (_route.Count > 0)
         {
-            Place(new Vector3(destination.X, destination.Y, position.Z), Yaw);
+            var position = Position;
+            var waypoint = _route[0];
+            var offset = new Vector2(waypoint.X - position.X, waypoint.Y - position.Y);
+            var distance = offset.Length();
 
-            _destination = null;
+            if (distance <= Math.Max(left, Arrived))
+            {
+                Place(OnFloor(new Vector3(waypoint.X, waypoint.Y, position.Z)), Yaw);
 
-            SendStop();
+                left = Math.Max(0f, left - distance);
+
+                _route.RemoveAt(0);
+
+                turned = turned || _route.Count > 0;
+
+                continue;
+            }
+
+            var direction = offset / distance;
+
+            Place(OnFloor(new Vector3(position.X + direction.X * left, position.Y + direction.Y * left, position.Z)), AiMath.YawOf(direction.X, direction.Y));
+
+            if (turned || now - _lastMoveSent >= MoveResend)
+            {
+                SendMove(now);
+            }
 
             return;
         }
 
-        var direction = offset / distance;
-        var yaw = AiMath.YawOf(direction.X, direction.Y);
+        _destination = null;
 
-        Place(new Vector3(position.X + direction.X * step, position.Y + direction.Y * step, position.Z), yaw);
+        SendStop();
+    }
 
-        if (now - _lastMoveSent >= MoveResend)
-        {
-            SendMove(now);
-        }
+    private Vector3 OnFloor(Vector3 position)
+    {
+        return _manager.Navigation.TryGetFloor(position, out var height) ? position with { Z = height } : position;
     }
 
     private void Place(Vector3 position, float yaw)
@@ -217,6 +243,7 @@ internal sealed class MonsterBody : IAiHost
         var moved = _destination is not null;
 
         _destination = null;
+        _route.Clear();
 
         if (send || moved)
         {
@@ -231,17 +258,27 @@ internal sealed class MonsterBody : IAiHost
             return false;
         }
 
-        if (_manager.Navigation.Clamp(Position, destination) is not { } reachable)
+        var position = Position;
+
+        if (!_manager.Navigation.TryFindPath(position, destination, Math.Min(Radius, MaxWayRadius), _found))
         {
             return false;
         }
 
+        _route.Clear();
+
+        // The first point of the way is the place the monster stands at.
+        _route.AddRange(_found.Skip(1));
+
         _run = run;
-        _destination = reachable;
+        _destination = _route.Count > 0 ? _route[^1] : position;
 
-        var position = Position;
+        if (_route.Count == 0)
+        {
+            return true;
+        }
 
-        Place(position, AiMath.YawTo(position, reachable));
+        Place(position, AiMath.YawTo(position, _route[0]));
 
         SendMove(_manager.Now);
 
@@ -274,6 +311,7 @@ internal sealed class MonsterBody : IAiHost
     public void Teleport(Vector3 position)
     {
         _destination = null;
+        _route.Clear();
 
         Place(position, Yaw);
 
@@ -545,10 +583,13 @@ internal sealed class MonsterBody : IAiHost
 
     private void SendMove(double now)
     {
-        if (_destination is not { } destination)
+        if (_destination is not { } end)
         {
             return;
         }
+
+        // The client walks to the next point of the way; it hears of the next one when it gets there.
+        var destination = _route.Count > 0 ? _route[0] : end;
 
         _lastMoveSent = now;
         _lastYawSent = Yaw;

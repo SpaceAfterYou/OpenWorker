@@ -304,6 +304,17 @@ public sealed class NavField
         return Mesh.TryGetHeight(point, FloorAbove, FloorBelow, out var floor) ? point with { Z = floor } : from;
     }
 
+    /// <summary>
+    /// Whether something at one place notices something at another: the straight line between them runs over the ground,
+    /// without a wall, a pit or a closed gate on it.
+    /// </summary>
+    public bool CanSee(Vector3 from, Vector3 to)
+    {
+        Clamp(from, to, 0f, out var reached);
+
+        return reached;
+    }
+
     private bool CanCross(int edge)
     {
         if (_blockers.Count == 0)
