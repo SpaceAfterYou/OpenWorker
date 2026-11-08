@@ -12,11 +12,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Arch" Version="2.1.0" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
-        <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="2.5.2" />
-        <PackageReference Include="MSTest" Version="4.5.2" />
+        <PackageReference Include="Arch" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+        <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
+        <PackageReference Include="MSTest" />
     </ItemGroup>
 
     <ItemGroup>

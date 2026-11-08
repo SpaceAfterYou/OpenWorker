@@ -21,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.CodeDom" Version="10.0.14" />
+        <PackageReference Include="System.CodeDom" />
     </ItemGroup>
 
 </Project>
