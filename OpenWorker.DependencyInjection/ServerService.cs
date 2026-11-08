@@ -11,6 +11,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.DependencyInjection;
 
@@ -23,6 +24,7 @@ internal sealed partial class ServerService(
     IOptions<HotspotOptions> hotspot,
     ArchComponentProvider components,
     IEnumerable<ISessionCloseHandler> closeHandlers,
+    SessionMetrics metrics,
     ILogger<ServerService> logger
 ) :
     BackgroundService
@@ -104,7 +106,7 @@ internal sealed partial class ServerService(
             // Movement is made of small frames that must not wait for each other.
             socket.NoDelay = true;
 
-            var session = new ServerSessionComponent(socket);
+            var session = new ServerSessionComponent(socket, metrics);
 
             var entity = await loop.InvokeAsync(() =>
             {
@@ -114,6 +116,10 @@ internal sealed partial class ServerService(
 
                 return created;
             });
+
+            // The reader of the socket ends the connection when the client does, or when the server has already closed it
+            // and given its own reason first; the first reason of a connection is the one that counts.
+            var reason = SessionCloseReason.Client;
 
             try
             {
@@ -131,6 +137,8 @@ internal sealed partial class ServerService(
 
                     await stream.ReadExactlyAsync(buffer, cancellationToken);
 
+                    metrics.Received(MessageHeader.HeaderSize + header.ContentLength);
+
                     MessageEncryption.Exchange(buffer, header.Version);
 
                     DumpPacket(header, buffer);
@@ -142,18 +150,26 @@ internal sealed partial class ServerService(
             catch (Exception e) when (e is EndOfStreamException or IOException { InnerException: SocketException } or ObjectDisposedException or OperationCanceledException)
             {
                 logger.LogDebug("Connection closed: {Reason}", e.Message);
+
+                // The server is stopping; the client did not leave.
+                if (e is OperationCanceledException)
+                {
+                    reason = SessionCloseReason.Server;
+                }
             }
 
             catch (Exception e)
             {
                 logger.LogCritical(e, "Session loop failed.");
+
+                reason = SessionCloseReason.Server;
             }
 
             finally
             {
                 await loop.InvokeAsync(() => CloseSessionAsync(entity));
 
-                session.Disconnect();
+                session.Disconnect(reason);
             }
         }
     }

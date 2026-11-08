@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Persons;
@@ -8,7 +7,7 @@ using OpenWorker.Channel.Community;
 using OpenWorker.Channel.Services;
 
 using OpenWorker.Hotspot;
-using StackExchange.Redis;
+using OpenWorker.Hotspot.Cache;
 
 namespace OpenWorker.Channel.Extensions;
 
@@ -52,10 +51,8 @@ public static class ServiceCollectionExtensions
     /// </summary>
     private static IServiceCollection AddCommunity(this IServiceCollection services)
     {
-        // The same Redis the cache uses; a server that starts before it is ready keeps trying.
-        services.AddRedisOptions();
-        services.AddSingleton<IConnectionMultiplexer>(provider => ConnectionMultiplexer.Connect(
-            provider.GetRequiredService<IOptions<RedisOptions>>().Value.ToConfigurationOptions()));
+        // The same Redis, and the same connection, the cache uses.
+        services.AddRedisConnection();
 
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<ICommunityTransport, RedisCommunityTransport>();

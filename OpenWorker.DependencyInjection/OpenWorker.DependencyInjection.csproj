@@ -11,6 +11,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- The tests drive the accept and read loops of the server over a socket. -->
+        <InternalsVisibleTo Include="OpenWorker.Hotspot.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
         <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>

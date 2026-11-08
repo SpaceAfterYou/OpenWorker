@@ -13,6 +13,7 @@
 
     <ItemGroup>
         <PackageReference Include="Arch" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
