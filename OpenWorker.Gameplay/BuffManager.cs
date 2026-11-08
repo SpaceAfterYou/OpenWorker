@@ -11,11 +11,20 @@ public sealed class BuffManager(World world, ReadOnlyCollection<BuffRow> buffs)
 {
     private Dictionary<Entity, List<int>> Buffs { get; } = [];
 
+    /// <summary>
+    /// False when the buff table has no such buff, which a script can ask for.
+    /// </summary>
     public bool Apply(Entity player, ActorComponent actor, int buff)
     {
-        var session = world.Get<ServerSessionComponent>(player);
+        var item = buffs.FirstOrDefault(x => x.Id == buff);
 
-        var item = buffs.First(x => x.Id == buff);
+        // The row of a buff that is not in the table stays empty.
+        if (item.Id == 0)
+        {
+            return false;
+        }
+
+        var session = world.Get<ServerSessionComponent>(player);
 
         session.Send(new SkillUpdateBuffResponse
         {

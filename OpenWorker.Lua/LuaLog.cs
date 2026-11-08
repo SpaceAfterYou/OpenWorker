@@ -118,6 +118,12 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script set the unknown maze state {State}")]
     public static partial void UnknownMazeState(this ILogger logger, int state);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script asked for the position of box {Box}, which the batch of the maze does not have; it gets the origin")]
+    public static partial void UnknownPositionBox(this ILogger logger, int box);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script applied the buff {Buff} to actor {Actor}, which the buff table does not have")]
+    public static partial void UnknownBuff(this ILogger logger, int actor, int buff);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script moves npc {Npc} to waypoint {Waypoint}, but the maze has no such creature")]
     public static partial void UnknownNpcToMove(this ILogger logger, int npc, int waypoint);
 

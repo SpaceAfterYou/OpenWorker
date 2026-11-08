@@ -564,7 +564,10 @@ public partial class LuaMaze(
     {
         Logger.CallApplyBuff(actor, buff);
         
-        buffManager.Apply(player, actor, buff);
+        if (!buffManager.Apply(player, actor, buff))
+        {
+            Logger.UnknownBuff(actor, buff);
+        }
     }
 
     [LuaMember]
@@ -649,9 +652,15 @@ public partial class LuaMaze(
     {
         Logger.CallGetCommonPositionBox(box);
 
-        return Batch.EventBox.CommonPositions
-            .First(x => x.Id == box)
-            .GetRandomPosition();
+        // A script that names a box the batch does not have keeps running, with the origin.
+        if (Batch.EventBox.CommonPositions.FirstOrDefault(x => x.Id == box) is not { } position)
+        {
+            Logger.UnknownPositionBox(box);
+
+            return new VVector3();
+        }
+
+        return position.GetRandomPosition();
     }
 
     [LuaMember]

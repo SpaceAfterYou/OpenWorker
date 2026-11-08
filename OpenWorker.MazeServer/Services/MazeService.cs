@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Batch.Entities.Basic;
@@ -528,10 +529,18 @@ public sealed partial class MazeService(
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeEventSpawnBoxRequest request)
     {
-        var maze = ecs.Get<LuaMaze>(context.Player);
+        if (!TryGetMaze(context.Player, nameof(MazeEventSpawnBoxRequest), out var maze))
+        {
+            return ValueTask.CompletedTask;
+        }
 
-        var boxes = maze.Batch.EventBox.CheckMonsterSpawns
-            .First(x => x.Id == request.Box);
+        // The box id comes from the client, which can name a box that this map does not have.
+        if (maze.Batch.EventBox.CheckMonsterSpawns.FirstOrDefault(x => x.Id == request.Box) is not { } boxes)
+        {
+            LogUnknownBox(nameof(MazeEventSpawnBoxRequest), request.Box);
+
+            return ValueTask.CompletedTask;
+        }
 
         foreach (var box in boxes.CheckBoxList.Where(x => x is not 0))
         {
@@ -543,7 +552,10 @@ public sealed partial class MazeService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeOperationEndRequest request)
     {
-        var maze = ecs.Get<LuaMaze>(context.Player);
+        if (!TryGetMaze(context.Player, nameof(MazeOperationEndRequest), out var maze))
+        {
+            return;
+        }
 
         await maze.State
             .CheckConditionAsync(0, request.Operation, maze);
@@ -551,23 +563,54 @@ public sealed partial class MazeService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeLuaFunctionRequest request)
     {
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
-        var world = ecs.Get<WorldComponent>(context.Player);
-
-        if (!batches.TryGetAndCache(world.Location, out var batch, BatchType.Maze))
+        if (!TryGetMaze(context.Player, nameof(MazeLuaFunctionRequest), out var maze))
         {
             return;
         }
 
-        var function = batch.EventBox.LuaFunctions.First(x => x.Id == request.Box);
+        // The box id comes from the client, which can name a box that this map does not have.
+        if (maze.Batch.EventBox.LuaFunctions.FirstOrDefault(x => x.Id == request.Box) is not { } function)
+        {
+            LogUnknownBox(nameof(MazeLuaFunctionRequest), request.Box);
 
-        var state = ecs.Get<LuaMaze>(context.Player);
+            return;
+        }
 
-        await state.State
-            .OnExecuteLuaFunction(function.Function, request.Box, state);
+        await maze.State
+            .OnExecuteLuaFunction(function.Function, request.Box, maze);
 
-        session.Send(new MazeLuaFunctionResponse { Box = request.Box });
+        // The script may have taken a while, and the player may have left meanwhile.
+        if (ecs.IsAlive(context.Player))
+        {
+            ecs.Get<ServerSessionComponent>(context.Player).Send(new MazeLuaFunctionResponse { Box = request.Box });
+        }
     }
+
+    /// <summary>
+    /// A player who has not entered a maze has none, and what they ask of it is ignored.
+    /// </summary>
+    private bool TryGetMaze(Entity player, string request, [NotNullWhen(true)] out LuaMaze? maze)
+    {
+        if (ecs.Has<LuaMaze>(player))
+        {
+            maze = ecs.Get<LuaMaze>(player);
+
+            return true;
+        }
+
+        LogNotInMaze(request);
+
+        maze = null;
+
+        return false;
+    }
+
+    // What a client sends is no reason to fill the log at a higher level than Debug.
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} from a player who is not in a maze, ignored")]
+    private partial void LogNotInMaze(string request);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} names box {Box}, which the maze does not have, ignored")]
+    private partial void LogUnknownBox(string request, int box);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} leads to location {Location}, but no district of it can take a player")]
     private partial void LogNoDistrictToExit(int maze, int location);

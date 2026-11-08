@@ -34,6 +34,7 @@
       <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
       <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
       <ProjectReference Include="..\OpenWorker.DistrictServer\OpenWorker.DistrictServer.csproj" />
+      <ProjectReference Include="..\OpenWorker.MazeServer\OpenWorker.MazeServer.csproj" />
     </ItemGroup>
 
 </Project>
