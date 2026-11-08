@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Numerics;
 using Arch.Core;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.Channel;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Components;
@@ -88,10 +89,7 @@ internal sealed class DistrictHarness : IDisposable
     {
         await SettleAsync(players);
 
-        foreach (var player in players)
-        {
-            player.Forget();
-        }
+        Forget(players);
     }
 
     public static MovementMoveRequest Request(int actor, float x, float y)
@@ -123,10 +121,18 @@ internal sealed class DistrictHarness : IDisposable
         Ecs.Dispose();
     }
 
+    public void Forget(params Player[] players)
+    {
+        foreach (var player in players)
+        {
+            player.Forget();
+        }
+    }
+
     /// <summary>
     /// A message on an opcode no real message uses, with an empty body.
     /// </summary>
-    private sealed class Marker : IResponseHotspotMessage
+    public sealed class Marker : IResponseHotspotMessage
     {
         public static readonly MessageOpcode Code = new(GroupOpcode.System, (SystemOpcode)0x7B);
 
@@ -153,6 +159,11 @@ internal readonly record struct PlayerFrame(MessageOpcode Opcode, byte[] Body)
     }
 
     public bool Is(GroupOpcode group, byte command) => Opcode.Group == (byte)group && Opcode.Command == command;
+
+    /// <summary>
+    /// The first coordinate of a move: after the actor and the map.
+    /// </summary>
+    public float X => BinaryPrimitives.ReadSingleLittleEndian(Body.AsSpan(4 + 8));
 
     /// <summary>
     /// The actor a message about one actor starts with.
@@ -283,6 +294,49 @@ public sealed class VisibilityTest
         CollectionAssert.AreEqual(new[] { behind.Actor }, mover.Departures(), "The mover is told that the player behind is gone.");
         Assert.IsEmpty(behind.Moves(), "The player out of sight does not hear the move that took the mover away.");
         Assert.IsEmpty(ahead.Arrivals(), "The player ahead saw the mover already.");
+    }
+
+    /// <summary>
+    /// The moves of one player that the world loop handles in one pass reach a player who sees it once, with the last
+    /// place; the next pass sends the next move.
+    /// </summary>
+    [TestMethod]
+    public async Task TheMovesOfAPlayerInOnePassOfTheLoopGoOutOnceWithTheLastPlace()
+    {
+        using var district = new DistrictHarness();
+        using var loop = new WorldLoop(NullLogger<WorldLoop>.Instance);
+
+        var mover = district.Join(100f, 100f);
+        var observer = district.Join(200f, 100f);
+
+        await district.ResetAsync(mover, observer);
+
+        // The loop is held while three moves queue up behind, so they are handled in one pass.
+        using var held = new ManualResetEventSlim();
+
+        var hold = loop.InvokeAsync(() => held.Wait(TimeSpan.FromSeconds(10)));
+
+        var moves = new[] { 110f, 120f, 130f }
+            .Select(x => loop.InvokeAsync(() => district.MoveAsync(mover, x, 100f)))
+            .ToArray();
+
+        held.Set();
+
+        await hold;
+        await Task.WhenAll(moves);
+        await loop.InvokeAsync(() => district.Channel.Broadcast(new DistrictHarness.Marker()));
+        await district.SettleAsync(mover, observer);
+
+        Assert.HasCount(1, observer.Moves(), "Three moves in one pass reach the observer once.");
+        Assert.AreEqual(130f, observer.Moves()[0].X, "The move that goes out has the last place.");
+        Assert.HasCount(1, mover.Moves(), "The mover hears its moves once too.");
+
+        district.Forget(mover, observer);
+
+        await loop.InvokeAsync(() => district.MoveAsync(mover, 140f, 100f));
+        await WaitForMovesAsync(observer);
+
+        Assert.AreEqual(140f, observer.Moves().Single().X, "The next pass sends the next move.");
     }
 
     private static Task WaitForMovesAsync(params Player[] players)

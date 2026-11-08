@@ -45,6 +45,14 @@ public abstract class MovementServiceBase(World world) :
     protected abstract void BroadcastToOthers<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable;
 
     /// <summary>
+    /// A move of the player, which the next one may replace before it goes out: by default it goes at once.
+    /// </summary>
+    protected virtual void Move(Entity player, in MovementMoveBtResponse message)
+    {
+        Broadcast(player, in message);
+    }
+
+    /// <summary>
     /// The place of the player has changed: where the others see it from may have too.
     /// </summary>
     protected virtual void OnPlaced(Entity player, Vector3 position)
@@ -71,7 +79,7 @@ public abstract class MovementServiceBase(World world) :
             float.IsFinite(request.fTargetPosX) &&
             float.IsFinite(request.fTargetPosY))
         {
-            Broadcast(context.Player, new MovementMoveBtResponse
+            Move(context.Player, new MovementMoveBtResponse
             {
                 Actor = request.dwActorID,
                 Map = request.nMapID,

@@ -1,11 +1,13 @@
 using System.Numerics;
 using Arch.Core;
 using OpenWorker.Channel;
+using OpenWorker.Hotspot.Modules.Movement.Responses;
 
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// A move is heard by the players of the channel who see the mover, and moves the mover across the visibility grid.
+/// A move is heard by the players of the channel who see the mover, once per pass of the world loop, and moves the mover
+/// across the visibility grid.
 /// </summary>
 public sealed class MovementService(World world, ServiceChannels channels) : MovementServiceBase(world)
 {
@@ -19,6 +21,11 @@ public sealed class MovementService(World world, ServiceChannels channels) : Mov
     protected override void BroadcastToOthers<T>(Entity player, in T message)
     {
         channels.Get(player).BroadcastNearbyToOthers(player, in message);
+    }
+
+    protected override void Move(Entity player, in MovementMoveBtResponse message)
+    {
+        channels.Get(player).Move(player, in message);
     }
 
     protected override void OnPlaced(Entity player, Vector3 position)

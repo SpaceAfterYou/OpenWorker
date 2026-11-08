@@ -9,6 +9,7 @@ using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Dtos;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
+using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Wire;
@@ -23,9 +24,11 @@ namespace OpenWorker.Channel;
 /// is symmetric. A player is told about another one (<see cref="WorldInInfoPcResponse"/>) when they come to see each
 /// other and that it is gone (<see cref="WorldOutInfoPcResponse"/>) when they no longer do, on joining, leaving and
 /// crossing the edge of a cell. What a player does in the world (<see cref="BroadcastNearby{T}"/>) goes to those who see
-/// it; <see cref="Broadcast"/> still goes to the whole channel.
+/// it; <see cref="Broadcast"/> still goes to the whole channel.<br/>
+/// The moves of a player wait for the end of the pass of the world loop (<see cref="Move"/>): the moves of one player
+/// that the loop handles in one pass go out once, with the last place.
 /// </summary>
-public sealed class ServiceChannel
+public sealed class ServiceChannel : IEndOfPass
 {
     // The largest cell index: far enough for any map, and its neighbours stay within an int.
     private const int MaxCell = 1 << 24;
@@ -37,6 +40,10 @@ public sealed class ServiceChannel
     private readonly Dictionary<Entity, Member> _members = [];
     private readonly Dictionary<long, Cell> _cells = [];
     private readonly List<ActorValue> _actors = [];
+    private readonly List<Member> _moving = [];
+
+    // The channel waits for the end of the pass of the loop to send the moves.
+    private bool _waiting;
 
     // The number of members, written on the loop at every join and leave and read from anywhere.
     private int _online;
@@ -134,12 +141,13 @@ public sealed class ServiceChannel
 
     /// <summary>
     /// Sends what the player does to everybody who sees it, the player included, encoded once and without a box. Nobody
-    /// hears a player that is not in the channel.
+    /// hears a player that is not in the channel. A move of the player that waits for the end of the pass goes first.
     /// </summary>
     public void BroadcastNearby<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable
     {
         if (_members.TryGetValue(player, out var member))
         {
+            SendMove(member);
             SendNearby(member, in message, others: false);
         }
     }
@@ -151,6 +159,7 @@ public sealed class ServiceChannel
     {
         if (_members.TryGetValue(player, out var member))
         {
+            SendMove(member);
             SendNearby(member, in message, others: true);
         }
     }
@@ -160,6 +169,8 @@ public sealed class ServiceChannel
     {
         if (_members.TryGetValue(player, out var member))
         {
+            SendMove(member);
+
             using var frame = Frame.Encode(message);
 
             SendNearby(member, frame, others: false);
@@ -171,10 +182,61 @@ public sealed class ServiceChannel
     {
         if (_members.TryGetValue(player, out var member))
         {
+            SendMove(member);
+
             using var frame = Frame.Encode(message);
 
             SendNearby(member, frame, others: true);
         }
+    }
+
+    /// <summary>
+    /// The move of the player, for everybody who sees it and the player, at the end of the pass of the world loop: a
+    /// later move of the player in the same pass takes its place, so a player in sight gets at most one move of the
+    /// player per pass, with the last place. Off the loop it goes at once.
+    /// </summary>
+    public void Move(Entity player, in MovementMoveBtResponse message)
+    {
+        if (!_members.TryGetValue(player, out var member))
+        {
+            return;
+        }
+
+        if (SynchronizationContext.Current is not WorldLoop { IsCurrent: true } loop)
+        {
+            SendNearby(member, in message, others: false);
+
+            return;
+        }
+
+        if (!member.HasMove)
+        {
+            member.HasMove = true;
+            _moving.Add(member);
+        }
+
+        member.Move = message;
+
+        if (!_waiting)
+        {
+            _waiting = true;
+            loop.AtEndOfPass(this);
+        }
+    }
+
+    /// <summary>
+    /// Sends the moves the pass has left.
+    /// </summary>
+    void IEndOfPass.EndOfPass()
+    {
+        _waiting = false;
+
+        foreach (var member in _moving)
+        {
+            SendMove(member);
+        }
+
+        _moving.Clear();
     }
 
     /// <summary>
@@ -310,6 +372,9 @@ public sealed class ServiceChannel
 
         Volatile.Write(ref _online, _members.Count);
 
+        // A move that has not gone out is of a player the others are told is gone.
+        member.HasMove = false;
+
         Remove(member);
 
         SendNearby(member, new WorldOutInfoPcResponse { Actors = [member.Actor] }, others: true);
@@ -341,6 +406,18 @@ public sealed class ServiceChannel
         }
 
         member.Session.Send(new WorldOtherPersonListResponse { People = people });
+    }
+
+    private void SendMove(Member member)
+    {
+        if (!member.HasMove)
+        {
+            return;
+        }
+
+        member.HasMove = false;
+
+        SendNearby(member, in member.Move, others: false);
     }
 
     private void SendNearby<T>(Member member, in T message, bool others) where T : struct, IResponseHotspotMessage, IWireWritable
@@ -528,6 +605,14 @@ public sealed class ServiceChannel
         /// Where the member is in the list of its cell, so it leaves the cell without a search.
         /// </summary>
         public int Slot { get; set; }
+
+        /// <summary>
+        /// <see cref="Move"/> holds a move that waits for the end of the pass.
+        /// </summary>
+        public bool HasMove { get; set; }
+
+        // A field, so the move is passed to the encoder by reference.
+        public MovementMoveBtResponse Move;
     }
 
     private sealed class Cell(int x, int y)
