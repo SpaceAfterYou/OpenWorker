@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
 /// <summary>
 /// A countdown on the screen. A negative time hides it.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MazeTimerResponse : IResponseHotspotMessage
+public readonly partial struct MazeTimerResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -36,16 +38,4 @@ public readonly struct MazeTimerResponse : IResponseHotspotMessage
     public float Next { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Reserved);
-        writer.Write(Value);
-        writer.Write(Time);
-        writer.Write(Next);
-    }
-
-#endregion Interface: IWritableData
 }

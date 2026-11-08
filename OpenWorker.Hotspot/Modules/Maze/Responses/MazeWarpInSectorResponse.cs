@@ -4,11 +4,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct MazeWarpInSectorResponse : IResponseHotspotMessage
+public readonly partial struct MazeWarpInSectorResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -25,14 +27,4 @@ public readonly struct MazeWarpInSectorResponse : IResponseHotspotMessage
     public float Rotation { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Position);
-        writer.Write(Rotation);
-    }
-
-#endregion Interface: IWritableData
 }
