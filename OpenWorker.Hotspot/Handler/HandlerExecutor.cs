@@ -199,14 +199,17 @@ public sealed partial class HandlerExecutor(
             return true;
         }
 
-        if (!world.Has<PacketRateComponent>(player))
-        {
-            world.Add<PacketRateComponent>(player);
-        }
-
         var group = PacketRateLimiter.GroupOf(opcode.Group);
 
-        if (limiter.TryTake(ref world.Get<PacketRateComponent>(player), group))
+        ref var state = ref world.TryGetRef<PacketRateComponent>(player, out var exists);
+
+        if (!exists)
+        {
+            world.Add<PacketRateComponent>(player);
+            state = ref world.Get<PacketRateComponent>(player);
+        }
+
+        if (limiter.TryTake(ref state, group))
         {
             return true;
         }

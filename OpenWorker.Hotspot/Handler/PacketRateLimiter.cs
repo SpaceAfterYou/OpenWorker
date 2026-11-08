@@ -56,10 +56,14 @@ public sealed class PacketRateLimiter
     private readonly TimeProvider _time;
     private readonly PacketRateLimitOptions _options;
 
+    // Seconds per tick of the timestamps of the clock, so a fill is one subtraction and one product.
+    private readonly double _secondsPerTick;
+
     public PacketRateLimiter(TimeProvider time, IOptions<PacketRateLimitOptions> options)
     {
         _time = time;
         _options = options.Value;
+        _secondsPerTick = 1d / time.TimestampFrequency;
     }
 
     public static PacketGroup GroupOf(byte group)
@@ -89,21 +93,21 @@ public sealed class PacketRateLimiter
     /// </summary>
     public bool TryTake(ref PacketRateComponent state, PacketGroup group)
     {
+        var now = _time.GetTimestamp();
+
         return group switch
         {
-            PacketGroup.Movement => TryTake(ref state.Movement, _options.Movement),
-            PacketGroup.Chat => TryTake(ref state.Chat, _options.Chat),
-            PacketGroup.Items => TryTake(ref state.Items, _options.Items),
-            _ => TryTake(ref state.Other, _options.Other)
+            PacketGroup.Movement => TryTake(ref state.Movement, _options.Movement, now),
+            PacketGroup.Chat => TryTake(ref state.Chat, _options.Chat, now),
+            PacketGroup.Items => TryTake(ref state.Items, _options.Items, now),
+            _ => TryTake(ref state.Other, _options.Other, now)
         };
     }
 
-    private bool TryTake(ref PacketBucket bucket, PacketRateLimit limit)
+    private bool TryTake(ref PacketBucket bucket, PacketRateLimit limit, long now)
     {
-        var now = _time.GetTimestamp();
-
         bucket.Tokens = bucket.Started
-            ? MathF.Min(limit.Burst, bucket.Tokens + ((float)_time.GetElapsedTime(bucket.At, now).TotalSeconds * limit.PerSecond))
+            ? MathF.Min(limit.Burst, bucket.Tokens + (float)((now - bucket.At) * _secondsPerTick * limit.PerSecond))
             : limit.Burst;
 
         bucket.Started = true;
