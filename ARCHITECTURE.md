@@ -243,7 +243,10 @@ exceptions, such as the names of client enums, live in `.editorconfig` with the 
 Every server migrates the database before its other services start (`PersistenceBootstrapService`);
 Npgsql locks the database while it migrates, so servers that start together apply each migration once.
 EF Core refuses to migrate while the model has changes with no migration: after changing the model,
-add the migration before starting the servers.
+add the migration before starting the servers. Two branches that each add a migration from the same
+snapshot produce two migrations that repeat each other, and the second one fails on an empty database
+while `has-pending-model-changes` stays quiet; after merging such branches, apply the whole chain to an
+empty database (`dotnet ef database update`, as CI does) before pushing.
 
 Connection settings: `ConnectionStrings:Postgres`, `ConnectionStrings:Redis` (see Settings).
 
