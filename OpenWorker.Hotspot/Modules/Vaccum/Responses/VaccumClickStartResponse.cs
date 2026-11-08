@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Vaccum.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Vaccum.Responses;
 
 /// <summary>
 /// A person is taking a cube. A result other than 0 tells why it cannot.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct VaccumClickStartResponse : IResponseHotspotMessage
+public readonly partial struct VaccumClickStartResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -30,15 +32,4 @@ public readonly struct VaccumClickStartResponse : IResponseHotspotMessage
     public int Result { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Actor);
-        writer.Write(Cube);
-        writer.Write(Result);
-    }
-
-#endregion Interface: IWritableData
 }
