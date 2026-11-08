@@ -10,8 +10,9 @@
 # SOULWORKER_DATAS   Required. The `datas` folder of an installed client: the district, gate and maze servers read the
 #                    tables, the batch files and the scripts of it, and cannot start without.
 # LOADTEST_ACCOUNTS  Accounts to create. Default: the number of --bots, counted from --account-offset.
-# LOADTEST_WAIT      Seconds to wait for the servers. Default 300.
-# LOADTEST_SETTLE    Seconds to wait after the ports are open, for the districts to register their channels. Default 15.
+# LOADTEST_WAIT      Seconds to wait for the servers to turn healthy. Default 300.
+# LOADTEST_SETTLE    Seconds to wait after the servers are healthy and the accounts are made, for the districts to
+#                    register their channels and the auth server to list the gate. Default 15.
 # LOADTEST_CHANNELS  Channels of a district (a channel holds 65 players). Default 20.
 # LOADTEST_NO_BUILD  Set to 1 to start the containers without building the images again.
 # LOADTEST_DOWN      Set to 1 to stop the containers when the run is over. By default they are left running, so
@@ -108,44 +109,62 @@ if [[ "${LOADTEST_DOWN:-0}" == 1 ]]; then
   trap '"${COMPOSE[@]}" down' EXIT
 fi
 
-# Until the health checks of the servers exist, a server is ready when its port accepts a connection.
-wait_for_port() {
-  local name=$1 port=$2 deadline=$((SECONDS + wait_seconds))
+# Docker publishes a port as soon as the container starts, before the server in it listens, so an open port says
+# nothing. A server is ready when its health check (/readyz, compose.yaml) passes: it then has its tables, its database
+# and Redis, and listens. A server that exits is reported at once instead of after the whole wait.
+servers=(
+  openworker.relayserver
+  openworker.authserver
+  openworker.gateserver
+  openworker.districtserver-roccotown
+  openworker.districtserver-canduscity
+  openworker.districtserver-gracecity
+  openworker.districtserver-ruinfortress
+  openworker.mazeserver
+)
 
-  until (exec 3<> "/dev/tcp/127.0.0.1/$port") 2> /dev/null; do
+wait_for_servers() {
+  local deadline=$((SECONDS + wait_seconds)) service id state waiting
+
+  while true; do
+    waiting=()
+
+    for service in "${servers[@]}"; do
+      id=$("${COMPOSE[@]}" ps --all --quiet "$service")
+      state=$(docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$id" 2> /dev/null || echo missing)
+
+      case "$state" in
+        "running healthy") ;;
+        exited* | dead*)
+          "${COMPOSE[@]}" ps --all >&2 || true
+          fail "$service has stopped ($state). See: docker compose logs $service"
+          ;;
+        *) waiting+=("$service ($state)") ;;
+      esac
+    done
+
+    ((${#waiting[@]} == 0)) && break
+
     if ((SECONDS >= deadline)); then
       "${COMPOSE[@]}" ps --all >&2 || true
-      fail "$name did not accept connections on port $port within ${wait_seconds} s. See: docker compose logs"
+      fail "not healthy within ${wait_seconds} s: ${waiting[*]}. See: docker compose logs"
     fi
 
     sleep 2
   done
 
-  echo "loadtest: $name is up on port $port"
+  echo "loadtest: every server is healthy"
 }
 
-wait_for_port Postgres 5432
-wait_for_port Redis 6379
-wait_for_port "auth server" "$auth_port"
-wait_for_port "gate server" 10010
-wait_for_port "district Rocco Town" 10011
-wait_for_port "district Candus City" 10012
-wait_for_port "district Grace City" 10013
-wait_for_port "district Ruin Fortress" 10014
-wait_for_port "maze server" 10101
+wait_for_servers
 
-# A container that started and died has its port closed again, so look at the state too.
-exited=$("${COMPOSE[@]}" ps --all --status exited --format '{{.Name}}' | grep -v -e UpdateContent -e RelayServer || true)
-
-if [[ -n "$exited" ]]; then
-  fail "these containers have stopped: $(echo "$exited" | tr '\n' ' '). See: docker compose logs"
-fi
-
-echo "loadtest: waiting ${settle_seconds} s for the districts to register their channels"
-sleep "$settle_seconds"
-
+# The seed makes the gate row on a fresh database, and the auth server reads the gates of the database once a second:
+# seeded right before the bots, the first second of them found no gate. So it goes before the wait.
 echo "loadtest: creating $accounts accounts ($prefix, from $offset)"
 dotnet "$DLL" seed --account-prefix "$prefix" --account-offset "$offset" --count "$accounts" --password "$password"
+
+echo "loadtest: waiting ${settle_seconds} s for the districts to register their channels and the auth server to list the gate"
+sleep "$settle_seconds"
 
 echo "loadtest: running the bots, the report goes to $output"
 mkdir -p "$output"

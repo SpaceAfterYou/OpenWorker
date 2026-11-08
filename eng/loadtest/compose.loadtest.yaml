@@ -23,6 +23,16 @@ x-server: &server
     - Logging__LogLevel__Default=Warning
     - Hotspot__PacketDumpPath=
 
+# The other servers start when the relay is healthy. On a fresh database (the Postgres container has no volume, so every
+# `down` makes one) the maze server reads ServerContents while it builds its services, before any server has migrated, and
+# dies with `relation "ServerContents" does not exist`; and a gate that starts before the relay has made the Redis indexes
+# cannot write its record (`No such index channelcache-idx`), so the first bots find no gate online. The relay migrates
+# and makes the indexes when it starts, and it drops the cache only then, so nothing registered after it is lost.
+x-after-relay: &after-relay
+  depends_on:
+    openworker.relayserver:
+      condition: service_healthy
+
 services:
   # The relay creates the Redis indexes the other servers search by, so it has to run, and it will not start without a
   # token. It talks to Discord only if the token is real; a placeholder lets it make the indexes. It runs once: every
@@ -35,15 +45,16 @@ services:
       - Credentials__DiscordToken=${LOADTEST_DISCORD_TOKEN:-loadtest-placeholder}
 
   openworker.authserver:
-    <<: *server
+    <<: [*server, *after-relay]
 
   openworker.gateserver:
-    <<: *server
+    <<: [*server, *after-relay]
 
   openworker.mazeserver:
-    <<: *server
+    <<: [*server, *after-relay]
 
   openworker.districtserver-roccotown:
+    <<: *after-relay
     build:
       args:
         - BUILD_CONFIGURATION=Release
@@ -53,6 +64,7 @@ services:
       - Channel__To=${LOADTEST_CHANNELS:-20}
 
   openworker.districtserver-canduscity:
+    <<: *after-relay
     build:
       args:
         - BUILD_CONFIGURATION=Release
@@ -62,6 +74,7 @@ services:
       - Channel__To=${LOADTEST_CHANNELS:-20}
 
   openworker.districtserver-gracecity:
+    <<: *after-relay
     build:
       args:
         - BUILD_CONFIGURATION=Release
@@ -71,6 +84,7 @@ services:
       - Channel__To=${LOADTEST_CHANNELS:-20}
 
   openworker.districtserver-ruinfortress:
+    <<: *after-relay
     build:
       args:
         - BUILD_CONFIGURATION=Release
