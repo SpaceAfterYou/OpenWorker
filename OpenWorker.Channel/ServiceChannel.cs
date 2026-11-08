@@ -311,7 +311,7 @@ public sealed class ServiceChannel : IEndOfPass
 
         SendGone(member);
 
-        Move(member, to);
+        Transfer(member, to);
 
         // Who sees the player now: the cells around the new one that are not around the old one.
         Frame? came = null;
@@ -596,7 +596,7 @@ public sealed class ServiceChannel : IEndOfPass
         members.RemoveAt(members.Count - 1);
     }
 
-    private static void Move(Member member, Cell cell)
+    private static void Transfer(Member member, Cell cell)
     {
         Remove(member);
         Add(member, cell);
