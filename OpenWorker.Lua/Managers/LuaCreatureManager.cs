@@ -138,7 +138,7 @@ public sealed class LuaCreatureManager
         Attach(player);
 
         // Maps can point at boxes they no longer have, and a client walks through such a trigger like any other.
-        if (batch.EventBox.MonsterSpawns.FirstOrDefault(x => x.Id == box) is not { } spawn)
+        if (batch.EventBox.MonsterSpawns.Find(box) is not { } spawn)
         {
             return;
         }
@@ -392,7 +392,7 @@ public sealed class LuaCreatureManager
     {
         if (!KillProgress.TryGetValue(sector, out var progress))
         {
-            var box = batch.EventBox.Sectors.FirstOrDefault(e => e.Id == sector);
+            var box = batch.EventBox.Sectors.Find(sector);
 
             progress = box is null ? new SectorKillProgress(ClearType.None, 0, []) : new SectorKillProgress(box);
 
@@ -407,7 +407,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     public int CountBoxesToCome(int sector)
     {
-        return batch.EventBox.MonsterSpawns.Count(e => e.Sector == sector && !SpawnedBoxes.Contains(e.Id) && HoldsSector(e));
+        return batch.EventBox.SpawnsOf(sector).Count(e => !SpawnedBoxes.Contains(e.Id) && HoldsSector(e));
     }
 
     private bool HoldsSector(MonsterSpawnBox box)

@@ -435,7 +435,7 @@ public partial class LuaMaze(
 
         kills.MarkCurrentStepSpawned();
 
-        foreach (var box in Batch.EventBox.MonsterSpawns.Where(e => e.Sector == sector && e.CreationCondition == CreationConditionType.Immediate && e.Step == kills.Step + 1))
+        foreach (var box in Batch.EventBox.SpawnsOf(sector).Where(e => e.CreationCondition == CreationConditionType.Immediate && e.Step == kills.Step + 1))
         {
             creatureManager.SpawnOnce(player, box.Id);
         }
@@ -1009,7 +1009,7 @@ public partial class LuaMaze(
     {
         creatureManager.SetGate(gate, open);
 
-        if (open && Batch.EventBox.ServerGates.FirstOrDefault(e => e.Id == gate) is { NextSector: > 0 } box)
+        if (open && Batch.EventBox.ServerGates.Find(gate) is { NextSector: > 0 } box)
         {
             SpawnSector(box.NextSector);
         }
@@ -1033,7 +1033,7 @@ public partial class LuaMaze(
     /// </summary>
     private async ValueTask CompleteSectorAsync(int sector)
     {
-        var box = Batch.EventBox.Sectors.FirstOrDefault(e => e.Id == sector);
+        var box = Batch.EventBox.Sectors.Find(sector);
 
         // Sectors of other kinds are finished by their script, or by the quests of the player.
         if (box is null || !Progress.ClearSector(sector))
@@ -1114,7 +1114,7 @@ public partial class LuaMaze(
         }
 
         return box.ExitType == SectorExitType.Portal
-            && Batch.EventBox.Portals.FirstOrDefault(e => e.Id == box.Exit) is { JumpType: not JumpType.JumpPos };
+            && Batch.EventBox.Portals.Find(box.Exit) is { JumpType: not JumpType.JumpPos };
     }
 
     /// <summary>
@@ -1201,7 +1201,7 @@ public partial class LuaMaze(
             return;
         }
 
-        if (Batch.EventBox.InterActions.FirstOrDefault(e => e.Id == box) is { } found)
+        if (Batch.EventBox.InterActions.Find(box) is { } found)
         {
             await reports.CollectSoulObjectAsync(player, info.Id, found.Interaction);
         }
@@ -1413,7 +1413,7 @@ public partial class LuaMaze(
         Logger.CallGetCommonPositionBox(box);
 
         // A script that names a box the batch does not have keeps running, with the origin.
-        if (Batch.EventBox.CommonPositions.FirstOrDefault(x => x.Id == box) is not { } position)
+        if (Batch.EventBox.CommonPositions.Find(box) is not { } position)
         {
             Logger.UnknownPositionBox(box);
 
@@ -1508,7 +1508,7 @@ public partial class LuaMaze(
     {
         if (Progress.SetGate(gate, open))
         {
-            var next = Batch.EventBox.ServerGates.FirstOrDefault(e => e.Id == gate)?.NextSector ?? 0;
+            var next = Batch.EventBox.ServerGates.Find(gate)?.NextSector ?? 0;
 
             player.Get<ServerSessionComponent>().Send(new WorldGateEnableResponse { Gate = gate, Open = open, IsMazeComplete = IsComplete, NextSector = next });
 
@@ -1609,7 +1609,7 @@ public partial class LuaMaze(
         {
             player.Get<ServerSessionComponent>().Send(new WorldWarpEnableResponse { Box = box, Open = flag, IsMazeComplete = IsComplete });
 
-            if (flag && Batch.EventBox.Portals.FirstOrDefault(e => e.Id == box) is { NextSector: > 0 } portal)
+            if (flag && Batch.EventBox.Portals.Find(box) is { NextSector: > 0 } portal)
             {
                 SpawnSector(portal.NextSector);
             }
@@ -1690,7 +1690,7 @@ public partial class LuaMaze(
 
         creatureManager.GetKillProgress(sector).Stopped = true;
 
-        foreach (var box in Batch.EventBox.MonsterSpawns.Where(e => e.Sector == sector))
+        foreach (var box in Batch.EventBox.SpawnsOf(sector))
         {
             creatureManager.Terminate(box.Id);
         }
@@ -1706,7 +1706,7 @@ public partial class LuaMaze(
     {
         creatureManager.Terminate(box);
 
-        if (Batch.EventBox.MonsterSpawns.FirstOrDefault(e => e.Id == box) is { } spawn)
+        if (Batch.EventBox.MonsterSpawns.Find(box) is { } spawn)
         {
             Later(0f, () => CheckSectorAsync(spawn.Sector));
         }

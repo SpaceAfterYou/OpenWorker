@@ -84,6 +84,12 @@ public sealed partial class MazeService(
     private const ushort InteractionFailed = 54007;
 
     /// <summary>
+    /// The answer to a request that names a box the map of the maze does not have: the code the world gives for the box
+    /// of a sector it cannot find.
+    /// </summary>
+    private const ushort BoxNotFound = SectorNotFound;
+
+    /// <summary>
     /// Keeps whatever motion the character is in.
     /// </summary>
     private const short NoMotion = -1;
@@ -304,9 +310,9 @@ public sealed partial class MazeService(
         var world = ecs.Get<WorldComponent>(context.Player);
         var events = maze.Batch.EventBox;
 
-        BasicEntity? destination = events.PortalExits.FirstOrDefault(e => e.Id == request.Jump);
-        destination ??= events.SectorStarts.FirstOrDefault(e => e.Id == request.Jump);
-        destination ??= events.StartEvents.FirstOrDefault(e => e.Id == request.Jump);
+        BasicEntity? destination = events.PortalExits.Find(request.Jump);
+        destination ??= events.SectorStarts.Find(request.Jump);
+        destination ??= events.StartEvents.Find(request.Jump);
 
         // The portal of a boss sector is never shut: whoever fights the boss must be able to leave.
         var inBossSector = FindSector(maze, world.Position)?.Type == SectorType.Boss;
@@ -327,7 +333,7 @@ public sealed partial class MazeService(
             BoxIndex = request.Portal,
             Warp = new WarpValue { HasError = false, Position = position, Rotation = destination.Rotation },
             // The map says which sector the portal leads to, and sectors may lie inside one another.
-            Sector = events.Portals.FirstOrDefault(e => e.Id == request.Portal) is { NextSector: > 0 } portal ? portal.NextSector : FindSector(maze, position)?.Id ?? 0
+            Sector = events.Portals.Find(request.Portal) is { NextSector: > 0 } portal ? portal.NextSector : FindSector(maze, position)?.Id ?? 0
         });
 
         maze.SetPotalFlag(request.Portal, false);
@@ -357,7 +363,7 @@ public sealed partial class MazeService(
         }
 
         var maze = ecs.Get<LuaMaze>(context.Player);
-        var box = maze.Batch.EventBox.CheckSectors.FirstOrDefault(e => e.Id == request.Box);
+        var box = maze.Batch.EventBox.CheckSectors.Find(request.Box);
 
         if (box is null)
         {
@@ -391,8 +397,8 @@ public sealed partial class MazeService(
 
         var sector = FindSector(maze, world.Position);
 
-        BasicEntity? start = sector is null ? null : events.SectorStarts.FirstOrDefault(e => e.Sector == sector.Id);
-        start ??= events.StartEvents.FirstOrDefault(e => e.Id == world.Jump);
+        BasicEntity? start = sector is null ? null : events.StartOf(sector.Id);
+        start ??= events.StartEvents.Find(world.Jump);
 
         if (start is not null)
         {
@@ -421,9 +427,15 @@ public sealed partial class MazeService(
         }
 
         var maze = ecs.Get<LuaMaze>(context.Player);
-        var box = maze.Batch.EventBox.CheckEventSpawns.FirstOrDefault(e => e.Id == request.Box);
+        // The box id comes from the client, which can name a box that this map does not have.
+        if (maze.Batch.EventBox.CheckEventSpawns.Find(request.Box) is not { } box)
+        {
+            RefuseUnknownBox(context.Player, MazeOpcode.eSUB_CMD_CHECK_EVENT_SPAWN_BOX_REQ, nameof(MazeCheckEventSpawnBoxRequest), request.Box);
 
-        if (box is not null && maze.Progress.TryUseBox(box.Id))
+            return ValueTask.CompletedTask;
+        }
+
+        if (maze.Progress.TryUseBox(box.Id))
         {
             foreach (var spawn in box.SpawnBoxList.Where(e => e != 0))
             {
@@ -442,9 +454,14 @@ public sealed partial class MazeService(
         }
 
         var maze = ecs.Get<LuaMaze>(context.Player);
-        var box = maze.Batch.EventBox.QuestMoveChecks.FirstOrDefault(e => e.Id == request.Box);
+        if (maze.Batch.EventBox.QuestMoveChecks.Find(request.Box) is not { } box)
+        {
+            RefuseUnknownBox(context.Player, MazeOpcode.eSUB_CMD_MAZE_QUEST_MOVE_CHECK_REQ, nameof(MazeQuestMoveCheckRequest), request.Box);
 
-        if (box is not null && maze.Progress.TryUseBox(box.Id))
+            return ValueTask.CompletedTask;
+        }
+
+        if (maze.Progress.TryUseBox(box.Id))
         {
             questManager.TryApplyConditionProgress(context.Player, box.EpisodeCondition, 1);
 
@@ -485,12 +502,12 @@ public sealed partial class MazeService(
     /// </summary>
     private static (int Field, int EventObject)? FindWayOut(VBatchFile batch, int portal)
     {
-        if (batch.EventBox.Portals.FirstOrDefault(e => e.Id == portal && e.JumpType is JumpType.Field) is { } leaving)
+        if (batch.EventBox.Portals.Find(portal) is { JumpType: JumpType.Field } leaving)
         {
             return (leaving.JumpMap, leaving.Jump);
         }
 
-        return batch.EventBox.MazeEscapes.FirstOrDefault() is { } escape ? (escape.Field, escape.EventObject) : null;
+        return batch.EventBox.MazeEscapes is [var escape, ..] ? (escape.Field, escape.EventObject) : null;
     }
 
     private void Warp(Entity player, Vector3 position, float rotation)
@@ -602,9 +619,9 @@ public sealed partial class MazeService(
         }
 
         // A map leads either to a portal exit or to a start point of the district.
-        BasicEntity? exit = districtBatch.EventBox.PortalExits.FirstOrDefault(x => x.Id == eventObject);
-        exit ??= districtBatch.EventBox.StartEvents.FirstOrDefault(x => x.Id == eventObject);
-        exit ??= districtBatch.EventBox.StartEvents.FirstOrDefault(x => x.Id == districtCache.Location * 100 + 1);
+        BasicEntity? exit = districtBatch.EventBox.PortalExits.Find(eventObject);
+        exit ??= districtBatch.EventBox.StartEvents.Find(eventObject);
+        exit ??= districtBatch.EventBox.StartEvents.Find(districtCache.Location * 100 + 1);
 
         if (exit is null)
         {
@@ -673,9 +690,9 @@ public sealed partial class MazeService(
         }
 
         // The box id comes from the client, which can name a box that this map does not have.
-        if (maze.Batch.EventBox.CheckMonsterSpawns.FirstOrDefault(x => x.Id == request.Box) is not { } boxes)
+        if (maze.Batch.EventBox.CheckMonsterSpawns.Find(request.Box) is not { } boxes)
         {
-            LogUnknownBox(nameof(MazeEventSpawnBoxRequest), request.Box);
+            RefuseUnknownBox(context.Player, MazeOpcode.eSUB_CMD_EVENT_SPAWN_BOX_REQ, nameof(MazeEventSpawnBoxRequest), request.Box);
 
             return ValueTask.CompletedTask;
         }
@@ -707,9 +724,9 @@ public sealed partial class MazeService(
         }
 
         // The box id comes from the client, which can name a box that this map does not have.
-        if (maze.Batch.EventBox.LuaFunctions.FirstOrDefault(x => x.Id == request.Box) is not { } function)
+        if (maze.Batch.EventBox.LuaFunctions.Find(request.Box) is not { } function)
         {
-            LogUnknownBox(nameof(MazeLuaFunctionRequest), request.Box);
+            RefuseUnknownBox(context.Player, MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_REQ, nameof(MazeLuaFunctionRequest), request.Box);
 
             return;
         }
@@ -722,6 +739,16 @@ public sealed partial class MazeService(
         {
             ecs.Get<ServerSessionComponent>(context.Player).Send(new MazeLuaFunctionResponse { Box = request.Box });
         }
+    }
+
+    /// <summary>
+    /// A request about a box the map does not have gets the error answer, and nothing else happens.
+    /// </summary>
+    private void RefuseUnknownBox(Entity player, MazeOpcode command, string request, int box)
+    {
+        LogUnknownBox(request, box);
+
+        SendError(player, command, BoxNotFound);
     }
 
     /// <summary>
@@ -747,7 +774,7 @@ public sealed partial class MazeService(
     [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} from a player who is not in a maze, ignored")]
     private partial void LogNotInMaze(string request);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} names box {Box}, which the maze does not have, ignored")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} names box {Box}, which the maze does not have, refused")]
     private partial void LogUnknownBox(string request, int box);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} leads to location {Location}, but no district of it can take a player")]

@@ -149,29 +149,11 @@ public sealed partial class WorldManager(
     /// Finds the requested start point, or the default one of the location when none was requested
     /// or the requested one does not exist.
     /// </summary>
-    private static bool TryGetStart(VBatchFile batch, short location, int jump, out StartEventBox start)
+    private static bool TryGetStart(VBatchFile batch, short location, int jump, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out StartEventBox? start)
     {
-        var fallback = location * 100 + 1;
-        var found = false;
+        var starts = batch.EventBox.StartEvents;
 
-        start = default!;
-
-        foreach (var box in batch.EventBox.StartEvents)
-        {
-            if (jump != 0 && box.Id == jump)
-            {
-                start = box;
-                return true;
-            }
-
-            if (box.Id == fallback)
-            {
-                start = box;
-                found = true;
-            }
-        }
-
-        return found;
+        return (jump != 0 && starts.TryGet(jump, out start)) || starts.TryGet(location * 100 + 1, out start);
     }
 
     private async ValueTask EnterMaze(Entity player, short location, StartEventBox start)
