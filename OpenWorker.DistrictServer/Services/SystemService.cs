@@ -11,7 +11,7 @@ using OpenWorker.Hotspot.Modules.System.Responses;
 namespace OpenWorker.DistrictServer.Services;
 
 [HotspotHandler(HotspotHandlerType.District)]
-public sealed class SystemService(World world) :
+public sealed class SystemService(World world, TimeProvider time) :
     IHotspotHandler<SystemOptionUpdateRequest>,
     IHotspotHandler<SystemXignCodeRequest>,
     IHotspotHandler<SystemKeepAliveRequest>,
@@ -21,7 +21,7 @@ public sealed class SystemService(World world) :
     {
         var component = world.Get<KeepAliveComponent>(context.Player);
 
-        world.Set(context.Player, component with { LastTickCount = new TimeSpan(request.TickCount) });
+        world.Set(context.Player, component.Answer(time.GetTimestamp(), request.TickCount));
 
         return ValueTask.CompletedTask;
     }

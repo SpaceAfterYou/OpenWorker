@@ -13,6 +13,7 @@
 
     <ItemGroup>
         <PackageReference Include="Arch" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
         <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
@@ -32,6 +33,7 @@
       <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
       <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
       <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
+      <ProjectReference Include="..\OpenWorker.DistrictServer\OpenWorker.DistrictServer.csproj" />
     </ItemGroup>
 
 </Project>

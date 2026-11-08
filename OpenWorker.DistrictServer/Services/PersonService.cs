@@ -65,7 +65,8 @@ public sealed class PersonService(
     LeaveManager leaving,
     QuestManager questManager,
     ReadOnlyCollection<CharacterInfoRow> characterInfo,
-    CommunityNetwork community
+    CommunityNetwork community,
+    TimeProvider time
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
@@ -126,7 +127,7 @@ public sealed class PersonService(
 
         ecs.Set(context.Player, await TakeReservedPlaceAsync(request) ?? GetDefaultPlace(batch));
 
-        ecs.Set(context.Player, new KeepAliveComponent());
+        ecs.Set(context.Player, KeepAliveComponent.Start(time.GetTimestamp()));
 
         ecs.Set(context.Player, new CurrencyComponent
         {
