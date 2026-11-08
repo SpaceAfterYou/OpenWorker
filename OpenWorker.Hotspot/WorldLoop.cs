@@ -8,7 +8,8 @@ namespace OpenWorker.Hotspot;
 /// connections opening and closing and periodic work all run here, one at a time.<br/>
 /// Waiting for the database or Redis releases the thread, and the code continues here afterwards.
 /// That only works while the await captures this context, so server code must not use
-/// <c>ConfigureAwait(false)</c>, and slow synchronous work must go through <c>Task.Run</c>.
+/// <c>ConfigureAwait(false)</c>, and slow synchronous work must go through <c>Task.Run</c>.<br/>
+/// Other connections run while a handler waits: see the rules in <c>ARCHITECTURE.md</c>.
 /// </summary>
 public sealed class WorldLoop : SynchronizationContext
 {
