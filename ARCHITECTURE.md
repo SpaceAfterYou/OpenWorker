@@ -49,6 +49,14 @@ The server that sends a player away writes a reservation to Redis with a short l
 (`WorldManager.ReservationLifetime`) and answers the client with the address. The destination accepts
 the connection only if it finds the reservation, and the session lease follows the player.
 
+Every way into a server writes a reservation before the client is given the address: the gate when a
+character is selected, a portal or a warp of a district, the exit of a maze. A district and a maze both
+close a connection that has no reservation, one that has expired, or one that was written for another
+person or another server (a reservation that belongs to someone else is left in place). There is no
+default spawn point: the place of the player is the place the reservation carries. The price is that a
+client that takes longer than `ReservationLifetime` to connect is turned away and has to start again
+from the gate.
+
 Maze servers register themselves in `MazeCache` with their player count (`MazeRegistrationService`);
 a player entering a maze goes to the server of the gate with the fewest players. With none registered,
 `Maze:Host` / `Maze:Port` are used. More maze servers are more capacity, nothing else changes.
