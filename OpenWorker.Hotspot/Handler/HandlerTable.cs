@@ -6,6 +6,23 @@ public sealed class HandlerTable(HandlerTableBuilder builder)
 {
     private Handler[] Collection { get; } = builder.Build();
 
+    /// <summary>
+    /// How many classes of handler the table names, the empty handler among them: the size of the instances of an executor.
+    /// </summary>
+    internal int Classes => field == 0 ? field = CountClasses() : field;
+
+    private int CountClasses()
+    {
+        var count = 0;
+
+        foreach (var handler in Collection)
+        {
+            count = Math.Max(count, handler.Instance + 1);
+        }
+
+        return count;
+    }
+
     internal Handler this[MessageOpcode key] => Collection[key];
 
     /// <summary>

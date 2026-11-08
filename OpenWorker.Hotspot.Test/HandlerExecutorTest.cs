@@ -536,4 +536,66 @@ public sealed class HandlerExecutorTest
         Assert.AreEqual(7, budget.Options.MaxErrors);
         Assert.AreEqual(TimeSpan.FromSeconds(150), budget.Options.Window);
     }
+
+    /// <summary>
+    /// Counts what is asked of the container.
+    /// </summary>
+    private sealed class CountingProvider(IServiceProvider inner) : IServiceProvider
+    {
+        public int Calls { get; private set; }
+
+        public object? GetService(Type serviceType)
+        {
+            Calls++;
+
+            return inner.GetService(serviceType);
+        }
+    }
+
+    [TestMethod]
+    public async Task APacketFindsItsHandlerOnceAndAllocatesNothingAfterwards()
+    {
+        using var world = World.Create();
+
+        var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
+
+        await using var services = new ServiceCollection().AddSingleton<ProbeHandler>().AddSingleton(empty).BuildServiceProvider();
+
+        var provider = new CountingProvider(services);
+
+        var executor = new HandlerExecutor(
+            Collection,
+            provider,
+            world,
+            new HandlerErrorBudget(TimeProvider.System, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = 10, Window = Minute })),
+            NullLogger<HandlerExecutor>.Instance);
+
+        var player = world.Create();
+        var packet = Packet(ProbeRequest.Fine);
+
+        ProbeHandler.Handled = 0;
+
+        // The first packet resolves the handler, and the code of the path is compiled.
+        await executor.ExecuteAsync(packet, player, null, CancellationToken.None);
+
+        const int Packets = 10_000;
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (var sent = 0; sent < Packets; sent++)
+        {
+            // The handler completes at once, as most do, so the dispatch never leaves this thread.
+            var dispatch = executor.ExecuteAsync(packet, player, null, CancellationToken.None);
+
+            Assert.IsTrue(dispatch.IsCompletedSuccessfully);
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.AreEqual(Packets + 1, ProbeHandler.Handled);
+        Assert.AreEqual(1, provider.Calls, "The handler is resolved once, by the first packet, and kept.");
+
+        // Nothing per packet: a few bytes in all are left for what the runtime may allocate once on this thread.
+        Assert.IsLessThan(Packets, allocated, $"{allocated} bytes for {Packets} packets.");
+    }
 }

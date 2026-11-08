@@ -13,7 +13,31 @@ public sealed partial class HandlerTableBuilder(HandlerBuilder builder, ILogger<
 
     internal Handler[] Build()
     {
-        return CollectAndCreate().Aggregate(CreateEmptyCollection().ToArray(), Fill);
+        return Number(CollectAndCreate().Aggregate(CreateEmptyCollection().ToArray(), Fill));
+    }
+
+    /// <summary>
+    /// Gives every class of handler its place among the instances, in the order the classes first appear; the empty
+    /// handler is first.
+    /// </summary>
+    private static Handler[] Number(Handler[] list)
+    {
+        var places = new Dictionary<Type, int>();
+
+        for (var index = 0; index < list.Length; index++)
+        {
+            var handler = list[index];
+
+            if (!places.TryGetValue(handler.Class, out var place))
+            {
+                place = places.Count;
+                places.Add(handler.Class, place);
+            }
+
+            list[index] = handler with { Instance = place };
+        }
+
+        return list;
     }
 
     private Handler[] Fill(Handler[] list, IEnumerable<CreatedHandler> exists)
