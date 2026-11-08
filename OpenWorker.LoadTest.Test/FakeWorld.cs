@@ -75,6 +75,7 @@ internal sealed class FakeWorld : IAsyncDisposable
     private long _pings;
     private long _chats;
     private long _channelChanges;
+    private readonly ConcurrentDictionary<short, int> _channelsAskedFor = new();
     private long _mazeCompletes;
     private long _skills;
     private long _connections;
@@ -188,6 +189,11 @@ internal sealed class FakeWorld : IAsyncDisposable
     public long Chats => Interlocked.Read(ref _chats);
 
     public long ChannelChanges => Interlocked.Read(ref _channelChanges);
+
+    /// <summary>
+    /// How many bots asked for each channel.
+    /// </summary>
+    public IReadOnlyDictionary<short, int> ChannelsAskedFor => _channelsAskedFor;
 
     public long MazeCompletes => Interlocked.Read(ref _mazeCompletes);
 
@@ -603,9 +609,11 @@ internal sealed class FakeWorld : IAsyncDisposable
 
     private void OnChannelChange(Connection connection, BinaryReader reader)
     {
-        _ = new ChannelChangeRequest(reader);
+        var request = new ChannelChangeRequest(reader);
 
         Interlocked.Increment(ref _channelChanges);
+
+        _channelsAskedFor.AddOrUpdate(request.Channel, 1, (_, count) => count + 1);
     }
 
     private void OnMazeCreate(Connection connection, BinaryReader reader)

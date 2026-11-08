@@ -158,6 +158,25 @@ public sealed class BotScenarioTest
 
     [TestMethod]
     [Timeout(90_000)]
+    public async Task ChannelFillPutsTheBotsIntoTheChannelsInOrder()
+    {
+        await using var world = FakeWorld.Start();
+
+        var options = Options(world, 7);
+
+        options.ChannelFill = 3;
+
+        var (stats, _, _) = await RunAsync(options, TestContext.CancellationToken);
+
+        Assert.AreEqual(0, stats.Failed, string.Join("; ", stats.Errors.Select(e => $"{e.Key} {e.Value.Example}")));
+        Assert.AreEqual(4, world.ChannelChanges, "Bots 0 to 2 stay in the first channel, where the district put them.");
+        Assert.AreEqual(3, world.ChannelsAskedFor[2]);
+        Assert.AreEqual(1, world.ChannelsAskedFor[3]);
+        Assert.HasCount(2, world.ChannelsAskedFor);
+    }
+
+    [TestMethod]
+    [Timeout(90_000)]
     public async Task BotsTravelToAnotherDistrictWhenAsked()
     {
         await using var world = FakeWorld.Start();

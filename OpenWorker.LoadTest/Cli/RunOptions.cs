@@ -72,6 +72,12 @@ internal sealed class RunOptions
     public int Channel { get; set; }
 
     /// <summary>
+    /// When above zero, bot n asks for channel 1 + n / this once it is in a district, so the channels fill up in order
+    /// with this many bots each, the way a district puts a player into the first channel that is not full.
+    /// </summary>
+    public int ChannelFill { get; set; }
+
+    /// <summary>
     /// The district the bots travel to after they enter the first one; zero keeps them in it.
     /// </summary>
     public int District { get; set; }
@@ -135,6 +141,11 @@ internal sealed class RunOptions
         {
             yield return "--channel is too big.";
         }
+
+        if (Channel > 0 && ChannelFill > 0)
+        {
+            yield return "--channel and --channel-fill cannot be given together.";
+        }
     }
 
     public static IReadOnlyList<OptionSpec<RunOptions>> Specs { get; } = BuildSpecs();
@@ -166,6 +177,7 @@ internal sealed class RunOptions
             Text(target, "redirect-host", "host", "Connect to this host whatever address a server sends the bot to (the servers answer 127.0.0.1 by default)", null, (o, v) => o.RedirectHost = v),
             Whole(target, "gate", "Gate to enter; 0 takes the first one that is online", 0, 0, short.MaxValue, (o, v) => o.Gate = v),
             Whole(target, "channel", "Channel to ask for after entering a district; 0 stays in the one the server chose (a channel holds 65 players)", 0, 0, short.MaxValue, (o, v) => o.Channel = v),
+            Whole(target, "channel-fill", "Fill the channels in order with this many bots each: bot n asks for channel 1 + n / this after entering a district; 0 does not", 0, 0, 10_000, (o, v) => o.ChannelFill = v),
             Whole(target, "district", "Location of the district to travel to after the first one; 0 stays in it", 0, 0, short.MaxValue, (o, v) => o.District = v),
             Text(target, "account-prefix", "text", "Accounts are this text and a number: lt00000, lt00001, ...; create them with the seed command", "lt", (o, v) => o.AccountPrefix = v),
             Whole(target, "account-offset", "Number of the first account", 0, 0, 10_000_000, (o, v) => o.AccountOffset = v),

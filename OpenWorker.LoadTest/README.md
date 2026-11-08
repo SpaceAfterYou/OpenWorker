@@ -42,6 +42,7 @@ dotnet run -c Release --project OpenWorker.LoadTest -- run --bots 1000 --ramp-up
 | `--auth-host`, `--auth-port` | the auth server | 127.0.0.1:10000 |
 | `--redirect-host` | follow every redirect to this host (the servers answer `127.0.0.1`) | the answer of the server |
 | `--channel`, `--district` | ask for a channel after entering; travel to another district | the server's choice |
+| `--channel-fill` | bot n asks for channel 1 + n / this: the channels fill in order, so many bots each (65 is a full channel) | off |
 | `--account-prefix`, `--account-offset`, `--password` | the accounts | `lt`, 0, `loadtest` |
 | `--output` | directory of `report.md` and `report.json` | `TestResults/loadtest/<time>` |
 | `--docker-stats`, `--docker-names`, `--pids name=pid` | sample CPU and memory of the servers | off |

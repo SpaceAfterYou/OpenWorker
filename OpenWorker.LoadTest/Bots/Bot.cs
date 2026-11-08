@@ -45,6 +45,7 @@ internal sealed class Bot : IFrameSink, IDisposable
     private readonly RunOptions _options;
     private readonly RunStats _stats;
     private readonly Random _random;
+    private readonly int _index;
     private readonly string _username;
     private readonly string _macAddress;
 
@@ -93,6 +94,7 @@ internal sealed class Bot : IFrameSink, IDisposable
         _options = context.Options;
         _stats = context.Stats;
         _random = new Random(unchecked((index * 7919) + 17));
+        _index = index;
 
         var number = _options.AccountOffset + index;
 
@@ -311,11 +313,34 @@ internal sealed class Bot : IFrameSink, IDisposable
         {
             await EnterAsync(BotStage.DistrictEnter, zone, true, stopping);
 
-            if (_options.Channel > 0)
+            var channel = ChannelToAskFor();
+
+            if (channel > 0)
             {
-                await SendAsync(_connection!, (ref w) => Requests.ChannelChange(ref w, (short)_options.Channel));
+                await SendAsync(_connection!, (ref w) => Requests.ChannelChange(ref w, channel));
             }
         }, stopping);
+    }
+
+    /// <summary>
+    /// The channel to ask for after entering a district, or 0 to stay. With <c>--channel-fill</c> the first channel
+    /// is the one the district puts a player into, so the bots meant for it do not ask.
+    /// </summary>
+    private short ChannelToAskFor()
+    {
+        if (_options.Channel > 0)
+        {
+            return (short)_options.Channel;
+        }
+
+        if (_options.ChannelFill <= 0)
+        {
+            return 0;
+        }
+
+        var channel = 1 + (_index / _options.ChannelFill);
+
+        return channel > 1 ? (short)Math.Min(channel, short.MaxValue) : (short)0;
     }
 
     /// <summary>
