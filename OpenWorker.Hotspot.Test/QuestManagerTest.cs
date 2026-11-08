@@ -8,6 +8,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Modules.Quests.Components;
 using OpenWorker.Gameplay.Modules.Rewards;
@@ -134,22 +135,10 @@ public sealed class QuestManagerTest
     {
         public Dictionary<int, string> Documents { get; } = [];
 
-        public int Saves { get; private set; }
-
         public ValueTask<QuestBook?> LoadAsync(int person, CancellationToken cancellationToken)
         {
             return ValueTask.FromResult(Documents.TryGetValue(person, out var json) ? JsonSerializer.Deserialize<QuestBook>(json) : null);
         }
-
-        public ValueTask SaveAsync(int person, QuestBook book, CancellationToken cancellationToken)
-        {
-            Documents[person] = JsonSerializer.Serialize(book);
-            Saves++;
-
-            return ValueTask.CompletedTask;
-        }
-
-        public QuestBook Read(int person) => JsonSerializer.Deserialize<QuestBook>(Documents[person])!;
     }
 
     private sealed class Granter(bool fits = true) : IRewardGranter
@@ -216,12 +205,14 @@ public sealed class QuestManagerTest
                 Component.GetComponentType(typeof(ServerSessionComponent)),
                 Component.GetComponentType(typeof(ActorComponent)),
                 Component.GetComponentType(typeof(PersonInfoComponent)),
-                Component.GetComponentType(typeof(QuestComponent)));
+                Component.GetComponentType(typeof(QuestComponent)),
+                Component.GetComponentType(typeof(DirtyComponent)));
 
             World.Set(Player, new ServerSessionComponent(_server));
             World.Set(Player, new ActorComponent(42, ActorType.User));
             World.Set(Player, new PersonInfoComponent { Name = "Tester", Hero = hero });
             World.Set(Player, default(QuestComponent));
+            World.Set(Player, new DirtyComponent(new PersonDirty(1)));
 
             Reader = new BinaryReader(Client.GetStream());
         }
@@ -246,6 +237,18 @@ public sealed class QuestManagerTest
         public Task Settle() => Loop.InvokeAsync(() => { });
 
         public QuestBook Book => World.Get<QuestComponent>(Player).Book!;
+
+        /// <summary>
+        /// The book as the flush of the person would write it now: the change has to have marked the quests.
+        /// </summary>
+        public string Snapshot()
+        {
+            Assert.IsTrue(World.DirtyOf(Player)!.Sections.HasFlag(PersonSections.Quests), "the change marks the quests for the flush");
+
+            return QuestManager.Document.Snapshot(World, Player)!;
+        }
+
+        public QuestBook Saved() => JsonSerializer.Deserialize<QuestBook>(Snapshot())!;
 
         /// <summary>
         /// The next frame the client gets: group, command and the rest.
@@ -398,7 +401,7 @@ public sealed class QuestManagerTest
         Assert.AreEqual((byte)1, accept.Body[4]);
 
         Assert.IsTrue(test.Manager.HasActiveEpisode(test.Player, 100));
-        Assert.HasCount(1, test.Store.Read(1).Episodes);
+        Assert.HasCount(1, test.Saved().Episodes);
 
         // What the episode hands over with it goes through the granter.
         var (reward, source) = test.Granter.Given.Single();
@@ -614,7 +617,7 @@ public sealed class QuestManagerTest
 
         Assert.IsFalse(test.Manager.HasActiveEpisode(test.Player, 150));
         Assert.IsTrue(test.Manager.HasFinishedEpisode(test.Player, 150));
-        Assert.IsTrue(test.Store.Read(1).IsFinished(Quick.CompleteBit));
+        Assert.IsTrue(test.Saved().IsFinished(Quick.CompleteBit));
         Assert.AreEqual(5, test.Granter.Given.Single().Reward.Gold);
     }
 
@@ -723,7 +726,7 @@ public sealed class QuestManagerTest
         Assert.AreEqual(3, reward.BattlePoints);
         Assert.AreEqual(7, reward.Ether);
 
-        var book = test.Store.Read(1);
+        var book = test.Saved();
 
         Assert.IsEmpty(book.Episodes);
         Assert.IsTrue(book.IsFinished(Hard.CompleteBit));
@@ -898,13 +901,13 @@ public sealed class QuestManagerTest
         Assert.AreEqual(0x11, fail.Command);
         Assert.AreEqual(150, Int(fail.Body, 0));
         Assert.IsTrue(test.Quiet(), "a failed episode counts nothing, and removing one that has not failed does nothing");
-        Assert.IsTrue(test.Store.Read(1).Episodes.Single().Failed);
+        Assert.IsTrue(test.Saved().Episodes.Single().Failed);
 
         await test.Run(async () => await test.Manager.RemoveFailedAsync(test.Player, 150));
 
         Assert.IsTrue(test.Quiet(), "the client is not answered when it removes the episode");
         Assert.IsFalse(test.Manager.HasActiveEpisode(test.Player, 150));
-        Assert.IsEmpty(test.Store.Read(1).Episodes);
+        Assert.IsEmpty(test.Saved().Episodes);
     }
 
     [TestMethod]
@@ -1005,7 +1008,7 @@ public sealed class QuestManagerTest
         await test.Settle();
 
         Assert.IsFalse(test.Manager.HasAnyActiveEpisode(test.Player));
-        Assert.IsEmpty(test.Store.Read(1).Episodes);
+        Assert.IsEmpty(test.Saved().Episodes);
     }
 
     #endregion Giving up, failing, helper and reset
@@ -1028,6 +1031,9 @@ public sealed class QuestManagerTest
                 await first.Manager.AcceptAsync(first.Player, 150, CancellationToken.None);
                 await first.Manager.OnMonsterKilledAsync(first.Player, Boar, CancellationToken.None);
             });
+
+            // What the flush of the person writes when it leaves.
+            store.Documents[1] = first.Snapshot();
         }
 
         using var second = new Harness(store);

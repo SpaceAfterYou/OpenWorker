@@ -43,6 +43,10 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<DateTime>("LastLogin")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<byte[]>("OptionList")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
                     b.Property<byte[]>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -447,6 +451,10 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<long[]>("Currencies")
+                        .IsRequired()
+                        .HasColumnType("bigint[]");
 
                     b.Property<short>("DefaultEyeColor")
                         .HasColumnType("smallint");

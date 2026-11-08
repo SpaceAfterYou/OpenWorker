@@ -10,6 +10,7 @@ using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Persons;
 
@@ -147,7 +148,7 @@ public sealed class ExperienceService
         }
 
         _world.Set(player, new LevelComponent((byte)level, (int)total));
-        _inventory.InventoryOf(player)?.MarkState();
+        _world.MarkDirty(player, PersonSections.Level);
 
         if (_world.Has<ServerSessionComponent>(player))
         {

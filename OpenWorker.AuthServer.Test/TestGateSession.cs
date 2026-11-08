@@ -27,6 +27,7 @@ using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM;
 using Redis.OM.Searching;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.AuthServer.Test;
 
@@ -134,7 +135,7 @@ public sealed class TestGateSession
                 gate,
                 NullLogger<PersonGameplay>.Instance,
                 secondPassword,
-                new LeaveManager(World, gate, Options.Create(new AuthEndpointOptions()), Gates, leases),
+                new LeaveManager(World, gate, Options.Create(new AuthEndpointOptions()), Gates, leases, NoPersonFlush.Instance),
                 (WorldManager)null!,
                 new PersonCreationCatalog(
                     new ReadOnlyCollection<CharacterInfoRow>([]),

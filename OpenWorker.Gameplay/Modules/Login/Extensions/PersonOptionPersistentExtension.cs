@@ -1,4 +1,3 @@
-using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Types;
 
@@ -6,23 +5,26 @@ namespace OpenWorker.Gameplay.Modules.Login.Extensions;
 
 public static class PersonOptionPersistentExtension
 {
-    public static PersonOptionComponent ToPersonOptionComponent(this PersonPersistent value)
+    /// <summary>
+    /// The options of the client as the account keeps them, padded with the default (on) or cut to the length the client reads.
+    /// </summary>
+    public static PersonOptionComponent ToPersonOptionComponent(this byte[] options)
     {
         return new PersonOptionComponent
         {
-            Collection = value.OptionList.Length switch
+            Collection = options.Length switch
             {
-                < LoginModuleDefines.PersonOptionCount => value.OptionList
+                < LoginModuleDefines.PersonOptionCount => options
                     .Concat(Enumerable
-                        .Repeat((byte)'1', LoginModuleDefines.PersonOptionCount - value.OptionList.Length)
+                        .Repeat((byte)'1', LoginModuleDefines.PersonOptionCount - options.Length)
                         .ToArray())
                     .ToArray(),
 
-                > LoginModuleDefines.PersonOptionCount => value.OptionList
+                > LoginModuleDefines.PersonOptionCount => options
                     .Take(LoginModuleDefines.PersonOptionCount)
                     .ToArray(),
 
-                _ => value.OptionList
+                _ => options
             }
         };
     }

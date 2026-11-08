@@ -12,6 +12,7 @@ using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -181,7 +182,10 @@ public sealed class RewardsTest
                 Component.GetComponentType(typeof(LevelComponent)),
                 Component.GetComponentType(typeof(PersonInfoComponent)),
                 Component.GetComponentType(typeof(WorldComponent)),
-                Component.GetComponentType(typeof(CurrencyComponent)));
+                Component.GetComponentType(typeof(CurrencyComponent)),
+                Component.GetComponentType(typeof(DirtyComponent)));
+
+            World.Set(Player, new DirtyComponent(new PersonDirty(7)));
 
             var person = new PersonPersistent
             {
@@ -221,7 +225,7 @@ public sealed class RewardsTest
 
         Assert.AreEqual(1, f.Rank.Level);
         Assert.AreEqual(100, f.Rank.Experience);
-        Assert.IsTrue(f.Inventory.InventoryOf(f.Player)!.StateChanged, "A change of experience is saved");
+        Assert.IsTrue(f.World.DirtyOf(f.Player)!.Sections.HasFlag(PersonSections.Level), "A change of experience is saved");
     }
 
     [TestMethod]

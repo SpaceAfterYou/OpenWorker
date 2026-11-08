@@ -138,18 +138,16 @@ public sealed partial class PersonService(
             return;
         }
 
-        await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken);
+        var entry = await factory
+            .LoadPersonAtEntryAsync(request.Account, request.Actor.Identifier, context.CancellationToken);
 
-        var person = await database.Persons
-            .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken);
-
-        if (person is null)
+        if (entry is null)
         {
             session.Disconnect();
             return;
         }
+
+        var person = entry.Person;
 
         await mazeReserves
             .DeleteAsync(mazeReserve);
@@ -174,14 +172,9 @@ public sealed partial class PersonService(
             }
         });
 
-        world.Set(context.Player, new CurrencyComponent
-        {
-            Cash = 7_000_000
-        });
-
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
-        registry.PullPerson(context.Player, person);
+        registry.PullPerson(context.Player, person, entry.AccountOptions);
 
         var state = LuaState.Create();
         state.OpenStandardLibraries();

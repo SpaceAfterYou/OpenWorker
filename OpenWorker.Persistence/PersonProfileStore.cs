@@ -99,7 +99,7 @@ public static class PersonProfileStore
                 e.CommunityState,
                 e.CommunityComment,
                 e.CommunityMemo,
-                e.OptionList,
+                e.Account.OptionList,
                 e.Level,
                 e.Experience
             })

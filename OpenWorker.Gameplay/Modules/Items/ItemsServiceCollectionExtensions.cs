@@ -2,7 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons;
+using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
 
@@ -11,7 +13,8 @@ namespace OpenWorker.Gameplay.Modules.Items;
 public static class ItemsServiceCollectionExtensions
 {
     /// <summary>
-    /// The items of a game server: tables, rules, the service everything else gives and takes items through, and saving.
+    /// The items of a game server: tables, rules, the service everything else gives and takes items through, and the
+    /// write-behind of the person (<see cref="PersistenceServiceCollectionExtensions.AddPersonPersistence"/>).
     /// </summary>
     public static IServiceCollection AddItems(this IServiceCollection services)
     {
@@ -30,8 +33,10 @@ public static class ItemsServiceCollectionExtensions
         // Quests count and take the items of the bags.
         services.Replace(ServiceDescriptor.Singleton<IQuestItems, InventoryQuestItems>());
         services.AddSingleton<ExperienceService>();
-        services.AddSingleton<ISessionCloseHandler, InventorySaver>();
-        services.AddHostedService<InventoryFlushService>();
+
+        // Items, the wallet and the rest of the person are written by the flush of the person.
+        services.AddPersonPersistence();
+        services.AddPersonSkills();
 
         return services;
     }

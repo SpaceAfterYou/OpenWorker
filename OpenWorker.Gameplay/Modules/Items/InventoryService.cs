@@ -16,6 +16,7 @@ using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Res.Types;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Items;
 
@@ -309,7 +310,7 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
 
         wallet[currency] = total;
 
-        InventoryOf(player)?.MarkState();
+        world.MarkDirty(player, PersonSections.Currencies);
 
         switch (currency)
         {

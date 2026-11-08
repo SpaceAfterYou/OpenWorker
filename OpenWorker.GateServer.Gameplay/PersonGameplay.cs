@@ -90,9 +90,11 @@ public sealed class PersonGameplay(
         }
 
         var account = await database.Accounts
+            .AsTracking()
             .FirstAsync(x => x.Id == claims.Account, context.CancellationToken);
 
         var gate = await database.Gates
+            .AsTracking()
             .FirstAsync(x => x.Id == Gate, context.CancellationToken);
 
         var person = new PersonPersistent
@@ -127,10 +129,6 @@ public sealed class PersonGameplay(
                 .Repeat(0, GesturesModuleDefines.MaxGestureCount)
                 .ToArray(),
 
-            OptionList = Enumerable
-                .Repeat((byte)'1', LoginModuleDefines.PersonOptionCount)
-                .ToArray(),
-
             Account = account,
             Gate = gate
         };
@@ -156,10 +154,10 @@ public sealed class PersonGameplay(
             return;
         }
 
-        var created = registry.CreatePerson(context.Player, slotIndex, person);
+        var created = registry.CreatePerson(context.Player, slotIndex, person, account.OptionList);
 
         // The first items are saved now, so the district finds them when the character enters the game.
-        await inventories.FlushAsync(created);
+        await inventories.SaveItemsAsync(created);
 
         var session = world.Get<ServerSessionComponent>(context.Player);
         session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.Player));
@@ -189,6 +187,7 @@ public sealed class PersonGameplay(
             .CreateDbContextAsync(context.CancellationToken);
 
         var persistent = await database.Persons
+            .AsTracking()
             .FirstOrDefaultAsync(
                 x => x.Id == person && x.Account.Id == claims.Account && x.Gate.Id == Gate,
                 context.CancellationToken);
@@ -268,6 +267,7 @@ public sealed class PersonGameplay(
             .CreateDbContextAsync(context.CancellationToken);
 
         var person = await database.Persons
+            .AsTracking()
             .FirstOrDefaultAsync(e => e.Id == identifier, context.CancellationToken);
 
         if (person is null)

@@ -9,6 +9,7 @@ using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Login.Extensions;
 using OpenWorker.Gameplay.Modules.League.Components;
 using OpenWorker.Gameplay.Modules.Maze.Components;
+using OpenWorker.Gameplay.Modules.Maze.Extensions;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
@@ -17,7 +18,10 @@ namespace OpenWorker.DistrictServer.Server;
 
 public sealed class PersonRegistry(World world)
 {
-    internal void PullPerson(Entity entity, PersonPersistent persistent)
+    /// <summary>
+    /// Sets what the person is from its row, and the options of its account.
+    /// </summary>
+    internal void PullPerson(Entity entity, PersonPersistent persistent, byte[] accountOptions)
     {
         world.Set(entity, new ActorComponent
         {
@@ -86,11 +90,7 @@ public sealed class PersonRegistry(World world)
             }
         });
 
-        world.Set(entity, new FatiguePointsComponent
-        {
-            Common = 100,
-            Bonus = 100
-        });
+        world.Set(entity, persistent.ToFatiguePointsComponent());
 
         world.Set(entity, new LeagueComponent
         {
@@ -119,6 +119,6 @@ public sealed class PersonRegistry(World world)
 
         world.Set(entity, persistent.ToCommunityComponent());
 
-        world.Set(entity, persistent.ToPersonOptionComponent());
+        world.Set(entity, accountOptions.ToPersonOptionComponent());
     }
 }

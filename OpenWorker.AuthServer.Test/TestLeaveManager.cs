@@ -17,6 +17,7 @@ using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using Redis.OM;
 using Redis.OM.Searching;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.AuthServer.Test;
 
@@ -91,7 +92,8 @@ public sealed class TestLeaveManager
                 Options.Create(new GateOptions { Id = Gate }),
                 Options.Create(new AuthEndpointOptions { Host = AuthHost, Port = AuthPort }),
                 Gates,
-                Leases);
+                Leases,
+                NoPersonFlush.Instance);
         }
 
         public async Task SignInAsync()

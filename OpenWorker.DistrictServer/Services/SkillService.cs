@@ -5,6 +5,7 @@ using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
@@ -54,6 +55,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
         ref readonly var skillDeck = ref world.Get<SkillDeckComponent>(context.Player);
 
         world.Set(context.Player, skillDeck with { SlotCount = request.SlotCount });
+        world.MarkDirty(context.Player, PersonSections.Skills);
 
         session.Send(new SkillAddDeckSlotResponse
         {
@@ -80,6 +82,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
         {
             Values = request.Values
         });
+        world.MarkDirty(context.Player, PersonSections.Skills);
 
         session.Send(new SkillDeckBonusResponse
         {
@@ -102,6 +105,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
         }
 
         learned.Values[index] = request.Info;
+        world.MarkDirty(context.Player, PersonSections.Skills);
 
         session.Send(new SkillDivergenceLearnResponse
         {
@@ -165,6 +169,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
         {
             FreeSkillPoint = unchecked((short)(skillPoint.FreeSkillPoint - nextSkill.Field9))
         });
+        world.MarkDirty(context.Player, PersonSections.Skills);
 
         session.Send(new SkillLearnResponse
         {
@@ -220,6 +225,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
         world.Set(context.Player, skillLearned with { Values = defaultSkills });
         world.Set(context.Player, skillDeck with { SlotList = [] });
         world.Set(context.Player, skillPoint with { FreeSkillPoint = newFreePoints });
+        world.MarkDirty(context.Player, PersonSections.Skills);
 
         session.Send(new SkillResetResponse
         {
@@ -303,6 +309,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
         }
 
         world.Set(context.Player, skillDeck with { SlotList = updatedDecks.ToArray() });
+        world.MarkDirty(context.Player, PersonSections.Skills);
 
         session.Send(new SkillUpdateDeckResponse { IsSuccessed = true });
         return ValueTask.CompletedTask;

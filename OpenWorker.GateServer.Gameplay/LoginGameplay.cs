@@ -104,7 +104,7 @@ public sealed class LoginGameplay(
 
         world.Set(context.Player, account.ToTradePasswordComponent());
 
-        var list = registry.CreatePersonListComponent(account.Persons);
+        var list = registry.CreatePersonListComponent(account.Persons, account.OptionList);
 
         world.Set(context.Player, list);
 

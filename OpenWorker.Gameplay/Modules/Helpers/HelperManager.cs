@@ -8,6 +8,7 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Helpers.Responses;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Helpers;
 
@@ -200,25 +201,13 @@ public sealed class HelperManager(
         return false;
     }
 
-    private async ValueTask SaveAsync(Entity player, HelperBook book, CancellationToken cancellationToken)
+    /// <summary>
+    /// The flush of the person writes the book (<see cref="PersonSections.MiscState"/>); nothing waits for the database here.
+    /// </summary>
+    private ValueTask SaveAsync(Entity player, HelperBook book, CancellationToken cancellationToken)
     {
-        if (!world.IsAlive(player))
-        {
-            return;
-        }
+        world.MarkDirty(player, PersonSections.MiscState);
 
-        var person = world.Get<HelperComponent>(player).Person;
-
-        await book.Gate.WaitAsync(cancellationToken);
-
-        try
-        {
-            await store.SaveAsync(person, PersonStateKind.Helper, book, cancellationToken);
-        }
-
-        finally
-        {
-            book.Gate.Release();
-        }
+        return ValueTask.CompletedTask;
     }
 }

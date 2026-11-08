@@ -21,6 +21,7 @@ using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Channel.Community;
 
@@ -175,6 +176,7 @@ public abstract class LeagueServiceBase(
 
         var currency = world.Get<CurrencyComponent>(context.Player);
         currency.Gold -= LeagueRules.CreateCost;
+        world.MarkDirty(context.Player, PersonSections.Currencies);
 
         var session = Session(context);
 

@@ -260,15 +260,15 @@ public sealed class InventoryServiceTest
 
         f.Service.TryGive(f.Player, Material, 10);
 
-        var first = f.Inventory.TakeChanges(() => throw new AssertFailedException("The state did not change"));
+        var first = f.Inventory.TakeChanges();
 
         Assert.IsNotNull(first);
         Assert.AreEqual(2, first.Added.Count, "The weapon and the stack");
-        Assert.IsNull(f.Inventory.TakeChanges(() => throw new AssertFailedException()));
+        Assert.IsNull(f.Inventory.TakeChanges());
 
         f.Service.TryGive(f.Player, Material, 5);
 
-        var second = f.Inventory.TakeChanges(() => throw new AssertFailedException())!;
+        var second = f.Inventory.TakeChanges()!;
 
         Assert.AreEqual(0, second.Added.Count);
         Assert.AreEqual(1, second.Changed.Count);
@@ -276,7 +276,7 @@ public sealed class InventoryServiceTest
 
         f.Service.TryTake(f.Player, Material, 15);
 
-        var third = f.Inventory.TakeChanges(() => throw new AssertFailedException())!;
+        var third = f.Inventory.TakeChanges()!;
 
         Assert.AreEqual(1, third.Removed.Count);
         Assert.AreEqual(first.Added.Single(e => e.Item == Material).Id, third.Removed[0]);
@@ -290,7 +290,7 @@ public sealed class InventoryServiceTest
         f.Service.TryGive(f.Player, Material, 10);
         f.Service.TryTake(f.Player, Material, 10);
 
-        var changes = f.Inventory.TakeChanges(() => throw new AssertFailedException())!;
+        var changes = f.Inventory.TakeChanges()!;
 
         Assert.AreEqual(0, changes.Removed.Count);
         Assert.IsFalse(changes.Added.Any(e => e.Item == Material));
@@ -303,11 +303,11 @@ public sealed class InventoryServiceTest
 
         f.Service.TryGive(f.Player, Material, 10);
 
-        var changes = f.Inventory.TakeChanges(() => throw new AssertFailedException())!;
+        var changes = f.Inventory.TakeChanges()!;
 
         f.Inventory.Restore(changes);
 
-        var again = f.Inventory.TakeChanges(() => throw new AssertFailedException())!;
+        var again = f.Inventory.TakeChanges()!;
 
         Assert.AreEqual(changes.Added.Count, again.Added.Count);
     }
@@ -320,7 +320,7 @@ public sealed class InventoryServiceTest
         f.Service.TryGive(f.Player, Material, 120);
         f.Service.TryGive(f.Player, Costume, 1);
 
-        var changes = f.Inventory.TakeChanges(() => throw new AssertFailedException())!;
+        var changes = f.Inventory.TakeChanges()!;
 
         var person = new PersonPersistent
         {

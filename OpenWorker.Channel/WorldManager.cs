@@ -12,6 +12,7 @@ using OpenWorker.Hotspot.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
@@ -30,6 +31,7 @@ public sealed partial class WorldManager(
     IRedisCollection<DistrictCache> districts,
     IRedisCollection<MazeReserveCache> mazeReserves,
     IRedisCollection<MazeCache> mazes,
+    IPersonFlush persons,
     ILogger<WorldManager> logger)
 {
     /// <summary>
@@ -210,6 +212,9 @@ public sealed partial class WorldManager(
             Jump = start.Id
         };
 
+        // The maze loads the person from the database: what this server has must be there first.
+        await persons.FlushAsync(player);
+
         await mazeReserves
             .InsertAsync(cache, ReservationLifetime);
 
@@ -277,6 +282,9 @@ public sealed partial class WorldManager(
             R = world.Rotation,
             Jump = start.Id
         };
+
+        // The district loads the person from the database: what this server has must be there first.
+        await persons.FlushAsync(player);
 
         await districtReserveCache
             .InsertAsync(cache, ReservationLifetime);

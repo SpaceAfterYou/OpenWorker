@@ -10,5 +10,10 @@ public enum PersonStateKind : byte
     Booster = 3,
     Attendance = 4,
     Helper = 5,
-    Quest = 6
+    Quest = 6,
+
+    /// <summary>
+    /// The skills the person has learned, its decks and its skill points.
+    /// </summary>
+    Skills = 7
 }

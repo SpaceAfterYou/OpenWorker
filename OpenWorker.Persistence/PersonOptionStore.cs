@@ -3,7 +3,8 @@ using Microsoft.EntityFrameworkCore;
 namespace OpenWorker.Persistence;
 
 /// <summary>
-/// The client treats these options as account-wide, while they are stored on every person.
+/// The options of the client (the system menu) belong to the account: the client treats them as one set for all its
+/// persons. Each is one statement by the key of the account.
 /// </summary>
 public static class PersonOptionStore
 {
@@ -12,16 +13,12 @@ public static class PersonOptionStore
         int account,
         CancellationToken cancellationToken)
     {
-        await using var database = await factory
-            .CreateDbContextAsync(cancellationToken)
-            .ConfigureAwait(false);
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var options = await database.Persons
-            .AsNoTracking()
-            .Where(e => e.Account.Id == account)
+        var options = await database.Accounts
+            .Where(e => e.Id == account)
             .Select(e => e.OptionList)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(cancellationToken);
 
         return options ?? [];
     }
@@ -32,22 +29,10 @@ public static class PersonOptionStore
         byte[] options,
         CancellationToken cancellationToken)
     {
-        await using var database = await factory
-            .CreateDbContextAsync(cancellationToken)
-            .ConfigureAwait(false);
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var persons = await database.Persons
-            .Where(e => e.Account.Id == account)
-            .ToArrayAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        foreach (var person in persons)
-        {
-            person.OptionList = options;
-        }
-
-        await database
-            .SaveChangesAsync(cancellationToken)
-            .ConfigureAwait(false);
+        await database.Accounts
+            .Where(e => e.Id == account)
+            .ExecuteUpdateAsync(e => e.SetProperty(x => x.OptionList, options), cancellationToken);
     }
 }

@@ -43,6 +43,11 @@ public sealed class PersonPersistent : BasicPersistent
     public string CommunityMemo { get; set; } = string.Empty;
     
     public int[] GestureList { get; set; } = [];
+
+    /// <summary>
+    /// The options of the client as they were kept before they moved to the account (<see cref="AccountPersistent.OptionList"/>).
+    /// Nothing reads it any more; the migration that moved them copied it, and a later one can drop the column.
+    /// </summary>
     public byte[] OptionList { get; set; } = [];
 
     public int Outfit { get; set; }
@@ -62,6 +67,12 @@ public sealed class PersonPersistent : BasicPersistent
     public long Gold { get; set; }
     public long BattlePoint { get; set; }
     public long Ether { get; set; }
+
+    /// <summary>
+    /// The whole wallet, indexed by the currency of the shop (cash, tokens, mileages). Gold, battle points and ether
+    /// are also kept in their own columns, which win when both are there, so rows written before the wallet keep them.
+    /// </summary>
+    public long[] Currencies { get; set; } = [];
 
     /// <summary>
     /// How far each storage has been extended, indexed by the storage group.
