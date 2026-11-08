@@ -224,6 +224,11 @@ internal static class ReportBuilder
             map["channel"] = o.Channel.ToString(CultureInfo.InvariantCulture);
         }
 
+        if (o.ChannelFill > 0)
+        {
+            map["channel-fill"] = o.ChannelFill.ToString(CultureInfo.InvariantCulture);
+        }
+
         if (o.District > 0)
         {
             map["district"] = o.District.ToString(CultureInfo.InvariantCulture);

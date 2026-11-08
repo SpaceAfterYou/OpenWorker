@@ -344,6 +344,8 @@ public sealed class ToolingTest
         Assert.IsNotEmpty(new RunOptions { AccountPrefix = "toolongprefix" }.Validate());
         Assert.IsNotEmpty(new RunOptions { AccountPrefix = "a b" }.Validate());
         Assert.IsNotEmpty(new RunOptions { Channel = 2, ChannelFill = 65 }.Validate(), "A channel and a fill of channels are two answers to one question.");
+        Assert.AreEqual("65", ReportBuilder.DescribeOptions(new RunOptions { ChannelFill = 65 })["channel-fill"], "The report says how the channels were filled.");
+        Assert.IsFalse(ReportBuilder.DescribeOptions(new RunOptions()).ContainsKey("channel-fill"));
 
         // 12 characters hold a prefix of 7 and a number of 5 digits, not a prefix of 8.
         Assert.IsTrue(AccountNames.Fits("lt", 0, 100_000));
