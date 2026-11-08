@@ -26,6 +26,10 @@ internal sealed class SeedOptions
 
     public TimeSpan Wait { get; set; } = TimeSpan.FromSeconds(60);
 
+    public short Gate { get; set; } = 1;
+
+    public string GateName { get; set; } = "LoadTest";
+
     public static IReadOnlyList<OptionSpec<SeedOptions>> Specs { get; } =
     [
         Text("postgres", "connection", "Connection string of the database the servers use", "Host=localhost;Port=5432;Database=openworker;Username=postgres", (o, v) => o.Postgres = v),
@@ -33,6 +37,8 @@ internal sealed class SeedOptions
         Whole("account-offset", "Number of the first account", 0, 0, 10_000_000, (o, v) => o.AccountOffset = v),
         Whole("count", "How many accounts there should be", 1000, 1, 100_000, (o, v) => o.Count = v),
         Text("password", "text", "Password of the accounts", "loadtest", (o, v) => o.Password = v),
+        Whole("gate", "Gate the accounts play on, made when the database has none of this number (Gate:Id of the gate server); 0: none", 1, 0, short.MaxValue, (o, v) => o.Gate = (short)v),
+        Text("gate-name", "text", "Name of the gate when it is made", "LoadTest", (o, v) => o.GateName = v),
         new OptionSpec<SeedOptions>
         {
             Name = "wait",
@@ -113,7 +119,9 @@ internal sealed class SeedOptions
 /// Creates the accounts the bots sign in with. A server makes an account only on a request in Discord, so a run of
 /// a thousand bots needs them put into the database first. The command writes to the database directly and changes
 /// nothing in the servers: it makes the same rows the Discord command does, with the same password hash, and
-/// leaves alone the accounts that exist. Characters are not made here; the bot creates one with the protocol, the
+/// leaves alone the accounts that exist. The same holds for the gate: the auth server lists only the gates of the
+/// database, which also come from a Discord command, so a fresh database gets the one the gate server registers as.
+/// Characters are not made here; the bot creates one with the protocol, the
 /// way a player does, when its account has none.
 /// </summary>
 internal static class SeedCommand
@@ -157,7 +165,37 @@ internal static class SeedCommand
             CultureInfo.InvariantCulture,
             $"{created} accounts created, {options.Count - created} were there already: {AccountNames.Format(options.AccountPrefix, options.AccountOffset)} to {AccountNames.Format(options.AccountPrefix, options.AccountOffset + options.Count - 1)}."));
 
+        if (options.Gate > 0)
+        {
+            await SeedGateAsync(database, options, output, cancellation);
+        }
+
         return 0;
+    }
+
+    /// <summary>
+    /// Makes the gate the gate server registers as (its Gate:Id), unless the database has it. Without the row the
+    /// auth server lists no gate and every bot stops at the gate list. The number is given, not generated, so the
+    /// identity of the table is moved past it for the gates that a Discord command makes later.
+    /// </summary>
+    private static async Task SeedGateAsync(PersistenceContext database, SeedOptions options, TextWriter output, CancellationToken cancellation)
+    {
+        if (await database.Gates.AnyAsync(e => e.Id == options.Gate, cancellation))
+        {
+            output.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Gate {options.Gate} was there already."));
+
+            return;
+        }
+
+        database.Gates.Add(new GatePersistent { Id = options.Gate, Name = options.GateName });
+
+        await database.SaveChangesAsync(cancellation);
+
+        await database.Database.ExecuteSqlRawAsync(
+            """SELECT setval(pg_get_serial_sequence('"Gates"', 'Id'), (SELECT max("Id") FROM "Gates"))""",
+            cancellation);
+
+        output.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Gate {options.Gate} created: {options.GateName}."));
     }
 
     /// <summary>

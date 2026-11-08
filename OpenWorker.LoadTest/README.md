@@ -55,7 +55,9 @@ A server creates an account only on a request in Discord, and the `Auth:AllowNex
 everybody in as the first account of the database, so it can carry one bot. The bots use the normal login with a
 username and a password, the way a launcher does. `seed` writes the accounts straight into Postgres (the same rows as the
 Discord command, one shared password hash, existing accounts untouched) so the servers need no change and no setting that
-is off in production. The character is made by the bot through the protocol when the account has none.
+is off in production. A gate, too, is made only by a Discord command, and the auth server lists only the gates of the
+database, so `seed` also makes gate 1 (`--gate`, the `Gate:Id` of the gate server) when the database has no gate of that
+number. The character is made by the bot through the protocol when the account has none.
 
 ## Reading the report
 
