@@ -30,7 +30,7 @@ x-server: &server
 # `down` makes one) the maze server reads ServerContents while it builds its services, before any server has migrated, and
 # dies with `relation "ServerContents" does not exist`; and a gate that starts before the relay has made the Redis indexes
 # cannot write its record (`No such index channelcache-idx`), so the first bots find no gate online. The relay migrates
-# and makes the indexes when it starts, and it drops the cache only then, so nothing registered after it is lost.
+# and makes the missing indexes when it starts; it never deletes a record, so a start of it later loses nothing either.
 x-after-relay: &after-relay
   depends_on:
     openworker.relayserver:
@@ -38,8 +38,8 @@ x-after-relay: &after-relay
 
 services:
   # The relay creates the Redis indexes the other servers search by, so it has to run, and it will not start without a
-  # token. It talks to Discord only if the token is real; a placeholder lets it make the indexes. It runs once: every
-  # start of it drops the cache, which would take the sessions of the bots with it.
+  # token. It talks to Discord only if the token is real; a placeholder lets it make the indexes. It runs once: a restart
+  # would not hurt the sessions of the bots (the bootstrap keeps the records), but nothing needs it.
   openworker.relayserver:
     <<: *server
     restart: "no"
