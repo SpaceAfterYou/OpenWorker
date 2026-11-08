@@ -18,6 +18,10 @@
 # LOADTEST_DOWN      Set to 1 to stop the containers when the run is over. By default they are left running, so
 #                    the next run starts at once.
 # LOADTEST_DISCORD_TOKEN  A real token for the relay; the placeholder in the override is enough for the load test.
+# LOADTEST_COMPOSE_EXTRA  More compose files, separated by spaces, laid over the two above with -f, in that order. E.g.
+#                    LOADTEST_COMPOSE_EXTRA=eng/loadtest/compose.servergc.yaml runs the servers with Server GC and DATAS
+#                    instead of the collector of Directory.Build.props (step 7 of phase 1 of REFACTORING.md). Compose
+#                    recreates the containers whose settings change, so the next run without it goes back.
 #
 # The servers answer the bots with 127.0.0.1, which is right for a bot on this machine. For a bot in a container or
 # on another host pass --redirect-host <address>.
@@ -27,6 +31,15 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 COMPOSE=(docker compose -f compose.yaml -f eng/loadtest/compose.loadtest.yaml)
+
+# Split on spaces on purpose: a list of paths relative to the repository.
+read -r -a compose_extra <<< "${LOADTEST_COMPOSE_EXTRA:-}"
+
+for file in "${compose_extra[@]}"; do
+  [[ -f "$file" ]] || { echo "loadtest: LOADTEST_COMPOSE_EXTRA names '$file', which is not a file." >&2; exit 1; }
+  COMPOSE+=(-f "$file")
+done
+
 PROJECT=OpenWorker.LoadTest/OpenWorker.LoadTest.csproj
 DLL=OpenWorker.LoadTest/bin/Release/net10.0/OpenWorker.LoadTest.dll
 

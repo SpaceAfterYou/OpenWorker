@@ -23,12 +23,16 @@ public static class TelemetryHostingExtensions
     /// collector of <c>Telemetry:Endpoint</c>; with no endpoint nothing is sent and the instruments stay switched off, so
     /// recording costs next to nothing. The process is named after its executable (<c>service.name</c>) and told apart from the
     /// others by an identifier, the location of a district and the gate.<br/>
+    /// It also logs the settings of the garbage collector when the server starts (<see cref="RuntimeSettingsLogService"/>).<br/>
     /// A server that runs a world loop gets this with <see cref="HotspotHostingExtensions.AddHotspot"/>.
     /// </summary>
     public static IServiceCollection AddTelemetry(this IServiceCollection services)
     {
         services.AddTelemetryOptions();
         services.AddOpenWorkerMetrics();
+
+        // Every server says once which garbage collector it runs with, next to the runtime metrics it exports.
+        services.AddHostedService<RuntimeSettingsLogService>();
 
         services
             .AddOpenTelemetry()

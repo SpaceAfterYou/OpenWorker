@@ -15,7 +15,10 @@ The script (`eng/loadtest.sh`) checks `SOULWORKER_DATAS` (the `datas` folder of 
 and maze servers cannot start without it), starts `compose.yaml` with `eng/loadtest/compose.loadtest.yaml` laid over it,
 waits until the health check of every server passes, creates the accounts of the bots, runs them, and writes
 `TestResults/loadtest/<timestamp>/report.md` and `report.json`. Everything after the script name is passed to the bot.
-`LOADTEST_DOWN=1` stops the containers at the end; the other variables are listed at the top of the script.
+`LOADTEST_DOWN=1` stops the containers at the end; `LOADTEST_COMPOSE_EXTRA` lays more compose files over the two, e.g.
+`LOADTEST_COMPOSE_EXTRA=eng/loadtest/compose.servergc.yaml` runs the servers with Server GC and DATAS instead of the
+collector of `Directory.Build.props` (every server logs the collector it runs with when it starts: `docker compose logs
+openworker.districtserver-roccotown | grep 'GC:'`); the other variables are listed at the top of the script.
 
 The override makes the servers fit to be measured (Release builds, Warning logs, no packet dumps, twenty channels per
 district), starts the other servers only once the relay is healthy (it migrates the database and makes the Redis

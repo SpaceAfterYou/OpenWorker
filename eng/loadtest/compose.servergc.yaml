@@ -1,0 +1,24 @@
+# Server GC with dynamic adaptation (DATAS) for the servers, laid over compose.yaml and compose.loadtest.yaml by
+# eng/loadtest.sh when it is asked to:
+#
+#   LOADTEST_COMPOSE_EXTRA=eng/loadtest/compose.servergc.yaml eng/loadtest.sh --bots 1000 ...
+#
+# It is how step 7 of phase 1 of REFACTORING.md compares the garbage collectors without editing Directory.Build.props.
+# The environment variables of the runtime take precedence over the runtimeconfig.json that the props write, and compose
+# recreates the containers of the servers when their environment changes. Each server logs the collector it runs with
+# when it starts (`GC: server True, ... DATAS True`, RuntimeSettingsLogService).
+
+x-server-gc: &server-gc
+  environment:
+    - DOTNET_gcServer=1
+    - DOTNET_GCDynamicAdaptationMode=1
+
+services:
+  openworker.relayserver: *server-gc
+  openworker.authserver: *server-gc
+  openworker.gateserver: *server-gc
+  openworker.districtserver-roccotown: *server-gc
+  openworker.districtserver-canduscity: *server-gc
+  openworker.districtserver-gracecity: *server-gc
+  openworker.districtserver-ruinfortress: *server-gc
+  openworker.mazeserver: *server-gc

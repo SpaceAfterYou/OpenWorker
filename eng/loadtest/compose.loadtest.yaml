@@ -8,6 +8,8 @@
 #     logs a line for each packet that is not a move.
 #   * Logs at Warning, so the console of the container is not the thing that is measured.
 #   * No packet dumps.
+#   * The line each server logs about its garbage collector when it starts (RuntimeSettingsLogService) stays at
+#     Information, so a run shows which collector it was measured with.
 #   * Twenty channels in a district instead of ten. A channel holds 65 players (it is Full above 64), so a thousand bots
 #     in one district need at least sixteen. Set LOADTEST_CHANNELS to change it.
 #
@@ -21,6 +23,7 @@ x-server: &server
       - BUILD_CONFIGURATION=Release
   environment:
     - Logging__LogLevel__Default=Warning
+    - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
     - Hotspot__PacketDumpPath=
 
 # The other servers start when the relay is healthy. On a fresh database (the Postgres container has no volume, so every
@@ -34,6 +37,14 @@ x-after-relay: &after-relay
       condition: service_healthy
 
 services:
+  # The servers of compose.yaml hold about a hundred connections between them when idle, and when a run ends and the
+  # bots leave at once the district opens more to save the characters: with the default max_connections of 100 Postgres
+  # refused them (`53300: sorry, too many clients already`, docs/phase-1/baseline/README.md) and some close handlers
+  # failed. Room for 200 keeps the runs clean. The servers' own fix, smaller pools or a pooler (REFACTORING.md 2.9.5),
+  # is still open; compose.yaml is not changed.
+  postgres:
+    command: ["postgres", "-c", "max_connections=200"]
+
   # The relay creates the Redis indexes the other servers search by, so it has to run, and it will not start without a
   # token. It talks to Discord only if the token is real; a placeholder lets it make the indexes. It runs once: every
   # start of it drops the cache, which would take the sessions of the bots with it.
@@ -42,6 +53,7 @@ services:
     restart: "no"
     environment:
       - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Credentials__DiscordToken=${LOADTEST_DISCORD_TOKEN:-loadtest-placeholder}
 
   openworker.authserver:
@@ -60,6 +72,7 @@ services:
         - BUILD_CONFIGURATION=Release
     environment:
       - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Hotspot__PacketDumpPath=
       - Channel__To=${LOADTEST_CHANNELS:-20}
 
@@ -70,6 +83,7 @@ services:
         - BUILD_CONFIGURATION=Release
     environment:
       - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Hotspot__PacketDumpPath=
       - Channel__To=${LOADTEST_CHANNELS:-20}
 
@@ -80,6 +94,7 @@ services:
         - BUILD_CONFIGURATION=Release
     environment:
       - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Hotspot__PacketDumpPath=
       - Channel__To=${LOADTEST_CHANNELS:-20}
 
@@ -90,6 +105,7 @@ services:
         - BUILD_CONFIGURATION=Release
     environment:
       - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Hotspot__PacketDumpPath=
       - Channel__To=${LOADTEST_CHANNELS:-20}
 
