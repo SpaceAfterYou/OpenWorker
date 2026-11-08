@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using Arch.Core;
+﻿using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Types;
@@ -14,20 +13,31 @@ using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Channel;
 
-public readonly record struct ServiceChannel(short Identifier)
+/// <summary>
+/// The players of one channel of this server. Everything but <see cref="Online"/> belongs to the world loop.
+/// </summary>
+public sealed class ServiceChannel(short identifier)
 {
-    // Changed on the world loop, but the online count is also read from background services.
-    private ConcurrentDictionary<Entity, ServerSessionComponent> Members { get; } = new();
+    // Touched on the world loop only.
+    private readonly Dictionary<Entity, ServerSessionComponent> _members = [];
 
-    public short Online => (short)Members.Count;
+    // The number of members, written on the loop at every join and leave and read from anywhere.
+    private int _online;
 
-    public bool Contains(Entity player) => Members.ContainsKey(player);
+    public short Identifier { get; } = identifier;
 
-    public ChannelWorkload Workload => ChannelUtils.GetWorkload(Members.Count);
+    /// <summary>
+    /// How many players the channel has. Safe to read off the loop, by the services that publish it to Redis.
+    /// </summary>
+    public short Online => (short)Volatile.Read(ref _online);
+
+    public bool Contains(Entity player) => _members.ContainsKey(player);
+
+    public ChannelWorkload Workload => ChannelUtils.GetWorkload(_members.Count);
 
     public void ForEach(Action<Entity> action)
     {
-        foreach (var entity in Members.Keys)
+        foreach (var entity in _members.Keys)
         {
             action(entity);
         }
@@ -38,7 +48,7 @@ public readonly record struct ServiceChannel(short Identifier)
     /// </summary>
     public void Broadcast(IResponseHotspotMessage message)
     {
-        if (Members.IsEmpty)
+        if (_members.Count == 0)
         {
             return;
         }
@@ -50,7 +60,7 @@ public readonly record struct ServiceChannel(short Identifier)
             return;
         }
 
-        foreach (var (_, session) in Members)
+        foreach (var (_, session) in _members)
         {
             session.Send(frame);
         }
@@ -61,7 +71,7 @@ public readonly record struct ServiceChannel(short Identifier)
     /// </summary>
     public void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
     {
-        if (Members.IsEmpty)
+        if (_members.Count == 0)
         {
             return;
         }
@@ -73,7 +83,7 @@ public readonly record struct ServiceChannel(short Identifier)
             return;
         }
 
-        foreach (var (member, session) in Members)
+        foreach (var (member, session) in _members)
         {
             if (member != player)
             {
@@ -86,14 +96,18 @@ public readonly record struct ServiceChannel(short Identifier)
     {
         BroadcastJoin(entity, world);
 
-        Members[entity] = world.Get<ServerSessionComponent>(entity);
+        _members[entity] = world.Get<ServerSessionComponent>(entity);
+
+        Volatile.Write(ref _online, _members.Count);
     }
 
     internal void Leave(Entity player, World world)
     {
         // A connection can close before its player has joined a channel.
-        if (Members.TryRemove(player, out _))
+        if (_members.Remove(player))
         {
+            Volatile.Write(ref _online, _members.Count);
+
             Broadcast(new WorldOutInfoPcResponse { Actors = [world.Get<ActorComponent>(player)] });
         }
     }
@@ -114,7 +128,7 @@ public readonly record struct ServiceChannel(short Identifier)
     public void SendOthers(Entity player, World world)
     {
         var session = world.Get<ServerSessionComponent>(player);
-        var people = Members.Keys
+        var people = _members.Keys
             .Where(e => e != player)
             .Select(e => new PersonWorldPair(
                 PersonSnapshotMapper.CreatePersonValue(world, e, e),

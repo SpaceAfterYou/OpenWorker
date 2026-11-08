@@ -128,6 +128,54 @@ internal sealed class WatchedArrayPool : ArrayPool<byte>
 }
 
 /// <summary>
+/// Players of a district who can join a channel, over connections that are only streams.
+/// </summary>
+internal static class ChannelMembers
+{
+    /// <summary>
+    /// Gives a player every component of a district, as the server does.
+    /// </summary>
+    public static ArchComponentProvider Provider()
+    {
+        // The provider looks for the types of the components in the loaded assemblies.
+        _ = typeof(ChannelMemberComponent);
+        _ = typeof(ServiceChannels);
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { [ConfigurationUtils.InstanceTargetKey] = nameof(EntityComponentService.District) })
+            .Build();
+
+        return new ArchComponentProvider(configuration, NullLogger<ArchComponentProvider>.Instance);
+    }
+
+    /// <summary>
+    /// One channel.
+    /// </summary>
+    public static ServiceChannels Channels(World world)
+    {
+        return new ServiceChannels(
+            Options.Create(new ChannelOptions { From = 1, To = 1 }),
+            Options.Create(new InstanceOptions { Identifier = Guid.NewGuid() }),
+            world);
+    }
+
+    /// <summary>
+    /// A player with what the others are told about it when it joins.
+    /// </summary>
+    public static Entity Create(World world, ArchComponentProvider provider, Stream connection, int index)
+    {
+        var player = provider.CreateEntity(world);
+
+        world.Set(player, new ServerSessionComponent(connection));
+        world.Set(player, new PersonInfoComponent { Name = "Player" + index, Hero = Hero.Lily });
+        world.Set(player, new LeagueComponent { Id = 0, Name = string.Empty, Card = new LeagueComponentCard { Border = 0, Emblem = 0 } });
+        world.Set(player, new ShopPrivateComponent { Type = 0, Name = string.Empty });
+
+        return player;
+    }
+}
+
+/// <summary>
 /// Creating entities registers component types in a registry that does not take two threads at once.
 /// </summary>
 [TestClass]
@@ -186,35 +234,17 @@ public sealed class FrameTest
     [TestMethod]
     public async Task ABroadcastIsWrittenOnceAndEveryMemberGetsTheSameBytes()
     {
-        // The provider gives a player every component of a district, as the server does; their types must be loaded first.
-        _ = typeof(ChannelMemberComponent);
-        _ = typeof(ServiceChannels);
-
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { [ConfigurationUtils.InstanceTargetKey] = nameof(EntityComponentService.District) })
-            .Build();
-
-        var provider = new ArchComponentProvider(configuration, NullLogger<ArchComponentProvider>.Instance);
+        var provider = ChannelMembers.Provider();
 
         using var world = World.Create();
 
-        var channels = new ServiceChannels(
-            Options.Create(new ChannelOptions { From = 1, To = 1 }),
-            Options.Create(new InstanceOptions { Identifier = Guid.NewGuid() }),
-            world);
+        var channels = ChannelMembers.Channels(world);
 
         var connections = Enumerable.Range(0, 5).Select(_ => new RecordingConnection()).ToArray();
 
         for (var index = 0; index < connections.Length; index++)
         {
-            var player = provider.CreateEntity(world);
-
-            world.Set(player, new ServerSessionComponent(connections[index]));
-            world.Set(player, new PersonInfoComponent { Name = "Player" + index, Hero = Hero.Lily });
-            world.Set(player, new LeagueComponent { Id = 0, Name = string.Empty, Card = new LeagueComponentCard { Border = 0, Emblem = 0 } });
-            world.Set(player, new ShopPrivateComponent { Type = 0, Name = string.Empty });
-
-            channels.Join(0, player);
+            channels.Join(0, ChannelMembers.Create(world, provider, connections[index], index));
         }
 
         var message = new Counting();
