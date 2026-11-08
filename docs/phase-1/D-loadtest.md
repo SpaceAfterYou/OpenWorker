@@ -152,13 +152,15 @@ per second, 5 s warm-up, 60 s measured, 5 moves per second, a chat line per 20 s
 
 `eng/loadtest.sh [bot options]`: fails with a clear message if `SOULWORKER_DATAS` is not set or lacks `bin/Table`,
 `World/Table`, `World/Navmesh`, `Character/ActionData`, `Scripts/Server`; builds the bot; starts compose with the
-override; waits for the TCP ports of Postgres, Redis, auth, gate, the four districts and the maze (until the health
-checks of workstream B exist); checks that no container has exited; waits `LOADTEST_SETTLE` seconds for the channels to
-register; seeds the accounts (`--bots` of them); runs the bots with `--docker-stats` and `--output
+override; waits until the health check (`/readyz`) of the relay, auth, gate, the four districts and the maze passes, and
+stops at once, naming the server, when one exits (an open port proves nothing: Docker publishes it before the server
+listens); seeds the accounts (`--bots` of them) and the gate row; waits `LOADTEST_SETTLE` seconds for the channels to
+register and the auth server to list the gate; runs the bots with `--docker-stats` and `--output
 TestResults/loadtest/<timestamp>`. The override (`eng/loadtest/compose.loadtest.yaml`) builds Release, logs at Warning,
-switches the packet dumps off, sets twenty channels per district, and runs the relay once (it drops the Redis cache on
+switches the packet dumps off, sets twenty channels per district, runs the relay once (it drops the Redis cache on
 every start) with a placeholder Discord token, because the relay creates the Redis indexes and will not start without a
-token.
+token, and starts the other servers only when the relay is healthy (on a fresh database the maze server dies if it
+starts before the schema exists, and the gate cannot write its record before the indexes exist).
 
 The nightly run in CI is not added (GitHub runners have no client data). The normal CI builds the new projects with the
 rest of the solution and runs their tests.
@@ -181,8 +183,6 @@ Results are in the final report of the workstream.
   baseline runs (below).
 - Server-side hops back from a maze to a district (the bots stay in the maze until the end).
 - Characters are always created with the template of one hero; the hero cannot be chosen.
-- The run through `eng/loadtest.sh` and compose: `docker compose` is not installed on the machine of the baseline, so
-  the servers were started with `docker run` (see `baseline/README.md`).
 
 ## Verified against the real servers (the baseline)
 
@@ -202,6 +202,15 @@ servers with the data of client 1.4.2.3 (Release builds, `docker run`, one machi
   `_sum`, `_count`): the unit is seconds, not milliseconds as assumed, which the bot now follows.
 - 1000 connections from one address: the hops (auth, gate, district, and maze for a tenth) of 1000 bots started at 50
   a second did not run out of ports.
+- The one command: `eng/loadtest.sh` ran end to end over compose with the override on 500 bots (`baseline/README.md`,
+  "Run through eng/loadtest.sh", report in `baseline/compose-500-bots/`): it built the bot and every image, waited for the
+  health checks, seeded a fresh database, and ran the bots, with every bot in and no error; every server was healthy,
+  the compose Prometheus had the series of all five servers and Grafana answered. The maze service found its navigation
+  meshes. Without `--channel-fill`, the district itself put the players into channels of 65 (65, 64, 64, 61, 61, 60, 59
+  and 16 at the end, after the maze bots left), so the channel fix works on the real district. Its first runs found three
+  faults of the script and the override, fixed in `ee880d4`: the wait for the ports passed at once, the other servers
+  started before the relay had migrated a fresh database and made the Redis indexes (the maze server died), and the first
+  second of bots found no gate because the seed ran right before them.
 
 The first runs found five faults of the bot, fixed with tests: no gate in a fresh database (`seed` now makes it), the
 names of the duration metrics, durations in seconds that the report rounded to zero, and the moves of the monsters of a
@@ -222,10 +231,14 @@ are open:
   `WorldOtherPersonListResponse.Write`: the list of the others does not fit one frame (`MessageHeader.MaxContentLength`).
   Only seen because of the previous fault.
 
+The run over compose found one more, open: when 450 bots left the district at once, Postgres refused connections
+(`53300: sorry, too many clients already`) and 3 session close handlers failed. Postgres runs with its default
+`max_connections` of 100, and the pools of the servers of `compose.yaml` hold about 96 connections when idle.
+
 ## Still unverified
 
-- `docker compose` through the script as a whole (only the override was checked with `config`, the shell syntax with
-  `bash -n`; `shellcheck` is not installed here), including the navigation meshes now mounted into the maze service.
+- `eng/loadtest.sh` with `shellcheck` (not installed here; the shell syntax is checked with `bash -n`), with
+  `LOADTEST_DOWN=1`, and from a second machine (`--redirect-host`).
 - Other heroes, other mazes, a maze with more than one bot, a maze fought through to its end, and a hop back from a maze.
 - That the hot path of the bot allocates nothing: at 1000 bots its garbage collector ran 3319 gen-0 collections in 90 s
   and paused it for 5.1 s in all, so something allocates. Where was not profiled.

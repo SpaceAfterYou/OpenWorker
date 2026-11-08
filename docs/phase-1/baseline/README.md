@@ -114,3 +114,67 @@ monsters. The figures of the servers' histograms are coarse: their first bucket 
 so a p99 under 0.25 ms only says that most callbacks are that short. Each size was run once; the spread between runs is
 not known. The login (about 40 ms per account, the hashing of the password) and the character creation of 500 new
 accounts at 50 a second (p99 188 ms at 1000) happen in the ramp-up and are not part of the measured time.
+
+## Run through eng/loadtest.sh
+
+The baseline above was taken with `docker run`. Once `docker compose` (v5.7.0) was installed, the one command of step 5
+was run end to end on the same machine, on 2026-11-08 at 19:48 to 19:55 UTC, with no `--channel-fill`, so the district
+placed the players itself, with the channel fix of `89ea83b` (`ChannelUtils.GetWorkload`). Report in
+`compose-500-bots/`.
+
+```
+SOULWORKER_DATAS=$HOME/.cache/openworker/datas eng/loadtest.sh --bots 500 --ramp-up 50 --duration 60s --warmup 10s \
+  --move-rate 5 --prometheus http://127.0.0.1:9090
+```
+
+What differs from the baseline: the servers are the images of `compose.yaml` built by the script with
+`eng/loadtest/compose.loadtest.yaml` (Release, Warning logs, no packet dumps, twenty channels per district) at commit
+`ee880d4` (the server code is that of `89ea83b`); the whole of `compose.yaml` runs, i.e. four districts (the bots use Rocco
+Town), RabbitMQ, pgAdmin, Prometheus and Grafana as well; the database is fresh (the Postgres container has no volume),
+so all 500 accounts created their character during the ramp-up; and `docker stats` covers every `OpenWorker-*` container.
+The script built the bot and the images (3 min 15 s), waited 44 s for every server to turn healthy, seeded the accounts
+(1 s), waited 15 s, and ran the bots (80 s and the report): 5 min 45 s in all.
+
+The first runs of the script failed on faults of the script and the override, fixed in `ee880d4` before this run: the
+wait for the TCP ports passed at once (Docker publishes a port before the server in it listens), on a fresh database the
+maze server died with `relation "ServerContents" does not exist` (it reads the table while it builds its services, before
+any server has migrated), the gate could not write its record before the relay had made the Redis indexes, and the first
+43 bots found no gate because the auth server reads the gates of the database once a second and the seed ran right
+before the bots. The script now waits for the health checks, the other servers start when the relay is healthy, and the
+seed runs before the 15 s wait.
+
+| bots | got in | move.echo p50 / p99 | move.delivery p99 | ping.after-move p99 | chat.delivery p99 | maze.move.echo p99 | district CPU avg / max % | district memory max (MB) | maze CPU avg % | district CPU per bot (ms/s) | bot CPU avg / peak (cores) | worldloop callback p99 district / maze (ms) | worldloop queue max district / maze | simulation step p99, maze (ms) | unmatched | errors |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 500 | 500 | 0.31 / 1.70 | 1.70 | 1.89 | 2.11 | 0.86 | 310.7 / 482 | 235 | 21.8 | 6.2 | 3.38 / 3.67 | 0.42 / 0.98 | 0 / 0 | 2.39 | 81 | 0 |
+
+| bots | moves delivered per second | bots that hear a move (channel size) | maze.skill.response p99 (ms) | handler p99 district / maze (ms) | gate.character p99, step (ms) | district.enter p99, step (ms) | bot GC: gen 0 / 1 / 2, pause total | bot.send-lag p99 (ms) |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 500 | 133 731 | 54.4 | 0.99 | 0.36 / 0.10 | 516.1 | 770.1 | 1709 / 300 / 3, 2003 ms | 0.83 |
+
+Every bot got in, the 50 chosen for the maze entered it, every skill was answered, no bot was dropped and no error was
+counted.
+
+Channels: the `OnlineCount` of the channel records of Rocco Town in Redis, read every 5 s during the run, settled at
+65, 64, 64, 61, 61, 60, 59 and 16 players in channels 1 to 8 (450, the 500 bots less the 50 in the maze), and stayed so
+to the end. The district filled channel 1 to 65, moved on to the next, and gave the seats freed by bots that left for the
+maze to the bots that entered later. So the fix works on the real district. A move in the district is heard by 60.4 bots
+on average (the sum of the squares of these sizes over their sum); the report's 54.4 is lower because it divides by every
+move sent, the 15 000 moves of the maze bots included, which are heard by their sender alone.
+
+Compared with the 500-bot row of the baseline (`docker run`, `--channel-fill 65`): every bot got in with no error in both,
+and the work is about the same, a little more because the channels are fuller (54.4 bots hear a move against 51.2,
+133 731 deliveries a second against 125 830). The district used 310.7% of a core on average against 295.1 (6.2 ms of CPU
+per second per bot against 5.9), and its world loop never had a callback waiting. The p99 is higher: 1.70 ms against 1.22
+for `move.echo`, 1.89 against 1.31 for `ping.after-move`, 0.42 against 0.17 ms for the district's callbacks. The district
+handlers stay at 0.36 ms p99, and the bot did not lag (send lag p99 0.83 ms), so the rise is most likely the rest of the
+stack, which shares the machine here and did not in the baseline: three more districts, RabbitMQ (44.8% of a core on
+average, 368% at the peak) and pgAdmin. Character creation and district entry take longer at the p99 (516 against 9.7
+ms, 770 against 14.3 ms) because all 500 accounts were new and created their character in the ramp-up, against 250 in
+the baseline. Each was run once, so the spread is not known.
+
+When the run ended and the 450 district bots left at once, the district logged `53300: sorry, too many clients already`
+from Postgres: 3 `Session close handler failed`, 29 `Could not tell about a person leaving`, 32 failed connections, all
+at 19:54:42. Postgres runs with its default `max_connections` of 100, and the pools of the servers held 96 connections
+when idle afterwards (gate 34, maze 33, Rocco Town 19, auth 5, and one each for the other servers). The sessions of every
+server still went back to zero. The measured part of the run is not affected; the state of the characters whose close
+handler failed may not have been saved. The server was not changed.
