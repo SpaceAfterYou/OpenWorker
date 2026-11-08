@@ -5,7 +5,7 @@ namespace OpenWorker.Hotspot.Cache;
 
 public static class ChannelUtils
 {
-    public static ChannelWorkload GetWorkload(IComparable count)
+    public static ChannelWorkload GetWorkload(double count)
     {
         return count switch
         {

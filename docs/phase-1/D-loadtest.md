@@ -214,7 +214,9 @@ district bot). They also found three faults of the servers, which were not chang
   so the names of the generated columns are one place off. The bot sends 521.
 - The district puts every player into channel 1: `ChannelUtils.GetWorkload(IComparable)` matches the boxed `int` of
   `Members.Count` against `short` constants, which never matches, so no channel is ever Full. The baseline uses
-  `--channel-fill 65` to fill the channels from the bot side.
+  `--channel-fill 65` to fill the channels from the bot side. Fixed afterwards in `OpenWorker.Hotspot/Cache/ChannelUtils.cs`:
+  `GetWorkload` takes a `double` and compares it with the constants as a number, so a channel is Full above 64 players
+  and the next one is used; `--channel-fill` stays as a way to control the placement from the bot side.
 - With several hundred players in one channel, `World:ObjectReq` fails with `Memory stream is not expandable` in
   `WorldOtherPersonListResponse.Write`: the list of the others does not fit one frame (`MessageHeader.MaxContentLength`).
   Only seen because of the previous fault.
