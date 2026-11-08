@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Extensions;
@@ -9,11 +8,16 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.DistrictServer.Server.Services;
 
-public sealed class ServerBootstrapService(
+/// <summary>
+/// Tells the other servers that this district runs, where it is and where a player enters it.
+/// A district that cannot say so cannot serve anybody, so the host does not start.
+/// </summary>
+public sealed partial class ServerBootstrapService(
     IRedisCollection<DistrictCache> cache,
     BatchManager manager,
     IOptions<InstanceOptions> instance,
-    IOptions<GateOptions> gate
+    IOptions<GateOptions> gate,
+    ILogger<ServerBootstrapService> logger
 ) :
     BackgroundService
 {
@@ -33,10 +37,14 @@ public sealed class ServerBootstrapService(
     {
         if (!manager.TryGetAndCache(Location, out var batch, out var type) || type != BatchType.District)
         {
-            return;
+            throw Fail($"There is no batch of a district for the location {Location}.");
         }
 
-        Debug.Assert(batch.EventBox.StartEvents.Count > 0);
+        if (batch.EventBox.StartEvents.Count == 0)
+        {
+            throw Fail($"The batch of the location {Location} has no start event, so nobody could enter this district.");
+        }
+
         var start = batch.EventBox.StartEvents[0];
 
         var position = start.GetPosition();
@@ -62,4 +70,14 @@ public sealed class ServerBootstrapService(
             Rotation = start.Rotation
         });
     }
+
+    private InvalidOperationException Fail(string reason)
+    {
+        LogCannotStart(Instance, Location, reason);
+
+        return new InvalidOperationException(reason);
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "District {Instance} of the location {Location} cannot start: {Reason}")]
+    private partial void LogCannotStart(Guid instance, short location, string reason);
 }
