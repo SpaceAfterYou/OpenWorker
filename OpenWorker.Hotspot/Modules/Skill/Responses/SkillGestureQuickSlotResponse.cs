@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 /// This packet defined but isn't processed on the client side.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct SkillGestureQuickSlotResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly struct SkillGestureQuickSlotResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 

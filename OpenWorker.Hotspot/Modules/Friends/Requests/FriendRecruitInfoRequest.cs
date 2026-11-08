@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Friends.Requests;
 /// This packet doesn't have any content.
 /// </summary>
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct FriendRecruitInfoRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly struct FriendRecruitInfoRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Friend;
     private const FriendOpcode Command = FriendOpcode.RecruitInfo;
