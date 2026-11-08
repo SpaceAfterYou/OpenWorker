@@ -110,9 +110,24 @@ flowchart TB
 - **World loop.** `WorldLoop` is a `SynchronizationContext` with one thread. Every packet handler,
   every timer and the closing of every connection runs there, one at a time, so the ECS world and the
   managers need no locks.
-- **Simulation clock.** `SimulationClock` steps everything that lives in game time (the monsters of
-  every maze) together, every 50 ms, on the world loop. A step longer than the period is reported,
-  and after a stall the clock skips ticks and caps the step, so the game slows down instead of jumping.
+- **Simulation clock.** `SimulationClock` steps everything that lives in game time together, every 50 ms, on the world
+  loop: each maze is one simulation (`LuaMaze.Advance`: the timers of its script, the projectiles and chains of the player,
+  then its monsters through `LuaCreatureManager.Step`), on the clock from the moment the client has loaded it to `Close()`.
+  A step longer than the period is reported, and after a stall the clock skips ticks and caps the step, so the game slows
+  down instead of jumping. The simulations, and the monsters of a maze, are walked in place (`StepList`): one that leaves
+  during a step is skipped, one that comes starts with the next step.
+- **Waiting in game time.** What the game waits for (a delayed event of a script, the next moment of a skill, the next hit
+  of a trap, creatures that appear later) is an action on the queue of the clock, never a `Task.Delay` or a `Timer`
+  (`eng/check-forbidden.sh` holds `OpenWorker.Lua` and `OpenWorker.MazeServer` to it). `Schedule(delay, action)` runs it at
+  the first tick whose game time (`Now`, whole periods) is `delay` past the current one, the next tick at the soonest;
+  actions due at the same tick run in the order they were scheduled, and before the simulations step. A handle cancels
+  one; a `ScheduleGroup` (one per maze) cancels all of its owner's and takes no more once closed, which is what
+  `LuaMaze.Close()` does. Attacks and other delayed work therefore land on the grid of the ticks, up to 50 ms after their
+  moment. The design and the timings: `docs/phase-5/README.md`.
+- **Maze scripts.** Each maze has its own `LuaState`; the script of a maze is read and compiled once per process, off the
+  loop (`MazeScripts`), and run in the state of every maze of it. A script that throws inside a call of the server ends the
+  maze of its player (`LuaMaze.Fail`): it is logged, the maze closes and leaves the player, and the player is told. A call
+  the server does not do is a no-op with one warning per script and function.
 - **ECS.** Arch holds sessions, persons and creatures as components. Arch keeps one static registry
   of component types for the whole process and it is not thread safe: touch it from the world loop only,
   and keep tests that create entities out of parallel runs.
@@ -270,8 +285,9 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
    for them, and the number of tests is not a goal.
 
 The build enforces part of this: `Directory.Build.props` turns on the analyzers (`latest-recommended`), the
-projects `Hotspot`, `Channel`, `Gameplay`, `Persistence` and `Navigation` treat warnings as errors, and
-`eng/check-forbidden.sh` (run by CI) fails on `Task.Factory.StartNew` and `Console` in product code. Path-scoped
+projects `Hotspot`, `Channel`, `Gameplay`, `Persistence`, `Navigation`, `Lua` and `MazeServer` treat warnings as errors, and
+`eng/check-forbidden.sh` (run by CI) fails on `Task.Factory.StartNew` and `Console` in product code, and on `Task.Delay` and
+`Timer` in `OpenWorker.Lua` and `OpenWorker.MazeServer` (its `SCOPED` rules, checked under one path). Path-scoped
 exceptions, such as the names of client enums, live in `.editorconfig` with the reason next to them.
 
 ## Database
@@ -329,7 +345,13 @@ or wrong setting stops the server with a message that names the key. A setting w
 ## Known limits
 
 - **One thread per process.** A busy maze server is the first to hit it; the answer is more maze
-  servers, not more threads in one. The clock logs when steps run over budget.
+  servers, not more threads in one (two in compose: `docs/phase-5/README.md`, step 7). The clock logs when steps run over
+  budget. A step of a maze costs about 2 µs with 10 monsters and 15 µs with 100 (`MazeStepBenchmark`).
+- **Delayed work lands on the ticks.** An attack of a skill, the next hit of a trap or an event a script waits for runs at the
+  first tick at or after its moment, up to one period (50 ms) late.
+- **A failed maze script has no answer of its own.** The client is told by a notice; the message the client has for a maze
+  mode that fails is not known well enough to send.
+- **A maze reservation does not name its maze server.** Any maze server of the gate takes it.
 - **Writes wait on the loop.** Handlers save as they go. Moving saves to a write-behind queue, where the
   handler changes memory and the save happens later, would remove most of the `await` doors of rule 2.
   Not done yet.
