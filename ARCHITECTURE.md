@@ -241,6 +241,10 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
    own lines, and the queue of the loop does not carry that one over.
 5. **Data is parsed and formatted with `CultureInfo.InvariantCulture`.** A server under a culture with a decimal
    comma reads `1.5` from a batch file otherwise.
+6. **Tests cover the architecture, not the data.** A test protects a rule or a behaviour and fails without the code
+   it covers: a loop rule, the error budget, the order of a shutdown, a fault that was found. It does not enumerate
+   the rows of a client table, the keys of a settings file or one case per message; one representative case stands
+   for them, and the number of tests is not a goal.
 
 The build enforces part of this: `Directory.Build.props` turns on the analyzers (`latest-recommended`), the
 projects `Hotspot`, `Channel`, `Gameplay`, `Persistence` and `Navigation` treat warnings as errors, and
