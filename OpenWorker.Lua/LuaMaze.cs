@@ -115,7 +115,7 @@ public partial class LuaMaze(
     /// </summary>
     private sealed class TimerHost(LuaMaze maze) : IMazeTimerHost
     {
-        public async ValueTask CallAsync(string function, int first, int second, int third)
+        public async ValueTask CallAsync(string name, int first, int second, int third)
         {
             if (maze.Closed)
             {
@@ -124,12 +124,12 @@ public partial class LuaMaze(
 
             try
             {
-                await maze.State.OnTimerExComplete(function, first, second, third, maze);
+                await maze.State.OnTimerExComplete(name, first, second, third, maze);
             }
 
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                maze.Logger.TimerFunctionFailed(e, function);
+                maze.Logger.TimerFunctionFailed(e, name);
             }
         }
 
@@ -151,9 +151,9 @@ public partial class LuaMaze(
             }
         }
 
-        public void ShowTimer(int value, float time, float next)
+        public void ShowTimer(int value, float time, float following)
         {
-            maze.ShowTimer(value, time, next);
+            maze.ShowTimer(value, time, following);
         }
     }
 

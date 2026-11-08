@@ -10,9 +10,9 @@ public sealed class MazeTimersTest
         public List<string> Calls { get; } = [];
         public Action? OnComplete { get; set; }
 
-        public ValueTask CallAsync(string function, int first, int second, int third)
+        public ValueTask CallAsync(string name, int first, int second, int third)
         {
-            Calls.Add($"{function}({first},{second},{third})");
+            Calls.Add($"{name}({first},{second},{third})");
 
             return ValueTask.CompletedTask;
         }
@@ -29,9 +29,9 @@ public sealed class MazeTimersTest
             return ValueTask.CompletedTask;
         }
 
-        public void ShowTimer(int value, float time, float next)
+        public void ShowTimer(int value, float time, float following)
         {
-            Calls.Add($"show({value},{time},{next})");
+            Calls.Add($"show({value},{time},{following})");
         }
     }
 

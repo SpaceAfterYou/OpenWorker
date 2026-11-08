@@ -11,9 +11,11 @@ namespace OpenWorker.MazeServer.Services;
 /// </summary>
 public sealed class MovementService(World world) : MovementServiceBase(world)
 {
+    private readonly World _world = world;
+
     protected override void Broadcast(Entity player, IResponseHotspotMessage message)
     {
-        world.Get<ServerSessionComponent>(player).Send(message);
+        _world.Get<ServerSessionComponent>(player).Send(message);
     }
 
     protected override void BroadcastToOthers(Entity player, IResponseHotspotMessage message)

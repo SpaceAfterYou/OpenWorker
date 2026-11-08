@@ -19,12 +19,14 @@ public sealed class ChatService(
 ) :
     ChatServiceBase(world, network, throttle, parties, leagues, relations, megaphones)
 {
+    private readonly World _world = world;
+
     /// <summary>
     /// Every player has a maze of their own, so there is nobody close by to hear but the player.
     /// </summary>
     protected override void SendNearby(Entity player, IResponseHotspotMessage message)
     {
-        world.Get<ServerSessionComponent>(player).Send(message);
+        _world.Get<ServerSessionComponent>(player).Send(message);
     }
 
     protected override ValueTask<bool> TryCommandAsync(Entity player, string text)

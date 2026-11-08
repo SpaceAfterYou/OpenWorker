@@ -115,7 +115,7 @@ public sealed class AiScriptLoader
         {
             if (!_files.Value.TryGetValue(name, out var path))
             {
-                _logger.LogWarning("No script of the AI named {Name}, the monster will not think", name);
+                _logger.NoAiScript(name);
 
                 return AiProfile.Empty;
             }
@@ -125,7 +125,7 @@ public sealed class AiScriptLoader
 
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or LuaParseException or LuaCompileException or LuaRuntimeException or InvalidOperationException)
         {
-            _logger.LogWarning(e, "The script of the AI named {Name} cannot be read, the monster will not think", name);
+            _logger.AiScriptUnreadable(e, name);
 
             return AiProfile.Empty;
         }
@@ -211,7 +211,7 @@ public sealed class AiScriptLoader
 
                 catch (Exception e) when (e is InvalidOperationException or LuaRuntimeException or InvalidCastException)
                 {
-                    _logger.LogDebug("{Script}: {Method} was called with something it cannot take: {Message}", name, method, e.Message);
+                    _logger.AiScriptBadArgument(name, method, e.Message);
                 }
 
                 return new ValueTask<int>(context.Return());

@@ -194,6 +194,15 @@ internal static partial class LuaLog
 
     // ---- Monsters ---------------------------------------------------------------------------
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No script of the AI named {Name}, the monster will not think")]
+    public static partial void NoAiScript(this ILogger logger, string name);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The script of the AI named {Name} cannot be read, the monster will not think")]
+    public static partial void AiScriptUnreadable(this ILogger logger, Exception exception, string name);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Script}: {Method} was called with something it cannot take: {Message}")]
+    public static partial void AiScriptBadArgument(this ILogger logger, string script, string method, string message);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "The monster {Monster} failed to think")]
     public static partial void MonsterFailedToThink(this ILogger logger, Exception exception, int monster);
 
