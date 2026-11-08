@@ -15,7 +15,6 @@ public sealed class DistrictResourceProvider(ReadOnlyCollection<DistrictRow> res
             return false;
         }
 
-        file = VBatchFile.Create(resource.Batch);
-        return true;
+        return VBatchFile.TryCreate(resource.Batch, out file);
     }
 }

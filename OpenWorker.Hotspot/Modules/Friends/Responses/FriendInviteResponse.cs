@@ -21,7 +21,10 @@ public readonly struct FriendInviteResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    public int Person { get; init; }
+    /// <summary>
+    /// Zero when the request went out, otherwise the number of the text the client shows.
+    /// </summary>
+    public int Result { get; init; }
     public required string Name { get; init; }
 
 #endregion Message: Body
@@ -30,7 +33,7 @@ public readonly struct FriendInviteResponse : IResponseHotspotMessage
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Person);
+        writer.Write(Result);
 
         Debug.Assert(Name.Length <= 21);
         writer.WriteUtf16UnicodeString(Name);

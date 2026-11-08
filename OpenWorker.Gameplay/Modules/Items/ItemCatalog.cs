@@ -262,7 +262,7 @@ public sealed class ItemCatalog
         StorageGroup.CostumeStorage
     ];
 
-    public int EquipmentSize(StorageGroup group)
+    public static int EquipmentSize(StorageGroup group)
     {
         return group == StorageGroup.ShapeEquip ? ItemModuleDefines.EquippedItemCount : (int)AbilityEquipSlot.Max;
     }

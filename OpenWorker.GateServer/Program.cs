@@ -1,8 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OpenWorker.Channel;
+using OpenWorker.Channel.Extensions;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Extensions;
 using OpenWorker.GateServer.Gameplay.Extensions;
 using OpenWorker.GateServer.Server.Services;
 using OpenWorker.Hotspot;
@@ -23,8 +24,7 @@ await Host
         services.AddRes();
         services.AddBatch();
         
-        services.AddSingleton<WorldManager>();
-        services.AddSingleton<LeaveManager>();
+        services.AddPlayerTransfer();
         services.AddSingleton<ItemCatalog>();
         services.AddSingleton<DatabaseItemSerials>();
         services.AddSingleton<IItemSerials>(provider => provider.GetRequiredService<DatabaseItemSerials>());
@@ -33,6 +33,9 @@ await Host
         services.AddPersistence();
         services.AddGameplay();
         
+        services.AddGateOptions();
+        services.AddGateEndpointOptions();
+        services.AddPersonCreationOptions();
         services.AddHostedService<KeepAliveService>();
 
         services.AddHotspot(context, EntityComponentService.Gate);

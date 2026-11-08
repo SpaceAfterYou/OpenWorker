@@ -4,37 +4,46 @@ using Microsoft.Extensions.Logging;
 
 namespace OpenWorker.Persistence;
 
-internal sealed class PersistenceBootstrapService( 
+/// <summary>
+/// Brings the database schema up to date before the server starts. The host waits for
+/// <see cref="StartAsync"/>, so nothing that starts after this service meets a missing table.
+/// Every server runs it: the provider locks the database while it migrates, so servers that
+/// start together apply each migration once.
+/// </summary>
+internal sealed partial class PersistenceBootstrapService(
     ILogger<PersistenceBootstrapService> logger,
     IDbContextFactory<PersistenceContext> factory
-) : 
-    BackgroundService
+) :
+    IHostedService
 {
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await BootstrapPersistenceAsync(cancellationToken).ConfigureAwait(false);
-    }
-    
-    private async ValueTask BootstrapPersistenceAsync(CancellationToken cancellationToken)
-    {
-        logger.LogDebug("Bootstrapping persistence...");
-        
+        LogBootstrapping();
+
         await using var context = await factory
             .CreateDbContextAsync(cancellationToken)
             .ConfigureAwait(false);
-        
-        logger.LogDebug("Migrating database...");
-        
+
+        LogMigrating();
+
         await context.Database
             .MigrateAsync(cancellationToken)
             .ConfigureAwait(false);
-        
-        logger.LogDebug("Seeding database...");
-        
-        await context
-            .SaveChangesAsync(cancellationToken)
-            .ConfigureAwait(false);
-        
-        logger.LogDebug("Database bootstrapped.");
+
+        LogBootstrapped();
     }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Bootstrapping persistence...")]
+    private partial void LogBootstrapping();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Migrating database...")]
+    private partial void LogMigrating();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Database bootstrapped.")]
+    private partial void LogBootstrapped();
 }

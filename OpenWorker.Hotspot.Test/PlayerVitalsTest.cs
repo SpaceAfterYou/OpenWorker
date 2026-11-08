@@ -6,6 +6,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Lua.Managers;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -62,7 +63,7 @@ public sealed class PlayerVitalsTest
                 Speed = new SpeedComponentEntry { Attack = 1, Move = 1 }
             },
             new PersonInfoComponent { Name = "Haru", Hero = Hero.Haru },
-            new RankComponent(25, 0),
+            new LevelComponent(25, 0),
             new WorldComponent { Location = 1, Position = new Vector3(1, 2, 3), Rotation = 0, Jump = 0 });
 
         return (world, player, new PlayerVitals(world, Tables()));

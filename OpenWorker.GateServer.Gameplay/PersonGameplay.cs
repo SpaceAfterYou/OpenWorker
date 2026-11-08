@@ -10,8 +10,9 @@ using OpenWorker.Gameplay.Modules.Login;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Npgsql;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Mapping;
@@ -36,14 +37,15 @@ public sealed class PersonGameplay(
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
     InventoryPersistence inventories,
-    IConfiguration configuration,
+    IOptions<PersonCreationOptions> creation,
+    IOptions<GateOptions> gate,
     ILogger<PersonGameplay> logger,
     SecondPasswordGameplay secondPassword,
     LeaveManager leaving,
     WorldManager worldManager,
     PersonCreationCatalog catalog)
 {
-    private short Gate { get; } = configuration.GetGate();
+    private short Gate { get; } = gate.Value.Id;
 
     public async Task CreateAsync(ServiceHandleContext context, PersonCreateRequest message)
     {
@@ -95,7 +97,7 @@ public sealed class PersonGameplay(
 
         var person = new PersonPersistent
         {
-            Level = (byte)Math.Clamp(configuration.GetValue("Person:StartLevel", 1), 1, 100),
+            Level = creation.Value.StartLevel,
             Name = message.Person.InfoValue.Name,
             Hero = hero,
 
@@ -135,8 +137,24 @@ public sealed class PersonGameplay(
 
         account.Persons.Add(person);
 
-        await database
-            .SaveChangesAsync(context.CancellationToken);
+        try
+        {
+            await database
+                .SaveChangesAsync(context.CancellationToken);
+        }
+
+        // The check above passed, but another server created a character with this name in the meantime.
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            SendListError(context.Player, PersonErrorCode.NameInUse);
+            return;
+        }
+
+        // The player may have left while the character was saved.
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
 
         var created = registry.CreatePerson(context.Player, slotIndex, person);
 
@@ -183,7 +201,7 @@ public sealed class PersonGameplay(
 
         var isLeagueMaster = await database
             .Set<LeaguePersistent>()
-            .AnyAsync(x => x.Master.Id == person, context.CancellationToken);
+            .AnyAsync(x => x.MasterId == person, context.CancellationToken);
 
         if (isLeagueMaster)
         {

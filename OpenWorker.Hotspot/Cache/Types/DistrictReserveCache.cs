@@ -31,4 +31,13 @@ public sealed class DistrictReserveCache
     
     [RedisField]
     public required int Jump { get; set; }
+
+    /// <summary>
+    /// Whether the person may enter that district with this reservation. The reservation belongs to the account,
+    /// and the district that wrote it is the only one it is good for.
+    /// </summary>
+    public bool Admits(int person, Guid district)
+    {
+        return Person == person && District == district;
+    }
 }

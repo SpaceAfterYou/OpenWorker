@@ -9,7 +9,7 @@ using OpenWorker.Hotspot.Modules.Skill.Types;
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct SkillActionBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly struct SkillActionBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,7 +22,7 @@ public readonly struct SkillActionBroadcastResponse(BinaryReader reader) : IResp
 
 #region Message: Body
 
-public SkillDmgValue[] SkillDmgValueList { get; init; }
+public required SkillDmgValue[] SkillDmgValueList { get; init; }
 public SkillActionValue SkillAction { get; init; }
 
 #endregion Message: Body

@@ -5,6 +5,7 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
 COPY ["OpenWorker.GateServer/OpenWorker.GateServer.csproj", "OpenWorker.GateServer/"]
 RUN dotnet restore "OpenWorker.GateServer/OpenWorker.GateServer.csproj"
 COPY . .

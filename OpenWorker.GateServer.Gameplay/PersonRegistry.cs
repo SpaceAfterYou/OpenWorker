@@ -34,6 +34,7 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
         Component.GetComponentType(typeof(PersonInfoComponent)),
         Component.GetComponentType(typeof(ShopPrivateComponent)),
         Component.GetComponentType(typeof(RankComponent)),
+        Component.GetComponentType(typeof(LevelComponent)),
         Component.GetComponentType(typeof(TitleComponent)),
         Component.GetComponentType(typeof(InventoryComponent)),
         Component.GetComponentType(typeof(PersonOptionComponent)),
@@ -238,7 +239,10 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
             Type = 0
         });
         
-        world.Set(entity, new RankComponent(persistent.Level, persistent.Experience));
+        world.Set(entity, new LevelComponent(persistent.Level, persistent.Experience));
+
+        // The echelon is not kept yet.
+        world.Set(entity, default(RankComponent));
 
         world.Set(entity, new TitleComponent
         {

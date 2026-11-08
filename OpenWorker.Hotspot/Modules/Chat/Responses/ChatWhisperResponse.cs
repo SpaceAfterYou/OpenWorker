@@ -21,14 +21,14 @@ public readonly struct ChatWhisperResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    /// <summary>
-    ///  TODO: or bool? or has not?
-    /// </summary>
-    public int HasError { get; init; }
-
     public required string Sender { get; init; }
     public required string Receiver { get; init; }
     public required string Message { get; init; }
+
+    /// <summary>
+    /// Zero for a whisper that arrived. Anything else is the number of the text the client shows the sender in place of it.
+    /// </summary>
+    public int Result { get; init; }
 
 #endregion Message: Body
 
@@ -40,16 +40,8 @@ public readonly struct ChatWhisperResponse : IResponseHotspotMessage
         writer.WritePersonName(Receiver);
         writer.WriteChatMessage(Message);
 
-        writer.Write(HasError);
+        writer.Write(Result);
     }
 
 #endregion Interface: IWritableData
-
-    public static ChatWhisperResponse Error => new()
-    {
-        Sender = string.Empty,
-        Receiver = string.Empty,
-        Message = string.Empty,
-        HasError = 1
-    };
 }

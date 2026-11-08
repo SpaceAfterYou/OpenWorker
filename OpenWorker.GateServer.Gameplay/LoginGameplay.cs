@@ -2,8 +2,8 @@
 using OpenWorker.Gameplay.Modules.Login.Extensions;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Types;
 using OpenWorker.Extensions;
@@ -44,10 +44,10 @@ public sealed class LoginGameplay(
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
     SecondPasswordGameplay secondPassword,
-    IConfiguration configuration,
+    IOptions<GateOptions> gate,
     ILogger<LoginGameplay> logger)
 {
-    private short Gate { get; } = configuration.GetGate();
+    private short Gate { get; } = gate.Value.Id;
 
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginEnterServerRequest request)
     {

@@ -103,7 +103,7 @@ public interface IAiHost
     /// </summary>
     float Age { get; }
 
-    void Stop(bool send);
+    void StopMoving(bool send);
 
     /// <summary>
     /// Sets off for a place. Nothing happens when the way is closed.

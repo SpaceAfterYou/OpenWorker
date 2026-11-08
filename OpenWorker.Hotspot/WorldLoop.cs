@@ -8,10 +8,16 @@ namespace OpenWorker.Hotspot;
 /// connections opening and closing and periodic work all run here, one at a time.<br/>
 /// Waiting for the database or Redis releases the thread, and the code continues here afterwards.
 /// That only works while the await captures this context, so server code must not use
-/// <c>ConfigureAwait(false)</c>, and slow synchronous work must go through <c>Task.Run</c>.
+/// <c>ConfigureAwait(false)</c>, and slow synchronous work must go through <c>Task.Run</c>.<br/>
+/// Other connections run while a handler waits: see the rules in <c>ARCHITECTURE.md</c>.
 /// </summary>
-public sealed class WorldLoop : SynchronizationContext
+public sealed partial class WorldLoop : SynchronizationContext, IDisposable
 {
+    /// <summary>
+    /// How long <see cref="Dispose"/> waits for the thread to finish what is queued.
+    /// </summary>
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(5);
+
     private readonly BlockingCollection<(SendOrPostCallback Callback, object? State)> _queue = new();
     private readonly ILogger<WorldLoop> _logger;
     private readonly Thread _thread;
@@ -25,12 +31,20 @@ public sealed class WorldLoop : SynchronizationContext
 
     public bool IsCurrent => Environment.CurrentManagedThreadId == _thread.ManagedThreadId;
 
-    public override void Post(SendOrPostCallback callback, object? state)
+    public override void Post(SendOrPostCallback d, object? state)
     {
-        _queue.Add((callback, state));
+        try
+        {
+            _queue.Add((d, state));
+        }
+
+        catch (Exception e) when (e is InvalidOperationException or ObjectDisposedException)
+        {
+            // The loop has been stopped by Dispose: a continuation that arrives now has nowhere to run.
+        }
     }
 
-    public override void Send(SendOrPostCallback callback, object? state)
+    public override void Send(SendOrPostCallback d, object? state)
     {
         throw new NotSupportedException("Waiting for the loop can block it forever, use InvokeAsync.");
     }
@@ -94,6 +108,22 @@ public sealed class WorldLoop : SynchronizationContext
         }
     }
 
+    /// <summary>
+    /// Stops the loop: what is queued still runs, then the thread ends and later posts are dropped.
+    /// Does not wait when called from the loop itself, and gives up waiting after <see cref="StopTimeout"/>
+    /// on a callback that never returns.
+    /// </summary>
+    public void Dispose()
+    {
+        _queue.CompleteAdding();
+
+        // The queue cannot be disposed while the thread still reads it.
+        if (!IsCurrent && _thread.Join(StopTimeout))
+        {
+            _queue.Dispose();
+        }
+    }
+
     private void Run()
     {
         SetSynchronizationContext(this);
@@ -108,8 +138,11 @@ public sealed class WorldLoop : SynchronizationContext
             catch (Exception e)
             {
                 // One broken continuation must not stop the whole server.
-                _logger.LogCritical(e, "World loop callback failed.");
+                LogCallbackFailed(e);
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "World loop callback failed.")]
+    private partial void LogCallbackFailed(Exception exception);
 }

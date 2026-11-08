@@ -1,5 +1,5 @@
 using Arch.Core;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Types;
 using OpenWorker.Extensions;
@@ -18,11 +18,14 @@ namespace OpenWorker.Channel;
 /// </summary>
 public sealed class LeaveManager(
     World world,
-    IConfiguration configuration,
+    IOptions<GateOptions> gate,
+    IOptions<AuthEndpointOptions> auth,
     IRedisCollection<GateCache> gates,
     SessionLeaseManager leases)
 {
-    private short Gate { get; } = configuration.GetGate();
+    private short Gate { get; } = gate.Value.Id;
+
+    private AuthEndpointOptions Auth { get; } = auth.Value;
 
     public async ValueTask LeaveAsync(Entity player, LeaveDestination destination)
     {
@@ -38,7 +41,7 @@ public sealed class LeaveManager(
         {
             LeaveDestination.ServerList => await LeaveToServerListAsync(player),
             LeaveDestination.CharacterSelect => await FindGateAsync(),
-            _ => (configuration.GetAuthHost(), (short)0, false)
+            _ => (Auth.Host, (short)0, false)
         };
 
         ActorValue actor = world.Has<ActorComponent>(player) ? world.Get<ActorComponent>(player).Identifier : 0;
@@ -59,7 +62,7 @@ public sealed class LeaveManager(
         await leases
             .MarkReturnToAuthAsync(player);
 
-        return (configuration.GetAuthHost(), configuration.GetAuthPort(), true);
+        return (Auth.Host, (short)Auth.Port, true);
     }
 
     private async ValueTask<(string Address, short Port, bool Result)> FindGateAsync()
@@ -69,7 +72,7 @@ public sealed class LeaveManager(
 
         // The address is written even for a refusal because the client reads it anyway.
         return gate is null
-            ? (configuration.GetAuthHost(), (short)0, false)
+            ? (Auth.Host, (short)0, false)
             : (gate.Host, gate.Port, true);
     }
 }

@@ -21,7 +21,7 @@ namespace OpenWorker.Gameplay.Modules.SoulMetry;
 /// Soul metries are sets of objects to find in mazes. The person gets one when the maze it belongs to is cleared,
 /// finds the objects one by one and takes the reward when all of them are found.
 /// </summary>
-public sealed class SoulMetryManager(
+public sealed partial class SoulMetryManager(
     World world,
     PersonStateStore store,
     SoulMetryCatalog catalog,
@@ -121,7 +121,7 @@ public sealed class SoulMetryManager(
 
             if ((bits & (1 << order)) == 0 && obj.Maze == maze && (AlwaysOpen || Random.Shared.Next(0, 10000) < obj.SpawnRate))
             {
-                result.Add(obj.Object);
+                result.Add(obj.ObjectId);
             }
         }
 
@@ -145,25 +145,25 @@ public sealed class SoulMetryManager(
         // follow its own list.
         if (id is < 0 or > short.MaxValue || !catalog.TryGet((short)id, out var definition))
         {
-            logger.LogDebug("Soul metry {Id} is unknown.", id);
+            LogUnknown(id);
             return;
         }
 
         if (!state.IsReady(definition))
         {
-            logger.LogDebug("Soul metry {Id} is not complete.", id);
+            LogNotComplete(id);
             return;
         }
 
         if (state.IsComplete(definition))
         {
-            logger.LogDebug("Soul metry {Id} is already complete.", id);
+            LogAlreadyComplete(id);
             return;
         }
 
         if (!state.Fits(definition))
         {
-            logger.LogWarning("Soul metry {Id} has the bit {Bit} that does not fit the list.", id, definition.CompleteBit);
+            LogBitDoesNotFit(id, definition.CompleteBit);
             return;
         }
 
@@ -307,4 +307,16 @@ public sealed class SoulMetryManager(
             state.Gate.Release();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Soul metry {Id} is unknown.")]
+    private partial void LogUnknown(int id);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Soul metry {Id} is not complete.")]
+    private partial void LogNotComplete(int id);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Soul metry {Id} is already complete.")]
+    private partial void LogAlreadyComplete(int id);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Soul metry {Id} has the bit {Bit} that does not fit the list.")]
+    private partial void LogBitDoesNotFit(int id, int bit);
 }

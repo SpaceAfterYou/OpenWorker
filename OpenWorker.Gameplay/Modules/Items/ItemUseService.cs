@@ -12,7 +12,6 @@ namespace OpenWorker.Gameplay.Modules.Items;
 /// What happens when an item is used: boxes and packages open into items and money.
 /// </summary>
 public sealed class ItemUseService(
-    World world,
     InventoryService inventory,
     ItemCatalog catalog,
     ReadOnlyCollection<ItemPackageRow> packages,

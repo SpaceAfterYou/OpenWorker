@@ -5,6 +5,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -99,7 +100,7 @@ public sealed class ExperienceService
             return 0;
         }
 
-        var interval = Math.Clamp(_world.Get<RankComponent>(player).Level - row.Level, -100, 100);
+        var interval = Math.Clamp(_world.Get<LevelComponent>(player).Level - row.Level, -100, 100);
 
         if (_intervals.TryGetValue(interval, out var rate))
         {
@@ -123,7 +124,7 @@ public sealed class ExperienceService
             return;
         }
 
-        var rank = _world.Get<RankComponent>(player);
+        var rank = _world.Get<LevelComponent>(player);
 
         if (rank.Level >= MaxLevel)
         {
@@ -144,7 +145,7 @@ public sealed class ExperienceService
             total = 0;
         }
 
-        _world.Set(player, new RankComponent((byte)level, (int)total));
+        _world.Set(player, new LevelComponent((byte)level, (int)total));
         _inventory.InventoryOf(player)?.MarkState();
 
         if (_world.Has<ServerSessionComponent>(player))

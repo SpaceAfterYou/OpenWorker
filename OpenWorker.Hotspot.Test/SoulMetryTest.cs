@@ -133,7 +133,7 @@ public sealed class SoulMetryTest
 
         Assert.IsTrue(catalog.TryGet(32, out var first));
         Assert.AreEqual(1, first.CompleteBit);
-        CollectionAssert.AreEqual(new[] { 8111, 8112, 8113 }, first.Objects.Select(e => e.Object).ToArray());
+        CollectionAssert.AreEqual(new[] { 8111, 8112, 8113 }, first.Objects.Select(e => e.ObjectId).ToArray());
         CollectionAssert.AreEqual(new[] { 21221, 21231, 21241 }, first.Objects.Select(e => e.Maze).ToArray());
         CollectionAssert.AreEqual(new[] { new SoulMetryReward(2, 1001, 1) }, first.Rewards.ToArray());
 

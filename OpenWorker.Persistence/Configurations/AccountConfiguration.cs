@@ -16,6 +16,11 @@ public sealed class AccountConfiguration : IEntityTypeConfiguration<AccountPersi
             .IsRequired()
             .IsUnicode();
 
+        // Two sign-ups with one name at the same moment both see it as free.
+        builder
+            .HasIndex(x => x.Username)
+            .IsUnique();
+
         builder.Property(x => x.PasswordHash)
             .IsRequired()
             .HasMaxLength(PasswordHash.PasswordHashSize);

@@ -72,7 +72,7 @@ public sealed class InventoryServiceTest
             Player = World.Create(
                 Component.GetComponentType(typeof(ActorComponent)),
                 Component.GetComponentType(typeof(InventoryComponent)),
-                Component.GetComponentType(typeof(RankComponent)),
+                Component.GetComponentType(typeof(LevelComponent)),
                 Component.GetComponentType(typeof(PersonInfoComponent)),
                 Component.GetComponentType(typeof(CurrencyComponent)));
 
@@ -88,7 +88,7 @@ public sealed class InventoryServiceTest
             };
 
             World.Set(Player, new InventoryComponent(Factory.CreateNew(person)));
-            World.Set(Player, new RankComponent(level, 0));
+            World.Set(Player, new LevelComponent(level, 0));
             World.Set(Player, new PersonInfoComponent { Name = "Test", Hero = hero });
             World.Set(Player, new CurrencyComponent());
         }
@@ -438,7 +438,7 @@ public sealed class InventoryServiceTest
             Load<StatusRow>("tb_Status"),
             Load<SkillRow>("tb_Skill"),
             Load<CharacterInfoRow>("tb_Character_Info"),
-            f.Catalog);
+            items: f.Catalog);
 
         var bare = tables.GetPlayer(f.World, f.Player);
         var place = f.Catalog.EquipPlaceOf(armor.Id)!.Value.Slots[0];

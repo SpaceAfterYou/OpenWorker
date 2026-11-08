@@ -178,7 +178,7 @@ public sealed class RewardsTest
             Player = World.Create(
                 Component.GetComponentType(typeof(ActorComponent)),
                 Component.GetComponentType(typeof(InventoryComponent)),
-                Component.GetComponentType(typeof(RankComponent)),
+                Component.GetComponentType(typeof(LevelComponent)),
                 Component.GetComponentType(typeof(PersonInfoComponent)),
                 Component.GetComponentType(typeof(WorldComponent)),
                 Component.GetComponentType(typeof(CurrencyComponent)));
@@ -197,13 +197,13 @@ public sealed class RewardsTest
             var factory = new InventoryFactory(catalog, Load<CreateClothRow>("tb_Create_Cloth"), serials);
 
             World.Set(Player, new InventoryComponent(factory.CreateNew(person)));
-            World.Set(Player, new RankComponent(level, 0));
+            World.Set(Player, new LevelComponent(level, 0));
             World.Set(Player, new PersonInfoComponent { Name = "Test", Hero = Hero.Haru });
             World.Set(Player, new WorldComponent { Location = 0, Position = Vector3.Zero, Rotation = 0, Jump = 0 });
             World.Set(Player, new CurrencyComponent());
         }
 
-        public RankComponent Rank => World.Get<RankComponent>(Player);
+        public LevelComponent Rank => World.Get<LevelComponent>(Player);
 
 
         public void Dispose()
@@ -301,7 +301,7 @@ public sealed class RewardsTest
 
         CollectionAssert.AreEquivalent(
             new[] { DropService.GoldObject, Material },
-            lying.Select(e => e.Object).ToArray());
+            lying.Select(e => e.ObjectId).ToArray());
         Assert.IsTrue(lying.All(e => e.Group == lying[0].Group), "One kill, one group");
 
         foreach (var drop in lying)

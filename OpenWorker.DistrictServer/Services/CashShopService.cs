@@ -48,7 +48,7 @@ public sealed class CashShopService(World world, ReadOnlyCollection<CashShopRow>
                     Level = 1,
                     Order = 1,
                     NeedSlot = 1,
-                    CashInfo = (short)CashHopInfoFlags.IconHot,
+                    CashInfo = (short)CashShopMarks.IconHot,
                     LimitTime1 = date.AddDays(1),
                     LimitTime2 = date.AddDays(2),
                     SellCount = 1,

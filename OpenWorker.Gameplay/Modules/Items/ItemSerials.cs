@@ -9,7 +9,7 @@ namespace OpenWorker.Gameplay.Modules.Items;
 /// </summary>
 public interface IItemSerials
 {
-    long Next();
+    long NextSerial();
 }
 
 /// <summary>
@@ -19,7 +19,7 @@ public sealed class LocalItemSerials : IItemSerials
 {
     private long _next = 1000;
 
-    public long Next()
+    public long NextSerial()
     {
         return Interlocked.Increment(ref _next);
     }
@@ -37,7 +37,7 @@ public sealed class DatabaseItemSerials(IDbContextFactory<PersistenceContext> fa
     private readonly ConcurrentQueue<long> _ready = new();
     private int _fetching;
 
-    public long Next()
+    public long NextSerial()
     {
         if (_ready.Count < Reserve)
         {

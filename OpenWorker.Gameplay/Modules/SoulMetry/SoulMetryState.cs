@@ -94,7 +94,7 @@ public sealed class SoulMetryState
 
         for (var order = 0; order < definition.Objects.Count; order++)
         {
-            if (definition.Objects[order].Object != obj)
+            if (definition.Objects[order].ObjectId != obj)
             {
                 continue;
             }
@@ -104,7 +104,7 @@ public sealed class SoulMetryState
                 return false;
             }
 
-            bits = (short)(current | (1 << order));
+            bits = (short)((ushort)current | (1 << order));
             Progress[definition.Id] = bits;
 
             return true;

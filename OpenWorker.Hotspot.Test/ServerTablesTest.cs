@@ -11,7 +11,7 @@ public sealed class ServerTablesTest
     // What follows the rows in the files, it is not part of any row.
     private const int Trailer = 34;
 
-    private static (int Count, long Remaining) Read<T>(string table)
+    private static (int Count, long Remaining) Read(string table, Type row)
     {
         var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_SERVER_RES");
 
@@ -27,7 +27,7 @@ public sealed class ServerTablesTest
 
         for (var i = 0; i < count; i++)
         {
-            Activator.CreateInstance(typeof(T), reader);
+            Activator.CreateInstance(row, reader);
         }
 
         return (count, stream.Length - stream.Position);
@@ -41,11 +41,7 @@ public sealed class ServerTablesTest
     [DataRow("tb_Drop_Group", typeof(DropGroupRow))]
     public void RowsFillTheFileUpToTheTrailer(string table, Type row)
     {
-        var read = typeof(ServerTablesTest)
-            .GetMethod(nameof(Read), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-            .MakeGenericMethod(row);
-
-        var (count, rest) = ((int, long))read.Invoke(null, [table])!;
+        var (count, rest) = Read(table, row);
 
         Assert.IsGreaterThan(0, count);
         Assert.AreEqual(Trailer, rest);

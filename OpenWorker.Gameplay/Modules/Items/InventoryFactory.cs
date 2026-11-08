@@ -45,7 +45,7 @@ public sealed class InventoryFactory(ItemCatalog catalog, ReadOnlyCollection<Cre
 
         var weapon = new ItemInstance
         {
-            Serial = serials.Next(),
+            Serial = serials.NextSerial(),
             Item = WeaponOf(person.Hero),
             Count = 1,
             BindType = ItemBindType.OnPickUp
@@ -67,7 +67,7 @@ public sealed class InventoryFactory(ItemCatalog catalog, ReadOnlyCollection<Cre
                 {
                     inventory.Place(StorageGroup.ShapeEquip, place.Slots[0], new ItemInstance
                     {
-                        Serial = serials.Next(),
+                        Serial = serials.NextSerial(),
                         Item = id,
                         Count = 1,
                         BindType = ItemBindType.OnPickUp
@@ -98,7 +98,7 @@ public sealed class InventoryFactory(ItemCatalog catalog, ReadOnlyCollection<Cre
         foreach (var group in ItemCatalog.PersonalStorages)
         {
             var grade = (int)group < person.StorageGrades.Length ? person.StorageGrades[(int)group] : (byte)0;
-            var size = ItemCatalog.IsEquipment(group) ? catalog.EquipmentSize(group) : catalog.SizeAt(group, grade);
+            var size = ItemCatalog.IsEquipment(group) ? ItemCatalog.EquipmentSize(group) : catalog.SizeAt(group, grade);
 
             inventory.Add(group, size, grade);
         }

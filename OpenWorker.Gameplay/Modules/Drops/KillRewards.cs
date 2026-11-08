@@ -11,13 +11,15 @@ namespace OpenWorker.Gameplay.Modules.Drops;
 /// <summary>
 /// What a player gets when a monster dies in its maze: experience, and things on the ground.
 /// </summary>
-public sealed class KillRewards(ExperienceService experience, DropService drops, DailyMissionManager? missions, MazeResults results, ILogger<KillRewards> logger)
+public sealed partial class KillRewards(ExperienceService experience, DropService drops, DailyMissionManager? missions, MazeResults results, ILogger<KillRewards> logger)
 {
     public void OnKilled(Entity player, int monster, Vector3 position)
     {
-        logger.LogDebug("Monster {Monster} killed, worth {Experience} experience", monster, experience.ForMonster(monster));
+        var given = experience.GiveForMonster(player, monster);
 
-        results.AddKill(player, experience.GiveForMonster(player, monster));
+        LogKilled(logger, monster, given);
+
+        results.AddKill(player, given);
         drops.DropForKill(player, monster, position);
 
         if (missions is not null)
@@ -35,9 +37,15 @@ public sealed class KillRewards(ExperienceService experience, DropService drops,
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Counting the kill of monster {Monster} for the missions failed", monster);
+            LogMissionKillFailed(logger, exception, monster);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} killed, {Experience} experience given")]
+    private static partial void LogKilled(ILogger logger, int monster, int experience);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Counting the kill of monster {Monster} for the missions failed")]
+    private static partial void LogMissionKillFailed(ILogger logger, Exception exception, int monster);
 }
 
 /// <summary>
@@ -56,7 +64,7 @@ public sealed class DropCleaner(DropService drops) : ISessionCloseHandler
 /// <summary>
 /// Takes away what has lain on the ground too long.
 /// </summary>
-public sealed class DropExpiryService(WorldLoop loop, DropService drops, ILogger<DropExpiryService> logger) : BackgroundService
+public sealed partial class DropExpiryService(WorldLoop loop, DropService drops, ILogger<DropExpiryService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -70,8 +78,11 @@ public sealed class DropExpiryService(WorldLoop loop, DropService drops, ILogger
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, "Clearing the ground failed");
+                LogExpiryFailed(logger, exception);
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Clearing the ground failed")]
+    private static partial void LogExpiryFailed(ILogger logger, Exception exception);
 }

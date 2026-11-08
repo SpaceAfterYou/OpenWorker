@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace OpenWorker.Extensions;
@@ -68,16 +69,6 @@ public static class BinaryReaderExtension
         return Enumerable.Repeat(0, count).Select(_ => reader.ReadByte());
     }
 
-    // public static IEnumerable<BoosterMazeEffectType> ReadBoosterEffectTypeAsEnumerable(this BinaryReader reader, int count)
-    // {
-    //     return Enumerable.Repeat(0, count).Select(_ => (BoosterMazeEffectType)reader.ReadByte());
-    // }
-    //
-    // public static IEnumerable<string> ReadByteLengthUnicodeStringAsEnumerable(this BinaryReader reader, int count)
-    // {
-    //     return Enumerable.Repeat(0, count).Select(_ => reader.ReadUTF16UnicodeString());
-    // }
-
 #endregion Enumerable
 
 #region Arrays
@@ -101,11 +92,6 @@ public static class BinaryReaderExtension
     {
         return Enumerable.Repeat(0, count).Select(_ => reader.ReadSingle()).ToArray();
     }
-
-    // public static string[] ReadByteLengthUnicodeStringAsArray(this BinaryReader reader, int count)
-    // {
-    //     return reader.ReadByteLengthUnicodeStringAsEnumerable(count).ToArray();
-    // }
 
 #endregion Arrays
 
@@ -138,10 +124,35 @@ public static class BinaryReaderExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string ReadUnicodeString(this BinaryReader reader, int length, int max = 0)
     {
+        // The length comes from the client, and a string with a terminator is never shorter than one.
+        if (length <= 0)
+        {
+            ThrowBadStringLength(length);
+        }
+
         var bytes = reader.ReadBytes(length);
+
+        // ReadBytes hands back what is left instead of failing when the packet ends early.
+        if (bytes.Length < length)
+        {
+            ThrowStringCutShort(length, bytes.Length);
+        }
+
         var value = Encoding.Unicode.GetString(bytes.AsSpan(0, length - 1) /* skip null-terminator */);
 
         return value;
+    }
+
+    [DoesNotReturn]
+    private static void ThrowBadStringLength(int length)
+    {
+        throw new InvalidDataException($"A string of {length} bytes cannot hold its terminator.");
+    }
+
+    [DoesNotReturn]
+    private static void ThrowStringCutShort(int length, int available)
+    {
+        throw new EndOfStreamException($"A string of {length} bytes is cut short after {available}.");
     }
 
 #endregion Strings

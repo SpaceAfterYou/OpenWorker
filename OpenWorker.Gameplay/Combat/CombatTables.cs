@@ -3,7 +3,9 @@ using Arch.Core;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Combat;
@@ -48,6 +50,7 @@ public sealed class CombatTables(
     ReadOnlyCollection<StatusRow> statuses,
     ReadOnlyCollection<SkillRow> skills,
     ReadOnlyCollection<CharacterInfoRow> characters,
+    TitleCatalog? titles = null,
     ItemCatalog? items = null)
 {
     private const int HeroRowStep = 1000;
@@ -64,6 +67,7 @@ public sealed class CombatTables(
     private Dictionary<short, StatusRow> Statuses { get; } = statuses.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<int, SkillRow> Skills { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<(Hero Hero, byte Level), CombatStats> People { get; } = [];
+    private Dictionary<(Hero Hero, byte Level, int Prefix, int Suffix), CombatStats> Titled { get; } = [];
     private Dictionary<int, MonsterCombatComponent> MonsterStats { get; } = [];
 
     public MonsterCombatComponent GetMonster(int identifier)
@@ -104,35 +108,80 @@ public sealed class CombatTables(
     }
 
     /// <summary>
-    /// A class at a level with the stats that its gear adds.
+    /// What a character is capable of with the titles it has chosen for its abilities.
     /// </summary>
-    public CombatStats GetPerson(Hero hero, byte level, in StatBonuses gear)
+    public CombatStats GetPerson(Hero hero, byte level, in TitleComponent title)
     {
-        if (gear == default)
+        if (titles is null || (title.AbilityPrimary <= 0 && title.AbilitySecondary <= 0))
         {
             return GetPerson(hero, level);
         }
 
-        var character = characters.FirstOrDefault(e => e.Id == (short)((int)hero * HeroRowStep));
+        var key = (hero, level, title.AbilityPrimary, title.AbilitySecondary);
 
-        return Statuses.TryGetValue((short)character.Character_Status, out var status)
-            ? CombatStatCalculator.Calculate(status, level, character.Character_Status_Type, gear)
-            : new CombatStats { Level = level };
+        if (Titled.TryGetValue(key, out var result))
+        {
+            return result;
+        }
+
+        StatEffect[] effects =
+        [
+            .. Effects(titles, title.AbilityPrimary, hero),
+            .. Effects(titles, title.AbilitySecondary, hero)
+        ];
+
+        result = StatEffects.Apply(GetPerson(hero, level), effects);
+
+        Titled.Add(key, result);
+
+        return result;
     }
 
     /// <summary>
-    /// The stats of a player as they are now: the level it has reached and what it wears.
+    /// What a character is capable of at a level, with the stats its gear adds and the titles it has chosen for its
+    /// abilities.
+    /// </summary>
+    public CombatStats GetPerson(Hero hero, byte level, in StatBonuses gear, in TitleComponent title)
+    {
+        if (gear == default)
+        {
+            return GetPerson(hero, level, title);
+        }
+
+        var character = characters.FirstOrDefault(e => e.Id == (short)((int)hero * HeroRowStep));
+
+        var stats = Statuses.TryGetValue((short)character.Character_Status, out var status)
+            ? CombatStatCalculator.Calculate(status, level, character.Character_Status_Type, gear)
+            : new CombatStats { Level = level };
+
+        if (titles is null || (title.AbilityPrimary <= 0 && title.AbilitySecondary <= 0))
+        {
+            return stats;
+        }
+
+        StatEffect[] effects =
+        [
+            .. Effects(titles, title.AbilityPrimary, hero),
+            .. Effects(titles, title.AbilitySecondary, hero)
+        ];
+
+        return StatEffects.Apply(stats, effects);
+    }
+
+    /// <summary>
+    /// The stats of a player as they are now: the level it has reached, what it wears and the titles it has chosen.
     /// </summary>
     public CombatStats GetPlayer(World world, Entity player)
     {
         var hero = world.Get<PersonInfoComponent>(player).Hero;
-        var level = world.Get<RankComponent>(player).Level;
+        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : PersonModuleDefines.DefaultLevel;
+        var title = world.TryGet<TitleComponent>(player, out var chosen) ? chosen : default;
 
-        var gear = items is null || !world.Has<InventoryComponent>(player)
+        var gear = items is null || !world.Has<InventoryComponent>(player) || world.Get<InventoryComponent>(player).Value is not { } inventory
             ? default
-            : EquipmentStats.Calculate(world.Get<InventoryComponent>(player).Value, items, hero);
+            : EquipmentStats.Calculate(inventory, items, hero);
 
-        return GetPerson(hero, level, gear);
+        return GetPerson(hero, level, gear, title);
     }
 
     public SkillDamage GetSkill(int identifier)
@@ -146,6 +195,13 @@ public sealed class CombatTables(
     public bool HoldsSector(int identifier)
     {
         return Monsters.TryGetValue(identifier, out var row) && HoldsSector(row);
+    }
+
+    private static StatEffect[] Effects(TitleCatalog catalog, int title, Hero hero)
+    {
+        return title > 0 && catalog.TryGet(title, out var definition) && definition.CanBeUsedBy(hero)
+            ? definition.Effects
+            : [];
     }
 
     private MonsterCombatComponent Create(in MonsterRow row)

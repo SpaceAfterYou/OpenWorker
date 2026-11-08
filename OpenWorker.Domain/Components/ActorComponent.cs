@@ -29,11 +29,6 @@ public readonly struct ActorComponent
         Identifier = identifier;
         Type = type;
     }
-    //
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static bool operator==(ActorComponent left, ActorValue right) => left.Identifier == right.Identifier && left.Type == right.Type;
-    //
-    // public static bool operator !=(ActorComponent left, ActorValue right) => !(left == right);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator ActorComponent(int value) => new(value);

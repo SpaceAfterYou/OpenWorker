@@ -50,7 +50,7 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
 
         return new ItemInstance
         {
-            Serial = serials.Next(),
+            Serial = serials.NextSerial(),
             Item = item,
             Count = (short)count,
             BindType = (ItemBindType)row.Field8,
@@ -543,7 +543,7 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
         var step = catalog.Extension(group, (storage?.Grade ?? 0) + 1);
 
         if (inventory is null || storage is null || step is not { } info ||
-            world.Get<RankComponent>(player).Level < info.NeedLevel)
+            world.Get<LevelComponent>(player).Level < info.NeedLevel)
         {
             Refuse(player, ItemOpcode.AddSlot);
             return;
@@ -667,7 +667,7 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
 
         var (level, hero) = catalog.Limits(item.Item);
 
-        return world.Get<RankComponent>(player).Level >= level &&
+        return world.Get<LevelComponent>(player).Level >= level &&
                (hero == 0 || hero == (byte)world.Get<PersonInfoComponent>(player).Hero);
     }
 

@@ -77,7 +77,7 @@ public static class PersonSnapshotMapper
             actor,
             infoValue,
             account,
-            world.Get<RankComponent>(personEntity).Level,
+            world.Get<LevelComponent>(personEntity).Level,
             FactionGroup.None,
             StuffLevel.GameMaster,
             0,

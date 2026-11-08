@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to the same branch or pull request replaces the run that is still going.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      # Redis.OM builds its indexes with RediSearch, so the plain redis image is not enough.
+      # The same image as compose.yaml, with the server only (no RedisInsight).
+      redis:
+        image: redis/redis-stack-server:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+      postgres:
+        image: postgres:alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      # Cheap, so it goes before the build.
+      - name: Forbidden patterns
+        run: bash eng/check-forbidden.sh
+
+      - name: Restore
+        run: dotnet restore OpenWorker.slnx
+
+      - name: Build
+        run: dotnet build OpenWorker.slnx -c Release --no-restore
+
+      # The server migrates the database when it starts and EF Core refuses to when the model has changes
+      # with no migration: catch that here, then apply the whole chain to an empty database.
+      - name: Restore dotnet-ef
+        run: dotnet tool restore
+
+      - name: Migrations match the model
+        run: >-
+          dotnet ef migrations has-pending-model-changes
+          --project OpenWorker.Persistence --configuration Release --no-build
+
+      - name: Migrations apply to an empty database
+        env:
+          ConnectionStrings__Postgres: Host=localhost;Port=5432;Database=openworker;Username=postgres;Password=postgres
+        run: >-
+          dotnet ef database update
+          --project OpenWorker.Persistence --configuration Release --no-build
+
+      # No test reads a Postgres setting: they run the stores on the EF Core in-memory provider. The tests that
+      # need Redis skip themselves when OPENWORKER_TEST_REDIS is not set, so it is set here and the check below
+      # fails the run if any of them is skipped.
+      # The tests that read the tables of the client (OPENWORKER_TEST_RES, _AI, _ACTION) and those only the server has
+      # (OPENWORKER_TEST_SERVER_RES) stay skipped: the files are not in the repository.
+      - name: Test
+        id: test
+        env:
+          OPENWORKER_TEST_REDIS: redis://localhost:6379
+        run: >-
+          dotnet test --solution OpenWorker.slnx -c Release --no-build
+          --report-trx --results-directory TestResults
+
+      - name: Upload test results
+        if: ${{ !cancelled() && steps.test.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/*.trx
+          if-no-files-found: warn
+
+      # Fails on a failed test, on a run with no results, and on a skip for any reason but the tables.
+      # Prints the skipped tests per reason, and writes the same to the job summary.
+      - name: Check test results
+        if: ${{ !cancelled() && steps.test.outcome != 'skipped' }}
+        run: python3 eng/check-trx.py --allow-skip 'OPENWORKER_TEST_(RES|AI|ACTION|SERVER_RES) is not set' TestResults

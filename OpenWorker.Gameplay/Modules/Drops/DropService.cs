@@ -8,6 +8,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Drops;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -24,13 +25,13 @@ public sealed class PlayerDrops
     public Dictionary<long, DropObject> Objects { get; } = [];
 }
 
-public sealed record DropObject(long Serial, int Group, int Object, int Count, int Bonus, Vector3 Position, long ExpiresAt);
+public sealed record DropObject(long Serial, int Group, int ObjectId, int Count, int Bonus, Vector3 Position, long ExpiresAt);
 
 /// <summary>
 /// Lets monsters drop things and lets players take them. Money and items are objects of their own on the ground,
 /// the ids of money are not items.
 /// </summary>
-public sealed class DropService(
+public sealed partial class DropService(
     World world,
     InventoryService inventory,
     ItemCatalog catalog,
@@ -79,7 +80,7 @@ public sealed class DropService(
 
         random ??= Random.Shared;
 
-        var level = world.Get<RankComponent>(player).Level;
+        var level = world.Get<LevelComponent>(player).Level;
         var rate = (drop.RateClear != 0 ? 1f : _rates.TryGetValue(Math.Max(0, level - row.Level), out var found) ? found : 1f) * _rate;
 
         var things = Roll(drop, rate, random);
@@ -189,7 +190,7 @@ public sealed class DropService(
         foreach (var (thing, count) in things)
         {
             var spot = position + new Vector3(Random.Shared.Next(-60, 61), Random.Shared.Next(-60, 61), 0);
-            var drop = new DropObject(serials.Next(), group, thing, count, 0, spot, expires);
+            var drop = new DropObject(serials.NextSerial(), group, thing, count, 0, spot, expires);
 
             field.Objects[drop.Serial] = drop;
             values.Add(new DropObjectValue(spot, thing, (short)Math.Min(count, short.MaxValue), 0, drop.Serial));
@@ -221,13 +222,13 @@ public sealed class DropService(
             return false;
         }
 
-        var taken = drop.Object switch
+        var taken = drop.ObjectId switch
         {
             GoldObject => inventory.TryAddCurrency(player, ShopCurrency.Gold, drop.Count + drop.Bonus, MoneyEarnFlow.PickUp),
             BattlePointObject => inventory.TryAddCurrency(player, ShopCurrency.Bp, drop.Count),
             EtherObject => inventory.TryAddCurrency(player, ShopCurrency.Ether, drop.Count),
             SoulObject => true,
-            _ => inventory.TryGive(player, drop.Object, drop.Count)
+            _ => inventory.TryGive(player, drop.ObjectId, drop.Count)
         };
 
         if (!taken)
@@ -237,16 +238,16 @@ public sealed class DropService(
 
         field.Objects.Remove(serial);
 
-        if (drop.Object == GoldObject)
+        if (drop.ObjectId == GoldObject)
         {
             results?.AddGold(player, drop.Count + drop.Bonus);
         }
-        else if (drop.Object == EtherObject)
+        else if (drop.ObjectId == EtherObject)
         {
             results?.AddEther(player, drop.Count);
         }
 
-        if (drop.Object < GoldObject && missions is not null)
+        if (drop.ObjectId < GoldObject && missions is not null)
         {
             _ = ReportItemAsync(player, drop);
         }
@@ -264,11 +265,14 @@ public sealed class DropService(
     {
         try
         {
-            await missions!.OnItemCollectedAsync(player, drop.Object, (short)Math.Min(drop.Count, short.MaxValue), CancellationToken.None);
+            await missions!.OnItemCollectedAsync(player, drop.ObjectId, (short)Math.Min(drop.Count, short.MaxValue), CancellationToken.None);
         }
         catch (Exception exception)
         {
-            logger?.LogError(exception, "Counting the item {Item} for the missions failed", drop.Object);
+            if (logger is not null)
+            {
+                LogMissionItemFailed(logger, exception, drop.ObjectId);
+            }
         }
     }
 
@@ -318,4 +322,7 @@ public sealed class DropService(
 
         return field;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Counting the item {Item} for the missions failed")]
+    private static partial void LogMissionItemFailed(ILogger logger, Exception exception, int item);
 }

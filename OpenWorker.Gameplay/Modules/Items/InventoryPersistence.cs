@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -15,7 +16,7 @@ namespace OpenWorker.Gameplay.Modules.Items;
 /// <summary>
 /// Loads and saves the items, money, level and experience of the person a connection plays.
 /// </summary>
-public sealed class InventoryPersistence(
+public sealed partial class InventoryPersistence(
     World world,
     IDbContextFactory<PersistenceContext> factory,
     InventoryFactory inventories,
@@ -31,7 +32,7 @@ public sealed class InventoryPersistence(
         var inventory = rows.Count == 0 ? inventories.CreateNew(person) : inventories.Load(person, rows);
 
         world.Set(player, new InventoryComponent(inventory));
-        world.Set(player, new RankComponent(person.Level, person.Experience));
+        world.Set(player, new LevelComponent(person.Level, person.Experience));
 
         var wallet = world.Get<CurrencyComponent>(player);
 
@@ -65,7 +66,7 @@ public sealed class InventoryPersistence(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Saving the items of person {Person} failed", inventory.Person);
+            LogSaveFailed(logger, exception, inventory.Person);
 
             if (changes is not null)
             {
@@ -92,7 +93,7 @@ public sealed class InventoryPersistence(
 
     private PersonStateChanges Snapshot(Entity player, Inventory inventory)
     {
-        var rank = world.Get<RankComponent>(player);
+        var rank = world.Get<LevelComponent>(player);
         var wallet = world.Get<CurrencyComponent>(player);
 
         var grades = new byte[(int)StorageGroup.AccountCashStorage + 1];
@@ -115,6 +116,9 @@ public sealed class InventoryPersistence(
             inventory.QuickSlotCards,
             inventory.QuickSlotItems);
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Saving the items of person {Person} failed")]
+    private static partial void LogSaveFailed(ILogger logger, Exception exception, int person);
 }
 
 /// <summary>
@@ -131,7 +135,7 @@ public sealed class InventorySaver(InventoryPersistence persistence) : ISessionC
 /// <summary>
 /// Saves changes of every player now and then, so that a crash of the server loses seconds and not a play session.
 /// </summary>
-public sealed class InventoryFlushService(WorldLoop loop, InventoryPersistence persistence, DatabaseItemSerials serials, ILogger<InventoryFlushService> logger) : BackgroundService
+public sealed partial class InventoryFlushService(WorldLoop loop, InventoryPersistence persistence, DatabaseItemSerials serials, ILogger<InventoryFlushService> logger) : BackgroundService
 {
     private static TimeSpan Period { get; } = TimeSpan.FromSeconds(5);
 
@@ -143,7 +147,7 @@ public sealed class InventoryFlushService(WorldLoop loop, InventoryPersistence p
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Item serials could not be reserved yet");
+            LogSerialsNotReserved(logger, exception);
         }
 
         using var timer = new PeriodicTimer(Period);
@@ -156,8 +160,14 @@ public sealed class InventoryFlushService(WorldLoop loop, InventoryPersistence p
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, "Saving items failed");
+                LogFlushFailed(logger, exception);
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Item serials could not be reserved yet")]
+    private static partial void LogSerialsNotReserved(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Saving items failed")]
+    private static partial void LogFlushFailed(ILogger logger, Exception exception);
 }

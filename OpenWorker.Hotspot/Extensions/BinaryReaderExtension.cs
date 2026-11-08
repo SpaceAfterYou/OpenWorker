@@ -12,12 +12,6 @@ namespace OpenWorker.Hotspot.Extensions;
 
 public static class BinaryReaderExtension
 {
-    // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // public static ChatNotifyType ReadChatNotifyType(this BinaryReader reader)
-    // {
-    //     return (ChatNotifyType)reader.ReadByte();
-    // }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3 ReadVector3(this BinaryReader reader)
     {
@@ -51,62 +45,10 @@ public static class BinaryReaderExtension
 
     #region Enums
 
-    //
-    // public static BoosterDecreaseTime ReadBoosterDecreaseTime(this BinaryReader reader)
-    // {
-    //     return (BoosterDecreaseTime)reader.ReadByte();
-    // }
-    //
-    // public static Character ReadClass(this BinaryReader reader)
-    // {
-    //     return (Character)reader.ReadByte();
-    // }
-    //
-    //
-    // public static LogOutType ReadLogoutWayType(this BinaryReader reader)
-    // {
-    //     return (LogOutType)reader.ReadByte();
-    // }
-    //
-    // public static StorageType ReadStorageType(this BinaryReader reader)
-    // {
-    //     return (StorageType)reader.ReadByte();
-    // }
-    //
-    // public static Advancement ReadClassAdvancement(this BinaryReader reader)
-    // {
-    //     return (Advancement)reader.ReadByte();
-    // }
-    //
-    // public static Permisson ReadPermission(this BinaryReader reader)
-    // {
-    //     return (Permisson)reader.ReadByte();
-    // }
-    //
-    // public static GroupRole ReadGroupRoleType(this BinaryReader reader)
-    // {
-    //     return (GroupRole)reader.ReadByte();
-    // }
-
     public static EnterGateFrom ReadEnterGateFrom(this BinaryReader reader)
     {
         return (EnterGateFrom)reader.ReadByte();
     }
-    //
-    // public static ItemClassifySlotType ReadItemClassifySlotType(this BinaryReader reader)
-    // {
-    //     return (ItemClassifySlotType)reader.ReadByte();
-    // }
-    //
-    // public static ItemClassifyInventoryType ReadItemClassifyInventoryType(this BinaryReader reader)
-    // {
-    //     return (ItemClassifyInventoryType)reader.ReadByte();
-    // }
-    //
-    // public static AuthType ReadAuthType(this BinaryReader reader)
-    // {
-    //     return (AuthType)reader.ReadByte();
-    // }
 
     #endregion Enums
 }

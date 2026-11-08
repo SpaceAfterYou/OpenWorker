@@ -17,7 +17,7 @@ public readonly struct PartyCancelResponse(BinaryReader reader) : IResponseHotsp
 
     public ActorValue ReqActor { get; init; } = new(reader);
     public ActorValue RejActor { get; init; } = new(reader);
-    public string RejName { get; init; }
+    public required string RejName { get; init; }
     public int ErrorCode { get; init; }
 
     public void Write(BinaryWriter writer)

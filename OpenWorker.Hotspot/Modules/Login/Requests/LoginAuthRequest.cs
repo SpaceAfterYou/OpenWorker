@@ -8,7 +8,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Login.Requests;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct LoginAuthRequest() : IRequestHotspotMessage
+public readonly struct LoginAuthRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Login;
     private const LoginOpcode Command = LoginOpcode.Req;

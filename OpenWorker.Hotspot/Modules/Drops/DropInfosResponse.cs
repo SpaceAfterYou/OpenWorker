@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Drops;
 /// <summary>
 /// One thing lying on the ground: an item or money, by the id of the object, and where.
 /// </summary>
-public readonly record struct DropObjectValue(Vector3 Position, int Object, short Count, short Bonus, long Serial);
+public readonly record struct DropObjectValue(Vector3 Position, int ObjectId, short Count, short Bonus, long Serial);
 
 /// <summary>
 /// Things that fell from a monster. The group is told again when they are taken away all at once.
@@ -43,7 +43,7 @@ public readonly struct DropInfosResponse : IResponseHotspotMessage
             writer.Write(value.Position.X);
             writer.Write(value.Position.Y);
             writer.Write(value.Position.Z);
-            writer.Write(value.Object);
+            writer.Write(value.ObjectId);
             writer.Write(value.Count);
             writer.Write(value.Bonus);
             writer.Write(value.Serial);

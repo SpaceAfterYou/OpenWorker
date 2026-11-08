@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct PartyChangeMasterResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly struct PartyChangeMasterResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.ChangeMaster;
