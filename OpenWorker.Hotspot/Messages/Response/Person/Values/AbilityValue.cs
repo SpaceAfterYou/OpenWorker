@@ -1,8 +1,10 @@
 ﻿using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
-public readonly struct AbilityValue
+[WireMessage(WireMethods.Write)]
+public readonly partial struct AbilityValue
 {
     public AbilityValueEntry Health { get; init; }
     public AbilityValueEntry SoulGain { get; init; }

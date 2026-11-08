@@ -122,6 +122,14 @@ public ref struct PacketReader
     }
 
     /// <summary>
+    /// Seconds since 1970 as a 64-bit number, the layout <see cref="PacketWriter.WriteDateTimeOffset"/> writes.
+    /// </summary>
+    public DateTimeOffset ReadDateTimeOffset()
+    {
+        return new DateTimeOffset(ReadDateTime());
+    }
+
+    /// <summary>
     /// A 32-bit count of seconds.
     /// </summary>
     public TimeSpan ReadTimeInSeconds32()

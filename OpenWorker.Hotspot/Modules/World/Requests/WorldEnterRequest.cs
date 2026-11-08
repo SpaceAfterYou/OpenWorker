@@ -6,25 +6,27 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct WorldEnterRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct WorldEnterRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.EnterReq;
 
     public MessageOpcode Opcode => new(Group, Command);
 
-    public int Account { get; } = reader.ReadInt32();
-    public ActorValue Actor { get; } = new(reader);
-    public int Party { get; } = reader.ReadInt32();
-    public short Location { get; } = reader.ReadInt16();
-    public short Channel { get; } = reader.ReadInt16();
-    public int Jump { get; } = reader.ReadInt32();
-    public int Portal { get; } = reader.ReadInt32();
-    public MapValue Map { get; } = new(reader);
-    public short DistrictWorld { get; } = reader.ReadInt16();
-    public ChangeServerType ChangeType { get; } = reader.ReadChangeServerType();
+    public int Account { get; }
+    public ActorValue Actor { get; }
+    public int Party { get; }
+    public short Location { get; }
+    public short Channel { get; }
+    public int Jump { get; }
+    public int Portal { get; }
+    public MapValue Map { get; }
+    public short DistrictWorld { get; }
+    public ChangeServerType ChangeType { get; }
 }

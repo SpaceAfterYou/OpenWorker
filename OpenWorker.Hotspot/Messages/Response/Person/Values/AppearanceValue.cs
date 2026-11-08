@@ -1,9 +1,10 @@
 using System.Runtime.InteropServices;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 [StructLayout(LayoutKind.Explicit, Size = sizeof(long))]
-public readonly struct AppearanceValue
+public readonly struct AppearanceValue : IWireWritable
 {
     [field: FieldOffset(0)]
     public ulong Value { get; init; }
@@ -31,5 +32,13 @@ public readonly struct AppearanceValue
     public AppearanceValue(BinaryReader reader)
     {
         Value = reader.ReadUInt64();
+    }
+
+    /// <summary>
+    /// The four shorts as one 64-bit value.
+    /// </summary>
+    public void Write(ref PacketWriter writer)
+    {
+        writer.WriteUInt64(Value);
     }
 }

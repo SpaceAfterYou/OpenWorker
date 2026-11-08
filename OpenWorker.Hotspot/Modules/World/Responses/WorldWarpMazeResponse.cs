@@ -4,11 +4,13 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.World.Extensions;
 using OpenWorker.Hotspot.Modules.World.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct WorldWarpMazeResponse : IResponseHotspotMessage
+public readonly partial struct WorldWarpMazeResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -34,15 +36,4 @@ public readonly struct WorldWarpMazeResponse : IResponseHotspotMessage
     public int Sector { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(BoxIndex);
-        writer.Write(Warp);
-        writer.Write(Sector);
-    }
-
-#endregion Interface: IWritableData
 }

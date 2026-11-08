@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct WorldGateEnableResponse : IResponseHotspotMessage
+public readonly partial struct WorldGateEnableResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.GateEnableRes;
@@ -25,12 +27,4 @@ public readonly struct WorldGateEnableResponse : IResponseHotspotMessage
     /// The sector behind the gate, or zero.
     /// </summary>
     public int NextSector { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Gate);
-        writer.Write(Open);
-        writer.Write(IsMazeComplete);
-        writer.Write(NextSector);
-    }
 }

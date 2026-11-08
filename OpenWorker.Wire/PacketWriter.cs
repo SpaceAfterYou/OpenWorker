@@ -229,6 +229,22 @@ public ref struct PacketWriter
     }
 
     /// <summary>
+    /// Seconds since 1970 as a 64-bit number.
+    /// </summary>
+    public void WriteDateTimeOffset(DateTimeOffset value)
+    {
+        WriteInt64(value.ToUnixTimeSeconds());
+    }
+
+    /// <summary>
+    /// Whole seconds as a 32-bit number, the fraction dropped.
+    /// </summary>
+    public void WriteTimeInSeconds32(TimeSpan value)
+    {
+        WriteInt32((int)value.TotalSeconds);
+    }
+
+    /// <summary>
     /// The bytes as they are, no length.
     /// </summary>
     public void WriteBytes(scoped ReadOnlySpan<byte> value)

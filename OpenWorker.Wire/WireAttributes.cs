@@ -101,7 +101,8 @@ public enum WireStringFormat
 /// code that still reads or writes through them. The fields are the public instance auto-properties, in the order they are
 /// declared, which is the order on the wire; a computed property (<c>Opcode =&gt; ...</c>) is not a field.<br/>
 /// The type of a field says how it goes: the primitives, <see langword="bool"/> (one byte), an enum by its underlying type,
-/// <c>Vector3</c> (three floats), <see cref="DateTime"/> (64-bit seconds), a value that implements
+/// <c>Vector3</c> (three floats), <see cref="DateTime"/> and <see cref="DateTimeOffset"/> (64-bit seconds since 1970),
+/// <see cref="TimeSpan"/> (32-bit whole seconds), a value that implements
 /// <see cref="IWireReadable{TSelf}"/> and <see cref="IWireWritable"/> or carries this attribute itself. A
 /// <see langword="string"/> needs <see cref="WireStringAttribute"/>, a list <see cref="WireArrayAttribute"/>, and
 /// <see cref="WireAsAttribute"/> gives a field another width on the wire. A message whose layout depends on its values

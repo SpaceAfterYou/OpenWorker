@@ -1,9 +1,10 @@
 using System.Runtime.InteropServices;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
 [StructLayout(LayoutKind.Explicit, Size = sizeof(int))]
-public readonly struct PersonLeagueCardValueEntry
+public readonly struct PersonLeagueCardValueEntry : IWireWritable
 {
     [field: FieldOffset(0)]
     public int Value { get; }
@@ -23,5 +24,13 @@ public readonly struct PersonLeagueCardValueEntry
     public PersonLeagueCardValueEntry(BinaryReader reader)
     {
         Value = reader.ReadInt32();
+    }
+
+    /// <summary>
+    /// The logo and the border as one 32-bit value.
+    /// </summary>
+    public void Write(ref PacketWriter writer)
+    {
+        writer.WriteInt32(Value);
     }
 }

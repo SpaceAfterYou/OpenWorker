@@ -1,8 +1,10 @@
 ﻿using System.Numerics;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person;
 
-public readonly struct WorldValue
+[WireMessage(WireMethods.Write)]
+public readonly partial struct WorldValue
 {
     public short Location { get; init; }
     public MapValue Map { get; init; }

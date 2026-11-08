@@ -1,9 +1,11 @@
 using System.Numerics;
 using OpenWorker.Domain.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Types;
 
-public readonly record struct WorldNpcListEntry(
+[WireMessage(WireMethods.Write)]
+public readonly partial record struct WorldNpcListEntry(
     ActorValue Actor,
     Vector3 Position,
     float Rotation,

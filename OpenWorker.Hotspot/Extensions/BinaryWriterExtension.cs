@@ -16,9 +16,14 @@ using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.SoulWorker.Network.DataTypes.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Extensions;
 
+/// <summary>
+/// The writers of the values of the messages that still write through <see cref="BinaryWriter"/>. A value that has a span
+/// format (<see cref="IWireWritable"/>) is written through it here too, so its layout is declared once.
+/// </summary>
 public static class BinaryWriterExtension
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -202,10 +207,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, WorldValue value)
     {
-        writer.Write(value.Location);
-        writer.WriteMapValue(value.Map);
-        writer.Write(value.Position);
-        writer.Write(value.Rotation);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -259,25 +261,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, PersonValue value)
     {
-        writer.WriteActor(value.Actor);
-        writer.Write(value.InfoValue);
-        writer.Write(value.Level);
-        writer.Write(value.Faction);
-        writer.Write(value.Account);
-        writer.Write(value.StuffLevel);
-        writer.Write(value.PvPKillCount);
-        writer.Write(value.PrimaryWeapon);
-        writer.Write(value.SecondaryWeapon);
-        writer.Write(value.EquipItems);
-        writer.Write(value.Title);
-        writer.Write(value.League);
-        writer.Write(value.Ability);
-        writer.Write(value.PrivateShop);
-        writer.Write(value.FatiguePoints);
-        writer.Write(value.Rank);
-        writer.Write(value.BattlePose);
-        writer.Write(value.Status);
-        writer.Write(value.StatusEffects);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -294,11 +278,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, PersonInfoValue value)
     {
-        writer.WriteUtf16UnicodeString(value.Name);
-        writer.Write(value.Hero);
-
-        writer.Write(value.AppearanceShape);
-        writer.Write(value.AppearanceLook);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -310,13 +290,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, AbilityValue value)
     {
-        writer.Write(value.Health);
-        writer.Write(value.SoulGain);
-        writer.Write(value.SoulVapor);
-        writer.Write(value.Stamina);
-        writer.Write(value.SuperArmor);
-
-        writer.Write(value.Speed);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -333,8 +307,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, EquipItemValueEntry value)
     {
-        writer.Write(value.Upgrade);
-        writer.Write(value.Id);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -346,25 +319,19 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, LeagueValue value)
     {
-        writer.Write(value.Id);
-        writer.WriteUtf16UnicodeString(value.Name);
-        writer.Write(value.Card);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, PrivateShopValue value)
     {
-        writer.Write(value.Type);
-        writer.WriteUtf16UnicodeString(value.Name);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, StatusEffectValueEntry value)
     {
-        writer.Write(value.Id);
-        writer.Write(value.Time);
-        writer.Write(value.Count);
-        writer.Write(value.Owner);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -388,8 +355,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, RankValue value)
     {
-        writer.Write(value.Level);
-        writer.Write(value.Experience);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

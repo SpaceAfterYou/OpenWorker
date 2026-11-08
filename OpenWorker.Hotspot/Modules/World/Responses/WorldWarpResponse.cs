@@ -7,11 +7,13 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.World.Enums;
 using OpenWorker.Hotspot.Modules.World.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct WorldWarpResponse : IResponseHotspotMessage
+public readonly partial struct WorldWarpResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -25,21 +27,9 @@ public readonly struct WorldWarpResponse : IResponseHotspotMessage
 #region Message: Body
 
     public ActorComponent Actor { get; init; }
+    public WorldWrapResult Result { get; init; }
     public Vector3 Position { get; init; }
     public float Rotation { get; init; }
-    public WorldWrapResult Result { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(Actor);
-        writer.Write(Result);
-        writer.Write(Position);
-        writer.Write(Rotation);
-    }
-
-#endregion Interface: IWritableData
 }

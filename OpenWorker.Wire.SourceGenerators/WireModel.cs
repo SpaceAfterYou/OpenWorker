@@ -300,6 +300,16 @@ internal sealed class WireModel
             return new PrimitiveCodec("DateTime", 8);
         }
 
+        if (display == "System.DateTimeOffset")
+        {
+            return new PrimitiveCodec("DateTimeOffset", 8);
+        }
+
+        if (display == "System.TimeSpan")
+        {
+            return new PrimitiveCodec("TimeInSeconds32", 4);
+        }
+
         if (type is INamedTypeSymbol { IsValueType: true } named)
         {
             var readable = IsReadable(named);

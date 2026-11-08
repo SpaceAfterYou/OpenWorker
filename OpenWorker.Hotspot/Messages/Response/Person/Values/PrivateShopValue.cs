@@ -1,10 +1,13 @@
 ﻿using OpenWorker.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
-public readonly struct PrivateShopValue
+[WireMessage(WireMethods.Write)]
+public readonly partial struct PrivateShopValue
 {
     public byte Type { get; }
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
 
     public PrivateShopValue(byte type, string name)

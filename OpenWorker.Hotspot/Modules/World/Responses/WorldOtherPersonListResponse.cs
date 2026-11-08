@@ -4,27 +4,19 @@ using OpenWorker.Hotspot.Dtos;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct WorldOtherPersonListResponse : IResponseHotspotMessage
+public readonly partial struct WorldOtherPersonListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.OtherInfosPc;
 
     public MessageOpcode Opcode => new(Group, Command);
 
+    [WireArray(WireLength.Signed16)]
     public required IReadOnlyList<PersonWorldPair> People { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write((short)People.Count);
-
-        foreach (var pair in People)
-        {
-            writer.Write(pair.Person);
-            writer.Write(pair.World);
-        }
-    }
 }
