@@ -34,10 +34,18 @@ public readonly record struct KeepAliveComponent
     /// <summary>
     /// The client answered, so every keep-alive sent so far is forgiven.
     /// </summary>
-    public KeepAliveComponent Answer(long now, long clientTickCount) => this with
+    public KeepAliveComponent Answer(long now, long clientTickCount) => Heard(now) with
+    {
+        ClientTickCount = clientTickCount
+    };
+
+    /// <summary>
+    /// The client sent something that only a client that is still there sends (a ping), but not a keep-alive: it counts
+    /// as an answer and forgives the missed keep-alives, and the tick count of its last keep-alive stays as it was.
+    /// </summary>
+    public KeepAliveComponent Heard(long now) => this with
     {
         AnsweredAt = now,
-        ClientTickCount = clientTickCount,
         PenaltyCount = 0
     };
 }

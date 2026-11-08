@@ -118,6 +118,18 @@ public sealed class KeepAliveTest
         }
 
         /// <summary>
+        /// The client sends a ping and the handler of the district takes it.
+        /// </summary>
+        public async Task PingAsync(long tickCount = ClientTickCount)
+        {
+            var stream = new MemoryStream(BitConverter.GetBytes(tickCount));
+
+            await Handler.OnHandleAsync(
+                new ServiceHandleContext(Player, CancellationToken.None),
+                new SystemPingRequest(new BinaryReader(stream)));
+        }
+
+        /// <summary>
         /// The next frame the client receives, as opcode and body.
         /// </summary>
         public (byte Group, byte Command, byte[] Body) ReadFrame()
@@ -240,6 +252,57 @@ public sealed class KeepAliveTest
         }
 
         Assert.IsFalse(fixture.IsClosedByServer());
+    }
+
+    [TestMethod]
+    public async Task AClientThatOnlyPingsIsNeverDisconnected()
+    {
+        using var fixture = new Fixture();
+
+        for (var period = 0; period < 30; period++)
+        {
+            fixture.Time.Advance(KeepAliveService.Frequency / 2);
+
+            await fixture.PingAsync();
+
+            // The server answers the ping with its own message; read it so that the socket does not fill up.
+            var (group, command, _) = fixture.ReadFrame();
+
+            Assert.AreEqual((byte)GroupOpcode.System, group);
+            Assert.AreEqual((byte)SystemOpcode.Ping, command);
+
+            fixture.Time.Advance(KeepAliveService.Frequency / 2);
+
+            fixture.Service.CheckPlayer(fixture.Player);
+        }
+
+        Assert.AreEqual(0, fixture.State.PenaltyCount);
+        Assert.IsFalse(fixture.IsClosedByServer());
+    }
+
+    [TestMethod]
+    public async Task APingForgivesTheMissedKeepAlivesButNotTheTickCountOfTheKeepAlive()
+    {
+        using var fixture = new Fixture();
+
+        await fixture.AnswerAsync(ClientTickCount);
+
+        for (var missed = 1; missed < KeepAliveService.MaxMissedAnswers; missed++)
+        {
+            fixture.CheckAfterOnePeriod();
+            fixture.ReadFrame();
+        }
+
+        Assert.AreEqual(KeepAliveService.MaxMissedAnswers - 1, fixture.State.PenaltyCount);
+
+        await fixture.PingAsync(tickCount: 42);
+        fixture.ReadFrame();
+
+        Assert.AreEqual(0, fixture.State.PenaltyCount);
+        Assert.AreEqual(fixture.Time.GetTimestamp(), fixture.State.AnsweredAt);
+
+        // The tick count that the keep-alive gives back is the one the client wrote in a keep-alive, not in a ping.
+        Assert.AreEqual(ClientTickCount, fixture.State.ClientTickCount);
     }
 
     [TestMethod]

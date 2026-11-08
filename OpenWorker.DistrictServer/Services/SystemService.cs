@@ -33,6 +33,12 @@ public sealed class SystemService(World world, TimeProvider time) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SystemPingRequest request)
     {
+        // A ping comes from the same client as a keep-alive, so it shows the client is still there as well.
+        if (world.TryGet(context.Player, out KeepAliveComponent keepAlive))
+        {
+            world.Set(context.Player, keepAlive.Heard(time.GetTimestamp()));
+        }
+
         var session = world.Get<ServerSessionComponent>(context.Player);
 
         session.Send(new SystemPingResponse { KeepAlive = request.TickCount });
