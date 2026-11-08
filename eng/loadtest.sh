@@ -42,7 +42,7 @@ if [[ -z "${SOULWORKER_DATAS:-}" ]]; then
 The district, gate and maze servers read the client tables from it and do not start without them."
 fi
 
-for folder in bin/Table World/Table Character/ActionData Scripts/Server; do
+for folder in bin/Table World/Table World/Navmesh Character/ActionData Scripts/Server; do
   [[ -d "$SOULWORKER_DATAS/$folder" ]] || fail "SOULWORKER_DATAS=$SOULWORKER_DATAS has no folder '$folder'. It must be the 'datas' folder of a client."
 done
 

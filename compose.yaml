@@ -285,6 +285,7 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
         
   openworker.districtserver-canduscity:
     <<: *openworker-server

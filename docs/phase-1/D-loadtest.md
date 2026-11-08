@@ -145,13 +145,14 @@ cleaner than an exemption for the whole project and keeps the rule for the rest 
 per second, 5 s warm-up, 60 s measured, 5 moves per second, a chat line per 20 s, a tenth of the bots in a maze.
 
 `eng/loadtest.sh [bot options]`: fails with a clear message if `SOULWORKER_DATAS` is not set or lacks `bin/Table`,
-`World/Table`, `Character/ActionData`, `Scripts/Server`; builds the bot; starts compose with the override; waits for the TCP
-ports of Postgres, Redis, auth, gate, the four districts and the maze (until the health checks of workstream B exist);
-checks that no container has exited; waits `LOADTEST_SETTLE` seconds for the channels to register; seeds the accounts
-(`--bots` of them); runs the bots with `--docker-stats` and `--output TestResults/loadtest/<timestamp>`.
-The override (`eng/loadtest/compose.loadtest.yaml`) builds Release, logs at Warning, switches the packet dumps off,
-sets twenty channels per district, and runs the relay once (it drops the Redis cache on every start) with a placeholder
-Discord token, because the relay creates the Redis indexes and will not start without a token.
+`World/Table`, `World/Navmesh`, `Character/ActionData`, `Scripts/Server`; builds the bot; starts compose with the
+override; waits for the TCP ports of Postgres, Redis, auth, gate, the four districts and the maze (until the health
+checks of workstream B exist); checks that no container has exited; waits `LOADTEST_SETTLE` seconds for the channels to
+register; seeds the accounts (`--bots` of them); runs the bots with `--docker-stats` and `--output
+TestResults/loadtest/<timestamp>`. The override (`eng/loadtest/compose.loadtest.yaml`) builds Release, logs at Warning,
+switches the packet dumps off, sets twenty channels per district, and runs the relay once (it drops the Redis cache on
+every start) with a placeholder Discord token, because the relay creates the Redis indexes and will not start without a
+token.
 
 The nightly run in CI is not added (GitHub runners have no client data). The normal CI builds the new projects with the
 rest of the solution and runs their tests.
