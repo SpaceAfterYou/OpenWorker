@@ -167,9 +167,9 @@ public sealed class RequestCodecTest
         var sent = new PersonCreateRequest(original);
 
         Assert.AreEqual(Hero.Stella, sent.Person.InfoValue.Hero);
-        Assert.AreEqual(Requests.Template.DumpOutfit, sent.Outfit, "The outfit is the one value the bot does not take from the dump.");
+        Assert.AreEqual(Requests.Template.Outfit, sent.Outfit, "The bot does not send the outfit of the dump.");
 
-        AssertSameAsDump(dump, Wire.Encode((ref FrameWriter w) => Requests.PersonCreate(ref w, sent.Person.InfoValue.Name, sent.Outfit)));
+        AssertSameAsDump(dump, Wire.Encode((ref FrameWriter w) => Requests.PersonCreate(ref w, sent.Person.InfoValue.Name)));
     }
 
     [TestMethod]

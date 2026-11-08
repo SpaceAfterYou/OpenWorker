@@ -26,13 +26,8 @@ internal static class Requests
     /// <summary>
     /// What the character creation of a real client sent, found in the packet dump of that request: the hero,
     /// the looks that the tables of the client offer for it, and the outfit. The creation checks them against
-    /// those tables, so values the bot made up would be turned away.
-    /// <para>
-    /// The outfit is the one exception. The dump has <see cref="DumpOutfit" /> (511, the first costume of Stella in
-    /// tb_Create_Cloth), but the gate server of phase 1 refuses it with CreateFailed: it reads the offered costumes
-    /// from the columns of tb_Character_Info one place too far on (521, 531, 541 and 50011, where the client has 511,
-    /// 521, 531 and 541). The bot sends the second costume, which both of them offer, so that it gets in.
-    /// </para>
+    /// those tables, so values the bot made up would be turned away. The outfit is 511, the first costume of Stella in
+    /// tb_Create_Cloth, the one the client picks when the player does not choose.
     /// </summary>
     public static class Template
     {
@@ -43,9 +38,7 @@ internal static class Requests
         public const short EyeColor = 5501;
         public const short SkinColor = 3501;
 
-        public const int Outfit = 521;
-
-        public const int DumpOutfit = 511;
+        public const int Outfit = 511;
     }
 
     public static void Login(ref FrameWriter writer, string username, string password, string macAddress)
@@ -90,14 +83,14 @@ internal static class Requests
     /// <summary>
     /// The request to create a character: the looks of a real client's creation, under the given name.
     /// </summary>
-    public static void PersonCreate(ref FrameWriter writer, string name, int outfit = Template.Outfit)
+    public static void PersonCreate(ref FrameWriter writer, string name)
     {
         // The value is written by the server's own writer, so a change of its layout reaches the bot with it.
         using var stream = new MemoryStream();
         using (var binary = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
         {
             binary.Write(TemplatePerson(name));
-            binary.Write(outfit);
+            binary.Write(Template.Outfit);
         }
 
         writer.Begin(Opcodes.PersonCreateRequest);
