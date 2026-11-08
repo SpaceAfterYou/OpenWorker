@@ -17,6 +17,7 @@ public sealed class PersonInteractions(IDbContextFactory<PersistenceContext> fac
             .ConfigureAwait(false);
 
         var account = await context.Accounts
+            .AsTracking()
             .Include(x => x.Persons)
             .FirstOrDefaultAsync(x => x.Discord == Context.User.Id)
             .ConfigureAwait(false);

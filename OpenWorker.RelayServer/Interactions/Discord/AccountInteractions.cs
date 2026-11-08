@@ -66,6 +66,7 @@ public sealed class AccountInteractions(IDbContextFactory<PersistenceContext> fa
             .ConfigureAwait(false);
 
         var account = await context.Accounts
+            .AsTracking()
             .FirstOrDefaultAsync(x => x.Discord == Context.User.Id)
             .ConfigureAwait(false);
 

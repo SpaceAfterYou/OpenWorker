@@ -46,11 +46,16 @@ services:
       timeout: 10s
       retries: 5
 
+  # Each server keeps a small pool (Maximum Pool Size in its ConnectionStrings__Postgres: 16 for a gate, a district or a
+  # maze, 8 for auth, 4 for the relay and the content loader), since one world loop cannot use more: with four districts
+  # that is at most 112 connections. The default of 100 was too few when hundreds of players left at once (REFACTORING.md
+  # 2.9.5); 200 leaves room for a second maze server, psql and pgAdmin.
   postgres:
     container_name: "OpenWorker-Postgres"
     image: postgres:alpine
     pull_policy: missing
     restart: on-failure
+    command: ["postgres", "-c", "max_connections=200"]
     environment:
       POSTGRES_HOST_AUTH_METHOD: "trust"
     ports:
