@@ -77,13 +77,8 @@ public sealed class LoginGameplay(
             return;
         }
 
-        await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken);
-
-        var account = await database.Accounts
-            .Include(e => e.Persons.Where(p => p.Gate.Id == Gate))
-            .ThenInclude(p => p.Items.Where(i => i.Storage <= (byte)StorageGroup.AbilityEquip))
-            .FirstOrDefaultAsync(e => e.Id == request.Account, context.CancellationToken);
+        var account = await factory
+            .LoadAccountAtGateAsync(request.Account, Gate, (byte)StorageGroup.AbilityEquip, context.CancellationToken);
 
         if (account is null)
         {

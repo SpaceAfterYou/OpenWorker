@@ -37,13 +37,10 @@ public sealed class LoginGameplay(
 
     public async ValueTask TryJoinAsync(ServiceHandleContext context, LoginAuthRequest message)
     {
-        await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken);
-
         var session = world.Get<ServerSessionComponent>(context.Player);
 
-        var account = await database.Accounts
-            .FirstOrDefaultAsync(e => e.Username == message.Username, context.CancellationToken);
+        var account = await factory
+            .FindAccountAsync(message.Username, context.CancellationToken);
 
         var password = message.Password;
 
