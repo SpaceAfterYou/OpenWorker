@@ -194,7 +194,14 @@ public sealed partial class PersonService(
         await state
             .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
 
-        var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger);
+        var (mesh, meshError) = await creatureServices.Meshes.GetAsync(mazeInfo.Batch);
+
+        if (mesh is null)
+        {
+            LogNoNavigationMesh(logger, mazeInfo.Batch, meshError);
+        }
+
+        var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
         var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeLogger);
 
         world.Add(context.Player, maze);
@@ -273,4 +280,7 @@ public sealed partial class PersonService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the maze table has no row for the location {Location}, and it is turned away")]
     private static partial void LogNoMazeInfo(ILogger logger, int account, int person, short location);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} has no navigation mesh, its monsters walk where they like: {Error}")]
+    private static partial void LogNoNavigationMesh(ILogger logger, string maze, string? error);
 }
