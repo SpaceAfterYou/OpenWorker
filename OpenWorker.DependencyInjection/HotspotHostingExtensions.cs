@@ -2,6 +2,7 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
@@ -29,11 +30,14 @@ public static class HotspotHostingExtensions
             .AddSingleton<WorldLoop>()
             .AddSingleton<ArchComponentProvider>()
             .AddHotspotHandlers()
+            .AddServerHealthChecks()
             .AddHostedInternalServices();
     }
 
     private static IServiceCollection AddHostedInternalServices(this IServiceCollection services)
     {
-        return services.AddHostedService<ServerService>();
+        return services
+            .AddSingleton<ServerState>()
+            .AddHostedService<ServerService>();
     }
 }

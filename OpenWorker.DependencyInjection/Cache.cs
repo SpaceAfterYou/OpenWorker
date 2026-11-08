@@ -3,6 +3,7 @@ using OpenWorker.Hotspot.Cache;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
+using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM;
 using Redis.OM.Contracts;
@@ -14,11 +15,13 @@ public static class Cache
 {
     /// <summary>
     /// The Redis of <c>ConnectionStrings:Redis</c>, the one the notifications between servers use as well.
+    /// The readiness of the server includes a <c>PING</c> to it.
     /// </summary>
     public static IServiceCollection AddCache(this IServiceCollection services)
     {
         return services
             .AddRedisOptions()
+            .AddRedisHealthCheck()
             .AddSingleton<IRedisConnectionProvider>(provider => new RedisConnectionProvider(
                 provider.GetRequiredService<IOptions<RedisOptions>>().Value.ConnectionString))
             .AddCacheCollection<MazeReserveCache>()

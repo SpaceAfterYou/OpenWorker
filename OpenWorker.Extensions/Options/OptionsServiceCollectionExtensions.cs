@@ -27,6 +27,18 @@ public static class OptionsServiceCollectionExtensions
     }
 
     /// <summary>
+    /// The port of the health endpoint and the time its checks may take: every server that serves one has it,
+    /// the relay included.
+    /// </summary>
+    public static IServiceCollection AddHealthOptions(this IServiceCollection services)
+    {
+        services.AddValidated<HealthOptions, HealthOptionsValidator>(HealthOptions.SectionName);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<HealthOptions>, HealthPortValidator>());
+
+        return services;
+    }
+
+    /// <summary>
     /// How many packets of a session may fail before the server closes the connection: what the handlers read.
     /// </summary>
     public static IServiceCollection AddHandlerErrorBudgetOptions(this IServiceCollection services)

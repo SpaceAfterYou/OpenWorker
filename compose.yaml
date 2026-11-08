@@ -1,4 +1,17 @@
-﻿services:
+﻿# What every OpenWorker server container shares: how compose tells that it can take players. The health endpoint
+# (Health__Port, 8080 inside the container) is not published: compose probes it from inside, and from the host
+# `docker compose exec <service> curl -s http://127.0.0.1:8080/readyz` shows which check fails.
+# /readyz is the probe: it fails while Redis or the database does not answer, and while the server drains for a stop,
+# so `docker compose ps` shows what a client would meet. The first minute is the migration and loading the tables.
+x-openworker-server: &openworker-server
+  healthcheck:
+    test: [ "CMD-SHELL", "curl --fail --silent --show-error --max-time 4 http://127.0.0.1:$${Health__Port:-8080}/readyz > /dev/null" ]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 60s
+
+services:
   redis:
     container_name: "OpenWorker-Redis"
     image: redis/redis-stack:latest
@@ -62,6 +75,7 @@
       - eva-01
 
   openworker.relayserver:
+    <<: *openworker-server
     container_name: "OpenWorker-RelayServer"
     build:
       args:
@@ -89,6 +103,7 @@
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
 
   openworker.authserver:
+    <<: *openworker-server
     container_name: "OpenWorker-AuthServer"
     build:
       args:
@@ -118,6 +133,7 @@
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
 
   openworker.gateserver:
+    <<: *openworker-server
     container_name: "OpenWorker-GateServer"
     build:
       args:
@@ -149,6 +165,7 @@
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
 
   openworker.districtserver-roccotown:
+    <<: *openworker-server
     container_name: "OpenWorker-DistrictServer-RoccoTown"
     build:
       args:
@@ -183,6 +200,7 @@
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.mazeserver:
+    <<: *openworker-server
     container_name: "OpenWorker-MazeServer"
     build:
       args:
@@ -215,6 +233,7 @@
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
         
   openworker.districtserver-canduscity:
+    <<: *openworker-server
     container_name: "OpenWorker-DistrictServer-CandusCity"
     build:
       args:
@@ -249,6 +268,7 @@
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-gracecity:
+    <<: *openworker-server
     container_name: "OpenWorker-DistrictServer-GraceCity"
     build:
       args:
@@ -283,6 +303,7 @@
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-ruinfortress:
+    <<: *openworker-server
     container_name: "OpenWorker-DistrictServer-RuinFortress"
     build:
       args:

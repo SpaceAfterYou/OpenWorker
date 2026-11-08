@@ -4,6 +4,7 @@ using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands;
 using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
+using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
@@ -20,6 +21,7 @@ using OpenWorker.Res.Extensions;
 
 await Host
     .CreateDefaultBuilder(args)
+    .UseHealthEndpoint()
     .ConfigureServices((context, services) =>
     {
         context.Configuration[ConfigurationUtils.InstanceIdentifierKey] = Guid.CreateVersion7().ToString();

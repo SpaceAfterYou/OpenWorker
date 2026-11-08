@@ -22,6 +22,7 @@ internal sealed partial class ServerService(
     IOptions<GameOptions> game,
     IOptions<HotspotOptions> hotspot,
     ArchComponentProvider components,
+    ServerState state,
     IEnumerable<ISessionCloseHandler> closeHandlers,
     ILogger<ServerService> logger
 ) :
@@ -55,6 +56,8 @@ internal sealed partial class ServerService(
     private async Task AcceptLoopAsync(CancellationToken cancellationToken)
     {
         Listener.Start();
+
+        state.MarkListening();
 
         logger.LogDebug("Server ready.");
 
@@ -92,6 +95,8 @@ internal sealed partial class ServerService(
         finally
         {
             logger.LogDebug("Server shutdown.");
+
+            state.MarkNotListening();
 
             Listener.Stop();
         }
