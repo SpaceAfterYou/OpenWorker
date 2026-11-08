@@ -202,6 +202,16 @@
 3. **Список игроков канала не влезает в один кадр.** При нескольких сотнях игроков в канале `World:ObjectReq`
    падает с `Memory stream is not expandable` в `WorldOtherPersonListResponse.Write`: `TrySend` пишет в буфер
    на один кадр. При канале в 65 не проявляется; относится к кадру фазы 2.
+4. **Maze читает `ServerContents` до миграции.** Синглтон в `HotspotHostingExtensions` читает таблицу при
+   построении контейнера, раньше `PersistenceBootstrapService` любого сервера. На свежей базе при одновременном
+   старте всех серверов maze умирает с `relation "ServerContents" does not exist`. В `compose.loadtest.yaml`
+   это обойдено через `depends_on` на здоровый relay; сам сервер должен читать таблицу после миграции
+   (принцип 9, фаза 4).
+5. **Соединений Postgres не хватает при массовом выходе.** Когда 450 ботов вышли одновременно, Postgres ответил
+   `53300: too many clients already`: `max_connections` по умолчанию 100, а пулы серверов стека compose держат
+   около 96 соединений в простое (гейт 34, maze 33, район 19, auth 5). Три обработчика закрытия упали,
+   29 уходов не записаны, то есть состояние этих персонажей могло потеряться. Это шаг 5 фазы 4
+   (`MaxPoolSize` под число петель) и write-behind.
 
 ## 3. Принципы для высоконагруженного сервера
 
@@ -364,8 +374,9 @@
 > - Шаг 6. Базовая линия записана в разделе 6.
 > - Шаг 7. Переключатели GC и JIT выписаны в `Directory.Build.props` со значениями по умолчанию; выбор Server
 >   GC с DATAS не сделан, нужен прогон с ботом по метрикам пауз GC и p99.
-> - Прогон нашёл три ошибки сервера (раздел 2.9): канал никогда не бывает полным (исправлено), гейт отвергает
->   костюм по умолчанию, список игроков канала не влезает в один кадр.
+> - Прогоны нашли пять ошибок сервера (раздел 2.9): канал никогда не бывает полным (исправлено), гейт отвергает
+>   костюм по умолчанию, список игроков канала не влезает в один кадр, maze читает `ServerContents` до
+>   миграции, при массовом выходе кончаются соединения Postgres.
 > - Открыто из A: `postgres.call.duration` без тега таблицы; `handler.duration` даёт около 200 серий
 >   на процесс; нет алертов и трейсов (план их не требовал).
 
@@ -667,3 +678,5 @@
 | `OpenWorker.Hotspot/Cache/ChannelUtils.cs` | `IComparable` против `short`: канал никогда не полон (2.9.1, исправлено) | 1 |
 | `OpenWorker.GateServer.Gameplay/PersonCreationCatalog.cs`, `OpenWorker.Res/Rows/CharacterInfoRow.cs` | колонки костюмов сдвинуты на одну, костюм 511 отвергается (2.9.2) | 6 |
 | `OpenWorker.Hotspot/Modules/World/Responses/WorldOtherPersonListResponse.cs` | список канала не влезает в один кадр `TrySend` (2.9.3) | 2 |
+| `OpenWorker.DependencyInjection/HotspotHostingExtensions.cs` | чтение `ServerContents` при построении контейнера, до миграции (2.9.4) | 4 |
+| `OpenWorker.DependencyInjection/Persistence.cs`, `compose.yaml` (postgres) | пулы на 96 соединений при `max_connections` 100, отказы при массовом выходе (2.9.5) | 4 |
