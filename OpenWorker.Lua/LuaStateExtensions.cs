@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lua;
 using OpenWorker.Domain.Types;
 using OpenWorker.Lua.Enums;
@@ -170,7 +171,7 @@ public static class LuaStateExtensions
         if (state.Environment[name].TryRead<LuaFunction>(out var callable))
         {
             await state
-                .CallAsync(callable, [new LuaValue(monster.ToString()), new LuaValue(box.ToString()), new LuaValue(maze)], cancellationToken);
+                .CallAsync(callable, [new LuaValue(monster.ToString(CultureInfo.InvariantCulture)), new LuaValue(box.ToString(CultureInfo.InvariantCulture)), new LuaValue(maze)], cancellationToken);
         }
     }
 

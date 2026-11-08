@@ -2,6 +2,7 @@ using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Numerics;
 using Arch.Core;
 using Lua;
@@ -97,7 +98,7 @@ public sealed partial class PersonService(
         }
 
         var mazeReserve = await mazeReserves
-            .FindByIdAsync(request.Actor.Identifier.ToString());
+            .FindByIdAsync(request.Actor.Identifier.ToString(CultureInfo.InvariantCulture));
 
         // Nobody asked to enter a maze with this person, or the reservation has expired.
         if (mazeReserve is null)
