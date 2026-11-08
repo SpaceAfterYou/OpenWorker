@@ -705,16 +705,24 @@ internal sealed class WireModel
             _ => 2
         };
 
+        // The helpers are named Utf8AsciiString, Utf8AsciiStringWithoutTerminator, ...: the word String before the
+        // suffix.
+        private string Method => format.EndsWith(Suffix, System.StringComparison.Ordinal)
+            ? format.Substring(0, format.Length - Suffix.Length) + "String" + Suffix
+            : format + "String";
+
+        private const string Suffix = "WithoutTerminator";
+
         public override string ReadExpression(WireModel model)
         {
             return format == "AsciiWithoutTerminator"
                 ? $"{Reader}.ReadAsciiStringWithoutTerminator({length.ToString(CultureInfo.InvariantCulture)})"
-                : $"{Reader}.Read{format}String()";
+                : $"{Reader}.Read{Method}()";
         }
 
         public override void Write(StringBuilder source, string indent, string value, WireModel model)
         {
-            source.Append(indent).AppendLine($"{Writer}.Write{format}String({value});");
+            source.Append(indent).AppendLine($"{Writer}.Write{Method}({value});");
         }
     }
 
