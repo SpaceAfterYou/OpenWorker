@@ -1,10 +1,8 @@
-﻿using System.Diagnostics;
-using Arch.Core;
+﻿using Arch.Core;
 using CommunityToolkit.HighPerformance;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
-using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Telemetry;
 
@@ -37,7 +35,6 @@ public sealed partial class HandlerExecutor(
         using var reader = new BinaryReader(stream);
 
         MessageOpcode? opcode = null;
-        Handler? handler = null;
 
         try
         {
@@ -50,8 +47,6 @@ public sealed partial class HandlerExecutor(
             {
                 throw new InvalidDataException($"The opcode {current} has no place in the handler table.");
             }
-
-            handler = found;
 
             // TODO: refactor handler's bc too complicated
             var instance = provider.GetService(found.Class) as IHotspotHandler
@@ -80,11 +75,6 @@ public sealed partial class HandlerExecutor(
         catch (Exception ex)
         {
             OnError(player, opcode, ex);
-        }
-
-        if (handler is { } resolved && opcode is { } read)
-        {
-            PrintSanity(resolved, read, reader, buffer);
         }
     }
 
@@ -181,31 +171,4 @@ public sealed partial class HandlerExecutor(
     [LoggerMessage(EventId = 4, Level = LogLevel.Debug,
         Message = "A packet {Opcode} failed after session {Entity} was gone, reason {Reason}.")]
     private static partial void LogErrorOfGoneSession(ILogger logger, Exception exception, int entity, OpcodeText opcode, string reason);
-
-    [Conditional("DEBUG")]
-    private void PrintSanity(Handler handler, MessageOpcode opcode, BinaryReader reader, ReadOnlyMemory<byte> buffer)
-    {
-        if (opcode is { Group: (byte)GroupOpcode.System, Command: (byte)SystemOpcode.KeepAlive or (byte)SystemOpcode.Ping })
-        {
-            return;
-        }
-
-        if (opcode.Group == (byte)GroupOpcode.Move)
-        {
-            return;
-        }
-
-        // if (handler.Class.Name == nameof(EmptyHandler) || reader.BaseStream.Position != buffer.Length)
-        // {
-            LogExecuted(new OpcodeText(opcode), handler.Class.Name, handler.Delegate.Method.Name);
-            LogPacketRead(reader.BaseStream.Position, buffer.Length);
-        // }
-    }
-
-    // PrintSanity is the debugging aid of a Debug build only, and is due to go in phase 1 of REFACTORING.md.
-    [LoggerMessage(Level = LogLevel.Debug, Message = "[ ExecuteAsync ] [{Source}] [{Class}.{Method}]")]
-    private partial void LogExecuted(OpcodeText source, string @class, string method);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Packet Read Length: {Position} / Total: {Length}")]
-    private partial void LogPacketRead(long position, int length);
 }
