@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Helpers.Requests;
 
 /// <summary>
 /// Whether helpers are called by themselves when a maze is entered.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
-public readonly struct HelperAutoSummonRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct HelperAutoSummonRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,9 +24,9 @@ public readonly struct HelperAutoSummonRequest(BinaryReader reader) : IRequestHo
 
 #region Message: Body
 
-    public int Person { get; } = reader.ReadInt32();
+    public int Person { get; }
 
-    public byte Flag { get; } = reader.ReadByte();
+    public byte Flag { get; }
 
 #endregion Message: Body
 }

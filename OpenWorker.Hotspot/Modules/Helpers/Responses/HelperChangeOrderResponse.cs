@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 
 /// <summary>
 /// Two helpers swapped their places.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
-public readonly struct HelperChangeOrderResponse : IResponseHotspotMessage
+public readonly partial struct HelperChangeOrderResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -36,18 +38,4 @@ public readonly struct HelperChangeOrderResponse : IResponseHotspotMessage
     public int Error { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Person);
-        writer.Write(First);
-        writer.Write(FirstOrder);
-        writer.Write(Second);
-        writer.Write(SecondOrder);
-        writer.Write(Error);
-    }
-
-#endregion Interface: IWritableData
 }
