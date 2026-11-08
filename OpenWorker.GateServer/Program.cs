@@ -34,7 +34,7 @@ await Host
         
         services.AddGateOptions();
         services.AddGateEndpointOptions();
-        services.AddHostedService<KeepAliveService>();
+        services.AddRegistrationService<KeepAliveService>();
 
         services.AddHotspot(context, EntityComponentService.Gate);
     })

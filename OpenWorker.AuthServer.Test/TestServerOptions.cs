@@ -279,6 +279,41 @@ public sealed class TestServerOptions
     }
 
     [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    public void ServerStopsInThirtySecondsOfWhichTheDrainTakesFifteenByDefault(string server)
+    {
+        using var host = CreateHost(server);
+
+        Validate(host);
+
+        var shutdown = host.Services.GetRequiredService<IOptions<ShutdownOptions>>().Value;
+
+        Assert.AreEqual(TimeSpan.FromSeconds(30), shutdown.Timeout);
+        Assert.AreEqual(TimeSpan.FromSeconds(15), shutdown.DrainTimeout);
+    }
+
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    public void DrainNeedsATimeAndHasToEndBeforeTheHostGivesUp(string server)
+    {
+        var none = Fails(server, new() { ["Shutdown:DrainTimeout"] = "00:00:00" });
+        StringAssert.Contains(none.Message, "Shutdown:DrainTimeout");
+
+        // The services that stop after the drain would get no time at all.
+        var same = Fails(server, new() { ["Shutdown:Timeout"] = "00:00:15" });
+        StringAssert.Contains(same.Message, "Shutdown:Timeout");
+
+        var backwards = Fails(server, new() { ["Shutdown:Timeout"] = "00:00:10", ["Shutdown:DrainTimeout"] = "00:00:20" });
+        StringAssert.Contains(backwards.Message, "Shutdown:Timeout");
+    }
+
+    [TestMethod]
     public void GameVersionIsNeverAPath()
     {
         // The version names the folder of the packet dumps.

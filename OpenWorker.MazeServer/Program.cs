@@ -70,7 +70,7 @@ await Host
         // services.AddSingleton<PersonRegistry>();
 
         services.AddHotspot(context, EntityComponentService.District);
-        services.AddHostedService<MazeRegistrationService>();
+        services.AddRegistrationService<MazeRegistrationService>();
 
         // services.AddHostedService<ServerBootstrapService>();
         // services.AddHostedService<KeepAliveService>();

@@ -33,7 +33,7 @@ public static class Cache
     {
         services.AddSingleton<SessionLeaseManager>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<SessionLeaseManager>());
-        services.AddHostedService<SessionLeaseRenewalService>();
+        services.AddRegistrationService<SessionLeaseRenewalService>();
 
         return services.AddCacheCollection<SessionCache>();
     }

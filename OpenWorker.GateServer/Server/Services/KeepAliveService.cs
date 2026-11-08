@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
+using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Modules.Channels.Enums;
@@ -11,6 +12,10 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.GateServer.Server.Services;
 
+/// <summary>
+/// Tells the login server that this gate runs, how busy it is and where clients reach it, every second. When the server
+/// drains the record is removed, and the login server stops sending players to a gate that is going away.
+/// </summary>
 public sealed partial class KeepAliveService(
     IRedisCollection<ChannelCache> channelCollection,
     IRedisCollection<GateCache> gateCollection,
@@ -18,7 +23,7 @@ public sealed partial class KeepAliveService(
     IOptions<GateEndpointOptions> endpoint,
     ILogger<KeepAliveService> logger
 ) :
-    BackgroundService
+    RegistrationService
 {
     private GateCache Instance { get; set; } = new()
     {
@@ -60,6 +65,23 @@ public sealed partial class KeepAliveService(
         }
     }
 
+    /// <summary>
+    /// Runs after the update loop has ended, so no update can write the record again.
+    /// </summary>
+    protected override async Task RemoveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await gateCollection
+                .DeleteAsync(Instance);
+        }
+
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogRemoveFailed(logger, e);
+        }
+    }
+
     private async Task UpdateAsync(CancellationToken cancellationToken)
     {
         var channels = await channelCollection
@@ -97,6 +119,9 @@ public sealed partial class KeepAliveService(
             _ => GateWorkload.Offline
         };
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to remove the gate record from Redis, the login server takes the gate for offline when the record is a minute old.")]
+    private static partial void LogRemoveFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to update the gate record.")]
     private static partial void LogUpdateFailed(ILogger logger, Exception exception);

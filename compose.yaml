@@ -1,8 +1,9 @@
-﻿# What every OpenWorker server container shares: how compose tells that it can take players. The health endpoint
-# (Health__Port, 8080 inside the container) is not published: compose probes it from inside, and from the host
-# `docker compose exec <service> curl -s http://127.0.0.1:8080/readyz` shows which check fails.
+﻿# What every OpenWorker server container shares: how compose tells that it can take players, and how long it is given
+# to stop. The health endpoint (Health__Port, 8080 inside the container) is not published: compose probes it from
+# inside, and from the host `docker compose exec <service> curl -s http://127.0.0.1:8080/readyz` shows which check fails.
 # /readyz is the probe: it fails while Redis or the database does not answer, and while the server drains for a stop,
 # so `docker compose ps` shows what a client would meet. The first minute is the migration and loading the tables.
+# stop_grace_period is longer than Shutdown__Timeout (30 s) so the server finishes its drain before docker kills it.
 x-openworker-server: &openworker-server
   healthcheck:
     test: [ "CMD-SHELL", "curl --fail --silent --show-error --max-time 4 http://127.0.0.1:$${Health__Port:-8080}/readyz > /dev/null" ]
@@ -10,6 +11,7 @@ x-openworker-server: &openworker-server
     timeout: 5s
     retries: 3
     start_period: 60s
+  stop_grace_period: 40s
 
 services:
   redis:
