@@ -18,6 +18,7 @@
     <ItemGroup>
         <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
         <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
+        <ProjectReference Include="..\OpenWorker.DistrictServer\OpenWorker.DistrictServer.csproj" />
     </ItemGroup>
 
 </Project>
