@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.DependencyInjection;
+using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.GateServer.Gameplay.Extensions;
@@ -12,6 +13,7 @@ using OpenWorker.Res.Extensions;
 
 await Host
     .CreateDefaultBuilder(args)
+    .UseHealthEndpoint()
     .ConfigureServices((context, services) =>
     {
         services.AddCache();
@@ -36,7 +38,7 @@ await Host
         services.AddGateOptions();
         services.AddGateEndpointOptions();
         services.AddPersonCreationOptions();
-        services.AddHostedService<KeepAliveService>();
+        services.AddRegistrationService<KeepAliveService>();
 
         services.AddHotspot(context, EntityComponentService.Gate);
     })

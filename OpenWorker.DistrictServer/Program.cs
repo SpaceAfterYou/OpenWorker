@@ -3,6 +3,7 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
+using OpenWorker.DependencyInjection.Health;
 using OpenWorker.DistrictServer.Gameplay.Extensions;
 using OpenWorker.DistrictServer.Server;
 using OpenWorker.DistrictServer.Server.Services;
@@ -16,6 +17,7 @@ using OpenWorker.Res.Extensions;
 
 await Host
     .CreateDefaultBuilder(args)
+    .UseHealthEndpoint()
     .ConfigureServices((context, services) =>
     {
         context.Configuration[ConfigurationUtils.InstanceIdentifierKey] = Guid.CreateVersion7().ToString();
@@ -50,7 +52,7 @@ await Host
 
         services.AddHotspot(context, EntityComponentService.District);
 
-        services.AddHostedService<ServerBootstrapService>();
+        services.AddRegistrationService<ServerBootstrapService>();
         services.AddHostedService<KeepAliveService>();
     })
     .Build()

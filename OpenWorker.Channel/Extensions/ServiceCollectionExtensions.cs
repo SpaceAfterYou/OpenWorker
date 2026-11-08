@@ -25,7 +25,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ServerChannels>();
 
         services.AddHostedService<ChannelBootstrapService>();
-        services.AddHostedService<ChannelLifecycleService>();
+        services.AddRegistrationService<ChannelLifecycleService>();
 
         return services.AddCommunity();
     }

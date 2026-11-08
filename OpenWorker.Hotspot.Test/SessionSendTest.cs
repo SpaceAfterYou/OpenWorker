@@ -137,6 +137,71 @@ public sealed class SessionSendTest
     }
 
     [TestMethod]
+    public async Task ClosedCompletesAfterTheQueueIsSentAndTheConnectionIsClosed()
+    {
+        var (server, client, listener) = Connect();
+
+        using (server)
+        using (client)
+        using (listener)
+        {
+            var session = new ServerSessionComponent(server);
+
+            for (var frame = 0; frame < 20; frame++)
+            {
+                session.Send(new Filler(2, 1000));
+            }
+
+            session.Disconnect();
+
+            client.ReceiveTimeout = 5000;
+
+            using var reader = new BinaryReader(client.GetStream());
+
+            // The connection closes after the last frame, and not before the client can have it.
+            for (var received = 0; received < 20; received++)
+            {
+                var header = new MessageHeader(reader);
+
+                Assert.HasCount(header.ContentLength, reader.ReadBytes(header.ContentLength));
+            }
+
+            await session.Closed.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.AreEqual(0, client.GetStream().Read(new byte[1]));
+        }
+    }
+
+    [TestMethod]
+    public async Task AbortClosesAConnectionWhoseClientDoesNotRead()
+    {
+        var (server, client, listener) = Connect();
+
+        using (server)
+        using (client)
+        using (listener)
+        {
+            var session = new ServerSessionComponent(server);
+
+            // Much more than the socket buffers hold, and nobody reads it.
+            for (var frame = 0; frame < 3000; frame++)
+            {
+                session.Send(new Filler(1, 4000));
+            }
+
+            session.Disconnect();
+
+            await Task.Delay(300);
+
+            Assert.IsFalse(session.Closed.IsCompleted, "The writer waits for the client to take what is queued.");
+
+            session.Abort();
+
+            await session.Closed.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    [TestMethod]
     public void TrySendToAClosedConnectionReportsFailure()
     {
         var (server, client, listener) = Connect();

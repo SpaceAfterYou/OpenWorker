@@ -14,16 +14,29 @@ namespace OpenWorker.Extensions;
 public static class OptionsServiceCollectionExtensions
 {
     /// <summary>
-    /// The port the server listens on, the game version, the packet dumps and the errors a session may cause:
-    /// what every server has.
+    /// The port the server listens on, the game version, the packet dumps, the errors a session may cause and the time
+    /// the server takes to stop: what every server has.
     /// </summary>
     public static IServiceCollection AddServerOptions(this IServiceCollection services)
     {
         services.AddValidated<ServerOptions, ServerOptionsValidator>(ServerOptions.SectionName);
         services.AddValidated<GameOptions, GameOptionsValidator>(GameOptions.SectionName);
+        services.AddValidated<ShutdownOptions, ShutdownOptionsValidator>(ShutdownOptions.SectionName);
         services.AddHandlerErrorBudgetOptions();
 
         return services.AddBound<HotspotOptions>(HotspotOptions.SectionName);
+    }
+
+    /// <summary>
+    /// The port of the health endpoint and the time its checks may take: every server that serves one has it,
+    /// the relay included.
+    /// </summary>
+    public static IServiceCollection AddHealthOptions(this IServiceCollection services)
+    {
+        services.AddValidated<HealthOptions, HealthOptionsValidator>(HealthOptions.SectionName);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<HealthOptions>, HealthPortValidator>());
+
+        return services;
     }
 
     /// <summary>

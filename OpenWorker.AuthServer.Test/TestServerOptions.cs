@@ -228,6 +228,95 @@ public sealed class TestServerOptions
     }
 
     [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    [DataRow(Relay)]
+    public void HealthEndpointListensOnItsOwnPortByDefault(string server)
+    {
+        using var host = CreateHost(server);
+
+        Validate(host);
+
+        var health = host.Services.GetRequiredService<IOptions<HealthOptions>>().Value;
+
+        Assert.AreEqual(8080, health.Port);
+        Assert.AreEqual(TimeSpan.FromSeconds(5), health.LoopTimeout);
+        Assert.AreEqual(TimeSpan.FromSeconds(3), health.CheckTimeout);
+    }
+
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    [DataRow(Relay)]
+    public void HealthEndpointNeedsAPortAndTimesThatHaveLength(string server)
+    {
+        var port = Fails(server, new() { ["Health:Port"] = "0" });
+        StringAssert.Contains(port.Message, "Health:Port");
+
+        var missing = Fails(server, new() { ["Health:Port"] = null });
+        StringAssert.Contains(missing.Message, "Health:Port");
+
+        var loop = Fails(server, new() { ["Health:LoopTimeout"] = "00:00:00" });
+        StringAssert.Contains(loop.Message, "Health:LoopTimeout");
+
+        var check = Fails(server, new() { ["Health:CheckTimeout"] = "-00:00:03" });
+        StringAssert.Contains(check.Message, "Health:CheckTimeout");
+    }
+
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    public void HealthEndpointCannotTakeThePortOfThePlayers(string server)
+    {
+        // Two listeners on one port: one of them would fail to start, and the failure would not name the setting.
+        var error = Fails(server, new() { ["Health:Port"] = "10000", ["Server:Port"] = "10000" });
+
+        StringAssert.Contains(error.Message, "Health:Port");
+        StringAssert.Contains(error.Message, "Server:Port");
+    }
+
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    public void ServerStopsInThirtySecondsOfWhichTheDrainTakesFifteenByDefault(string server)
+    {
+        using var host = CreateHost(server);
+
+        Validate(host);
+
+        var shutdown = host.Services.GetRequiredService<IOptions<ShutdownOptions>>().Value;
+
+        Assert.AreEqual(TimeSpan.FromSeconds(30), shutdown.Timeout);
+        Assert.AreEqual(TimeSpan.FromSeconds(15), shutdown.DrainTimeout);
+    }
+
+    [TestMethod]
+    [DataRow(Auth)]
+    [DataRow(Gate)]
+    [DataRow(District)]
+    [DataRow(Maze)]
+    public void DrainNeedsATimeAndHasToEndBeforeTheHostGivesUp(string server)
+    {
+        var none = Fails(server, new() { ["Shutdown:DrainTimeout"] = "00:00:00" });
+        StringAssert.Contains(none.Message, "Shutdown:DrainTimeout");
+
+        // The services that stop after the drain would get no time at all.
+        var same = Fails(server, new() { ["Shutdown:Timeout"] = "00:00:15" });
+        StringAssert.Contains(same.Message, "Shutdown:Timeout");
+
+        var backwards = Fails(server, new() { ["Shutdown:Timeout"] = "00:00:10", ["Shutdown:DrainTimeout"] = "00:00:20" });
+        StringAssert.Contains(backwards.Message, "Shutdown:Timeout");
+    }
+
+    [TestMethod]
     public void GameVersionIsNeverAPath()
     {
         // The version names the folder of the packet dumps.

@@ -37,9 +37,9 @@ Shared state between processes:
 
 - **Postgres** is the source of truth for everything that survives a logout.
 - **Redis** holds what is valid only while servers run: session leases, the servers of each gate
-  (`DistrictCache`, `MazeCache`, `ChannelCache`) and the reservations that carry a player from one
-  server to the next (`DistrictReserveCache`, `MazeReserveCache`). Records that describe a server
-  expire unless the server renews them.
+  (`GateCache`, `DistrictCache`, `MazeCache`, `ChannelCache`) and the reservations that carry a player from one
+  server to the next (`DistrictReserveCache`, `MazeReserveCache`). A server that stops in order takes its own
+  records back (see Stopping a server); a maze record also expires unless its server renews it, the others do not.
 - **Redis pub/sub** (`CommunityNetwork`) carries notifications between servers: friends, leagues,
   whispers. Delivery is at most once, so a message is a hint to refresh, never the only copy of a change.
 
@@ -95,6 +95,47 @@ flowchart TB
   of component types for the whole process and it is not thread safe: touch it from the world loop only,
   and keep tests that create entities out of parallel runs.
 
+### Health
+
+Auth, gate, district, maze and the relay serve two URLs over HTTP on `Health:Port` (8080 inside the
+container; `compose.yaml` does not publish it), a port apart from the one players use. Kestrel is the only part of
+ASP.NET Core in the process (`UseHealthEndpoint`, called first on the host builder of each `Program.cs`), so the
+images are `dotnet/aspnet` and the build and the tests need the ASP.NET Core runtime and targeting pack (the SDK
+installers carry them; distribution packages split them off).
+
+- `/healthz` is liveness: the world loop runs an empty callback within `Health:LoopTimeout`. A failure means restart.
+- `/readyz` is readiness: liveness, a Redis `PING` and a database `CanConnect` (each within `Health:CheckTimeout`), the
+  game listener is up, and the server is not draining. A failure means send no players; it does not mean restart.
+
+The checks run on the thread pool, never on the loop: the loop only sees the empty callback, and a stuck loop keeps
+one pending callback instead of collecting one per probe. The module that owns a dependency registers its check
+(`AddCache` Redis, `AddPersistence` Postgres, `AddHotspot` loop and listener), so the relay, which has no world loop,
+reports Redis and the database only. Compose probes `/readyz` with `curl`, which the image installs; the body names
+the check that fails.
+
+### Stopping a server
+
+`ServerShutdownService` is a lifecycle service: the host calls its `StoppingAsync` before it stops any
+service, so the order below does not depend on the order of registration. The signal to stop (SIGTERM) already turns
+readiness off, because `ServerState` listens to `ApplicationStopping`.
+
+1. `ServerService.StopAcceptingAsync` closes the listener; new connections are refused.
+2. Every `IServerRegistration` withdraws: the loop that renews a record ends, then the record goes (maze, district,
+   channels, gate; the lease renewal only stops). New players are no longer sent here. A service that keeps a record
+   derives from `RegistrationService` (registered with `AddRegistrationService`), which does this once, whether the
+   drain or the host asks first. The withdrawal runs next to step 3 and is awaited after it.
+3. `ServerService.CloseSessionsAsync` stops the read loops (a packet that is being handled is finished) and every
+   session closes through the normal path: the client gets a kick-out with the reason `GmToolServerShutdown`, the
+   `ISessionCloseHandler`s run on the world loop (they save what the player changed and release the lease), the
+   writer sends what is queued, and the connection closes. `shuttingDown` in `ServerService.SessionLoopAsync` and
+   `CloseSessionAsync` marks a close caused by the shutdown.
+4. The host stops the other services, the health endpoint among them; last the container disposes the world loop.
+   The loop runs through the whole drain, because the close handlers need it.
+
+`Shutdown:DrainTimeout` (15 s) bounds steps 1 to 3 as a whole and the wait for each writer: a client that does not
+read is cut off, and sessions that are left are logged. `Shutdown:Timeout` (30 s) is the time of the host
+(`HostOptions.ShutdownTimeout`) and must be longer; compose gives the container 40 s before it kills it.
+
 ## Rules for code on the world loop
 
 1. **No `ConfigureAwait(false)`.** The continuation must come back to the world loop.
@@ -133,9 +174,9 @@ flowchart TB
    comma reads `1.5` from a batch file otherwise.
 
 The build enforces part of this: `Directory.Build.props` turns on the analyzers (`latest-recommended`), the
-projects `Hotspot`, `Channel`, `Gameplay` and `Persistence` treat warnings as errors, and `eng/check-forbidden.sh`
-(run by CI) fails on `Task.Factory.StartNew` and `Console` in product code. Path-scoped exceptions, such as the
-names of client enums, live in `.editorconfig` with the reason next to them.
+projects `Hotspot`, `Channel`, `Gameplay`, `Persistence` and `Navigation` treat warnings as errors, and
+`eng/check-forbidden.sh` (run by CI) fails on `Task.Factory.StartNew` and `Console` in product code. Path-scoped
+exceptions, such as the names of client enums, live in `.editorconfig` with the reason next to them.
 
 ## Database
 
@@ -159,6 +200,10 @@ or wrong setting stops the server with a message that names the key. A setting w
   the notifications between servers (StackExchange.Redis, built by `RedisOptions.ToConfigurationOptions`).
 - `Hotspot:ErrorBudget:MaxErrors` and `Hotspot:ErrorBudget:Window` (`00:01:00` is a minute) say how many packets of one
   session may fail to parse or to handle before the server closes its connection; `HandlerErrorBudget` reads them.
+- `Health:Port`, `Health:LoopTimeout` and `Health:CheckTimeout` (`00:00:05` is five seconds) say where the health endpoint
+  listens and how long its checks wait; `Health:Port` must differ from `Server:Port`.
+- `Shutdown:Timeout` and `Shutdown:DrainTimeout` say how long the host and the drain of a stopping server may take;
+  the timeout must be the longer.
 - `Credentials:DiscordToken` of the relay is a secret: no file carries it, it comes from the environment
   (`Credentials__DiscordToken`), and the relay stops at start without it.
 - `PersonCreation:StartLevel` of the gate is the level a new character starts at, 1 unless set (1 to 100).
@@ -179,3 +224,8 @@ or wrong setting stops the server with a message that names the key. A setting w
   Not done yet.
 - **The relay wipes Redis on start.** Restarting it while other servers run drops their sessions;
   maze servers re-register within `MazeRegistrationService.RenewInterval`, districts do not.
+- **A crash leaves the records of a server behind.** Only an orderly stop takes them back. The gate, district
+  and channel records have no lifetime in Redis and stay after a `kill -9` until the relay clears Redis.
+- **The shutdown notice is untried.** What the client shows for a kick-out with `GmToolServerShutdown` on a district
+  or a maze is not known; `ServerService.NotifyShuttingDown` is where it would change. A close with unread data from
+  the client can end in a reset rather than a FIN; a half-close would remove that doubt.

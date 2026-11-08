@@ -5,6 +5,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- Kestrel and the health check middleware serve /healthz and /readyz. A server that references this project
+             needs the ASP.NET Core runtime, which is why its image is dotnet/aspnet and not dotnet/runtime. -->
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Arch" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <PackageReference Include="Microsoft.Extensions.Hosting" />
@@ -16,6 +22,10 @@
         <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>
         <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj"/>
         <ProjectReference Include="..\OpenWorker.Persistence\OpenWorker.Persistence.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="OpenWorker.AuthServer.Test" />
     </ItemGroup>
 
 </Project>

@@ -1,10 +1,12 @@
 using OpenWorker.AuthServer.App.Extensions;
 using OpenWorker.AuthServer.Server.Extensions;
 using OpenWorker.DependencyInjection;
+using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
 
 await Host
     .CreateDefaultBuilder(args)
+    .UseHealthEndpoint()
     .ConfigureServices((context, services) =>
     {
         services.AddCache();

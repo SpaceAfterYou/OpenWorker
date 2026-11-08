@@ -8,8 +8,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler;
+using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.SoulWorker.Network;
 
 namespace OpenWorker.DependencyInjection;
@@ -21,7 +24,10 @@ internal sealed partial class ServerService(
     IOptions<ServerOptions> server,
     IOptions<GameOptions> game,
     IOptions<HotspotOptions> hotspot,
+    IOptions<ShutdownOptions> shutdown,
     ArchComponentProvider components,
+    ServerState state,
+    SessionTracker sessions,
     IEnumerable<ISessionCloseHandler> closeHandlers,
     ILogger<ServerService> logger
 ) :
@@ -47,40 +53,117 @@ internal sealed partial class ServerService(
             : Path.Combine(hotspot.PacketDumpPath, game.Version);
     }
 
+    // The drain stops the two halves of a connection on its own, in order: first no new connection, then no new packet.
+    private CancellationTokenSource? _accepting;
+    private CancellationTokenSource? _reading;
+    private Task? _acceptLoop;
+
+    // How long the drain lasts; the sessions that flush their writers are bound by it.
+    private CancellationToken _drain;
+
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        return Task.Run(() => AcceptLoopAsync(cancellationToken), cancellationToken);
+        _accepting = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _reading = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        var accepting = _accepting.Token;
+        var reading = _reading.Token;
+
+        return _acceptLoop = Task.Run(() => AcceptLoopAsync(cancellationToken, accepting, reading), cancellationToken);
     }
 
-    private async Task AcceptLoopAsync(CancellationToken cancellationToken)
-    {
-        Listener.Start();
+    /// <summary>
+    /// The connections that are being served.
+    /// </summary>
+    public int OpenSessions => sessions.Count;
 
-        logger.LogDebug("Server ready.");
+    /// <summary>
+    /// No new connection: the listener is closed when this returns, so a client that connects now is refused.
+    /// The sessions that are open go on.
+    /// </summary>
+    public async Task StopAcceptingAsync()
+    {
+        if (_accepting is not { } accepting || _acceptLoop is not { } loopTask)
+        {
+            return;
+        }
+
+        await accepting.CancelAsync();
+
+        await loopTask;
+    }
+
+    /// <summary>
+    /// No new packet, and every session closes through the normal path: the client is told that the server goes
+    /// away, the close handlers run on the world loop (the position is saved, the storage cleaned, the lease released),
+    /// then the writer sends what is queued and the connection closes. A packet that is being handled is handled to
+    /// the end first. Returns when the last session has ended or <paramref name="drain"/> is cancelled, with the number
+    /// of sessions that were left.
+    /// </summary>
+    public async Task<int> CloseSessionsAsync(CancellationToken drain)
+    {
+        _drain = drain;
+
+        if (_reading is { } reading)
+        {
+            await reading.CancelAsync();
+        }
 
         try
         {
-            while (cancellationToken.IsCancellationRequested is false)
+            await sessions.WhenIdle().WaitAsync(drain);
+        }
+
+        catch (OperationCanceledException) when (drain.IsCancellationRequested)
+        {
+            // The sessions that are left are counted below; the server goes on stopping.
+        }
+
+        return sessions.Count;
+    }
+
+    public override void Dispose()
+    {
+        _accepting?.Dispose();
+        _reading?.Dispose();
+
+        base.Dispose();
+    }
+
+    private async Task AcceptLoopAsync(CancellationToken stopping, CancellationToken accepting, CancellationToken reading)
+    {
+        Listener.Start();
+
+        state.MarkListening();
+
+        LogServerReady(logger);
+
+        try
+        {
+            while (!accepting.IsCancellationRequested)
             {
                 TcpClient socket;
 
                 try
                 {
-                    socket = await Listener.AcceptTcpClientAsync(cancellationToken);
+                    socket = await Listener.AcceptTcpClientAsync(accepting);
                 }
 
-                catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+                catch (Exception e) when (e is not OperationCanceledException || !accepting.IsCancellationRequested)
                 {
                     // One connection that cannot be accepted (the process is out of file handles, the client went away
                     // at once) must not stop the server from accepting the others.
                     LogAcceptFailed(logger, e);
 
-                    await Task.Delay(AcceptRetry, cancellationToken);
+                    await Task.Delay(AcceptRetry, accepting);
 
                     continue;
                 }
 
-                _ = Task.Run(() => SessionLoopAsync(socket, cancellationToken), cancellationToken);
+                // Counted before the task starts: the drain waits for every connection that was accepted.
+                sessions.Enter();
+
+                _ = Task.Run(() => RunSessionAsync(socket, stopping, reading), CancellationToken.None);
             }
         }
 
@@ -91,13 +174,28 @@ internal sealed partial class ServerService(
 
         finally
         {
-            logger.LogDebug("Server shutdown.");
+            LogServerShutdown(logger);
+
+            state.MarkNotListening();
 
             Listener.Stop();
         }
     }
 
-    private async Task SessionLoopAsync(TcpClient socket, CancellationToken cancellationToken)
+    private async Task RunSessionAsync(TcpClient socket, CancellationToken stopping, CancellationToken reading)
+    {
+        try
+        {
+            await SessionLoopAsync(socket, stopping, reading);
+        }
+
+        finally
+        {
+            sessions.Exit();
+        }
+    }
+
+    private async Task SessionLoopAsync(TcpClient socket, CancellationToken cancellationToken, CancellationToken reading)
     {
         using (socket)
         {
@@ -122,14 +220,16 @@ internal sealed partial class ServerService(
                 var stream = socket.GetStream();
                 var head = new byte[MessageHeader.HeaderSize];
 
-                while (!cancellationToken.IsCancellationRequested)
+                // The drain cancels `reading` and not `cancellationToken`: the packet that is being handled is
+                // handled to the end, and only then does the loop stop reading.
+                while (!reading.IsCancellationRequested)
                 {
-                    await stream.ReadExactlyAsync(head, cancellationToken);
+                    await stream.ReadExactlyAsync(head, reading);
 
                     var header = new MessageHeader(head);
                     var buffer = memory.Memory[..header.ContentLength];
 
-                    await stream.ReadExactlyAsync(buffer, cancellationToken);
+                    await stream.ReadExactlyAsync(buffer, reading);
 
                     MessageEncryption.Exchange(buffer, header.Version);
 
@@ -141,25 +241,42 @@ internal sealed partial class ServerService(
 
             catch (Exception e) when (e is EndOfStreamException or IOException { InnerException: SocketException } or ObjectDisposedException or OperationCanceledException)
             {
-                logger.LogDebug("Connection closed: {Reason}", e.Message);
+                LogConnectionClosed(logger, e.Message);
             }
 
             catch (Exception e)
             {
-                logger.LogCritical(e, "Session loop failed.");
+                LogSessionLoopFailed(logger, e);
             }
 
             finally
             {
-                await loop.InvokeAsync(() => CloseSessionAsync(entity));
+                // The server closes this session because it stops, not because the client left or misbehaved: the place
+                // of the "shutdown" reason of a closed session.
+                var shuttingDown = reading.IsCancellationRequested;
+
+                await loop.InvokeAsync(() => CloseSessionAsync(entity, shuttingDown));
 
                 session.Disconnect();
+
+                if (shuttingDown)
+                {
+                    await FlushAsync(session);
+                }
             }
         }
     }
 
-    private async ValueTask CloseSessionAsync(Entity entity)
+    /// <summary>
+    /// Runs on the world loop, as every close does: the close handlers of the modules, then the end of the entity.
+    /// </summary>
+    private async ValueTask CloseSessionAsync(Entity entity, bool shuttingDown)
     {
+        if (shuttingDown)
+        {
+            NotifyShuttingDown(entity);
+        }
+
         foreach (var handler in closeHandlers)
         {
             try
@@ -169,11 +286,56 @@ internal sealed partial class ServerService(
 
             catch (Exception e)
             {
-                logger.LogError(e, "Session close handler failed.");
+                LogCloseHandlerFailed(logger, e);
             }
         }
 
         world.Destroy(entity);
+    }
+
+    /// <summary>
+    /// Tells the client that the server is going away, as the first thing of the close, so that it is in the queue
+    /// before the close handlers (which may take a while) run. The client knows the message already: the reason
+    /// is one of its own, the one it shows for a server that is shut down.
+    /// </summary>
+    private void NotifyShuttingDown(Entity entity)
+    {
+        if (!world.TryGet(entity, out ServerSessionComponent session))
+        {
+            return;
+        }
+
+        // The client is not necessarily logged in: zero is what the login servers send for an account they do not know.
+        world.TryGet(entity, out ClaimsComponent claims);
+
+        session.Send(new PersonKickOutResponse
+        {
+            OutReason = PersonKickOutReason.GmToolServerShutdown,
+            Account = claims.Account
+        });
+    }
+
+    /// <summary>
+    /// Waits until the client has everything the server queued for it, and closes the connection when it does not
+    /// within the time of the drain: a client that does not read would hold the shutdown otherwise.
+    /// </summary>
+    private async Task FlushAsync(ServerSessionComponent session)
+    {
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(_drain);
+
+        limit.CancelAfter(shutdown.Value.DrainTimeout);
+
+        try
+        {
+            await session.Closed.WaitAsync(limit.Token);
+        }
+
+        catch (OperationCanceledException)
+        {
+            LogFlushTimedOut(logger);
+
+            session.Abort();
+        }
     }
 
     [Conditional("DEBUG")]
@@ -210,10 +372,31 @@ internal sealed partial class ServerService(
 
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            logger.LogDebug(e, "Failed to save packet {Path}.", path);
+            LogDumpFailed(logger, e, path);
         }
     }
 
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Server ready.")]
+    private static partial void LogServerReady(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Server shutdown.")]
+    private static partial void LogServerShutdown(ILogger logger);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Could not accept a connection.")]
     private static partial void LogAcceptFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Connection closed: {Reason}")]
+    private static partial void LogConnectionClosed(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "Session loop failed.")]
+    private static partial void LogSessionLoopFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Session close handler failed.")]
+    private static partial void LogCloseHandlerFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Failed to save packet {Path}.")]
+    private static partial void LogDumpFailed(ILogger logger, Exception exception, string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A client did not take what was queued for it within the drain and is cut off.")]
+    private static partial void LogFlushTimedOut(ILogger logger);
 }

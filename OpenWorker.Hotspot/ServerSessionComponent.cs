@@ -89,4 +89,18 @@ public readonly struct ServerSessionComponent(TcpClient client)
     {
         _writer.Complete();
     }
+
+    /// <summary>
+    /// Completes when the connection has sent what was queued and closed: after <see cref="Disconnect"/>, the moment
+    /// the client has everything the server sent it.
+    /// </summary>
+    public Task Closed => _writer.Completed;
+
+    /// <summary>
+    /// Closes the connection at once and drops what is queued.
+    /// </summary>
+    public void Abort()
+    {
+        _writer.Abort();
+    }
 }

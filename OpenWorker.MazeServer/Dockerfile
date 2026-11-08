@@ -1,4 +1,11 @@
-﻿FROM mcr.microsoft.com/dotnet/runtime:10.0 AS base
+﻿# ASP.NET Core, not the plain runtime: Kestrel serves the health endpoint (/healthz, /readyz).
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+# curl is what the health check in compose.yaml runs: the image ships no HTTP client, and a probe that starts the
+# application a second time every few seconds would cost far more than the few megabytes of curl.
+USER root
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 USER $APP_UID
 WORKDIR /app
 

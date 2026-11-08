@@ -10,6 +10,7 @@ namespace OpenWorker.MazeServer.Services;
 /// <summary>
 /// Tells the other servers that this maze server runs, where clients reach it and how busy it is,
 /// so that players are sent to the least busy one. Several maze servers of a gate share the load this way.
+/// When the server drains the record is removed first, and no player is sent to a maze server that is going away.
 /// </summary>
 public sealed class MazeRegistrationService(
     IRedisCollection<MazeCache> mazes,
@@ -20,7 +21,7 @@ public sealed class MazeRegistrationService(
     IOptions<MazeEndpointOptions> maze,
     ILogger<MazeRegistrationService> logger
 ) :
-    BackgroundService
+    RegistrationService
 {
     public static TimeSpan RenewInterval { get; } = TimeSpan.FromSeconds(10);
 
@@ -65,10 +66,8 @@ public sealed class MazeRegistrationService(
         while (await timer.WaitForNextTickAsync(cancellationToken));
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    protected override async Task RemoveAsync(CancellationToken cancellationToken)
     {
-        await base.StopAsync(cancellationToken);
-
         try
         {
             await mazes.DeleteAsync(new MazeCache

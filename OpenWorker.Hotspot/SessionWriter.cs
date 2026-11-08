@@ -23,10 +23,16 @@ internal sealed class SessionWriter
     {
         _client = client;
 
-        _ = Task.Run(WriteLoopAsync);
+        Completed = Task.Run(WriteLoopAsync);
     }
 
     public bool IsOpen => _client.Connected;
+
+    /// <summary>
+    /// Completes when the write loop has ended: everything queued is sent (or dropped, for a client that went away)
+    /// and the connection is closed. The loop answers the errors of a connection itself, so it ends quietly.
+    /// </summary>
+    public Task Completed { get; }
 
     /// <summary>
     /// Takes over the buffer, which must come from the shared array pool.
@@ -52,6 +58,15 @@ internal sealed class SessionWriter
     public void Complete()
     {
         _queue.Writer.TryComplete();
+    }
+
+    /// <summary>
+    /// Closes the connection now and drops what is still queued: for a client that does not take what was queued
+    /// within the time a drain allows.
+    /// </summary>
+    public void Abort()
+    {
+        Close();
     }
 
     private void Close()
