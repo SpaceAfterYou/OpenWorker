@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Channel.Community;
@@ -6,6 +7,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.Hotspot.Modules.Party.Enums;
 using StackExchange.Redis;
 
 namespace OpenWorker.Hotspot.Test;
@@ -138,6 +140,87 @@ public sealed class PartyTest
         }
 
         CollectionAssert.AreEquivalent(new[] { people[0], people[2] }, (await book.OfAsync(people[2]))!.Persons.ToArray());
+    }
+
+    [TestMethod]
+    public async Task AnAcceptedApplicationPutsTheApplicantIntoThePartyOfTheRecruitment()
+    {
+        var redis = await RedisAsync();
+        var people = People(2);
+        var (master, applicant) = (people[0], people[1]);
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var services = Parties(server, redis, TimeProvider.System);
+
+        var book = services.GetRequiredService<PartyBook>();
+        var board = services.GetRequiredService<PartyRecruitBoard>();
+        var notifier = services.GetRequiredService<PartyNotifier>();
+
+        // A master alone puts up a recruitment under a number kept for the party to come.
+        var id = await book.ReserveAsync();
+        await board.PutAsync(id, master, "P" + master, new PartyRecruitTerms("Come", 1, 100, 0, 10003));
+
+        var (outcome, applications) = await board.ApplyAsync(id, Card(applicant));
+
+        Assert.AreEqual(PartyApplyError.Success, outcome);
+        Assert.AreEqual(1, applications);
+        Assert.AreEqual(PartyApplyError.Overlap, (await board.ApplyAsync(id, Card(applicant))).Outcome);
+
+        var joined = PartyJoinOutcome.Full;
+        server.Run(async () => joined = await notifier.JoinAsync(Card(master), Card(applicant), keep: id));
+
+        Assert.AreEqual(PartyJoinOutcome.Created, joined);
+
+        var party = await book.OfAsync(applicant);
+
+        Assert.IsNotNull(party);
+        Assert.AreEqual(id, party.Id, "The party is the one the board showed.");
+        Assert.AreEqual(master, party.Master);
+        Assert.IsEmpty(await board.AppliedAsync(applicant), "Who is in a party applies nowhere.");
+    }
+
+    [TestMethod]
+    public async Task ARecruitmentExpiresAndOnlyOneServerTakesItDown()
+    {
+        var redis = await RedisAsync();
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var here = new PartyRecruitBoard(redis, time);
+        var there = new PartyRecruitBoard(redis, time);
+        var master = People(1)[0];
+        var id = await new PartyBook(redis, time).ReserveAsync();
+
+        await here.PutAsync(id, master, "P" + master, new PartyRecruitTerms("Come", 1, 100, 0, 10003));
+
+        Assert.IsNotNull(await there.OfAsync(master));
+
+        time.Advance(PartyRules.RecruitLifetime + TimeSpan.FromSeconds(1));
+
+        Assert.IsNull(await there.OfAsync(master));
+        Assert.IsFalse((await there.ListAsync()).Any(e => e.Id == id));
+
+        var taken = (await here.ExpireAsync()).Concat(await there.ExpireAsync()).Where(e => e.Id == id).ToArray();
+
+        Assert.HasCount(1, taken);
+        Assert.AreEqual(master, taken[0].Master);
+    }
+
+    internal static ServiceProvider Parties(TestServer server, IConnectionMultiplexer redis, TimeProvider time)
+    {
+        var services = new ServiceCollection();
+
+        services.AddSingleton(server.World);
+        services.AddSingleton(server.Network);
+        services.AddSingleton(redis);
+        services.AddSingleton(time);
+        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        services.AddSingleton<PartyBook>();
+        services.AddSingleton<PartyNotifier>();
+        services.AddSingleton<PartyRecruitBoard>();
+        services.AddSingleton<PartyAwaiterBoard>();
+        services.AddSingleton<PartyRecruitNotifier>();
+        services.AddSingleton<IPartyJoinListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
+
+        return services.BuildServiceProvider();
     }
 
     internal static PartyNotifier Notifier(TestServer server, PartyBook book, TimeProvider? time = null)

@@ -78,6 +78,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<PartyNotifier>();
         services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<PartyNotifier>());
         services.AddHostedService<PartyUpkeepService>();
+        services.AddSingleton<PartyRecruitBoard>();
+        services.AddSingleton<PartyAwaiterBoard>();
+        services.AddSingleton<PartyRecruitNotifier>();
+        services.AddSingleton<IPartyJoinListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
+        services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
+        services.AddSingleton<IPartyClock>(e => e.GetRequiredService<PartyRecruitNotifier>());
         services.AddSingleton<LeagueBook>();
         services.AddSingleton<ILeagueRoster>(e => e.GetRequiredService<LeagueBook>());
         services.AddSingleton<LeagueSnapshots>();

@@ -11,3 +11,16 @@ public sealed class PartyService(
     IPersonRelations relations
 ) :
     PartyServiceBase(world, network, book, notifier, relations);
+
+public sealed class PartyRecruitService(
+    World world,
+    CommunityNetwork network,
+    PartyBook book,
+    PartyNotifier parties,
+    PartyRecruitBoard board,
+    PartyAwaiterBoard awaiters,
+    PartyRecruitNotifier recruits,
+    OtherPersonService others,
+    TimeProvider time
+) :
+    PartyRecruitServiceBase(world, network, book, parties, board, awaiters, recruits, others, time);
