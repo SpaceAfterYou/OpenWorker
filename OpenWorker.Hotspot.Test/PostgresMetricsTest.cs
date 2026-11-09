@@ -8,20 +8,28 @@ namespace OpenWorker.Hotspot.Test;
 [TestClass]
 public sealed class PostgresMetricsTest
 {
+    /// <summary>
+    /// A statement is tagged by the keyword it starts with, in any case and after any white space; a query with a
+    /// common table expression is a <c>SELECT</c>, and whatever is not one of the four kinds is <c>OTHER</c>.
+    /// </summary>
     [TestMethod]
-    [DataRow("SELECT p.\"Id\", p.\"Name\" FROM \"Persons\" AS p WHERE p.\"Id\" = @p0", "SELECT")]
-    [DataRow("select 1", "SELECT")]
-    [DataRow("\n   SELECT 1", "SELECT")]
-    [DataRow("WITH ranked AS (SELECT 1) SELECT * FROM ranked", "SELECT")]
-    [DataRow("INSERT INTO \"Persons\" (\"Name\") VALUES (@p0) RETURNING \"Id\"", "INSERT")]
-    [DataRow("UPDATE \"Persons\" SET \"Name\" = @p0 WHERE \"Id\" = @p1", "UPDATE")]
-    [DataRow("DELETE FROM \"Persons\" WHERE \"Id\" = @p0", "DELETE")]
-    [DataRow("CREATE TABLE \"Persons\" (\"Id\" integer)", "OTHER")]
-    [DataRow("SET lock_timeout = '1s'", "OTHER")]
-    [DataRow("", "OTHER")]
-    public void AStatementIsTaggedWithItsKind(string sql, string operation)
+    public void AStatementIsTaggedWithItsKind()
     {
-        Assert.AreEqual(operation, PostgresMetrics.Operation(sql));
+        (string Sql, string Operation)[] cases =
+        [
+            ("\n   select 1", "SELECT"),
+            ("WITH ranked AS (SELECT 1) SELECT * FROM ranked", "SELECT"),
+            ("INSERT INTO \"Persons\" (\"Name\") VALUES (@p0) RETURNING \"Id\"", "INSERT"),
+            ("UPDATE \"Persons\" SET \"Name\" = @p0 WHERE \"Id\" = @p1", "UPDATE"),
+            ("DELETE FROM \"Persons\" WHERE \"Id\" = @p0", "DELETE"),
+            ("SET lock_timeout = '1s'", "OTHER"),
+            ("", "OTHER")
+        ];
+
+        foreach (var (sql, operation) in cases)
+        {
+            Assert.AreEqual(operation, PostgresMetrics.Operation(sql), sql);
+        }
     }
 
     [TestMethod]

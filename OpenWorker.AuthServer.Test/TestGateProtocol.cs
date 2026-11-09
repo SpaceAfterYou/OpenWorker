@@ -111,27 +111,49 @@ public sealed class TestGateProtocol
         }
     }
 
+    /// <summary>
+    /// A second password is six digits without three repeated or consecutive ones in a row: one case for each way a
+    /// password breaks the rule, and one that keeps it.
+    /// </summary>
     [TestMethod]
-    [DataRow("135790", null)]
-    [DataRow("12345", PersonErrorCode.SecondPasswordInvalid)]
-    [DataRow("12a456", PersonErrorCode.SecondPasswordInvalid)]
-    [DataRow("111357", PersonErrorCode.SecondPasswordRepeatedDigits)]
-    [DataRow("912345", PersonErrorCode.SecondPasswordSequentialDigits)]
-    [DataRow("975431", PersonErrorCode.SecondPasswordSequentialDigits)]
-    public void SecondPasswordRules(string password, PersonErrorCode? expected)
+    public void SecondPasswordRules()
     {
-        Assert.AreEqual(expected, LoginRules.ValidateSecondPassword(password));
+        (string Password, PersonErrorCode? Error)[] cases =
+        [
+            ("135790", null),
+            ("12345", PersonErrorCode.SecondPasswordInvalid),
+            ("12a456", PersonErrorCode.SecondPasswordInvalid),
+            ("111357", PersonErrorCode.SecondPasswordRepeatedDigits),
+            ("912345", PersonErrorCode.SecondPasswordSequentialDigits),
+            ("975431", PersonErrorCode.SecondPasswordSequentialDigits)
+        ];
+
+        foreach (var (password, error) in cases)
+        {
+            Assert.AreEqual(error, LoginRules.ValidateSecondPassword(password), password);
+        }
     }
 
+    /// <summary>
+    /// A name of a character is two to twenty letters or digits of any script: the bounds of the length, a name in
+    /// another script and a name with a space.
+    /// </summary>
     [TestMethod]
-    [DataRow("Ab", true)]
-    [DataRow("名前", true)]
-    [DataRow("A", false)]
-    [DataRow("With Space", false)]
-    [DataRow("123456789012345678901", false)]
-    public void PersonNameRules(string name, bool expected)
+    public void PersonNameRules()
     {
-        Assert.AreEqual(expected, LoginRules.IsValidPersonName(name));
+        (string Name, bool Valid)[] cases =
+        [
+            ("Ab", true),
+            ("名前", true),
+            ("A", false),
+            ("With Space", false),
+            ("123456789012345678901", false)
+        ];
+
+        foreach (var (name, valid) in cases)
+        {
+            Assert.AreEqual(valid, LoginRules.IsValidPersonName(name), name);
+        }
     }
 
     [TestMethod]

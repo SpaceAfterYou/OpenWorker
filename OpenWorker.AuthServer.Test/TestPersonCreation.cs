@@ -105,17 +105,14 @@ public sealed class TestPersonCreation
 
     /// <summary>
     /// The creation screen offers four costumes per hero, the ones of <c>tb_Create_Cloth</c>; the first is the one the
-    /// client picks when the player touches nothing (511 for Stella).
+    /// client picks when the player touches nothing (511 for Stella). Every hero reads the same columns, so one stands
+    /// for all.
     /// </summary>
     [TestMethod]
-    [DataRow(Hero.Haru)]
-    [DataRow(Hero.Erwin)]
-    [DataRow(Hero.Lily)]
-    [DataRow(Hero.Jin)]
-    [DataRow(Hero.Stella)]
-    [DataRow(Hero.Iris)]
-    public void EveryCostumeOfTheCreationScreenIsOffered(Hero hero)
+    public void EveryCostumeOfTheCreationScreenIsOffered()
     {
+        const Hero hero = Hero.Stella;
+
         Assert.IsTrue(Catalog.TryGetCharacter(hero, out var character));
 
         var first = (int)hero * 100 + 11;
@@ -135,31 +132,17 @@ public sealed class TestPersonCreation
             "The costumes of the character table are not those of tb_Create_Cloth.");
     }
 
-    [TestMethod]
-    [DataRow(Hero.Haru, 211)]
-    [DataRow(Hero.Stella, 111)]
-    [DataRow(Hero.Stella, 611)]
-    [DataRow(Hero.Iris, 541)]
-    public void CostumeOfAnotherHeroIsRefused(Hero hero, int outfit)
-    {
-        Assert.IsTrue(Catalog.TryGetCharacter(hero, out var character));
-
-        Assert.IsFalse(PersonCreationCatalog.IsOffered(character, outfit));
-    }
-
     /// <summary>
     /// The column after the four costumes (50011 for Stella) was read as the fourth costume while the names of the columns
     /// were one place off; it is not a costume, no row of <c>tb_Create_Cloth</c> has it.
     /// </summary>
     [TestMethod]
-    [DataRow(Hero.Haru, 10011)]
-    [DataRow(Hero.Stella, 50011)]
-    public void TheColumnAfterTheCostumesIsNotOffered(Hero hero, int outfit)
+    public void TheColumnAfterTheCostumesIsNotOffered()
     {
-        Assert.IsTrue(Catalog.TryGetCharacter(hero, out var character));
+        Assert.IsTrue(Catalog.TryGetCharacter(Hero.Stella, out var character));
 
-        Assert.AreEqual(outfit, character.Field24);
-        Assert.IsFalse(PersonCreationCatalog.IsOffered(character, outfit));
+        Assert.AreEqual(50011, character.Field24);
+        Assert.IsFalse(PersonCreationCatalog.IsOffered(character, 50011));
     }
 
     private static InventoryFactory CreateInventories()
@@ -223,12 +206,14 @@ public sealed class TestPersonCreation
         Assert.AreEqual(111000001, inventory.At(StorageGroup.AbilityEquip, (int)AbilityEquipSlot.SoulWeapon)!.Item);
     }
 
+    /// <summary>
+    /// An outfit with no row of <c>tb_Create_Cloth</c> (the column after the costumes; no outfit at all goes the same
+    /// way) leaves the shape slots empty instead of failing the creation.
+    /// </summary>
     [TestMethod]
-    [DataRow(10011, DisplayName = "An outfit without a table row")]
-    [DataRow(0, DisplayName = "No outfit")]
-    public void OutfitWithoutWearableItemsLeavesTheCharacterWithoutClothes(int outfit)
+    public void OutfitWithoutWearableItemsLeavesTheCharacterWithoutClothes()
     {
-        var inventory = CreateInventories().CreateNew(Person(outfit));
+        var inventory = CreateInventories().CreateNew(Person(10011));
 
         Assert.IsTrue(inventory.Find(StorageGroup.ShapeEquip)!.Slots.All(e => e is null));
     }

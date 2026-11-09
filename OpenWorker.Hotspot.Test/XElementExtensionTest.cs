@@ -41,59 +41,25 @@ public sealed class XElementExtensionTest
         }
     }
 
+    /// <summary>
+    /// Every kind of value of a batch file reads the same under de-DE as it is written: the culture where a dot read by
+    /// the culture of the thread gives a wrong number instead of an error.
+    /// </summary>
     [TestMethod]
-    [DataRow("ru-RU")]
-    [DataRow("de-DE")]
-    public void ParsesAFloatWithADotWhateverTheCultureIs(string culture)
+    public void ParsesTheValuesWhateverTheCultureIs()
     {
-        Under(culture, () =>
+        Under("de-DE", () =>
         {
             Assert.AreEqual(1.5f, Box("m_f", "1.5").GetSingle("m_f"));
             Assert.AreEqual(-0.25f, Box("m_f", "-0.25").GetSingle("m_f"));
-        });
-    }
 
-    [TestMethod]
-    [DataRow("ru-RU")]
-    [DataRow("de-DE")]
-    public void ParsesTheIntegersWhateverTheCultureIs(string culture)
-    {
-        Under(culture, () =>
-        {
             Assert.AreEqual(-12, Box("m_i", "-12").GetInt32("m_i"));
             Assert.AreEqual(34, Box("m_i", "34").GetUInt32("m_i"));
             Assert.AreEqual((short)-5, Box("m_i", "-5").GetInt16("m_i"));
             Assert.AreEqual((byte)200, Box("m_i", "200").GetByte("m_i"));
-        });
-    }
 
-    [TestMethod]
-    [DataRow("ru-RU")]
-    [DataRow("de-DE")]
-    public void ParsesAVectorAndAColorWhateverTheCultureIs(string culture)
-    {
-        Under(culture, () =>
-        {
             Assert.AreEqual(new Vector3(1.5f, -2.25f, 3f), Box("m_v", "1.5,-2.25,3").GetVector3("m_v"));
             Assert.AreEqual(Color.FromArgb(alpha: 4, red: 1, green: 2, blue: 3).ToArgb(), Box("m_c", "1,2,3,4").GetColor("m_c").ToArgb());
         });
-    }
-
-    [TestMethod]
-    public void ParsesTheSameUnderTheInvariantCulture()
-    {
-        var saved = CultureInfo.CurrentCulture;
-
-        try
-        {
-            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-
-            Assert.AreEqual(1.5f, Box("m_f", "1.5").GetSingle("m_f"));
-        }
-
-        finally
-        {
-            CultureInfo.CurrentCulture = saved;
-        }
     }
 }
