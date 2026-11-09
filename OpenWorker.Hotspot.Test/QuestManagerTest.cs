@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text.Json;
 using Arch.Core;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
@@ -125,9 +126,70 @@ public sealed class QuestManagerTest
         QuestRewardDefinition.None,
         [1010]);
 
+    private static QuestConditionDefinition HandIn { get; } = new(1040, QuestConditionType.Talk, QuestConditionTarget.Npc, Npc, 0, 1, 0, [], [new QuestItem(Sword, 1)]);
+
+    private static QuestDefinition Daily { get; } = new(
+        700,
+        7,
+        QuestContents.Repeat,
+        0,
+        0,
+        [],
+        false,
+        false,
+        [],
+        [],
+        new QuestRewardDefinition(0, 5, 0, 0, 0, 0, 0, false, [], false, []),
+        [1010]);
+
+    private static QuestDefinition Errand { get; } = new(
+        800,
+        8,
+        QuestContents.Side,
+        0,
+        0,
+        [],
+        false,
+        false,
+        [],
+        [],
+        QuestRewardDefinition.None,
+        [1040]);
+
+    private static QuestDefinition Prequel { get; } = new(
+        910,
+        10,
+        QuestContents.Side,
+        0,
+        0,
+        [],
+        false,
+        false,
+        [],
+        [],
+        QuestRewardDefinition.None,
+        [1010]) { Links = [920] };
+
+    /// <summary>
+    /// Follows <see cref="Prequel"/> by itself.
+    /// </summary>
+    private static QuestDefinition Sequel { get; } = new(
+        920,
+        11,
+        QuestContents.Side,
+        0,
+        0,
+        [910],
+        false,
+        false,
+        [],
+        [],
+        QuestRewardDefinition.None,
+        [1010]) { StartsByItself = true };
+
     private static QuestCatalog Catalog { get; } = QuestCatalog.From(
-        [Hard, Quick, Bound, Gathering, Late, HighLevel],
-        [Talk, Hunt, Boars, Tusks, Cleared],
+        [Hard, Quick, Bound, Gathering, Late, HighLevel, Daily, Errand, Prequel, Sequel],
+        [Talk, Hunt, Boars, Tusks, Cleared, HandIn],
         null,
         new Dictionary<int, int[]> { [Wolf] = [Pack] });
 
@@ -173,12 +235,35 @@ public sealed class QuestManagerTest
         }
     }
 
+    private sealed class Titles : IQuestTitles
+    {
+        public List<int> Granted { get; } = [];
+
+        public ValueTask GrantAsync(Entity player, int title)
+        {
+            Granted.Add(title);
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// The character <see cref="Npc"/> stands where <see cref="Reach"/> says.
+    /// </summary>
+    private sealed class Npcs : IQuestNpcs
+    {
+        public NpcReach Reach { get; set; } = NpcReach.Near;
+
+        NpcReach IQuestNpcs.Reach(Entity player, int npc) => npc == Npc ? Reach : NpcReach.Unknown;
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
         private readonly TcpClient _server;
 
-        public Harness(MemoryStore? store = null, Granter? granter = null, Inventory? inventory = null, Hero hero = Hero.Haru)
+        public Harness(
+            MemoryStore? store = null, Granter? granter = null, Inventory? inventory = null, Hero hero = Hero.Haru, TimeProvider? time = null)
         {
             _listener.Start();
 
@@ -199,7 +284,18 @@ public sealed class QuestManagerTest
             var helpers = new HelperManager(World, null!, HelperCatalog.From([]));
             var boosters = new BoosterManager(World, null!, null!, TimeProvider.System, NullLogger<BoosterManager>.Instance);
 
-            Manager = new QuestManager(World, Store, Catalog, Granter, Inventory, helpers, boosters, NullLogger<QuestManager>.Instance);
+            Manager = new QuestManager(
+                World,
+                Store,
+                Catalog,
+                Granter,
+                Inventory,
+                helpers,
+                boosters,
+                NullLogger<QuestManager>.Instance,
+                npcs: Npcs,
+                titles: Titles,
+                time: time);
 
             Player = World.Create(
                 Component.GetComponentType(typeof(ServerSessionComponent)),
@@ -218,6 +314,8 @@ public sealed class QuestManagerTest
         }
 
         public TcpClient Client { get; }
+        public Titles Titles { get; } = new();
+        public Npcs Npcs { get; } = new();
         public MemoryStore Store { get; }
         public Granter Granter { get; }
         public Inventory Inventory { get; }
@@ -311,14 +409,15 @@ public sealed class QuestManagerTest
     #region Entering
 
     [TestMethod]
-    public async Task EnteringTellsTheFinishedEpisodesThenTheOnesInProgress()
+    public async Task EnteringTellsTheEpisodesInProgressThenTheFinishedOnes()
     {
         using var test = new Harness();
 
         await test.Enter();
 
-        var finished = test.Next();
+        // The client reads the finished episodes against the ones it already has in progress.
         var list = test.Next();
+        var finished = test.Next();
 
         Assert.AreEqual((0x15, 0x01), (finished.Group, finished.Command));
         Assert.HasCount(128, finished.Body);
@@ -342,11 +441,10 @@ public sealed class QuestManagerTest
 
         await test.Enter();
 
+        var list = test.Next().Body;
         var finished = test.Next();
 
         Assert.AreEqual((byte)(1 << 5), finished.Body[9]);
-
-        var list = test.Next().Body;
 
         Assert.AreEqual((short)1, BitConverter.ToInt16(list));
 
@@ -721,6 +819,7 @@ public sealed class QuestManagerTest
 
         var reward = test.Granter.Given.Last().Reward;
 
+        CollectionAssert.AreEqual(new[] { 100100 }, test.Titles.Granted, "the title is kept, not only told");
         Assert.AreEqual(1000, reward.Experience);
         Assert.AreEqual(50, reward.Gold);
         Assert.AreEqual(3, reward.BattlePoints);
@@ -730,6 +829,124 @@ public sealed class QuestManagerTest
 
         Assert.IsEmpty(book.Episodes);
         Assert.IsTrue(book.IsFinished(Hard.CompleteBit));
+    }
+
+    [TestMethod]
+    public async Task ARepeatedEpisodeComesBackAfterTheDayIsOver()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 11, 9, 12, 0, 0, TimeSpan.Zero));
+
+        using var test = new Harness(time: time);
+
+        await test.Enter();
+        test.Next();
+        test.Next();
+
+        await test.Run(async () =>
+        {
+            await test.Manager.AcceptAsync(test.Player, 700, CancellationToken.None);
+            await test.Manager.OnMonsterKilledAsync(test.Player, Boar, CancellationToken.None);
+            await test.Manager.CompleteAsync(test.Player, 700, 0, CancellationToken.None);
+            await test.Manager.AcceptAsync(test.Player, 700, CancellationToken.None);
+        });
+
+        test.Next();
+        test.Next();
+        Assert.AreEqual(0x05, test.Next().Command);
+        test.ExpectError(0x03, QuestErrors.DoneForToday);
+        Assert.IsFalse(test.Manager.HasFinishedEpisode(test.Player, 700), "a repeated episode is never finished for good");
+
+        // The next game day starts at nine in the morning.
+        time.Advance(TimeSpan.FromHours(21));
+
+        await test.Run(async () => await test.Manager.AcceptAsync(test.Player, 700, CancellationToken.None));
+
+        Assert.AreEqual(0x03, test.Next().Command);
+        Assert.IsTrue(test.Manager.HasActiveEpisode(test.Player, 700));
+        Assert.AreEqual(1, test.Saved().Repeats.Single().Count, "the count of the day before stays until the next finish");
+    }
+
+    [TestMethod]
+    public async Task ATalkTheServerCanCheckCountsOnlyWhenItHappened()
+    {
+        using var test = new Harness();
+
+        test.Npcs.Reach = NpcReach.Far;
+
+        await test.Enter();
+        test.Next();
+        test.Next();
+
+        bool far = true, empty = true, done = false;
+
+        await test.Run(async () =>
+        {
+            await test.Manager.AcceptAsync(test.Player, 800, CancellationToken.None);
+
+            far = await test.Manager.OnEventUpdateAsync(test.Player, 1040, Npc, CancellationToken.None);
+
+            test.Npcs.Reach = NpcReach.Near;
+
+            empty = await test.Manager.OnEventUpdateAsync(test.Player, 1040, Npc, CancellationToken.None);
+
+            test.Inventory.Have[Sword] = 1;
+
+            done = await test.Manager.OnEventUpdateAsync(test.Player, 1040, Npc, CancellationToken.None);
+        });
+
+        Assert.IsFalse(far, "a talk far from the character does not count");
+        Assert.IsFalse(empty, "handing in what the person does not have does not count");
+        Assert.IsTrue(done);
+
+        Assert.AreEqual(0x03, test.Next().Command);
+        Assert.AreEqual(0x07, test.Next().Command);
+        Assert.IsTrue(test.Quiet(), "the refused claims are not answered");
+        CollectionAssert.AreEqual(new[] { new QuestItem(Sword, 1) }, test.Inventory.Taken, "what is handed in is taken");
+    }
+
+    [TestMethod]
+    public async Task AnEpisodeThatStartsByItselfFollowsTheOneBeforeIt()
+    {
+        var store = new MemoryStore();
+
+        using (var test = new Harness(store))
+        {
+            await test.Enter();
+            test.Next();
+            test.Next();
+
+            await test.Run(async () =>
+            {
+                await test.Manager.AcceptAsync(test.Player, 910, CancellationToken.None);
+                await test.Manager.OnMonsterKilledAsync(test.Player, Boar, CancellationToken.None);
+                await test.Manager.CompleteAsync(test.Player, 910, 0, CancellationToken.None);
+            });
+
+            test.Next();
+            test.Next();
+            Assert.AreEqual(0x05, test.Next().Command);
+
+            var taken = test.Next();
+
+            Assert.AreEqual((0x15, 0x03), (taken.Group, taken.Command));
+            Assert.AreEqual(920, Int(taken.Body, 0));
+        }
+
+        // A person who finished the episode before it without getting it, on another server say, gets it on entering.
+        var book = new QuestBook();
+        book.SetFinished(Prequel.CompleteBit, true);
+        store.Documents[1] = JsonSerializer.Serialize(book);
+
+        using var returning = new Harness(store);
+
+        await returning.Enter();
+
+        var list = returning.Next().Body;
+
+        Assert.AreEqual((short)1, BitConverter.ToInt16(list));
+        Assert.AreEqual(920, Int(list, 2));
+        Assert.AreEqual(0x01, returning.Next().Command, "the list carries it, no message of its own");
+        Assert.IsTrue(returning.Saved().Find(920) is not null);
     }
 
     [TestMethod]
@@ -755,6 +972,7 @@ public sealed class QuestManagerTest
 
         test.ExpectError(0x05, QuestErrors.CannotFinish);
         test.ExpectError(0x03, QuestErrors.AlreadyFinished);
+        Assert.HasCount(1, test.Granter.Given, "the reward is given once");
     }
 
     [TestMethod]
@@ -1040,8 +1258,8 @@ public sealed class QuestManagerTest
 
         await second.Enter();
 
-        var finished = second.Next();
         var list = second.Next();
+        var finished = second.Next();
 
         Assert.AreNotEqual((byte)0, finished.Body[0], "the episode that was finished is a bit of the list");
         Assert.AreEqual((short)1, BitConverter.ToInt16(list.Body));

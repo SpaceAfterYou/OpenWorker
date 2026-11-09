@@ -30,6 +30,11 @@ public static class QuestErrors
     public const ushort NoRoomInHelper = 54006;
     public const ushort LevelTooLow = 54018;
     public const ushort WrongHero = 54019;
+
+    /// <summary>
+    /// A repeated episode has been finished as often as a day allows. The game answers with the code of a wrong hero.
+    /// </summary>
+    public const ushort DoneForToday = WrongHero;
     public const ushort NotAvailableYet = 54020;
     public const ushort ObjectsNotGiven = 54021;
     public const ushort TooManyEpisodes = 54024;
@@ -128,11 +133,102 @@ public static class QuestRules
     }
 
     /// <summary>
+    /// The time of the morning a game day starts at, when repeated episodes may be finished again.
+    /// </summary>
+    public static readonly TimeSpan RepeatResetTime = TimeSpan.FromHours(9);
+
+    /// <summary>
+    /// The error that refuses taking a repeated episode the person has finished as often as a day allows, or null.
+    /// <paramref name="day"/> is the start of the game day that is running.
+    /// </summary>
+    public static ushort? CheckRepeat(QuestBook book, QuestDefinition quest, DateTimeOffset day)
+    {
+        return quest.Contents == QuestContents.Repeat &&
+               book.Repeats.Find(e => e.Episode == quest.Id) is { } repeat &&
+               repeat.Day >= day &&
+               repeat.Count >= quest.RepeatsPerDay
+            ? QuestErrors.DoneForToday
+            : null;
+    }
+
+    /// <summary>
+    /// Counts a repeated episode the person has just finished on the game day that starts at <paramref name="day"/>. A
+    /// count of an earlier day starts over.
+    /// </summary>
+    public static void CountRepeat(QuestBook book, QuestDefinition quest, DateTimeOffset day)
+    {
+        if (quest.Contents != QuestContents.Repeat)
+        {
+            return;
+        }
+
+        if (book.Repeats.Find(e => e.Episode == quest.Id) is not { } repeat)
+        {
+            repeat = new QuestRepeatState { Episode = quest.Id };
+            book.Repeats.Add(repeat);
+        }
+
+        if (repeat.Day < day)
+        {
+            repeat.Day = day;
+            repeat.Count = 0;
+        }
+
+        repeat.Count++;
+    }
+
+    /// <summary>
     /// Whether the person has finished the episode. Repeated episodes are never finished for good.
     /// </summary>
     public static bool IsFinished(QuestBook book, QuestDefinition quest)
     {
         return quest.Contents != QuestContents.Repeat && book.IsFinished(quest.CompleteBit);
+    }
+
+    /// <summary>
+    /// Whether an episode that starts by itself is due for the person: the episode before it is finished, it is neither
+    /// finished nor in progress, and a main episode waits until no other main episode is in progress.
+    /// </summary>
+    public static bool ShouldStartByItself(QuestBook book, QuestCatalog catalog, QuestDefinition quest)
+    {
+        return quest.StartsByItself &&
+               quest.Before.Count > 0 &&
+               catalog.TryGetEpisode(quest.Before[0], out var before) &&
+               IsFinished(book, before) &&
+               !IsFinished(book, quest) &&
+               book.Find(quest.Id) is null &&
+               (quest.Contents != QuestContents.Main ||
+                !book.Episodes.Any(e => catalog.TryGetEpisode(e.Episode, out var other) && other.Contents == QuestContents.Main));
+    }
+
+    /// <summary>
+    /// Marks as done the conditions that were counted to their end but not marked, which a book stored before the end
+    /// was handed over can hold. True when one was marked.
+    /// </summary>
+    public static bool MarkCountedConditions(QuestBook book, QuestCatalog catalog)
+    {
+        var marked = false;
+
+        foreach (var state in book.Episodes)
+        {
+            if (!catalog.TryGetEpisode(state.Episode, out var quest))
+            {
+                continue;
+            }
+
+            for (var slot = 0; slot < quest.Conditions.Count; slot++)
+            {
+                if (!state.IsDone(slot) &&
+                    catalog.TryGetCondition(quest.Conditions[slot], out var condition) &&
+                    state.Steps[slot] >= condition.Counter)
+                {
+                    state.Done |= (short)(1 << slot);
+                    marked = true;
+                }
+            }
+        }
+
+        return marked;
     }
 
     /// <summary>
@@ -270,11 +366,12 @@ public static class QuestRules
             }
         }
 
+        // A title of the table is a group that has a title for each class.
         return new QuestPayout(
             new Reward(items.Select(e => new RewardItem(e.Item, e.Count)).ToArray(), reward.Gold, reward.Ether, reward.BattlePoints, reward.Experience),
             items,
-            reward.Prefix,
-            reward.Suffix,
+            catalog.GetClassTitle(reward.Prefix, hero),
+            catalog.GetClassTitle(reward.Suffix, hero),
             reward.Helper);
     }
 

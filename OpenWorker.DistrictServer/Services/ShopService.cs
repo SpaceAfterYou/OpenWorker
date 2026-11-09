@@ -12,6 +12,8 @@ using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Requests;
@@ -27,7 +29,8 @@ public sealed class ShopService(
     ReadOnlyCollection<NPCRow> npcList,
     ReadOnlyCollection<ShopRow> shopList,
     ItemCatalog items,
-    InventoryService inventory) :
+    InventoryService inventory,
+    QuestManager? quests = null) :
     IHotspotHandler<ShopBuyRequest>,
     IHotspotHandler<ShopGachaRequest>,
     IHotspotHandler<ShopRepurchaserListRequest>,
@@ -67,6 +70,9 @@ public sealed class ShopService(
         });
 
         inventory.TryAddGold(context.Player, -price);
+
+        // A purchase counts once for the quests that ask to buy the item.
+        quests?.OnEvent(context.Player, QuestConditionType.Buy, QuestConditionTarget.Item, shopRow.Item);
 
         return ValueTask.CompletedTask;
     }

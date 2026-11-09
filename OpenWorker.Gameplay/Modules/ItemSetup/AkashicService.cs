@@ -3,6 +3,8 @@ using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
@@ -28,7 +30,8 @@ public sealed class AkashicService(
     ReadOnlyCollection<AkashicRecordsRow> records,
     ReadOnlyCollection<AkashicMakeRow> makes,
     ReadOnlyCollection<AkashicDisassembleRow> disassembles,
-    ItemSetupAnswers answers)
+    ItemSetupAnswers answers,
+    QuestManager? quests = null)
 {
     /// <summary>The item does not fit the recipe: not its material, not full, wrong cards, nothing to gain.</summary>
     public const ushort WrongItem = 52002;
@@ -131,6 +134,8 @@ public sealed class AkashicService(
         inventory.TryGive(player, recipe.Result, 1);
 
         answers.Send(player, new ItemSetupAkashicMakeResponse());
+
+        quests?.OnEvent(player, QuestConditionType.AkashicMake, QuestConditionTarget.Item, recipe.Result);
     }
 
     /// <summary>

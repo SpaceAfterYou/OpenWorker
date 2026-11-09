@@ -4,7 +4,6 @@ using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Progress;
-using OpenWorker.Gameplay.Modules.Quests;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Domain.Components;
@@ -45,7 +44,6 @@ public sealed partial class DropService(
     ReadOnlyCollection<MonsterRow> monsters,
     IOptions<RewardsOptions>? options = null,
     DailyMissionManager? missions = null,
-    QuestManager? quests = null,
     ILogger<DropService>? logger = null,
     MazeResults? results = null,
     AchievementManager? achievements = null)
@@ -254,7 +252,8 @@ public sealed partial class DropService(
             achievements?.OnEtherPicked(player, drop.Count);
         }
 
-        if (drop.ObjectId < GoldObject && (missions is not null || quests is not null))
+        // The quests hear of the item from the inventory, as of every item that comes into the bags.
+        if (drop.ObjectId < GoldObject && missions is not null)
         {
             _ = ReportItemAsync(player, drop);
         }
@@ -267,7 +266,7 @@ public sealed partial class DropService(
         return true;
     }
 
-    // The missions and quests that ask for items are told, they are saved and the pickup does not wait for it.
+    // The missions that ask for items are told, they are saved and the pickup does not wait for it.
     private async Task ReportItemAsync(Entity player, DropObject drop)
     {
         try
@@ -277,11 +276,6 @@ public sealed partial class DropService(
             if (missions is not null)
             {
                 await missions.OnItemCollectedAsync(player, drop.ObjectId, count, CancellationToken.None);
-            }
-
-            if (quests is not null)
-            {
-                await quests.OnItemCollectedAsync(player, drop.ObjectId, count, CancellationToken.None);
             }
         }
         catch (Exception exception)

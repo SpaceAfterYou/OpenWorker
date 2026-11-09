@@ -464,6 +464,14 @@ public sealed partial class MazeService(
             return ValueTask.CompletedTask;
         }
 
+        // The box counts where the person stands, not where the client says it stepped.
+        if (!IsAtBox(box, ecs.Get<WorldComponent>(context.Player).Position))
+        {
+            LogFarFromBox(nameof(MazeQuestMoveCheckRequest), box.Id);
+
+            return ValueTask.CompletedTask;
+        }
+
         if (maze.Progress.TryUseBox(box.Id))
         {
             questManager.TryApplyConditionProgress(context.Player, box.EpisodeCondition, 1);
@@ -472,6 +480,23 @@ public sealed partial class MazeService(
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// How far outside a box a person may stand and still be in it, for the moves the server has not heard yet.
+    /// </summary>
+    private const float BoxSlack = 1000f;
+
+    /// <summary>
+    /// Whether a place is in a box of the map, on the ground: within the half of its diagonal from its middle, with some slack.
+    /// </summary>
+    private static bool IsAtBox(BasicEntity box, Vector3 position)
+    {
+        var a = new Vector2(box.PosTopLeft.X, box.PosTopLeft.Y);
+        var b = new Vector2(box.PosBottomRight.X, box.PosBottomRight.Y);
+        var middle = (a + b) / 2;
+
+        return Vector2.Distance(middle, new Vector2(position.X, position.Y)) <= Vector2.Distance(a, b) / 2 + BoxSlack;
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeInteractionClickRequest request)
@@ -790,6 +815,9 @@ public sealed partial class MazeService(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} names box {Box}, which the maze does not have, refused")]
     private partial void LogUnknownBox(string request, int box);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} names box {Box}, far from where the player stands, ignored")]
+    private partial void LogFarFromBox(string request, int box);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} leads to location {Location}, but no district of it can take a player")]
     private partial void LogNoDistrictToExit(int maze, int location);

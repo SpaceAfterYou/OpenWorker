@@ -33,6 +33,21 @@ public sealed class QuestEpisodeState
 }
 
 /// <summary>
+/// How often a repeated episode has been finished on one game day.
+/// </summary>
+public sealed class QuestRepeatState
+{
+    public int Episode { get; set; }
+
+    /// <summary>
+    /// The start of the game day the count belongs to.
+    /// </summary>
+    public DateTimeOffset Day { get; set; }
+
+    public int Count { get; set; }
+}
+
+/// <summary>
 /// The quests of a person. This is what is stored.
 /// </summary>
 public sealed class QuestBook
@@ -46,6 +61,11 @@ public sealed class QuestBook
     /// A bit for each episode the person has finished.
     /// </summary>
     public byte[] Finished { get; set; } = new byte[QuestModuleDefines.CompleteListByteLength];
+
+    /// <summary>
+    /// The repeated episodes the person has finished, with how often on their last day.
+    /// </summary>
+    public List<QuestRepeatState> Repeats { get; set; } = [];
 
     public QuestEpisodeState? Find(int episode) => Episodes.Find(e => e.Episode == episode);
 
@@ -103,7 +123,13 @@ public sealed class QuestBook
 
         var seen = new HashSet<int>();
 
-        Episodes.RemoveAll(e => !catalog.TryGetEpisode(e.Episode, out _) || !seen.Add(e.Episode));
+        // An episode that is both in progress and finished was finished: the finish is what counts.
+        Episodes.RemoveAll(e => !catalog.TryGetEpisode(e.Episode, out var quest) || QuestRules.IsFinished(this, quest) || !seen.Add(e.Episode));
+
+        var repeated = new HashSet<int>();
+
+        Repeats ??= [];
+        Repeats.RemoveAll(e => !catalog.TryGetEpisode(e.Episode, out var quest) || quest.Contents != QuestContents.Repeat || !repeated.Add(e.Episode));
 
         foreach (var episode in Episodes)
         {

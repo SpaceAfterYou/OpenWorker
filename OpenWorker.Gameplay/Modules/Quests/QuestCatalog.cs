@@ -14,12 +14,14 @@ public sealed class QuestCatalog
     private readonly Dictionary<int, QuestConditionDefinition> _conditions;
     private readonly Dictionary<int, int[]> _monsterGroups;
     private readonly Dictionary<int, int[]> _classRewards;
+    private readonly Dictionary<int, int[]> _classTitles = [];
 
     public QuestCatalog(
         ReadOnlyCollection<QuestEpisodeRow> episodes,
         ReadOnlyCollection<QuestConditionRow> conditions,
         ReadOnlyCollection<QuestRewardRow> rewards,
-        ReadOnlyCollection<MonsterRow> monsters)
+        ReadOnlyCollection<MonsterRow> monsters,
+        ReadOnlyCollection<TitleRewardRow>? titles = null)
     {
         _conditions = conditions.Select(e => e.ToDefinition()).ToDictionary(e => e.Id);
 
@@ -34,6 +36,13 @@ public sealed class QuestCatalog
             .Select(e => (e.Id, Groups: e.QuestGroups()))
             .Where(e => e.Groups.Length > 0)
             .ToDictionary(e => e.Id, e => e.Groups);
+
+        if (titles is not null)
+        {
+            _classTitles = titles
+                .GroupBy(e => e.Id)
+                .ToDictionary(e => e.Key, e => e.First().Titles());
+        }
     }
 
     private QuestCatalog(
@@ -64,6 +73,16 @@ public sealed class QuestCatalog
 
     public IEnumerable<QuestConditionDefinition> Conditions => _conditions.Values;
 
+    /// <summary>
+    /// The episodes that are taken by themselves once the episode before them is finished.
+    /// </summary>
+    public IReadOnlyList<QuestDefinition> StartingByThemselves => _startingByThemselves ??= _episodes.Values
+        .Where(e => e.StartsByItself && e.Before.Count > 0)
+        .OrderBy(e => e.Id)
+        .ToArray();
+
+    private QuestDefinition[]? _startingByThemselves;
+
     public bool TryGetEpisode(int id, [NotNullWhen(true)] out QuestDefinition? episode) => _episodes.TryGetValue(id, out episode);
 
     public bool TryGetCondition(int id, [NotNullWhen(true)] out QuestConditionDefinition? condition) => _conditions.TryGetValue(id, out condition);
@@ -72,6 +91,17 @@ public sealed class QuestCatalog
     /// The groups a monster counts for, on top of the monster itself.
     /// </summary>
     public IReadOnlyList<int> GetMonsterGroups(int monster) => _monsterGroups.TryGetValue(monster, out var groups) ? groups : [];
+
+    /// <summary>
+    /// The title an episode that names a group of titles gives to a hero: the group's title for the class, or the number
+    /// itself when the tables have no such group.
+    /// </summary>
+    public int GetClassTitle(int group, int hero)
+    {
+        return group != 0 && _classTitles.TryGetValue(group, out var titles) && hero >= 1 && hero <= titles.Length && titles[hero - 1] != 0
+            ? titles[hero - 1]
+            : group;
+    }
 
     /// <summary>
     /// The item a row of the table of rewards gives to a hero, or 0.

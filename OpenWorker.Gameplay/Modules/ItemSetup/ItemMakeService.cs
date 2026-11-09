@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.ItemSetup.Responses;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Res;
@@ -14,7 +16,8 @@ namespace OpenWorker.Gameplay.Modules.ItemSetup;
 /// the four materials of the recipe, and gives one of its product.
 /// </summary>
 /// <remarks>Runs on the world loop. Every refusal answers the request and changes nothing.</remarks>
-public sealed class ItemMakeService(InventoryService inventory, ReadOnlyCollection<MakeRow> recipes, ItemSetupAnswers answers)
+public sealed class ItemMakeService(
+    InventoryService inventory, ReadOnlyCollection<MakeRow> recipes, ItemSetupAnswers answers, QuestManager? quests = null)
 {
     /// <summary>The person lacks the materials.</summary>
     public const ushort NotEnoughMaterials = 52254;
@@ -106,5 +109,8 @@ public sealed class ItemMakeService(InventoryService inventory, ReadOnlyCollecti
         inventory.TryGive(player, row.Product, count);
 
         answers.Send(player, new ItemSetupMakeResponse());
+
+        // Every item made counts for the quests that ask to make it.
+        quests?.OnEvent(player, QuestConditionType.Make, QuestConditionTarget.Item, row.Product, count);
     }
 }
