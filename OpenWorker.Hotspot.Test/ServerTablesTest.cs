@@ -57,7 +57,10 @@ public sealed class ServerTablesTest
             ("TB_BroachData", typeof(BroachComposeItemRow)),
             ("tb_Achievement", typeof(AchievementTargetRow)),
             ("tb_DS_Point", typeof(SharePointRow)),
-            ("tb_Character_Info", typeof(CharacterStartRow))
+            ("tb_Character_Info", typeof(CharacterStartRow)),
+            ("tb_Levelup_Point", typeof(LevelSkillPointRow)),
+            ("tb_Status", typeof(StatusSoulGaugeRow)),
+            ("tb_Soul_Guage", typeof(SoulGaugeRuleRow))
         ];
 
         foreach (var (table, row) in tables)

@@ -39,6 +39,7 @@ public static class DamageCalculator
     private const float DefenseBaseByLevel = 50f;
     private const float GuardedDamage = 0.2f;
     private const float Percent = 0.01f;
+    private const float BrokenSuperArmorDamage = 1.5f;
 
     public static DamageResult Calculate(
         in CombatStats attacker,
@@ -46,7 +47,8 @@ public static class DamageCalculator
         in SkillDamage skill,
         DefenseType defense,
         float attackRate,
-        Random random)
+        Random random,
+        bool superArmorBroken = false)
     {
         if (defense == DefenseType.Invincible)
         {
@@ -104,6 +106,12 @@ public static class DamageCalculator
         result -= result * ((own.ClassDamageReduction + other.DamageReduction) * Percent);
 
         var afterDefense = ApplyDefense((int)result, other.Defense, target.Level, defense);
+
+        // A monster whose super armor is broken takes half as much again.
+        if (superArmorBroken)
+        {
+            afterDefense = (int)(afterDefense * BrokenSuperArmorDamage);
+        }
 
         if (attackRate > 0)
         {

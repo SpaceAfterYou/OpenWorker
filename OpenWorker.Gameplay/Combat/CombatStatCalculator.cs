@@ -80,6 +80,10 @@ public static class CombatStatCalculator
             Luck = luck,
             MaxHealth = status.HealthFirst + vitality * status.HealthPerVitality + bonuses.Health,
             GrazeDamage = status.GrazeDamage + bonuses.GrazeDamage,
+            SoulGaugeConstant = status.SoulGaugeRegen,
+            SoulGaugeAbsorbRate = status.SoulGaugeAbsorbRate,
+            StaminaMax = status.StaminaFirst,
+            StaminaRegen = status.StaminaRegen,
             Physical = new DamageStats
             {
                 AttackMax = physicalAttack,
