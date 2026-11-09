@@ -146,7 +146,7 @@ services:
       - Logging__LogLevel__Microsoft=Warning
       - Logging__LogLevel__System=Warning
       - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
-      - Credentials__DiscordToken=
+      - Credentials__DiscordToken=${DISCORD_TOKEN}
     depends_on:
       redis:
         condition: service_healthy
@@ -291,7 +291,7 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
-        
+
   openworker.districtserver-canduscity:
     <<: *openworker-server
     container_name: "OpenWorker-DistrictServer-CandusCity"
