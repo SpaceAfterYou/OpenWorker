@@ -161,6 +161,24 @@ public sealed class HelperManager(
             });
     }
 
+    /// <summary>
+    /// A helper of the person as the client reads it, with its stats at the person's level; false when the person does not
+    /// have it.
+    /// </summary>
+    public bool TryGetRecord(Entity player, int helper, out HelperValue record)
+    {
+        record = default;
+
+        if (!TryGet(player, out var book) || book.Find(helper) is not { } entry)
+        {
+            return false;
+        }
+
+        record = ToValue(player, entry);
+
+        return true;
+    }
+
     private HelperValue ToValue(Entity player, HelperEntry entry)
     {
         if (gear is not null)

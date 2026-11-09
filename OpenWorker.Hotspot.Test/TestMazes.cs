@@ -67,7 +67,8 @@ internal static class TestMazes
     }
 
     public static LuaMaze Create(World world, Entity player, ILogger<LuaMaze>? logger = null, SimulationClock? clock = null, LuaState? state = null, string map = EmptyMap,
-        VBatchFile? batch = null, QuestManager? quests = null, MazeReporter? reports = null, Guid instance = default, BuffManager? buffs = null)
+        VBatchFile? batch = null, QuestManager? quests = null, MazeReporter? reports = null, Guid instance = default, BuffManager? buffs = null,
+        LuaCreatureManager? creatures = null)
     {
         batch ??= Map(map);
         var tables = new CombatTables(None<MonsterRow>(), None<StatusRow>(), None<SkillRow>(), None<CharacterInfoRow>());
@@ -76,7 +77,7 @@ internal static class TestMazes
             state ?? LuaState.Create(),
             world,
             player,
-            new LuaCreatureManager(world, batch, tables),
+            creatures ?? new LuaCreatureManager(world, batch, tables),
             buffs ?? new BuffManager(None<BuffRow>()),
             quests ?? Quests(world),
             batch,

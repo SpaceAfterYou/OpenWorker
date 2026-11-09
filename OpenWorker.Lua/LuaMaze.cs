@@ -428,6 +428,9 @@ public partial class LuaMaze(
             return Closed;
         }
 
+        // The helpers of the player go with it, and its client forgets those of the others.
+        creatureManager.Helpers.OnLeaving(player);
+
         member.Gone = true;
         member.SkillWake.Cancel();
         member.Flights.Clear();

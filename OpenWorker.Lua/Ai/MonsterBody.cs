@@ -20,7 +20,7 @@ namespace OpenWorker.Lua.Ai;
 /// <summary>
 /// A monster as its mind sees it. The mind decides, the body walks, turns, attacks, and tells the clients about it.
 /// </summary>
-internal sealed class MonsterBody : IAiHost
+internal class MonsterBody : IAiHost
 {
     /// <summary>
     /// How often a client hears about a monster that keeps walking, in seconds.
@@ -45,6 +45,8 @@ internal sealed class MonsterBody : IAiHost
     private readonly List<Vector3> _route = [];
     private readonly List<Vector3> _found = [];
 
+    private Vector3 _home;
+
     private Vector3? _destination;
     private bool _run;
     private bool _battlePose;
@@ -63,11 +65,15 @@ internal sealed class MonsterBody : IAiHost
 
         Entity = entity;
         Behavior = behavior;
-        HomePosition = home;
+        _home = home;
         _born = manager.Now;
 
         Machine = CreateMind(profile);
     }
+
+    protected World Ecs => _ecs;
+
+    protected LuaCreatureManager Manager => _manager;
 
     public Entity Entity { get; private set; }
     public MonsterBehavior Behavior { get; private set; }
@@ -95,7 +101,7 @@ internal sealed class MonsterBody : IAiHost
     {
         Entity = entity;
         Behavior = behavior;
-        HomePosition = home;
+        _home = home;
         IsRevealed = false;
 
         _pending.Clear();
@@ -141,7 +147,7 @@ internal sealed class MonsterBody : IAiHost
 
     public Vector3 Position => _ecs.Get<WorldComponent>(Entity).Position;
 
-    public Vector3 HomePosition { get; private set; }
+    public virtual Vector3 HomePosition => _home;
 
     public float Yaw => _ecs.Get<WorldComponent>(Entity).Rotation;
 
@@ -429,6 +435,38 @@ internal sealed class MonsterBody : IAiHost
         _manager.Kill(Entity);
     }
 
+    /// <summary>
+    /// A monster of the maze has no owner; a helper has.
+    /// </summary>
+    public virtual AiTarget? Owner => null;
+
+    /// <summary>
+    /// How far above or below a place the ground may be for something to stand there.
+    /// </summary>
+    private const float GroundReach = 200f;
+
+    public bool HasGround(Vector3 position)
+    {
+        return _manager.Navigation.TryGetFloor(position, out var height) && MathF.Abs(height - position.Z) <= GroundReach;
+    }
+
+    public virtual void WarpTo(Vector3 position) => Teleport(position);
+
+    public void Heal(int amount)
+    {
+        var health = Math.Min(MaxHealth, Health + Math.Max(0, amount));
+
+        _ecs.Set(Entity, _ecs.Get<CreatureComponent>(Entity) with { Health = health });
+
+        Broadcast(new MonsterUpdateStatListResponse
+        {
+            Actor = Actor,
+            Stats = [new StatKeyValuePair { byIndex = STAT_TYPE.STAT_HP_CUR, statValue = health }]
+        });
+    }
+
+    public AiSkill? FindSkill(int id) => _manager.Services?.Behaviors.GetSkill(id);
+
     // ---- Seeing -------------------------------------------------------------------------------
 
     public AiSkill? GetSkill(int slot)
@@ -441,19 +479,24 @@ internal sealed class MonsterBody : IAiHost
         return _manager.Services?.Behaviors.GetSkill(Behavior.Skills[slot]);
     }
 
-    public AiTarget? GetTarget(int id)
+    /// <summary>
+    /// The enemies of a monster are the players and the helpers that fight beside them.
+    /// </summary>
+    public virtual AiTarget? GetTarget(int id)
     {
-        return _manager.FindPlayer(id);
+        return _manager.FindPlayer(id) ?? _manager.Helpers.FindTarget(id);
     }
 
-    public AiTarget? FindEnemy(float distance)
+    public virtual AiTarget? FindEnemy(float distance)
     {
-        return _manager.NearestPlayer(Position, distance);
+        var player = _manager.NearestPlayer(Position, distance);
+
+        return _manager.Helpers.Count == 0 ? player : _manager.Helpers.Nearest(this, distance, player);
     }
 
-    public int CountEnemies(float distance)
+    public virtual int CountEnemies(float distance)
     {
-        return _manager.CountPlayers(Position, distance);
+        return _manager.CountPlayers(Position, distance) + _manager.Helpers.CountFoes(this, distance);
     }
 
     public int CountSectorMonsters()
@@ -487,7 +530,7 @@ internal sealed class MonsterBody : IAiHost
         return length;
     }
 
-    public bool UseSkill(AiSkill skill, AiTarget target)
+    public virtual bool UseSkill(AiSkill skill, AiTarget target)
     {
         var now = _manager.Now;
         var duration = _actions.GetDuration(skill.Id, Behavior.ActionFile);
@@ -550,10 +593,38 @@ internal sealed class MonsterBody : IAiHost
                 continue;
             }
 
-            var area = new AttackArea(pending.Hit.Trigger, Position, Yaw);
-
-            _manager.HitPlayers(this, pending.Skill, pending.Hit.Trigger, _manager.PlayersTouching(area));
+            Strike(pending.Skill, pending.Hit.Trigger, new AttackArea(pending.Hit.Trigger, Position, Yaw), null, false);
         }
+    }
+
+    /// <summary>
+    /// A blow of the monster lands on an area, and on what a projectile ran into: the players and the helpers in it are hit.
+    /// </summary>
+    protected virtual void Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
+    {
+        IReadOnlyList<Entity> victims = colliderOnly ? [] : _manager.PlayersTouching(area);
+
+        if (collider is { } key && _manager.FindPlayerEntity(key) is { } hit && !victims.Contains(hit))
+        {
+            victims = [.. victims, hit];
+        }
+
+        _manager.HitPlayers(this, skill, trigger, victims);
+
+        if (_manager.Helpers.Count > 0)
+        {
+            _manager.Helpers.HitBy(this, skill, trigger, area, collider, colliderOnly);
+        }
+    }
+
+    /// <summary>
+    /// What the projectiles of the monster can run into.
+    /// </summary>
+    protected virtual FlightTarget[] FlightTargets()
+    {
+        var players = _manager.GetPlayerTargets();
+
+        return _manager.Helpers.Count == 0 ? players : [.. players, .. _manager.Helpers.FlightTargets(this)];
     }
 
     /// <summary>
@@ -599,7 +670,7 @@ internal sealed class MonsterBody : IAiHost
             return;
         }
 
-        var targets = _manager.GetPlayerTargets();
+        var targets = FlightTargets();
 
         // In place: a projectile that is over leaves the list after the round.
         for (var index = 0; index < _flights.Count; index++)
@@ -609,14 +680,8 @@ internal sealed class MonsterBody : IAiHost
             foreach (var explosion in flight.Projectile.Advance(elapsed, targets))
             {
                 var area = new AttackArea(flight.Trigger, explosion.Position, Yaw);
-                List<Entity> victims = flight.Trigger.Projectile is { TargetOnly: true } ? [] : [.. _manager.PlayersTouching(area)];
 
-                if (explosion.Collider is { } key && _manager.FindPlayerEntity(key) is { } hit && !victims.Contains(hit))
-                {
-                    victims.Add(hit);
-                }
-
-                _manager.HitPlayers(this, flight.Skill, flight.Trigger, victims);
+                Strike(flight.Skill, flight.Trigger, area, explosion.Collider, flight.Trigger.Projectile is { TargetOnly: true });
             }
         }
 
@@ -669,7 +734,7 @@ internal sealed class MonsterBody : IAiHost
         });
     }
 
-    private void Broadcast(OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage message)
+    protected void Broadcast(OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage message)
     {
         if (IsRevealed)
         {

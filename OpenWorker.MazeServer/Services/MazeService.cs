@@ -58,7 +58,8 @@ public sealed partial class MazeService(
     MovementPace pace,
     HandlerExecutor errors,
     SimulationClock clock,
-    ILogger<MazeService> logger
+    ILogger<MazeService> logger,
+    MazeHelperField? helpers = null
 ) :
     IHotspotHandler<MazeCompleteRequest>,
     IHotspotHandler<SkillActiveSkillRequest>,
@@ -144,6 +145,7 @@ public sealed partial class MazeService(
         if (!first)
         {
             maze.Creatures.ShowAllTo(ecs.Get<ServerSessionComponent>(context.Player));
+            maze.Helpers.ShowTo(ecs.Get<ServerSessionComponent>(context.Player));
         }
 
         ShowMembers(context.Player, maze);
@@ -153,6 +155,17 @@ public sealed partial class MazeService(
         if (FindSector(maze, ecs.Get<WorldComponent>(context.Player).Position) is { } sector)
         {
             maze.SpawnSector(sector.Id);
+        }
+
+        // A player alone has its helpers called by themselves, if it asked for that.
+        if (helpers is not null)
+        {
+            await helpers.AutoSummonAsync(context.Player);
+
+            if (!ecs.IsAlive(context.Player) || maze.IsClosed)
+            {
+                return;
+            }
         }
 
         await maze.State.OnEnterPlayerAsync(ecs.Get<ActorComponent>(context.Player), maze);

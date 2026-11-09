@@ -10,9 +10,10 @@ namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
 /// The window of the helpers, in a district and in a maze: the list, its order, the automatic call, the items helpers wear,
-/// the orbs of friends, and the refusal of what is not done yet (calling a helper into a maze).
+/// the orbs of friends, and calling a helper into the maze (the maze server gives the place to call it to; a district
+/// refuses).
 /// </summary>
-public sealed class HelperService(HelperManager manager, HelperGear gear, HelperSupports supports) :
+public sealed class HelperService(HelperManager manager, HelperGear gear, HelperSupports supports, IHelperField? field = null) :
     IHotspotHandler<HelperSummonRequest>,
     IHotspotHandler<HelperSupportInfoRequest>,
     IHotspotHandler<HelperSupportRegisterRequest>,
@@ -24,11 +25,20 @@ public sealed class HelperService(HelperManager manager, HelperGear gear, Helper
     IHotspotHandler<HelperRecallRequest>,
     IHotspotHandler<HelperAutoSummonRequest>
 {
-    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperSummonRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, HelperSummonRequest request)
     {
-        manager.Summon(context.Player, request.Summon != 0);
-
-        return ValueTask.CompletedTask;
+        if (field is null)
+        {
+            manager.Summon(context.Player, request.Summon != 0);
+        }
+        else if (request.Summon != 0)
+        {
+            await field.SummonAsync(context.Player, request.Helper, context.CancellationToken);
+        }
+        else
+        {
+            field.Release(context.Player, request.Helper);
+        }
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportInfoRequest request)
@@ -70,8 +80,9 @@ public sealed class HelperService(HelperManager manager, HelperGear gear, Helper
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, HelperRecallRequest request)
     {
-        // Only called helpers come back, and none is called yet. The original answers a recall with nothing but the
-        // new positions of the helpers.
+        // Only called helpers come back, and only in a maze. The answer is nothing but the new places of the helpers.
+        field?.Recall(context.Player);
+
         return ValueTask.CompletedTask;
     }
 

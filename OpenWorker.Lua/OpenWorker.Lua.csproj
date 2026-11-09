@@ -16,4 +16,8 @@
       <ProjectReference Include="..\OpenWorker.Navigation\OpenWorker.Navigation.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <InternalsVisibleTo Include="OpenWorker.Hotspot.Test" />
+    </ItemGroup>
+
 </Project>
