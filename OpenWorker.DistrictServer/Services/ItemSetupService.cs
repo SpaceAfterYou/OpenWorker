@@ -1,3 +1,4 @@
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -6,14 +7,15 @@ using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The work on items at the NPCs of a city: repairs, upgrades, sockets, and the tools that restore, unseal or lower a count of
+/// The work on items at the NPCs of a city: repairs, upgrades, sockets, akashic cards, and the tools that restore, unseal or lower a count of
 /// an item. What each request does and what is still missing for the others: <c>docs/notes-item-setup-handlers.md</c>.
 /// </summary>
 public sealed class ItemSetupService(
     ItemRepairService repairs,
     ItemRestoreService restores,
     ItemSocketService sockets,
-    ItemUpgradeService upgrades) :
+    ItemUpgradeService upgrades,
+    AkashicService akashic) :
     IHotspotHandler<ItemSetupRepairRequest>,
     IHotspotHandler<ItemSetupRepairNpcRequest>,
     IHotspotHandler<ItemSetupRepairEquipRequest>,
@@ -23,7 +25,11 @@ public sealed class ItemSetupService(
     IHotspotHandler<ItemSetupUseEffectRequest>,
     IHotspotHandler<ItemSetupSocketActiveRequest>,
     IHotspotHandler<ItemSetupSocketEquipRequest>,
-    IHotspotHandler<ItemSetupUpgradeRequest>
+    IHotspotHandler<ItemSetupUpgradeRequest>,
+    IHotspotHandler<ItemSetupAkashicMakeRequest>,
+    IHotspotHandler<ItemSetupAkashicMakeExRequest>,
+    IHotspotHandler<ItemSetupAkashicComposeRequest>,
+    IHotspotHandler<ItemSetupAkashicDisassembleRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupRepairRequest request)
     {
@@ -91,6 +97,34 @@ public sealed class ItemSetupService(
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupUpgradeRequest request)
     {
         upgrades.Upgrade(context.Player, request.Protect, request.Protection, request.Target);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupAkashicMakeRequest request)
+    {
+        akashic.Make(context.Player, ItemSetupOpcode.AkashicMake, request.Index, request.Material, []);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupAkashicMakeExRequest request)
+    {
+        akashic.Make(context.Player, ItemSetupOpcode.AkashicMakeEx, request.Index, request.Material, request.Extras);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupAkashicComposeRequest request)
+    {
+        akashic.Compose(context.Player, request.Target, request.Materials);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupAkashicDisassembleRequest request)
+    {
+        akashic.Disassemble(context.Player, request.Card);
 
         return ValueTask.CompletedTask;
     }

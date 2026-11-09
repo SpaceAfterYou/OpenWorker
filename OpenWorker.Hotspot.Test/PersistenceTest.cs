@@ -110,13 +110,13 @@ public sealed class PersistenceTest
             var states = new PersonStateStore(store);
 
             Inventories = new InventoryPersistence(World, store, new InventoryFactory(catalog, Empty<CreateClothRow>(), new LocalItemSerials()),
-                NullLogger<InventoryPersistence>.Instance);
+                NullLogger<InventoryPersistence>.Instance, states);
             Skills = new PersonSkills(World, states, Empty<CharacterInfoRow>());
             Quests = new PersonStateQuestStore(states);
 
             var snapshots = new PersonSnapshots(
                 World,
-                [new SkillDocumentSource(), QuestManager.Document],
+                [new SkillDocumentSource(), QuestManager.Document, AkashicRecordBook.Document],
                 [new PersonPlaceStore(Options.Create(new InstanceOptions { Location = District }))]);
 
             Writer = new PersistenceWriter(store, Loop, snapshots, NullLogger<PersistenceWriter>.Instance);
@@ -249,6 +249,9 @@ public sealed class PersistenceTest
                 inventory.At(StorageGroup.Common, 3)!.Count = 9;
                 inventory.Touch(inventory.At(StorageGroup.Common, 3)!);
 
+                inventory.AkashicRecords.Records.Add(new AkashicRecord { Card = 381000101, Position = 139, Exp = 40 });
+                first.World.MarkDirty(player, PersonSections.AkashicRecords);
+
                 first.World.Set(player, new LevelComponent(12, 3_400));
                 first.World.MarkDirty(player, PersonSections.Level);
 
@@ -282,6 +285,10 @@ public sealed class PersistenceTest
             Assert.IsNotNull(item, "the item is where it was put");
             Assert.AreEqual(710105001, item.Item);
             Assert.AreEqual((short)9, item.Count, "the change after the round, written by the logout");
+
+            var card = world.Get<InventoryComponent>(back).Value!.AkashicRecords.Records.Single();
+
+            Assert.AreEqual((381000101, 139, 40), (card.Card, card.Position, card.Exp), "the card of the akashic record book");
 
             var wallet = world.Get<CurrencyComponent>(back);
 

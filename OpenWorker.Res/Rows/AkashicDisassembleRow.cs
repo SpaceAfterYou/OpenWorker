@@ -10,7 +10,7 @@ public readonly partial struct AkashicDisassembleRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
     public short Field1 { get; } = reader.ReadInt16();
-    public int Field2 { get; } = reader.ReadInt32();
-    public byte Field3 { get; } = reader.ReadByte();
-    public int Field4 { get; } = reader.ReadInt32();
+    public int Item { get; } = reader.ReadInt32();
+    public byte CostKind { get; } = reader.ReadByte();
+    public int Cost { get; } = reader.ReadInt32();
 }

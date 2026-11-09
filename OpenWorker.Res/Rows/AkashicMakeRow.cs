@@ -9,10 +9,10 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct AkashicMakeRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public byte Field1 { get; } = reader.ReadByte();
-    public int Field2 { get; } = reader.ReadInt32();
-    public int Field3 { get; } = reader.ReadInt32();
-    public byte Field4 { get; } = reader.ReadByte();
-    public int Field5 { get; } = reader.ReadInt32();
-    public int Field6 { get; } = reader.ReadInt32();
+    public byte MaterialKind { get; } = reader.ReadByte();
+    public int Material { get; } = reader.ReadInt32();
+    public int Card { get; } = reader.ReadInt32();
+    public byte ExtraCount { get; } = reader.ReadByte();
+    public int Gold { get; } = reader.ReadInt32();
+    public int Result { get; } = reader.ReadInt32();
 }

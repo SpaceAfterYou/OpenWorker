@@ -39,6 +39,11 @@ public enum PersonSections : ushort
     MiscState = 1 << 6,
 
     /// <summary>
+    /// The cards in the akashic record book.
+    /// </summary>
+    AkashicRecords = 1 << 7,
+
+    /// <summary>
     /// The parts kept in the row of the person.
     /// </summary>
     Row = Currencies | Level | Inventory

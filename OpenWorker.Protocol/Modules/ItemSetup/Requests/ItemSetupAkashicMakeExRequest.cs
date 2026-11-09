@@ -8,7 +8,8 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
 /// <summary>
-/// Makes an akashic card with extra materials.
+/// Makes an akashic card with extra cards. Unlike <see cref="ItemSetupAkashicMakeRequest"/> the client sends the recipe before
+/// the NPC.
 /// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
@@ -17,9 +18,9 @@ public readonly partial struct ItemSetupAkashicMakeExRequest : IRequestHotspotMe
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
     private const ItemSetupOpcode Command = ItemSetupOpcode.AkashicMakeEx;
 
-    public int Npc { get; init; }
-
     public int Index { get; init; }
+
+    public int Npc { get; init; }
 
     public StorageSlot Material { get; init; }
 

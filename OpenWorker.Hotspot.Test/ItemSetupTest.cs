@@ -173,4 +173,166 @@ public sealed class ItemSetupTest
         Assert.AreEqual(row.SealLimit == 255 ? 0 : 1, target.SealCount);
         Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == unsealing.Serial), "The unsealing item is used up");
     }
+
+    /// <summary>
+    /// The akashic cards of the client's table that lie in the common bag, by id.
+    /// </summary>
+    private static Dictionary<int, AkashicRecordsRow> Cards(ItemSetupFixture f)
+    {
+        return ItemSetupFixture.Load<AkashicRecordsRow>("tb_Akashic_Records")
+            .Where(e => f.Catalog.Exists(e.Id) && f.Catalog.HomeOf(e.Id) == StorageGroup.Common)
+            .GroupBy(e => e.Id)
+            .ToDictionary(e => e.Key, e => e.First());
+    }
+
+    [TestMethod]
+    public async Task MakingACardTakesAFullCardItsExtraCardsAndGoldAndGivesTheCardOfTheRecipe()
+    {
+        using var f = new ItemSetupFixture();
+
+        var cards = Cards(f);
+
+        // A recipe that makes the next card of a full card, with extra cards of the same rarity.
+        var recipe = ItemSetupFixture.Load<AkashicMakeRow>("tb_Akashic_Make").First(e =>
+            e.MaterialKind == AkashicService.CardMaterial && e.ExtraCount > 0 && e.Card == 0 &&
+            cards.TryGetValue(e.Material, out var row) && row.MakeExp > 0 && cards.ContainsKey(e.Result) &&
+            cards.Values.Count(x => x.RarePoint == row.RarePoint && x.Id != e.Material && x.Id != e.Result) >= e.ExtraCount);
+        var made = cards[recipe.Material];
+
+        var material = f.Give(recipe.Material, 1);
+        var extras = cards.Values
+            .Where(e => e.RarePoint == made.RarePoint && e.Id != recipe.Material && e.Id != recipe.Result)
+            .Take(recipe.ExtraCount)
+            .Select(e => f.Give(e.Id, 1))
+            .ToList();
+
+        material.Exp = made.MakeExp;
+        f.Gold = recipe.Gold + 5;
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicMakeExRequest
+        {
+            Index = recipe.Id,
+            Npc = 1,
+            Material = ItemSetupFixture.SlotOf(material),
+            Extras = extras.Select(ItemSetupFixture.SlotOf).ToList()
+        });
+
+        Assert.AreEqual(1, f.Inventory.CountOf(f.Player, recipe.Result), "The card of the recipe is made");
+        Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == material.Serial || extras.Any(x => x.Serial == e.Serial)),
+            "The full card and the extra cards are used up");
+        Assert.AreEqual(5, f.Gold, "The gold of the recipe is charged");
+    }
+
+    [TestMethod]
+    public async Task ComposingFeedsCardsToACardUpToWhatMakingTheNextNeeds()
+    {
+        using var f = new ItemSetupFixture();
+
+        var cards = Cards(f);
+
+        var target = cards.Values.First(e => e.MakeExp > 1);
+        var fodder = cards.Values.Where(e => e.ExpGiven > 0 && e.Id != target.Id).Take(2).ToList();
+
+        var card = f.Give(target.Id, 1);
+        var first = f.Give(fodder[0].Id, 1);
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicComposeRequest
+        {
+            Npc = 1,
+            Target = ItemSetupFixture.SlotOf(card),
+            Materials = [ItemSetupFixture.SlotOf(first)]
+        });
+
+        Assert.AreEqual(Math.Min(fodder[0].ExpGiven, target.MakeExp), card.Exp, "The card gains the experience of the card fed to it");
+        Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == first.Serial), "The card fed to it is used up");
+
+        card.Exp = target.MakeExp - 1;
+
+        var second = f.Give(fodder[1].Id, 1);
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicComposeRequest
+        {
+            Npc = 1,
+            Target = ItemSetupFixture.SlotOf(card),
+            Materials = [ItemSetupFixture.SlotOf(second)]
+        });
+
+        Assert.AreEqual(target.MakeExp, card.Exp, "The card stops at what making the next card needs");
+        Assert.IsTrue(f.Dirty.Sections.HasFlag(PersonSections.Inventory), "The card is written by the flush");
+    }
+
+    [TestMethod]
+    public async Task AUsedCardGoesIntoTheBookAndComesBackOutWithItsExperienceForThePriceOfTheTable()
+    {
+        using var f = new ItemSetupFixture();
+
+        var cards = Cards(f);
+        var backs = ItemSetupFixture.Load<AkashicDisassembleRow>("tb_Akashic_Disassemble")
+            .GroupBy(e => e.Id)
+            .ToDictionary(e => e.Key, e => e.First());
+
+        var row = cards.Values.First(e => backs.TryGetValue(e.Disassemble, out var back) && back.CostKind == 0 && f.Catalog.Exists(back.Item));
+        var back = backs[row.Disassemble];
+
+        var card = f.Give(row.Id, 1);
+
+        card.Exp = 17;
+
+        var use = new ItemUseService(f.Inventory, f.Catalog, new([]), new([]), null, f.Akashic);
+
+        Assert.IsTrue(await use.UseAsync(f.Player, card.Storage, card.Slot, card.Serial, CancellationToken.None));
+
+        var record = f.Bag.AkashicRecords.Records.Single();
+
+        Assert.AreEqual((row.Id, (int)row.Position, 17), (record.Card, record.Position, record.Exp), "The card is in the book at its place");
+        Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == card.Serial), "The card left the bag");
+        Assert.IsTrue(f.Dirty.Sections.HasFlag(PersonSections.AkashicRecords), "The book is written by the flush");
+
+        f.Gold = back.Cost + 3;
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicDisassembleRequest { Npc = 1, Card = row.Id });
+
+        Assert.AreEqual(0, f.Bag.AkashicRecords.Records.Count, "The card left the book");
+        Assert.AreEqual(17, f.Bag.Items.Single(e => e.Item == back.Item).Exp, "The card comes back with its experience");
+        Assert.AreEqual(3, f.Gold, "The price of the table is charged");
+    }
+
+    [TestMethod]
+    public async Task ARefusedAkashicRequestChangesNothing()
+    {
+        using var f = new ItemSetupFixture();
+
+        var cards = Cards(f);
+
+        // A recipe without extra cards whose card is not yet full.
+        var recipe = ItemSetupFixture.Load<AkashicMakeRow>("tb_Akashic_Make").First(e =>
+            e.MaterialKind == AkashicService.CardMaterial && e.ExtraCount == 0 && cards.TryGetValue(e.Material, out var row) &&
+            row.MakeExp > 0 && f.Catalog.Exists(e.Result));
+        var material = f.Give(recipe.Material, 1);
+
+        if (recipe.Card != 0)
+        {
+            f.Give(recipe.Card, 1);
+        }
+
+        material.Exp = cards[recipe.Material].MakeExp - 1;
+        f.Gold = recipe.Gold;
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicMakeRequest
+        {
+            Npc = 1,
+            Index = recipe.Id,
+            Material = ItemSetupFixture.SlotOf(material)
+        });
+
+        Assert.AreEqual(0, f.Inventory.CountOf(f.Player, recipe.Result), "Nothing is made");
+        Assert.AreSame(material, f.Bag.At(material.Storage, material.Slot), "The card stays");
+        Assert.AreEqual(recipe.Gold, f.Gold, "No gold is charged");
+
+        // A card that is not in the book cannot be taken out of it.
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicDisassembleRequest { Npc = 1, Card = recipe.Material });
+
+        Assert.AreEqual(1, f.Inventory.CountOf(f.Player, recipe.Material), "Nothing comes out of an empty book");
+        Assert.AreEqual(recipe.Gold, f.Gold);
+    }
 }

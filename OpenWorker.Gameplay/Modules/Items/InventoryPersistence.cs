@@ -1,23 +1,27 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
+using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
+using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 
 namespace OpenWorker.Gameplay.Modules.Items;
 
 /// <summary>
-/// Loads the items, the wallet, level and experience of the person a connection plays, and starts the mask the flush
-/// writes them by (<see cref="DirtyComponent"/>).
+/// Loads the items, the akashic record book, the wallet, level and experience of the person a connection plays, and starts
+/// the mask the flush writes them by (<see cref="DirtyComponent"/>). Without the documents of the person (the gate) the book
+/// starts empty.
 /// </summary>
 public sealed partial class InventoryPersistence(
     World world,
     IPersonStore store,
     InventoryFactory inventories,
-    ILogger<InventoryPersistence> logger)
+    ILogger<InventoryPersistence> logger,
+    PersonStateStore? documents = null)
 {
     /// <summary>
     /// Reads the inventory of a person and attaches it to the player. A person without any items yet gets its first ones,
@@ -26,6 +30,10 @@ public sealed partial class InventoryPersistence(
     public async ValueTask LoadAsync(Entity player, PersonPersistent person, CancellationToken cancellationToken = default)
     {
         var rows = await store.LoadItemsAsync(person.Id, cancellationToken);
+
+        var records = documents is null
+            ? null
+            : await documents.LoadAsync<AkashicRecordBook>(person.Id, PersonStateKind.AkashicRecords, cancellationToken);
 
         // The player may have left while the items were read.
         if (!world.IsAlive(player))
@@ -38,6 +46,7 @@ public sealed partial class InventoryPersistence(
         var inventory = rows.Count == 0 ? inventories.CreateNew(person) : inventories.Load(person, rows);
 
         inventory.Dirty = dirty;
+        inventory.AkashicRecords = records ?? new AkashicRecordBook();
 
         if (rows.Count == 0)
         {
