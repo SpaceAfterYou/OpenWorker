@@ -153,9 +153,43 @@ public sealed partial class WorldManager(
         return (jump != 0 && starts.TryGet(jump, out start)) || starts.TryGet(location * 100 + 1, out start);
     }
 
+    /// <summary>
+    /// Whether the location is a maze the client can be sent into.
+    /// </summary>
+    public bool IsMaze(short location)
+    {
+        return provider.TryGetAndCache(location, out _, out var type) && type == BatchType.Maze;
+    }
+
+    /// <summary>
+    /// The maze server of this gate with the fewest players and its identifier, or the configured one with an empty
+    /// identifier when none has registered.
+    /// </summary>
+    public async ValueTask<(Guid Server, string Host, short Port)> PickMazeServerAsync()
+    {
+        return await mazes.PickServerAsync(Gate) ?? (Guid.Empty, DefaultMaze.Host, DefaultMaze.Port);
+    }
+
+    /// <summary>
+    /// Sends the player into an instance of a maze on the given maze server: the instance a party shares, which the maze
+    /// server opens for the first member to come and the others join. False when the location has no start to enter by.
+    /// </summary>
+    public async ValueTask<bool> SendToMazeAsync(Entity player, short location, int jump, (string Host, short Port) maze, Guid instance, int party)
+    {
+        if (!provider.TryGetAndCache(location, out var batch, out var type) ||
+            type != BatchType.Maze ||
+            !TryGetStart(batch, location, jump, out var start))
+        {
+            return false;
+        }
+
+        await SendToMazeAsync(player, location, start, maze, instance, party);
+
+        return true;
+    }
+
     private async ValueTask EnterMaze(Entity player, short location, StartEventBox start)
     {
-        var session = ecs.Get<ServerSessionComponent>(player);
         var maze = await GetMazeAsync();
 
         // The player may have left while the servers were looked up.
@@ -163,6 +197,13 @@ public sealed partial class WorldManager(
         {
             return;
         }
+
+        await SendToMazeAsync(player, location, start, maze, Guid.Empty, 0);
+    }
+
+    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party)
+    {
+        var session = ecs.Get<ServerSessionComponent>(player);
 
         var map = new MapValue
         {
@@ -204,7 +245,9 @@ public sealed partial class WorldManager(
             Y = world.Position.Y,
             Z = world.Position.Z,
             R = world.Rotation,
-            Jump = start.Id
+            Jump = start.Id,
+            Instance = instance,
+            Party = party
         };
 
         // The maze loads the person from the database: what this server has must be there first.
