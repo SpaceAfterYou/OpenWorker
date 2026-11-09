@@ -9,6 +9,6 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct AchievementBeginRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public int Field1 { get; } = reader.ReadInt32();
-    public byte Field2 { get; } = reader.ReadByte();
+    public int Achievement { get; } = reader.ReadInt32();
+    public byte OpenLevel { get; } = reader.ReadByte();
 }

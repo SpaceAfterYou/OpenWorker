@@ -53,7 +53,9 @@ public sealed class ServerTablesTest
             ("TB_BroachCompose_Rank", typeof(BroachComposeRankRow)),
             ("TB_BroachCompose_Type", typeof(BroachComposeTypeRow)),
             ("TB_BroachCompose_Theme", typeof(BroachComposeThemeRow)),
-            ("TB_BroachData", typeof(BroachComposeItemRow))
+            ("TB_BroachData", typeof(BroachComposeItemRow)),
+            ("tb_Achievement", typeof(AchievementTargetRow)),
+            ("tb_DS_Point", typeof(SharePointRow))
         ];
 
         foreach (var (table, row) in tables)
