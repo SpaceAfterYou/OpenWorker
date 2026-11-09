@@ -35,6 +35,7 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<ItemExchangeService>();
         services.AddSingleton<ItemDisassembleService>();
         services.AddSingleton<ItemEvolutionService>();
+        services.AddSingleton<AkashicService>();
         services.AddSingleton<InventoryPersistence>();
 
         // The features that give items hand them over here.
@@ -46,6 +47,7 @@ public static class ItemsServiceCollectionExtensions
 
         // Items, the wallet and the rest of the person are written by the flush of the person.
         services.AddPersonPersistence();
+        services.AddSingleton(AkashicRecordBook.Document);
         services.AddPersonSkills();
 
         return services;

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Res.Types;
@@ -10,14 +11,15 @@ using OpenWorker.UpdateContent.Res.Rows;
 namespace OpenWorker.Gameplay.Modules.Items;
 
 /// <summary>
-/// What happens when an item is used: boxes and packages open into items and money.
+/// What happens when an item is used: boxes and packages open into items and money, an akashic record card goes into the book.
 /// </summary>
 public sealed class ItemUseService(
     InventoryService inventory,
     ItemCatalog catalog,
     ReadOnlyCollection<ItemPackageRow> packages,
     ReadOnlyCollection<ItemRandomBoxRow> randomBoxes,
-    BoosterManager? boosters = null)
+    BoosterManager? boosters = null,
+    AkashicService? akashic = null)
 {
     private readonly RowIndex<int, ItemPackageRow> _packages = packages.IndexBy(e => e.Id);
     private readonly RowIndex<int, ItemRandomBoxRow> _randomBoxes = randomBoxes.IndexBy(e => e.Id);
@@ -54,6 +56,12 @@ public sealed class ItemUseService(
             inventory.Spend(player, item, 1);
 
             return true;
+        }
+
+        // An akashic record card goes into the book of the person.
+        if (classify.ItemUseType == ItemUseType.AKASHIC_RECORD)
+        {
+            return akashic is not null && akashic.Register(player, item);
         }
 
         var reward = classify.ItemUseType switch

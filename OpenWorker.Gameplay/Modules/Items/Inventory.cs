@@ -56,6 +56,11 @@ public sealed class Inventory(int person)
     public int[] QuickSlotCards { get; set; } = new int[5];
     public int[] QuickSlotItems { get; set; } = new int[2];
 
+    /// <summary>
+    /// The cards put into the akashic record book, which leave the bag while they are there.
+    /// </summary>
+    public AkashicRecordBook AkashicRecords { get; set; } = new();
+
     public IEnumerable<ItemStorage> Storages => _storages.Values;
 
     public ItemStorage Add(StorageGroup group, int size, byte grade = 0)

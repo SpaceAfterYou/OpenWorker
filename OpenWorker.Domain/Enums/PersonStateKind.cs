@@ -15,5 +15,10 @@ public enum PersonStateKind : byte
     /// <summary>
     /// The skills the person has learned, its decks and its skill points.
     /// </summary>
-    Skills = 7
+    Skills = 7,
+
+    /// <summary>
+    /// The cards the person has put into its akashic record book.
+    /// </summary>
+    AkashicRecords = 8
 }

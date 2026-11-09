@@ -59,6 +59,7 @@ internal sealed class ItemSetupFixture : IDisposable
     public ReadOnlyCollection<ItemRepairRow> Repairs { get; }
     public FixedRandom Random { get; } = new(1);
     public ItemSetupService Handler { get; }
+    public AkashicService Akashic { get; }
     public Entity Player { get; }
     public PersonDirty Dirty { get; } = new(7);
 
@@ -83,7 +84,9 @@ internal sealed class ItemSetupFixture : IDisposable
             new ItemRepairService(World, Inventory, Repairs),
             new ItemRestoreService(Inventory, answers),
             new ItemSocketService(Inventory, Load<SocketRow>("tb_Socket"), answers),
-            new ItemUpgradeService(Inventory, Load<ReinforceRow>("tb_Reinforce"), chances, answers, Random));
+            new ItemUpgradeService(Inventory, Load<ReinforceRow>("tb_Reinforce"), chances, answers, Random),
+            Akashic = new AkashicService(Inventory, Load<AkashicRecordsRow>("tb_Akashic_Records"), Load<AkashicMakeRow>("tb_Akashic_Make"),
+                Load<AkashicDisassembleRow>("tb_Akashic_Disassemble"), answers));
 
         var factory = new InventoryFactory(Catalog, Load<CreateClothRow>("tb_Create_Cloth"), serials);
 
