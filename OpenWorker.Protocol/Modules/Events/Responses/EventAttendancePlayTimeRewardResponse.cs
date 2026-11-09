@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Events.Responses;
 /// <summary>
 /// The reward for the time played was given: the step the person is on now and how long it has played in it.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct EventAttendancePlayTimeRewardResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly struct EventAttendancePlayTimeRewardResponse : IResponseHotspotM
     private const GroupOpcode Group = GroupOpcode.Event;
     private const EventOpcode Command = EventOpcode.AttendancePlayTimeReward;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

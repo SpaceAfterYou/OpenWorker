@@ -8,13 +8,13 @@ using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonUpdateOriginStatListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.UpdateOriginStat;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required ActorValue Actor { get; init; }
 

@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 /// <summary>
 /// What a friend looks like, for the window that shows another player.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct FriendInfoResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly struct FriendInfoResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Friend;
     private const FriendOpcode Command = FriendOpcode.Info;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

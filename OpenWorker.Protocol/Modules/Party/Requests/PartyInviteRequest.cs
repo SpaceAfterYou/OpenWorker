@@ -7,13 +7,13 @@ using OpenWorker.Hotspot.Modules.Persons.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Party.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct PartyInviteRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Invite;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public string TargetName { get; } = reader.ReadPersonName();
     public string RequesterName { get; } = reader.ReadPersonName();

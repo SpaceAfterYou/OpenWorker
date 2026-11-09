@@ -343,7 +343,7 @@ internal sealed class FakeWorld : IAsyncDisposable
 
     private static ushort Op<T>() where T : struct, IHotspotMessage
     {
-        return (ushort)(short)default(T).Opcode;
+        return (ushort)default(T).Opcode.Value;
     }
 
     #region The auth server
@@ -442,7 +442,7 @@ internal sealed class FakeWorld : IAsyncDisposable
 
         if (connection.Account == 0 || request.Person.InfoValue.Hero != Requests.Template.Hero)
         {
-            connection.Send(new ErrorMessageResponse(new MessageOpcode(GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes.GroupOpcode.Character, GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes.CharacterOpcode.ListRes), PersonErrorCode.CreateFailed));
+            connection.Send(new ErrorMessageResponse(MessageOpcode.From(GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes.GroupOpcode.Character, GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes.CharacterOpcode.ListRes), PersonErrorCode.CreateFailed));
 
             return;
         }
@@ -573,7 +573,7 @@ internal sealed class FakeWorld : IAsyncDisposable
         };
 
         // Serialized once and put in every queue, which is what the real server will do after its second phase.
-        var frame = Wire.ServerFrame((ushort)(short)broadcast.Opcode, broadcast.Write);
+        var frame = Wire.ServerFrame((ushort)broadcast.Opcode.Value, broadcast.Write);
 
         foreach (var member in connection.Group.Keys)
         {
@@ -599,7 +599,7 @@ internal sealed class FakeWorld : IAsyncDisposable
             Message = request.Message
         };
 
-        var frame = Wire.ServerFrame((ushort)(short)response.Opcode, response.Write);
+        var frame = Wire.ServerFrame((ushort)response.Opcode.Value, response.Write);
 
         foreach (var member in connection.Group.Keys)
         {
@@ -811,7 +811,7 @@ internal sealed class FakeWorld : IAsyncDisposable
 
         public void Send<T>(T message) where T : IResponseHotspotMessage
         {
-            Enqueue(Wire.ServerFrame((ushort)(short)message.Opcode, message.Write));
+            Enqueue(Wire.ServerFrame((ushort)message.Opcode.Value, message.Write));
         }
 
         public void Enqueue(byte[] frame)

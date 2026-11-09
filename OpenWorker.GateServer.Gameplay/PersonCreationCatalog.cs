@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.GateServer.Gameplay;
@@ -14,11 +15,16 @@ public sealed class PersonCreationCatalog(
     ReadOnlyCollection<CustomizeEyesRow> eyes,
     ReadOnlyCollection<CustomizeSkinRow> skin)
 {
+    private readonly RowIndex<int, CharacterInfoRow> _characters = characters.IndexBy(e => (int)e.Id);
+    private readonly RowIndex<byte, CustomizeHairRow> _hair = hair.IndexBy(e => e.Id);
+    private readonly RowIndex<byte, CustomizeEyesRow> _eyes = eyes.IndexBy(e => e.Id);
+    private readonly RowIndex<byte, CustomizeSkinRow> _skin = skin.IndexBy(e => e.Id);
+
     public bool TryGetCharacter(Hero hero, out CharacterInfoRow character)
     {
         var id = (int)hero * 1000;
 
-        character = characters.FirstOrDefault(e => e.Id == id);
+        character = _characters.GetOrDefault(id);
 
         return character.Id != 0;
     }
@@ -28,22 +34,22 @@ public sealed class PersonCreationCatalog(
     /// </summary>
     public bool IsOffered(Hero hero, AppearanceValue appearance)
     {
-        var hairRow = hair.FirstOrDefault(e => e.Id == (byte)hero);
-        var eyesRow = eyes.FirstOrDefault(e => e.Id == (byte)hero);
-        var skinRow = skin.FirstOrDefault(e => e.Id == (byte)hero);
+        var hairRow = _hair.GetOrDefault((byte)hero);
+        var eyesRow = _eyes.GetOrDefault((byte)hero);
+        var skinRow = _skin.GetOrDefault((byte)hero);
 
         return IsOffered(appearance.HairStyle,
-                   hairRow.Field11, hairRow.Field12, hairRow.Field13, hairRow.Field14, hairRow.Field15,
-                   hairRow.Field16, hairRow.Field17, hairRow.Field18, hairRow.Field19, hairRow.Field20) &&
+                   hairRow.Style1, hairRow.Style2, hairRow.Style3, hairRow.Style4, hairRow.Style5,
+                   hairRow.Style6, hairRow.Style7, hairRow.Style8, hairRow.Style9, hairRow.Style10) &&
                IsOffered(appearance.HairColor,
-                   hairRow.Field41, hairRow.Field42, hairRow.Field43, hairRow.Field44, hairRow.Field45,
-                   hairRow.Field46, hairRow.Field47, hairRow.Field48, hairRow.Field49, hairRow.Field50) &&
+                   hairRow.Color1, hairRow.Color2, hairRow.Color3, hairRow.Color4, hairRow.Color5,
+                   hairRow.Color6, hairRow.Color7, hairRow.Color8, hairRow.Color9, hairRow.Color10) &&
                IsOffered(appearance.EyeColor,
-                   eyesRow.Field21, eyesRow.Field22, eyesRow.Field23, eyesRow.Field24, eyesRow.Field25,
-                   eyesRow.Field26, eyesRow.Field27, eyesRow.Field28, eyesRow.Field29, eyesRow.Field30) &&
+                   eyesRow.Color1, eyesRow.Color2, eyesRow.Color3, eyesRow.Color4, eyesRow.Color5,
+                   eyesRow.Color6, eyesRow.Color7, eyesRow.Color8, eyesRow.Color9, eyesRow.Color10) &&
                IsOffered(appearance.SkinColor,
-                   skinRow.Field21, skinRow.Field22, skinRow.Field23, skinRow.Field24, skinRow.Field25,
-                   skinRow.Field26, skinRow.Field27, skinRow.Field28, skinRow.Field29, skinRow.Field30);
+                   skinRow.Color1, skinRow.Color2, skinRow.Color3, skinRow.Color4, skinRow.Color5,
+                   skinRow.Color6, skinRow.Color7, skinRow.Color8, skinRow.Color9, skinRow.Color10);
     }
 
     /// <summary>

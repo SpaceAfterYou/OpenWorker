@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Modules.DailyMissions.Types;
 
 namespace OpenWorker.Hotspot.Modules.DailyMissions.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct DailyMissionUpdateResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -14,7 +14,7 @@ public readonly struct DailyMissionUpdateResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.DailyMission;
     private const DailyMissionOpcode Command = DailyMissionOpcode.Update;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

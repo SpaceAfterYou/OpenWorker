@@ -12,13 +12,13 @@ namespace OpenWorker.Hotspot.Modules.Monster.Responses;
 /// A monster switches to a motion class: standing, hit, down and so on.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MonsterChangeMotionResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Monster;
     private const MonsterOpcode Command = MonsterOpcode.ChangeMotionBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; init; }
     public short Motion { get; init; }

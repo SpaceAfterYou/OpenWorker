@@ -20,6 +20,7 @@ using OpenWorker.Lua.Ai;
 using OpenWorker.Navigation;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.Res.Extensions;
+using OpenWorker.Server.Common.Extensions;
 
 await Host
     .CreateDefaultBuilder(args)
@@ -55,7 +56,7 @@ await Host
 
         services.AddGateOptions();
         services.AddPlayerTransfer();
-        services.AddSingleton<PersonRegistry>();
+        services.AddServerCommon<MazeAudience>();
         services.AddSingleton<ISessionCloseHandler, MazeCloseHandler>();
 
         services.AddPersistence();
@@ -75,7 +76,6 @@ await Host
 
         // services.AddSingleton<ItemSystem>();
         // services.AddSingleton<NpcManager>();
-        // services.AddSingleton<PersonRegistry>();
 
         // A player in a maze is the person of the district, with the same components.
         services.AddHotspot(context, EntityComponentService.District);

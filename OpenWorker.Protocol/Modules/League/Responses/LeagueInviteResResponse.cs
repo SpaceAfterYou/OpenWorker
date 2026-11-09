@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.League.Responses;
 /// <summary>
 /// The answer to an invitation you sent, the number of the text in its result.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct LeagueInviteResResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -32,7 +32,7 @@ public readonly struct LeagueInviteResResponse : IResponseHotspotMessage
     {
     }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public void Write(BinaryWriter writer)
     {

@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 /// Where a helper stands now.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct HelperSyncPosResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -19,7 +19,7 @@ public readonly partial struct HelperSyncPosResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Helper;
     private const HelperOpcode Command = HelperOpcode.SyncPos;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

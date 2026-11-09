@@ -8,7 +8,7 @@ using OpenWorker.Hotspot.Modules.Quests.Types;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct QuestEpisodeCompleteResponse(BinaryReader reader) : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -16,7 +16,7 @@ public readonly struct QuestEpisodeCompleteResponse(BinaryReader reader) : IResp
     private const GroupOpcode Group = GroupOpcode.Quest;
     private const QuestOpcode Command = QuestOpcode.EpisodeComplete;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

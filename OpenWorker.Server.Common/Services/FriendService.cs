@@ -4,7 +4,7 @@ using OpenWorker.Channel.Community;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Persistence;
 
-namespace OpenWorker.MazeServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 public sealed class FriendService(
     World world,

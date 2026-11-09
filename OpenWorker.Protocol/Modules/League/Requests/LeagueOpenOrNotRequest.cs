@@ -16,7 +16,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// Opens the league to applicants or closes it.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct LeagueOpenOrNotRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -25,5 +25,5 @@ public readonly partial struct LeagueOpenOrNotRequest : IRequestHotspotMessage
     public int League { get; }
     public bool Open { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

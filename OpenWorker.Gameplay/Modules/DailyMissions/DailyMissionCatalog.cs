@@ -108,7 +108,7 @@ public sealed class DailyMissionCatalog
     private readonly Dictionary<int, DailyMissionMonster> _monsters;
 
     public DailyMissionCatalog(ReadOnlyCollection<DailyMissionRow> rows, ReadOnlyCollection<MonsterRow> monsters)
-        : this(rows.Select(Create).ToArray(), monsters.ToDictionary(e => e.Id, e => new DailyMissionMonster(e.Field8, e.Field14, e.Field15, e.Field16)))
+        : this(rows.Select(Create).ToArray(), monsters.ToDictionary(e => e.Id, e => new DailyMissionMonster(e.Faction, e.MissionGroup1, e.MissionGroup2, e.MissionGroup3)))
     {
     }
 
@@ -133,24 +133,24 @@ public sealed class DailyMissionCatalog
     {
         var rewards = new List<RewardItem>();
 
-        AddReward(rewards, row.Field17, row.Field20);
-        AddReward(rewards, row.Field18, row.Field21);
-        AddReward(rewards, row.Field19, row.Field22);
+        AddReward(rewards, row.RewardItem1, row.RewardCount1);
+        AddReward(rewards, row.RewardItem2, row.RewardCount2);
+        AddReward(rewards, row.RewardItem3, row.RewardCount3);
 
         return new DailyMissionDefinition(
             row.Id,
-            (DailyMissionType)row.Field1,
-            row.Field3,
-            (DailyMissionFinish)row.Field4,
-            (DailyMissionTarget)row.Field5,
-            row.Field6,
-            row.Field7,
-            row.Field8,
-            row.Field9,
-            row.Field10,
-            row.Field13,
-            row.Field14,
-            DailyMissionDates.Parse(row.Field15, row.Field16),
+            (DailyMissionType)row.Type,
+            row.District,
+            (DailyMissionFinish)row.Finish,
+            (DailyMissionTarget)row.Target,
+            row.TargetId,
+            row.TargetFaction,
+            row.ConditionType,
+            row.ConditionValue,
+            row.ConditionClass,
+            row.ConditionCount,
+            row.MissionCount,
+            DailyMissionDates.Parse(row.OpenDate, row.CloseDate),
             rewards);
     }
 

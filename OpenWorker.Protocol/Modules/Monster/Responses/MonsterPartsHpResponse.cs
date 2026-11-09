@@ -9,13 +9,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Monster.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MonsterPartsHpResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Monster;
     private const MonsterOpcode Command = MonsterOpcode.PartsHp;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; init; }
     public int FirstCurrent { get; init; }

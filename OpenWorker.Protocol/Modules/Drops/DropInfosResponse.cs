@@ -14,13 +14,13 @@ public readonly record struct DropObjectValue(Vector3 Position, int ObjectId, sh
 /// <summary>
 /// Things that fell from a monster. The group is told again when they are taken away all at once.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct DropInfosResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Drop;
     private const DropOpcode Command = DropOpcode.Infos;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required int DropGroup { get; init; }
     public bool Boss { get; init; }

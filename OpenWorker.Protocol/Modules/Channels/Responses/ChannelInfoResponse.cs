@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.Channels.Types;
 
 namespace OpenWorker.Hotspot.Modules.Channels.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ChannelInfoResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -15,7 +15,7 @@ public readonly struct ChannelInfoResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Channel;
     private const ChannelOpcode Command = ChannelOpcode.Info;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

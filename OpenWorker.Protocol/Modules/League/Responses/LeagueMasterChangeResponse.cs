@@ -16,7 +16,7 @@ namespace OpenWorker.Hotspot.Modules.League.Responses;
 /// The league has another master.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct LeagueMasterChangeResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -27,5 +27,5 @@ public readonly partial struct LeagueMasterChangeResponse : IResponseHotspotMess
     public int Master { get; init; }
     public int Result { get; init; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

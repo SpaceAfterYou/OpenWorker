@@ -11,7 +11,7 @@ public sealed class CommunityNetworkTest
 {
     private readonly struct Ping(int value) : IResponseHotspotMessage
     {
-        public MessageOpcode Opcode => new(GroupOpcode.Chat, ChatOpcode.Notify);
+        public MessageOpcode Opcode => new(GroupOpcode.Chat, (byte)ChatOpcode.Notify);
 
         public void Write(BinaryWriter writer)
         {

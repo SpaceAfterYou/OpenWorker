@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.Vaccum.Responses;
 /// A person has stopped taking a cube.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct VaccumClickCancelResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -19,7 +19,7 @@ public readonly partial struct VaccumClickCancelResponse : IResponseHotspotMessa
     private const GroupOpcode Group = GroupOpcode.Vaccum;
     private const VaccumOpcode Command = VaccumOpcode.ClickCancel;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

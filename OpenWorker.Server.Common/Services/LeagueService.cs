@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 
-namespace OpenWorker.DistrictServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 public sealed class LeagueService(
     World world,

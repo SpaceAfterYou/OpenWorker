@@ -8,7 +8,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct WorldCurDateResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -16,7 +16,7 @@ public readonly partial struct WorldCurDateResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.CurDate;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

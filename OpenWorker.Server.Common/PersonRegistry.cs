@@ -14,14 +14,14 @@ using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 
-namespace OpenWorker.DistrictServer.Server;
+namespace OpenWorker.Server.Common;
 
 public sealed class PersonRegistry(World world)
 {
     /// <summary>
     /// Sets what the person is from its row, and the options of its account.
     /// </summary>
-    internal void PullPerson(Entity entity, PersonPersistent persistent, byte[] accountOptions)
+    public void PullPerson(Entity entity, PersonPersistent persistent, byte[] accountOptions)
     {
         world.Set(entity, new ActorComponent
         {

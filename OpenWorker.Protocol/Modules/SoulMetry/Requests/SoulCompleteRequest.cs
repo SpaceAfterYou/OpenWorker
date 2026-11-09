@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.SoulMetry.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct SoulCompleteRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -15,7 +15,7 @@ public readonly partial struct SoulCompleteRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.SoulMetry;
     private const SoulMetryOpcode Command = SoulMetryOpcode.Complete;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

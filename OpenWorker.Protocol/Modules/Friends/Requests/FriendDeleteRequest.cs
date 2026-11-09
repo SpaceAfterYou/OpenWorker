@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Friends.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct FriendDeleteRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Friend;
@@ -16,5 +16,5 @@ public readonly partial struct FriendDeleteRequest : IRequestHotspotMessage
     public int Friend { get; }
     public bool IsShowMessage { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

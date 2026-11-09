@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct QuestFailResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -15,7 +15,7 @@ public readonly partial struct QuestFailResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Quest;
     private const QuestOpcode Command = QuestOpcode.Fail;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

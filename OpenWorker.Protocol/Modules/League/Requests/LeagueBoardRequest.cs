@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// <summary>
 /// Writes on the board of the league.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct LeagueBoardRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -22,5 +22,5 @@ public readonly struct LeagueBoardRequest(BinaryReader reader) : IRequestHotspot
 
     public LeagueBoardEntry Entry { get; } = new LeagueBoardEntry(reader);
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

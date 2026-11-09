@@ -8,7 +8,7 @@ namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 /// <summary>
 /// This packet defined but isn't processed on the client side.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct SkillGestureQuickSlotResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -16,7 +16,7 @@ public readonly struct SkillGestureQuickSlotResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Skill;
     private const SkillOpcode Command = SkillOpcode.GestureQuickSlot;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

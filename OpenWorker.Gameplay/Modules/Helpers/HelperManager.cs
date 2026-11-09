@@ -185,7 +185,7 @@ public sealed class HelperManager(
         if (world.IsAlive(player))
         {
             world.Get<ServerSessionComponent>(player)
-                .Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Helper, command), code));
+                .Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Helper, command), code));
         }
     }
 

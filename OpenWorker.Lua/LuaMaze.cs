@@ -30,6 +30,7 @@ using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Lua.Managers;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Lua;
@@ -53,7 +54,7 @@ public partial class LuaMaze(
     BuffManager buffManager,
     QuestManager questManager,
     VBatchFile batch,
-    IReadOnlyCollection<InteractionObjectRow> interactions,
+    RowIndex<int, InteractionObjectRow> interactions,
     SkillActionProvider actions,
     CombatTables combat,
     MazeInfoRow info,
@@ -1273,7 +1274,7 @@ public partial class LuaMaze(
     {
         foreach (var box in Batch.EventBox.InterActions.Where(e => e.ObjectKey.Contains(CubeKey, StringComparison.OrdinalIgnoreCase)))
         {
-            var row = interactions.FirstOrDefault(e => e.Id == box.Interaction);
+            var row = interactions.GetOrDefault(box.Interaction);
 
             reports.RegisterCube(player, box.Id, box.Interaction, TimeSpan.FromMilliseconds(row.ActionDelay));
         }

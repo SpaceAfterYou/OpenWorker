@@ -11,13 +11,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct PersonGobackLobbyResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.GobackLobby;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required ActorValue Actor { get; init; }
     public required int Account { get; init; }

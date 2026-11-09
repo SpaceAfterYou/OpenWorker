@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Channels.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct ChannelChangeRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -15,7 +15,7 @@ public readonly partial struct ChannelChangeRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Channel;
     private const ChannelOpcode Command = ChannelOpcode.Change;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

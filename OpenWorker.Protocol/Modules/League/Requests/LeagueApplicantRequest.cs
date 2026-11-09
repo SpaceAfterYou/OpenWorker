@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// <summary>
 /// Asks to join a league that is open.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct LeagueApplicantRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -22,5 +22,5 @@ public readonly struct LeagueApplicantRequest(BinaryReader reader) : IRequestHot
 
     public LeagueApplicant Applicant { get; } = new LeagueApplicant(reader);
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

@@ -70,9 +70,9 @@ public sealed class SoulMetryCatalog
     // The table has five slots of every column, an empty slot has the object 0.
     internal static SoulMetryDefinition Create(SoulMetryRow row)
     {
-        int[] mazes = [row.Field4, row.Field5, row.Field6, row.Field7, row.Field8];
-        int[] objects = [row.Field9, row.Field10, row.Field11, row.Field12, row.Field13];
-        int[] rates = [row.Field14, row.Field15, row.Field16, row.Field17, row.Field18];
+        int[] mazes = [row.Maze1, row.Maze2, row.Maze3, row.Maze4, row.Maze5];
+        int[] objects = [row.Object1, row.Object2, row.Object3, row.Object4, row.Object5];
+        int[] rates = [row.SpawnRate1, row.SpawnRate2, row.SpawnRate3, row.SpawnRate4, row.SpawnRate5];
 
         var found = new List<SoulMetryObject>();
 
@@ -86,16 +86,16 @@ public sealed class SoulMetryCatalog
 
         var rewards = new List<SoulMetryReward>();
 
-        if (row.Field31 > 0)
+        if (row.RewardItem1 > 0)
         {
-            rewards.Add(new SoulMetryReward(row.Field29, row.Field31, row.Field33));
+            rewards.Add(new SoulMetryReward(row.RewardType1, row.RewardItem1, row.RewardCount1));
         }
 
-        if (row.Field32 > 0)
+        if (row.RewardItem2 > 0)
         {
-            rewards.Add(new SoulMetryReward(row.Field30, row.Field32, row.Field34));
+            rewards.Add(new SoulMetryReward(row.RewardType2, row.RewardItem2, row.RewardCount2));
         }
 
-        return new SoulMetryDefinition(row.Id, row.Field3, found, rewards);
+        return new SoulMetryDefinition(row.Id, row.CompleteBit, found, rewards);
     }
 }

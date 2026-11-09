@@ -8,7 +8,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Movement.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct MovementMotionRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
@@ -18,5 +18,5 @@ public readonly partial struct MovementMotionRequest : IRequestHotspotMessage
     public short nMotionClass { get; }
     public short nSubClass { get; }
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

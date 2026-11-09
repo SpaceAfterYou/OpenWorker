@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Events.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct EventAttendanceRewardRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Event;
@@ -15,5 +15,5 @@ public readonly partial struct EventAttendanceRewardRequest : IRequestHotspotMes
 
     public byte DayIndex { get; }
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Helpers.Requests;
 /// Puts an item of the inventory on a helper, or takes it off.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct HelperEquipRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly partial struct HelperEquipRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Helper;
     private const HelperOpcode Command = HelperOpcode.Equip;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

@@ -68,6 +68,10 @@ jobs:
       - name: Forbidden patterns
         run: bash eng/check-forbidden.sh
 
+      # What two servers share lives in one project they both reference, never in two copies.
+      - name: Files repeated across projects
+        run: python3 eng/check-duplicates.py
+
       - name: Restore
         run: dotnet restore OpenWorker.slnx
 

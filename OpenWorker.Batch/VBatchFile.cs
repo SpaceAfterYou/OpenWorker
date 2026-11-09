@@ -9,10 +9,10 @@ public sealed record VBatchFile
     private VBatchFile(XNode document)
     {
         var eventBox = document.XPathSelectElement("root/Batchs [@eventtype='EventBox']");
-        EventBox = new EventBox(eventBox ?? throw new ApplicationException());
+        EventBox = new EventBox(eventBox ?? throw new InvalidDataException("The batch file has no EventBox batches."));
 
         var eventPoint = document.XPathSelectElement("root/Batchs [@eventtype='EventPoint']");
-        EventPoint = new EventPoint(eventPoint ?? throw new ApplicationException());
+        EventPoint = new EventPoint(eventPoint ?? throw new InvalidDataException("The batch file has no EventPoint batches."));
     }
 
     public EventBox EventBox { get; }

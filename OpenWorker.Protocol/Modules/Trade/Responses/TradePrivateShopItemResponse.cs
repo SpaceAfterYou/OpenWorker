@@ -6,13 +6,13 @@ using OpenWorker.Hotspot.Modules.Items.Types;
 
 namespace OpenWorker.Hotspot.Modules.Trade.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct TradePrivateShopItemResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.PrivateShopItem;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required StorageSlot Slot { get; init; }
     public required long Money { get; init; }

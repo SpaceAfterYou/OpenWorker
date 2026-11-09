@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.World.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct WorldWarpRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
@@ -17,5 +17,5 @@ public readonly partial struct WorldWarpRequest : IRequestHotspotMessage
     public int Jump { get; }
     public int Portal { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

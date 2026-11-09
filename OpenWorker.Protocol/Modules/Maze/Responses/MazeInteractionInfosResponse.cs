@@ -6,13 +6,13 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct MazeInteractionInfosResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_INTERACTION_INFOS;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public IReadOnlyList<MazeInteractionValue> Interactions { get; init; }
 

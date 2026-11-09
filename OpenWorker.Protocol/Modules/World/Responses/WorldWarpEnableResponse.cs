@@ -7,13 +7,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct WorldWarpEnableResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.WarpEnableRes;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public int Box { get; init; }
     public bool Open { get; init; }

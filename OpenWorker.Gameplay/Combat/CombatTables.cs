@@ -6,6 +6,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Combat;
@@ -66,6 +67,7 @@ public sealed class CombatTables(
     private Dictionary<int, MonsterRow> Monsters { get; } = monsters.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<short, StatusRow> Statuses { get; } = statuses.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<int, SkillRow> Skills { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
+    private readonly RowIndex<short, CharacterInfoRow> _characters = characters.IndexBy(e => e.Id);
     private Dictionary<(Hero Hero, byte Level), CombatStats> People { get; } = [];
     private Dictionary<(Hero Hero, byte Level, int Prefix, int Suffix), CombatStats> Titled { get; } = [];
     private Dictionary<int, MonsterCombatComponent> MonsterStats { get; } = [];
@@ -96,7 +98,7 @@ public sealed class CombatTables(
             return result;
         }
 
-        var character = characters.FirstOrDefault(e => e.Id == (short)((int)hero * HeroRowStep));
+        var character = _characters.GetOrDefault((short)((int)hero * HeroRowStep));
 
         result = Statuses.TryGetValue((short)character.Character_Status, out var status)
             ? CombatStatCalculator.Calculate(status, level, character.Character_Status_Type)
@@ -148,7 +150,7 @@ public sealed class CombatTables(
             return GetPerson(hero, level, title);
         }
 
-        var character = characters.FirstOrDefault(e => e.Id == (short)((int)hero * HeroRowStep));
+        var character = _characters.GetOrDefault((short)((int)hero * HeroRowStep));
 
         var stats = Statuses.TryGetValue((short)character.Character_Status, out var status)
             ? CombatStatCalculator.Calculate(status, level, character.Character_Status_Type, gear)

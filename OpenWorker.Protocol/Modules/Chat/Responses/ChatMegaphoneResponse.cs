@@ -11,7 +11,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Chat.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct ChatMegaphoneResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Chat;
@@ -25,5 +25,5 @@ public readonly partial struct ChatMegaphoneResponse : IResponseHotspotMessage
     [WireString(WireStringFormat.Utf16Unicode)]
     public required string Message { get; init; }
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

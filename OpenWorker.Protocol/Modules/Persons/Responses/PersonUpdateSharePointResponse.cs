@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// <summary>
 /// Progress of a district and of a maze in it.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonUpdateSharePointResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -17,7 +17,7 @@ public readonly struct PersonUpdateSharePointResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.UpdateSharePoint;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

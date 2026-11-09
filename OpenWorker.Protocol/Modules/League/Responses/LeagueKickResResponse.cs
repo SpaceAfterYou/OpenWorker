@@ -16,7 +16,7 @@ namespace OpenWorker.Hotspot.Modules.League.Responses;
 /// The answer to a kick.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct LeagueKickResResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -24,5 +24,5 @@ public readonly partial struct LeagueKickResResponse : IResponseHotspotMessage
 
     public int Result { get; init; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct PersonUpdateTitleRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
@@ -22,5 +22,5 @@ public readonly struct PersonUpdateTitleRequest(BinaryReader reader) : IRequestH
     /// </summary>
     public TitleValue Represent { get; } = new(reader);
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

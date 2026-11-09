@@ -16,7 +16,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// Writes the call for new members.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct LeagueRecruitNoticeRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -28,5 +28,5 @@ public readonly partial struct LeagueRecruitNoticeRequest : IRequestHotspotMessa
     public long Date { get; }
     public int Result { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

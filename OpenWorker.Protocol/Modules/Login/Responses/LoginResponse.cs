@@ -10,7 +10,7 @@ using OpenWorker.Hotspot.Modules.Login.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Login.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct LoginResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Login;
@@ -43,7 +43,7 @@ public readonly struct LoginResponse : IResponseHotspotMessage
         ErrorMessage = errorMessage;
     }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public void Write(BinaryWriter writer)
     {

@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Channels.Requests;
 /// This packet doesn't have any content.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct ChannelInfoRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly partial struct ChannelInfoRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Channel;
     private const ChannelOpcode Command = ChannelOpcode.Info;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 }

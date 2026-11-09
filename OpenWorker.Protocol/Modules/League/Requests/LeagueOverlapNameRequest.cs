@@ -16,7 +16,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// Asks whether a name for a league is free.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct LeagueOverlapNameRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -25,5 +25,5 @@ public readonly partial struct LeagueOverlapNameRequest : IRequestHotspotMessage
     [WireString(WireStringFormat.Utf8Unicode)]
     public string Name { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

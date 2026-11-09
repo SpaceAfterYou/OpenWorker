@@ -8,7 +8,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct HelperAutoSummonResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -16,7 +16,7 @@ public readonly partial struct HelperAutoSummonResponse : IResponseHotspotMessag
     private const GroupOpcode Group = GroupOpcode.Helper;
     private const HelperOpcode Command = HelperOpcode.AutoSummon;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

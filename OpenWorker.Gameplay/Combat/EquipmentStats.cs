@@ -24,18 +24,18 @@ public static class EquipmentStats
                 continue;
             }
 
-            sum[(int)STAT_TYPE.STAT_PATK_MAX] += row.Field21;
-            sum[(int)STAT_TYPE.STAT_MATK_MAX] += row.Field22;
-            sum[(int)STAT_TYPE.STAT_PDEF] += row.Field23;
-            sum[(int)STAT_TYPE.STAT_MDEF] += row.Field24;
+            sum[(int)STAT_TYPE.STAT_PATK_MAX] += row.PhysicalAttack;
+            sum[(int)STAT_TYPE.STAT_MATK_MAX] += row.MagicalAttack;
+            sum[(int)STAT_TYPE.STAT_PDEF] += row.PhysicalDefense;
+            sum[(int)STAT_TYPE.STAT_MDEF] += row.MagicalDefense;
 
             (byte Class, short Type, int Value)[] statics =
             [
-                (row.Field25, row.Field30, row.Field35),
-                (row.Field26, row.Field31, row.Field36),
-                (row.Field27, row.Field32, row.Field37),
-                (row.Field28, row.Field33, row.Field38),
-                (row.Field29, row.Field34, row.Field39)
+                (row.StatClass1, row.StatType1, row.StatValue1),
+                (row.StatClass2, row.StatType2, row.StatValue2),
+                (row.StatClass3, row.StatType3, row.StatValue3),
+                (row.StatClass4, row.StatType4, row.StatValue4),
+                (row.StatClass5, row.StatType5, row.StatValue5)
             ];
 
             foreach (var (restriction, type, value) in statics)

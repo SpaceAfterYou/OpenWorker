@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct SkillChainUpdateTargetResponse(BinaryReader reader) : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -14,7 +14,7 @@ public readonly struct SkillChainUpdateTargetResponse(BinaryReader reader) : IRe
     private const GroupOpcode Group = GroupOpcode.Skill;
     private const SkillOpcode Command = SkillOpcode.ChainUpdateTarget;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

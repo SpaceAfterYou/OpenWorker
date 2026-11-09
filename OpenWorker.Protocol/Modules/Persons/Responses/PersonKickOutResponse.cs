@@ -8,7 +8,7 @@ using OpenWorker.Hotspot.Modules.Persons.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonKickOutResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -16,7 +16,7 @@ public readonly struct PersonKickOutResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.KickOut;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

@@ -12,13 +12,13 @@ public readonly record struct ItemLineUpEntry(StorageGroup Storage, short Slot, 
 /// <summary>
 /// The new places of the items of a storage that has been sorted, the slot is where the item goes.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ItemLineUpResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.LineUp;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required ItemLineUpEntry[] Entries { get; init; }
 

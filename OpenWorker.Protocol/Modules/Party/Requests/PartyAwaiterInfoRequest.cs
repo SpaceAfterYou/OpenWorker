@@ -8,13 +8,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Party.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct PartyAwaiterInfoRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.AwaiterInfo;
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; }
     public byte Select { get; }

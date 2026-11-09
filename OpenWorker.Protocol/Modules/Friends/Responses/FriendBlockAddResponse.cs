@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.Friends.Types;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct FriendBlockAddResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -15,7 +15,7 @@ public readonly struct FriendBlockAddResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Friend;
     private const FriendOpcode Command = FriendOpcode.BlockAdd;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

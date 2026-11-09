@@ -38,7 +38,7 @@ await Host
         services.AddGateOptions();
         services.AddGateEndpointOptions();
         services.AddPersonCreationOptions();
-        services.AddRegistrationService<KeepAliveService>();
+        services.AddRegistrationService<GateRegistrationService>();
 
         services.AddHotspot(context, EntityComponentService.Gate);
     })

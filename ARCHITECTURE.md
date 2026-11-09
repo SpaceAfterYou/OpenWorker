@@ -80,7 +80,7 @@ up or on a project that has no layer. From the bottom:
 | Runtime | `Runtime` | `WorldLoop`, `SimulationClock`, sessions and `SessionWriter`, the handler table and `HandlerExecutor`, error budget, rate limits, metrics, log scope |
 | Infrastructure | `Infrastructure.Redis`, `Persistence` | Redis (records, leases, `MazeDirectory`, index bootstrap) and Postgres (model, stores, migrations) |
 | Game logic | `Gameplay`, `Lua`, `AuthServer.Gameplay`, `DistrictServer.Gameplay` | rules of the game, maze scripts, the handlers of auth and district |
-| Channel | `Channel`, `GateServer.Gameplay`, `Commands` | services shared by district and maze: channels, chat, community |
+| Channel | `Channel`, `GateServer.Gameplay`, `Commands`, `Server.Common` | services shared by district and maze: channels, chat, community; the handlers both run (`Server.Common`) |
 | Hosting | `DependencyInjection` | the host of a server: `ServerService`, health, shutdown, telemetry |
 | Servers | `AuthServer`, `GateServer`, `DistrictServer`, `MazeServer`, `RelayServer`, `UpdateContent`, `LoadTest` | the processes |
 
@@ -91,6 +91,15 @@ of the code that came out of `OpenWorker.Hotspot` did not change (`OpenWorker.Ho
 the full name of its type. `ServerService` stays in `DependencyInjection`: it builds the entity of a connection
 (`ArchComponentProvider`), reads the claims of `Gameplay` and kicks the players out at shutdown, which is the host's work, not the
 loop's. The move: `docs/phase-6/A-layers.md`.
+
+What the district and the maze both run lives once, in `OpenWorker.Server.Common`, which only those two reference: the person
+of a player read from its row (`PersonRegistry`) and the concrete handlers of chat, friends, leagues, items, quests, profiles and
+movement on the bases of `Channel`. The handlers are found by the scan of the loaded assemblies, so they live apart from
+`Channel`, which the gate loads as well. Where the two servers differ, in who hears what a player does, a handler asks the
+`IPlayerAudience` the server registers with `AddServerCommon`: `ChannelAudience` of the district (the channel for the chat, the
+players in sight for the rest, the grid for a move), `MazeAudience` of the maze (the player alone, as every player has a maze of
+their own). `eng/check-duplicates.py` (run by CI) fails when two projects hold the same file, so code two servers need moves
+down to a project both reference instead of being copied. The move: `docs/phase-6/B-shape.md`.
 
 ## Inside one process
 
@@ -137,7 +146,20 @@ flowchart TB
   with a span format from the span of the packet, whole, before its handler runs, and the others through a
   `BinaryReader`; `FrameEncoder` writes a response with a span format straight into the frame through `PacketWriter`, and
   the others through a `BinaryWriter`. A message whose layout depends on its values keeps a hand-written reader or
-  writer. The details, the rules and what has moved: `docs/phase-2/C-wire-format.md`.
+  writer. The details, the rules and what has moved: `docs/phase-2/C-wire-format.md`. The opcode of a message is its group and
+  its command: `[HotspotMessage(Group, (byte)Command, direction)]` and `Opcode => new(Group, (byte)Command)`, with `Command` a
+  constant of the enum named after the group (`SystemOpcode` for `GroupOpcode.System`); code that holds a command in a variable
+  makes the opcode with `MessageOpcode.From(group, command)`, and the handler table is indexed by `MessageOpcode.Value`.
+- **Client tables.** A table of the client (`res/<table>.res`) is read whole when the container is built (`AddRes`) and
+  registered as a `ReadOnlyCollection<TRow>`. Its row is a struct of `OpenWorker.Res/Rows` written by
+  `OpenWorker.SourceGenerator.ResourceStructures` from `Structures.json`, the one place the columns are declared: one string per
+  column, `"Int16"`, `"Int32 Classify"` or `"Byte OptionType as OpenWorker.Res.DivergenceVariant"`. A column has a name when the
+  game reads it and its meaning is known, and keeps `Field` and its place otherwise; to name one, change the definition and run
+  the generator (`dotnet run --project OpenWorker.SourceGenerator.ResourceStructures`); `ResourceRowsTest` fails on a row that
+  differs from what it writes. What a row gives beyond its columns is a partial struct in `OpenWorker.Res/Members`. The tables
+  only the server has (`OpenWorker.Res/ServerRows`) are written by hand. Code on the loop never walks a table to find a row: the
+  owner of a table makes a `RowIndex<TKey, TRow>` of it once (`rows.IndexBy(e => e.Id)`), which keeps the first row of a key as a
+  search from the top did, and a key the table lacks is `false` or the empty row, which the handler answers.
 - **World loop.** `WorldLoop` is a `SynchronizationContext` with one thread. Every packet handler,
   every timer and the closing of every connection runs there, one at a time, so the ECS world and the
   managers need no locks. A pass of the loop ends when it has handled everything queued (or after 5 ms of a queue that
@@ -350,11 +372,13 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
    for them, and the number of tests is not a goal.
 
 The build enforces part of this: `Directory.Build.props` turns on the analyzers (`latest-recommended`), the
-projects `Protocol`, `Runtime`, `Infrastructure.Redis`, `Channel`, `Gameplay`, `Persistence`, `Navigation`, `Lua` and `MazeServer`
-treat warnings as errors, `ProjectLayersTest` holds the projects to their layers, and
+projects `Domain`, `Extensions`, `Res`, `Batch`, `SourceGenerator.ResourceStructures`, `Protocol`, `Runtime`, `Infrastructure.Redis`,
+`Channel`, `Server.Common`, `Gameplay`, `Persistence`, `Navigation`, `Lua` and `MazeServer` treat warnings as errors,
+`ProjectLayersTest` holds the projects to their layers, `ResourceRowsTest` holds the rows of the client tables to `Structures.json`,
 `eng/check-forbidden.sh` (run by CI) fails on `Task.Factory.StartNew` and `Console` in product code, and on `Task.Delay` and
-`Timer` in `OpenWorker.Lua` and `OpenWorker.MazeServer` (its `SCOPED` rules, checked under one path). Path-scoped
-exceptions, such as the names of client enums, live in `.editorconfig` with the reason next to them.
+`Timer` in `OpenWorker.Lua` and `OpenWorker.MazeServer` (its `SCOPED` rules, checked under one path), and `eng/check-duplicates.py`
+(run by CI) fails on a file that two projects repeat. Path-scoped exceptions, such as the names of client enums, live in
+`.editorconfig` with the reason next to them.
 
 ## Database
 

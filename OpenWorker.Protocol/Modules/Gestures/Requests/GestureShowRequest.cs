@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Gestures.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct GestureShowRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Gesture;
@@ -15,5 +15,5 @@ public readonly partial struct GestureShowRequest : IRequestHotspotMessage
 
     public int Identifier { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

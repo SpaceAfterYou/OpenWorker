@@ -16,7 +16,7 @@ namespace OpenWorker.Hotspot.Modules.League.Responses;
 /// A member was thrown out.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct LeagueMemberLeaveResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -25,5 +25,5 @@ public readonly partial struct LeagueMemberLeaveResponse : IResponseHotspotMessa
     public int Target { get; init; }
     public int Kicker { get; init; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

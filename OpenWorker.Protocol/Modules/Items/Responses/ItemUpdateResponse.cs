@@ -9,13 +9,13 @@ namespace OpenWorker.Hotspot.Modules.Items.Responses;
 /// <summary>
 /// Items that stay where they are and have changed: a count, a level of upgrade or the equipped item.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ItemUpdateResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.Update;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required StorageItemValue[] List { get; init; }
 

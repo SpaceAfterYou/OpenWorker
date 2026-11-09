@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.League.Responses;
 /// <summary>
 /// The answer to renaming a position.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct LeaguePositionNameChangeResResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -29,7 +29,7 @@ public readonly struct LeaguePositionNameChangeResResponse : IResponseHotspotMes
     {
     }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public void Write(BinaryWriter writer)
     {

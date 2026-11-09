@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct ItemUpdateQuickslotItemRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
@@ -16,5 +16,5 @@ public readonly partial struct ItemUpdateQuickslotItemRequest : IRequestHotspotM
     [WireArray(Count = 2)]
     public int[] Items { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

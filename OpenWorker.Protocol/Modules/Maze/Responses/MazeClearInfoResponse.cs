@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 /// <summary>
 /// The mazes a person has cleared. The client puts them next to the ones it knows, or throws the old ones away.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct MazeClearInfoResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -19,7 +19,7 @@ public readonly struct MazeClearInfoResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_MAZE_CLEAR_INFO;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

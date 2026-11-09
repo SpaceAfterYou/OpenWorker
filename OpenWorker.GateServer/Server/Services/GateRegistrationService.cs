@@ -17,12 +17,12 @@ namespace OpenWorker.GateServer.Server.Services;
 /// expires unless it is renewed. When the server drains the record is removed, and the login server stops sending players
 /// to a gate that is going away.
 /// </summary>
-public sealed partial class KeepAliveService(
+public sealed partial class GateRegistrationService(
     IRedisCollection<ChannelCache> channelCollection,
     IRedisCollection<GateCache> gateCollection,
     IOptions<GateOptions> gate,
     IOptions<GateEndpointOptions> endpoint,
-    ILogger<KeepAliveService> logger
+    ILogger<GateRegistrationService> logger
 ) :
     RegistrationService
 {

@@ -19,13 +19,13 @@ public readonly partial record struct MovementIdleEntry(ActorValue Actor, Vector
 /// Several monsters stand still and play an animation each.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MovementIdlesBtResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.IdlesBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     [WireArray(WireLength.Byte)]
     public IReadOnlyCollection<MovementIdleEntry> Entries { get; init; }

@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// <summary>
 /// The titles a player has chosen. When it failed, the client keeps the old ones.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonUpdateTitleResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -17,7 +17,7 @@ public readonly struct PersonUpdateTitleResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.UpdateTitle;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

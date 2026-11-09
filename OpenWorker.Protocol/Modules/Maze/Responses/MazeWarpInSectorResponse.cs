@@ -9,7 +9,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MazeWarpInSectorResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -17,7 +17,7 @@ public readonly partial struct MazeWarpInSectorResponse : IResponseHotspotMessag
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_WARP_IN_SECTOR;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

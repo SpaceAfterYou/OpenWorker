@@ -7,11 +7,11 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct ItemSetupRefineRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
     private const ItemSetupOpcode Command = ItemSetupOpcode.Refine;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

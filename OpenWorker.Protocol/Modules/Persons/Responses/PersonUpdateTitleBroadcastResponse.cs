@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// <summary>
 /// The title the others see over a player.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonUpdateTitleBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -19,7 +19,7 @@ public readonly struct PersonUpdateTitleBroadcastResponse : IResponseHotspotMess
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.UpdateTitleBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

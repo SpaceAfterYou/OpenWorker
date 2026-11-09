@@ -16,7 +16,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// Turns an applicant down.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct LeagueApplicantRejectRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -27,5 +27,5 @@ public readonly partial struct LeagueApplicantRejectRequest : IRequestHotspotMes
     public int Actor { get; }
     public int Result { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

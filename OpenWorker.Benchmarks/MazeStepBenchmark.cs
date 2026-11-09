@@ -20,6 +20,7 @@ using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
 using OpenWorker.Navigation;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Benchmarks;
@@ -85,7 +86,7 @@ public class MazeStepBenchmark
             new BuffManager(_world, new ReadOnlyCollection<BuffRow>([])),
             null!,
             batch,
-            new ReadOnlyCollection<InteractionObjectRow>([]),
+            new ReadOnlyCollection<InteractionObjectRow>([]).IndexBy(e => e.Id),
             services.Actions,
             combat,
             default,

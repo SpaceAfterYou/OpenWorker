@@ -10,13 +10,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct WorldInInfoNpcResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.InInfoNpc;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     [WireArray(WireLength.Byte)]
     public required IReadOnlyList<WorldNpcListEntry> List { get; init; }

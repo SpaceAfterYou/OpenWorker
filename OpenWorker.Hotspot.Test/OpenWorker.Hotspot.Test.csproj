@@ -38,6 +38,7 @@
       <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
       <ProjectReference Include="..\OpenWorker.DistrictServer\OpenWorker.DistrictServer.csproj" />
       <ProjectReference Include="..\OpenWorker.MazeServer\OpenWorker.MazeServer.csproj" />
+      <ProjectReference Include="..\OpenWorker.SourceGenerator.ResourceStructures\OpenWorker.SourceGenerator.ResourceStructures.csproj" />
     </ItemGroup>
 
 </Project>

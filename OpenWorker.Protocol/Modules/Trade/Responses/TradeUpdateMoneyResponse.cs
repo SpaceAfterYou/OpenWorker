@@ -9,13 +9,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Trade.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct TradeUpdateMoneyResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.UpdateMoney;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required ActorValue Actor { get; init; }
     public required long Money { get; init; }

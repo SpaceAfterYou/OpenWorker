@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 /// This packet doesn't have any content.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct QuestResetResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly partial struct QuestResetResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Quest;
     private const QuestOpcode Command = QuestOpcode.Reset;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 }

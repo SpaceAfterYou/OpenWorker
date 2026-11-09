@@ -9,13 +9,13 @@ namespace OpenWorker.Hotspot.Modules.Items.Responses;
 /// <summary>
 /// The battle points of the player after they changed.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ItemUpdateBpResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.UpdateBp;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public int Actor { get; init; }
     public long Total { get; init; }

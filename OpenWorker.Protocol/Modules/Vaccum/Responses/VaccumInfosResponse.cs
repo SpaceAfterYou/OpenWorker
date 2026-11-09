@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Vaccum.Responses;
 /// <summary>
 /// All the cubes that can be taken now; a byte tells how many.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct VaccumInfosResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -17,7 +17,7 @@ public readonly struct VaccumInfosResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Vaccum;
     private const VaccumOpcode Command = VaccumOpcode.Infos;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

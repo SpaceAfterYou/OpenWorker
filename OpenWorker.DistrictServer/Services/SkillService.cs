@@ -14,6 +14,7 @@ using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.DistrictServer.Services;
@@ -41,6 +42,9 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
     IHotspotHandler<SkillUpdateDeckRequest>,
     IHotspotHandler<SkillWarpPositionRequest>
 {
+    private readonly RowIndex<int, SkillRow> _skills = skills.IndexBy(e => e.Id);
+    private readonly RowIndex<byte, CharacterInfoRow> _heroes = characterInfo.IndexBy(e => e.Character);
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillActiveSkillRequest request)
     {
         var session = world.Get<ServerSessionComponent>(context.Player);
@@ -125,7 +129,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
         ref readonly var skillPoint = ref world.Get<SkillPointComponent>(context.Player);
         ref readonly var skillsCmp = ref world.Get<SkillLearnedComponent>(context.Player);
 
-        var nextSkill = skills.FirstOrDefault(s => s.Id == request.Info.Skill);
+        var nextSkill = _skills.GetOrDefault(request.Info.Skill);
 
         if (nextSkill.Id == 0)
         {
@@ -133,7 +137,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
             return ValueTask.CompletedTask;
         }
 
-        if (skillPoint.FreeSkillPoint < nextSkill.Field9)
+        if (skillPoint.FreeSkillPoint < nextSkill.SkillPoints)
         {
             session.Send(new SkillLearnResponse());
             return ValueTask.CompletedTask;
@@ -167,7 +171,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
 
         world.Set(context.Player, skillPoint with
         {
-            FreeSkillPoint = unchecked((short)(skillPoint.FreeSkillPoint - nextSkill.Field9))
+            FreeSkillPoint = unchecked((short)(skillPoint.FreeSkillPoint - nextSkill.SkillPoints))
         });
         world.MarkDirty(context.Player, PersonSections.Skills);
 
@@ -249,7 +253,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
 
     private SkillInfoValue[] GetDefaultSkills(Hero hero)
     {
-        var charInfo = characterInfo.FirstOrDefault(c => c.Character == (byte)hero);
+        var charInfo = _heroes.GetOrDefault((byte)hero);
         if (charInfo.Id == 0)
             return [];
 

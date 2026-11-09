@@ -7,13 +7,13 @@ using OpenWorker.Hotspot.Modules.Persons.Types;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonEnterPrologueResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.EnterPrologue;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required EnterMapResultValue Zone { get; init; }
 

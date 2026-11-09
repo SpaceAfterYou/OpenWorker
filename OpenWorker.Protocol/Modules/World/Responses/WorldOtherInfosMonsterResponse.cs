@@ -6,13 +6,13 @@ using OpenWorker.Hotspot.Modules.World.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct WorldOtherInfosMonsterResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.OtherInfosMonster;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required IReadOnlyList<STMonsterInfo> Monsters { get; init; }
 

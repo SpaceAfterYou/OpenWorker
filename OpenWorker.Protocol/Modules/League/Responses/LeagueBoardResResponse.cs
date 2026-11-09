@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.League.Responses;
 /// <summary>
 /// The answer to a note: the number of the text in its result, and the minutes to wait for 57022.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct LeagueBoardResResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -23,7 +23,7 @@ public readonly struct LeagueBoardResResponse : IResponseHotspotMessage
     public required LeagueBoardEntry Entry { get; init; }
     public long Remain { get; init; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public void Write(BinaryWriter writer)
     {

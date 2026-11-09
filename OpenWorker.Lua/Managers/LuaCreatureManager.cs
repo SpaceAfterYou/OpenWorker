@@ -480,9 +480,8 @@ public sealed class LuaCreatureManager
 
     public void MoveToPoint(int npc, int waypoint)
     {
-        var creature = Creatures.FirstOrDefault(x => ecs.Get<CreatureComponent>(x) == npc);
-
-        if (creature.IsAlive() is false)
+        // Asking a default entity whether it lives reads the world of id 0, which another maze may have destroyed.
+        if (!Creatures.Exists(e => ecs.IsAlive(e) && ecs.Get<CreatureComponent>(e) == npc))
         {
             Logger.UnknownNpcToMove(npc, waypoint);
         }
@@ -676,14 +675,14 @@ public sealed class LuaCreatureManager
 
         if (Vitals.IsAlive(player))
         {
-            session.Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotFallen));
+            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotFallen));
 
             return;
         }
 
         if (type is not (ReviveType.Auto or ReviveType.MazeFree or ReviveType.ModeMazeAuto or ReviveType.Cash))
         {
-            session.Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotAllowed));
+            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotAllowed));
 
             return;
         }

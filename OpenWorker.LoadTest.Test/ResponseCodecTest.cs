@@ -37,7 +37,7 @@ public sealed class ResponseCodecTest
     /// </summary>
     private static byte[] BodyOf<T>(T response) where T : IResponseHotspotMessage
     {
-        var frame = Wire.ServerFrame((ushort)(short)response.Opcode, response.Write);
+        var frame = Wire.ServerFrame((ushort)response.Opcode.Value, response.Write);
 
         return Wire.Split(frame).Body;
     }
@@ -83,10 +83,10 @@ public sealed class ResponseCodecTest
         Assert.AreEqual(Opcodes.PersonList, Op(new CharacterListResponse { Persons = [], Protection = default }));
 
         // The answer of the server to a request that failed is the opcode of the answer with the error flag.
-        Assert.AreEqual(Opcodes.ErrorOf(Opcodes.PersonList), Op(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ListRes), PersonErrorCode.NameInUse)));
+        Assert.AreEqual(Opcodes.ErrorOf(Opcodes.PersonList), Op(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ListRes), PersonErrorCode.NameInUse)));
     }
 
-    private static ushort Op(IHotspotMessage message) => (ushort)(short)message.Opcode;
+    private static ushort Op(IHotspotMessage message) => (ushort)message.Opcode.Value;
 
     [TestMethod]
     public void LoginSuccessGivesTheAccountAndTheSession()
@@ -243,7 +243,7 @@ public sealed class ResponseCodecTest
     [TestMethod]
     public void ErrorMessageGivesTheCodeUnderTheFlaggedOpcode()
     {
-        var response = new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ListRes), PersonErrorCode.NameInUse);
+        var response = new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ListRes), PersonErrorCode.NameInUse);
         var body = BodyOf(response);
 
         Assert.AreEqual(Opcodes.ErrorOf(Opcodes.PersonList), BitConverter.ToUInt16(body));

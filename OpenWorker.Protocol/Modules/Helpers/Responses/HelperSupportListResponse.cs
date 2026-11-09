@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 /// <summary>
 /// The friends that offer support.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct HelperSupportListResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -17,7 +17,7 @@ public readonly struct HelperSupportListResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Helper;
     private const HelperOpcode Command = HelperOpcode.SupportList;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

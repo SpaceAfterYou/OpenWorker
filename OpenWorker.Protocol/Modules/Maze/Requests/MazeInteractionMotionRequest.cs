@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Maze.Requests;
 /// The player starts or breaks off the motion of using an object that takes time.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct MazeInteractionMotionRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
@@ -23,5 +23,5 @@ public readonly partial struct MazeInteractionMotionRequest : IRequestHotspotMes
 
     public int Box { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

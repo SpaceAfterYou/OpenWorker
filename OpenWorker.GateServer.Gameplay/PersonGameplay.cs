@@ -286,7 +286,7 @@ public sealed class PersonGameplay(
     private void SendListError(Entity player, PersonErrorCode code)
     {
         world.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(
-            new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ListRes),
+            MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ListRes),
             code));
     }
 }

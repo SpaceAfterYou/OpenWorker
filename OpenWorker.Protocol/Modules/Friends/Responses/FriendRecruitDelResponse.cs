@@ -11,7 +11,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct FriendRecruitDelResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -19,7 +19,7 @@ public readonly partial struct FriendRecruitDelResponse : IResponseHotspotMessag
     private const GroupOpcode Group = GroupOpcode.Friend;
     private const FriendOpcode Command = FriendOpcode.RecruitDel;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

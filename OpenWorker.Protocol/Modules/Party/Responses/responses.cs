@@ -10,13 +10,13 @@ using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PartyAwaiterAddResponse(BinaryReader reader) : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.AwaiterAdd;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public PartyAwaiterValue Awaiter { get; init; } = new(reader);
 
@@ -26,13 +26,13 @@ public readonly struct PartyAwaiterAddResponse(BinaryReader reader) : IResponseH
     }
 }
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PartyAwaiterDelResponse(BinaryReader reader) : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.AwaiterDel;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; init; } = new(reader);
 
@@ -42,13 +42,13 @@ public readonly struct PartyAwaiterDelResponse(BinaryReader reader) : IResponseH
     }
 }
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PartyAwaiterListResponse(BinaryReader reader) : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.AwaiterList;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public PartyAwaiterValue[] List { get; init; } = reader.ReadPartyAwaiters();
 
@@ -59,11 +59,11 @@ public readonly struct PartyAwaiterListResponse(BinaryReader reader) : IResponse
 }
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct PartyUnknown5Response : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Unknown5;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

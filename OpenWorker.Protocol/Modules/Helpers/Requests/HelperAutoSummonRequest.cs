@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Helpers.Requests;
 /// Whether helpers are called by themselves when a maze is entered.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct HelperAutoSummonRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly partial struct HelperAutoSummonRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Helper;
     private const HelperOpcode Command = HelperOpcode.AutoSummon;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

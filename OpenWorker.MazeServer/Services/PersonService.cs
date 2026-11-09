@@ -1,4 +1,5 @@
 ﻿using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Server.Common;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
@@ -38,6 +39,7 @@ using OpenWorker.Lua.Managers;
 using OpenWorker.Persistence;
 using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
 
@@ -79,6 +81,9 @@ public sealed partial class PersonService(
     IHotspotHandler<PersonChangeServerRequest>
 {
     private short Gate { get; } = gate.Value.Id;
+
+    private readonly RowIndex<short, MazeInfoRow> _mazes = mazeInfoCollection.IndexBy(e => e.Id);
+    private readonly RowIndex<int, InteractionObjectRow> _interactions = interactionCollection.IndexBy(e => e.Id);
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
     {
@@ -131,7 +136,7 @@ public sealed partial class PersonService(
 
         // Everything the entry needs is looked up before the reservation is used up: a client that is turned away
         // for a row the tables do not have must not wait on the loop, and its reservation is not spent on it.
-        if (!TryGetMazeInfo(mazeInfoCollection, mazeReserve.Location, out var mazeInfo))
+        if (!TryGetMazeInfo(_mazes, mazeReserve.Location, out var mazeInfo))
         {
             LogNoMazeInfo(logger, request.Account, request.Actor.Identifier, mazeReserve.Location);
             session.Disconnect();
@@ -217,7 +222,7 @@ public sealed partial class PersonService(
         }
 
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger);
+        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, _interactions, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger);
 
         world.Add(context.Player, maze);
 
@@ -246,21 +251,9 @@ public sealed partial class PersonService(
     /// <summary>
     /// The row of the maze table for the location, or nothing when the table has none.
     /// </summary>
-    public static bool TryGetMazeInfo(ReadOnlyCollection<MazeInfoRow> table, short location, out MazeInfoRow info)
+    public static bool TryGetMazeInfo(RowIndex<short, MazeInfoRow> table, short location, out MazeInfoRow info)
     {
-        foreach (var row in table)
-        {
-            if (row.Id == location)
-            {
-                info = row;
-
-                return true;
-            }
-        }
-
-        info = default;
-
-        return false;
+        return table.TryGet(location, out info);
     }
 
     private void SendSoulMetryList(ServerSessionComponent session)

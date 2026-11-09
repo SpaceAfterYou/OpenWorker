@@ -8,7 +8,7 @@ using OpenWorker.Hotspot.Modules.Items.Types;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct ItemUseRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
@@ -18,5 +18,5 @@ public readonly struct ItemUseRequest(BinaryReader reader) : IRequestHotspotMess
     public short Slot { get; } = reader.ReadInt16();
     public SerialValue Serial { get; } = new(reader);
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

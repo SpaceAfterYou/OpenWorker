@@ -2,11 +2,10 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
-using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Persistence;
 
-namespace OpenWorker.DistrictServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 public sealed class PersonProfileService(
     World world,
@@ -14,10 +13,10 @@ public sealed class PersonProfileService(
     IDbContextFactory<PersistenceContext> factory,
     OtherPersonService others,
     FriendNotifier friends,
-    ServiceChannels channels) : PersonProfileServiceBase(world, titles, factory, others, friends)
+    IPlayerAudience audience) : PersonProfileServiceBase(world, titles, factory, others, friends)
 {
     protected override void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
     {
-        channels.Get(player).BroadcastNearbyToOthers(player, message);
+        audience.NearbyToOthers(player, message);
     }
 }

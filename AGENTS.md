@@ -26,9 +26,10 @@ client reads.
 | `OpenWorker.Protocol` | The protocol: messages (`Modules/<Group>/Requests`, `Responses`, `Types`), opcodes, header, encryption, frames. No database, Redis or batch files. |
 | `OpenWorker.Runtime` | World loop, simulation clock, sessions and their writers, handler table and executor, error budget, rate limits, metrics. No EF Core, no Redis. |
 | `OpenWorker.Channel` | Services shared by district and maze: chat, community, profiles. |
+| `OpenWorker.Server.Common` | What district and maze both run: `PersonRegistry` and the handlers on the bases of `Channel`. A server gives its `IPlayerAudience`. |
 | `OpenWorker.Persistence` | EF Core (PostgreSQL) model, stores (behind the interfaces of `OpenWorker.Domain.Stores`), migrations. |
 | `OpenWorker.Infrastructure.Redis` | Redis: records of the servers and reservations, session leases, maze directory, index bootstrap. |
-| `OpenWorker.Res` | Readers for the client tables (`*.res`). `Rows/` holds client tables, `ServerRows/` holds server-only tables. |
+| `OpenWorker.Res` | Readers for the client tables (`*.res`). `Rows/` holds client tables, generated from `OpenWorker.SourceGenerator.ResourceStructures/Structures.json` (name a column there and run the generator); `ServerRows/` holds server-only tables, written by hand. Look a row up through a `RowIndex`, never a `First` over the table. |
 | `OpenWorker.Batch` | Readers for map batch files and action files. |
 | `OpenWorker.Lua` | Maze scripts and the creature manager. |
 | `OpenWorker.Navigation`, `OpenWorker.Havok` | Navigation meshes: walls, floor, paths. |
@@ -60,11 +61,13 @@ dotnet test --solution OpenWorker.slnx
   `AGENTS.local.md` has a ready `export` block. Run with all of them set before you say the tests pass.
 - **CI checks** (`.github/workflows/ci.yml`). Run the ones your change touches:
   - `bash eng/check-forbidden.sh`;
+  - `python3 eng/check-duplicates.py` (no file repeated across projects);
   - a Release build;
   - `dotnet tool restore && dotnet ef migrations has-pending-model-changes --project OpenWorker.Persistence`;
   - the tests.
-- **Warnings are errors** in `Protocol`, `Runtime`, `Infrastructure.Redis`, `Channel`, `Gameplay`, `Persistence`,
-  `Navigation`, `Lua` and `MazeServer`. Do not suppress an analyzer without a reason in `.editorconfig`.
+- **Warnings are errors** in `Domain`, `Extensions`, `Res`, `Batch`, `SourceGenerator.ResourceStructures`, `Protocol`,
+  `Runtime`, `Infrastructure.Redis`, `Channel`, `Server.Common`, `Gameplay`, `Persistence`, `Navigation`, `Lua` and
+  `MazeServer`. Do not suppress an analyzer without a reason in `.editorconfig`.
 - **Layers.** A project references its own layer and the ones below it (`ARCHITECTURE.md`, "Projects and their layers");
   `ProjectLayersTest` fails otherwise. A new project gets its layer in that test. The code that came out of
   `OpenWorker.Hotspot` kept its namespaces (`OpenWorker.Hotspot.*`).

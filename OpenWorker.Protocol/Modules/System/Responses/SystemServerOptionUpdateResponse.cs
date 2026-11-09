@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.System.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct SystemServerOptionUpdateResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -14,7 +14,7 @@ public readonly struct SystemServerOptionUpdateResponse : IResponseHotspotMessag
     private const GroupOpcode Group = GroupOpcode.System;
     private const SystemOpcode Command = SystemOpcode.ServerOptionUpdate;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

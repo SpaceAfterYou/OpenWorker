@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.League.Responses;
 /// <summary>
 /// The league is founded.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct LeagueCreateResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -23,7 +23,7 @@ public readonly struct LeagueCreateResponse : IResponseHotspotMessage
     public required LeagueInfo Info { get; init; }
     public required LeagueMember Member { get; init; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public void Write(BinaryWriter writer)
     {

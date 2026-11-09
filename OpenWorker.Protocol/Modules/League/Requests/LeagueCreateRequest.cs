@@ -16,7 +16,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// Founds a league near the league NPC.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct LeagueCreateRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -28,5 +28,5 @@ public readonly partial struct LeagueCreateRequest : IRequestHotspotMessage
     public int League { get; }
     public int Error { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

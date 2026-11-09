@@ -9,7 +9,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Maze.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct MazeExitRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
@@ -26,5 +26,5 @@ public readonly partial struct MazeExitRequest : IRequestHotspotMessage
     /// </summary>
     public byte WhatIsIt { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

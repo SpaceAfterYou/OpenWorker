@@ -9,7 +9,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Friends.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct FriendInviteAcceptRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Friend;
@@ -21,5 +21,5 @@ public readonly partial struct FriendInviteAcceptRequest : IRequestHotspotMessag
     public string TargetName { get; }
     public bool IsAccepted { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

@@ -9,7 +9,8 @@ using OpenWorker.Channel;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
-using OpenWorker.DistrictServer.Services;
+using OpenWorker.DistrictServer.Server;
+using OpenWorker.Server.Common.Services;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -46,7 +47,7 @@ internal sealed class DistrictHarness : IDisposable
         var errors = new HandlerExecutor(Table, new ServiceCollection().BuildServiceProvider(), Ecs, budget, NullLogger<HandlerExecutor>.Instance);
         var pace = new MovementPace(speeds ?? new Dictionary<Hero, float>(), new WorldOptions(), Time);
 
-        Movement = new MovementService(Ecs, Channels, pace, errors, NullLogger<MovementService>.Instance);
+        Movement = new MovementService(Ecs, new ChannelAudience(Ecs, Channels), pace, errors, NullLogger<MovementService>.Instance);
     }
 
     public World Ecs { get; } = World.Create();
@@ -95,7 +96,7 @@ internal sealed class DistrictHarness : IDisposable
         Channel.Broadcast(new Marker());
 
         await MetricAssertions.UntilAsync(
-            () => players.All(e => e.Received().Any(f => (short)f.Opcode == Marker.Code)),
+            () => players.All(e => e.Received().Any(f => f.Opcode.Value == Marker.Code.Value)),
             "Every player gets the marker.");
     }
 
@@ -151,7 +152,7 @@ internal sealed class DistrictHarness : IDisposable
     /// </summary>
     public sealed class Marker : IResponseHotspotMessage
     {
-        public static readonly MessageOpcode Code = new(GroupOpcode.System, (SystemOpcode)0x7B);
+        public static readonly MessageOpcode Code = new(GroupOpcode.System, 0x7B);
 
         public MessageOpcode Opcode => Code;
 

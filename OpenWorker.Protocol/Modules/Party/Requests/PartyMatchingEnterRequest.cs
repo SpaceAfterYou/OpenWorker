@@ -5,7 +5,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Party.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct PartyMatchingEnterRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
 {
     private const GroupOpcode Group = GroupOpcode.Party;
@@ -13,7 +13,7 @@ public readonly struct PartyMatchingEnterRequest(BinaryReader reader) : IRequest
 
     public int Location { get; } = reader.ReadInt32();
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public void Write(BinaryWriter writer)
     {

@@ -1,5 +1,5 @@
-using System.Collections.ObjectModel;
 using OpenWorker.MazeServer.Services;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -26,7 +26,7 @@ public sealed class MazeEntryTest
     [TestMethod]
     public void RowOfTheLocationIsFound()
     {
-        var table = new ReadOnlyCollection<MazeInfoRow>([Row(20001), Row(20002), Row(20003)]);
+        var table = new[] { Row(20001), Row(20002), Row(20003) }.IndexBy(e => e.Id);
 
         Assert.IsTrue(PersonService.TryGetMazeInfo(table, 20002, out var info));
         Assert.AreEqual((short)20002, info.Id);
@@ -35,7 +35,7 @@ public sealed class MazeEntryTest
     [TestMethod]
     public void LocationWithNoRowIsRefusedInsteadOfThrowing()
     {
-        var table = new ReadOnlyCollection<MazeInfoRow>([Row(20001), Row(20003)]);
+        var table = new[] { Row(20001), Row(20003) }.IndexBy(e => e.Id);
 
         Assert.IsFalse(PersonService.TryGetMazeInfo(table, 20002, out _));
     }
@@ -43,6 +43,6 @@ public sealed class MazeEntryTest
     [TestMethod]
     public void EmptyTableHasNoRow()
     {
-        Assert.IsFalse(PersonService.TryGetMazeInfo(new ReadOnlyCollection<MazeInfoRow>([]), 20001, out _));
+        Assert.IsFalse(PersonService.TryGetMazeInfo(Array.Empty<MazeInfoRow>().IndexBy(e => e.Id), 20001, out _));
     }
 }

@@ -7,13 +7,13 @@ using OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct CharacterListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.ListRes;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required IReadOnlyList<PersonValue> Persons { get; init; }
     public int LastPerson { get; init; }

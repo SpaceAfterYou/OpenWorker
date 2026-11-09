@@ -23,7 +23,7 @@ internal static class Movement
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
 
-        writer.Write((short)new MessageOpcode(GroupOpcode.Move, MoveOpcode.Move));
+        writer.Write(MessageOpcode.From(GroupOpcode.Move, MoveOpcode.Move).Value);
         writer.Write(Actor);
         writer.Write(Map);
         writer.Write(1f);

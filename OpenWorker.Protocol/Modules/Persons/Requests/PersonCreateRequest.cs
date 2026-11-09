@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct PersonCreateRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
@@ -15,5 +15,5 @@ public readonly struct PersonCreateRequest(BinaryReader reader) : IRequestHotspo
     public PersonValue Person { get; } = new(reader);
     public int Outfit { get; } = reader.ReadInt32();
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

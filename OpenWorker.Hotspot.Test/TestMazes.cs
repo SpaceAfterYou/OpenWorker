@@ -10,6 +10,7 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Managers;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -77,7 +78,7 @@ internal static class TestMazes
             new BuffManager(world, None<BuffRow>()),
             Quests(world),
             batch,
-            None<InteractionObjectRow>(),
+            None<InteractionObjectRow>().IndexBy(e => e.Id),
             new SkillActionProvider(None<SkillRow>(), NullLogger<SkillActionProvider>.Instance),
             tables,
             default,

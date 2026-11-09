@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Res;
 using OpenWorker.Res.Types;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -35,10 +36,10 @@ public sealed class ItemCatalog
     private const int LegGear = 181;
     private const int FirstShape = 0x0B;
 
-    private readonly Dictionary<int, ItemRow> _items;
-    private readonly Dictionary<int, ItemClassifyRow> _classify;
-    private readonly ReadOnlyCollection<InvenSlotExtendRow> _inventory;
-    private readonly ReadOnlyCollection<BankSlotExtendRow> _bank;
+    private readonly RowIndex<int, ItemRow> _items;
+    private readonly RowIndex<int, ItemClassifyRow> _classify;
+    private readonly RowIndex<int, InvenSlotExtendRow> _inventory;
+    private readonly RowIndex<int, BankSlotExtendRow> _bank;
 
     public ItemCatalog(
         ReadOnlyCollection<ItemRow> items,
@@ -46,25 +47,25 @@ public sealed class ItemCatalog
         ReadOnlyCollection<InvenSlotExtendRow> inventory,
         ReadOnlyCollection<BankSlotExtendRow> bank)
     {
-        _items = items.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
-        _classify = classify.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
-        _inventory = inventory;
-        _bank = bank;
+        _items = items.IndexBy(e => e.Id);
+        _classify = classify.IndexBy(e => e.Id);
+        _inventory = inventory.IndexBy(e => (int)e.Step);
+        _bank = bank.IndexBy(e => (int)e.Step);
     }
 
     public bool Exists(int item)
     {
-        return _items.ContainsKey(item);
+        return _items.TryGet(item, out _);
     }
 
     public bool TryGet(int item, out ItemRow row)
     {
-        return _items.TryGetValue(item, out row);
+        return _items.TryGet(item, out row);
     }
 
     public ItemClassifyRow? Classify(int item)
     {
-        return _items.TryGetValue(item, out var row) && _classify.TryGetValue(row.Classify, out var classify)
+        return _items.TryGet(item, out var row) && _classify.TryGet(row.Classify, out var classify)
             ? classify
             : null;
     }
@@ -74,7 +75,7 @@ public sealed class ItemCatalog
     /// </summary>
     public short StackLimit(int item)
     {
-        return _items.TryGetValue(item, out var row) ? Math.Max((short)1, row.Stack) : (short)1;
+        return _items.TryGet(item, out var row) ? Math.Max((short)1, row.Stack) : (short)1;
     }
 
     /// <summary>
@@ -82,7 +83,7 @@ public sealed class ItemCatalog
     /// </summary>
     public StorageGroup HomeOf(int item)
     {
-        return Classify(item)?.Field10 switch
+        return Classify(item)?.StorageKind switch
         {
             2 => StorageGroup.Costume,
             9 => StorageGroup.Cube,
@@ -117,7 +118,7 @@ public sealed class ItemCatalog
             return null;
         }
 
-        var type = (int)classify.Field11;
+        var type = (int)classify.SlotType;
 
         switch (classify.ItemUseType)
         {
@@ -160,7 +161,7 @@ public sealed class ItemCatalog
     /// </summary>
     public (short Level, byte Class) Limits(int item)
     {
-        return _items.TryGetValue(item, out var row) ? (row.Field12, row.Field13) : ((short)0, (byte)0);
+        return _items.TryGet(item, out var row) ? (row.LevelLimit, row.ClassLimit) : ((short)0, (byte)0);
     }
 
     /// <summary>
@@ -198,41 +199,31 @@ public sealed class ItemCatalog
             case StorageGroup.Cash:
             case StorageGroup.Cube:
             {
-                foreach (var row in _inventory)
+                if (!_inventory.TryGet(step, out var row))
                 {
-                    if (row.Field1 != step)
-                    {
-                        continue;
-                    }
-
-                    return group switch
-                    {
-                        StorageGroup.Common => Create(row.Field2, row.Field3, row.Field4, row.Field6),
-                        StorageGroup.Costume => Create(row.Field7, row.Field8, row.Field9, row.Field11),
-                        StorageGroup.Cash => Create(row.Field12, row.Field13, row.Field14, row.Field16),
-                        _ => Create(row.Field17, row.Field18, row.Field19, row.Field21)
-                    };
+                    return null;
                 }
 
-                return null;
+                return group switch
+                {
+                    StorageGroup.Common => Create(row.CommonNeedLevel, row.CommonPayment, row.CommonPrice, row.CommonSlots),
+                    StorageGroup.Costume => Create(row.CostumeNeedLevel, row.CostumePayment, row.CostumePrice, row.CostumeSlots),
+                    StorageGroup.Cash => Create(row.CashNeedLevel, row.CashPayment, row.CashPrice, row.CashSlots),
+                    _ => Create(row.CubeNeedLevel, row.CubePayment, row.CubePrice, row.CubeSlots)
+                };
             }
 
             case StorageGroup.CommonStorage:
             case StorageGroup.CostumeStorage:
             {
-                foreach (var row in _bank)
+                if (!_bank.TryGet(step, out var row))
                 {
-                    if (row.Field1 != step)
-                    {
-                        continue;
-                    }
-
-                    return group == StorageGroup.CommonStorage
-                        ? Create(row.Field2, row.Field3, row.Field4, row.Field6)
-                        : Create(row.Field7, row.Field8, row.Field9, row.Field11);
+                    return null;
                 }
 
-                return null;
+                return group == StorageGroup.CommonStorage
+                    ? Create(row.CommonNeedLevel, row.CommonPayment, row.CommonPrice, row.CommonSlots)
+                    : Create(row.CostumeNeedLevel, row.CostumePayment, row.CostumePrice, row.CostumeSlots);
             }
 
             default:

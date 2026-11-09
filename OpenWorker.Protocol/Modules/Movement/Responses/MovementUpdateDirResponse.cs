@@ -12,13 +12,13 @@ namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 /// A monster turns on the spot.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MovementUpdateDirResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.UpdateDir;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; init; }
     public float Yaw { get; init; }

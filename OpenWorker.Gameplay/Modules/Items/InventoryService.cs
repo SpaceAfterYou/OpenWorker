@@ -54,8 +54,8 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
             Serial = serials.NextSerial(),
             Item = item,
             Count = (short)count,
-            BindType = (ItemBindType)row.Field8,
-            Endurance = row.Field19
+            BindType = (ItemBindType)row.BindType,
+            Endurance = row.Endurance
         };
     }
 
@@ -641,7 +641,7 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
 
     private void Refuse(Entity player, ItemOpcode request, ushort code = Refused)
     {
-        Send(player, new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Item, request), code));
+        Send(player, new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Item, request), code));
     }
 
     private static bool Resolve(Inventory inventory, StorageGroup group, int slot, out ItemStorage storage)

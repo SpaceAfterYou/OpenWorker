@@ -55,3 +55,23 @@ dotnet_diagnostic.CA1051.severity = none
 [OpenWorker.Lua/{LuaMaze,LuaGameHelper}.cs]
 dotnet_diagnostic.CA1711.severity = none
 dotnet_diagnostic.CA1822.severity = none
+
+# The enumerations of the map files (batch) keep the names and the values the files of the client spell: a file is read by
+# those names (XmlEnum), and N_Stand and N_stand are two actions of the files. The layers of a map reuse the values of the
+# difficulties for the modes (Racon is Normal). CA1707: underscores. CA1708: names that differ by case. CA1069: one value
+# under two names.
+[OpenWorker.Domain/Batch/Enums/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1708.severity = none
+dotnet_diagnostic.CA1069.severity = none
+
+# The kinds of use of an item are the values of the item table of the client, under the names the client gives them; the
+# client has one value for the brooch and for the socket of a costume. CA1707: underscores. CA1069: one value under two names.
+[OpenWorker.Res/Types/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1069.severity = none
+
+# TimeSpanSize says how wide a time span is on the wire, and the width is the name of the type it is written as.
+# CA1720: an identifier that names a type.
+[OpenWorker.Extensions/BinaryWriterExtension.cs]
+dotnet_diagnostic.CA1720.severity = none

@@ -8,13 +8,13 @@ namespace OpenWorker.Hotspot.Modules.Items.Responses;
 /// <summary>
 /// The quick slots of the person: five skill cards, two items and one more number the client keeps.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ItemLoadQuickslotResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.LoadQuickSlot;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required int[] Cards { get; init; }
     public required int[] Items { get; init; }

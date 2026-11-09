@@ -1,16 +1,14 @@
 ﻿using Arch.Core;
-using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.Commands;
-using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 
-namespace OpenWorker.DistrictServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 public sealed class ChatService(
     World world,
     CommandManager commands,
-    ServiceChannels channels,
+    IPlayerAudience audience,
     CommunityNetwork network,
     ChatThrottle throttle,
     IPartyRoster parties,
@@ -22,7 +20,7 @@ public sealed class ChatService(
 {
     protected override void SendNearby(Entity player, IResponseHotspotMessage message)
     {
-        channels.Get(player).Broadcast(message);
+        audience.Chat(player, message);
     }
 
     protected override ValueTask<bool> TryCommandAsync(Entity player, string text)

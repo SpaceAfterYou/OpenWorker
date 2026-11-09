@@ -8,13 +8,13 @@ using OpenWorker.Hotspot.Modules.Login.Types;
 
 namespace OpenWorker.Hotspot.Modules.Login.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct LoginOptionLoadResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Login;
     private const LoginOpcode Command = LoginOpcode.OptionLoad;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required byte[] PersonOptions { get; init; }
     public required ServerContent Contents { get; init; }

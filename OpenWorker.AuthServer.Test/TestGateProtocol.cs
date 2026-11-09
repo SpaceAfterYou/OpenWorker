@@ -138,7 +138,7 @@ public sealed class TestGateProtocol
     public void ErrorResponseHasFlagAndCode()
     {
         var message = new ErrorMessageResponse(
-            new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ListRes),
+            MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ListRes),
             PersonErrorCode.NameInUse);
 
         using var stream = new MemoryStream();

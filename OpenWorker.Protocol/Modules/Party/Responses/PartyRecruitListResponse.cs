@@ -7,13 +7,13 @@ using OpenWorker.Hotspot.Modules.Party.Types;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PartyRecruitListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.RecruitList;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required PartyRecruitMemberValue[] Values { get; init; }
 

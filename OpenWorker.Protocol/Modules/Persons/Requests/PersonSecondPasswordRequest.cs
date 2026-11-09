@@ -11,7 +11,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct PersonSecondPasswordRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
@@ -21,5 +21,5 @@ public readonly partial struct PersonSecondPasswordRequest : IRequestHotspotMess
     [WireString(WireStringFormat.Utf8AsciiWithoutTerminator)]
     public string Password { get; }
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

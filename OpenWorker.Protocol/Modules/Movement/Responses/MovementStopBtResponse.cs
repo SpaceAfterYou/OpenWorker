@@ -10,7 +10,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Movement.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MovementStopBtResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly partial struct MovementStopBtResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.StopBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

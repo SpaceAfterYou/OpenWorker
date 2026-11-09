@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.Items.Enums;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct ItemDivideRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
@@ -19,5 +19,5 @@ public readonly struct ItemDivideRequest(BinaryReader reader) : IRequestHotspotM
     public short DestIndex { get; } = reader.ReadInt16();
     public short Count { get; } = reader.ReadInt16();
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

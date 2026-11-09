@@ -19,6 +19,7 @@ using OpenWorker.Hotspot.Modules.League.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Persistence;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
@@ -60,6 +61,8 @@ public abstract class LeagueServiceBase(
     IHotspotHandler<LeagueOpenOrNotRequest>,
     IHotspotHandler<LeagueRecruitNoticeRequest>
 {
+    private readonly RowIndex<int, LeagueInfoRow> _levels = levels.IndexBy(e => e.Id);
+
     /// <summary>
     /// The numbers of the texts the client shows, see its strings.
     /// </summary>
@@ -923,7 +926,7 @@ public abstract class LeagueServiceBase(
 
     private int MaxMembers(LeagueRecord league)
     {
-        return levels.FirstOrDefault(e => e.Id == league.Rating).Field4 is var room and > 0 ? room : 30;
+        return _levels.GetOrDefault(league.Rating).MemberLimit is var room and > 0 ? room : 30;
     }
 
     private static int? CheckName(string name)

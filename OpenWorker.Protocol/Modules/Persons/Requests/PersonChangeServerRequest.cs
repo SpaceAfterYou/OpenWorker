@@ -10,7 +10,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct PersonChangeServerRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
@@ -20,5 +20,5 @@ public readonly partial struct PersonChangeServerRequest : IRequestHotspotMessag
     public int Account { get; }
     public LeaveDestination Destination { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct ItemSetupMakeRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
@@ -18,5 +18,5 @@ public readonly partial struct ItemSetupMakeRequest : IRequestHotspotMessage
     public short Unknown { get; }
     public byte MakeCount { get; }
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

@@ -47,7 +47,7 @@ public sealed class ExperienceService
         _world = world;
         _inventory = inventory;
         _stats = stats;
-        _need = levels.GroupBy(e => (int)e.Id).ToDictionary(e => e.Key, e => e.First().Field1);
+        _need = levels.GroupBy(e => (int)e.Id).ToDictionary(e => e.Key, e => e.First().Experience);
         _monsterExp = monsterExp.GroupBy(e => e.Id).ToDictionary(e => (int)e.Key, e => e.First());
         _monsters = monsters.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
         _rewards = rewards.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First().ExpRate);

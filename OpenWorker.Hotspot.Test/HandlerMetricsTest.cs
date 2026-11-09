@@ -25,10 +25,10 @@ public sealed class HandlerMetricsTest
 {
     private static readonly HandlerTable Table = new(new HandlerTableBuilder(new HandlerBuilder(), NullLogger<HandlerTable>.Instance));
 
-    private static readonly MessageOpcode ProbeOpcode = new(GroupOpcode.System, ProbeRequest.Command);
+    private static readonly MessageOpcode ProbeOpcode = new(GroupOpcode.System, (byte)ProbeRequest.Command);
 
     // A command of the system group that no handler takes.
-    private static readonly MessageOpcode NobodysOpcode = new(GroupOpcode.System, (SystemOpcode)0x7D);
+    private static readonly MessageOpcode NobodysOpcode = new(GroupOpcode.System, 0x7D);
 
     private static byte[] Packet(MessageOpcode opcode, params byte[] rest) => [opcode.Group, opcode.Command, .. rest];
 
