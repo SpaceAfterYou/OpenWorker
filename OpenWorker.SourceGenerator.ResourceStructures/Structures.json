@@ -7,9 +7,9 @@
   "tb_Helper": [
     "Int32",
     "Byte Number",
-    "Int16",
-    "String",
-    "String"
+    "Int16 TypeText",
+    "String Icon",
+    "String Illustration"
   ],
   "tb_Loading_String": [
     "Int16",

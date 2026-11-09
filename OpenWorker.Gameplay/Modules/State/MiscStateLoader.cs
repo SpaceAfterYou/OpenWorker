@@ -21,7 +21,7 @@ public sealed class MiscStateLoader(
     {
         await soulMetry.EnterAsync(player, person, cancellationToken);
         await dailyMissions.EnterAsync(player, person, cancellationToken);
-        await helpers.EnterAsync(player, person, cancellationToken);
+        await helpers.EnterMazeAsync(player, person, cancellationToken);
         await boosters.EnterAsync(player, person, BoosterConsumeArea.Maze, cancellationToken);
     }
 }

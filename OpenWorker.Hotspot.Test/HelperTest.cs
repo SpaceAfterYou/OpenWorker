@@ -1,9 +1,21 @@
+using System.Buffers.Binary;
 using System.Text;
+using Arch.Core;
+using OpenWorker.DistrictServer.Server;
+using OpenWorker.Gameplay.Combat;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Helpers.Components;
+using OpenWorker.Hotspot.Handler.Abstractions;
+using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Helpers.Requests;
 using OpenWorker.Hotspot.Modules.Helpers.Responses;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
+using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.MazeServer.Services;
+using OpenWorker.Server.Common.Services;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -102,6 +114,84 @@ public sealed class HelperTest
     }
 
     [TestMethod]
+    public void WornItemIsWrittenInItsSlotAsTheInventoryWritesIt()
+    {
+        var gear = new ItemValue
+        {
+            Item = 360010202,
+            Serial = new SerialValue(1234567890123),
+            Count = 1,
+            BindType = (ItemBindType)1,
+            OptionList = [new ItemOption(3, 86), new ItemOption(0, 0), new ItemOption(0, 0), new ItemOption(0, 0), new ItemOption(0, 0)],
+            Upgrade = 2,
+            Endurance = 100,
+            DueTo = DateTimeOffset.UnixEpoch,
+            BroachState = "000000000000000"
+        };
+
+        var bytes = Written(new HelperValue
+        {
+            Helper = 10105166,
+            Items = [HelperValue.NoItem, gear],
+            Origin = [new HelperStatValue(21, 300f)],
+            Additional = [],
+            Order = 1
+        });
+
+        using var stream = new MemoryStream();
+        using var expected = new BinaryWriter(stream);
+
+        void Empty()
+        {
+            expected.Write(-1);
+            expected.Write(-1L);
+            expected.Write(new byte[2 + 1 + 5 * 6 + 3 + 8 + 3 + 4]);
+            expected.Write((short)15);
+            expected.Write(Encoding.ASCII.GetBytes("000000000000000"));
+            expected.Write(new byte[2]);
+        }
+
+        expected.Write(10105166);
+        Empty();
+
+        // The gear: item, serial, count, binding, five options, upgrade, endurance, sockets, date, upgrade count and
+        // limit, flag, experience, the broaches, restores and seals.
+        expected.Write(360010202);
+        expected.Write(1234567890123L);
+        expected.Write((short)1);
+        expected.Write((byte)1);
+        expected.Write((short)3);
+        expected.Write(86);
+        expected.Write(new byte[4 * 6]);
+        expected.Write((byte)2);
+        expected.Write((byte)100);
+        expected.Write((byte)0);
+        expected.Write(0L);
+        expected.Write(new byte[3]);
+        expected.Write(0);
+        expected.Write((short)15);
+        expected.Write(Encoding.ASCII.GetBytes("000000000000000"));
+        expected.Write(new byte[2]);
+
+        Empty();
+
+        // No orb, not called, one stat of its own and none added, the second place.
+        expected.Write(new byte[4 + 1 + 4 + 8 + 1]);
+        expected.Write((short)1);
+        expected.Write((byte)21);
+        expected.Write(300f);
+        expected.Write((short)0);
+        expected.Write((byte)1);
+        expected.Flush();
+
+        CollectionAssert.AreEqual(stream.ToArray(), bytes);
+
+        using var reader = new BinaryReader(new MemoryStream(bytes));
+        Assert.AreEqual(1, ReadAsClient(reader).Items);
+        Assert.AreEqual(bytes.Length, reader.BaseStream.Position);
+    }
+
+    [TestMethod]
     public void StatsAndOrderComeAfterTheItems()
     {
         var bytes = Written(Helper(10105166, 3, true, new HelperStatValue(2, 1.5f), new HelperStatValue(7, 40f)));
@@ -141,8 +231,8 @@ public sealed class HelperTest
         Assert.HasCount(4 + 4 + 1 + BareHelper, Written(new HelperSummonResponse { Person = 1, Actor = 2, Summon = 1, Helper = Helper(3) }));
         Assert.HasCount(BareHelper, Written(new HelperAddResponse { Helper = Helper(3) }));
         Assert.HasCount(BareHelper, Written(new HelperUpdateInfoResponse { Helper = Helper(3) }));
-        Assert.HasCount(4 + BareHelper, Written(new HelperEquipResponse { Person = 1, Helper = Helper(3) }));
-        Assert.HasCount(4 + 4 + BareHelper, Written(new HelperSupportEquipResponse { Person = 1, Friend = 2, Helper = Helper(3) }));
+        Assert.HasCount(4 + BareHelper, Written(new HelperEquipResponse { Result = 0, Helper = Helper(3) }));
+        Assert.HasCount(4 + 4 + BareHelper, Written(new HelperSupportEquipResponse { Result = 0, Helper = 3, Record = Helper(3) }));
     }
 
     [TestMethod]
@@ -222,6 +312,134 @@ public sealed class HelperTest
         var flag = new HelperAutoSummonRequest(auto);
         Assert.AreEqual(9, flag.Person);
         Assert.AreEqual((byte)1, flag.Flag);
+    }
+
+    /// <summary>
+    /// The window of the helpers is answered in a district and in a maze: every request it sends has its handler in the
+    /// assembly both servers load. A call outside a maze is refused as the original refuses it, a call in a maze as one
+    /// the maze does not allow, as long as helpers are not called into mazes.
+    /// </summary>
+    [TestMethod]
+    [DoNotParallelize]
+    public async Task DistrictAndMazeBothAnswerTheWindowOfTheHelpers()
+    {
+        var shared = typeof(HelperService).Assembly;
+        var requests = typeof(HelperSummonRequest).Assembly.GetTypes()
+            .Where(e => e.Namespace == typeof(HelperSummonRequest).Namespace && typeof(IRequestHotspotMessage).IsAssignableFrom(e))
+            .ToArray();
+        var handlers = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(e => e.GetTypes())
+            .Where(e => e is { IsClass: true, IsAbstract: false })
+            .SelectMany(e => e.GetInterfaces()
+                .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IHotspotHandler<>))
+                .Select(i => (Request: i.GetGenericArguments()[0], Handler: e)))
+            .ToArray();
+
+        Assert.HasCount(10, requests);
+
+        foreach (var request in requests)
+        {
+            var handler = handlers.Where(e => e.Request == request).Select(e => e.Handler).ToArray();
+
+            Assert.HasCount(1, handler, request.Name);
+            Assert.AreEqual(shared, handler[0].Assembly, request.Name);
+        }
+
+        foreach (var server in new[] { typeof(ChannelAudience).Assembly, typeof(MazeAudience).Assembly })
+        {
+            Assert.IsTrue(server.GetReferencedAssemblies().Any(e => e.Name == shared.GetName().Name), server.GetName().Name);
+        }
+
+        using var world = World.Create();
+        var service = new HelperService(new HelperManager(world, null!, HelperCatalog.From([10105166])));
+
+        async Task<ushort> Refusal(bool inMaze, byte summon)
+        {
+            var connection = new RecordingConnection();
+            var player = world.Create(new ServerSessionComponent(connection), new HelperComponent { Person = 1, Book = new HelperBook(), InMaze = inMaze });
+
+            using var request = new BinaryReader(new MemoryStream([summon, .. BitConverter.GetBytes(10105166)]));
+            await service.OnHandleAsync(new ServiceHandleContext(player, CancellationToken.None), new HelperSummonRequest(request));
+            await MetricAssertions.UntilAsync(() => connection.Frames.Length > 0, "the client is answered");
+
+            var frame = PlayerFrame.Open(connection.Frames[0]);
+            Assert.IsTrue(frame.Is(GroupOpcode.Helper, (byte)HelperOpcode.Summon | 0x80));
+
+            return BinaryPrimitives.ReadUInt16LittleEndian(frame.Body);
+        }
+
+        Assert.AreEqual(HelperManager.NotInMaze, await Refusal(false, 1));
+        Assert.AreEqual(HelperManager.NotInMaze, await Refusal(false, 0));
+        Assert.AreEqual(HelperManager.CannotSummon, await Refusal(true, 1));
+        Assert.AreEqual(HelperManager.CannotSummon, await Refusal(true, 0));
+        Assert.IsTrue(new HelperBook().AutoSummon, "a new person has the automatic call on");
+    }
+
+    // A status row with the columns named set and every other column zero.
+    private static StatusRow Status(params (int Column, float Value)[] values)
+    {
+        const int floatsBeforeResists = 35, resists = 12, floatsAfterResists = 8;
+        var map = values.ToDictionary(e => e.Column, e => e.Value);
+
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+
+        writer.Write((short)3001);
+
+        for (var column = 1; column <= floatsBeforeResists; column++)
+        {
+            writer.Write(map.GetValueOrDefault(column));
+        }
+
+        writer.Write(new byte[resists]);
+
+        for (var column = 0; column < floatsAfterResists; column++)
+        {
+            writer.Write(map.GetValueOrDefault(floatsBeforeResists + resists + 1 + column));
+        }
+
+        writer.Flush();
+        stream.Position = 0;
+
+        return new StatusRow(new BinaryReader(stream));
+    }
+
+    /// <summary>
+    /// What a helper has by itself grows with the level of its owner and carries the additions of its monster row, under
+    /// the stat numbers the client keeps; what it wears and a valid orb add to the two attacks and the defense.
+    /// </summary>
+    [TestMethod]
+    public void HelperStatsFollowTheOwnerAndWhatTheHelperWears()
+    {
+        // Strength 10 + 2 a level, vitality 5, 10 health a point of vitality, 100 health to start with.
+        var status = Status((1, 10f), (2, 2f), (9, 5f), (13, 10f), (18, 1f), (51, 100f));
+
+        static Dictionary<byte, float> Read(HelperStatValue[] stats) => stats.ToDictionary(e => e.Type, e => e.Value);
+
+        var first = Read(HelperStats.Origin(status, 0, default, 1));
+        var eleventh = Read(HelperStats.Origin(status, 0, default, 11));
+        var added = Read(HelperStats.Origin(status, 0, new StatBonuses { Health = 500f, PhysicalAttack = 50f }, 1));
+
+        Assert.AreEqual(100f, first[21]);
+        Assert.AreEqual(80f, first[20]);
+        Assert.AreEqual(300f, eleventh[21], "the level of the owner raises the strength and the attack");
+        Assert.AreEqual(150f, first[10]);
+        Assert.AreEqual(650f, added[10], "the health of the monster row is added");
+        Assert.AreEqual(150f, added[21], "the attack of the monster row is added");
+        Assert.IsTrue(first.Keys.All(e => e < 61), "the client has room for 61 stats");
+
+        var now = DateTimeOffset.FromUnixTimeSeconds(1_000_000);
+        var orb = new HelperSupportInfoValue(7, HelperStats.AttackOrb, 30f, now.AddHours(1), 0, true);
+
+        var worn = Read(HelperStats.Additional([(157, 42)], orb, now));
+        var expired = Read(HelperStats.Additional([(157, 42)], orb with { Date = now.AddSeconds(-1) }, now));
+
+        CollectionAssert.AreEquivalent(new byte[] { 20, 21, 24 }, worn.Keys.ToArray());
+        Assert.AreEqual(187f, worn[20]);
+        Assert.AreEqual(187f, worn[21]);
+        Assert.AreEqual(42f, worn[24]);
+        Assert.AreEqual(157f, expired[21], "an orb whose date is past adds nothing");
+        Assert.IsEmpty(HelperStats.Additional([], default, now), "nothing worn adds nothing");
     }
 
     [TestMethod]

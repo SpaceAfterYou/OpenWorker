@@ -72,7 +72,10 @@ Errors: `27/(sub|0x80)` + u16 code, as everywhere.
 
 The client keeps origin and additional stats in arrays indexed by the stat number (61 entries), so a stat number must be
 below 61. Stats used: 20 physical attack min, 21 physical attack max, 24 physical defense, plus whatever the origin list
-carries. Empty size: 273 bytes (the current writer is right).
+carries. Empty size: 273 bytes (the current writer is right). The 27/04 receiver writes each stat into that 61-entry table
+of the helper's record with no bound check, so a larger number overwrites the next fields. **[client]** The reference
+server fills the origin list with all 77 stats of its own version, zeros included; this client cannot take that, so we send
+the non-zero stats of the calculator, all below 45. **[ref][client]**
 
 ### Client → server
 
@@ -86,7 +89,7 @@ carries. Empty size: 273 bytes (the current writer is right).
 | 09 | support equip | int person (own id), int helper (the selected one), int friend | equip button of the friend list | right |
 | 10 | equip | byte inventory type, int item, short inventory slot, int64 inventory serial, int helper, int helper item, short helper slot, int64 helper serial (33 bytes) | dragging an item onto a slot, or off it | right |
 | 12 | change order | int person (0), int first, byte 0, int second, byte 0, int 0 (18 bytes) | the up/down arrows: the selected helper and the one at the place it moves to | right |
-| 14 | recall ("all release" in the name) | (empty) | recall button / context menu; the client allows it once per 10 s | right (name misleads) |
+| 14 | recall | (empty) | recall button / context menu; the client allows it once per 10 s | right (renamed `HelperRecallRequest`, opcode `Recall`) |
 | 15 | auto summon | int person (own id), byte flag | the auto summon check box, only when the value changes | right |
 
 The client sends 02, 06, 07, 08, 09, 10 through a "one request at a time" guard: a second one is not sent while the first
@@ -108,9 +111,9 @@ it and picks an empty slot of the item's own inventory).
 | 05 | support info | int friend (own id when registered), byte type, float value, int64 expiry, byte reward state, byte registered (19 bytes) | fills the registration window | right |
 | 06 | support register | int result, support info | result 0: shows what was registered | right |
 | 07 | support reward | int result | refreshes the window, chat line (UI 47) | right |
-| 08 | support list | short n, n × friend record | fills the friend orb list | **field misnamed**: see below |
-| 09 | support equip | int result, int helper, helper | if the helper is the selected one, refreshes it | **wrong names**: `Person`, `Friend` are result and helper |
-| 10 | equip | int result, helper | refreshes the helper's slots and stats | **wrong name**: `Person` is the result |
+| 08 | support list | short n, n × friend record | fills the friend orb list | right (fixed, see below) |
+| 09 | support equip | int result, int helper, helper | if the helper is the selected one, refreshes it | right (fixed: `Result`, `Helper`, `Record`) |
+| 10 | equip | int result, helper | refreshes the helper's slots and stats | right (fixed: `Result`) |
 | 11 | update info | helper | refreshes the helper; if it had an orb and the new record has none, chat line 21533 | right |
 | 12 | change order | the 18 bytes of the request, with the orders and an error | error 0: applies both orders, refreshes the quick slots | right |
 | 13 | sync pos | int actor, float x, y, z | moves that helper actor there at once (only a monster actor of type helper) | right |
@@ -118,8 +121,8 @@ it and picks an empty slot of the item's own inventory).
 
 Friend record of 08 (client 1.4.2.3; the reference server writes two more fields, awakening and profile photo, that this
 client does not read): `int friend, byte type, float value (scaled to the reader, see 5), int64 expiry, float original
-value, string name (at most 20 characters), byte level, byte class`. Our `HelperSupportFriendValue.Rate` is the original
-value, `Hero` is the class. **[client][ref]**
+value, string name (at most 20 characters), byte level, byte class`. `HelperSupportFriendValue` names them `OriginalValue`
+and `Class` (they were `Rate` and `Hero`). **[client][ref]**
 
 The reference server answers some requests with nothing at all (no answer, no error): 06 when a valid registration whose
 reward was already taken exists, 07 when there is no reward to take, 09 when the friend's orb was already used by this
@@ -166,15 +169,21 @@ an ally" checks, and their kills are the owner's.
 
 At summon (and whenever equipment or orb change):
 
-- **origin stats**: the stat calculation of an NPC at the **owner's level and class**, from the helper's status row
-  (`tb_Status`, the monster row's status id: 3001 or 3002) plus the flat additions of its `tb_Monster` row (health, attacks,
-  defenses, accuracy, critical, ... the `Add*` columns). Our `CombatStatCalculator.Calculate(status, level, statusType,
-  StatBonuses.From(monsterRow))` is that calculation. The monster row's own level (11 or 80) is not used.
+- **origin stats**: the stat calculation of an NPC at the **owner's level**, from the helper's status row (`tb_Status`, the
+  monster row's status id: 3001 or 3002) and the monster row's own status type, plus the flat additions of its `tb_Monster`
+  row (health, attacks, defenses, accuracy, critical, ... the `Add*` columns). Our `CombatStatCalculator.Calculate(status,
+  level, statusType, StatBonuses.From(monsterRow))` is that calculation. The monster row's own level (11 or 80) is not used.
+  The owner's class is passed to the calculation but **not used** by it: the "ranged" test reads the status type of the
+  monster row, not the class (checked in the reference, see the evidence file). In the client tables all eight helper rows
+  have no `Add*` values, so today the origin stats come from the status row alone.
 - **additional stats**: for each of the three worn items, its physical attack added to stats 20 and 21 and its physical
   defense to stat 24; then the orb: attack orb adds its value to 20 and 21, defense orb to 24, only while the orb's date is
   in the future.
 - origin goes to the record's first list, additional to the second; the actor's stats are origin + additional.
-- `27/04` is sent to the owner when the owner levels up, with every helper's origin stats.
+- `27/04` is sent when the owner levels up, with every helper's origin stats. The reference sends the origin lists it
+  holds, computed when the list was loaded (or at the last summon or equipment change), so they are those of the old level,
+  and it broadcasts them around the owner, whose clients then overwrite the stats of their own helpers of the same ids.
+  Both look like defects: we compute the lists at the new level and send them to the owner only.
 
 ### The AI **[ref][table]**
 
@@ -227,7 +236,8 @@ What is particular to a follower **[ref]**:
 
 When the person has finished loading a maze: if the flag is on, the person is **not in a party**, and the maze allows
 helpers (same flag and type as above), the helpers are summoned in list order until the count is full. The 10 s delay is not
-checked here. The flag is on by default for a new person (the reference server's default); ours defaults to off.
+checked here. The flag is on by default for a new person (the reference server clears its helper state to "on"; the value
+for a person without stored helpers comes from a stored procedure that was not read); ours is on for a new book too.
 
 ## 4. Growth and equipment
 
@@ -294,17 +304,17 @@ checked here. The flag is on by default for a new person (the reference server's
 
 | Piece | State | What is missing / depends on |
 |---|---|---|
-| Storage of the list, order, auto flag (`HelperBook` in `PersonStates`) | done | default auto flag should be on |
-| 27/01 list at district entry | partly | stats lists empty, items empty; the maze never loads the book |
-| 27/03 add (quest reward, chat command) | done | stats empty |
-| 27/12 change order | done | — |
-| 27/15 auto summon | done | flag > 1: the reference echoes the current flag |
-| 27/02 summon outside a maze | partly | release outside a maze must answer 58006 (we send 58007) |
-| 27/02 summon/release in a maze | missing | the maze has **no handler for group 0x27** at all; creature spawn with owner, limits, cooldown, maze flag — depends on the creature manager (`OpenWorker.Lua`) and, for parties, on `feature/party-maze` |
-| 27/14 recall | missing | the AI warp; maze handler |
+| Storage of the list, order, auto flag (`HelperBook` in `PersonStates`) | done | — (auto flag on for a new book, step 2) |
+| 27/01 list at district and maze entry | done | items are carried by the record but none is worn yet (step 4) |
+| 27/03 add (quest reward, chat command) | done | — |
+| 27/12 change order | done (district and maze) | — |
+| 27/15 auto summon | done (district and maze) | flag > 1: the reference echoes the current flag |
+| 27/02 summon outside a maze | done | 58006 for summon and release |
+| 27/02 summon/release in a maze | missing | answered (58007 for both) by the shared handler; creature spawn with owner, limits, cooldown, maze flag — depends on the creature manager (`OpenWorker.Lua`) and the shared maze instance of `feature/party-maze` |
+| 27/14 recall | missing | the AI warp; answered with nothing on both servers, as the reference does |
 | 27/13 sync pos | missing | the AI warp |
-| 27/04 stat update | missing | stats; the level-up path |
-| Stats (origin / additional) | missing | `CombatStatCalculator` exists; needs owner level/class, item and orb additions |
+| 27/04 stat update | done | sent to the owner at every level reached (`ExperienceService`) |
+| Stats (origin / additional) | done | `HelperStats`: origin at the owner's level; additional from worn items and the orb, empty until they exist |
 | 27/10 equipment | missing (refused 58004) | an item place for helper equipment (schema), `InventoryService` moves, stats |
 | 27/11 update info | missing | orb release |
 | AI of a follower | missing | owner-aware guard variables, MOVE to owner, warp, recovery state, buff target = owner, enemy search both ways (helpers hit monsters, monsters target helpers except rank ≥ 3), monster→monster damage — `feature/combat` and the AI machine |
@@ -312,26 +322,41 @@ checked here. The flag is on by default for a new person (the reference server's
 | Release on death / exit / maze clear, others' helpers on join and leave | missing | maze entry/exit hooks, `feature/party-maze` |
 | 27/05..09 support | partly (05, 06 answer without values; 07 and 09 refused; 08 always empty) | a registration store shared by all servers, friends (exist: `FriendBook`), friend points, item grant |
 
-The current e2e (`docs/tools/e2e_helper.py`, stand 9, a build of `0fd624c`; the helper code and the maze's wiring are the
-same on `dev` `a49bcda`): **25 PASS, 0 FAIL**. It checks
-what exists (district only) and asserts today's refusals (equip, support equip, support reward), which the plan changes.
+The e2e (`docs/tools/e2e_helper.py tester9 password [maze location]`, stand 9): before steps 1 to 3 **25 PASS, 0 FAIL**
+(district only); after them **40 PASS, 0 FAIL** on a build of `feature/helpers-base` over `dev` `b6e00cb`: the record read
+the way the client reads it, origin stats non-empty and below 61, 27/04 at a level reached (`/exp`, which now gives real
+experience) with grown stats, the list again after re-entry with the new level's stats, and in a maze (M04, 21311) the list
+with the same stats, 27/15 and 27/12 answered, a summon refused with 58007, a recall answered with nothing. It still asserts
+today's refusals (equip, support equip, support reward), which steps 4 and 7 change.
 
 ## 8. Implementation plan
 
 Order matters: 1–3 need no maze work and give the window its real content; 4–6 make helpers fight; 7 is independent.
 
-1. **Protocol corrections** (S). `OpenWorker.Protocol/Modules/Helpers`: rename `HelperSupportEquipResponse.Person/Friend` to
-   `Result/Helper`, `HelperEquipResponse.Person` to `Result`, `HelperSupportFriendValue.Rate` to `OriginalValue`,
-   `Hero` to `Class`; let `HelperValue` carry three real items (reuse the inventory item writer). Test: the existing
-   byte layout test of the helper record, extended with one worn item (one test).
-2. **Handlers in both servers** (S). Move `HelperService` to `OpenWorker.Server.Common` (district and maze answer group
-   0x27); the maze's `PersonService` loads the book at entry (`HelperManager.EnterAsync`, sending 27/01 again is harmless:
-   the client replaces its list). Release outside a maze → 58006. Default auto flag on for a new book. Test: e2e in a maze
-   (`e2e_maze.py` style) that 27/15 and 27/12 answer there.
-3. **Stats** (M). `OpenWorker.Gameplay/Modules/Helpers/HelperStats`: origin = `CombatStatCalculator` with the helper's
-   status row at the owner's level and class and `StatBonuses.From(monster row)`, mapped to the stat numbers the client
-   indexes; additional = items (20, 21, 24) + orb. Fill 27/01, 27/03, 27/10, 27/11; send 27/04 on level up (the level-up
-   path of the person). Tests: one unit test of the rule (owner level changes origin; item adds to 20/21/24).
+1. **Protocol corrections** (S) — **done** (`feature/helpers-base`). `HelperSupportEquipResponse` is `Result`, `Helper`,
+   `Record`; `HelperEquipResponse.Result`; `HelperSupportFriendValue.OriginalValue`, `Class`; 27/14 is
+   `HelperRecallRequest` / `HelperOpcode.Recall`; `HelperValue.Items` carries up to three `ItemValue`s written by the
+   inventory's item writer, `HelperValue.NoItem` is the empty slot (the same 82 bytes as before). Found on the way: a helper
+   without an orb sent the orb date of `default(DateTimeOffset)` (a large negative number); it now sends 0. Test: one byte
+   layout test of a record with a worn item.
+2. **Handlers in both servers** (S) — **done**. `HelperService` is in `OpenWorker.Server.Common`. The research was wrong
+   that the maze never loads the book: it did (`MiscStateLoader.EnterMazeAsync`, called per player by the maze's
+   `PersonService`); the maze only lacked the handlers. The maze's load now goes through `HelperManager.EnterMazeAsync`,
+   which marks the person as in a maze (`HelperComponent.InMaze`). Summon and release outside a maze → 58006; in a maze,
+   until step 5, both → 58007 (the code the client shows as "cannot summon in this maze"; for a release it is also the
+   reference's code for "not summoned", which is true). Recall answers nothing on both servers (the reference answers it
+   with nothing but 27/13). Equip (58004), support equip (58004), support reward (52004) stay as they were. New book: auto
+   flag on. Test: one unit test (every 0x27 request has its one handler in the shared assembly both servers reference; the
+   codes in and outside a maze); e2e in a maze.
+3. **Stats** (M) — **done**. `OpenWorker.Gameplay/Modules/Helpers/HelperStats`: origin = `CombatStatCalculator` with the
+   helper's status row, the monster row's status type and `StatBonuses.From(monster row)` at the owner's level (the class is
+   not used, see section 3), as `CombatStats.ToStatList()` (non-zero, stat numbers 4..44); additional = items (20, 21, 24)
+   + a valid orb, both empty today. Filled into every record the manager sends (27/01, 27/03; 27/10 and 27/11 are not sent
+   yet: they come with steps 4 and 7 and take the same `ToValue`); 27/04 from `ExperienceService` at a level reached, to the
+   owner, with the new level's stats. `tb_Helper` columns named `TypeText`, `Icon`, `Illustration`. What our list lacks next
+   to the reference's: stamina, soul gauge, move and attack speed and the attribute stats, which the calculator does not
+   compute. Test: one unit test of the rule (the level raises the origin stats; the monster row's additions are in; items
+   and a valid orb add to 20, 21, 24; an expired orb adds nothing).
 4. **Equipment 27/10** (M–L). Helper equipment kept as items in a storage of their own: a storage number not used by the
    client for a helper's slots, slot = helper number × 3 + slot (or a storage per helper number 100..109, slot 0..2) —
    **schema**: no new column if the storage/slot encoding is used; the index `(PersonId, Storage, Slot)` should become

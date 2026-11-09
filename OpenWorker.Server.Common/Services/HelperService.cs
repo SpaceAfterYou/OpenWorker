@@ -5,10 +5,11 @@ using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Modules.Helpers.Requests;
 
-namespace OpenWorker.DistrictServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
-/// Helpers are called in mazes only, so the district just keeps the list and refuses the rest.
+/// The window of the helpers, in a district and in a maze: the list, its order, the automatic call, and the refusals of
+/// what is not done yet (calling a helper into a maze, items, the orbs of friends).
 /// </summary>
 public sealed class HelperService(HelperManager manager) :
     IHotspotHandler<HelperSummonRequest>,
@@ -19,7 +20,7 @@ public sealed class HelperService(HelperManager manager) :
     IHotspotHandler<HelperSupportEquipRequest>,
     IHotspotHandler<HelperEquipRequest>,
     IHotspotHandler<HelperChangeOrderRequest>,
-    IHotspotHandler<HelperAllReleaseRequest>,
+    IHotspotHandler<HelperRecallRequest>,
     IHotspotHandler<HelperAutoSummonRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, HelperSummonRequest request)
@@ -74,9 +75,10 @@ public sealed class HelperService(HelperManager manager) :
         await manager.ChangeOrderAsync(context.Player, request.First, request.Second, context.CancellationToken);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperAllReleaseRequest request)
+    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperRecallRequest request)
     {
-        // Nothing is called outside a maze.
+        // Only called helpers come back, and none is called yet. The original answers a recall with nothing but the
+        // new positions of the helpers.
         return ValueTask.CompletedTask;
     }
 

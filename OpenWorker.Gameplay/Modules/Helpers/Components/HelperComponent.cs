@@ -12,4 +12,9 @@ public struct HelperComponent
     public int Person;
 
     public HelperBook? Book;
+
+    /// <summary>
+    /// The person is in a maze, the one place a helper can be called to.
+    /// </summary>
+    public bool InMaze;
 }
