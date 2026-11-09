@@ -374,7 +374,11 @@ public sealed class ServiceChannel : IEndOfPass
         _changes?.Notify();
     }
 
-    internal void Leave(Entity player)
+    /// <param name="tellPlayer">
+    /// Whether the player is told that the others it saw are gone: it is when it stays on the server and only changes
+    /// channel, and is not when its connection closes.
+    /// </param>
+    internal void Leave(Entity player, bool tellPlayer = false)
     {
         // A connection can close before its player has joined a channel.
         if (!_members.Remove(player, out var member))
@@ -392,6 +396,23 @@ public sealed class ServiceChannel : IEndOfPass
         Remove(member);
 
         SendNearby(member, new WorldOutInfoPcResponse { Actors = [member.Actor] }, others: true);
+
+        if (!tellPlayer)
+        {
+            return;
+        }
+
+        _actors.Clear();
+
+        foreach (var cell in Around(member.Cell))
+        {
+            foreach (var other in cell.Members)
+            {
+                _actors.Add(other.Actor);
+            }
+        }
+
+        SendGone(member);
     }
 
     /// <summary>
