@@ -29,6 +29,54 @@ public sealed class ItemSetupTest
     }
 
     [TestMethod]
+    public async Task SocketEquipPutsTheGemInAndTheEntryLoadShowsIt()
+    {
+        using var f = new ItemSetupFixture();
+
+        var sockets = ItemSetupFixture.Load<SocketRow>("tb_Socket").GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
+        var items = ItemSetupFixture.Load<ItemRow>("tb_Item");
+
+        // An item of the bag with a socket to open, and a gem it can take.
+        var target = items.First(e => e.Socket != 0 && sockets.TryGetValue(e.Socket, out var row) && row.MaxSockets > 0 &&
+                                      f.Catalog.HomeOf(e.Id) == StorageGroup.Common &&
+                                      FirstOfUse(f, ItemUseType.ITEM_SOCKET_EQUIP, g => g.Level <= e.Level) != 0);
+        var socket = sockets[target.Socket];
+        var gemId = FirstOfUse(f, ItemUseType.ITEM_SOCKET_EQUIP, g => g.Level <= target.Level);
+
+        var equipment = f.Give(target.Id, 1);
+        var gem = f.Give(gemId, 1);
+
+        if (socket.AddItem != 0)
+        {
+            f.Give(socket.AddItem, socket.AddCount);
+        }
+
+        f.Gold = socket.AddCost + socket.EquipCost;
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupSocketActiveRequest { Target = ItemSetupFixture.SlotOf(equipment), Socket = 0 });
+
+        Assert.AreEqual(1, equipment.SocketActive, "The first socket is open");
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupSocketEquipRequest
+        {
+            Target = ItemSetupFixture.SlotOf(equipment),
+            Gems = [new ItemSetupSocketGem { Gem = ItemSetupFixture.SlotOf(gem), Socket = 0 }]
+        });
+
+        Assert.AreEqual(gemId, equipment.SocketAt(0).Gem);
+        Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == gem.Serial), "The gem is used up");
+        Assert.AreEqual(0, f.Gold);
+
+        // What the entry sends with the bags, and what the next entry loads from the row the flush writes.
+        var load = f.Inventory.ListSockets(f.Player).Single();
+
+        Assert.AreEqual(equipment.Serial, load.biEquipSerial.Value);
+        Assert.AreEqual(gemId, load.dwSocketID);
+        Assert.AreEqual(0, load.bySocketPos);
+        Assert.AreEqual(gemId, ItemInstance.From(equipment.ToPersistent(7)).SocketAt(0).Gem);
+    }
+
+    [TestMethod]
     public async Task RestoreMendsABrokenItemAndUnsealFreesABoundOneAsTheTableSays()
     {
         using var f = new ItemSetupFixture();

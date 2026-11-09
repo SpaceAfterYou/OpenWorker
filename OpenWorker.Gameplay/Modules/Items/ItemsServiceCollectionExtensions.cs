@@ -29,6 +29,7 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<ItemRepairService>();
         services.AddSingleton<ItemSetupAnswers>();
         services.AddSingleton<ItemRestoreService>();
+        services.AddSingleton<ItemSocketService>();
         services.AddSingleton<InventoryPersistence>();
 
         // The features that give items hand them over here.

@@ -81,7 +81,8 @@ internal sealed class ItemSetupFixture : IDisposable
         Inventory = new InventoryService(World, Catalog, serials);
         Handler = new ItemSetupService(
             new ItemRepairService(World, Inventory, Repairs),
-            new ItemRestoreService(Inventory, answers));
+            new ItemRestoreService(Inventory, answers),
+            new ItemSocketService(Inventory, Load<SocketRow>("tb_Socket"), answers));
 
         var factory = new InventoryFactory(Catalog, Load<CreateClothRow>("tb_Create_Cloth"), serials);
 

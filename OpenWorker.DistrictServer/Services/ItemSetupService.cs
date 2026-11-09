@@ -6,12 +6,13 @@ using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The work on items at the NPCs of a city: repairs and the tools that restore, unseal or lower a count of
+/// The work on items at the NPCs of a city: repairs, sockets, and the tools that restore, unseal or lower a count of
 /// an item. What each request does and what is still missing for the others: <c>docs/notes-item-setup-handlers.md</c>.
 /// </summary>
 public sealed class ItemSetupService(
     ItemRepairService repairs,
-    ItemRestoreService restores) :
+    ItemRestoreService restores,
+    ItemSocketService sockets) :
     IHotspotHandler<ItemSetupMakeRequest>,
     IHotspotHandler<ItemSetupRepairRequest>,
     IHotspotHandler<ItemSetupRepairNpcRequest>,
@@ -19,7 +20,9 @@ public sealed class ItemSetupService(
     IHotspotHandler<ItemSetupRepairAllRequest>,
     IHotspotHandler<ItemSetupRestoreRequest>,
     IHotspotHandler<ItemSetupUnsealRequest>,
-    IHotspotHandler<ItemSetupUseEffectRequest>
+    IHotspotHandler<ItemSetupUseEffectRequest>,
+    IHotspotHandler<ItemSetupSocketActiveRequest>,
+    IHotspotHandler<ItemSetupSocketEquipRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupMakeRequest request)
     {
@@ -71,6 +74,20 @@ public sealed class ItemSetupService(
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupUseEffectRequest request)
     {
         restores.UseEffect(context.Player, request.Tool, request.Target);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupSocketActiveRequest request)
+    {
+        sockets.Activate(context.Player, request.Target, request.Socket);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupSocketEquipRequest request)
+    {
+        sockets.Equip(context.Player, request.Target, request.Gems);
 
         return ValueTask.CompletedTask;
     }
