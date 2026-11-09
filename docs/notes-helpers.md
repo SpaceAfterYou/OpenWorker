@@ -347,7 +347,7 @@ experience) with grown stats, the list again after re-entry with the new level's
 with the same stats, 27/15 and 27/12 answered, a summon refused with 58007, a recall answered with nothing.
 
 After steps 4 and 7 (`feature/helpers-gear`, stand 3, `e2e_helper.py tester9 password 21311 tester10`, the last argument the
-friend who offers the orb): the old refusals are replaced by the equipment (items given by `/item`, put on, refused for
+friend who offers the orb): **70 PASS, 0 FAIL**. The old refusals are replaced by the equipment (items given by `/item`, put on, refused for
 another helper, a higher level and a taken slot, swapped, a gear in its slot, taken off, put back on; 08/05 and 08/06 with
 the right slots; the stats added) and the orbs (the two become friends through 19/11 and 19/13; info, an unknown kind
 refused, an attack orb offered for a day with its reward waiting, a second refused with 58003, the row in the database, the
