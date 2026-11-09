@@ -44,9 +44,9 @@ public sealed class HelperBook
     public List<HelperEntry> Helpers { get; set; } = [];
 
     /// <summary>
-    /// Whether helpers are called by themselves when the person enters a maze.
+    /// Whether helpers are called by themselves when the person enters a maze. It is on until the person turns it off.
     /// </summary>
-    public bool AutoSummon { get; set; }
+    public bool AutoSummon { get; set; } = true;
 
     /// <summary>
     /// What the person offers its friends as support, or 0 if it does not.

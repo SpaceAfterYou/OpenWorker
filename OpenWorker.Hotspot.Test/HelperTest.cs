@@ -1,11 +1,20 @@
+using System.Buffers.Binary;
 using System.Text;
+using Arch.Core;
+using OpenWorker.DistrictServer.Server;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Helpers.Components;
+using OpenWorker.Hotspot.Handler.Abstractions;
+using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Helpers.Requests;
 using OpenWorker.Hotspot.Modules.Helpers.Responses;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.MazeServer.Services;
+using OpenWorker.Server.Common.Services;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -302,6 +311,67 @@ public sealed class HelperTest
         var flag = new HelperAutoSummonRequest(auto);
         Assert.AreEqual(9, flag.Person);
         Assert.AreEqual((byte)1, flag.Flag);
+    }
+
+    /// <summary>
+    /// The window of the helpers is answered in a district and in a maze: every request it sends has its handler in the
+    /// assembly both servers load. A call outside a maze is refused as the original refuses it, a call in a maze as one
+    /// the maze does not allow, as long as helpers are not called into mazes.
+    /// </summary>
+    [TestMethod]
+    [DoNotParallelize]
+    public async Task DistrictAndMazeBothAnswerTheWindowOfTheHelpers()
+    {
+        var shared = typeof(HelperService).Assembly;
+        var requests = typeof(HelperSummonRequest).Assembly.GetTypes()
+            .Where(e => e.Namespace == typeof(HelperSummonRequest).Namespace && typeof(IRequestHotspotMessage).IsAssignableFrom(e))
+            .ToArray();
+        var handlers = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(e => e.GetTypes())
+            .Where(e => e is { IsClass: true, IsAbstract: false })
+            .SelectMany(e => e.GetInterfaces()
+                .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IHotspotHandler<>))
+                .Select(i => (Request: i.GetGenericArguments()[0], Handler: e)))
+            .ToArray();
+
+        Assert.HasCount(10, requests);
+
+        foreach (var request in requests)
+        {
+            var handler = handlers.Where(e => e.Request == request).Select(e => e.Handler).ToArray();
+
+            Assert.HasCount(1, handler, request.Name);
+            Assert.AreEqual(shared, handler[0].Assembly, request.Name);
+        }
+
+        foreach (var server in new[] { typeof(ChannelAudience).Assembly, typeof(MazeAudience).Assembly })
+        {
+            Assert.IsTrue(server.GetReferencedAssemblies().Any(e => e.Name == shared.GetName().Name), server.GetName().Name);
+        }
+
+        using var world = World.Create();
+        var service = new HelperService(new HelperManager(world, null!, HelperCatalog.From([10105166])));
+
+        async Task<ushort> Refusal(bool inMaze, byte summon)
+        {
+            var connection = new RecordingConnection();
+            var player = world.Create(new ServerSessionComponent(connection), new HelperComponent { Person = 1, Book = new HelperBook(), InMaze = inMaze });
+
+            using var request = new BinaryReader(new MemoryStream([summon, .. BitConverter.GetBytes(10105166)]));
+            await service.OnHandleAsync(new ServiceHandleContext(player, CancellationToken.None), new HelperSummonRequest(request));
+            await MetricAssertions.UntilAsync(() => connection.Frames.Length > 0, "the client is answered");
+
+            var frame = PlayerFrame.Open(connection.Frames[0]);
+            Assert.IsTrue(frame.Is(GroupOpcode.Helper, (byte)HelperOpcode.Summon | 0x80));
+
+            return BinaryPrimitives.ReadUInt16LittleEndian(frame.Body);
+        }
+
+        Assert.AreEqual(HelperManager.NotInMaze, await Refusal(false, 1));
+        Assert.AreEqual(HelperManager.NotInMaze, await Refusal(false, 0));
+        Assert.AreEqual(HelperManager.CannotSummon, await Refusal(true, 1));
+        Assert.AreEqual(HelperManager.CannotSummon, await Refusal(true, 0));
+        Assert.IsTrue(new HelperBook().AutoSummon, "a new person has the automatic call on");
     }
 
     [TestMethod]

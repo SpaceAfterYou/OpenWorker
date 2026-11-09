@@ -25,14 +25,14 @@ public sealed class HelperManager(
     AchievementManager? achievements = null)
 {
     /// <summary>
-    /// The helper cannot be called now, which is what the client is told about a call outside a maze.
+    /// Helpers are not called, nor sent away, outside a maze: "supporters cannot be summoned in town".
     /// </summary>
-    public const ushort CannotSummon = 58006;
+    public const ushort NotInMaze = 58006;
 
     /// <summary>
-    /// The helper cannot be sent away, as it is not called.
+    /// The helper cannot be called in this maze, or is not called and so cannot be sent away.
     /// </summary>
-    public const ushort CannotRelease = 58007;
+    public const ushort CannotSummon = 58007;
 
     /// <summary>
     /// The item cannot be put on the helper.
@@ -44,13 +44,34 @@ public sealed class HelperManager(
     /// </summary>
     public const ushort NoSupportReward = 52004;
 
-    public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads the helpers of a person entering a district and tells the client.
+    /// </summary>
+    public ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
+    {
+        return LoadAsync(player, person, false, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads the helpers of a person entering a maze and tells the client, which replaces the list it had.
+    /// </summary>
+    public ValueTask EnterMazeAsync(Entity player, int person, CancellationToken cancellationToken)
+    {
+        return LoadAsync(player, person, true, cancellationToken);
+    }
+
+    private async ValueTask LoadAsync(Entity player, int person, bool inMaze, CancellationToken cancellationToken)
     {
         var book = await store.LoadAsync<HelperBook>(person, PersonStateKind.Helper, cancellationToken) ?? new HelperBook();
 
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
         book.Normalize(catalog);
 
-        world.Set(player, new HelperComponent { Person = person, Book = book });
+        world.Set(player, new HelperComponent { Person = person, Book = book, InMaze = inMaze });
 
         world.Get<ServerSessionComponent>(player)
             .Send(new HelperListLoadResponse
@@ -82,11 +103,15 @@ public sealed class HelperManager(
     }
 
     /// <summary>
-    /// The person asks to call a helper or to send it away. Helpers are only called in mazes.
+    /// The person asks to call a helper or to send it away. Outside a maze both are refused as the original refuses them;
+    /// in a maze a helper is not called yet, so a call is refused as one the maze does not allow, and there is nothing
+    /// to send away.
     /// </summary>
     public void Summon(Entity player, bool summon)
     {
-        SendError(player, HelperOpcode.Summon, summon ? CannotSummon : CannotRelease);
+        var inMaze = world.IsAlive(player) && world.TryGet<HelperComponent>(player, out var component) && component.InMaze;
+
+        SendError(player, HelperOpcode.Summon, inMaze ? CannotSummon : NotInMaze);
     }
 
     public async ValueTask ChangeOrderAsync(Entity player, int first, int second, CancellationToken cancellationToken)
