@@ -74,6 +74,11 @@ public abstract class PersonProfileServiceBase(
 
         session.Send(CreateTitleResponse(chosen, true));
 
+        if (chosen.AbilityPrimary != current.AbilityPrimary || chosen.AbilitySecondary != current.AbilitySecondary)
+        {
+            titles.AbilitiesChanged(context.Player);
+        }
+
         if (chosen.Primary != current.Primary || chosen.Secondary != current.Secondary)
         {
             BroadcastToOthers(context.Player, new PersonUpdateTitleBroadcastResponse

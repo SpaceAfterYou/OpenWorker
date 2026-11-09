@@ -1235,6 +1235,18 @@ public partial class LuaMaze(
             }
         });
 
+        // Every blow that lands may wear the weapon of the player.
+        if (creatureManager.Services?.Wear is { } wear)
+        {
+            foreach (var hit in hits)
+            {
+                if (hit.Damage > 0)
+                {
+                    wear.Attacked(player);
+                }
+            }
+        }
+
         // The buff of the attack reaches the targets it hit and left standing.
         _buffs.GiveFromHit(player, trigger, targets);
 

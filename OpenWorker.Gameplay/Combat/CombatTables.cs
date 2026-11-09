@@ -54,8 +54,13 @@ public sealed class CombatTables(
     ReadOnlyCollection<CharacterInfoRow> characters,
     TitleCatalog? titles = null,
     ItemCatalog? items = null,
-    ReadOnlyCollection<StatusSoulGaugeRow>? soulGauges = null)
+    ReadOnlyCollection<StatusSoulGaugeRow>? soulGauges = null,
+    GearStats? gear = null)
 {
+    private static readonly StatSheet Nothing = new();
+
+    private readonly GearStats? _gear = gear ?? (items is null ? null : new GearStats(items));
+
     private const int HeroRowStep = 1000;
 
     private const byte PlainMonster = 0;
@@ -71,7 +76,6 @@ public sealed class CombatTables(
     private Dictionary<int, SkillRow> Skills { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private readonly RowIndex<short, CharacterInfoRow> _characters = characters.IndexBy(e => e.Id);
     private Dictionary<(Hero Hero, byte Level), CombatStats> People { get; } = [];
-    private Dictionary<(Hero Hero, byte Level, int Prefix, int Suffix), CombatStats> Titled { get; } = [];
     private Dictionary<int, MonsterCombatComponent> MonsterStats { get; } = [];
     private readonly RowIndex<short, StatusSoulGaugeRow> _soulGauges = (soulGauges ?? new ReadOnlyCollection<StatusSoulGaugeRow>([])).IndexBy(e => e.Id);
 
@@ -94,6 +98,9 @@ public sealed class CombatTables(
         return result;
     }
 
+    /// <summary>
+    /// What a hero is at a level with nothing added: what the client calls its origin stats.
+    /// </summary>
     public CombatStats GetPerson(Hero hero, byte level)
     {
         if (People.TryGetValue((hero, level), out var result))
@@ -101,11 +108,7 @@ public sealed class CombatTables(
             return result;
         }
 
-        var character = _characters.GetOrDefault((short)((int)hero * HeroRowStep));
-
-        result = Statuses.TryGetValue((short)character.Character_Status, out var status)
-            ? WithSoulGauge(CombatStatCalculator.Calculate(status, level, character.Character_Status_Type), hero, status.Id)
-            : new CombatStats { Level = level };
+        result = GetPerson(hero, level, Nothing);
 
         People.Add((hero, level), result);
 
@@ -117,60 +120,28 @@ public sealed class CombatTables(
     /// </summary>
     public CombatStats GetPerson(Hero hero, byte level, in TitleComponent title)
     {
-        if (titles is null || (title.AbilityPrimary <= 0 && title.AbilitySecondary <= 0))
-        {
-            return GetPerson(hero, level);
-        }
+        var sheet = new StatSheet();
 
-        var key = (hero, level, title.AbilityPrimary, title.AbilitySecondary);
+        AddTitles(sheet, title, hero);
 
-        if (Titled.TryGetValue(key, out var result))
-        {
-            return result;
-        }
-
-        StatEffect[] effects =
-        [
-            .. Effects(titles, title.AbilityPrimary, hero),
-            .. Effects(titles, title.AbilitySecondary, hero)
-        ];
-
-        result = StatEffects.Apply(GetPerson(hero, level), effects);
-
-        Titled.Add(key, result);
-
-        return result;
+        return sheet.IsEmpty ? GetPerson(hero, level) : GetPerson(hero, level, sheet);
     }
 
     /// <summary>
-    /// What a character is capable of at a level, with the stats its gear adds and the titles it has chosen for its
-    /// abilities.
+    /// The stats of a hero at a level with what is added to them: the one place the stats of a player are worked out.
     /// </summary>
-    public CombatStats GetPerson(Hero hero, byte level, in StatBonuses gear, in TitleComponent title)
+    public CombatStats GetPerson(Hero hero, byte level, StatSheet sheet)
     {
-        if (gear == default)
-        {
-            return GetPerson(hero, level, title);
-        }
-
         var character = _characters.GetOrDefault((short)((int)hero * HeroRowStep));
 
-        var stats = Statuses.TryGetValue((short)character.Character_Status, out var status)
-            ? WithSoulGauge(CombatStatCalculator.Calculate(status, level, character.Character_Status_Type, gear), hero, status.Id)
-            : new CombatStats { Level = level };
+        // A hero without a status (a test with no tables) has nothing but what is added.
+        Statuses.TryGetValue((short)character.Character_Status, out var status);
 
-        if (titles is null || (title.AbilityPrimary <= 0 && title.AbilitySecondary <= 0))
-        {
-            return stats;
-        }
+        var stats = CombatStatCalculator.Calculate(status, level, character.Character_Status_Type, sheet);
 
-        StatEffect[] effects =
-        [
-            .. Effects(titles, title.AbilityPrimary, hero),
-            .. Effects(titles, title.AbilitySecondary, hero)
-        ];
-
-        return StatEffects.Apply(stats, effects);
+        return _soulGauges.TryGet(status.Id, out var row) && status.Id != 0
+            ? CombatStatCalculator.WithSoulGauge(stats, hero, row.SoulGauge, sheet)
+            : stats;
     }
 
     /// <summary>
@@ -179,41 +150,63 @@ public sealed class CombatTables(
     /// </summary>
     public CombatStats GetPlayer(World world, Entity player)
     {
-        var stats = GetPlayerUnbuffed(world, player);
-
-        return world.TryGet<BuffBookComponent>(player, out var buffs) && buffs.Book is { } book ? book.Apply(stats) : stats;
-    }
-
-    private CombatStats GetPlayerUnbuffed(World world, Entity player)
-    {
         var hero = world.Get<PersonInfoComponent>(player).Hero;
         var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : PersonModuleDefines.DefaultLevel;
-        var title = world.TryGet<TitleComponent>(player, out var chosen) ? chosen : default;
 
-        var gear = items is null || !world.Has<InventoryComponent>(player) || world.Get<InventoryComponent>(player).Value is not { } inventory
-            ? default
-            : EquipmentStats.Calculate(inventory, items, hero);
-
-        return GetPerson(hero, level, gear, title);
+        return GetPerson(hero, level, SheetOf(world, player, hero));
     }
 
     /// <summary>
-    /// The soul gauge of a hero: its size from the server's own status table, and what a second adds to it when it is full.
+    /// The stats of a player with nothing added: its hero at the level it has reached.
     /// </summary>
-    private CombatStats WithSoulGauge(in CombatStats stats, Hero hero, short status)
+    public CombatStats GetOrigin(World world, Entity player)
     {
-        if (!_soulGauges.TryGet(status, out var row))
+        var hero = world.Get<PersonInfoComponent>(player).Hero;
+        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : PersonModuleDefines.DefaultLevel;
+
+        return GetPerson(hero, level);
+    }
+
+    /// <summary>
+    /// Everything a player has that adds to its stats: the gear it wears, the titles it has chosen for its abilities and, last,
+    /// the buffs it carries.
+    /// </summary>
+    public StatSheet SheetOf(World world, Entity player, Hero hero)
+    {
+        var sheet = new StatSheet();
+
+        if (_gear is not null && world.TryGet<InventoryComponent>(player, out var inventory))
         {
-            return stats;
+            _gear.Collect(inventory.Value, sheet);
         }
 
-        float maximum = row.SoulGauge;
-
-        return stats with
+        if (world.TryGet<TitleComponent>(player, out var title))
         {
-            SoulGaugeMax = maximum,
-            SoulGaugeRegen = SoulGauge.RegenerationPerSecond(hero, stats.Level, maximum, maximum, stats.SoulGaugeConstant)
-        };
+            AddTitles(sheet, title, hero);
+        }
+
+        if (world.TryGet<BuffBookComponent>(player, out var buffs) && buffs.Book is { } book)
+        {
+            sheet.Apply(book.StatEffects);
+        }
+
+        return sheet;
+    }
+
+    /// <summary>
+    /// What wearing an item would add, for the share of its stats its endurance leaves (1 while it is whole).
+    /// </summary>
+    public float EnduranceShare(in ItemRow row, ItemInstance item) => _gear?.EnduranceShare(row, item) ?? 1f;
+
+    private void AddTitles(StatSheet sheet, in TitleComponent title, Hero hero)
+    {
+        if (titles is null)
+        {
+            return;
+        }
+
+        sheet.Apply(Effects(titles, title.AbilityPrimary, hero));
+        sheet.Apply(Effects(titles, title.AbilitySecondary, hero));
     }
 
     public SkillDamage GetSkill(int identifier)

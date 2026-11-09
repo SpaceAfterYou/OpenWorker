@@ -471,6 +471,7 @@ public sealed class MazeBuffs
             _creatures.Broadcast(new PersonDieResponse { Victim = actor, Attacker = default, PvpKillCount = 0 });
 
             BuffRules.ClearOnDeath(book, _catalog, Carrier(carrier), _changes);
+            _creatures.Services?.Wear?.Died(carrier);
         }
         else
         {
@@ -532,6 +533,13 @@ public sealed class MazeBuffs
     {
         if (player && !_ecs.Has<PersonInfoComponent>(carrier))
         {
+            return;
+        }
+
+        // The stats of a player are told by the one place that keeps what the player was told.
+        if (player && _creatures.Services?.Stats is { } stats)
+        {
+            stats.Send(carrier);
             return;
         }
 

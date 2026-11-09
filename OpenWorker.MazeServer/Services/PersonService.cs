@@ -235,6 +235,7 @@ public sealed partial class PersonService(
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
         skills.Send(context.Player);
+        creatureServices.Stats?.SendAll(context.Player);
 
         session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
 

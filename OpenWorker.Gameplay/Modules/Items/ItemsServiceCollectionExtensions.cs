@@ -25,7 +25,10 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<DatabaseItemSerials>();
         services.AddSingleton<IItemSerials>(provider => provider.GetRequiredService<DatabaseItemSerials>());
         services.AddSingleton<InventoryFactory>();
+        services.AddSingleton<GearStats>();
+        services.AddSingleton<ItemOptionRoller>();
         services.AddSingleton<PlayerStatsService>();
+        services.AddSingleton<EnduranceWear>();
         services.AddSingleton<InventoryService>();
         services.AddSingleton<ItemUseService>();
         services.AddSingleton<ItemRepairService>();

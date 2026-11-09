@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
@@ -27,7 +28,8 @@ public sealed class ItemRepairService(
     World world,
     InventoryService inventory,
     ReadOnlyCollection<ItemRepairRow> repairs,
-    NpcCreditManager? credit = null)
+    NpcCreditManager? credit = null,
+    PlayerStatsService? stats = null)
 {
     /// <summary>The repair failed: no such item, nothing to repair, a table without a row for it.</summary>
     public const ushort Failed = 52450;
@@ -346,5 +348,8 @@ public sealed class ItemRepairService(
         {
             world.Get<ServerSessionComponent>(player).Send(message);
         }
+
+        // What a repair gives back to worn gear shows in the stats.
+        stats?.Send(player);
     }
 }

@@ -1,4 +1,5 @@
 using Arch.Core;
+using OpenWorker.Gameplay.Combat;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
@@ -25,9 +26,17 @@ public enum TitleSource
 /// <summary>
 /// The titles a person has earned. Whatever rewards a title (a quest, an achievement, a rank) hands it over with GrantAsync.
 /// </summary>
-public sealed class TitleBook(World world, TitleCatalog catalog, IDbContextFactory<PersistenceContext> factory)
+public sealed class TitleBook(World world, TitleCatalog catalog, IDbContextFactory<PersistenceContext> factory, PlayerStatsService? stats = null)
 {
     public TitleCatalog Catalog => catalog;
+
+    /// <summary>
+    /// The titles of the abilities have changed: the player is told the stats they change.
+    /// </summary>
+    public void AbilitiesChanged(Entity player)
+    {
+        stats?.Send(player);
+    }
 
     public bool Owns(Entity player, int title)
     {
