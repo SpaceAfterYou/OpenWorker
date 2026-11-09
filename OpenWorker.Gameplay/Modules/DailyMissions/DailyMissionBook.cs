@@ -31,12 +31,6 @@ public sealed class DailyMissionBook
     public List<DailyMissionEntry> Missions { get; set; } = [];
 
     /// <summary>
-    /// Writes of the state to the database go one after another, so the last one has the latest state.
-    /// </summary>
-    [JsonIgnore]
-    public SemaphoreSlim Gate { get; } = new(1, 1);
-
-    /// <summary>
     /// The missions in the tracker.
     /// </summary>
     [JsonIgnore]

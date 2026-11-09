@@ -12,6 +12,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Res.Extensions;
 
@@ -48,7 +49,7 @@ await Host
 
         services.AddSingleton<NpcManager>();
         services.AddSingleton<PersonRegistry>();
-        services.AddSingleton<ISessionCloseHandler, PersonPlaceStore>();
+        services.AddSingleton<IPersonPlaceSource, PersonPlaceStore>();
 
         services.AddHotspot(context, EntityComponentService.District);
 

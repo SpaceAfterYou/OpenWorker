@@ -2,6 +2,7 @@ using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM.Searching;
 
@@ -14,6 +15,7 @@ namespace OpenWorker.MazeServer.Services;
 /// </summary>
 public sealed partial class MazeRegistrationService(
     IRedisCollection<MazeCache> mazes,
+    MazeDirectory directory,
     WorldLoop loop,
     World world,
     IOptions<InstanceOptions> instance,
@@ -48,14 +50,17 @@ public sealed partial class MazeRegistrationService(
             {
                 var players = await loop.InvokeAsync(() => world.CountEntities(Players));
 
-                await mazes.InsertAsync(new MazeCache
-                {
-                    Guid = Instance,
-                    Gate = Gate,
-                    Players = players,
-                    Host = Address.Host,
-                    Port = Address.Port
-                }, Lifetime);
+                // The record with its lifetime, and the place of the server in the sorted set the pick reads.
+                await Task.WhenAll(
+                    mazes.InsertAsync(new MazeCache
+                    {
+                        Guid = Instance,
+                        Gate = Gate,
+                        Players = players,
+                        Host = Address.Host,
+                        Port = Address.Port
+                    }, Lifetime),
+                    directory.RecordAsync(Gate, Instance, players));
             }
 
             catch (Exception e) when (e is not OperationCanceledException)
@@ -70,14 +75,16 @@ public sealed partial class MazeRegistrationService(
     {
         try
         {
-            await mazes.DeleteAsync(new MazeCache
-            {
-                Guid = Instance,
-                Gate = Gate,
-                Players = 0,
-                Host = Address.Host,
-                Port = Address.Port
-            });
+            await Task.WhenAll(
+                directory.RemoveAsync(Gate, Instance),
+                mazes.DeleteAsync(new MazeCache
+                {
+                    Guid = Instance,
+                    Gate = Gate,
+                    Players = 0,
+                    Host = Address.Host,
+                    Port = Address.Port
+                }));
         }
 
         catch (Exception e)

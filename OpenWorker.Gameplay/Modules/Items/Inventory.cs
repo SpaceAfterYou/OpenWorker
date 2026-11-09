@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Persistence;
 
@@ -36,7 +37,8 @@ public sealed class ItemStorage(StorageGroup group, int size, byte grade)
 
 /// <summary>
 /// Everything a person keeps in storages. Changes are noted as they happen and written to the database
-/// later, in the order they were made, so the state of the game never waits for it.
+/// later, in the order they were made, so the state of the game never waits for it: a change marks
+/// <see cref="PersonSections.Inventory"/> on <see cref="Dirty"/>, and the flush takes the items with <see cref="TakeChanges"/>.
 /// </summary>
 public sealed class Inventory(int person)
 {
@@ -47,14 +49,9 @@ public sealed class Inventory(int person)
     public int Person { get; } = person;
 
     /// <summary>
-    /// Level, experience, money or the quick slots changed.
+    /// The mask of the player this inventory belongs to, once it has entered; an inventory of the gate has none.
     /// </summary>
-    public bool StateChanged { get; private set; }
-
-    /// <summary>
-    /// Two flushes of one person must not run at once, the second would write what the first has not finished yet.
-    /// </summary>
-    internal SemaphoreSlim FlushLock { get; } = new(1, 1);
+    public PersonDirty? Dirty { get; set; }
 
     public int[] QuickSlotCards { get; set; } = new int[5];
     public int[] QuickSlotItems { get; set; } = new int[2];
@@ -104,6 +101,7 @@ public sealed class Inventory(int person)
         item.Slot = (short)slot;
 
         _pending.Add(item);
+        MarkChanged();
     }
 
     /// <summary>
@@ -139,6 +137,8 @@ public sealed class Inventory(int person)
         {
             _removed.Add(item.Serial);
         }
+
+        MarkChanged();
     }
 
     /// <summary>
@@ -147,11 +147,15 @@ public sealed class Inventory(int person)
     public void Touch(ItemInstance item)
     {
         _pending.Add(item);
+        MarkChanged();
     }
 
-    public void MarkState()
+    /// <summary>
+    /// Something kept with the items changed: the quick slots, how far a storage is extended.
+    /// </summary>
+    public void MarkChanged()
     {
-        StateChanged = true;
+        Dirty?.Mark(PersonSections.Inventory);
     }
 
     public void Resize(StorageGroup group, int size, byte grade)
@@ -161,15 +165,15 @@ public sealed class Inventory(int person)
         storage.Resize(size);
         storage.Grade = grade;
 
-        StateChanged = true;
+        MarkChanged();
     }
 
     /// <summary>
     /// Takes what has to be written, so the next call only returns what changes from now on.
     /// </summary>
-    public PersonChanges? TakeChanges(Func<PersonStateChanges> state)
+    public PersonChanges? TakeChanges()
     {
-        if (_pending.Count == 0 && _removed.Count == 0 && !StateChanged)
+        if (_pending.Count == 0 && _removed.Count == 0)
         {
             return null;
         }
@@ -187,13 +191,11 @@ public sealed class Inventory(int person)
             Person = Person,
             Added = added,
             Changed = changed,
-            Removed = _removed.ToArray(),
-            State = StateChanged ? state() : null
+            Removed = _removed.ToArray()
         };
 
         _pending.Clear();
         _removed.Clear();
-        StateChanged = false;
 
         return changes;
     }
@@ -216,6 +218,5 @@ public sealed class Inventory(int person)
         }
 
         _removed.AddRange(changes.Removed);
-        StateChanged = StateChanged || changes.State is not null;
     }
 }

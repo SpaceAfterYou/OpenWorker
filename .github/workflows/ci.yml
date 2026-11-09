@@ -91,15 +91,17 @@ jobs:
           dotnet ef database update
           --project OpenWorker.Persistence --configuration Release --no-build
 
-      # No test reads a Postgres setting: they run the stores on the EF Core in-memory provider. The tests that
-      # need Redis skip themselves when OPENWORKER_TEST_REDIS is not set, so it is set here and the check below
-      # fails the run if any of them is skipped.
+      # Most tests run the stores on the EF Core in-memory provider. The tests that need Redis skip themselves when
+      # OPENWORKER_TEST_REDIS is not set, and the write-behind tests against Postgres when OPENWORKER_TEST_POSTGRES is not
+      # (a connection string without a database: each run migrates a database of its own and drops it). Both are set
+      # here, and the check below fails the run if any of them is skipped.
       # The tests that read the tables and navigation meshes of the client (OPENWORKER_TEST_RES, _AI, _ACTION, _NAVMESH)
       # and the tables only the server has (OPENWORKER_TEST_SERVER_RES) stay skipped: the files are not in the repository.
       - name: Test
         id: test
         env:
           OPENWORKER_TEST_REDIS: redis://localhost:6379
+          OPENWORKER_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
         run: >-
           dotnet test --solution OpenWorker.slnx -c Release --no-build
           --report-trx --results-directory TestResults

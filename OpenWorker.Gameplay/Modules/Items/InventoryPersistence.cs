@@ -1,20 +1,18 @@
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Persistent;
-using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
-using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Items;
 
 /// <summary>
-/// Loads and saves the items, money, level and experience of the person a connection plays.
+/// Loads the items, the wallet, level and experience of the person a connection plays, and starts the mask the flush
+/// writes them by (<see cref="DirtyComponent"/>).
 /// </summary>
 public sealed partial class InventoryPersistence(
     World world,
@@ -23,151 +21,85 @@ public sealed partial class InventoryPersistence(
     ILogger<InventoryPersistence> logger)
 {
     /// <summary>
-    /// Reads the inventory of a person and attaches it to the player. A person without any items yet gets its first ones.
+    /// Reads the inventory of a person and attaches it to the player. A person without any items yet gets its first ones,
+    /// which the next flush writes.
     /// </summary>
     public async ValueTask LoadAsync(Entity player, PersonPersistent person, CancellationToken cancellationToken = default)
     {
         var rows = await factory.LoadItemsAsync(person.Id, cancellationToken);
 
+        // The player may have left while the items were read.
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
+        var dirty = new PersonDirty(person.Id);
+
         var inventory = rows.Count == 0 ? inventories.CreateNew(person) : inventories.Load(person, rows);
+
+        inventory.Dirty = dirty;
+
+        if (rows.Count == 0)
+        {
+            dirty.Mark(PersonSections.Inventory);
+        }
 
         world.Set(player, new InventoryComponent(inventory));
         world.Set(player, new LevelComponent(person.Level, person.Experience));
-
-        var wallet = world.Get<CurrencyComponent>(player);
-
-        wallet[ShopCurrency.Gold] = person.Gold;
-        wallet[ShopCurrency.Bp] = person.BattlePoint;
-        wallet[ShopCurrency.Ether] = person.Ether;
+        world.Set(player, LoadWallet(person));
+        world.Set(player, new DirtyComponent(dirty));
     }
 
     /// <summary>
-    /// Writes down what has changed since the last time. Writes of one person never overlap.
+    /// Writes the items of a person now, for a server that has no flush: the gate saves the first items of a character
+    /// it has just created, so that the district finds them.
     /// </summary>
-    public async ValueTask FlushAsync(Entity player)
+    public async ValueTask SaveItemsAsync(Entity player)
     {
         if (!world.IsAlive(player) || !world.Has<InventoryComponent>(player) || world.Get<InventoryComponent>(player).Value is not { } inventory)
         {
             return;
         }
 
-        await inventory.FlushLock.WaitAsync();
-
-        PersonChanges? changes = null;
+        if (inventory.TakeChanges() is not { } changes)
+        {
+            return;
+        }
 
         try
         {
-            changes = inventory.TakeChanges(() => Snapshot(player, inventory));
-
-            if (changes is not null)
-            {
-                await factory.SaveChangesAsync(changes);
-            }
+            await factory.SaveChangesAsync(changes);
         }
+
         catch (Exception exception)
         {
             LogSaveFailed(logger, exception, inventory.Person);
 
-            if (changes is not null)
-            {
-                inventory.Restore(changes);
-            }
-        }
-        finally
-        {
-            inventory.FlushLock.Release();
+            inventory.Restore(changes);
         }
     }
 
-    public async ValueTask FlushAllAsync()
+    /// <summary>
+    /// A wallet of its own for every player (the default of the component shares one array between all of them), filled
+    /// from the whole wallet and then from the columns of gold, battle points and ether, which older rows have alone.
+    /// </summary>
+    private static CurrencyComponent LoadWallet(PersonPersistent person)
     {
-        var players = new List<Entity>();
+        var wallet = new CurrencyComponent();
 
-        world.Query(new QueryDescription().WithAll<InventoryComponent>(), entity => players.Add(entity));
-
-        foreach (var player in players)
+        for (var index = 0; index < person.Currencies.Length && index < (int)ShopCurrency.Max; index++)
         {
-            await FlushAsync(player);
-        }
-    }
-
-    private PersonStateChanges Snapshot(Entity player, Inventory inventory)
-    {
-        var rank = world.Get<LevelComponent>(player);
-        var wallet = world.Get<CurrencyComponent>(player);
-
-        var grades = new byte[(int)StorageGroup.AccountCashStorage + 1];
-
-        foreach (var storage in inventory.Storages)
-        {
-            if ((int)storage.Group < grades.Length)
-            {
-                grades[(int)storage.Group] = storage.Grade;
-            }
+            wallet[index] = person.Currencies[index];
         }
 
-        return new PersonStateChanges(
-            rank.Level,
-            rank.Experience,
-            wallet.Gold,
-            wallet.BattlePoint,
-            wallet.Ether,
-            grades,
-            inventory.QuickSlotCards,
-            inventory.QuickSlotItems);
+        wallet[ShopCurrency.Gold] = person.Gold;
+        wallet[ShopCurrency.Bp] = person.BattlePoint;
+        wallet[ShopCurrency.Ether] = person.Ether;
+
+        return wallet;
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Saving the items of person {Person} failed")]
     private static partial void LogSaveFailed(ILogger logger, Exception exception, int person);
-}
-
-/// <summary>
-/// Saves the items of a person when its connection closes.
-/// </summary>
-public sealed class InventorySaver(InventoryPersistence persistence) : ISessionCloseHandler
-{
-    public ValueTask OnSessionClosedAsync(Entity player)
-    {
-        return persistence.FlushAsync(player);
-    }
-}
-
-/// <summary>
-/// Saves changes of every player now and then, so that a crash of the server loses seconds and not a play session.
-/// </summary>
-public sealed partial class InventoryFlushService(WorldLoop loop, InventoryPersistence persistence, DatabaseItemSerials serials, ILogger<InventoryFlushService> logger) : BackgroundService
-{
-    private static TimeSpan Period { get; } = TimeSpan.FromSeconds(5);
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        try
-        {
-            await serials.PrimeAsync();
-        }
-        catch (Exception exception)
-        {
-            LogSerialsNotReserved(logger, exception);
-        }
-
-        using var timer = new PeriodicTimer(Period);
-
-        while (await timer.WaitForNextTickAsync(stoppingToken))
-        {
-            try
-            {
-                await loop.InvokeAsync(() => persistence.FlushAllAsync());
-            }
-            catch (Exception exception)
-            {
-                LogFlushFailed(logger, exception);
-            }
-        }
-    }
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Item serials could not be reserved yet")]
-    private static partial void LogSerialsNotReserved(ILogger logger, Exception exception);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Saving items failed")]
-    private static partial void LogFlushFailed(ILogger logger, Exception exception);
 }

@@ -21,6 +21,7 @@ using OpenWorker.Lua;
 using OpenWorker.Lua.Managers;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -58,6 +59,7 @@ public sealed class MazeRequestGuardTest
             null!,
             null!,
             null!,
+            NoPersonFlush.Instance,
             Options.Create(new GateOptions { Id = 1 }),
             TestMazes.Quests(world),
             NullLogger<MazeService>.Instance);

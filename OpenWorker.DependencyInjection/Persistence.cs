@@ -14,7 +14,9 @@ public static class Persistence
     /// <summary>
     /// Registers the database and migrates it when the server starts.<br/>
     /// <c>ConnectionStrings:Postgres</c> points to the database; <c>Persistence:SensitiveDataLogging</c>
-    /// writes the values of queries to the log, on by default in Debug builds only. The commands are timed for
+    /// writes the values of queries to the log, on by default in Debug builds only. Queries do not track what they read
+    /// (<see cref="PersistenceContextOptions.UsePersistenceDefaults"/>): a store that changes what it loaded asks for
+    /// tracking with <c>AsTracking()</c>. The commands are timed for
     /// <c>postgres.call.duration</c>, and the readiness of the server includes a connection to the database.
     /// </summary>
     public static IServiceCollection AddPersistence(this IServiceCollection services)
@@ -33,6 +35,7 @@ public static class Persistence
                     .EnableDetailedErrors()
                     .EnableThreadSafetyChecks()
                     .EnableSensitiveDataLogging(options.SensitiveDataLogging)
+                    .UsePersistenceDefaults()
                     .AddInterceptors(provider.GetRequiredService<PostgresCommandInterceptor>())
                     .UseNpgsql(options.ConnectionString);
             });

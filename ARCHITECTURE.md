@@ -30,7 +30,7 @@ flowchart LR
 | GateServer | Character list, creation, deletion, selection |
 | DistrictServer | One city with its channels (`Channel__From`..`Channel__To`) |
 | MazeServer | Maze instances: monsters, combat, AI scripts |
-| RelayServer | Discord bot, Redis index setup (it drops the cache on start) |
+| RelayServer | Discord bot, Redis index setup (it makes the missing indexes and never deletes a record) |
 | UpdateContent | Loads the client tables into the database |
 
 Shared state between processes:
@@ -39,7 +39,8 @@ Shared state between processes:
 - **Redis** holds what is valid only while servers run: session leases, the servers of each gate
   (`GateCache`, `DistrictCache`, `MazeCache`, `ChannelCache`) and the reservations that carry a player from one
   server to the next (`DistrictReserveCache`, `MazeReserveCache`). A server that stops in order takes its own
-  records back (see Stopping a server); a maze record also expires unless its server renews it, the others do not.
+  records back (see Stopping a server); every record of a server (gate, district, channel, maze) also expires unless its
+  server renews it, so the records of a server that crashed go by themselves within half a minute.
 - **Redis pub/sub** (`CommunityNetwork`) carries notifications between servers: friends, leagues,
   whispers. Delivery is at most once, so a message is a hint to refresh, never the only copy of a change.
 
@@ -50,15 +51,18 @@ The server that sends a player away writes a reservation to Redis with a short l
 the connection only if it finds the reservation, and the session lease follows the player.
 
 Every way into a server writes a reservation before the client is given the address: the gate when a
-character is selected, a portal or a warp of a district, the exit of a maze. A district and a maze both
+character is selected, a portal or a warp of a district, the exit of a maze. Before it writes the reservation, a district
+or a maze writes what the player changed (`IPersonFlush`, see Database), so the next server loads it from the database;
+going back to the gate or the server list does the same. A district and a maze both
 close a connection that has no reservation, one that has expired, or one that was written for another
 person or another server (a reservation that belongs to someone else is left in place). There is no
 default spawn point: the place of the player is the place the reservation carries. The price is that a
 client that takes longer than `ReservationLifetime` to connect is turned away and has to start again
 from the gate.
 
-Maze servers register themselves in `MazeCache` with their player count (`MazeRegistrationService`);
-a player entering a maze goes to the server of the gate with the fewest players. With none registered,
+Maze servers register themselves in `MazeCache` with their player count (`MazeRegistrationService`), and in a sorted
+set of the gate by players (`MazeDirectory`, `ow:mazes:<gate>`); a player entering a maze goes to the server of the gate
+with the fewest players, picked by one script that skips (and drops) a server whose record has expired. With none registered,
 `Maze:Host` / `Maze:Port` are used. More maze servers are more capacity, nothing else changes.
 
 ## Inside one process
@@ -167,11 +171,13 @@ readiness off, because `ServerState` listens to `ApplicationStopping`.
    drain or the host asks first. The withdrawal runs next to step 3 and is awaited after it.
 3. `ServerService.CloseSessionsAsync` stops the read loops (a packet that is being handled is finished) and every
    session closes through the normal path: the client gets a kick-out with the reason `GmToolServerShutdown`, the
-   `ISessionCloseHandler`s run on the world loop (they save what the player changed and release the lease), the
+   `ISessionCloseHandler`s run on the world loop (`PersonFlush` writes what the player changed, the lease is released), the
    writer sends what is queued, and the connection closes. `shuttingDown` in `ServerService.SessionLoopAsync` and
    `CloseSessionAsync` marks a close caused by the shutdown, and `sessions.closed` counts it under the reason `shutdown`.
-4. The host stops the other services, the health endpoint among them; last the container disposes the world loop.
-   The loop runs through the whole drain, because the close handlers need it.
+4. The host stops the other services, the health endpoint among them, in the reverse order of their registration:
+   `PersistenceFlushService` takes a last round of what is left (players the drain did not close in time), then
+   `PersistenceWriter` writes what is queued and stops. Last the container disposes the world loop.
+   The loop runs through the whole drain and the last round, because the close handlers and the snapshots need it.
 
 `Shutdown:DrainTimeout` (15 s) bounds steps 1 to 3 as a whole and the wait for each writer: a client that does not
 read is cut off, and sessions that are left are logged. `Shutdown:Timeout` (30 s) is the time of the host
@@ -243,7 +249,10 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
 1. **No `ConfigureAwait(false)`.** The continuation must come back to the world loop.
    Slow synchronous work (hashing, file parsing) goes through `Task.Run`, then comes back by `await`.
 2. **Every `await` is a door.** While a handler waits for the database or Redis, other connections and
-   timers run on the loop. After an `await`:
+   timers run on the loop. The state of a person is changed in memory and marked dirty (`world.MarkDirty`); the flush
+   writes it later, so items, the wallet, level, skills, quests and the documents of the other features open no door
+   (see Database). What other players must see at once (names, friends, leagues, titles, the profile) is still written
+   by the handler, and the move to another server waits for the flush of the player. After an `await`:
    - check that the entity is still alive (`world.IsAlive`) before touching it;
    - read components again instead of using values read before the `await`;
    - do not trust a check made before the `await` (enough gold, name free, slot empty).
@@ -305,6 +314,44 @@ first, so such a read would come before the migration. What a server needs from 
 hosted service that starts after the migration (`ServerContentLoadService` fills `ServerContent` before the listener
 starts); a table that is still missing then stops the server.
 
+### What a player changes: the write-behind
+
+The game changes the state of a player in memory and marks the part it changed on the dirty mask of the player
+(`DirtyComponent`, a reference to `PersonDirty`, so a mark is never lost to a copy read before an `await`):
+`Currencies`, `Level`, `Inventory` (items, storage grades, quick slots; `Inventory` marks it itself), `Skills`,
+`Quests`, `MiscState` (soul metry, daily missions, boosters, attendance, helpers). The place is not marked: the
+district's `PersonPlaceStore` says where the player stands, and a flush writes it when it differs from the place it
+wrote last. A handler never waits for these writes.
+
+- **The snapshot.** `PersonSnapshots` takes, on the world loop, what is marked into plain records (`PersonChanges`:
+  the items that changed or went, the row of the person, the place, the progress documents as JSON) and clears the
+  mask. Nothing of the world is read after that.
+- **The write.** `PersistenceWriter` writes off the loop, one batch after another: everything queued while a batch is
+  written goes into the next one, in one transaction of raw statements (an item and a document are upserts, a row an
+  `UPDATE` by its key), a few hundred statements per round trip. The snapshot and the queue happen in one callback of
+  the loop, so the writes of a person reach the database in the order they were taken. A failed batch is written person by
+  person; a person whose write still fails is tried again (`PersistenceWriter.MaxAttempts`), then given up, with an error
+  in the log and its parts marked again if it is still on the server.
+- **When.** Every `Persistence:FlushInterval` (30 s) for every player that changed (`PersistenceFlushService`); for
+  one player (`PersonFlush`, awaited) when its connection closes and before a reservation sends it to another server or to
+  the gate; once more when the host stops (see Stopping a server). A `kill -9` loses at most one interval of what the
+  players still on the server changed.
+- **Uniqueness and limits** stay in the database (rule 3): names, friends and leagues are written by their stores at once.
+
+### Connections and queries
+
+- **Pools.** One world loop cannot use many connections, so every server keeps a small pool, set by
+  `Maximum Pool Size` in `ConnectionStrings:Postgres`: 16 for a gate, a district or a maze, 8 for auth, 4 for the relay
+  and the content loader. The compose Postgres takes 200 connections (`max_connections`); four districts, a maze, a gate,
+  auth and the relay hold 112 at most.
+- **Tracking.** Queries do not track what they read (`UsePersistenceDefaults`, `QueryTrackingBehavior.NoTracking`); a
+  store that changes what it loaded asks with `AsTracking()`.
+- **Compiled queries.** The person a district or a maze loads at entry, the account the gate loads and the account of a
+  login are compiled once (`PersonQueries`), one compilation per model.
+- **Indexes.** Every query of an entry and of the flush runs by a key or an index: `Persons` by its key, `Items` by
+  `(PersonId, Storage, Slot)`, `PersonStates` by its key `(PersonId, Kind)` (which is the unique index of the kind),
+  friends, league members and applicants by the person.
+
 Connection settings: `ConnectionStrings:Postgres`, `ConnectionStrings:Redis` (see Settings).
 
 ## Settings
@@ -334,6 +381,10 @@ or wrong setting stops the server with a message that names the key. A setting w
 - `Credentials:DiscordToken` of the relay is a secret: no file carries it, it comes from the environment
   (`Credentials__DiscordToken`), and the relay stops at start without it.
 - `PersonCreation:StartLevel` of the gate is the level a new character starts at, 1 unless set (1 to 100).
+- `Persistence:FlushInterval` of the district and the maze (`00:00:30`, from one second to five minutes) is how often the
+  changes of the players are written (see Database). `Maximum Pool Size` in `ConnectionStrings:Postgres` is the size of
+  the pool of connections of a server: 16 for the gate, a district and the maze, 8 for auth, 4 for the relay and the
+  content loader in their `appsettings.json`.
 - `Rewards:ExpRate` and `Rewards:DropRate` of the district and the maze multiply the experience of a kill and the
   chances of a drop; 1 unless set, never negative.
 - `Attendance:ResetHour` and `DailyMission:ResetHour` are optional (the hour the game day starts at); the rules of the
@@ -352,13 +403,16 @@ or wrong setting stops the server with a message that names the key. A setting w
 - **A failed maze script has no answer of its own.** The client is told by a notice; the message the client has for a maze
   mode that fails is not known well enough to send.
 - **A maze reservation does not name its maze server.** Any maze server of the gate takes it.
-- **Writes wait on the loop.** Handlers save as they go. Moving saves to a write-behind queue, where the
-  handler changes memory and the save happens later, would remove most of the `await` doors of rule 2.
-  Not done yet.
-- **The relay wipes Redis on start.** Restarting it while other servers run drops their sessions;
-  maze servers re-register within `MazeRegistrationService.RenewInterval`, districts do not.
-- **A crash leaves the records of a server behind.** Only an orderly stop takes them back. The gate, district
-  and channel records have no lifetime in Redis and stay after a `kill -9` until the relay clears Redis.
+- **A crash loses one flush interval.** The changes of the players since the last round of `PersistenceFlushService`
+  (`Persistence:FlushInterval`) are lost when the process dies without stopping. A record of the server in Redis stays
+  until it expires, half a minute at most.
+- **A changed index schema is rebuilt under the servers.** When a build changes the attributes of a document of the cache,
+  the relay drops its index (not the records) and makes it again; for that moment, and until Redis has indexed the
+  records, searches by that index fail or miss.
+- **The count of a channel renews its record.** `ChannelLifecycleService` writes the count and the lifetime of each
+  channel every second; whatever replaces that loop has to keep renewing the records.
+- **Skill points do not follow the level.** A person starts with the points of `PersonSkills` and keeps what it spends;
+  the client counts points against the level, the server does not yet.
 - **The shutdown notice is untried.** What the client shows for a kick-out with `GmToolServerShutdown` on a district
   or a maze is not known; `ServerService.NotifyShuttingDown` is where it would change. A close with unread data from
   the client can end in a reset rather than a FIN; a half-close would remove that doubt.

@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using OpenWorker.Hotspot.Modules.SoulMetry;
 
 namespace OpenWorker.Gameplay.Modules.SoulMetry;
@@ -12,12 +11,6 @@ public sealed class SoulMetryState
     public Dictionary<short, short> Progress { get; set; } = [];
 
     public byte[] Complete { get; set; } = new byte[SoulMetryModuleDefines.CompleteListByteLength];
-
-    /// <summary>
-    /// Writes of the state to the database go one after another, so the last one has the latest state.
-    /// </summary>
-    [JsonIgnore]
-    public SemaphoreSlim Gate { get; } = new(1, 1);
 
     /// <summary>
     /// Makes a state loaded from the database safe to use: a bitmap of the wrong size is resized and the

@@ -1,5 +1,6 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
+using OpenWorker.Domain.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
@@ -17,6 +18,7 @@ using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.Quests.Responses;
 using OpenWorker.Hotspot.Modules.Quests.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Quests;
 
@@ -209,7 +211,7 @@ public sealed partial class QuestManager(
             }
         }
 
-        await SaveAsync(person, book);
+        await SaveAsync(player);
 
         return true;
     }
@@ -308,7 +310,7 @@ public sealed partial class QuestManager(
             Items = payout.Items.Select(e => new CreateItemValue { Item = e.Item, Count = e.Count }).ToArray()
         });
 
-        await SaveAsync(person, book);
+        await SaveAsync(player);
 
         return true;
     }
@@ -351,7 +353,7 @@ public sealed partial class QuestManager(
 
         Send(player, new QuestGiveUpResponse { Episode = episode });
 
-        await SaveAsync(person, book);
+        await SaveAsync(player);
 
         return true;
     }
@@ -371,7 +373,7 @@ public sealed partial class QuestManager(
 
         Send(player, new QuestFailResponse { Episode = episode });
 
-        await SaveAsync(person, book);
+        await SaveAsync(player);
 
         return true;
     }
@@ -388,7 +390,7 @@ public sealed partial class QuestManager(
 
         book.Remove(episode);
 
-        await SaveAsync(person, book);
+        await SaveAsync(player);
 
         return true;
     }
@@ -421,7 +423,7 @@ public sealed partial class QuestManager(
 
         Send(player, new QuestHelperResponse { Type = type, Episode = episode });
 
-        await SaveAsync(person, book);
+        await SaveAsync(player);
 
         return true;
     }
@@ -441,7 +443,7 @@ public sealed partial class QuestManager(
 
         Send(player, new QuestEpisodeResetResponse { Episode = episode });
 
-        await SaveAsync(person, book);
+        await SaveAsync(player);
 
         return true;
     }
@@ -461,7 +463,7 @@ public sealed partial class QuestManager(
 
         Send(player, new QuestResetResponse());
 
-        await SaveAsync(person, book);
+        await SaveAsync(player);
 
         return true;
     }
@@ -647,7 +649,7 @@ public sealed partial class QuestManager(
 
         if (save)
         {
-            await SaveAsync(person, book);
+            await SaveAsync(player);
         }
     }
 
@@ -721,21 +723,20 @@ public sealed partial class QuestManager(
     }
 
     /// <summary>
-    /// Saves the book. The save is not stopped when the person leaves, as the change is already told to the client.
+    /// The quests of a player as the flush writes them (<see cref="PersonSections.Quests"/>).
     /// </summary>
-    private async ValueTask SaveAsync(int person, QuestBook book)
+    public static IPersonDocumentSource Document { get; } =
+        new PersonDocumentSource<QuestComponent>(PersonStateKind.Quest, PersonSections.Quests, e => e.Book);
+
+    /// <summary>
+    /// Marks the book as changed: the flush of the person writes it, nothing here waits for the database. The change is
+    /// already told to the client.
+    /// </summary>
+    private ValueTask SaveAsync(Entity player)
     {
-        await book.Gate.WaitAsync(CancellationToken.None);
+        world.MarkDirty(player, PersonSections.Quests);
 
-        try
-        {
-            await store.SaveAsync(person, book, CancellationToken.None);
-        }
-
-        finally
-        {
-            book.Gate.Release();
-        }
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>

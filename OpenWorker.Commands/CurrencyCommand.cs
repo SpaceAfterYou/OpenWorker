@@ -7,6 +7,7 @@ using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Commands;
 
@@ -45,6 +46,7 @@ internal sealed partial class CurrencyCommand : ICommand
         var currency = player.Get<CurrencyComponent>();
         
         currency[unchecked((int)type)] = total;
+        World.MarkDirty(player, PersonSections.Currencies);
 
         session.Send(new ItemUpdateInvenMoneyResponse { Total = total, Bonus = bonus, Type = earn });
     }

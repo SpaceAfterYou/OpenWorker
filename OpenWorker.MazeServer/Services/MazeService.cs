@@ -37,6 +37,7 @@ using OpenWorker.Hotspot.Modules.World.Types;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Lua;
 using Redis.OM.Searching;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -45,6 +46,7 @@ public sealed partial class MazeService(
     BatchManager batches,
     IRedisCollection<DistrictReserveCache> districtReserves,
     WorldManager worldManager,
+    IPersonFlush persons,
     IOptions<GateOptions> gate,
     QuestManager questManager,
     ILogger<MazeService> logger
@@ -675,6 +677,9 @@ public sealed partial class MazeService(
             Z = position.Z,
             R = exit.Rotation
         };
+
+        // The district loads the person from the database: what the maze has must be there first.
+        await persons.FlushAsync(context.Player);
 
         await districtReserves
             .InsertAsync(cache, WorldManager.ReservationLifetime);

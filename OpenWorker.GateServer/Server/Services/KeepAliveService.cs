@@ -13,8 +13,9 @@ using Redis.OM.Searching;
 namespace OpenWorker.GateServer.Server.Services;
 
 /// <summary>
-/// Tells the login server that this gate runs, how busy it is and where clients reach it, every second. When the server
-/// drains the record is removed, and the login server stops sending players to a gate that is going away.
+/// Tells the login server that this gate runs, how busy it is and where clients reach it, every second, in a record that
+/// expires unless it is renewed. When the server drains the record is removed, and the login server stops sending players
+/// to a gate that is going away.
 /// </summary>
 public sealed partial class KeepAliveService(
     IRedisCollection<ChannelCache> channelCollection,
@@ -37,6 +38,11 @@ public sealed partial class KeepAliveService(
     };
 
     private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// The record of a gate that stopped renewing it, after a crash, goes by itself.
+    /// </summary>
+    public static TimeSpan Lifetime { get; } = TimeSpan.FromSeconds(30);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -96,7 +102,7 @@ public sealed partial class KeepAliveService(
         };
 
         await gateCollection
-            .InsertAsync(Instance);
+            .InsertAsync(Instance, Lifetime);
     }
 
     private static GateWorkload GetWorkload(ChannelCache[] values)

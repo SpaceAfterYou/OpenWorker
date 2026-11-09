@@ -1,34 +1,70 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using NpgsqlTypes;
+using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 
 namespace OpenWorker.Persistence;
 
 /// <summary>
-/// What changed for one person since the last save: items to add, rewrite and remove, and the numbers kept on the person.
+/// What changed for one person since the last save: items to write and remove, the numbers kept on the person,
+/// where it stands and the progress documents of its features. Each part is the state at the moment it was taken,
+/// so writing the same part twice, or an older part after a newer one of another person, is harmless.
 /// </summary>
 public sealed class PersonChanges
 {
     public required int Person { get; init; }
+
+    /// <summary>
+    /// Items the database has not seen yet. They are written the same way as <see cref="Changed"/>: a retry of a save
+    /// that did reach the database finds them there and rewrites them.
+    /// </summary>
     public IReadOnlyList<ItemPersistent> Added { get; init; } = [];
+
     public IReadOnlyList<ItemPersistent> Changed { get; init; } = [];
     public IReadOnlyList<long> Removed { get; init; } = [];
     public PersonStateChanges? State { get; init; }
+    public PersonPlace? Place { get; init; }
+    public IReadOnlyList<PersonDocument> Documents { get; init; } = [];
 
-    public bool IsEmpty => Added.Count == 0 && Changed.Count == 0 && Removed.Count == 0 && State is null;
+    public bool IsEmpty => Added.Count == 0 && Changed.Count == 0 && Removed.Count == 0 && State is null && Place is null &&
+                           Documents.Count == 0;
 }
 
+/// <summary>
+/// The numbers of a person kept in its row: level, experience, the wallet, how far its storages are extended
+/// and its quick slots.
+/// </summary>
 public sealed record PersonStateChanges(
     byte Level,
     int Experience,
     long Gold,
     long BattlePoint,
     long Ether,
+    long[] Currencies,
     byte[] StorageGrades,
     int[] QuickSlotCards,
     int[] QuickSlotItems);
 
+/// <summary>
+/// Where a person stands in a district, kept so that the next entry from the gate starts there.
+/// </summary>
+public readonly record struct PersonPlace(short Location, float X, float Y, float Z, float Rotation);
+
+/// <summary>
+/// The progress document of one feature of a person (<see cref="PersonStatePersistent"/>), already serialized.
+/// </summary>
+public readonly record struct PersonDocument(PersonStateKind Kind, string Payload);
+
 public static class ItemStore
 {
+    /// <summary>
+    /// How many statements go into one command. Each is a few parameters; the database takes a command as one
+    /// round trip, and a very long one only holds the connection longer.
+    /// </summary>
+    private const int StatementsPerCommand = 256;
+
     public static async Task<List<ItemPersistent>> LoadItemsAsync(
         this IDbContextFactory<PersistenceContext> factory,
         int person,
@@ -61,79 +97,198 @@ public static class ItemStore
         return serials;
     }
 
-    public static async Task SaveChangesAsync(
+    public static Task SaveChangesAsync(
         this IDbContextFactory<PersistenceContext> factory,
         PersonChanges changes,
         CancellationToken cancellationToken = default)
     {
-        if (changes.IsEmpty)
+        return factory.SaveChangesAsync([changes], cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes the changes of many persons in one transaction, in the order given: the changes of one person that
+    /// appear twice are written oldest first. The statements go to the database a few hundred at a time, each such
+    /// command in one round trip.
+    /// </summary>
+    public static async Task SaveChangesAsync(
+        this IDbContextFactory<PersistenceContext> factory,
+        IReadOnlyList<PersonChanges> batch,
+        CancellationToken cancellationToken = default)
+    {
+        var commands = Build(batch, DateTime.UtcNow);
+
+        if (commands.Count == 0)
         {
             return;
         }
 
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
-        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
 
-        if (changes.Removed.Count > 0)
+        // One command is atomic by itself; several need the transaction.
+        await using var transaction = commands.Count > 1 ? await database.Database.BeginTransactionAsync(cancellationToken) : null;
+
+        foreach (var (sql, parameters) in commands)
         {
-            var removed = changes.Removed.ToArray();
-
-            await database.Items
-                .Where(e => removed.Contains(e.Id))
-                .ExecuteDeleteAsync(cancellationToken);
+            await database.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
         }
 
-        foreach (var item in changes.Changed)
+        if (transaction is not null)
         {
-            await database.Items
-                .Where(e => e.Id == item.Id)
-                .ExecuteUpdateAsync(
-                    e => e
-                        .SetProperty(x => x.Storage, item.Storage)
-                        .SetProperty(x => x.Slot, item.Slot)
-                        .SetProperty(x => x.Count, item.Count)
-                        .SetProperty(x => x.BindType, item.BindType)
-                        .SetProperty(x => x.Upgrade, item.Upgrade)
-                        .SetProperty(x => x.Endurance, item.Endurance)
-                        .SetProperty(x => x.SocketActive, item.SocketActive)
-                        .SetProperty(x => x.DueTo, item.DueTo)
-                        .SetProperty(x => x.UpgradeCount, item.UpgradeCount)
-                        .SetProperty(x => x.UpgradeLimit, item.UpgradeLimit)
-                        .SetProperty(x => x.Flag, item.Flag)
-                        .SetProperty(x => x.Exp, item.Exp)
-                        .SetProperty(x => x.BroachState, item.BroachState)
-                        .SetProperty(x => x.RestoreCount, item.RestoreCount)
-                        .SetProperty(x => x.SealCount, item.SealCount)
-                        .SetProperty(x => x.OptionType, item.OptionType)
-                        .SetProperty(x => x.OptionValue, item.OptionValue)
-                        .SetProperty(x => x.UpdatedAt, DateTime.UtcNow),
-                    cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// The commands that write the batch. Raw statements rather than the change tracker: a save never reads first, an item
+    /// is written whether it is new or not (<c>ON CONFLICT</c>), and a progress document is one upsert.
+    /// </summary>
+    private static List<(string Sql, List<NpgsqlParameter> Parameters)> Build(IReadOnlyList<PersonChanges> batch, DateTime now)
+    {
+        var commands = new List<(string, List<NpgsqlParameter>)>();
+        var sql = new StringBuilder();
+        var parameters = new List<NpgsqlParameter>();
+        var statements = 0;
+
+        string Add(object value, NpgsqlDbType? type = null)
+        {
+            var name = "p" + parameters.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            parameters.Add(type is { } dbType
+                ? new NpgsqlParameter(name, dbType) { Value = value }
+                : new NpgsqlParameter(name, value));
+
+            return "@" + name;
         }
 
-        if (changes.Added.Count > 0)
+        void End()
         {
-            database.Items.AddRange(changes.Added);
+            sql.Append(";\n");
 
-            await database.SaveChangesAsync(cancellationToken);
+            if (++statements < StatementsPerCommand)
+            {
+                return;
+            }
+
+            Flush();
         }
 
-        if (changes.State is { } state)
+        void Flush()
         {
-            await database.Persons
-                .Where(e => e.Id == changes.Person)
-                .ExecuteUpdateAsync(
-                    e => e
-                        .SetProperty(x => x.Level, state.Level)
-                        .SetProperty(x => x.Experience, state.Experience)
-                        .SetProperty(x => x.Gold, state.Gold)
-                        .SetProperty(x => x.BattlePoint, state.BattlePoint)
-                        .SetProperty(x => x.Ether, state.Ether)
-                        .SetProperty(x => x.StorageGrades, state.StorageGrades)
-                        .SetProperty(x => x.QuickSlotCards, state.QuickSlotCards)
-                        .SetProperty(x => x.QuickSlotItems, state.QuickSlotItems),
-                    cancellationToken);
+            if (statements == 0)
+            {
+                return;
+            }
+
+            commands.Add((sql.ToString(), parameters));
+
+            sql.Clear();
+            parameters = [];
+            statements = 0;
         }
 
-        await transaction.CommitAsync(cancellationToken);
+        foreach (var changes in batch)
+        {
+            if (changes.Removed.Count > 0)
+            {
+                sql.Append("DELETE FROM \"Items\" WHERE \"PersonId\" = ").Append(Add(changes.Person))
+                    .Append(" AND \"Id\" = ANY(").Append(Add(changes.Removed.ToArray())).Append(')');
+                End();
+            }
+
+            foreach (var item in changes.Added.Concat(changes.Changed))
+            {
+                AppendItem(sql, item, Add(changes.Person), Add(now), Add);
+                End();
+            }
+
+            if (changes.State is { } state)
+            {
+                sql.Append("UPDATE \"Persons\" SET ")
+                    .Append("\"Level\" = ").Append(Add((short)state.Level)).Append(", ")
+                    .Append("\"Experience\" = ").Append(Add(state.Experience)).Append(", ")
+                    .Append("\"Gold\" = ").Append(Add(state.Gold)).Append(", ")
+                    .Append("\"BattlePoint\" = ").Append(Add(state.BattlePoint)).Append(", ")
+                    .Append("\"Ether\" = ").Append(Add(state.Ether)).Append(", ")
+                    .Append("\"Currencies\" = ").Append(Add(state.Currencies)).Append(", ")
+                    .Append("\"StorageGrades\" = ").Append(Add(state.StorageGrades, NpgsqlDbType.Bytea)).Append(", ")
+                    .Append("\"QuickSlotCards\" = ").Append(Add(state.QuickSlotCards)).Append(", ")
+                    .Append("\"QuickSlotItems\" = ").Append(Add(state.QuickSlotItems)).Append(", ")
+                    .Append("\"UpdatedAt\" = ").Append(Add(now))
+                    .Append(" WHERE \"Id\" = ").Append(Add(changes.Person));
+                End();
+            }
+
+            if (changes.Place is { } place)
+            {
+                sql.Append("UPDATE \"Persons\" SET ")
+                    .Append("\"Location\" = ").Append(Add(place.Location)).Append(", ")
+                    .Append("\"PositionX\" = ").Append(Add(place.X)).Append(", ")
+                    .Append("\"PositionY\" = ").Append(Add(place.Y)).Append(", ")
+                    .Append("\"PositionZ\" = ").Append(Add(place.Z)).Append(", ")
+                    .Append("\"RotationX\" = ").Append(Add(place.Rotation))
+                    .Append(" WHERE \"Id\" = ").Append(Add(changes.Person));
+                End();
+            }
+
+            foreach (var document in changes.Documents)
+            {
+                AppendDocument(sql, Add(changes.Person), Add((short)document.Kind), Add(document.Payload, NpgsqlDbType.Jsonb), Add(now));
+                End();
+            }
+        }
+
+        Flush();
+
+        return commands;
+    }
+
+    private static void AppendItem(StringBuilder sql, ItemPersistent item, string person, string now, Func<object, NpgsqlDbType?, string> add)
+    {
+        string Add(object? value) => add(value ?? DBNull.Value, null);
+
+        sql.Append("INSERT INTO \"Items\" (\"Id\", \"PersonId\", \"Storage\", \"Slot\", \"Item\", \"Count\", \"BindType\", \"Upgrade\", ")
+            .Append("\"Endurance\", \"SocketActive\", \"DueTo\", \"UpgradeCount\", \"UpgradeLimit\", \"Flag\", \"Exp\", \"BroachState\", ")
+            .Append("\"RestoreCount\", \"SealCount\", \"OptionType\", \"OptionValue\", \"CreatedAt\", \"UpdatedAt\") VALUES (")
+            .Append(Add(item.Id)).Append(", ")
+            .Append(person).Append(", ")
+            .Append(Add((short)item.Storage)).Append(", ")
+            .Append(Add(item.Slot)).Append(", ")
+            .Append(Add(item.Item)).Append(", ")
+            .Append(Add(item.Count)).Append(", ")
+            .Append(Add((short)item.BindType)).Append(", ")
+            .Append(Add((short)item.Upgrade)).Append(", ")
+            .Append(Add((short)item.Endurance)).Append(", ")
+            .Append(Add((short)item.SocketActive)).Append(", ")
+            .Append(add(item.DueTo is { } due ? due : DBNull.Value, NpgsqlDbType.TimestampTz)).Append(", ")
+            .Append(Add((short)item.UpgradeCount)).Append(", ")
+            .Append(Add((short)item.UpgradeLimit)).Append(", ")
+            .Append(Add((short)item.Flag)).Append(", ")
+            .Append(Add(item.Exp)).Append(", ")
+            .Append(Add(item.BroachState)).Append(", ")
+            .Append(Add((short)item.RestoreCount)).Append(", ")
+            .Append(Add((short)item.SealCount)).Append(", ")
+            .Append(Add(item.OptionType)).Append(", ")
+            .Append(Add(item.OptionValue)).Append(", ")
+            .Append(now).Append(", ")
+            .Append(now)
+            .Append(") ON CONFLICT (\"Id\") DO UPDATE SET ")
+            .Append("\"Storage\" = EXCLUDED.\"Storage\", \"Slot\" = EXCLUDED.\"Slot\", \"Count\" = EXCLUDED.\"Count\", ")
+            .Append("\"BindType\" = EXCLUDED.\"BindType\", \"Upgrade\" = EXCLUDED.\"Upgrade\", \"Endurance\" = EXCLUDED.\"Endurance\", ")
+            .Append("\"SocketActive\" = EXCLUDED.\"SocketActive\", \"DueTo\" = EXCLUDED.\"DueTo\", ")
+            .Append("\"UpgradeCount\" = EXCLUDED.\"UpgradeCount\", \"UpgradeLimit\" = EXCLUDED.\"UpgradeLimit\", ")
+            .Append("\"Flag\" = EXCLUDED.\"Flag\", \"Exp\" = EXCLUDED.\"Exp\", \"BroachState\" = EXCLUDED.\"BroachState\", ")
+            .Append("\"RestoreCount\" = EXCLUDED.\"RestoreCount\", \"SealCount\" = EXCLUDED.\"SealCount\", ")
+            .Append("\"OptionType\" = EXCLUDED.\"OptionType\", \"OptionValue\" = EXCLUDED.\"OptionValue\", ")
+            .Append("\"UpdatedAt\" = EXCLUDED.\"UpdatedAt\"");
+    }
+
+    /// <summary>
+    /// One statement that writes the document whether the row is there or not: no read, no retry.
+    /// </summary>
+    internal static void AppendDocument(StringBuilder sql, string person, string kind, string payload, string now)
+    {
+        sql.Append("INSERT INTO \"PersonStates\" (\"PersonId\", \"Kind\", \"Payload\", \"CreatedAt\", \"UpdatedAt\") VALUES (")
+            .Append(person).Append(", ").Append(kind).Append(", ").Append(payload).Append(", ").Append(now).Append(", ").Append(now)
+            .Append(") ON CONFLICT (\"PersonId\", \"Kind\") DO UPDATE SET \"Payload\" = EXCLUDED.\"Payload\", \"UpdatedAt\" = EXCLUDED.\"UpdatedAt\"");
     }
 }

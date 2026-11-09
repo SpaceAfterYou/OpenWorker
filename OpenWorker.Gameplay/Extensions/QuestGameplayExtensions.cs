@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Quests;
 
 namespace OpenWorker.Gameplay.Extensions;
@@ -17,6 +18,7 @@ public static class QuestGameplayExtensions
 
         services.AddSingleton<QuestCatalog>();
         services.AddSingleton<QuestManager>();
+        services.AddSingleton(QuestManager.Document);
 
         return services;
     }

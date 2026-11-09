@@ -228,6 +228,7 @@ public static class FriendStore
         }
 
         var rows = await database.Friends
+            .AsTracking()
             .Where(e => (e.OwnerId == inviter && e.TargetId == target) || (e.OwnerId == target && e.TargetId == inviter))
             .ToListAsync();
 
@@ -293,6 +294,7 @@ public static class FriendStore
         await using var transaction = await database.Database.BeginTransactionAsync();
 
         var rows = await database.Friends
+            .AsTracking()
             .Where(e => (e.OwnerId == answering && e.TargetId == inviter) || (e.OwnerId == inviter && e.TargetId == answering))
             .ToListAsync();
 

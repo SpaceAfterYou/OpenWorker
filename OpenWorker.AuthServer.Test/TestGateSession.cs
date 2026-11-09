@@ -27,6 +27,8 @@ using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM;
 using Redis.OM.Searching;
+using StackExchange.Redis;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.AuthServer.Test;
 
@@ -41,6 +43,7 @@ public sealed class TestGateSession
     private const short OtherGateId = 2;
 
     private static IRedisCollection<SessionCache> Sessions { get; set; } = null!;
+    private static IConnectionMultiplexer Redis { get; set; } = null!;
     private static IRedisCollection<GateCache> Gates { get; set; } = null!;
 
     [ClassInitialize]
@@ -53,7 +56,9 @@ public sealed class TestGateSession
             Assert.Inconclusive("OPENWORKER_TEST_REDIS is not set.");
         }
 
-        var provider = new RedisConnectionProvider(connection);
+        Redis = await ConnectionMultiplexer.ConnectAsync(new RedisOptions { ConnectionString = connection }.ToConfigurationOptions());
+
+        var provider = new RedisConnectionProvider(Redis);
 
         Sessions = Cache.CreateCollection<SessionCache>(provider);
         Gates = Cache.CreateCollection<GateCache>(provider);
@@ -102,7 +107,7 @@ public sealed class TestGateSession
 
             var gate = Options.Create(new GateOptions { Id = GateId });
 
-            var leases = new SessionLeaseManager(Sessions);
+            var leases = new SessionLeaseManager(Sessions, Redis);
             var secondPassword = new SecondPasswordGameplay(World, Factory, new ServerContent([]));
 
             var catalog = new ItemCatalog(
@@ -134,7 +139,7 @@ public sealed class TestGateSession
                 gate,
                 NullLogger<PersonGameplay>.Instance,
                 secondPassword,
-                new LeaveManager(World, gate, Options.Create(new AuthEndpointOptions()), Gates, leases),
+                new LeaveManager(World, gate, Options.Create(new AuthEndpointOptions()), Gates, leases, NoPersonFlush.Instance),
                 (WorldManager)null!,
                 new PersonCreationCatalog(
                     new ReadOnlyCollection<CharacterInfoRow>([]),
@@ -257,7 +262,7 @@ public sealed class TestGateSession
 
     private static async Task ReserveSessionAsync(Harness harness)
     {
-        await new SessionLeaseManager(Sessions).AttachAsync(default, harness.Session.Key, harness.Account);
+        await new SessionLeaseManager(Sessions, Redis).AttachAsync(default, harness.Session.Key, harness.Account);
     }
 
     [TestMethod]

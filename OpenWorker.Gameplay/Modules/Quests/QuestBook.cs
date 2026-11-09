@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using OpenWorker.Hotspot.Modules.Quests;
 
 namespace OpenWorker.Gameplay.Modules.Quests;
@@ -47,12 +46,6 @@ public sealed class QuestBook
     /// A bit for each episode the person has finished.
     /// </summary>
     public byte[] Finished { get; set; } = new byte[QuestModuleDefines.CompleteListByteLength];
-
-    /// <summary>
-    /// Writes of the book to the database go one after another, so the last one has the latest state.
-    /// </summary>
-    [JsonIgnore]
-    public SemaphoreSlim Gate { get; } = new(1, 1);
 
     public QuestEpisodeState? Find(int episode) => Episodes.Find(e => e.Episode == episode);
 

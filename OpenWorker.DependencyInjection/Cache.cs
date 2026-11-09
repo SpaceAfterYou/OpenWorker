@@ -28,6 +28,7 @@ public static class Cache
                 provider.GetRequiredService<IConnectionMultiplexer>()))
             .AddCacheCollection<MazeReserveCache>()
             .AddCacheCollection<MazeCache>()
+            .AddSingleton<MazeDirectory>()
             .AddCacheCollection<ChannelChatCache>();
     }
 

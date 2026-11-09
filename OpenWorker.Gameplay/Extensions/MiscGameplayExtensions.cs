@@ -1,7 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Extensions;
+using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Attendance;
+using OpenWorker.Gameplay.Modules.Attendance.Components;
+using OpenWorker.Gameplay.Modules.Boosters.Components;
+using OpenWorker.Gameplay.Modules.DailyMissions.Components;
+using OpenWorker.Gameplay.Modules.Helpers.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.SoulMetry.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Helpers;
@@ -50,6 +57,13 @@ public static class MiscGameplayExtensions
         services.AddSingleton<AttendanceCatalog>();
         services.AddSingleton<AttendanceManager>();
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<AttendanceManager>());
+
+        // What the flush of the person writes when the managers mark their part.
+        services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<SoulMetryComponent>(PersonStateKind.SoulMetry, PersonSections.MiscState, e => e.State));
+        services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<DailyMissionComponent>(PersonStateKind.DailyMission, PersonSections.MiscState, e => e.Book));
+        services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<BoosterComponent>(PersonStateKind.Booster, PersonSections.MiscState, e => e.Book));
+        services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<AttendanceComponent>(PersonStateKind.Attendance, PersonSections.MiscState, e => e.Book));
+        services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<HelperComponent>(PersonStateKind.Helper, PersonSections.MiscState, e => e.Book));
 
         return services;
     }

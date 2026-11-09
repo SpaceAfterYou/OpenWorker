@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Channel.Community;
 using OpenWorker.Channel.Services;
@@ -42,6 +43,9 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<WorldManager>();
         services.AddSingleton<LeaveManager>();
+
+        // A server with the write-behind of its players (AddPersonPersistence) writes them before they go; the gate keeps nothing.
+        services.TryAddSingleton<IPersonFlush>(NoPersonFlush.Instance);
 
         return services;
     }

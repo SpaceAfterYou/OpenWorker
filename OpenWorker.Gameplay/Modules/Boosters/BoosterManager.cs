@@ -7,6 +7,7 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Boosters.Enums;
 using OpenWorker.Hotspot.Modules.Boosters.Responses;
 using OpenWorker.Hotspot.Modules.Boosters.Types;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Boosters;
 
@@ -286,26 +287,14 @@ public sealed partial class BoosterManager(
         return false;
     }
 
-    private async ValueTask SaveAsync(Entity player, BoosterBook book, CancellationToken cancellationToken)
+    /// <summary>
+    /// The flush of the person writes the book (<see cref="PersonSections.MiscState"/>); nothing waits for the database here.
+    /// </summary>
+    private ValueTask SaveAsync(Entity player, BoosterBook book, CancellationToken cancellationToken)
     {
-        if (!world.IsAlive(player))
-        {
-            return;
-        }
+        world.MarkDirty(player, PersonSections.MiscState);
 
-        var person = world.Get<BoosterComponent>(player).Person;
-
-        await book.Gate.WaitAsync(cancellationToken);
-
-        try
-        {
-            await store.SaveAsync(person, PersonStateKind.Booster, book, cancellationToken);
-        }
-
-        finally
-        {
-            book.Gate.Release();
-        }
+        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "The booster {Booster} has no time to run for.")]

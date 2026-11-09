@@ -126,7 +126,7 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
         if (inventory.InventoryOf(context.Player) is { } bag)
         {
             bag.QuickSlotCards = request.Cards;
-            bag.MarkState();
+            bag.MarkChanged();
 
             world.Get<ServerSessionComponent>(context.Player).Send(new ItemUpdateQuickslotCardResponse { Cards = request.Cards });
         }
@@ -139,7 +139,7 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
         if (inventory.InventoryOf(context.Player) is { } bag)
         {
             bag.QuickSlotItems = request.Items;
-            bag.MarkState();
+            bag.MarkChanged();
 
             world.Get<ServerSessionComponent>(context.Player).Send(new ItemUpdateQuickslotItemResponse { Items = request.Items });
         }

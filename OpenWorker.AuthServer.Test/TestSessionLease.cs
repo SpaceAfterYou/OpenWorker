@@ -20,6 +20,8 @@ using OpenWorker.Persistence;
 using OpenWorker.Persistence.Utils;
 using Redis.OM;
 using Redis.OM.Searching;
+using StackExchange.Redis;
+using StackExchange.Redis.Profiling;
 
 namespace OpenWorker.AuthServer.Test;
 
@@ -30,6 +32,7 @@ namespace OpenWorker.AuthServer.Test;
 public sealed class TestSessionLease
 {
     private static RedisConnectionProvider Provider { get; set; } = null!;
+    private static ConnectionMultiplexer Redis { get; set; } = null!;
     private static IRedisCollection<SessionCache> Sessions { get; set; } = null!;
 
     private static int _nextAccount = Random.Shared.Next(100_000, 1_000_000);
@@ -44,7 +47,8 @@ public sealed class TestSessionLease
             Assert.Inconclusive("OPENWORKER_TEST_REDIS is not set.");
         }
 
-        Provider = new RedisConnectionProvider(connection);
+        Redis = await ConnectionMultiplexer.ConnectAsync(new RedisOptions { ConnectionString = connection }.ToConfigurationOptions());
+        Provider = new RedisConnectionProvider(Redis);
         Sessions = Cache.CreateCollection<SessionCache>(Provider);
 
         await Provider.Connection.CreateIndexAsync(typeof(SessionCache));
@@ -71,7 +75,7 @@ public sealed class TestSessionLease
     public async Task AttachedSessionIsConnectedWithExpiry()
     {
         using var world = World.Create();
-        var leases = new SessionLeaseManager(Sessions);
+        var leases = new SessionLeaseManager(Sessions, Redis);
         var session = NewSession();
 
         await leases.AttachAsync(world.Create(), session, 1);
@@ -88,7 +92,7 @@ public sealed class TestSessionLease
     public async Task ClosedConnectionKeepsSessionForTheNextServer()
     {
         using var world = World.Create();
-        var leases = new SessionLeaseManager(Sessions);
+        var leases = new SessionLeaseManager(Sessions, Redis);
         var player = world.Create();
         var session = NewSession();
 
@@ -110,8 +114,8 @@ public sealed class TestSessionLease
     public async Task LateCloseOfThePreviousServerDoesNotReleaseTheNewOne()
     {
         using var world = World.Create();
-        var previous = new SessionLeaseManager(Sessions);
-        var next = new SessionLeaseManager(Sessions);
+        var previous = new SessionLeaseManager(Sessions, Redis);
+        var next = new SessionLeaseManager(Sessions, Redis);
         var session = NewSession();
         var previousPlayer = world.Create();
 
@@ -126,20 +130,45 @@ public sealed class TestSessionLease
     }
 
     [TestMethod]
-    public async Task RenewExtendsOnlyOwnedLeases()
+    public async Task RenewExtendsOnlyOwnedLeasesInOneRoundTrip()
     {
         using var world = World.Create();
-        var owner = new SessionLeaseManager(Sessions);
-        var session = NewSession();
+        var owner = new SessionLeaseManager(Sessions, Redis);
+        var sessions = Enumerable.Range(0, 50).Select(_ => NewSession()).ToArray();
+        var session = sessions[0];
 
-        await owner.AttachAsync(world.Create(), session, 1);
+        foreach (var each in sessions)
+        {
+            await owner.AttachAsync(world.Create(), each, 1);
+        }
 
-        await Provider.Connection.ExecuteAsync("EXPIRE", $"{typeof(SessionCache).FullName}:{session}", "5");
+        // The first renewal loads the script into Redis; the ones after send its hash.
         await owner.RenewAsync();
 
-        Assert.IsGreaterThan(5, await TimeToLiveAsync(session));
+        foreach (var each in sessions)
+        {
+            await Provider.Connection.ExecuteAsync("EXPIRE", $"{typeof(SessionCache).FullName}:{each}", "5");
+        }
 
-        var other = new SessionLeaseManager(Sessions);
+        var profiling = new ProfilingSession();
+        Redis.RegisterProfiler(() => profiling);
+
+        var renewed = await owner.RenewAsync();
+
+        Redis.RegisterProfiler(() => null);
+
+        var commands = profiling.FinishProfiling().Select(e => e.Command).ToArray();
+
+        Assert.AreEqual(sessions.Length, renewed);
+        Assert.HasCount(1, commands, "fifty leases, one command");
+        Assert.AreEqual("EVALSHA", commands[0]);
+
+        foreach (var each in sessions)
+        {
+            Assert.IsGreaterThan(5, await TimeToLiveAsync(each));
+        }
+
+        var other = new SessionLeaseManager(Sessions, Redis);
 
         await other.AttachAsync(world.Create(), session, 1);
         var taken = (await FindAsync(session))!.Owner;
@@ -153,8 +182,8 @@ public sealed class TestSessionLease
     public async Task ReturnToAuthSurvivesCloseAndIsClearedByTheNextAttach()
     {
         using var world = World.Create();
-        var gate = new SessionLeaseManager(Sessions);
-        var auth = new SessionLeaseManager(Sessions);
+        var gate = new SessionLeaseManager(Sessions, Redis);
+        var auth = new SessionLeaseManager(Sessions, Redis);
         var player = world.Create();
         var session = NewSession();
 
@@ -197,7 +226,7 @@ public sealed class TestSessionLease
         }
 
         using var world = World.Create();
-        var leases = new SessionLeaseManager(Sessions);
+        var leases = new SessionLeaseManager(Sessions, Redis);
 
         var gameplay = new LoginGameplay(
             Sessions,

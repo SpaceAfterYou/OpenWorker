@@ -497,7 +497,7 @@ public static class LeagueStore
     {
         await using var database = await factory.CreateDbContextAsync();
 
-        var entity = await database.Leagues.FirstOrDefaultAsync(e => e.Id == league);
+        var entity = await database.Leagues.AsTracking().FirstOrDefaultAsync(e => e.Id == league);
 
         if (entity is null)
         {

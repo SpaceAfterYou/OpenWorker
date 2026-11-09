@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Text.Json.Serialization;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Modules.Helpers;
@@ -53,12 +52,6 @@ public sealed class HelperBook
     /// What the person offers its friends as support, or 0 if it does not.
     /// </summary>
     public byte SupportType { get; set; }
-
-    /// <summary>
-    /// Writes of the book to the database go one after another, so the last one has the latest state.
-    /// </summary>
-    [JsonIgnore]
-    public SemaphoreSlim Gate { get; } = new(1, 1);
 
     public HelperEntry? Find(int helper) => Helpers.Find(e => e.Helper == helper);
 

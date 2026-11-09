@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 
 namespace OpenWorker.Gameplay.Modules.Boosters;
 
@@ -21,12 +20,6 @@ public sealed class BoosterEntry
 public sealed class BoosterBook
 {
     public List<BoosterEntry> Boosters { get; set; } = [];
-
-    /// <summary>
-    /// Writes of the book to the database go one after another, so the last one has the latest state.
-    /// </summary>
-    [JsonIgnore]
-    public SemaphoreSlim Gate { get; } = new(1, 1);
 
     public BoosterEntry? Find(short booster) => Boosters.Find(e => e.Booster == booster);
 }

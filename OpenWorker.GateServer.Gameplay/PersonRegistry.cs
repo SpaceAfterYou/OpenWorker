@@ -41,7 +41,7 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
         Component.GetComponentType(typeof(WorldComponent)),
     ];
     
-    internal GatePersonComponent CreatePersonListComponent(IReadOnlyCollection<PersonPersistent> collection)
+    internal GatePersonComponent CreatePersonListComponent(IReadOnlyCollection<PersonPersistent> collection, byte[] accountOptions)
     {
         // The client places characters by their position in the list, so it must not change between visits.
         var persons = collection
@@ -50,7 +50,7 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
             .ToArray();
 
         var slots = persons
-            .Select(CreatePerson)
+            .Select(e => CreatePerson(e, accountOptions))
             .Concat(Enumerable.Repeat(Entity.Null, LoginModuleDefines.PersonSlotCount))
             .Take(LoginModuleDefines.PersonSlotCount)
             .ToArray();
@@ -130,10 +130,10 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
         return Array.FindIndex(component.SlotList, e => e == Entity.Null);
     }
     
-    internal Entity CreatePerson(Entity entity, int slotIndex, PersonPersistent persistent)
+    internal Entity CreatePerson(Entity entity, int slotIndex, PersonPersistent persistent, byte[] accountOptions)
     {
         var component = world.Get<GatePersonComponent>(entity);
-        var created = CreatePerson(persistent);
+        var created = CreatePerson(persistent, accountOptions);
 
         component.SlotList[slotIndex] = created;
         
@@ -142,7 +142,7 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
         return created;
     }
 
-    private Entity CreatePerson(PersonPersistent persistent)
+    private Entity CreatePerson(PersonPersistent persistent, byte[] accountOptions)
     {
         var entity = world.Create(PersonArchetype);
         
@@ -263,7 +263,7 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
             ? inventories.CreateNew(persistent)
             : inventories.Load(persistent, persistent.Items)));
 
-        world.Set(entity, persistent.ToPersonOptionComponent());
+        world.Set(entity, accountOptions.ToPersonOptionComponent());
         
         return entity;
     }

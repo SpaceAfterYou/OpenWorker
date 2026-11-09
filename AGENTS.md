@@ -54,6 +54,7 @@ dotnet test --solution OpenWorker.slnx
   | `OPENWORKER_TEST_NAVMESH` | Navigation meshes |
   | `OPENWORKER_TEST_SERVER_RES` | Server-only tables |
   | `OPENWORKER_TEST_REDIS` | A Redis URL |
+  | `OPENWORKER_TEST_POSTGRES` | A Postgres connection string without a database (the test makes and drops its own) |
 
   `AGENTS.local.md` has a ready `export` block. Run with all of them set before you say the tests pass.
 - **CI checks** (`.github/workflows/ci.yml`). Run the ones your change touches:
