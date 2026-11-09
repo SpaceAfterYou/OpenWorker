@@ -49,7 +49,11 @@ public sealed class ServerTablesTest
             ("tb_Drop_Group", typeof(DropGroupRow)),
             ("tb_MazeReward_Item", typeof(MazeRewardItemRow)),
             ("tb_Reinforce", typeof(ReinforceChanceRow)),
-            ("tb_Disassemble", typeof(DisassembleResultRow))
+            ("tb_Disassemble", typeof(DisassembleResultRow)),
+            ("TB_BroachCompose_Rank", typeof(BroachComposeRankRow)),
+            ("TB_BroachCompose_Type", typeof(BroachComposeTypeRow)),
+            ("TB_BroachCompose_Theme", typeof(BroachComposeThemeRow)),
+            ("TB_BroachData", typeof(BroachComposeItemRow))
         ];
 
         foreach (var (table, row) in tables)

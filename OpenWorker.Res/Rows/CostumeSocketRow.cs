@@ -10,16 +10,16 @@ public readonly partial struct CostumeSocketRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
     public byte Field1 { get; } = reader.ReadByte();
-    public byte Field2 { get; } = reader.ReadByte();
-    public byte Field3 { get; } = reader.ReadByte();
-    public byte Field4 { get; } = reader.ReadByte();
-    public byte Field5 { get; } = reader.ReadByte();
-    public byte Field6 { get; } = reader.ReadByte();
-    public byte Field7 { get; } = reader.ReadByte();
-    public byte Field8 { get; } = reader.ReadByte();
-    public byte Field9 { get; } = reader.ReadByte();
-    public byte Field10 { get; } = reader.ReadByte();
-    public byte Field11 { get; } = reader.ReadByte();
-    public int Field12 { get; } = reader.ReadInt32();
-    public short Field13 { get; } = reader.ReadInt16();
+    public byte OpenPlaces1 { get; } = reader.ReadByte();
+    public byte OpenPlaces2 { get; } = reader.ReadByte();
+    public byte OpenPlaces3 { get; } = reader.ReadByte();
+    public byte OpenPlaces4 { get; } = reader.ReadByte();
+    public byte OpenPlaces5 { get; } = reader.ReadByte();
+    public byte ClosedPlaces1 { get; } = reader.ReadByte();
+    public byte ClosedPlaces2 { get; } = reader.ReadByte();
+    public byte ClosedPlaces3 { get; } = reader.ReadByte();
+    public byte ClosedPlaces4 { get; } = reader.ReadByte();
+    public byte ClosedPlaces5 { get; } = reader.ReadByte();
+    public int OpenItem { get; } = reader.ReadInt32();
+    public short OpenCount { get; } = reader.ReadInt16();
 }

@@ -30,7 +30,8 @@ public readonly record struct StorageChange(StorageGroup Storage, short Slot);
 /// (pickup, rewards, shops, post, trade): it keeps the stacks right, tells the client and notes what to save.
 /// </summary>
 /// <remarks>Runs on the logic thread of the server, like everything that touches the world.</remarks>
-public sealed class InventoryService(World world, ItemCatalog catalog, IItemSerials serials, PlayerStatsService? stats = null)
+public sealed class InventoryService(
+    World world, ItemCatalog catalog, IItemSerials serials, PlayerStatsService? stats = null, CostumeBroachPlaces? broaches = null)
 {
     /// <summary>The client has nothing more specific for a refused item request.</summary>
     public const ushort Refused = 52011;
@@ -43,7 +44,8 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
     }
 
     /// <summary>
-    /// A new item as it comes out of the table: bound the way its type says, not yet in any slot.
+    /// A new item as it comes out of the table: bound the way its type says, with the places for broaches of its kind, not yet
+    /// in any slot.
     /// </summary>
     public ItemInstance Create(int item, int count)
     {
@@ -55,7 +57,8 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
             Item = item,
             Count = (short)count,
             BindType = (ItemBindType)row.BindType,
-            Endurance = row.Endurance
+            Endurance = row.Endurance,
+            BroachState = broaches?.StateOf(item) ?? ItemInstance.NoBroaches
         };
     }
 

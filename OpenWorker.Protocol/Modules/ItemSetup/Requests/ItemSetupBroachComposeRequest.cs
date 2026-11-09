@@ -8,7 +8,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
 /// <summary>
-/// Composes broaches.
+/// Composes five broaches into a new one: the item that composes them, then the five broaches.
 /// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
@@ -17,7 +17,7 @@ public readonly partial struct ItemSetupBroachComposeRequest : IRequestHotspotMe
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
     private const ItemSetupOpcode Command = ItemSetupOpcode.BroachCompose;
 
-    public StorageSlot Target { get; init; }
+    public StorageSlot Tool { get; init; }
 
     [WireArray(WireLength.Byte)]
     public IReadOnlyList<StorageSlot> Materials { get; init; }

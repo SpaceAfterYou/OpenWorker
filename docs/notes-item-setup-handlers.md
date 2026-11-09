@@ -62,12 +62,8 @@ holds nothing, and every refusal of a restore, 52012.
 
 ## Requests without a handler
 
-Of the 38 requests of the group, 19 have a handler now; 19 have none. 16 of those the client of this version never sends.
-The 3 the client sends and the server does not handle, and why:
-
-| Sub | Request | Missing |
-|---|---|---|
-| 20, 21, 23 | BroachEquip, BroachActive, BroachCompose | the broach rules and `TB_BroachData`; the answer of 21 is only partly read. The schema already keeps the broaches. |
+Of the 38 requests of the group, 22 have a handler now; 16 have none, and the client of this version never sends any of
+them (see "What the client sends and reads" in the research notes of round 1). Every request the client sends is handled.
 
 ## Assumptions
 
@@ -265,3 +261,79 @@ n × slot`, and the client sends at most five materials.
 
 `PersistenceTest.ALogoutAndANewLoginKeepWhatThePlayerHad` also checks that a card of the book survives the logout and loads
 at the next entry.
+
+## Round 3: broaches
+
+Branch `feature/item-setup-3-broach`. The three broach requests the client sends are handled: `ItemBroachService` in
+`OpenWorker.Gameplay.Modules.ItemSetup`, registered in `ItemSetupService`. The schema did not change: the fifteen broaches
+are `Items.Broaches`, the places are the fifteen characters of `Items.BroachState`.
+
+### Places on clothing
+
+Clothing (use type `SHAPE`) has fifteen places for broaches, five groups of three. The first place of a group takes an
+attack broach, the second a defence one, the third a utility one (classify 160201 and 160204, 160202 and 160205, 160203 and
+160206). A place is `'0'` (the clothing has none), `'1'` (open) or `'2'` (closed until an item opens it), as the client reads
+the broach state of an item. The row of the clothing in `tb_Costume_Socket` (through the socket column of `tb_Item`) gives,
+per group, the open places and then the closed ones; a group of more than three ends the groups there.
+
+`CostumeBroachPlaces` (Items) builds that state. `InventoryService.Create` gives it to every new item, and
+`InventoryFactory.Load` gives it to clothing whose saved state is still all `'0'` (clothing made before this round); for an
+item that is not clothing with a row the state stays all `'0'`, so neither changes anything else. An empty place in the
+broach list is `-1`, which is what the client fills its own list with.
+
+### What each request does
+
+| Sub | Request | What the handler does | Answer |
+|---|---|---|---|
+| 20 | BroachEquip | reads the clothing first, then the broach and the place (0 to 14); the round-1 declaration had the two slots the other way round. The place must be open and of the kind of the broach (place mod 3), the broach of use type `ITEM_BROACH`. The broach is used up; a broach that was in the place is lost. A bound broach binds the clothing: a free one becomes 2, a bound one (1) becomes 3. | `18/20`: the serial of the clothing and its fifteen broaches (an update of the clothing first when its binding changed) |
+| 21 | BroachActive | the clothing has a row and the place is closed; the item and the count of the row (`OpenItem`, `OpenCount`, 834000006 × 1 on every row of this client) are taken from the bags; the place opens. | `18/21`: the serial of the clothing and its new state (`long`, then a `short` length and the characters, 1 to 15 of them) |
+| 23 | BroachCompose | the first slot is the composing item (use type `BROACH_COMPOSE`), then exactly five broaches, in the common or the cash bag, unbound, a slot named twice needs two in its stack. Each broach counts 2, 4, 6, 8 or 10 for its rank (2 to 6), 1, 10 or 100 for its kind and 1, 10, 100 or 1000 for its theme (the effect value of `tb_Item`, 1 to 4). The sums pick the rows of `TB_BroachCompose_Rank`, `_Type` and `_Theme`; a roll from 1 to 10000 against each row gives the rank (1 to 5), the kind (1 to 3) and the theme (1 to 4) of the result, falling through the chances in order. The group `theme × 100000 + kind × 10000 + rank × 1000` of the server's `TB_BroachData` says on its first row how many broaches it has; a last roll picks one. The result must be an item of the client and fit in the bags. The five broaches and one composing item are used up, the broach is given. | `18/23`: the serial of the new broach, after the bags were told about it: the client looks the broach up by that serial to show it. A refusal answers the serial 0, which is how the client ends the wait of its compose window. |
+
+Setting and opening are refused with `18/A0` and `18/A1`, code 52012 for every reason: the client has no more specific
+code for them that is known.
+
+### Tables
+
+- `tb_Costume_Socket` (client): columns named `OpenPlaces1..5`, `ClosedPlaces1..5`, `OpenItem`, `OpenCount`. The byte after
+  the id stays unnamed (a count of pieces, not used).
+- Server-only, in `OpenWorker.Res/ServerRows`: `BroachComposeRankRow` (`TB_BroachCompose_Rank`, `Optional`),
+  `BroachComposeTypeRow` (`TB_BroachCompose_Type`, `Optional`), `BroachComposeThemeRow` (`TB_BroachCompose_Theme`,
+  `Optional`), and `BroachComposeItemRow`, the server's own `TB_BroachData` (`Server`, read from `res-server/` only: the client
+  table of the same name has only the index and the item, and the first theme only). Without them every compose answers 0.
+- `TB_BroachData` and `Tb_Broach_Set` of the client are not read: the first is the client's list of broaches, the second the
+  set effects of broaches, which the server does not apply yet.
+
+### Assumptions
+
+- The bind values 2 and 3 for clothing a bound broach was set into are the server's own; nothing of this client was checked
+  for them. No broach of this client's tables is bound when it is made, so the case does not come up yet. Clothing is not
+  unbound again when a broach is replaced.
+- The compose answer is read by the client as a serial; it is the serial of the new item, not its item number.
+- The rank of a broach for the compose is its `tb_Item` rank (2 to 6); the theme its effect value. All broaches of this
+  client are of the first theme, so a compose always gives a broach of the first theme.
+
+### Not done
+
+- The stats of a broach and the set effects of `Tb_Broach_Set` are not applied to the person wearing the clothing.
+- A server option that raises the ranks of a compose during an event is not read.
+- Removing broaches (`28 BroachRemove`, `39 BroachRemoveEx`): this client never sends them.
+
+### What to check with the real client
+
+- That setting a broach shows it in the broach window and the message of success, and that the inventory shows the new
+  state after opening a place.
+- That the compose window shows the result window for the serial it gets, and takes a new compose after a refusal (serial 0).
+- That an error answer of 20 and 21 closes the wait of the broach window.
+
+### Tests
+
+`ItemSetupTest`: opening a closed place takes the item of the row and opens it, and a broach set into it is used up, is in
+the place and shows in the entry load and the saved row; a compose with fixed rolls gives the broach the server table names
+and uses up the five broaches and one composing item; a broach of the wrong kind and a closed place without its item change
+nothing. `ItemWireFormatTest`: the answer of 20 is one broach list entry without a count. `ServerTablesTest` reads the four
+server tables to their end.
+
+Checked on stand 2 with a scripted client as well: new clothing carries its places, opening answers the new state, a broach
+of the wrong kind is refused with 52012, setting answers the 68 bytes of the broaches, a compose of four answers 0, a compose
+of five (with the server tables mounted) answers the serial the bags were just told about, and the saved row has the open
+place and the broach.

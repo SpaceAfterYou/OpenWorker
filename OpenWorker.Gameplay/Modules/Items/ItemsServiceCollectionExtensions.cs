@@ -20,6 +20,7 @@ public static class ItemsServiceCollectionExtensions
     public static IServiceCollection AddItems(this IServiceCollection services)
     {
         services.AddSingleton<ItemCatalog>();
+        services.AddSingleton<CostumeBroachPlaces>();
         services.AddSingleton<DatabaseItemSerials>();
         services.AddSingleton<IItemSerials>(provider => provider.GetRequiredService<DatabaseItemSerials>());
         services.AddSingleton<InventoryFactory>();
@@ -36,6 +37,7 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<ItemDisassembleService>();
         services.AddSingleton<ItemEvolutionService>();
         services.AddSingleton<AkashicService>();
+        services.AddSingleton<ItemBroachService>();
         services.AddSingleton<InventoryPersistence>();
 
         // The features that give items hand them over here.

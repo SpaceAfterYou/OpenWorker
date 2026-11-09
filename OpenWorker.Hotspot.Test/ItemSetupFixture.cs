@@ -20,7 +20,8 @@ namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
 /// A new person of the tables of the client, with the handler of the district for the work on items: set OPENWORKER_TEST_RES
-/// to the folder with the *.res files, and OPENWORKER_TEST_SERVER_RES to the server tables for an upgrade.
+/// to the folder with the *.res files, and OPENWORKER_TEST_SERVER_RES to the server tables for an upgrade or a compose of
+/// broaches.
 /// </summary>
 internal sealed class ItemSetupFixture : IDisposable
 {
@@ -44,13 +45,15 @@ internal sealed class ItemSetupFixture : IDisposable
     }
 
     /// <summary>
-    /// A roll of the upgrade that is always the same, out of ten thousand.
+    /// A roll that is always the same, out of ten thousand, after the rolls queued for the next draws.
     /// </summary>
     public sealed class FixedRandom(int roll) : Random
     {
         public int Roll { get; set; } = roll;
 
-        public override int Next(int minValue, int maxValue) => Roll;
+        public Queue<int> Queued { get; } = new();
+
+        public override int Next(int minValue, int maxValue) => Queued.TryDequeue(out var next) ? next : Roll;
     }
 
     public World World { get; } = World.Create();
@@ -78,15 +81,25 @@ internal sealed class ItemSetupFixture : IDisposable
 
         var serials = new LocalItemSerials();
         var answers = new ItemSetupAnswers(World);
+        var places = new CostumeBroachPlaces(Catalog, Load<CostumeSocketRow>("tb_Costume_Socket"));
 
-        Inventory = new InventoryService(World, Catalog, serials);
+        Inventory = new InventoryService(World, Catalog, serials, broaches: places);
         Handler = new ItemSetupService(
             new ItemRepairService(World, Inventory, Repairs),
             new ItemRestoreService(Inventory, answers),
             new ItemSocketService(Inventory, Load<SocketRow>("tb_Socket"), answers),
             new ItemUpgradeService(Inventory, Load<ReinforceRow>("tb_Reinforce"), chances, answers, Random),
             Akashic = new AkashicService(Inventory, Load<AkashicRecordsRow>("tb_Akashic_Records"), Load<AkashicMakeRow>("tb_Akashic_Make"),
-                Load<AkashicDisassembleRow>("tb_Akashic_Disassemble"), answers));
+                Load<AkashicDisassembleRow>("tb_Akashic_Disassemble"), answers),
+            new ItemBroachService(
+                Inventory,
+                places,
+                ServerTable<BroachComposeRankRow>("TB_BroachCompose_Rank", withServerTables),
+                ServerTable<BroachComposeTypeRow>("TB_BroachCompose_Type", withServerTables),
+                ServerTable<BroachComposeThemeRow>("TB_BroachCompose_Theme", withServerTables),
+                ServerTable<BroachComposeItemRow>("TB_BroachData", withServerTables),
+                answers,
+                Random));
 
         var factory = new InventoryFactory(Catalog, Load<CreateClothRow>("tb_Create_Cloth"), serials);
 
@@ -116,6 +129,11 @@ internal sealed class ItemSetupFixture : IDisposable
         World.Set(Player, new LevelComponent(1, 0));
         World.Set(Player, new PersonInfoComponent { Name = "Test", Hero = Hero.Haru });
         World.Set(Player, new CurrencyComponent());
+    }
+
+    private static ReadOnlyCollection<T> ServerTable<T>(string table, bool load)
+    {
+        return load ? Load<T>(table, ServerTablesVariable) : new ReadOnlyCollection<T>([]);
     }
 
     public ServiceHandleContext Context => new(Player, CancellationToken.None);

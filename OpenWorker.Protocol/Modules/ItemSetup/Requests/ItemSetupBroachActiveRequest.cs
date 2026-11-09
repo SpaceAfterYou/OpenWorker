@@ -8,7 +8,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
 /// <summary>
-/// Opens a place for a broach.
+/// Opens a closed place for a broach on a piece of clothing (0 to 14).
 /// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
