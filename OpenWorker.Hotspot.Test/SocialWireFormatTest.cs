@@ -250,6 +250,7 @@ public sealed class SocialWireFormatTest
         Assert.HasCount(ActorSize, Written(new PartyMatchingWaitResponse()));
         Assert.HasCount(ActorSize + 2 + 4, Written(new PartyRecruitApplyUpdateResponse()));
         Assert.HasCount(4, Written(new PartyRecruitDelResponse()));
+        Assert.HasCount(ActorSize + 4, Written(new PartyRecruitApplyDelResponse()));
         Assert.HasCount(4 + MemberSize("Ab"), Written(new PartyUpdateMemberInfoResponse { Member = Member("Ab") }));
         Assert.HasCount(MemberSize("Ab") + 4, Written(new PartyRecruitApplyNoticeResponse
         {
