@@ -42,6 +42,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
+using OpenWorker.Gameplay.Modules.Progress;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -73,6 +74,8 @@ public sealed partial class PersonService(
     ILogger<LuaGameHelper> helperLogger,
     IOptions<GateOptions> gate,
     CommunityNetwork community,
+    AchievementManager achievements,
+    SharePointManager sharePoints,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -239,6 +242,8 @@ public sealed partial class PersonService(
         await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
+        await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await sharePoints.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
         await community.EnterAsync(context.Player);
     }
 

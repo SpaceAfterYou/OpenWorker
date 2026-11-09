@@ -15,6 +15,8 @@ using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Progress;
+using OpenWorker.Gameplay.Modules.Progress.Components;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Modules.Quests.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
@@ -99,6 +101,7 @@ public sealed class PersistenceTest
         public InventoryPersistence Inventories { get; }
         public PersonSkills Skills { get; }
         public PersonStateQuestStore Quests { get; }
+        public PersonStateStore States { get; }
         public PersistenceWriter Writer { get; }
         public PersistenceFlushService Flush { get; }
         public PersonFlush Close { get; }
@@ -109,6 +112,8 @@ public sealed class PersistenceTest
             var store = new PersonStore(Factory);
             var states = new PersonStateStore(store);
 
+            States = states;
+
             Inventories = new InventoryPersistence(World, store, new InventoryFactory(catalog, Empty<CreateClothRow>(), new LocalItemSerials()),
                 NullLogger<InventoryPersistence>.Instance, states);
             Skills = new PersonSkills(World, states, Empty<CharacterInfoRow>());
@@ -116,7 +121,7 @@ public sealed class PersistenceTest
 
             var snapshots = new PersonSnapshots(
                 World,
-                [new SkillDocumentSource(), QuestManager.Document, AkashicRecordBook.Document],
+                [new SkillDocumentSource(), QuestManager.Document, AkashicRecordBook.Document, AchievementManager.Document, SharePointManager.Document],
                 [new PersonPlaceStore(Options.Create(new InstanceOptions { Location = District }))]);
 
             Writer = new PersistenceWriter(store, Loop, snapshots, NullLogger<PersistenceWriter>.Instance);
@@ -142,6 +147,8 @@ public sealed class PersistenceTest
                 Component.GetComponentType(typeof(CurrencyComponent)),
                 Component.GetComponentType(typeof(DirtyComponent)),
                 Component.GetComponentType(typeof(QuestComponent)),
+                Component.GetComponentType(typeof(AchievementComponent)),
+                Component.GetComponentType(typeof(SharePointComponent)),
                 Component.GetComponentType(typeof(SkillPointComponent)),
                 Component.GetComponentType(typeof(SkillLearnedComponent)),
                 Component.GetComponentType(typeof(SkillDeckComponent)),
@@ -160,6 +167,18 @@ public sealed class PersistenceTest
             await Skills.LoadAsync(player, person, entry.Person.Hero, CancellationToken.None);
 
             World.Set(player, new QuestComponent { Person = person, Book = await Quests.LoadAsync(person, CancellationToken.None) ?? new QuestBook() });
+
+            World.Set(player, new AchievementComponent
+            {
+                Person = person,
+                Book = await States.LoadAsync<AchievementBook>(person, PersonStateKind.Achievements, CancellationToken.None) ?? new AchievementBook()
+            });
+
+            World.Set(player, new SharePointComponent
+            {
+                Person = person,
+                Book = await States.LoadAsync<SharePointBook>(person, PersonStateKind.SharePoints, CancellationToken.None) ?? new SharePointBook()
+            });
 
             return player;
         }).Unwrap();
@@ -264,6 +283,15 @@ public sealed class PersistenceTest
                 quests.Book!.Episodes.Add(new QuestEpisodeState { Episode = 100, Helper = true });
                 first.World.MarkDirty(player, PersonSections.Quests);
 
+                var achievements = first.World.Get<AchievementComponent>(player).Book!;
+                achievements.Counters.Add(new AchievementCounter { Type = (ushort)AchievementType.MazeCleared, Target = 0, Achievement = 4002102, Count = 1 });
+                achievements.SetRewarded(41);
+
+                var sharePoints = first.World.Get<SharePointComponent>(player).Book!;
+                sharePoints.Districts.Add(new DistrictProgress { District = District, Point = 16 });
+                sharePoints.Groups.Add(new MazeGroupProgress { Group = 32, Maze = 21211, District = District, Clears = 1, Point = 16, Step = 1 });
+                first.World.MarkDirty(player, PersonSections.Progress);
+
                 first.World.Set(player, first.World.Get<WorldComponent>(player) with { Position = new Vector3(50, 60, 70), Rotation = 90 });
             });
 
@@ -301,6 +329,16 @@ public sealed class PersistenceTest
             Assert.IsTrue(world.Get<SkillLearnedComponent>(back).Values.Any(e => e is { Skill: 4242, Divergence: 2 }));
 
             Assert.AreEqual(100, world.Get<QuestComponent>(back).Book!.Episodes.Single().Episode);
+
+            var achievements = world.Get<AchievementComponent>(back).Book!;
+
+            Assert.AreEqual((4002102, 1L), achievements.Counters.Select(e => (e.Achievement, e.Count)).Single(), "the counter of the achievements");
+            Assert.IsTrue(achievements.IsRewarded(41), "the reward taken");
+
+            var sharePoints = world.Get<SharePointComponent>(back).Book!;
+
+            Assert.AreEqual(16, sharePoints.FindDistrict(District)!.Point, "the points of the district");
+            Assert.AreEqual((byte)1, sharePoints.FindGroup(32)!.Step, "the step of the group");
 
             Assert.AreEqual(new Vector3(50, 60, 70), world.Get<WorldComponent>(back).Position, "the place in the district");
         });

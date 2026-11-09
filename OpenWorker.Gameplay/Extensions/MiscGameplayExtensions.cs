@@ -8,6 +8,7 @@ using OpenWorker.Gameplay.Modules.Boosters.Components;
 using OpenWorker.Gameplay.Modules.DailyMissions.Components;
 using OpenWorker.Gameplay.Modules.Helpers.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.SoulMetry.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.DailyMissions;
@@ -57,6 +58,8 @@ public static class MiscGameplayExtensions
         services.AddSingleton<AttendanceCatalog>();
         services.AddSingleton<AttendanceManager>();
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<AttendanceManager>());
+
+        services.AddProgressGameplay();
 
         // What the flush of the person writes when the managers mark their part.
         services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<SoulMetryComponent>(PersonStateKind.SoulMetry, PersonSections.MiscState, e => e.State));

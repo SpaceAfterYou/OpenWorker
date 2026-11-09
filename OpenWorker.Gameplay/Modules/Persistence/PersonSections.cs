@@ -44,6 +44,11 @@ public enum PersonSections : ushort
     AkashicRecords = 1 << 7,
 
     /// <summary>
+    /// Achievements and the points of districts and groups of mazes.
+    /// </summary>
+    Progress = 1 << 8,
+
+    /// <summary>
     /// The parts kept in the row of the person.
     /// </summary>
     Row = Currencies | Level | Inventory

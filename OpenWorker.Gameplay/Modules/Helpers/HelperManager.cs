@@ -9,6 +9,7 @@ using OpenWorker.Hotspot.Modules.Helpers.Responses;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Progress;
 
 namespace OpenWorker.Gameplay.Modules.Helpers;
 
@@ -20,7 +21,8 @@ namespace OpenWorker.Gameplay.Modules.Helpers;
 public sealed class HelperManager(
     World world,
     PersonStateStore store,
-    HelperCatalog catalog)
+    HelperCatalog catalog,
+    AchievementManager? achievements = null)
 {
     /// <summary>
     /// The helper cannot be called now, which is what the client is told about a call outside a maze.
@@ -71,6 +73,8 @@ public sealed class HelperManager(
 
         world.Get<ServerSessionComponent>(player)
             .Send(new HelperAddResponse { Helper = ToValue(entry) });
+
+        achievements?.OnHelperGained(player, helper);
 
         await SaveAsync(player, book, cancellationToken);
 

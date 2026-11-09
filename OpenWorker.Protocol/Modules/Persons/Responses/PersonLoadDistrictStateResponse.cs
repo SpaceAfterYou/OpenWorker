@@ -7,7 +7,8 @@ using OpenWorker.Hotspot.Modules.Persons.Types;
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
-/// Progress of every district.
+/// The share points of every district the person has a state for, sent as the person enters a district. The client takes
+/// the list only while it enters the world from the gate, and counts it in a signed byte.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonLoadDistrictStateResponse : IResponseHotspotMessage

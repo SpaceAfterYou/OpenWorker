@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Gameplay.Modules.DailyMissions;
@@ -46,7 +47,8 @@ public sealed partial class DropService(
     DailyMissionManager? missions = null,
     QuestManager? quests = null,
     ILogger<DropService>? logger = null,
-    MazeResults? results = null)
+    MazeResults? results = null,
+    AchievementManager? achievements = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -244,10 +246,12 @@ public sealed partial class DropService(
         if (drop.ObjectId == GoldObject)
         {
             results?.AddGold(player, drop.Count + drop.Bonus);
+            achievements?.OnGoldPicked(player, drop.Count + drop.Bonus);
         }
         else if (drop.ObjectId == EtherObject)
         {
             results?.AddEther(player, drop.Count);
+            achievements?.OnEtherPicked(player, drop.Count);
         }
 
         if (drop.ObjectId < GoldObject && (missions is not null || quests is not null))

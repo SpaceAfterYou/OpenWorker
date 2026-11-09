@@ -1,6 +1,7 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Gameplay.Modules.DailyMissions;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Gameplay.Modules.Vaccum;
@@ -11,7 +12,8 @@ namespace OpenWorker.Lua;
 
 /// <summary>
 /// What the maze tells the rest of the game: who was killed, which sector and maze were cleared, which object was
-/// used, and which of its objects belong to soul metries and cubes. Missions, quests and soul metries hear it here. A failure on the other side never reaches the fight.
+/// used, and which of its objects belong to soul metries and cubes. Missions, quests, soul metries, achievements and share
+/// points hear it here. A failure on the other side never reaches the fight.
 /// </summary>
 public sealed partial class MazeReporter(
     DailyMissionManager missions,
@@ -19,7 +21,9 @@ public sealed partial class MazeReporter(
     SoulMetryCatalog soulCatalog,
     VaccumManager cubes,
     QuestManager quests,
-    ILogger<MazeReporter> logger)
+    ILogger<MazeReporter> logger,
+    AchievementManager? achievements = null,
+    SharePointManager? sharePoints = null)
 {
     // The kinds of attack the table calls plain, from the ground, thrown and skills proper.
     private const byte PlainAttack = 1;
@@ -54,6 +58,8 @@ public sealed partial class MazeReporter(
     {
         try
         {
+            achievements?.OnMonsterKilled(player, monster);
+
             await missions.OnMonsterKilledAsync(player, monster, conditions, CancellationToken.None);
             await quests.OnMonsterKilledAsync(player, monster, CancellationToken.None);
         }
@@ -72,6 +78,9 @@ public sealed partial class MazeReporter(
         try
         {
             var clear = new DailyMissionMazeClear(info.Id, 0, seconds, info.Type, level, hero, []);
+
+            achievements?.OnMazeCleared(player, info.Id, seconds, info.Type);
+            sharePoints?.OnMazeCleared(player, info.Id, info.Group, info.Episode);
 
             await missions.OnMazeClearedAsync(player, clear, false, CancellationToken.None);
             await soulMetries.OnMazeClearedAsync(player, info.Group, CancellationToken.None);
