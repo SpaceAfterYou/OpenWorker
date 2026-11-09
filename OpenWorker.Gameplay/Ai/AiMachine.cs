@@ -741,9 +741,12 @@ public sealed partial class AiMachine
             case AiVariable.StateEndTime:
                 return _stateEnded.TryGetValue((AiState)argument, out var ended) ? _now - ended : -1;
 
+            // Both count within the distance the script gives, and nothing without one.
             case AiVariable.EnemyCount:
+                return argument > 0 ? _host.CountEnemies(argument) : 0;
+
             case AiVariable.UserCount:
-                return _host.CountEnemies(argument > 0 ? argument : float.MaxValue);
+                return argument > 0 ? _host.CountUsers(argument) : 0;
 
             case AiVariable.AggroCount:
                 return _aggro.Count;

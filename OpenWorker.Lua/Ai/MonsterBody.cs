@@ -494,9 +494,17 @@ internal class MonsterBody : IAiHost
         return _manager.Helpers.Count == 0 ? player : _manager.Helpers.Nearest(this, distance, player);
     }
 
+    /// <summary>
+    /// The enemies a monster counts are the monsters of a side at war with its own: the helpers of the players.
+    /// </summary>
     public virtual int CountEnemies(float distance)
     {
-        return _manager.CountPlayers(Position, distance) + _manager.Helpers.CountFoes(this, distance);
+        return _manager.Helpers.CountFoes(this, distance);
+    }
+
+    public int CountUsers(float distance)
+    {
+        return _manager.CountPlayers(Position, distance);
     }
 
     public int CountSectorMonsters()

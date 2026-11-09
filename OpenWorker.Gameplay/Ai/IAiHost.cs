@@ -89,6 +89,11 @@ public interface IAiHost
     int CountEnemies(float distance);
 
     /// <summary>
+    /// How many players stand within the distance, whatever side they are on.
+    /// </summary>
+    int CountUsers(float distance) => CountEnemies(distance);
+
+    /// <summary>
     /// How many monsters of the sector the monster lives in are alive.
     /// </summary>
     int CountSectorMonsters();
