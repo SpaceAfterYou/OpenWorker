@@ -9,8 +9,8 @@ the person carries the change to the flush; nothing in them waits or throws on t
 
 ## Where it runs
 
-District only. The requests carry the NPC the player talks to where the client sends one; the NPC is not checked (see
-"Not done").
+District only. A request that names an NPC is served only by an NPC of the city near the player that offers the service
+(done: `docs/notes-npc-services.md`, "The NPC behind a service").
 
 ## The schema
 
@@ -78,10 +78,11 @@ them (see "What the client sends and reads" in the research notes of round 1). E
 
 ## Not done
 
-- The NPC of a request is not checked (that it stands near the player and offers the service), here as for the repairs.
+- ~~The NPC of a request is not checked~~: done, `docs/notes-npc-services.md`.
 - Nothing wears endurance down on attack, defence or death yet: the rules use a table of endurance the client does not have
   in a form that is known.
-- The credit of an NPC and the boosters that lower prices or raise chances.
+- ~~The credit of an NPC and the boosters that lower prices or raise chances~~: done for repairs, upgrades and production,
+  `docs/notes-npc-services.md`.
 - The stats of an item do not change with its gems or its upgrade level on the server.
 
 ## Tests
@@ -150,10 +151,9 @@ item), 52475 (no room).
 
 ### Not done
 
-- The NPC of a request is not checked (that it stands near the player and offers production, the exchange of its row,
-  disassembly or evolution), as for the other item work.
-- A product whose hero is not open to players is not refused, and the credit of an NPC lowers neither the price of a recipe
-  nor the materials past the first.
+- ~~The NPC of a request is not checked~~: done, `docs/notes-npc-services.md`.
+- A product whose hero is not open to players is not refused. (The credit of an NPC now lowers the gold of a recipe and
+  the materials past the first: `docs/notes-npc-services.md`.)
 - The new item of an evolution keeps the upgrade level only, not the options, gems or broaches of the old one.
 
 ### To check with the real client
@@ -239,7 +239,8 @@ n × slot`, and the client sends at most five materials.
 - The card item column of a make recipe is consumed. The client requires the person to own one, and the request does not
   name its slot, so the server takes one from any stack.
 - A plain-item material (kind 0) has no experience to check. The rarity rule for extra cards applies only to a card material.
-- The NPC of the requests is not checked, as for the other handlers of the group.
+- The NPC of the requests is checked as for the other handlers of the group (`docs/notes-npc-services.md`); compose asks for the akashic
+  function, make and taking out only for an NPC near the player.
 - No experience bonus (events, a lucky compose) and no quest condition (`AkashicMake`) are applied yet.
 - A card taken out of the book is created with the bind type of its item row, like any new item.
 

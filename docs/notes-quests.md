@@ -65,7 +65,7 @@ the messages and their order, the tables read. "Fixed" names the commit of this 
 | Upgrade | every try, whatever came of it | the same | fixed (bc1173a) |
 | Disassemble | every item taken apart | the same | fixed (bc1173a) |
 | Akashic make | counted | counted | fixed (bc1173a) |
-| Buy, sell | a purchase and a sale count once | a purchase counts once; selling has no handler | fixed (bc1173a) (buy) |
+| Buy, sell | a purchase and a sale count once | a purchase counts once; a sale counts once (`docs/notes-npc-services.md`) | fixed (bc1173a) (buy), fixed (sell) |
 | Skill deck, mass hunt, events, defence, survival | counted by their features | not counted | kept different: the features are not built; `OnEvent` takes them |
 | Condition done | gives its items (room, else not done: 52010), takes its items if held, ends the episode that ends by itself | the same | same |
 | Handing in | all conditions done, no check of the character | the same, and near the character it is handed in to (54003) | kept different: the place is checked because the server can |
@@ -120,7 +120,7 @@ episode`; `15/07 short count, (int condition, byte step)`; `15/09 byte, int`; `1
 | Disassemble 16 | item | 1 | taking apart |
 | Akashic make 17 | item | 1 | akashic production |
 
-No condition buys or sells, delivers, protects or traces; buying is counted anyway, selling has no handler yet.
+No condition buys or sells, delivers, protects or traces; buying and selling are counted anyway (`docs/notes-npc-services.md`).
 
 ## Columns read
 
