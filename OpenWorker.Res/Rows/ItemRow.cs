@@ -53,8 +53,8 @@ public readonly partial struct ItemRow(BinaryReader reader)
     public int Socket { get; } = reader.ReadInt32();
     public int Field42 { get; } = reader.ReadInt32();
     public short Reinforce { get; } = reader.ReadInt16();
-    public int Field44 { get; } = reader.ReadInt32();
-    public short Field45 { get; } = reader.ReadInt16();
+    public int Evolution { get; } = reader.ReadInt32();
+    public short Disassemble { get; } = reader.ReadInt16();
     public int Field46 { get; } = reader.ReadInt32();
     public byte Field47 { get; } = reader.ReadByte();
     public int Field48 { get; } = reader.ReadInt32();

@@ -10,8 +10,8 @@ public readonly partial struct ReinforceExchangeRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
     public byte Field1 { get; } = reader.ReadByte();
-    public int Field2 { get; } = reader.ReadInt32();
-    public byte Field3 { get; } = reader.ReadByte();
-    public int Field4 { get; } = reader.ReadInt32();
-    public byte Field5 { get; } = reader.ReadByte();
+    public int Material { get; } = reader.ReadInt32();
+    public byte MaterialCount { get; } = reader.ReadByte();
+    public int Product { get; } = reader.ReadInt32();
+    public byte ProductCount { get; } = reader.ReadByte();
 }
