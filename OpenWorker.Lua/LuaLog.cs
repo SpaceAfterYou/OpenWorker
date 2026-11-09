@@ -163,6 +163,9 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script moves npc {Npc} to waypoint {Waypoint}, but the maze has no such creature")]
     public static partial void UnknownNpcToMove(this ILogger logger, int npc, int waypoint);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script moves npc {Npc} to waypoint {Waypoint}, which the map does not have; it stays")]
+    public static partial void UnknownWayPoint(this ILogger logger, int npc, int waypoint);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Spawn box {Box} has the monster {Monster} of the unsupported type {Type}; it is left out")]
     public static partial void UnsupportedMonsterType(this ILogger logger, int box, int monster, MonsterSpawnType type);
 

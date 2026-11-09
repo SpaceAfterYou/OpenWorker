@@ -29,6 +29,7 @@ using OpenWorker.Hotspot.Modules.Chat.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Lua.Enums;
 using OpenWorker.Lua.Managers;
 using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -228,7 +229,7 @@ public partial class LuaMaze(
     private readonly List<ChainRun> _chains = [];
 
     /// <summary>
-    /// Townsfolk do not move here, so a script that waits for one to arrive hears of it after this long.
+    /// How long a townsman takes to turn, after which a script that waits for it hears of it.
     /// </summary>
     private const float NpcMoveSeconds = 1f;
 
@@ -277,6 +278,16 @@ public partial class LuaMaze(
     private Dictionary<int, bool> SwitchNpcs { get; } = [];
 
     /// <summary>
+    /// The latest walk of each townsman, by its table id: a townsman sent somewhere else on the way arrives only there.
+    /// </summary>
+    private Dictionary<int, int> NpcWalks { get; } = [];
+
+    /// <summary>
+    /// What the quests of the player do, for a script that follows them; none for a script that does not.
+    /// </summary>
+    private QuestWatch? _quests;
+
+    /// <summary>
     /// The cutscene the player is watching, if any.
     /// </summary>
     private string? Cutscene { get; set; }
@@ -322,6 +333,7 @@ public partial class LuaMaze(
         }
 
         StepTimers((float)elapsed.TotalSeconds);
+        StepQuests();
         StepFlights();
         StepChains();
 
@@ -486,6 +498,49 @@ public partial class LuaMaze(
     }
 
     /// <summary>
+    /// The script hears what happens to the quests of the player (<c>OnUpdateQuest</c>): the episodes taken and finished
+    /// and the conditions done, from whichever part of the game they come. A script without the function is not told.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void FollowQuests(QuestCatalog catalog)
+    {
+        if (State.Environment["OnUpdateQuest"].TryRead<LuaFunction>(out _))
+        {
+            _quests = new QuestWatch(Ecs, player, catalog);
+        }
+    }
+
+    private void StepQuests()
+    {
+        if (_quests is null || !Started)
+        {
+            return;
+        }
+
+        var changes = _quests.Look();
+
+        if (changes.Count == 0)
+        {
+            return;
+        }
+
+        Run(TellQuestsAsync((int)Ecs.Get<ActorComponent>(player).Identifier, changes.ToArray()));
+    }
+
+    private async ValueTask TellQuestsAsync(int user, (QuestUpdateType Type, int Identifier)[] changes)
+    {
+        foreach (var (type, identifier) in changes)
+        {
+            if (Closed)
+            {
+                return;
+            }
+
+            await State.OnUpdateQuest(user, type, identifier, this);
+        }
+    }
+
+    /// <summary>
     /// Spawns what a sector starts with. Boxes that wait for a signal are started by the script.
     /// </summary>
     [LuaIgnoreMember]
@@ -512,6 +567,9 @@ public partial class LuaMaze(
         {
             return;
         }
+
+        // The script hears of every skill the player uses.
+        Run(State.OnActionSkill(skill, this));
 
         var generation = ++SkillGeneration;
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
@@ -1218,6 +1276,9 @@ public partial class LuaMaze(
         Started = true;
         StartedAt = Stopwatch.GetTimestamp();
 
+        // The quests the player has when the maze starts are where the script begins to follow them.
+        _quests?.Look();
+
         // From now on the maze steps with the clock: its timers, the projectiles of the player and the monsters.
         if (!Closed)
         {
@@ -1524,14 +1585,55 @@ public partial class LuaMaze(
         player.Get<ServerSessionComponent>().Send(new MazeLuaClientSyncResponse { Type = type, Value = value });
     }
 
+    /// <summary>
+    /// A townsman walks to a point of the map, and the script hears when it is there (<c>OnNpcWayPoint</c>). It walks
+    /// straight, and only the latest walk it was given ends.
+    /// </summary>
     [LuaMember]
     public void MoveNpcToWayPoint(int npc, int waypoint)
     {
-        // Townsfolk do not walk here yet: the call only checks that the creature is there.
-        NotDone(nameof(MoveNpcToWayPoint));
         Logger.CallMoveNpcToWayPoint(npc, waypoint);
 
-        creatureManager.MoveToPoint(npc, waypoint);
+        if (!creatureManager.TryFindCreature(npc, out var creature))
+        {
+            Logger.UnknownNpcToMove(npc, waypoint);
+            return;
+        }
+
+        if (FindWayPoint(waypoint) is not { } point)
+        {
+            Logger.UnknownWayPoint(npc, waypoint);
+            return;
+        }
+
+        var target = (point.PosTopLeft + point.PosBottomRight) / 2f;
+        var walk = NpcWalks[npc] = NpcWalks.GetValueOrDefault(npc) + 1;
+        var seconds = creatureManager.Walk(creature, target);
+
+        Later(seconds, () =>
+        {
+            if (NpcWalks.GetValueOrDefault(npc) != walk || !Ecs.IsAlive(creature))
+            {
+                return ValueTask.CompletedTask;
+            }
+
+            creatureManager.Arrive(creature, target);
+
+            return State.OnNpcWayPoint(npc, waypoint, this);
+        });
+    }
+
+    private WayPoint? FindWayPoint(int waypoint)
+    {
+        foreach (var point in Batch.EventPoint.WayPoints)
+        {
+            if (point.Id == waypoint)
+            {
+                return point;
+            }
+        }
+
+        return null;
     }
 
     [LuaMember]
@@ -1673,11 +1775,16 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// The townsman does not turn here, but the script gets word that it did.
+    /// The townsman turns to the angle, and the script hears when it has (<c>OnNpcRotation</c>) a moment later.
     /// </summary>
     [LuaMember]
     public void SetNpcRotation(int npc, float angle, int key)
     {
+        if (float.IsFinite(angle) && creatureManager.TryFindCreature(npc, out var creature))
+        {
+            creatureManager.Turn(creature, angle);
+        }
+
         Later(NpcMoveSeconds, () => State.OnNpcRotation(npc, key, this));
     }
 

@@ -65,9 +65,10 @@ internal static class TestMazes
         }
     }
 
-    public static LuaMaze Create(World world, Entity player, ILogger<LuaMaze>? logger = null, SimulationClock? clock = null, LuaState? state = null, string map = EmptyMap)
+    public static LuaMaze Create(World world, Entity player, ILogger<LuaMaze>? logger = null, SimulationClock? clock = null, LuaState? state = null, string map = EmptyMap,
+        VBatchFile? batch = null, QuestManager? quests = null, MazeReporter? reports = null)
     {
-        var batch = Map(map);
+        batch ??= Map(map);
         var tables = new CombatTables(None<MonsterRow>(), None<StatusRow>(), None<SkillRow>(), None<CharacterInfoRow>());
 
         return new LuaMaze(
@@ -76,14 +77,14 @@ internal static class TestMazes
             player,
             new LuaCreatureManager(world, batch, tables),
             new BuffManager(world, None<BuffRow>()),
-            Quests(world),
+            quests ?? Quests(world),
             batch,
             None<InteractionObjectRow>().IndexBy(e => e.Id),
             new SkillActionProvider(None<SkillRow>(), NullLogger<SkillActionProvider>.Instance),
             tables,
             default,
-            // The tests do nothing a maze reports.
-            null!,
+            // Most tests do nothing a maze reports.
+            reports!,
             clock ?? Clock(),
             logger ?? NullLogger<LuaMaze>.Instance);
     }

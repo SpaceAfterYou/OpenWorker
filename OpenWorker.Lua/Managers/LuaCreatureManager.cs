@@ -22,6 +22,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
+using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
@@ -478,13 +479,87 @@ public sealed class LuaCreatureManager
         });
     }
 
-    public void MoveToPoint(int npc, int waypoint)
+    /// <summary>
+    /// How fast townsfolk walk, in units a second: the pace of a walking hero, as the tables give townsfolk no speed of their own.
+    /// </summary>
+    public const float NpcWalkSpeed = 300f;
+
+    /// <summary>
+    /// The creature of a table id that the maze holds, the first one when there are several.
+    /// </summary>
+    public bool TryFindCreature(int identifier, out Entity found)
     {
         // Asking a default entity whether it lives reads the world of id 0, which another maze may have destroyed.
-        if (!Creatures.Exists(e => ecs.IsAlive(e) && ecs.Get<CreatureComponent>(e) == npc))
+        foreach (var creature in Creatures)
         {
-            Logger.UnknownNpcToMove(npc, waypoint);
+            if (ecs.IsAlive(creature) && ecs.Get<CreatureComponent>(creature) == identifier)
+            {
+                found = creature;
+                return true;
+            }
         }
+
+        found = Entity.Null;
+        return false;
+    }
+
+    /// <summary>
+    /// A townsman sets off towards a place: the client sees it walk there. The time the walk takes comes back, in seconds.
+    /// </summary>
+    public float Walk(Entity npc, Vector3 target)
+    {
+        var place = ecs.Get<WorldComponent>(npc);
+        var distance = Vector2.Distance(new Vector2(place.Position.X, place.Position.Y), new Vector2(target.X, target.Y));
+        var yaw = distance > 0f ? AiMath.YawTo(place.Position, target) : place.Rotation;
+
+        ecs.Set(npc, place with { Rotation = yaw });
+
+        Broadcast(new MovementMoveBtResponse
+        {
+            Actor = ecs.Get<ActorComponent>(npc),
+            Map = place.Map,
+            Pos = place.Position,
+            Yaw = yaw,
+            TargetPosX = target.X,
+            TargetPosY = target.Y,
+            RunBit = 0,
+            Pitch = 0f,
+            MoveSpeed = NpcWalkSpeed,
+            ChangeMotion = 0
+        });
+
+        return distance / NpcWalkSpeed;
+    }
+
+    /// <summary>
+    /// A townsman turns where it stands, and the client sees it.
+    /// </summary>
+    public void Turn(Entity npc, float yaw)
+    {
+        ecs.Set(npc, ecs.Get<WorldComponent>(npc) with { Rotation = yaw });
+
+        Broadcast(new MovementUpdateDirResponse { Actor = ecs.Get<ActorComponent>(npc), Yaw = yaw, Pitch = 0f, Direct = false });
+    }
+
+    /// <summary>
+    /// A townsman has arrived: it stands at the place, and the client sees it stop there.
+    /// </summary>
+    public void Arrive(Entity npc, Vector3 target)
+    {
+        var place = ecs.Get<WorldComponent>(npc) with { Position = target };
+
+        ecs.Set(npc, place);
+
+        Broadcast(new MovementStopBtResponse
+        {
+            Actor = ecs.Get<ActorComponent>(npc),
+            MapId = place.Map,
+            PosX = target.X,
+            PosY = target.Y,
+            PosZ = target.Z,
+            Yaw = place.Rotation,
+            Pitch = 0f
+        });
     }
 
     // ---- Minds --------------------------------------------------------------------------------
