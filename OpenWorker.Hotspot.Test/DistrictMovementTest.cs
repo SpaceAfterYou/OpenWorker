@@ -44,11 +44,16 @@ internal sealed class DistrictHarness : IDisposable
         Channels = ChannelMembers.Channels(Ecs);
 
         var budget = new HandlerErrorBudget(Time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = maxErrors, Window = TimeSpan.FromMinutes(1) }));
-        var errors = new HandlerExecutor(Table, new ServiceCollection().BuildServiceProvider(), Ecs, budget, NullLogger<HandlerExecutor>.Instance);
+        Errors = new HandlerExecutor(Table, new ServiceCollection().BuildServiceProvider(), Ecs, budget, NullLogger<HandlerExecutor>.Instance);
         var pace = new MovementPace(speeds ?? new Dictionary<Hero, float>(), new WorldOptions(), Time);
 
-        Movement = new MovementService(Ecs, new ChannelAudience(Ecs, Channels), pace, errors, NullLogger<MovementService>.Instance);
+        Movement = new MovementService(Ecs, new ChannelAudience(Ecs, Channels), pace, Errors, NullLogger<MovementService>.Instance);
     }
+
+    /// <summary>
+    /// What counts the requests a handler refuses as impossible against the budget of the session.
+    /// </summary>
+    public HandlerExecutor Errors { get; }
 
     public World Ecs { get; } = World.Create();
 
