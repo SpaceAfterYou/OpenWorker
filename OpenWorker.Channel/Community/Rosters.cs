@@ -51,16 +51,6 @@ public interface IMegaphoneSource
 }
 
 /// <summary>
-/// Nobody is in a party until parties are kept somewhere.
-/// </summary>
-internal sealed class NoPartyRoster : IPartyRoster
-{
-    public ValueTask<IReadOnlyList<int>> MembersAsync(int person) => ValueTask.FromResult<IReadOnlyList<int>>([]);
-
-    public ValueTask<PartyView?> PartyAsync(int person) => ValueTask.FromResult<PartyView?>(null);
-}
-
-/// <summary>
 /// The bag does not keep a megaphone yet, so every use is free.
 /// </summary>
 internal sealed class FreeMegaphone : IMegaphoneSource
