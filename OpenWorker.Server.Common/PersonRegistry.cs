@@ -15,6 +15,7 @@ using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Enums;
+using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using OpenWorker.Persistence;
 using OpenWorker.Gameplay.Modules.Gestures.Components;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
@@ -145,6 +146,13 @@ public sealed class PersonRegistry(World world, TimeProvider time)
         });
 
         world.Set(entity, new AccessComponent(Enum.IsDefined((AccessLevel)entry.AccessLevel) ? (AccessLevel)entry.AccessLevel : AccessLevel.None));
+
+        // A password the account has must be given again on this server before a trade.
+        world.Set(entity, new TradePasswordComponent
+        {
+            Password = entry.TradePassword,
+            State = string.IsNullOrEmpty(entry.TradePassword) ? PasswordProtectionState.None : PasswordProtectionState.UnAuthenticated
+        });
 
         // Entering counts as the first answer to the keep-alive.
         world.Set(entity, KeepAliveComponent.Start(time.GetTimestamp()));

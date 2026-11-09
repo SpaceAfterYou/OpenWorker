@@ -1,10 +1,17 @@
+using System.Buffers.Binary;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Modules.Login;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Hotspot.Messages.Response.Person.Enums;
+using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Hotspot.Modules.Persons.Requests;
+using OpenWorker.Wire;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.System.Requests;
 using OpenWorker.Persistence;
@@ -114,5 +121,66 @@ public sealed class AccountStateTest
 
         CollectionAssert.AreEqual(options, await Factory.LoadPersonOptionsAsync(account, CancellationToken.None));
         Assert.AreEqual(PersonOptions.Nobody, (await community.GetAsync(person))!.Whisper);
+    }
+
+    /// <summary>
+    /// The trade password is kept hashed on the account and checked: a wrong one is refused with the client's code and the
+    /// state stays, the right one is accepted; at the next entry the account has a password the player has not given yet.
+    /// </summary>
+    [TestMethod]
+    public async Task AWrongTradePasswordIsRefusedAndTheRightOneAccepted()
+    {
+        var (person, account) = await PersonAsync("trader");
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var player = server.Join(person, "trader");
+
+        server.World.Add(player.Entity, new ClaimsComponent(account, 1));
+        server.World.Add(player.Entity, new TradePasswordComponent { Password = string.Empty, State = PasswordProtectionState.None });
+
+        var handler = new TradePasswordService(server.World, Factory);
+
+        (int Error, PasswordProtectionState State) Ask(PasswordCheckType type, string password)
+        {
+            player.Read(50);
+
+            server.Run(() => handler.OnHandleAsync(new ServiceHandleContext(player.Entity, CancellationToken.None), Request(type, password)).AsTask());
+
+            var answer = player.Read().Single(e => e.Group == (byte)GroupOpcode.Character && e.Command == (byte)CharacterOpcode.TradePassword);
+
+            return (BinaryPrimitives.ReadInt32LittleEndian(answer.Content), (PasswordProtectionState)answer.Content[4]);
+        }
+
+        Assert.AreEqual((LoginRules.TradePasswordInvalid, PasswordProtectionState.None), Ask(PasswordCheckType.Create, "1289"), "8 and 9 are not on the pad.");
+        Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(PasswordCheckType.Create, "1234"));
+
+        await using (var database = await Factory.CreateDbContextAsync())
+        {
+            var stored = await database.Accounts.Where(e => e.Id == account).Select(e => e.TradePassword).SingleAsync();
+
+            Assert.IsFalse(string.IsNullOrEmpty(stored));
+            Assert.AreNotEqual("1234", stored, "The password is kept hashed.");
+
+            // The next entry: the account has a password the player has not given on this server.
+            var entry = await Factory.LoadPersonAtEntryAsync(account, person, CancellationToken.None);
+
+            server.World.Set(player.Entity, new TradePasswordComponent { Password = entry!.TradePassword, State = PasswordProtectionState.UnAuthenticated });
+        }
+
+        Assert.AreEqual((LoginRules.TradePasswordInvalid, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1235"));
+        Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(PasswordCheckType.Check, "1234"));
+    }
+
+    private static PersonTradePasswordRequest Request(PasswordCheckType type, string password)
+    {
+        var bytes = new byte[1 + 2 + password.Length];
+
+        bytes[0] = (byte)type;
+        BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(1), (ushort)password.Length);
+        System.Text.Encoding.ASCII.GetBytes(password, bytes.AsSpan(3));
+
+        var reader = new PacketReader(bytes);
+
+        return PersonTradePasswordRequest.Read(ref reader);
     }
 }

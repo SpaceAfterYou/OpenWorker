@@ -78,7 +78,6 @@ public sealed partial class PersonService(
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
-    IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
     private short Location { get; } = instance.Value.Location;
@@ -252,21 +251,6 @@ public sealed partial class PersonService(
     {
         await leaving
             .LeaveAsync(context.Player, request.Destination);
-    }
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)
-    {
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
-
-        // session.Send(new PersonTradePasswordResponse(request.Password));
-
-        session.Send(new CharacterTradePasswordResponse
-        {
-            ProtectionState = PasswordProtectionState.Authenticated,
-            ErrorCode = 0
-        });
-
-        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to district {Location} as person {Person} with no reservation, or with one that has expired, and is turned away")]

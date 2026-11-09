@@ -91,7 +91,6 @@ public sealed partial class PersonService(
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
-    IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
     private short Gate { get; } = gate.Value.Id;
@@ -378,21 +377,6 @@ public sealed partial class PersonService(
             .ToArray();
 
         session.Send(new SoulMetryListResponse { Values = list });
-    }
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)
-    {
-        var session = world.Get<ServerSessionComponent>(context.Player);
-
-        // session.Send(new PersonTradePasswordResponse(request.Password));
-
-        session.Send(new CharacterTradePasswordResponse
-        {
-            ProtectionState = PasswordProtectionState.Authenticated,
-            ErrorCode = 0
-        });
-
-        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person} with no reservation, or with one that has expired, and is turned away")]
