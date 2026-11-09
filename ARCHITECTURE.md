@@ -41,7 +41,10 @@ Shared state between processes:
   server to the next (`DistrictReserveCache`, `MazeReserveCache`). A server that stops in order takes its own
   records back (see Stopping a server); every record of a server (gate, district, channel, maze) also expires unless its
   server renews it, so the records of a server that crashed go by themselves within half a minute.
-- **Redis pub/sub** (`CommunityNetwork`) carries notifications between servers: friends, leagues,
+  Parties, the recruitment board, the awaiters and the auto matching live there too, for every district and maze server
+  at once: each change with a limit is one Lua script, and a party expires unless a server of one of its online members
+  renews it (`PartyBook`, `docs/notes-party.md`).
+- **Redis pub/sub** (`CommunityNetwork`) carries notifications between servers: friends, leagues, parties,
   whispers. Delivery is at most once, so a message is a hint to refresh, never the only copy of a change.
 
 ### Moving between servers
