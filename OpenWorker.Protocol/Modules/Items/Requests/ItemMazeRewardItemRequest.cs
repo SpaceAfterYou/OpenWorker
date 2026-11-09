@@ -8,6 +8,9 @@ using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
+/// <summary>
+/// The player takes the key reward of the window at the end of a maze: the slot of the keys it pays with.
+/// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct ItemMazeRewardItemRequest : IRequestHotspotMessage

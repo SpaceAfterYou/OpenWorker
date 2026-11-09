@@ -68,7 +68,7 @@ public enum PartyOpcode : byte
     UpdateMemberHp = 0x12,
 
     /// <summary>
-    /// Response (defined but not implemented)
+    /// Neither side uses it: the client sends no such request and reads no such answer.
     /// </summary>
     UpdateMemberSg = 0x13,
 
@@ -153,7 +153,7 @@ public enum PartyOpcode : byte
     RecruitInfo = 0x3E,
 
     /// <summary>
-    /// Response
+    /// Response only: the client never sends it.
     /// </summary>
     RecruitApplyDel = 0x3F,
 
