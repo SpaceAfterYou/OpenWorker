@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Hotspot.Telemetry;
 
@@ -19,10 +20,19 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
     /// </summary>
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(5);
 
+    /// <summary>
+    /// The longest a pass may last while the queue never empties, before what waits for its end runs anyway.
+    /// </summary>
+    private static readonly long MaxPassTicks = Stopwatch.Frequency / 200;
+
     private readonly BlockingCollection<(SendOrPostCallback Callback, object? State)> _queue = new();
     private readonly ILogger<WorldLoop> _logger;
     private readonly WorldLoopMetrics? _metrics;
     private readonly Thread _thread;
+
+    // What waits for the end of the pass, and when the first of it was added. Touched on the loop thread only.
+    private readonly List<IEndOfPass> _endOfPass = [];
+    private long _passStarted;
 
     /// <param name="metrics">Reports the queue and the callbacks; <see langword="null"/> for a loop nobody measures.</param>
     /// <param name="sessions">Counts the messages the encoder of the loop drops; <see langword="null"/> for none.</param>
@@ -58,6 +68,24 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
             // The loop has been stopped and its queue is gone.
             return 0;
         }
+    }
+
+    /// <summary>
+    /// Runs the work once the loop has handled everything queued now, before it waits for more: at the end of the pass.
+    /// What arrives meanwhile joins the pass, so work that many callbacks add to (the moves of one actor) is done once for
+    /// all of them. A pass that never runs dry ends after 5 ms anyway. Call it on the loop; work added twice in one pass
+    /// runs twice, so the caller remembers that it has added it.
+    /// </summary>
+    public void AtEndOfPass(IEndOfPass work)
+    {
+        Debug.Assert(IsCurrent, "The end of a pass belongs to the loop thread.");
+
+        if (_endOfPass.Count == 0)
+        {
+            _passStarted = Stopwatch.GetTimestamp();
+        }
+
+        _endOfPass.Add(work);
     }
 
     public override void Post(SendOrPostCallback d, object? state)
@@ -173,10 +201,42 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
                 LogCallbackFailed(e);
             }
 
+            if (_endOfPass.Count > 0 && (_queue.Count == 0 || Stopwatch.GetTimestamp() - _passStarted >= MaxPassTicks))
+            {
+                EndPass();
+            }
+
             _metrics?.Finish(started);
         }
     }
 
+    private void EndPass()
+    {
+        // Work may add more work; it runs in the same round.
+        for (var index = 0; index < _endOfPass.Count; index++)
+        {
+            try
+            {
+                _endOfPass[index].EndOfPass();
+            }
+
+            catch (Exception e)
+            {
+                LogCallbackFailed(e);
+            }
+        }
+
+        _endOfPass.Clear();
+    }
+
     [LoggerMessage(Level = LogLevel.Critical, Message = "World loop callback failed.")]
     private partial void LogCallbackFailed(Exception exception);
+}
+
+/// <summary>
+/// Work that waits for the end of a pass of the world loop (<see cref="WorldLoop.AtEndOfPass"/>).
+/// </summary>
+public interface IEndOfPass
+{
+    void EndOfPass();
 }

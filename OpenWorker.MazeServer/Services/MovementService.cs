@@ -1,24 +1,29 @@
 using Arch.Core;
 using OpenWorker.Channel;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Handler.Attributes;
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Handler;
 
 namespace OpenWorker.MazeServer.Services;
 
 /// <summary>
 /// Every player has a maze of their own for now, so the only one to tell is the player.
 /// </summary>
-public sealed class MovementService(World world) : MovementServiceBase(world)
+public sealed class MovementService(World world, MovementPace pace, HandlerExecutor errors, ILogger<MovementService> logger) :
+    MovementServiceBase(world, pace, errors, logger)
 {
     private readonly World _world = world;
 
-    protected override void Broadcast(Entity player, IResponseHotspotMessage message)
+    protected override void Broadcast<T>(Entity player, in T message)
     {
-        _world.Get<ServerSessionComponent>(player).Send(message);
+        using var frame = Frame.Encode(in message);
+
+        if (frame is not null)
+        {
+            _world.Get<ServerSessionComponent>(player).Send(frame);
+        }
     }
 
-    protected override void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
+    protected override void BroadcastToOthers<T>(Entity player, in T message)
     {
     }
 }

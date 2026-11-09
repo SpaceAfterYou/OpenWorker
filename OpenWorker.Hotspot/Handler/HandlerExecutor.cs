@@ -13,7 +13,8 @@ public sealed partial class HandlerExecutor(
     World world,
     HandlerErrorBudget budget,
     ILogger<HandlerExecutor> logger,
-    HandlerMetrics? metrics = null)
+    HandlerMetrics? metrics = null,
+    PacketRateLimiter? limiter = null)
 {
     private const int OpcodeSize = sizeof(short);
 
@@ -34,7 +35,8 @@ public sealed partial class HandlerExecutor(
     /// <summary>
     /// Reads the opcode of a packet, parses the request and runs its handler. A packet that cannot be read
     /// and a handler that fails never throw out of here: the error is counted for the session, and the
-    /// session is closed once it has sent too many (<see cref="HandlerErrorBudget" />).
+    /// session is closed once it has sent too many (<see cref="HandlerErrorBudget" />). A packet sent faster than its
+    /// group allows (<see cref="PacketRateLimiter" />) is dropped before it is parsed.
     /// </summary>
     /// <remarks>The scope of the logs is the one of the session's <see cref="ServerSessionComponent"/>, looked up here;
     /// the read loop, which holds the session already, passes it instead.</remarks>
@@ -70,6 +72,11 @@ public sealed partial class HandlerExecutor(
             var current = ReadOpcode(buffer.Span);
 
             opcode = current;
+
+            if (!Admit(player, current))
+            {
+                return;
+            }
 
             if (!collection.TryGet(current, out var found))
             {
@@ -181,18 +188,62 @@ public sealed partial class HandlerExecutor(
         }
     }
 
+    /// <summary>
+    /// Takes a token of the group of the packet from the session (<see cref="PacketRateLimiter"/>). A packet without one is
+    /// dropped and counted, and nothing else happens to the session.
+    /// </summary>
+    private bool Admit(Entity player, MessageOpcode opcode)
+    {
+        if (limiter is null || !world.IsAlive(player))
+        {
+            return true;
+        }
+
+        var group = PacketRateLimiter.GroupOf(opcode.Group);
+
+        ref var state = ref world.TryGetRef<PacketRateComponent>(player, out var exists);
+
+        if (!exists)
+        {
+            world.Add<PacketRateComponent>(player);
+            state = ref world.Get<PacketRateComponent>(player);
+        }
+
+        if (limiter.TryTake(ref state, group))
+        {
+            return true;
+        }
+
+        metrics?.Refused(PacketRateLimiter.Tag(group));
+
+        return false;
+    }
+
     private bool IsClosed(Entity player)
     {
         return world.IsAlive(player) && world.TryGet(player, out HandlerErrorsComponent errors) && errors.Closed;
     }
 
     /// <summary>
+    /// Counts a packet that a handler refused as impossible against the budget of the session, as a packet that fails:
+    /// logged, measured, and the connection closed once the budget runs out. Call it on the world loop.
+    /// </summary>
+    public void Charge(Entity player, MessageOpcode opcode, HandlerErrorReason reason)
+    {
+        OnError(player, opcode, reason, exception: null);
+    }
+
+    private void OnError(Entity player, MessageOpcode? opcode, Exception exception)
+    {
+        OnError(player, opcode, HandlerErrorBudget.Classify(exception), exception);
+    }
+
+    /// <summary>
     /// Counts the error for the session. The first one of a window is logged with its exception and the next
     /// ones only counted; the one that uses up the budget closes the connection and says so once.
     /// </summary>
-    private void OnError(Entity player, MessageOpcode? opcode, Exception exception)
+    private void OnError(Entity player, MessageOpcode? opcode, HandlerErrorReason reason, Exception? exception)
     {
-        var reason = HandlerErrorBudget.Classify(exception);
         var tag = HandlerErrorBudget.Tag(reason);
 
         metrics?.Error(tag);
@@ -258,20 +309,20 @@ public sealed partial class HandlerExecutor(
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
         Message = "Session {Entity} (actor {Actor}, {Remote}) sent a packet {Opcode} that failed, reason {Reason}: error {Count} of {Limit} within {Window}.")]
-    private static partial void LogFirstError(ILogger logger, Exception exception, int entity, int actor, string? remote,
+    private static partial void LogFirstError(ILogger logger, Exception? exception, int entity, int actor, string? remote,
         OpcodeText opcode, string reason, int count, int limit, TimeSpan window);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Debug,
         Message = "Session {Entity} sent another packet {Opcode} that failed, reason {Reason}: error {Count} of {Limit}.")]
-    private static partial void LogNextError(ILogger logger, Exception exception, int entity, OpcodeText opcode,
+    private static partial void LogNextError(ILogger logger, Exception? exception, int entity, OpcodeText opcode,
         string reason, int count, int limit);
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Warning,
         Message = "Closing session {Entity} (actor {Actor}, {Remote}) after {Count} failed packets within {Window}, the last was {Opcode}, reason {Reason}.")]
-    private static partial void LogSessionClosed(ILogger logger, Exception exception, int entity, int actor, string? remote,
+    private static partial void LogSessionClosed(ILogger logger, Exception? exception, int entity, int actor, string? remote,
         int count, TimeSpan window, OpcodeText opcode, string reason);
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Debug,
         Message = "A packet {Opcode} failed after session {Entity} was gone, reason {Reason}.")]
-    private static partial void LogErrorOfGoneSession(ILogger logger, Exception exception, int entity, OpcodeText opcode, string reason);
+    private static partial void LogErrorOfGoneSession(ILogger logger, Exception? exception, int entity, OpcodeText opcode, string reason);
 }

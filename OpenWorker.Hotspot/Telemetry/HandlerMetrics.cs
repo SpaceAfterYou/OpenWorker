@@ -4,7 +4,7 @@ using System.Diagnostics.Metrics;
 namespace OpenWorker.Hotspot.Telemetry;
 
 /// <summary>
-/// How long each handler takes and why packets fail.<br/>
+/// How long each handler takes, why packets fail and which are dropped for their rate.<br/>
 /// The tag of the duration is the name of the opcode, worked out once for each slot of the handler table, so
 /// measuring a packet allocates nothing.
 /// </summary>
@@ -14,6 +14,7 @@ public sealed class HandlerMetrics
 
     private readonly Histogram<double> _duration;
     private readonly Counter<long> _errors;
+    private readonly Counter<long> _refused;
 
     public HandlerMetrics(IMeterFactory factory)
     {
@@ -27,6 +28,11 @@ public sealed class HandlerMetrics
             "handler.errors",
             unit: "{error}",
             description: "Packets that failed to parse or to handle. Tag reason.");
+
+        _refused = meter.CreateCounter<long>(
+            "handler.refused",
+            unit: "{packet}",
+            description: "Packets dropped because the session sent the packets of their group faster than its limit. Tag group.");
     }
 
     internal long Start()
@@ -42,6 +48,12 @@ public sealed class HandlerMetrics
         {
             _duration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, new KeyValuePair<string, object?>("opcode", opcode));
         }
+    }
+
+    /// <param name="group">The tag of the group, from <c>PacketRateLimiter.Tag</c>.</param>
+    internal void Refused(string group)
+    {
+        _refused.Add(1, new KeyValuePair<string, object?>("group", group));
     }
 
     /// <param name="reason">The tag of the reason, from <c>HandlerErrorBudget.Tag</c>.</param>

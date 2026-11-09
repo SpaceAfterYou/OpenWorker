@@ -65,7 +65,6 @@ public sealed class KeepAliveTest
 
             Channels = new ServiceChannels(
                 Options.Create(new ChannelOptions { From = 1, To = 1 }),
-                Options.Create(new InstanceOptions { Identifier = Guid.NewGuid() }),
                 World);
 
             Player = World.Create(new ServerSessionComponent(_server), KeepAliveComponent.Start(Time.GetTimestamp()));

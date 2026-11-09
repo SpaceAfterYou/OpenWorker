@@ -113,7 +113,9 @@ flowchart TB
   writer. The details, the rules and what has moved: `docs/phase-2/C-wire-format.md`.
 - **World loop.** `WorldLoop` is a `SynchronizationContext` with one thread. Every packet handler,
   every timer and the closing of every connection runs there, one at a time, so the ECS world and the
-  managers need no locks.
+  managers need no locks. A pass of the loop ends when it has handled everything queued (or after 5 ms of a queue that
+  never runs dry); work that waits for the end of a pass (`AtEndOfPass`, `IEndOfPass`) runs then, once for all the callbacks
+  of the pass: that is how the moves of one player are folded into one.
 - **Simulation clock.** `SimulationClock` steps everything that lives in game time together, every 50 ms, on the world
   loop: each maze is one simulation (`LuaMaze.Advance`: the timers of its script, the projectiles and chains of the player,
   then its monsters through `LuaCreatureManager.Step`), on the clock from the moment the client has loaded it to `Close()`.
@@ -132,6 +134,23 @@ flowchart TB
   loop (`MazeScripts`), and run in the state of every maze of it. A script that throws inside a call of the server ends the
   maze of its player (`LuaMaze.Fail`): it is logged, the maze closes and leaves the player, and the player is told. A call
   the server does not do is a no-op with one warning per script and function.
+- **Channels and visibility.** The players of a district stand in channels (`ServiceChannels`, `ServiceChannel`). Each channel
+  cuts its map into square cells of `World:VisibilityRadius` units and a player sees the players of its cell and of the eight
+  around it, so a move costs in the number of neighbours, not of the channel. Joining, leaving and crossing the edge of a cell
+  send `WorldInInfoPc` and `WorldOutInfoPc` to those who come into sight and go out of it, and the player the same about them;
+  what a player does in the world goes to those who see it (`BroadcastNearby`), encoded once; the list the client asks for after
+  loading a map (`World:ObjectReq`) holds the players in sight; the chat stays channel-wide (`Broadcast`). A move (05/02) waits
+  in the channel for the end of the pass and a later move of the same player in the pass replaces it, so an observer gets at
+  most one move of an actor per pass; any other message of the player for the players around it sends the waiting move first.
+  `MovementPace` refuses a move that covers more ground than the hero can run (its run speed from the tables, times the move
+  speed of its abilities, times `World:SpeedTolerance`, with `World:MoveBurst` of running saved up): the place stays, the player
+  gets a warp back to it, and the first refusal in a second counts against the error budget of the session (`HandlerExecutor.Charge`,
+  reason `violation`). The count of each channel goes to Redis when players join or leave, gathered for a second
+  (`ChannelLifecycleService`), not on a clock; every 10 s it writes every record again, which renews its lifetime of 30 s. Design and limits: `docs/phase-3/README.md`.
+- **Rate limits.** Before it parses a packet, `HandlerExecutor` takes a token from the bucket of its group in the session
+  (`PacketRateLimiter`, `PacketRateComponent`): movement, chat, items, everything else, each filling at its own rate up to its
+  burst (`Hotspot:RateLimits`). A packet that finds its bucket empty is dropped and counted in `handler.refused`; it is no error
+  and closes nothing.
 - **ECS.** Arch holds sessions, persons and creatures as components. Arch keeps one static registry
   of component types for the whole process and it is not thread safe: touch it from the world loop only,
   and keep tests that create entities out of parallel runs.
@@ -202,7 +221,8 @@ the metrics class as the last, optional constructor parameter: `null` is a part 
 | `worldloop.queue.length` | gauge, callbacks | | callbacks posted to the loop that have not started |
 | `worldloop.callback.duration` | histogram, s | | how long one callback holds the loop thread |
 | `handler.duration` | histogram, s | `opcode` | the task of a handler, from start to end, awaits included |
-| `handler.errors` | counter | `reason`: `malformed`, `handler_fault` | packets that failed to parse or to handle |
+| `handler.errors` | counter | `reason`: `malformed`, `handler_fault`, `violation` | packets that failed to parse or to handle, or that a handler refused as impossible |
+| `handler.refused` | counter | `group`: `movement`, `chat`, `items`, `other` | packets dropped because the session sent their group faster than its limit |
 | `simulation.step.duration` | histogram, s | | one tick of `SimulationClock`, all simulations |
 | `simulation.count` | gauge, simulations | | simulations (mazes) the clock steps |
 | `simulation.overbudget` | counter | | ticks longer than the 50 ms period |
@@ -275,8 +295,9 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
    settings, the batch files or the client is checked in Release and answered (a failure response to the client,
    a refused start of the server), with a log line.
 3. **Data of the client is hostile.** A length or an index is checked before it is used; a packet that fails to
-   parse or a handler that throws counts against the error budget of the session (`HandlerErrorBudget`,
-   `Hotspot:ErrorBudget`), which closes the connection when it runs out. That is a `Warning`; `Critical` is for the
+   parse, a handler that throws or a request the handler refuses as impossible (`HandlerExecutor.Charge`) counts against
+   the error budget of the session (`HandlerErrorBudget`, `Hotspot:ErrorBudget`), which closes the connection when it runs
+   out. That is a `Warning`; `Critical` is for the
    state of the process. A handler that needs a component the client may not have yet (`LuaMaze`, a reservation)
    checks for it with `Has`/`TryGet` and ignores or refuses the request.
 4. **Logs are structured.** Message templates through `[LoggerMessage]` methods, never string interpolation and
@@ -368,6 +389,11 @@ or wrong setting stops the server with a message that names the key. A setting w
   by `RedisOptions.ToConfigurationOptions`).
 - `Hotspot:ErrorBudget:MaxErrors` and `Hotspot:ErrorBudget:Window` (`00:01:00` is a minute) say how many packets of one
   session may fail to parse or to handle before the server closes its connection; `HandlerErrorBudget` reads them.
+- `Hotspot:RateLimits:Movement`, `:Chat`, `:Items` and `:Other`, each with `PerSecond` and `Burst`, are the token buckets of a
+  session: 30 and 60, 5 and 10, 20 and 40, 60 and 200 unless set (a rate above 0, a burst from 1).
+- `World:VisibilityRadius` (5000 game units), `World:SpeedTolerance` (1.5) and `World:MoveBurst` (`00:00:05`) of the district and
+  the maze: the size of a cell of the visibility grid, how much faster than its run speed a player may go, and how much running
+  it may save up and spend at once. The defaults stand unless set.
 - `Logging:Console:FormatterName` (`simple`) and `Logging:Console:FormatterOptions:IncludeScopes` (`true`) make the
   console print the scope of a line after `=>`. The older `Logging:Console:IncludeScopes` replaces the formatter
   options with its own and is not used. `Logging__LogLevel__Default=Debug` shows the debug lines.
@@ -409,8 +435,9 @@ or wrong setting stops the server with a message that names the key. A setting w
 - **A changed index schema is rebuilt under the servers.** When a build changes the attributes of a document of the cache,
   the relay drops its index (not the records) and makes it again; for that moment, and until Redis has indexed the
   records, searches by that index fail or miss.
-- **The count of a channel renews its record.** `ChannelLifecycleService` writes the count and the lifetime of each
-  channel every second; whatever replaces that loop has to keep renewing the records.
+- **The count of a channel renews its record.** `ChannelLifecycleService` writes the count of a channel a second after
+  players join or leave it, and every record with its lifetime (30 s) every 10 s; a change of that loop has to keep
+  renewing the records.
 - **Skill points do not follow the level.** A person starts with the points of `PersonSkills` and keeps what it spends;
   the client counts points against the level, the server does not yet.
 - **The shutdown notice is untried.** What the client shows for a kick-out with `GmToolServerShutdown` on a district

@@ -19,10 +19,14 @@ public static class ServiceCollectionExtensions
         services.AddInstanceOptions();
         services.AddGateOptions();
         services.AddChannelOptions();
+        services.AddWorldOptions();
 
         services.AddSingleton<ServiceChannels>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<ServiceChannels>());
         services.AddSingleton<ServerChannels>();
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<MovementPace>();
 
         services.AddHostedService<ChannelBootstrapService>();
         services.AddRegistrationService<ChannelLifecycleService>();

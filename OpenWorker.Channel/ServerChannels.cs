@@ -11,10 +11,13 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.Channel;
 
+/// <summary>
+/// The channels a player is offered and the change of channel. The list holds the channels of this server only, so a
+/// change goes to a channel of this process or to none: a channel the server does not run is not found.
+/// </summary>
 public sealed class ServerChannels(
     IOptions<InstanceOptions> instance,
     IRedisCollection<ChannelCache> channelCache,
-    // IRedisCollection<DistrictCache> districtCache,
     ServiceChannels channels,
     World world
 ) {
@@ -40,25 +43,11 @@ public sealed class ServerChannels(
         });
     }
 
-    public async ValueTask<ChannelSwitchResult> SwitchAsync(Entity entity, short identifier)
+    /// <summary>
+    /// Moves the player to another channel of this server.
+    /// </summary>
+    public ChannelSwitchResult Switch(Entity entity, short identifier)
     {
-        var result = channels.TrySwitch(entity, identifier);
-
-        if (result is ChannelSwitchResult.Ok)
-        {
-            return result;
-        }
-        
-        return await MoveAsync(entity, identifier);
-    }
-
-    private static ValueTask<ChannelSwitchResult> MoveAsync(Entity entity, short identifier)
-    {
-        // var desired = channelCache.First(e => e.Identifier == identifier);
-        // var district = districtCache.First(e => e.Guid != Owner);
-
-        // TODO: switch the server
-
-        return ValueTask.FromResult(ChannelSwitchResult.Ok);
+        return channels.TrySwitch(entity, identifier);
     }
 }

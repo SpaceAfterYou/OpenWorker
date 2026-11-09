@@ -13,9 +13,10 @@ public static class ServiceCollectionExtension
             @this.AddSingleton(handler);
         }
 
-        // The limits of the error budget come from the Hotspot:ErrorBudget section.
+        // The limits of the error budget come from the Hotspot:ErrorBudget section, those of the rate from Hotspot:RateLimits.
         @this.TryAddSingleton(TimeProvider.System);
         @this.AddHandlerErrorBudgetOptions();
+        @this.AddPacketRateLimitOptions();
 
         return @this
             .AddTransient<HandlerBuilder>()
@@ -23,6 +24,7 @@ public static class ServiceCollectionExtension
 
             .AddSingleton<EmptyHandler>()
             .AddSingleton<HandlerErrorBudget>()
+            .AddSingleton<PacketRateLimiter>()
             .AddSingleton<HandlerExecutor>()
             .AddSingleton<HandlerTable>();
     }

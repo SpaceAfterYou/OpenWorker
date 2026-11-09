@@ -196,7 +196,7 @@ public sealed class LeagueNotifier(
         // A maze has no channels, every entity only carries the component.
         if (channels.Count > 0 && world.Has<ChannelMemberComponent>(player) && channels.Get(player).Contains(player))
         {
-            channels.Get(player).Broadcast(alert);
+            channels.Get(player).BroadcastNearby(player, alert);
         }
 
         else

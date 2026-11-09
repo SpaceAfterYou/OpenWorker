@@ -30,7 +30,7 @@ public sealed class GestureService(
     private HashSet<int> Known { get; } = table.Select(e => (int)e.Id).ToHashSet();
 
     /// <summary>
-    /// Everybody in the channel sees the gesture, the one who makes it too.
+    /// Everybody who sees the player sees the gesture, the one who makes it too.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, GestureShowRequest request)
     {
@@ -43,7 +43,7 @@ public sealed class GestureService(
 
         world.Set(context.Player, gesture with { Active = request.Identifier });
 
-        channels.Get(context.Player).Broadcast(new GestureShowResponse
+        channels.Get(context.Player).BroadcastNearby(context.Player, new GestureShowResponse
         {
             Gesture = request.Identifier,
             Actor = world.Get<ActorComponent>(context.Player)

@@ -17,7 +17,12 @@ public enum HandlerErrorReason
     /// <summary>
     /// The handler failed on a packet that parsed.
     /// </summary>
-    HandlerFault
+    HandlerFault,
+
+    /// <summary>
+    /// The packet parsed and the handler refused what it asks for as impossible: a move faster than the player can run.
+    /// </summary>
+    Violation
 }
 
 /// <summary>
@@ -68,6 +73,7 @@ public sealed class HandlerErrorBudget
         return reason switch
         {
             HandlerErrorReason.Malformed => "malformed",
+            HandlerErrorReason.Violation => "violation",
             _ => "handler_fault"
         };
     }

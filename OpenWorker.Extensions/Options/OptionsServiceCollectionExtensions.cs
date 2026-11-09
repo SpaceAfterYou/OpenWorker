@@ -14,8 +14,8 @@ namespace OpenWorker.Extensions;
 public static class OptionsServiceCollectionExtensions
 {
     /// <summary>
-    /// The port the server listens on, the game version, the packet dumps, the errors a session may cause, the time
-    /// the server takes to stop and where the metrics go: what every server has.
+    /// The port the server listens on, the game version, the packet dumps, the errors a session may cause, the packets it
+    /// may send, the time the server takes to stop and where the metrics go: what every server has.
     /// </summary>
     public static IServiceCollection AddServerOptions(this IServiceCollection services)
     {
@@ -23,6 +23,7 @@ public static class OptionsServiceCollectionExtensions
         services.AddValidated<GameOptions, GameOptionsValidator>(GameOptions.SectionName);
         services.AddValidated<ShutdownOptions, ShutdownOptionsValidator>(ShutdownOptions.SectionName);
         services.AddHandlerErrorBudgetOptions();
+        services.AddPacketRateLimitOptions();
         services.AddTelemetryOptions();
 
         return services.AddBound<HotspotOptions>(HotspotOptions.SectionName);
@@ -46,6 +47,14 @@ public static class OptionsServiceCollectionExtensions
     public static IServiceCollection AddHandlerErrorBudgetOptions(this IServiceCollection services)
     {
         return services.AddValidated<HandlerErrorBudgetOptions, HandlerErrorBudgetOptionsValidator>(HandlerErrorBudgetOptions.SectionName);
+    }
+
+    /// <summary>
+    /// How many packets of each group a session may send: what the handlers read.
+    /// </summary>
+    public static IServiceCollection AddPacketRateLimitOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<PacketRateLimitOptions, PacketRateLimitOptionsValidator>(PacketRateLimitOptions.SectionName);
     }
 
     /// <summary>
@@ -110,6 +119,14 @@ public static class OptionsServiceCollectionExtensions
     public static IServiceCollection AddChannelOptions(this IServiceCollection services)
     {
         return services.AddValidated<ChannelOptions, ChannelOptionsValidator>(ChannelOptions.SectionName);
+    }
+
+    /// <summary>
+    /// What the players of a channel see of each other: what the district and the maze have.
+    /// </summary>
+    public static IServiceCollection AddWorldOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<WorldOptions, WorldOptionsValidator>(WorldOptions.SectionName);
     }
 
     /// <summary>

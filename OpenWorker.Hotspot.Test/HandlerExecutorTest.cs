@@ -667,4 +667,56 @@ public sealed class HandlerExecutorTest
         // Nothing per packet: a few bytes in all are left for what the runtime may allocate once on this thread.
         Assert.IsLessThan(Packets, allocated, $"{allocated} bytes for {Packets} packets.");
     }
+
+    /// <summary>
+    /// A session that sends the packets of a group faster than its limit loses the packets over it: they are dropped
+    /// before their handler, counted under their group, and are no error of the session. The bucket fills again with time.
+    /// </summary>
+    [TestMethod]
+    public async Task APacketOverTheRateOfItsGroupIsDroppedAndCountedWithoutAnError()
+    {
+        using var metrics = new MetricsHost();
+        using var refused = metrics.Listen<long>("handler.refused");
+        using var world = World.Create();
+
+        var time = new FakeTimeProvider();
+        var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
+
+        await using var services = new ServiceCollection().AddSingleton<ProbeHandler>().AddSingleton(empty).BuildServiceProvider();
+
+        // The probe is of the system group, which falls under the other packets.
+        var limits = new PacketRateLimitOptions { Other = new PacketRateLimit { PerSecond = 2, Burst = 3 } };
+
+        var executor = new HandlerExecutor(
+            Collection,
+            services,
+            world,
+            new HandlerErrorBudget(time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = 10, Window = Minute })),
+            NullLogger<HandlerExecutor>.Instance,
+            metrics.Get<Telemetry.HandlerMetrics>(),
+            new PacketRateLimiter(time, Options.Create(limits)));
+
+        var player = world.Create(new ActorComponent(7, ActorType.User), new HandlerErrorsComponent());
+
+        ProbeHandler.Handled = 0;
+
+        for (var sent = 0; sent < 5; sent++)
+        {
+            await executor.ExecuteAsync(Packet(ProbeRequest.Fine), player, null, CancellationToken.None);
+        }
+
+        Assert.AreEqual(3, ProbeHandler.Handled, "The burst of three goes through, the two after it do not.");
+        Assert.AreEqual(2, refused.Sum("group", "other"));
+        Assert.AreEqual(0, world.Get<HandlerErrorsComponent>(player).Count, "A dropped packet is no error of the session.");
+
+        time.Advance(TimeSpan.FromSeconds(1));
+
+        for (var sent = 0; sent < 3; sent++)
+        {
+            await executor.ExecuteAsync(Packet(ProbeRequest.Fine), player, null, CancellationToken.None);
+        }
+
+        Assert.AreEqual(5, ProbeHandler.Handled, "A second later two more fit.");
+        Assert.AreEqual(3, refused.Sum("group", "other"));
+    }
 }

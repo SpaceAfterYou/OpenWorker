@@ -156,7 +156,6 @@ internal static class ChannelMembers
     {
         return new ServiceChannels(
             Options.Create(new ChannelOptions { From = 1, To = 1 }),
-            Options.Create(new InstanceOptions { Identifier = Guid.NewGuid() }),
             world);
     }
 

@@ -35,6 +35,7 @@ internal sealed class ChannelBootstrapService(
 
     private ChannelCache CreateChannelCache(ServiceChannel channel) => new()
     {
+        Guid = channel.Record,
         Owner = Instance,
         Gate = Gate,
         Location = Location,

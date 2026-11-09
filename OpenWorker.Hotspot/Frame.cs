@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Collections.Concurrent;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot;
 
@@ -45,6 +46,15 @@ public sealed class Frame : IDisposable
     public static Frame? Encode(IResponseHotspotMessage message)
     {
         return FrameEncoder.Current.Encode(message);
+    }
+
+    /// <summary>
+    /// The same for a message with a span format, without boxing it: what a broadcast on the hot path uses.
+    /// </summary>
+    /// <inheritdoc cref="Encode(IResponseHotspotMessage)"/>
+    public static Frame? Encode<T>(in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    {
+        return FrameEncoder.Current.Encode(in message);
     }
 
     /// <summary>

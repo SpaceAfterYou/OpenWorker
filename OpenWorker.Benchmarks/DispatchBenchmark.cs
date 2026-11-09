@@ -39,6 +39,13 @@ public class DispatchBenchmark
     private HandlerExecutor _executor = null!;
     private Entity _player;
 
+    /// <summary>
+    /// Whether the executor takes a token from the bucket of the group of the packet, as a server does, or is built
+    /// without a limiter, to see what the check costs.
+    /// </summary>
+    [Params(true, false)]
+    public bool RateLimited { get; set; }
+
     [GlobalSetup]
     public void Setup()
     {
@@ -50,14 +57,26 @@ public class DispatchBenchmark
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Hotspot:ErrorBudget:MaxErrors"] = "10",
-                    ["Hotspot:ErrorBudget:Window"] = "00:01:00"
+                    ["Hotspot:ErrorBudget:Window"] = "00:01:00",
+
+                    // The bucket of the moves is checked for every packet, and never runs dry here: what is measured is
+                    // the way to the handler, not the drop of a packet over the limit.
+                    ["Hotspot:RateLimits:Movement:PerSecond"] = "1000000000",
+                    ["Hotspot:RateLimits:Movement:Burst"] = "1000000000"
                 })
                 .Build())
             .AddSingleton(_world)
             .AddHotspotHandlers()
             .BuildServiceProvider();
 
-        _executor = _services.GetRequiredService<HandlerExecutor>();
+        _executor = RateLimited
+            ? _services.GetRequiredService<HandlerExecutor>()
+            : new HandlerExecutor(
+                _services.GetRequiredService<HandlerTable>(),
+                _services,
+                _world,
+                _services.GetRequiredService<HandlerErrorBudget>(),
+                _services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<HandlerExecutor>>());
         _player = _world.Create();
     }
 
