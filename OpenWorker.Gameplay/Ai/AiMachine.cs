@@ -6,7 +6,7 @@ namespace OpenWorker.Gameplay.Ai;
 /// The mind of one monster: a machine of states that a script describes. It thinks every <see cref="AiProfile.CheckTime"/>
 /// seconds, looks at the transitions of its state and takes the first one whose conditions hold.
 /// </summary>
-public sealed class AiMachine
+public sealed partial class AiMachine
 {
     public const int NoTarget = -1;
 
@@ -174,6 +174,8 @@ public sealed class AiMachine
         _aggroTime += elapsed;
         _retargetTime += elapsed;
         _repathTime += elapsed;
+
+        StepEscape(elapsed);
 
         if (_aggroChanged && _aggroTime >= _profile.AggroCheckTime)
         {
@@ -395,6 +397,10 @@ public sealed class AiMachine
             }
 
             _host.SetInvincible(false);
+        }
+        else if (state == AiState.Recovery)
+        {
+            EndRecovery();
         }
     }
 
@@ -745,6 +751,11 @@ public sealed class AiMachine
             case AiVariable.HitCount:
                 return _hitCount;
 
+            case AiVariable.GuardDistance:
+            case AiVariable.GuardDistanceCapsule:
+            case AiVariable.GuardHealth:
+                return ReadGuard(variable);
+
             default:
                 return 0;
         }
@@ -856,7 +867,8 @@ public sealed class AiMachine
 
     private bool IsFarFromHome()
     {
-        if (Vector3.Distance(_host.Position, _host.HomePosition) <= _profile.ReturnDistance)
+        // A helper goes where its owner goes and never returns to where it appeared.
+        if (IsFollower || Vector3.Distance(_host.Position, _host.HomePosition) <= _profile.ReturnDistance)
         {
             return false;
         }
@@ -1085,7 +1097,11 @@ public sealed class AiMachine
                 break;
 
             case AiState.Attack:
-                OrderAttacks();
+                if (!IsFarFromOwner(true, false))
+                {
+                    OrderAttacks();
+                }
+
                 break;
 
             case >= AiState.AttackSkill1 and <= AiState.AttackSkill10:
@@ -1106,6 +1122,10 @@ public sealed class AiMachine
 
             case AiState.Runaway:
                 StartRunaway();
+                break;
+
+            case AiState.Recovery:
+                StartRecovery();
                 break;
         }
     }
@@ -1143,6 +1163,10 @@ public sealed class AiMachine
 
             case AiState.Return:
                 UpdateReturn();
+                break;
+
+            case AiState.Recovery:
+                UpdateRecovery(elapsed);
                 break;
         }
     }
@@ -1388,6 +1412,11 @@ public sealed class AiMachine
 
     private void StartMove()
     {
+        if (StartFollowing())
+        {
+            return;
+        }
+
         if (Target is not { } target)
         {
             ClearTarget();
@@ -1418,7 +1447,7 @@ public sealed class AiMachine
 
     private void UpdateMove()
     {
-        if (IsFarFromHome())
+        if (UpdateFollowing() || IsFarFromHome())
         {
             return;
         }
@@ -1447,7 +1476,7 @@ public sealed class AiMachine
             return;
         }
 
-        if (Target is null)
+        if (TargetFor(skill) is null)
         {
             ChangeState(AiState.Wait);
 
@@ -1462,7 +1491,7 @@ public sealed class AiMachine
 
     private void UpdateAttackSkill(float elapsed)
     {
-        var target = Target;
+        var target = _skill is { } chosen ? TargetFor(chosen) : Target;
 
         if (target is null)
         {
@@ -1546,7 +1575,7 @@ public sealed class AiMachine
 
             if (!_host.MoveTo(target.Value.Position - toward * Math.Min(wanted, distance), true) && !_host.IsMoving)
             {
-                ChangeState(AiState.SelectAction);
+                GiveUpReaching();
             }
         }
     }

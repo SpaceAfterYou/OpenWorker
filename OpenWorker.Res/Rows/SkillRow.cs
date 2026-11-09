@@ -87,7 +87,7 @@ public readonly partial struct SkillRow(BinaryReader reader)
     public string Field75 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public byte Field76 { get; } = reader.ReadByte();
     public byte Field77 { get; } = reader.ReadByte();
-    public byte Field78 { get; } = reader.ReadByte();
+    public byte TargetType { get; } = reader.ReadByte();
     public byte Field79 { get; } = reader.ReadByte();
     public byte Field80 { get; } = reader.ReadByte();
     public byte Field81 { get; } = reader.ReadByte();
