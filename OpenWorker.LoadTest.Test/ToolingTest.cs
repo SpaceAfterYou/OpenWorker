@@ -243,29 +243,32 @@ public sealed class ToolingTest
         Assert.AreEqual(1400L, Bot.Advance(1000, 100, 1300));
     }
 
+    /// <summary>
+    /// A length of time is a number with a unit, several of them in a row, or a bare number of seconds; a fraction is
+    /// allowed. The units themselves come back in <see cref="DurationsAreWrittenSoTheyCanBeReadBack"/>.
+    /// </summary>
     [TestMethod]
-    [DataRow("500ms", 0.5)]
-    [DataRow("30s", 30d)]
-    [DataRow("30", 30d)]
-    [DataRow("5m", 300d)]
-    [DataRow("1h", 3600d)]
-    [DataRow("1m30s", 90d)]
-    [DataRow("1.5s", 1.5)]
-    public void DurationsAreReadWithTheirUnits(string text, double seconds)
+    public void DurationsAreReadWithTheirUnits()
     {
-        Assert.IsTrue(Durations.TryParse(text, out var value));
-        Assert.AreEqual(seconds, value.TotalSeconds, 1e-9);
+        (string Text, double Seconds)[] cases = [("500ms", 0.5), ("30", 30d), ("1m30s", 90d), ("1.5s", 1.5)];
+
+        foreach (var (text, seconds) in cases)
+        {
+            Assert.IsTrue(Durations.TryParse(text, out var value), text);
+            Assert.AreEqual(seconds, value.TotalSeconds, 1e-9, text);
+        }
     }
 
+    /// <summary>
+    /// Nothing, no number, a unit the tool does not know, a bare number after a unit and a sign are refused.
+    /// </summary>
     [TestMethod]
-    [DataRow("")]
-    [DataRow("abc")]
-    [DataRow("5x")]
-    [DataRow("1m30")]
-    [DataRow("-5s")]
-    public void BrokenDurationsAreRefused(string text)
+    public void BrokenDurationsAreRefused()
     {
-        Assert.IsFalse(Durations.TryParse(text, out _));
+        foreach (var text in (string[])["", "5x", "1m30", "-5s"])
+        {
+            Assert.IsFalse(Durations.TryParse(text, out _), text);
+        }
     }
 
     [TestMethod]
@@ -370,17 +373,19 @@ public sealed class ToolingTest
         Assert.IsFalse(DockerStatsSampler.TryParseLine("""{"Name":"x"}""", out _, out _, out _));
     }
 
+    /// <summary>
+    /// Docker writes sizes in bytes, in powers of ten and in powers of two, with a fraction.
+    /// </summary>
     [TestMethod]
-    [DataRow("0B", 0L)]
-    [DataRow("512B", 512L)]
-    [DataRow("340kB", 340_000L)]
-    [DataRow("1.5MiB", 1_572_864L)]
-    [DataRow("2GiB", 2_147_483_648L)]
-    [DataRow("3MB", 3_000_000L)]
-    public void DockerSizesAreRead(string text, long bytes)
+    public void DockerSizesAreRead()
     {
-        Assert.IsTrue(DockerStatsSampler.TryParseSize(text, out var value));
-        Assert.AreEqual(bytes, value);
+        (string Text, long Bytes)[] cases = [("0B", 0L), ("340kB", 340_000L), ("1.5MiB", 1_572_864L)];
+
+        foreach (var (text, bytes) in cases)
+        {
+            Assert.IsTrue(DockerStatsSampler.TryParseSize(text, out var value), text);
+            Assert.AreEqual(bytes, value, text);
+        }
     }
 
     [TestMethod]

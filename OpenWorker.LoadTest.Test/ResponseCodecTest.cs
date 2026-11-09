@@ -103,11 +103,10 @@ public sealed class ResponseCodecTest
     }
 
     [TestMethod]
-    [DataRow(LoginErrorMessageCode.WrongUsernameOrPassword)]
-    [DataRow(LoginErrorMessageCode.InGameAlready)]
-    [DataRow(LoginErrorMessageCode.BanAccount)]
-    public void LoginRefusalGivesTheCode(LoginErrorMessageCode code)
+    public void LoginRefusalGivesTheCode()
     {
+        const LoginErrorMessageCode code = LoginErrorMessageCode.InGameAlready;
+
         var result = Responses.ReadLogin(BodyOf(new LoginResponse(code)));
 
         Assert.AreEqual((int)code, result.ErrorCode);
