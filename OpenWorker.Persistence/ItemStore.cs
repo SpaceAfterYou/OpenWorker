@@ -175,8 +175,16 @@ public static class ItemStore
                     .Append("\"Currencies\" = ").Append(Add(state.Currencies)).Append(", ")
                     .Append("\"StorageGrades\" = ").Append(Add(state.StorageGrades, NpgsqlDbType.Bytea)).Append(", ")
                     .Append("\"QuickSlotCards\" = ").Append(Add(state.QuickSlotCards)).Append(", ")
-                    .Append("\"QuickSlotItems\" = ").Append(Add(state.QuickSlotItems)).Append(", ")
-                    .Append("\"UpdatedAt\" = ").Append(Add(now))
+                    .Append("\"QuickSlotItems\" = ").Append(Add(state.QuickSlotItems)).Append(", ");
+
+                if (state.Fatigue is { } fatigue)
+                {
+                    sql.Append("\"FatiguePointCommon\" = ").Append(Add(fatigue.Common)).Append(", ")
+                        .Append("\"FatiguePointBonus\" = ").Append(Add(fatigue.Bonus)).Append(", ")
+                        .Append("\"FatigueRefilledAt\" = ").Append(Add(fatigue.RefilledAt is { } at ? at : DBNull.Value, NpgsqlDbType.TimestampTz)).Append(", ");
+                }
+
+                sql.Append("\"UpdatedAt\" = ").Append(Add(now))
                     .Append(" WHERE \"Id\" = ").Append(Add(changes.Person));
                 End();
             }

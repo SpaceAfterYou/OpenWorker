@@ -56,6 +56,21 @@ public enum AchievementType : ushort
     MazeClearedFast = 36,
 
     /// <summary>
+    /// A maze cleared at rank SS; the five types after it are the ranks below, down to F.
+    /// </summary>
+    MazeClearedRankSS = 37,
+
+    MazeClearedRankS = 38,
+
+    MazeClearedRankA = 39,
+
+    MazeClearedRankB = 40,
+
+    MazeClearedRankC = 41,
+
+    MazeClearedRankF = 42,
+
+    /// <summary>
     /// A monster of the middle-boss rank killed.
     /// </summary>
     MiddleBossKilled = 44,

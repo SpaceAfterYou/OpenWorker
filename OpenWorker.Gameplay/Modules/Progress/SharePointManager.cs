@@ -96,6 +96,28 @@ public sealed partial class SharePointManager(
     }
 
     /// <summary>
+    /// A clear of a maze with its rank and time, kept with the progress of the mazes of the person.
+    /// </summary>
+    public void RecordClear(Entity player, int maze, byte rank, int seconds)
+    {
+        if (!TryGet(player, out var book))
+        {
+            return;
+        }
+
+        book.Record(maze, rank, seconds);
+        world.MarkDirty(player, PersonSections.Progress);
+    }
+
+    /// <summary>
+    /// Whether the person has cleared the maze; false while its progress is not loaded.
+    /// </summary>
+    public bool HasCleared(Entity player, int maze)
+    {
+        return TryGet(player, out var book) && book.FindMaze(maze) is { Clears: > 0 };
+    }
+
+    /// <summary>
     /// The person takes the reward of a district (type 0) or of the steps of a group of mazes it has reached (any other
     /// type). The answer always goes, with the step the district or group is at, the result and what was given.
     /// </summary>

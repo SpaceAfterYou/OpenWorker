@@ -12,13 +12,13 @@ public readonly partial struct MazeInfoRow(BinaryReader reader)
     public short Id { get; } = reader.ReadInt16();
     public byte Type { get; } = reader.ReadByte();
     public short Group { get; } = reader.ReadInt16();
-    public byte Field3 { get; } = reader.ReadByte();
+    public byte RequiredLevel { get; } = reader.ReadByte();
     public byte Admission { get; } = reader.ReadByte();
     public short FatiguePoint { get; } = reader.ReadInt16();
     public byte Field6 { get; } = reader.ReadByte();
     public byte RefuseHelpers { get; } = reader.ReadByte();
     public byte Field8 { get; } = reader.ReadByte();
-    public byte Field9 { get; } = reader.ReadByte();
+    public byte Difficulty { get; } = reader.ReadByte();
     public byte Episode { get; } = reader.ReadByte();
     public short NextId { get; } = reader.ReadInt16();
     public string Batch { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();

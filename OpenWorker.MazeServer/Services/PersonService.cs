@@ -341,7 +341,9 @@ public sealed partial class PersonService(
         // What happens in the instance is wired once, for every player who is in it then.
         maze.MonsterKilled += (killer, monster, position) => rewards.OnKilled(killer, PresentOf(maze), monster, position);
         maze.Completed += () => partyEvents.Completed(maze);
+        maze.MonstersHit += results.OnMonstersHit;
         creatures.Vitals.HealthChanged += partyEvents.HealthChanged;
+        creatures.Vitals.HealthChanged += results.OnHealthChanged;
 
         // A helper sent away, by whatever way, gives back the orb of a friend it wore.
         creatures.Helpers.Released += helper => helperGear.ReleaseOrb(helper.Owner, helper.Helper);

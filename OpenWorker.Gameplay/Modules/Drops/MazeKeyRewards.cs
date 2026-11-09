@@ -98,6 +98,48 @@ public sealed partial class MazeKeyRewards(
         _offers.Remove(player);
     }
 
+    /// <summary>
+    /// The rates of the buckets are rolled against a total that grows with the rank: a rank reaches its own bucket and the
+    /// ones below it (the rates of almost every row add up to these totals, bucket by bucket).
+    /// </summary>
+    private static readonly int[] RankRollTotals = [10, 40, 160, 640, 2560, 10240];
+
+    /// <summary>
+    /// The item of the rank of a finished maze: a bucket by its rate, of those the rank reaches, then one item of the box
+    /// of that bucket by the rates of its items. Null when the maze has no row, the bucket no box, or the box no item the
+    /// item tables know.
+    /// </summary>
+    public (int Item, short Count)? RollForRank(int maze, byte rank)
+    {
+        if (maze <= 0 || rank >= RankRollTotals.Length || !_rewards.TryGet((uint)maze, out var row))
+        {
+            return null;
+        }
+
+        var point = Random.Shared.Next(RankRollTotals[rank] + 1);
+
+        for (var bucket = 0; bucket < MazeRewardItemRow.RankCount; bucket++)
+        {
+            if (point > row.RankRates[bucket])
+            {
+                point -= row.RankRates[bucket];
+                continue;
+            }
+
+            if (row.RankBoxes[bucket] is 0 or > int.MaxValue || !_boxes.TryGet((int)row.RankBoxes[bucket], out var box) ||
+                Pick(box) is not { } picked || !inventory.Catalog.Exists(picked.Item))
+            {
+                return null;
+            }
+
+            LogRankRolled(logger, maze, rank, bucket, picked.Item, picked.Count);
+
+            return picked;
+        }
+
+        return null;
+    }
+
     private bool IsKey(int item)
     {
         return inventory.Catalog.Classify(item)?.ItemUseType == ItemUseType.REWARD_ADD;
@@ -142,6 +184,9 @@ public sealed partial class MazeKeyRewards(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Maze {Maze} offers {Count} of item {Item} for {Keys} keys")]
     private static partial void LogRolled(ILogger logger, int maze, int item, short count, int keys);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Maze {Maze} at rank {Rank} gives bucket {Bucket}: {Count} of item {Item}")]
+    private static partial void LogRankRolled(ILogger logger, int maze, byte rank, int bucket, int item, short count);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Key reward taken: {Count} of item {Item} for {Keys} keys")]
     private static partial void LogTaken(ILogger logger, int item, short count, int keys);

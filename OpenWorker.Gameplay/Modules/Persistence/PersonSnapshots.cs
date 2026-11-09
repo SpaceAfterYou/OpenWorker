@@ -1,6 +1,7 @@
 using Arch.Core;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Maze.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -158,6 +159,7 @@ public sealed class PersonSnapshots(World world, IEnumerable<IPersonDocumentSour
             currencies,
             grades,
             (int[])inventory.QuickSlotCards.Clone(),
-            (int[])inventory.QuickSlotItems.Clone());
+            (int[])inventory.QuickSlotItems.Clone(),
+            world.TryGet<FatiguePointsComponent>(player, out var fatigue) ? new PersonFatigue(fatigue.Common, fatigue.Bonus, fatigue.RefilledAt) : null);
     }
 }

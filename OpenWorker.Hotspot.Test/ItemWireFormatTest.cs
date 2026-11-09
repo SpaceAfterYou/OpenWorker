@@ -103,10 +103,21 @@ public sealed class ItemWireFormatTest
     }
 
     [TestMethod]
-    public void MazeRewardWindowHasTheSizeTheClientReads()
+    public void MazeRewardWindowPutsEachFieldWhereTheClientReadsIt()
     {
-        // A byte, two numbers, a short, nine numbers, three pairs of a short and a number or byte.
-        Assert.HasCount(1 + 4 + 4 + 2 + 9 * 4 + 2 + 4 + 2 + 4 + 2 + 1, ToBytes(new MazeRewardInfoResponse { Rank = 5 }.Write));
+        var bytes = ToBytes(new MazeRewardInfoResponse { Rank = 5, ClearTime = 3661, TotalCombo = 7, PlayGold = 9, CashItem = 1234, CashItemCount = 2 }.Write);
+
+        // A byte, two numbers, the time as a short, eight numbers, three pairs of an item and its count, and a byte.
+        Assert.HasCount(1 + 4 + 4 + 2 + 8 * 4 + 3 * (4 + 2) + 1, bytes);
+        Assert.AreEqual(5, bytes[0]);
+
+        // The client splits the short into hours, minutes and seconds, and offers the keys when the item and the count of
+        // the second pair are both above zero: the reward was in the wrong places before.
+        Assert.AreEqual(3661, BitConverter.ToUInt16(bytes, 9));
+        Assert.AreEqual(7, BitConverter.ToInt32(bytes, 11));
+        Assert.AreEqual(9, BitConverter.ToInt32(bytes, 19));
+        Assert.AreEqual(1234, BitConverter.ToInt32(bytes, 49));
+        Assert.AreEqual(2, BitConverter.ToInt16(bytes, 53));
     }
 
     [TestMethod]

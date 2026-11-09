@@ -10,7 +10,8 @@ public static class PersonPersistentExtension
         return new FatiguePointsComponent
         {
             Bonus = value.FatiguePointBonus,
-            Common = value.FatiguePointCommon
+            Common = value.FatiguePointCommon,
+            RefilledAt = value.FatigueRefilledAt
         };
     }
 }

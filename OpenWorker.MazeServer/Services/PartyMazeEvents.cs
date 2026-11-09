@@ -91,10 +91,7 @@ public sealed partial class PartyMazeEvents(
     {
         var members = maze.Members.Where(world.IsAlive).ToArray();
 
-        foreach (var member in members)
-        {
-            results.Complete(member, members);
-        }
+        results.Complete(members);
 
         if (maze.Party != 0 && members.Length > 0)
         {

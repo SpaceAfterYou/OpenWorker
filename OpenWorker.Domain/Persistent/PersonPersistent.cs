@@ -65,8 +65,20 @@ public sealed class PersonPersistent : BasicPersistent
     /// </summary>
     public DateTime? LastLogoutAt { get; set; }
 
+    /// <summary>
+    /// The fatigue of the person: what entering a maze spends, up to 200, filled up each game day.
+    /// </summary>
     public required short FatiguePointCommon { get; set; }
+
+    /// <summary>
+    /// The fatigue saved up from the days before, up to 400, spent before <see cref="FatiguePointCommon"/>.
+    /// </summary>
     public short FatiguePointBonus { get; set; }
+
+    /// <summary>
+    /// When the fatigue was last filled up for a new game day; null for a person that has not been filled yet.
+    /// </summary>
+    public DateTime? FatigueRefilledAt { get; set; }
     
     public byte Level { get; set; } = 1;
     public int Experience { get; set; }

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.ItemSetup;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Res.Types;
@@ -11,7 +12,8 @@ using OpenWorker.UpdateContent.Res.Rows;
 namespace OpenWorker.Gameplay.Modules.Items;
 
 /// <summary>
-/// What happens when an item is used: boxes and packages open into items and money, an akashic record card goes into the book.
+/// What happens when an item is used: boxes and packages open into items and money, an akashic record card goes into the book,
+/// an item of fatigue fills the fatigue of the day.
 /// </summary>
 public sealed class ItemUseService(
     InventoryService inventory,
@@ -19,7 +21,8 @@ public sealed class ItemUseService(
     ReadOnlyCollection<ItemPackageRow> packages,
     ReadOnlyCollection<ItemRandomBoxRow> randomBoxes,
     BoosterManager? boosters = null,
-    AkashicService? akashic = null)
+    AkashicService? akashic = null,
+    FatigueService? fatigue = null)
 {
     private readonly RowIndex<int, ItemPackageRow> _packages = packages.IndexBy(e => e.Id);
     private readonly RowIndex<int, ItemRandomBoxRow> _randomBoxes = randomBoxes.IndexBy(e => e.Id);
@@ -49,6 +52,19 @@ public sealed class ItemUseService(
         {
             if (boosters is null || !catalog.TryGet(item.Item, out var boosterRow) || boosterRow.EffectType != BoosterEffect ||
                 !await boosters.AddAsync(player, (short)boosterRow.EffectValue, null, cancellationToken))
+            {
+                return false;
+            }
+
+            inventory.Spend(player, item, 1);
+
+            return true;
+        }
+
+        // An item of fatigue adds its value to the fatigue of the day, unless the person has saved fatigue or a full day.
+        if (classify.ItemUseType == ItemUseType.FP)
+        {
+            if (fatigue is null || !catalog.TryGet(item.Item, out var fatigueRow) || fatigue.Restore(player, fatigueRow.UseValue) is not null)
             {
                 return false;
             }

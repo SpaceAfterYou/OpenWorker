@@ -298,6 +298,11 @@ public partial class LuaMaze(
     /// </summary>
     public event Action? Completed;
 
+    /// <summary>
+    /// An attack of a player has hit monsters: the player, how many it hit and the damage it did in all.
+    /// </summary>
+    public event Action<Entity, int, long>? MonstersHit;
+
     private bool Started { get; set; }
     private long StartedAt { get; set; }
     private bool Closed { get; set; }
@@ -1198,6 +1203,8 @@ public partial class LuaMaze(
         var attackerStats = combat.GetPlayer(Ecs, player);
         var skillDamage = combat.GetSkill(skill);
         var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
+
+        MonstersHit?.Invoke(player, hits.Length, hits.Sum(e => (long)e.Damage));
 
         // Every target hit gives the soul gauge of the attacker a share of what the skill absorbs; the player is told once.
         if (creatureManager.Services?.Gauges is { } gauges && skillDamage.SoulGaugeAbsorb > 0f)
