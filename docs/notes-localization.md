@@ -4,6 +4,14 @@ Can the text of client 1.4.2.3 (the HanPurple release, Japanese) be replaced or 
 Russian or English? Research of 2026-11-09, on the unpacked client data and the client in IDA. Nothing of the server
 changed.
 
+**Confirmed with the real client on 2026-11-09 (route A, English demonstration package).** The client started with the
+rebuilt `datas/data12.v` and showed the changed strings of the login window ("[EN] Account Login", "Login ID",
+"Password", "Remember my login ID", "Log In [ENTER]", "[EN] Quit Game"); a string the package did not touch stayed
+Japanese, as expected. So a rebuilt archive with recomputed check sums is accepted, and the fonts draw Latin
+proportionally. Seen on that screen: none of the labels was cut by its field; **the space between words is drawn
+wide** in both fonts (the fonts' own space glyph), which the font tool can narrow as it already does for the Russian
+package. Still unverified by a run: route B, the merged font file, Cyrillic, text inside the world, and input.
+
 ## The answer
 
 **Yes, as a client-side package that players install; the server cannot deliver it.** Three findings make it work:
