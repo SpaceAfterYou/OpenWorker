@@ -480,9 +480,8 @@ public sealed class LuaCreatureManager
 
     public void MoveToPoint(int npc, int waypoint)
     {
-        var creature = Creatures.FirstOrDefault(x => ecs.Get<CreatureComponent>(x) == npc);
-
-        if (creature.IsAlive() is false)
+        // Asking a default entity whether it lives reads the world of id 0, which another maze may have destroyed.
+        if (!Creatures.Exists(e => ecs.IsAlive(e) && ecs.Get<CreatureComponent>(e) == npc))
         {
             Logger.UnknownNpcToMove(npc, waypoint);
         }
