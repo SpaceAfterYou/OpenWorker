@@ -16,6 +16,7 @@ using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Requests;
 using OpenWorker.Hotspot.Modules.Shop.Responses;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.DistrictServer.Services;
@@ -25,7 +26,7 @@ public sealed class ShopService(
     NpcManager npcManager,
     ReadOnlyCollection<NPCRow> npcList,
     ReadOnlyCollection<ShopRow> shopList,
-    ReadOnlyCollection<ItemRow> itemList,
+    ItemCatalog items,
     InventoryService inventory) :
     IHotspotHandler<ShopBuyRequest>,
     IHotspotHandler<ShopGachaRequest>,
@@ -33,10 +34,15 @@ public sealed class ShopService(
     IHotspotHandler<ShopRepurchaserRequest>,
     IHotspotHandler<ShopSellRequest>
 {
+    private readonly RowIndex<int, ShopRow> _shop = shopList.IndexBy(e => e.Id);
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, ShopBuyRequest request)
     {
-        var shopRow = shopList.First(e => e.Id == request.Index); // e.Field1 == npc.Field10 group
-        var itemRow = itemList.First(e => e.Id == shopRow.Item);
+        // A line of a shop or an item the tables do not have buys nothing, as a purse that is too light does.
+        if (!_shop.TryGet(request.Index, out var shopRow) || !items.TryGet(shopRow.Item, out var itemRow))
+        {
+            return ValueTask.CompletedTask;
+        }
 
         Debug.Assert(shopRow.Count == request.Count);
 

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Modules.Items;
@@ -11,6 +12,8 @@ namespace OpenWorker.Gameplay.Modules.Items;
 /// </summary>
 public sealed class InventoryFactory(ItemCatalog catalog, ReadOnlyCollection<CreateClothRow> outfits, IItemSerials serials)
 {
+    private readonly RowIndex<int, CreateClothRow> _outfits = outfits.IndexBy(e => (int)e.Id);
+
     /// <summary>
     /// The inventory a person had when it was last saved.
     /// </summary>
@@ -56,7 +59,7 @@ public sealed class InventoryFactory(ItemCatalog catalog, ReadOnlyCollection<Cre
             inventory.Place(StorageGroup.AbilityEquip, (int)AbilityEquipSlot.SoulWeapon, weapon);
         }
 
-        var outfit = outfits.FirstOrDefault(e => e.Id == person.Outfit);
+        var outfit = _outfits.GetOrDefault(person.Outfit);
 
         if (outfit.Id != 0)
         {

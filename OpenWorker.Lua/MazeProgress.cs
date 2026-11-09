@@ -1,6 +1,7 @@
 using OpenWorker.Batch;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Hotspot.Modules.Maze.Types;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Lua;
@@ -8,7 +9,7 @@ namespace OpenWorker.Lua;
 /// <summary>
 /// What has changed in a maze since it started: which sectors are cleared and what is open.
 /// </summary>
-public sealed class MazeProgress(VBatchFile batch, IReadOnlyCollection<InteractionObjectRow> interactions)
+public sealed class MazeProgress(VBatchFile batch, RowIndex<int, InteractionObjectRow> interactions)
 {
     private Dictionary<int, bool> Portals { get; } = batch.EventBox.Portals
         .DistinctBy(e => e.Id)
@@ -18,14 +19,7 @@ public sealed class MazeProgress(VBatchFile batch, IReadOnlyCollection<Interacti
         .DistinctBy(e => e.Id)
         .ToDictionary(e => e.Id, e => e.Type == default);
 
-    private Dictionary<int, MazeInteractionValue> Interactions { get; } = batch.EventBox.InterActions
-        .DistinctBy(e => e.Id)
-        .Join(
-            interactions,
-            box => box.Interaction,
-            row => row.Id,
-            (box, row) => new MazeInteractionValue(row.ShowSight == 1, row.EnableState == 1, box.Id, row.CountMax))
-        .ToDictionary(e => e.Box);
+    private Dictionary<int, MazeInteractionValue> Interactions { get; } = InteractionsOf(batch, interactions);
 
     /// <summary>
     /// Some sectors are cleared from the start, they have nothing to clear.
@@ -42,6 +36,24 @@ public sealed class MazeProgress(VBatchFile batch, IReadOnlyCollection<Interacti
     public IReadOnlyCollection<int> OpenPortals => Portals.Where(e => e.Value).Select(e => e.Key).ToArray();
     public IReadOnlyCollection<int> ClosedPortals => Portals.Where(e => !e.Value).Select(e => e.Key).ToArray();
     public IReadOnlyList<MazeInteractionValue> InteractionList => Interactions.Values.ToArray();
+
+    /// <summary>
+    /// The interaction objects of the map that the table knows, by their box, in the order of the map.
+    /// </summary>
+    private static Dictionary<int, MazeInteractionValue> InteractionsOf(VBatchFile batch, RowIndex<int, InteractionObjectRow> interactions)
+    {
+        var result = new Dictionary<int, MazeInteractionValue>();
+
+        foreach (var box in batch.EventBox.InterActions.DistinctBy(e => e.Id))
+        {
+            if (interactions.TryGet(box.Interaction, out var row))
+            {
+                result.Add(box.Id, new MazeInteractionValue(row.ShowSight == 1, row.EnableState == 1, box.Id, row.CountMax));
+            }
+        }
+
+        return result;
+    }
 
     public bool IsSectorCleared(int sector)
     {

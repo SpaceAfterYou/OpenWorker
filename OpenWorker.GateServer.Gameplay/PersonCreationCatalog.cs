@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.GateServer.Gameplay;
@@ -14,11 +15,16 @@ public sealed class PersonCreationCatalog(
     ReadOnlyCollection<CustomizeEyesRow> eyes,
     ReadOnlyCollection<CustomizeSkinRow> skin)
 {
+    private readonly RowIndex<int, CharacterInfoRow> _characters = characters.IndexBy(e => (int)e.Id);
+    private readonly RowIndex<byte, CustomizeHairRow> _hair = hair.IndexBy(e => e.Id);
+    private readonly RowIndex<byte, CustomizeEyesRow> _eyes = eyes.IndexBy(e => e.Id);
+    private readonly RowIndex<byte, CustomizeSkinRow> _skin = skin.IndexBy(e => e.Id);
+
     public bool TryGetCharacter(Hero hero, out CharacterInfoRow character)
     {
         var id = (int)hero * 1000;
 
-        character = characters.FirstOrDefault(e => e.Id == id);
+        character = _characters.GetOrDefault(id);
 
         return character.Id != 0;
     }
@@ -28,9 +34,9 @@ public sealed class PersonCreationCatalog(
     /// </summary>
     public bool IsOffered(Hero hero, AppearanceValue appearance)
     {
-        var hairRow = hair.FirstOrDefault(e => e.Id == (byte)hero);
-        var eyesRow = eyes.FirstOrDefault(e => e.Id == (byte)hero);
-        var skinRow = skin.FirstOrDefault(e => e.Id == (byte)hero);
+        var hairRow = _hair.GetOrDefault((byte)hero);
+        var eyesRow = _eyes.GetOrDefault((byte)hero);
+        var skinRow = _skin.GetOrDefault((byte)hero);
 
         return IsOffered(appearance.HairStyle,
                    hairRow.Style1, hairRow.Style2, hairRow.Style3, hairRow.Style4, hairRow.Style5,

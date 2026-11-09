@@ -13,6 +13,7 @@ using OpenWorker.Hotspot.Modules.Rewards.Types;
 using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
 using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 using OpenWorker.Gameplay.Modules.Persistence;
 
@@ -30,6 +31,8 @@ public sealed partial class SoulMetryManager(
     IRewardGranter rewards,
     ILogger<SoulMetryManager> logger)
 {
+    private readonly RowIndex<int, QuestRewardRow> _questRewards = questRewards.IndexBy(e => (int)e.Id);
+
     /// <summary>
     /// The person has no loaded soul metries, so nothing can be finished.
     /// </summary>
@@ -237,26 +240,21 @@ public sealed partial class SoulMetryManager(
             return 0;
         }
 
-        foreach (var reward in questRewards)
+        if (!_questRewards.TryGet(row, out var reward))
         {
-            if (reward.Id != row)
-            {
-                continue;
-            }
-
-            return info.Hero switch
-            {
-                Hero.Haru => reward.HaruItem,
-                Hero.Erwin => reward.ErwinItem,
-                Hero.Lily => reward.LilyItem,
-                Hero.Jin => reward.JinItem,
-                Hero.Stella => reward.StellaItem,
-                Hero.Iris => reward.IrisItem,
-                _ => 0
-            };
+            return 0;
         }
 
-        return 0;
+        return info.Hero switch
+        {
+            Hero.Haru => reward.HaruItem,
+            Hero.Erwin => reward.ErwinItem,
+            Hero.Lily => reward.LilyItem,
+            Hero.Jin => reward.JinItem,
+            Hero.Stella => reward.StellaItem,
+            Hero.Iris => reward.IrisItem,
+            _ => 0
+        };
     }
 
     private void SendAll(Entity player, SoulMetryState state)

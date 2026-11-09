@@ -4,6 +4,7 @@ using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Res.Types;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Modules.Items;
@@ -18,6 +19,9 @@ public sealed class ItemUseService(
     ReadOnlyCollection<ItemRandomBoxRow> randomBoxes,
     BoosterManager? boosters = null)
 {
+    private readonly RowIndex<int, ItemPackageRow> _packages = packages.IndexBy(e => e.Id);
+    private readonly RowIndex<int, ItemRandomBoxRow> _randomBoxes = randomBoxes.IndexBy(e => e.Id);
+
     // The kind of effect in the item row that names a booster.
     private const int BoosterEffect = 3;
 
@@ -105,13 +109,8 @@ public sealed class ItemUseService(
 
     private Reward? OpenPackage(int id)
     {
-        foreach (var row in packages)
+        if (_packages.TryGet(id, out var row))
         {
-            if (row.Id != id)
-            {
-                continue;
-            }
-
             var ids = new[] { row.Item1, row.Item2, row.Item3, row.Item4, row.Item5, row.Item6, row.Item7, row.Item8, row.Item9, row.Item10 };
             var counts = new[] { row.Count1, row.Count2, row.Count3, row.Count4, row.Count5, row.Count6, row.Count7, row.Count8, row.Count9, row.Count10 };
 
@@ -127,13 +126,8 @@ public sealed class ItemUseService(
 
     private Reward? OpenRandomBox(int id)
     {
-        foreach (var row in randomBoxes)
+        if (_randomBoxes.TryGet(id, out var row))
         {
-            if (row.Id != id)
-            {
-                continue;
-            }
-
             var rates = new[] { row.ItemRate1, row.ItemRate2, row.ItemRate3, row.ItemRate4, row.ItemRate5, row.ItemRate6, row.ItemRate7, row.ItemRate8, row.ItemRate9, row.ItemRate10, row.ItemRate11, row.ItemRate12, row.ItemRate13, row.ItemRate14, row.ItemRate15 };
             var ids = new[] { row.Item1, row.Item2, row.Item3, row.Item4, row.Item5, row.Item6, row.Item7, row.Item8, row.Item9, row.Item10, row.Item11, row.Item12, row.Item13, row.Item14, row.Item15 };
             var counts = new[] { row.Count1, row.Count2, row.Count3, row.Count4, row.Count5, row.Count6, row.Count7, row.Count8, row.Count9, row.Count10, row.Count11, row.Count12, row.Count13, row.Count14, row.Count15 };

@@ -3,6 +3,7 @@ using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay;
@@ -11,12 +12,14 @@ public sealed class BuffManager(World world, ReadOnlyCollection<BuffRow> buffs)
 {
     private Dictionary<Entity, List<int>> Buffs { get; } = [];
 
+    private RowIndex<int, BuffRow> Rows { get; } = buffs.IndexBy(e => (int)e.Id);
+
     /// <summary>
     /// False when the buff table has no such buff, which a script can ask for.
     /// </summary>
     public bool Apply(Entity player, ActorComponent actor, int buff)
     {
-        var item = buffs.FirstOrDefault(x => x.Id == buff);
+        var item = Rows.GetOrDefault(buff);
 
         // The row of a buff that is not in the table stays empty.
         if (item.Id == 0)

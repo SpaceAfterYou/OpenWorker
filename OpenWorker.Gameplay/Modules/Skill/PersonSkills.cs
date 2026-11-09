@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Modules.Skill;
@@ -34,6 +35,8 @@ public sealed record SkillDeck(ushort Position, int Skill1, int Skill2, int Skil
 /// </summary>
 public sealed class PersonSkills(World world, PersonStateStore store, ReadOnlyCollection<CharacterInfoRow> characters)
 {
+    private readonly RowIndex<byte, CharacterInfoRow> _heroes = characters.Where(e => e.Id != 0).IndexBy(e => e.Character);
+
     /// <summary>
     /// The points a person starts with. The client counts them against the level, which the server does not do yet.
     /// </summary>
@@ -84,15 +87,9 @@ public sealed class PersonSkills(World world, PersonStateStore store, ReadOnlyCo
     /// </summary>
     public SkillInfoValue[] DefaultSkills(Hero hero)
     {
-        foreach (var row in characters)
-        {
-            if (row.Character == (byte)hero && row.Id != 0)
-            {
-                return row.GetSkillList().Where(id => id > 0).Select(id => new SkillInfoValue { Skill = id, Divergence = 0 }).ToArray();
-            }
-        }
-
-        return [];
+        return _heroes.TryGet((byte)hero, out var row)
+            ? row.GetSkillList().Where(id => id > 0).Select(id => new SkillInfoValue { Skill = id, Divergence = 0 }).ToArray()
+            : [];
     }
 
     private SkillBook CreateNew(Hero hero)
