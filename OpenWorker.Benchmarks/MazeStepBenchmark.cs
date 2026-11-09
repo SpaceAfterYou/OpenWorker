@@ -10,6 +10,7 @@ using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -85,7 +86,7 @@ public class MazeStepBenchmark
             _world,
             player,
             creatures,
-            new BuffManager(_world, new ReadOnlyCollection<BuffRow>([])),
+            new BuffManager(new ReadOnlyCollection<BuffRow>([])),
             null!,
             batch,
             new ReadOnlyCollection<InteractionObjectRow>([]).IndexBy(e => e.Id),

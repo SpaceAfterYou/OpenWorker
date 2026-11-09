@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons;
@@ -173,9 +174,17 @@ public sealed class CombatTables(
     }
 
     /// <summary>
-    /// The stats of a player as they are now: the level it has reached, what it wears and the titles it has chosen.
+    /// The stats of a player as they are now: the level it has reached, what it wears, the titles it has chosen and the buffs
+    /// it carries.
     /// </summary>
     public CombatStats GetPlayer(World world, Entity player)
+    {
+        var stats = GetPlayerUnbuffed(world, player);
+
+        return world.TryGet<BuffBookComponent>(player, out var buffs) && buffs.Book is { } book ? book.Apply(stats) : stats;
+    }
+
+    private CombatStats GetPlayerUnbuffed(World world, Entity player)
     {
         var hero = world.Get<PersonInfoComponent>(player).Hero;
         var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : PersonModuleDefines.DefaultLevel;

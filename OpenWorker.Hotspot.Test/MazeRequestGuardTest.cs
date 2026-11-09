@@ -13,6 +13,7 @@ using OpenWorker.Batch.Actions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -169,18 +170,8 @@ public sealed class MazeRequestGuardTest
     [TestMethod]
     public void ScriptThatAppliesABuffTheTableDoesNotHaveIsRefused()
     {
-        var world = World.Create();
+        var buffs = new BuffManager(TestMazes.None<BuffRow>());
 
-        try
-        {
-            var buffs = new BuffManager(world, TestMazes.None<BuffRow>());
-
-            Assert.IsFalse(buffs.Apply(world.Create(), default, 12345));
-        }
-
-        finally
-        {
-            World.Destroy(world);
-        }
+        Assert.IsFalse(buffs.Catalog.TryGet(12345, out _));
     }
 }

@@ -40,7 +40,7 @@ public sealed class PartyMazeTest
     /// <summary>
     /// A map with one box of the first sector that shows one monster at once.
     /// </summary>
-    private static string MapWithMonster(int monster) =>
+    internal static string MapWithMonster(int monster) =>
         "<root><Batchs eventtype=\"EventBox\">" + SpawnBox.Replace("{MONSTER}", monster.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal) +
         "</Batchs><Batchs eventtype=\"EventPoint\"/></root>";
 
