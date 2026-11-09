@@ -61,6 +61,7 @@ await Host
         services.AddSingleton<MazeInstances>();
         services.AddSingleton<PartyMazeEvents>();
         services.AddSingleton<MazeHelperField>();
+        services.AddSingleton<OpenWorker.Gameplay.Modules.Helpers.ISummonedHelpers, MazeSummonedHelpers>();
         services.AddSingleton<OpenWorker.Gameplay.Modules.Helpers.IHelperField>(provider => provider.GetRequiredService<MazeHelperField>());
         services.AddSingleton<ISessionCloseHandler, MazeCloseHandler>();
 

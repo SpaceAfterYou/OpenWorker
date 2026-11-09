@@ -20,7 +20,7 @@ namespace OpenWorker.MazeServer.Services;
 /// </summary>
 public sealed partial class MazeHelperField(
     World world,
-    HelperManager manager,
+    HelperGear gear,
     HelperStats stats,
     IPartyRoster parties,
     ILogger<MazeHelperField> logger
@@ -47,7 +47,7 @@ public sealed partial class MazeHelperField(
             inMaze ? maze!.Helpers.SinceLastSummon(player) : TimeSpan.MaxValue,
             inMaze,
             inMaze && !maze!.RefusesHelpers,
-            manager.TryGetRecord(player, helper, out _),
+            EntryOf(player, helper) is not null,
             inMaze && maze!.Helpers.Find(player, helper) is not null,
             inMaze ? maze!.Helpers.Count : 0,
             party));
@@ -135,16 +135,29 @@ public sealed partial class MazeHelperField(
         }
     }
 
+    /// <summary>
+    /// The helper as the person has it, or nothing when it does not have it.
+    /// </summary>
+    private HelperEntry? EntryOf(Entity player, int helper)
+    {
+        return world.TryGet<HelperComponent>(player, out var component) ? component.Book?.Find(helper) : null;
+    }
+
+    /// <summary>
+    /// The helper comes with its record as called, which carries what it wears and the orb of a friend, and it fights with
+    /// what it has by itself at its owner's level and what those add.
+    /// </summary>
     private bool Summon(Entity player, LuaMaze maze, int helper)
     {
-        if (!manager.TryGetRecord(player, helper, out var record))
+        if (EntryOf(player, helper) is not { } entry)
         {
             return false;
         }
 
+        var record = gear.Record(player, entry, summoned: true);
         var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
 
-        return maze.SummonHelper(player, stats.Combat(helper, level, record.Additional ?? []), record with { Summoned = true }) is not null;
+        return maze.SummonHelper(player, stats.Combat(helper, level, record.Additional ?? []), record) is not null;
     }
 
     private LuaMaze? MazeOf(Entity player)
@@ -186,4 +199,15 @@ public sealed partial class MazeHelperField(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The party of person {Person} could not be read; the players of its maze are counted for its helpers")]
     private partial void LogPartyUnknown(Exception exception, int person);
+}
+
+/// <summary>
+/// Which helpers of a person stand in its maze now: those give back the orbs of friends when the maze is cleared.
+/// </summary>
+public sealed class MazeSummonedHelpers(World world) : ISummonedHelpers
+{
+    public bool IsSummoned(Entity player, int helper)
+    {
+        return world.IsAlive(player) && world.TryGet(player, out LuaMaze? maze) && maze is { IsClosed: false } && maze.Helpers.Find(player, helper) is not null;
+    }
 }
