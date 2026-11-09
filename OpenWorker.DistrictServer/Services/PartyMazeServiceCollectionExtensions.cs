@@ -1,3 +1,4 @@
+using OpenWorker.Channel.Community;
 using OpenWorker.Hotspot;
 
 namespace OpenWorker.DistrictServer.Services;
@@ -12,6 +13,8 @@ public static class PartyMazeServiceCollectionExtensions
         services.AddSingleton<IPartyMazeRoutes, PartyMazeRoutes>();
         services.AddSingleton<PartyMazeEntry>();
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<PartyMazeEntry>());
+        services.AddSingleton<IPartyMatchListener>(provider => provider.GetRequiredService<PartyMazeEntry>());
+        services.AddSingleton<ICommunityModule>(provider => provider.GetRequiredService<PartyMazeEntry>());
 
         return services;
     }

@@ -96,8 +96,13 @@ public sealed partial class PartyMazeEntry(
     CommunityNetwork community,
     IPartyMazeRoutes routes,
     ILogger<PartyMazeEntry> logger
-) : ISessionCloseHandler
+) : ISessionCloseHandler, IPartyMatchListener, ICommunityModule
 {
+    /// <summary>
+    /// The event that has the servers of the members of a party the auto matching made send them into its maze.
+    /// </summary>
+    private const string MatchedEvent = "party.maze.matched";
+
     /// <summary>
     /// Only the master of a party opens a maze for it.
     /// </summary>
@@ -311,6 +316,48 @@ public sealed partial class PartyMazeEntry(
         }
     }
 
+    /// <summary>
+    /// The auto matching made a party for the maze, and everybody in it said they go: one instance for it, and every member
+    /// is sent in by the server they are on.
+    /// </summary>
+    public async ValueTask OnMatchedAsync(int party, short maze, IReadOnlyList<int> persons)
+    {
+        if (!routes.IsMaze(maze))
+        {
+            return;
+        }
+
+        var record = await routes.OpenAsync(party, maze);
+
+        LogLaunched(party, maze, record.Instance);
+
+        await community.PublishAsync(persons, MatchedEvent, BitConverter.GetBytes(party));
+    }
+
+    public void Attach(CommunityNetwork network)
+    {
+        network.On(MatchedEvent, OnMatchedHereAsync);
+    }
+
+    /// <summary>
+    /// The members of a matched party who are on this server go into its maze.
+    /// </summary>
+    private async ValueTask OnMatchedHereAsync(CommunityEvent matched)
+    {
+        if (matched.Body.Length < sizeof(int) || await routes.FindAsync(BitConverter.ToInt32(matched.Body.Span)) is not { } record)
+        {
+            return;
+        }
+
+        foreach (var person in matched.Persons)
+        {
+            if (community.TryGet(person, out var player) && !await routes.SendAsync(player, record.Location, 0, record) && world.IsAlive(player))
+            {
+                LogMatchedNotSent(person, record.Location);
+            }
+        }
+    }
+
     public ValueTask OnSessionClosedAsync(Entity player)
     {
         if (world.Has<ActorComponent>(player) &&
@@ -371,6 +418,9 @@ public sealed partial class PartyMazeEntry(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Party {Party} is asked to enter maze {Maze}, {Members} members")]
     private partial void LogAsked(int party, short maze, int members);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Person {Person} of a matched party could not be sent into maze {Maze}")]
+    private partial void LogMatchedNotSent(int person, short maze);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Party {Party} enters maze {Maze} as instance {Instance}")]
     private partial void LogLaunched(int party, short maze, Guid instance);
