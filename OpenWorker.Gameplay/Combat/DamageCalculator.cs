@@ -21,13 +21,14 @@ public enum DefenseType : byte
     Invincible = 3
 }
 
-public readonly record struct SkillDamage(byte Attribute, float BasicDamage, float AddDamage, float DamageRate, float SuperArmorAttack = 0f)
+/// <param name="SoulGaugeAbsorb">What a hit of the skill gives to the soul gauge of the attacker, before the share of the target.</param>
+public readonly record struct SkillDamage(byte Attribute, float BasicDamage, float AddDamage, float DamageRate, float SuperArmorAttack = 0f, float SoulGaugeAbsorb = 0f)
 {
     public const byte MagicalAttribute = 2;
 
     public static SkillDamage From(in SkillRow row)
     {
-        return new SkillDamage(row.Attribute, row.BasicDamage, row.AddDamage, row.DamageRate, row.SuperArmorAttack);
+        return new SkillDamage(row.Attribute, row.BasicDamage, row.AddDamage, row.DamageRate, row.SuperArmorAttack, row.SoulGaugeAbsorb);
     }
 }
 
