@@ -445,7 +445,7 @@ public abstract class FriendServiceBase(
 
         await network.SendAsync(target.Person, new FriendAddResponse
         {
-            Value = ValueOf(new PersonCard(me, myName, (byte)world.Get<PersonInfoComponent>(context.Player).Hero), FriendKind.Wait, myOnline, world.Get<CommunityComponent>(context.Player))
+            Value = ValueOf(new PersonCard(me, myName, (byte)world.Get<PersonInfoComponent>(context.Player).Hero, MyLevel(context)), FriendKind.Wait, myOnline, world.Get<CommunityComponent>(context.Player))
         });
 
         await network.SendAsync(target.Person, new FriendInviteReqResponse { Name = myName });
@@ -486,11 +486,15 @@ public abstract class FriendServiceBase(
                 (byte)(community?.State ?? CommunityState.LookingForParty),
                 community?.Memo ?? string.Empty,
                 null,
-                DateTime.UtcNow),
+                DateTime.UtcNow,
+                person.Level),
             online);
     }
 
     private int Me(ServiceHandleContext context) => world.Get<ActorComponent>(context.Player).Identifier;
+
+    private byte MyLevel(ServiceHandleContext context) =>
+        world.TryGet<LevelComponent>(context.Player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel;
 
     private ServerSessionComponent Session(ServiceHandleContext context) => world.Get<ServerSessionComponent>(context.Player);
 
