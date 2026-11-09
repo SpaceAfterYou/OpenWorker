@@ -106,7 +106,7 @@ Paths and the exact commands are in `AGENTS.local.md`.
 - A session lease holds an account for about a minute after it disconnects. Scripts that log in with the
   same account wait 65 s between runs.
 
-## Reading the client with IDA Pro
+## Reading the client and the original server with IDA Pro
 
 The client decides every wire format, and IDA Pro is available on the development machine. Use it whenever a
 layout, a field or a rule is unclear, instead of guessing:
@@ -117,8 +117,18 @@ layout, a field or a rule is unclear, instead of guessing:
   - `client_dispatch.py` walks the receive switch.
 - **MCP.** When the session has the IDA MCP server (tools named `ida`), open a database through it and
   decompile, list cross-references, strings and types directly.
-- **Paths and limits.** `AGENTS.local.md` names `idat`, the databases and what must not be opened. Work on a fresh
-  copy of a database for every headless run, and never open one database from two processes.
+- **The original server.** A build of the original game server is on the development machine as reference
+  material, with IDA databases of its processes. Open them to compare a handler of ours with the original:
+  - the checks and their order;
+  - the error codes;
+  - the messages sent and their order;
+  - the tables and columns read.
+
+  Compare whenever you implement or review game logic, and record every difference in `docs/`: fixed, or kept and
+  why. The client still decides every wire format: where the two disagree on a layout, client 1.4.2.3 wins.
+- **Paths and limits.** `AGENTS.local.md` names `idat`, the databases of the client and of the original server, and
+  what must not be opened. Work on a fresh copy of a database for every headless run, and never open one database
+  from two processes.
 - **What you learn is research data.** It goes to the git-ignored `docs/` only (see "Research data stays out of
   git").
 
