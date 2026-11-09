@@ -13,7 +13,7 @@ public readonly record struct SkillHit(float Time, AttackTrigger Trigger);
 /// <summary>
 /// Finds what a skill hits from the animations the table names for it.
 /// </summary>
-public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
+public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
 {
     private const string Extension = ".adf";
     private const string HeroFilePrefix = "PC_";
@@ -296,11 +296,14 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
 
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or EndOfStreamException)
         {
-            logger.LogWarning(e, "Skills of {Name} will not hit anything: cannot read {Path}", name, path);
+            LogUnreadable(logger, e, name, path);
         }
 
         Files.Add(name, file);
 
         return file;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skills of {Name} will not hit anything: cannot read {Path}")]
+    private static partial void LogUnreadable(ILogger logger, Exception exception, string name, string path);
 }
