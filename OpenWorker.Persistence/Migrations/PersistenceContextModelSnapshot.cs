@@ -163,6 +163,12 @@ namespace OpenWorker.Persistence.Migrations
                         .HasColumnType("character varying(15)")
                         .HasDefaultValue("000000000000000");
 
+                    b.PrimitiveCollection<int[]>("Broaches")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer[]")
+                        .HasDefaultValueSql("'{}'");
+
                     b.Property<short>("Count")
                         .HasColumnType("smallint");
 
@@ -207,6 +213,24 @@ namespace OpenWorker.Persistence.Migrations
 
                     b.Property<byte>("SocketActive")
                         .HasColumnType("smallint");
+
+                    b.PrimitiveCollection<short[]>("SocketOptionType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint[]")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.PrimitiveCollection<int[]>("SocketOptionValue")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer[]")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.PrimitiveCollection<int[]>("Sockets")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer[]")
+                        .HasDefaultValueSql("'{}'");
 
                     b.Property<byte>("Storage")
                         .HasColumnType("smallint");
@@ -901,6 +925,8 @@ namespace OpenWorker.Persistence.Migrations
                             b1.Property<string>("BroachState")
                                 .IsRequired();
 
+                            b1.PrimitiveCollection<string>("Broaches");
+
                             b1.Property<short>("Count");
 
                             b1.Property<DateTime?>("DueTo");
@@ -924,6 +950,12 @@ namespace OpenWorker.Persistence.Migrations
                             b1.Property<byte>("SealCount");
 
                             b1.Property<byte>("SocketActive");
+
+                            b1.PrimitiveCollection<string>("SocketOptionType");
+
+                            b1.PrimitiveCollection<string>("SocketOptionValue");
+
+                            b1.PrimitiveCollection<string>("Sockets");
 
                             b1.Property<byte>("Upgrade");
 

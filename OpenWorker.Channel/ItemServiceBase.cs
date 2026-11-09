@@ -47,6 +47,17 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
         if (request.IdentifierList.Contains(StorageGroup.Common))
         {
             session.Send(new ItemLoadQuickslotResponse { Cards = bag.QuickSlotCards, Items = bag.QuickSlotItems });
+
+            // And the gems and broaches of all the items, which the items themselves only count.
+            if (inventory.ListSockets(player) is { Length: > 0 } sockets)
+            {
+                session.Send(new ItemSocketLoadResponse { Sockets = sockets });
+            }
+
+            if (inventory.ListBroaches(player) is { Length: > 0 } broaches)
+            {
+                session.Send(new ItemBroachLoadResponse { Broaches = broaches });
+            }
         }
 
         return ValueTask.CompletedTask;

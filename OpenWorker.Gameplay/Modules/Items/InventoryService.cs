@@ -607,6 +607,22 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
             .ToArray();
     }
 
+    /// <summary>
+    /// The gems in the sockets of every item of the person, as the client loads them with the bags.
+    /// </summary>
+    public ST_SOCKET_DATA[] ListSockets(Entity player)
+    {
+        return InventoryOf(player)?.Items.SelectMany(e => e.SocketValues()).ToArray() ?? [];
+    }
+
+    /// <summary>
+    /// The broaches set into every item of the person, as the client loads them with the bags.
+    /// </summary>
+    public ST_ITEM_BROACH[] ListBroaches(Entity player)
+    {
+        return InventoryOf(player)?.Items.Select(e => e.BroachValue()).OfType<ST_ITEM_BROACH>().ToArray() ?? [];
+    }
+
     public ItemOpenSlotInfoResponse DescribeSlots(Entity player, IEnumerable<StorageGroup> groups)
     {
         var inventory = InventoryOf(player);

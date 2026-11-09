@@ -30,6 +30,9 @@ public static class PostLetters
     /// </summary>
     public static PostItemPersistent Attach(ItemInstance item, short count)
     {
+        // The gems and broaches go as the item saves them.
+        var saved = item.ToPersistent(0);
+
         return new PostItemPersistent
         {
             Item = item.Item,
@@ -47,7 +50,11 @@ public static class PostLetters
             RestoreCount = item.RestoreCount,
             SealCount = item.SealCount,
             OptionType = item.Options.Select(e => e.Type).ToArray(),
-            OptionValue = item.Options.Select(e => e.Option).ToArray()
+            OptionValue = item.Options.Select(e => e.Option).ToArray(),
+            Sockets = saved.Sockets,
+            SocketOptionType = saved.SocketOptionType,
+            SocketOptionValue = saved.SocketOptionValue,
+            Broaches = saved.Broaches
         };
     }
 
@@ -121,6 +128,17 @@ public static class PostLetters
         {
             instance.Options[i] = new ItemOption(item.OptionType[i], item.OptionValue[i]);
         }
+
+        var attached = ItemInstance.From(new ItemPersistent
+        {
+            Sockets = item.Sockets ?? [],
+            SocketOptionType = item.SocketOptionType ?? [],
+            SocketOptionValue = item.SocketOptionValue ?? [],
+            Broaches = item.Broaches ?? []
+        });
+
+        instance.Sockets = attached.Sockets;
+        instance.Broaches = attached.Broaches;
 
         return instance;
     }

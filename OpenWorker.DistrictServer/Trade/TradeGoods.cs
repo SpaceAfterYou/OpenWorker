@@ -189,6 +189,8 @@ public sealed class TradeGoods(World world, InventoryService inventory)
         copy.RestoreCount = item.RestoreCount;
         copy.SealCount = item.SealCount;
         copy.Options = (ItemOption[])item.Options.Clone();
+        copy.Sockets = (ItemSocket[])item.Sockets.Clone();
+        copy.Broaches = (int[])item.Broaches.Clone();
 
         return copy;
     }

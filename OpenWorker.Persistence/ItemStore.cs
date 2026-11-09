@@ -199,7 +199,8 @@ public static class ItemStore
 
         sql.Append("INSERT INTO \"Items\" (\"Id\", \"PersonId\", \"Storage\", \"Slot\", \"Item\", \"Count\", \"BindType\", \"Upgrade\", ")
             .Append("\"Endurance\", \"SocketActive\", \"DueTo\", \"UpgradeCount\", \"UpgradeLimit\", \"Flag\", \"Exp\", \"BroachState\", ")
-            .Append("\"RestoreCount\", \"SealCount\", \"OptionType\", \"OptionValue\", \"CreatedAt\", \"UpdatedAt\") VALUES (")
+            .Append("\"RestoreCount\", \"SealCount\", \"OptionType\", \"OptionValue\", \"Sockets\", \"SocketOptionType\", \"SocketOptionValue\", ")
+            .Append("\"Broaches\", \"CreatedAt\", \"UpdatedAt\") VALUES (")
             .Append(Add(item.Id)).Append(", ")
             .Append(person).Append(", ")
             .Append(Add((short)item.Storage)).Append(", ")
@@ -220,6 +221,10 @@ public static class ItemStore
             .Append(Add((short)item.SealCount)).Append(", ")
             .Append(Add(item.OptionType)).Append(", ")
             .Append(Add(item.OptionValue)).Append(", ")
+            .Append(Add(item.Sockets)).Append(", ")
+            .Append(Add(item.SocketOptionType)).Append(", ")
+            .Append(Add(item.SocketOptionValue)).Append(", ")
+            .Append(Add(item.Broaches)).Append(", ")
             .Append(now).Append(", ")
             .Append(now)
             .Append(") ON CONFLICT (\"Id\") DO UPDATE SET ")
@@ -230,6 +235,8 @@ public static class ItemStore
             .Append("\"Flag\" = EXCLUDED.\"Flag\", \"Exp\" = EXCLUDED.\"Exp\", \"BroachState\" = EXCLUDED.\"BroachState\", ")
             .Append("\"RestoreCount\" = EXCLUDED.\"RestoreCount\", \"SealCount\" = EXCLUDED.\"SealCount\", ")
             .Append("\"OptionType\" = EXCLUDED.\"OptionType\", \"OptionValue\" = EXCLUDED.\"OptionValue\", ")
+            .Append("\"Sockets\" = EXCLUDED.\"Sockets\", \"SocketOptionType\" = EXCLUDED.\"SocketOptionType\", ")
+            .Append("\"SocketOptionValue\" = EXCLUDED.\"SocketOptionValue\", \"Broaches\" = EXCLUDED.\"Broaches\", ")
             .Append("\"UpdatedAt\" = EXCLUDED.\"UpdatedAt\"");
     }
 
