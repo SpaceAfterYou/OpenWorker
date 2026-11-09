@@ -9,14 +9,15 @@ namespace OpenWorker.Gameplay.Modules.Drops;
 /// <summary>
 /// What a player has got in the maze it is in, told to it in the window that is shown when the maze is finished.
 /// The window shows what was really given, there is no scoring behind the rank yet: a maze that is finished by clearing
-/// all its sectors has the highest rank.
+/// all its sectors has the highest rank. The window also offers the key reward of the maze (<see cref="MazeKeyRewards"/>).
 /// </summary>
-public sealed class MazeResults(World world) : ISessionCloseHandler
+public sealed class MazeResults(World world, MazeKeyRewards? keys = null) : ISessionCloseHandler
 {
     public const byte BestRank = 5;
 
-    private sealed class Tally
+    private sealed class Tally(int maze)
     {
+        public int Maze { get; } = maze;
         public long Started { get; } = Environment.TickCount64;
         public int Kills { get; set; }
         public int Experience { get; set; }
@@ -26,9 +27,10 @@ public sealed class MazeResults(World world) : ISessionCloseHandler
 
     private readonly Dictionary<Entity, Tally> _tallies = [];
 
-    public void Start(Entity player)
+    public void Start(Entity player, int maze)
     {
-        _tallies[player] = new Tally();
+        _tallies[player] = new Tally(maze);
+        keys?.Forget(player);
     }
 
     public void AddKill(Entity player, int experience)
@@ -68,6 +70,7 @@ public sealed class MazeResults(World world) : ISessionCloseHandler
 
         var session = world.Get<ServerSessionComponent>(player);
         var seconds = (int)Math.Min(int.MaxValue, (Environment.TickCount64 - tally.Started) / 1000);
+        var offer = keys?.Roll(player, tally.Maze);
 
         session.Send(new MazeRewardInfoResponse
         {
@@ -78,7 +81,9 @@ public sealed class MazeResults(World world) : ISessionCloseHandler
             TotalExp = tally.Experience,
             PlayGold = tally.Gold,
             TotalMoney = tally.Gold,
-            TotalEther = tally.Ether
+            TotalEther = tally.Ether,
+            CashItemCount = offer?.Count ?? 0,
+            CashItem = offer?.Item ?? 0
         });
 
         session.Send(new MazeRewardPartyInfoResponse
@@ -93,6 +98,7 @@ public sealed class MazeResults(World world) : ISessionCloseHandler
     public ValueTask OnSessionClosedAsync(Entity player)
     {
         _tallies.Remove(player);
+        keys?.Forget(player);
 
         return ValueTask.CompletedTask;
     }
