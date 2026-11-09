@@ -70,8 +70,8 @@ them (see "What the client sends and reads" in the research notes of round 1). E
 - The columns of `tb_Item` read as the restore limit (the last byte of a row), the seal limit (the byte before it) and the
   value of a tool (the byte after the endurance) were named from their values over the table, not from the client's use of
   them.
-- The socket id of a gem is the item of the gem, and its options are the options of the gem item as it lies in the bag. The
-  server gives a new item no rolled options, so a gem of this server adds nothing to an item yet.
+- The socket id of a gem is the item of the gem, and its options are the options of the gem item as it lies in the bag.  A new
+  item gets its rolled options when it is made (`docs/notes-stats.md`), so a gem carries them into the socket.
 - Which sockets an item may have is only its row of `tb_Socket`: few items point at a row the client has, so most items have
   no sockets to open. Gems are not limited by their category or by the kind of item.
 - The tool that lowers the count of unsealing may be used only once per item, which the item does not keep: it is refused.
@@ -79,11 +79,12 @@ them (see "What the client sends and reads" in the research notes of round 1). E
 ## Not done
 
 - ~~The NPC of a request is not checked~~: done, `docs/notes-npc-services.md`.
-- Nothing wears endurance down on attack, defence or death yet: the rules use a table of endurance the client does not have
-  in a form that is known.
+- ~~Nothing wears endurance down on attack, defence or death yet.~~ Done with the server's own `tb_Item_Endurance`:
+  `docs/notes-stats.md`, "Endurance".
 - ~~The credit of an NPC and the boosters that lower prices or raise chances~~: done for repairs, upgrades and production,
   `docs/notes-npc-services.md`.
-- The stats of an item do not change with its gems or its upgrade level on the server.
+- ~~The stats of an item do not change with its gems or its upgrade level on the server.~~ Done: `docs/notes-stats.md`. A new
+  item now gets the options of its row of the server's `tb_Random_Option` and the sockets its row opens, so gems carry options.
 
 ## Tests
 
@@ -315,7 +316,8 @@ code for them that is known.
 
 ### Not done
 
-- The stats of a broach and the set effects of `Tb_Broach_Set` are not applied to the person wearing the clothing.
+- ~~The stats of a broach and the set effects of `Tb_Broach_Set` are not applied to the person wearing the clothing.~~ Done:
+  `docs/notes-stats.md`, "Clothing".
 - A server option that raises the ranks of a compose during an event is not read.
 - Removing broaches (`28 BroachRemove`, `39 BroachRemoveEx`): this client never sends them.
 
