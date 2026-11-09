@@ -20,5 +20,15 @@ public enum PersonStateKind : byte
     /// <summary>
     /// The cards the person has put into its akashic record book.
     /// </summary>
-    AkashicRecords = 8
+    AkashicRecords = 8,
+
+    /// <summary>
+    /// How far each achievement has come and which rewards of achievements are taken.
+    /// </summary>
+    Achievements = 9,
+
+    /// <summary>
+    /// The points of the districts and of the groups of mazes, and the rewards taken for them.
+    /// </summary>
+    SharePoints = 10
 }

@@ -7,7 +7,8 @@ using OpenWorker.Hotspot.Modules.Persons.Types;
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
-/// Progress of a district and of a maze in it.
+/// The share points of a district and of one of its groups of mazes that changed: a cleared maze, or a district entered
+/// for the first time (with an empty group, which the client skips).
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonUpdateSharePointResponse : IResponseHotspotMessage

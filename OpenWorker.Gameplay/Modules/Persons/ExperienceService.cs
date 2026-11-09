@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -26,6 +27,7 @@ public sealed class ExperienceService
     private readonly World _world;
     private readonly InventoryService _inventory;
     private readonly PlayerStatsService? _stats;
+    private readonly AchievementManager? _achievements;
     private readonly Dictionary<int, int> _need;
     private readonly Dictionary<int, MonsterExpRow> _monsterExp;
     private readonly Dictionary<int, MonsterRow> _monsters;
@@ -41,12 +43,14 @@ public sealed class ExperienceService
         ReadOnlyCollection<MonsterRewardRow> rewards,
         ReadOnlyCollection<MonsterRow> monsters,
         PlayerStatsService? stats = null,
-        IOptions<RewardsOptions>? options = null)
+        IOptions<RewardsOptions>? options = null,
+        AchievementManager? achievements = null)
     {
         _rate = options?.Value.ExpRate ?? 1f;
         _world = world;
         _inventory = inventory;
         _stats = stats;
+        _achievements = achievements;
         _need = levels.GroupBy(e => (int)e.Id).ToDictionary(e => e.Key, e => e.First().Experience);
         _monsterExp = monsterExp.GroupBy(e => e.Id).ToDictionary(e => (int)e.Key, e => e.First());
         _monsters = monsters.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
@@ -170,5 +174,7 @@ public sealed class ExperienceService
 
         // The class gets stronger with every level.
         _stats?.Send(player);
+
+        _achievements?.OnLevelReached(player, level);
     }
 }

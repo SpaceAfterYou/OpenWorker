@@ -7,7 +7,8 @@ using OpenWorker.Hotspot.Modules.Persons.Types;
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
-/// Progress of every maze.
+/// The share points of every group of mazes the person has cleared a maze of, sent after the districts: the client files a
+/// group under its district and drops one whose district it does not know. Taken only while the client enters the world.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonLoadMazeStateResponse : IResponseHotspotMessage

@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests.Components;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Hotspot;
@@ -39,7 +40,8 @@ public sealed partial class QuestManager(
     IQuestItems items,
     HelperManager helpers,
     BoosterManager boosters,
-    ILogger<QuestManager> logger)
+    ILogger<QuestManager> logger,
+    AchievementManager? achievements = null)
 {
     /// <summary>
     /// The conditions the client may move on by itself because the server can not see them. The rest are counted
@@ -309,6 +311,8 @@ public sealed partial class QuestManager(
             NpcHelper = helper,
             Items = payout.Items.Select(e => new CreateItemValue { Item = e.Item, Count = e.Count }).ToArray()
         });
+
+        achievements?.OnQuestFinished(player, quest.Contents);
 
         await SaveAsync(player);
 

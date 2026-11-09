@@ -12,8 +12,8 @@ with the real client should check are listed at the end.
 | `ItemMazeRewardItemRequest` | 08/47 | yes, from the window at the end of a maze | handled in the maze (`MazeRewardService`) |
 | `PartyRecruitApplyDelRequest` | 12/3F | no, the client only reads 12/3F | the type is now `PartyRecruitApplyDelResponse` |
 | `PartyUpdateMemberSgRequest` | 12/13 | no, and the client does not read 12/13 either | both types removed |
-| `PersonAchieveRewardRequest` | 03/74 | from the window of the achievements | no handler: the server keeps no achievements |
-| `PersonGetRewardSharePointRequest` | 03/63 | only for districts the server told it about | no handler: the server keeps no progress of districts |
+| `PersonAchieveRewardRequest` | 03/74 | from the window of the achievements | handled since: `docs/notes-person-progress.md` |
+| `PersonGetRewardSharePointRequest` | 03/63 | only for districts the server told it about | handled since: `docs/notes-person-progress.md` |
 
 The count of request types without a handler goes from 38 (of 276 request types) to 35 (of 274): the two party types are
 gone, the maze reward has a handler. Of the 35, the 33 of ItemSetup belong to their own branch; the two of the persons
@@ -68,24 +68,10 @@ The client 1.4.2.3 has no sender for either opcode.
 
 ## The persons (03/74, 03/63)
 
-Both are sent from windows of the client, and both depend on state the server does not keep. They have no handler, so
-they fall into the empty handler as before; the reference server answers nothing either to an achievement that is not
-finished.
-
-- **03/74, the reward of an achievement.** The client sends the index of a row of `tb_Achievement`. Answering it needs
-  the progress of every achievement of a person and the set of rewards taken (a bit field of 128 bytes in the reference),
-  neither of which exists, so the server could not tell a finished achievement from one never started. The server does not
-  send the achievements either (`PersonAchieveSelectResponse`). Implementing it needs a table or columns for the progress
-  and the bits, and the counting of the conditions.
-- **03/63, the reward of the progress of a district or a group of mazes.** Type 0 is a district, type 1 a group of
-  mazes; the identifier is a row of `tb_DS_Point`. The client sends it only for a district it was told about by
-  `PersonLoadDistrictStateResponse`, `PersonLoadMazeStateResponse` or `PersonUpdateSharePointResponse`, and the server
-  sends none of them, so the client never sends it now. Implementing it needs the points of each district and the clear
-  count and reward step of each maze group stored per person, their growth when a maze is cleared, and these three
-  messages. The answer, `PersonGetRewardSharePointResponse`, already has its layout: the identifier, the step reached, a
-  result (0 given, 1 not reached or unknown, 2 cannot be given, 3 no table row) and the items.
-
-Neither fits without a schema change, which this branch does not make.
+Both were left without a handler by this branch, as they need the progress of a person that the server did not keep. They
+are handled since, with the achievements and the share points kept as documents of the person and sent at entry: what is
+stored, what each message carries, which achievements count and what to check with the real client are in
+`docs/notes-person-progress.md`.
 
 ## To check with the real client
 

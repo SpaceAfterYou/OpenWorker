@@ -7,9 +7,9 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
 /// <summary>
-/// The player takes the reward of an achievement of <c>tb_Achievement</c>, from the window of the achievements. The server
-/// keeps no progress of achievements and no record of the rewards taken, so it cannot tell a finished one and the request
-/// has no handler.
+/// The player takes the reward of an achievement of <c>tb_Achievement</c>, from the window of the achievements. The answer
+/// is <see cref="Responses.PersonAchieveRewardResponse"/>, an error when the gold, battle points or ether of the reward would
+/// overflow or its items do not fit, and nothing for an achievement that is not reached or already rewarded.
 /// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
