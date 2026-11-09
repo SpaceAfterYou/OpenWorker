@@ -781,6 +781,8 @@ public sealed class LuaCreatureManager
         {
             body.Stagger(0f);
         }
+
+        Helpers.Hold(monster);
     }
 
     /// <summary>

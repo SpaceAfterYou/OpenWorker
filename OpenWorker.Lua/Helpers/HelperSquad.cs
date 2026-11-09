@@ -186,6 +186,8 @@ public sealed class HelperSquad
         _manager.Broadcast(new MonsterDieResponse { Actor = helper.Actor });
         _manager.Broadcast(Announcement(helper, false));
 
+        _manager.Buffs?.Forget(helper.Entity);
+
         if (_ecs.IsAlive(helper.Entity))
         {
             _ecs.Destroy(helper.Entity);
@@ -280,7 +282,8 @@ public sealed class HelperSquad
 
         foreach (var helper in _helpers.ToArray())
         {
-            if (helper.Body is not { } body || !_ecs.IsAlive(helper.Entity))
+            // A helper that is stunned, asleep, paralysed or frozen stands still until it is over, as a monster does.
+            if (helper.Body is not { } body || !_ecs.IsAlive(helper.Entity) || _manager.Buffs?.IsHeld(helper.Entity) == true)
             {
                 continue;
             }
@@ -316,10 +319,57 @@ public sealed class HelperSquad
 
     internal void Queue(HelperStrike strike) => _strikes.Add(strike);
 
+    /// <summary>
+    /// A buff holds a helper: it stops where it stands and drops the attack it was making.
+    /// </summary>
+    internal void Hold(Entity helper)
+    {
+        _helpers.Find(e => e.Entity == helper)?.Body?.Stagger(0f);
+    }
+
+    /// <summary>
+    /// A blow of a helper for its own side: the buff goes to the helper itself, or to the players and helpers of the maze
+    /// its area reaches (the helper among them when the blow says so). Nobody is hurt.
+    /// </summary>
+    internal void GiveToAllies(SummonedHelper helper, in AttackTrigger trigger)
+    {
+        if (_manager.Buffs is not { } buffs || trigger.Buff <= 0 || !_ecs.IsAlive(helper.Entity))
+        {
+            return;
+        }
+
+        var owner = (int)helper.Actor;
+
+        if (trigger.TargetType == AttackTrigger.Self)
+        {
+            buffs.Give(helper.Entity, trigger.Buff, owner);
+
+            return;
+        }
+
+        var place = _ecs.Get<WorldComponent>(helper.Entity);
+        var area = new AttackArea(trigger, place.Position, place.Rotation);
+        var itself = trigger.IncludesAttacker;
+        var side = _manager.Members
+            .Where(e => _ecs.IsAlive(e) && area.Touches(_manager.Vitals.PositionOf(e), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight))
+            .Concat(_helpers
+                .Where(e => _ecs.IsAlive(e.Entity) && (e != helper || itself))
+                .Where(e => area.Touches(_ecs.Get<WorldComponent>(e.Entity).Position, _ecs.Get<MonsterCombatComponent>(e.Entity).BodyRadius, _ecs.Get<MonsterCombatComponent>(e.Entity).BodyHeight))
+                .Select(e => e.Entity))
+            .ToArray();
+
+        foreach (var target in side)
+        {
+            buffs.Give(target, trigger.Buff, owner);
+        }
+    }
+
     internal void Clear()
     {
         foreach (var helper in _helpers)
         {
+            _manager.Buffs?.Forget(helper.Entity);
+
             if (_ecs.IsAlive(helper.Entity))
             {
                 _ecs.Destroy(helper.Entity);
@@ -449,12 +499,16 @@ public sealed class HelperSquad
     /// </summary>
     internal void HitBy(MonsterBody attacker, int skillId, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
     {
-        if (!trigger.AffectsTargets || !_ecs.IsAlive(attacker.Entity))
+        // A blow for the side of the monster, or one that only gives a buff, was dealt with for the players already, and the
+        // helpers are not of its side.
+        if (!trigger.AffectsTargets || !_ecs.IsAlive(attacker.Entity) || trigger.ForAllies || (trigger.Buff > 0 && trigger.DamageRate <= 0f))
         {
             return;
         }
 
-        var stats = _ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats;
+        var buffs = _manager.Buffs;
+        var stats = buffs?.StatsOf(attacker.Entity, _ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats) ?? _ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats;
+        var struck = new List<Entity>();
         var skill = _tables.GetSkill(skillId);
         var attackerActor = _ecs.Get<ActorComponent>(attacker.Entity);
         var hits = new List<SkillDmgValue>();
@@ -476,10 +530,11 @@ public sealed class HelperSquad
             }
 
             var creature = _ecs.Get<CreatureComponent>(helper.Entity);
-            var shielded = helper.IsRecovering || combat.Defense == DefenseType.Invincible;
+            var defense = buffs?.DefenseOf(helper.Entity, combat.Defense) ?? combat.Defense;
+            var shielded = helper.IsRecovering || defense == DefenseType.Invincible;
             var result = shielded
                 ? new DamageResult(0, HitResults.None)
-                : DamageCalculator.Calculate(stats, combat.Stats, skill, combat.Defense, trigger.DamageRate, _manager.Random);
+                : DamageCalculator.Calculate(stats, buffs?.StatsOf(helper.Entity, combat.Stats) ?? combat.Stats, skill, defense, trigger.DamageRate, _manager.Random);
             var left = creature.Health - result.Damage;
 
             if (left <= 0)
@@ -497,11 +552,12 @@ public sealed class HelperSquad
                 DamageFlags = (byte)result.Flags,
                 Damage = result.Damage,
                 Health = left,
-                DefenseType = (byte)(shielded ? DefenseType.Invincible : combat.Defense)
+                DefenseType = (byte)(shielded ? DefenseType.Invincible : defense)
             });
 
             if (!shielded)
             {
+                struck.Add(helper.Entity);
                 body.Machine.OnDamaged(attackerActor, result.Damage * AggroPerDamage);
                 body.Machine.OnEscapeBlow(collider is null ? AiMachine.SkillBlow : AiMachine.ProjectileBlow);
             }
@@ -534,6 +590,9 @@ public sealed class HelperSquad
                 ContinuousHit = 1
             }
         });
+
+        // The buff of the blow reaches the helpers it hurt.
+        buffs?.GiveFromHit(attacker.Entity, trigger, struck);
 
         // Beaten down, a helper gets up instead of dying.
         foreach (var helper in beaten)

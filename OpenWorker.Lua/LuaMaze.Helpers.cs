@@ -98,7 +98,7 @@ public partial class LuaMaze
 
         var owner = helper.Owner;
         var attacker = Ecs.Get<WorldComponent>(helper.Entity);
-        var stats = Ecs.Get<MonsterCombatComponent>(helper.Entity).Stats;
+        var stats = _buffs.StatsOf(helper.Entity, Ecs.Get<MonsterCombatComponent>(helper.Entity).Stats);
         var skill = combat.GetSkill(strike.Skill);
         var hits = targets.Select(target => ApplyDamage(helper.Entity, target, stats, skill, strike.Trigger.DamageRate, strike.Trigger.ReactionType)).ToArray();
 
@@ -122,6 +122,9 @@ public partial class LuaMaze
                 ContinuousHit = 1
             }
         });
+
+        // The buff of the blow reaches the monsters it hit and left standing.
+        _buffs.GiveFromHit(helper.Entity, strike.Trigger, targets);
 
         var dead = targets
             .Select((target, i) => (Target: target, Hit: hits[i]))

@@ -74,6 +74,22 @@ internal sealed class HelperBody : MonsterBody
             targets = [.. targets, hit];
         }
 
+        // A blow for the side of the helper (its owner, the party, itself) gives its buff and hurts nobody; one that only
+        // carries a buff gives it to the monsters it reaches.
+        if (trigger.ForAllies)
+        {
+            _squad.GiveToAllies(Helper, trigger);
+
+            return;
+        }
+
+        if (trigger.Buff > 0 && trigger.DamageRate <= 0f)
+        {
+            Manager.Buffs?.GiveFromHit(Entity, trigger, targets);
+
+            return;
+        }
+
         if (targets.Length > 0 && trigger.AffectsTargets)
         {
             _squad.Queue(new HelperStrike(Helper, skill, trigger, targets));
