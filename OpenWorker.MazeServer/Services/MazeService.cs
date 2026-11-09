@@ -299,8 +299,8 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// A portal that leads to another place on this map. It shuts behind the player, and what lies beyond is
-    /// already alive: the portal woke it when it opened.
+    /// A portal that leads to another place on this map. It shuts behind the player, and what lies beyond is alive: the
+    /// portal woke it when it opened, or the arrival wakes it.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, WorldWarpRequest request)
     {
@@ -340,6 +340,13 @@ public sealed partial class MazeService(
         });
 
         maze.SetPotalFlag(request.Portal, false);
+
+        // A portal that names no sector woke nothing when it opened: the sector the player comes to wakes now, as the
+        // first sector does when the maze has loaded. A sector already awake spawns nothing twice.
+        if (events.Portals.Find(request.Portal) is not { NextSector: > 0 } && FindSector(maze, position) is { } arrived)
+        {
+            maze.SpawnSector(arrived.Id);
+        }
 
         return ValueTask.CompletedTask;
     }
