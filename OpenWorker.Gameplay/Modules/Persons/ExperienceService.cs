@@ -35,6 +35,7 @@ public sealed class ExperienceService
     private readonly Dictionary<int, MonsterRow> _monsters;
     private readonly Dictionary<int, float> _rewards;
     private readonly Dictionary<int, float> _intervals;
+    private readonly Dictionary<int, float> _levelGaps;
 
     public ExperienceService(
         World world,
@@ -47,7 +48,8 @@ public sealed class ExperienceService
         PlayerStatsService? stats = null,
         IOptions<RewardsOptions>? options = null,
         AchievementManager? achievements = null,
-        LeagueGrowth? league = null)
+        LeagueGrowth? league = null,
+        ReadOnlyCollection<PartyExpLevelRow>? levelGaps = null)
     {
         _rate = options?.Value.ExpRate ?? 1f;
         _world = world;
@@ -60,6 +62,7 @@ public sealed class ExperienceService
         _monsters = monsters.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
         _rewards = rewards.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First().ExpRate);
         _intervals = intervals.GroupBy(e => (int)e.Interval).ToDictionary(e => e.Key, e => e.First().Rate);
+        _levelGaps = (levelGaps ?? new ReadOnlyCollection<PartyExpLevelRow>([])).GroupBy(e => (int)e.Interval).ToDictionary(e => e.Key, e => e.First().Rate);
     }
 
     /// <summary>
@@ -120,6 +123,67 @@ public sealed class ExperienceService
         var given = (int)Math.Ceiling(experience * _rate);
 
         Add(player, given);
+
+        return given;
+    }
+
+    /// <summary>
+    /// Gives the members of a party who are there when a monster dies the experience for it, each the whole of it, not a
+    /// share: the experience of the monster, times the rate of the party for how far apart the levels of its members are,
+    /// times the rate for how far the highest of them is above the monster. A party of one is a player alone
+    /// (<see cref="GiveForMonster"/>). Returns how much each member got, in the order of <paramref name="members"/>.
+    /// </summary>
+    public int[] GiveForParty(IReadOnlyList<Entity> members, int monster)
+    {
+        var given = new int[members.Count];
+
+        if (members.Count == 1)
+        {
+            given[0] = GiveForMonster(members[0], monster);
+
+            return given;
+        }
+
+        if (members.Count == 0 || !_monsters.TryGetValue(monster, out var row))
+        {
+            return given;
+        }
+
+        var experience = (double)ForMonster(monster);
+
+        if (experience <= 0)
+        {
+            return given;
+        }
+
+        var highest = 0;
+        var lowest = int.MaxValue;
+
+        foreach (var member in members)
+        {
+            var level = (int)_world.Get<LevelComponent>(member).Level;
+
+            highest = Math.Max(highest, level);
+            lowest = Math.Min(lowest, level);
+        }
+
+        if (_levelGaps.TryGetValue(highest - lowest, out var gap))
+        {
+            experience *= gap;
+        }
+
+        if (_intervals.TryGetValue(Math.Clamp(highest - row.Level, -100, 100), out var interval))
+        {
+            experience *= interval;
+        }
+
+        var each = (int)Math.Ceiling(experience * _rate);
+
+        for (var index = 0; index < members.Count; index++)
+        {
+            Add(members[index], each);
+            given[index] = each;
+        }
 
         return given;
     }

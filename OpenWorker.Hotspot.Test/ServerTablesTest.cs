@@ -44,6 +44,7 @@ public sealed class ServerTablesTest
         [
             ("tb_Monster_EXP", typeof(MonsterExpRow)),
             ("tb_PartyExp_Mob", typeof(PartyExpMobRow)),
+            ("tb_PartyExp_Level", typeof(PartyExpLevelRow)),
             ("tb_DropRate_Mob", typeof(DropRateMobRow)),
             ("tb_Drop", typeof(DropRow)),
             ("tb_Drop_Group", typeof(DropGroupRow)),

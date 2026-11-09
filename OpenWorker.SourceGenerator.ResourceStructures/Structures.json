@@ -1111,10 +1111,10 @@
     "String"
   ],
   "tb_PartyRevise": [
-    "Int16",
-    "Int16",
-    "Byte",
-    "Int32"
+    "Int16 Id",
+    "Int16 Group",
+    "Byte MemberCount",
+    "Int32 SuperArmorRecovery"
   ],
   "tb_Talk_String": [
     "Int16",
