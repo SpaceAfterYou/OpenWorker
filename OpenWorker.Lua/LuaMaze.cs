@@ -482,6 +482,18 @@ public partial class LuaMaze(
             StepChains(_members[index]);
         }
 
+        // The gauges of those who have loaded the maze fill with the time of the fight.
+        if (creatureManager.Services?.Gauges is { } gauges)
+        {
+            for (var index = 0; index < _members.Count && !Closed; index++)
+            {
+                if (_members[index] is { Loaded: true, Gone: false } member)
+                {
+                    gauges.Advance(member.Player, (float)elapsed.TotalSeconds);
+                }
+            }
+        }
+
         creatureManager.Step(elapsed);
     }
 
@@ -924,7 +936,8 @@ public partial class LuaMaze(
 
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
-        if (!actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
+        // Only the skill that is being played fires its projectiles: a skill the server refused fires nothing.
+        if (request.Skill != member.CurrentSkill || !actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
         {
             return;
         }
@@ -1166,6 +1179,20 @@ public partial class LuaMaze(
         var skillDamage = combat.GetSkill(skill);
         var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
 
+        // Every target hit gives the soul gauge of the attacker a share of what the skill absorbs; the player is told once.
+        if (creatureManager.Services?.Gauges is { } gauges && skillDamage.SoulGaugeAbsorb > 0f)
+        {
+            var soul = gauges.Of(player).SoulGauge;
+            var absorbed = 0f;
+
+            foreach (var target in targets)
+            {
+                absorbed += SoulGauge.Absorbed(skillDamage.SoulGaugeAbsorb, Ecs.Get<MonsterCombatComponent>(target).Stats.SoulGaugeAbsorbRate, soul + absorbed, attackerStats.SoulGaugeMax);
+            }
+
+            gauges.Absorb(player, absorbed, attackerStats.SoulGaugeMax);
+        }
+
         creatureManager.Broadcast(new SkillActionBroadcastResponse
         {
             SkillDmgValueList = hits,
@@ -1234,7 +1261,9 @@ public partial class LuaMaze(
     {
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
-        var result = DamageCalculator.Calculate(attacker, body.Stats, skill, body.Defense, attackRate, Random.Shared);
+        // A super armor that was broken before this hit lets half as much again through.
+        var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
+        var result = DamageCalculator.Calculate(attacker, body.Stats, skill, body.Defense, attackRate, Random.Shared, broken);
         var lost = result.Damage;
 
         if (body.CountsHits)

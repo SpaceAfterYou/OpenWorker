@@ -1,8 +1,9 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Gameplay.Modules.State;
@@ -213,6 +214,8 @@ public static class PersonSkillsServiceCollectionExtensions
         services.TryAddSingleton<PersonStateStore>();
         services.AddSingleton<PersonSkills>();
         services.TryAddSingleton<SkillLearning>();
+        services.TryAddSingleton<PlayerGauges>();
+        services.TryAddSingleton<SkillUse>();
         services.AddSingleton<IPersonDocumentSource, SkillDocumentSource>();
 
         return services;

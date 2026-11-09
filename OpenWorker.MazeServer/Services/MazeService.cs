@@ -37,6 +37,8 @@ using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.World.Types;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Lua;
+using OpenWorker.Gameplay.Combat;
+using OpenWorker.Hotspot.Handler;
 using Redis.OM.Searching;
 using OpenWorker.Gameplay.Modules.Persistence;
 
@@ -52,6 +54,10 @@ public sealed partial class MazeService(
     QuestManager questManager,
     PrologueService prologue,
     MazeInstances instances,
+    SkillUse skillUse,
+    MovementPace pace,
+    HandlerExecutor errors,
+    SimulationClock clock,
     ILogger<MazeService> logger
 ) :
     IHotspotHandler<MazeCompleteRequest>,
@@ -209,24 +215,68 @@ public sealed partial class MazeService(
             position.Y <= Math.Max(e.PosTopLeft.Y, e.PosBottomRight.Y));
     }
 
+    /// <summary>
+    /// The player starts a skill. It must be the player's own and in its deck, its cooldown over and its cost payable; a
+    /// refusal is the answer 06/09 with the code the client shows, and nothing starts. The skill starts from the place the
+    /// client gives when the player could be there, from the place the server keeps otherwise.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillActiveSkillRequest request)
     {
         var skill = request.Skill;
-        var world = ecs.Get<WorldComponent>(context.Player);
+        var session = ecs.Get<ServerSessionComponent>(context.Player);
+        var position = PlaceOfSkill(context.Player, skill.Position);
+        var now = clock.Time;
 
-        if (Place.IsValid(skill.Position.Position, skill.Position.Angle))
+        var refusal = skillUse.Check(context.Player, skill.Skill, now);
+
+        if (refusal != SkillRefusal.None)
         {
-            ecs.Set(context.Player, world with { Position = skill.Position.Position, Rotation = skill.Position.Angle });
+            LogSkillRefused(skill.Skill, refusal);
+
+            session.Send(new SkillActiveResponse { ErrorCode = unchecked((short)refusal), Divergence = skill.Divergence });
+
+            return ValueTask.CompletedTask;
         }
 
-        ecs.Get<ServerSessionComponent>(context.Player).Send(new SkillActiveResponse { Divergence = skill.Divergence });
+        skillUse.Use(context.Player, skill.Skill, now);
+
+        session.Send(new SkillActiveResponse { Divergence = skill.Divergence });
 
         if (ecs.Has<LuaMaze>(context.Player))
         {
-            ecs.Get<LuaMaze>(context.Player).StartSkill(context.Player, skill.Skill, skill.Position);
+            ecs.Get<LuaMaze>(context.Player).StartSkill(context.Player, skill.Skill, position);
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Where a skill starts: the place of the request when it is a place and the player could have run there since the last
+    /// one, the place the server keeps otherwise (a refused place counts against the error budget, as a refused move does).
+    /// </summary>
+    private SkillPositionValue PlaceOfSkill(Entity player, SkillPositionValue requested)
+    {
+        var world = ecs.Get<WorldComponent>(player);
+        var rotation = Place.IsValid(world.Position, requested.Angle) ? requested.Angle : world.Rotation;
+
+        if (!Place.IsValid(requested.Position))
+        {
+            return requested with { Position = world.Position, Angle = rotation };
+        }
+
+        if (!pace.TryMove(ecs, player, world.Position, requested.Position, out var charge))
+        {
+            if (charge)
+            {
+                errors.Charge(player, MessageOpcode.From(GroupOpcode.Skill, SkillOpcode.ActiveSkillReq), HandlerErrorReason.Violation);
+            }
+
+            return requested with { Position = world.Position, Angle = rotation };
+        }
+
+        ecs.Set(player, world with { Position = requested.Position, Rotation = rotation });
+
+        return requested with { Angle = rotation };
     }
 
     /// <summary>
@@ -867,6 +917,9 @@ public sealed partial class MazeService(
 
         return false;
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Skill {Skill} refused with {Code}")]
+    private partial void LogSkillRefused(int skill, ushort code);
 
     // What a client sends is no reason to fill the log at a higher level than Debug.
     [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} from a player who is not in a maze, ignored")]

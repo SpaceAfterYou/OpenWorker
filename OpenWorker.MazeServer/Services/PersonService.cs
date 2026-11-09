@@ -44,6 +44,7 @@ using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
 using OpenWorker.Gameplay.Modules.Progress;
+using OpenWorker.Gameplay.Modules.Skill;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -81,6 +82,8 @@ public sealed partial class PersonService(
     QuestCatalog questCatalog,
     MazeInstances instances,
     PartyMazeEvents partyEvents,
+    PersonSkills skills,
+    PlayerGauges gauges,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -189,6 +192,14 @@ public sealed partial class PersonService(
 
         registry.PullPerson(context.Player, person, entry.AccountOptions);
 
+        // The skills are checked in the maze, and a character that starts in the prologue has seen no district to learn them.
+        await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
+
         prologue.Enter(context.Player, person);
 
         // A party shares the instance its reservation names; a player alone gets one of their own.
@@ -216,9 +227,11 @@ public sealed partial class PersonService(
         maze.FollowQuests(questCatalog);
 
         maze.Creatures.Vitals.Initialize(context.Player);
+        gauges.Fill(context.Player);
         results.Start(context.Player, mazeInfo.Id);
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
+        skills.Send(context.Player);
 
         session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
 
