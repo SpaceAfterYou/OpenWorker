@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Text;
 using Arch.Core;
 using OpenWorker.DistrictServer.Server;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Helpers.Components;
@@ -372,6 +373,73 @@ public sealed class HelperTest
         Assert.AreEqual(HelperManager.CannotSummon, await Refusal(true, 1));
         Assert.AreEqual(HelperManager.CannotSummon, await Refusal(true, 0));
         Assert.IsTrue(new HelperBook().AutoSummon, "a new person has the automatic call on");
+    }
+
+    // A status row with the columns named set and every other column zero.
+    private static StatusRow Status(params (int Column, float Value)[] values)
+    {
+        const int floatsBeforeResists = 35, resists = 12, floatsAfterResists = 8;
+        var map = values.ToDictionary(e => e.Column, e => e.Value);
+
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+
+        writer.Write((short)3001);
+
+        for (var column = 1; column <= floatsBeforeResists; column++)
+        {
+            writer.Write(map.GetValueOrDefault(column));
+        }
+
+        writer.Write(new byte[resists]);
+
+        for (var column = 0; column < floatsAfterResists; column++)
+        {
+            writer.Write(map.GetValueOrDefault(floatsBeforeResists + resists + 1 + column));
+        }
+
+        writer.Flush();
+        stream.Position = 0;
+
+        return new StatusRow(new BinaryReader(stream));
+    }
+
+    /// <summary>
+    /// What a helper has by itself grows with the level of its owner and carries the additions of its monster row, under
+    /// the stat numbers the client keeps; what it wears and a valid orb add to the two attacks and the defense.
+    /// </summary>
+    [TestMethod]
+    public void HelperStatsFollowTheOwnerAndWhatTheHelperWears()
+    {
+        // Strength 10 + 2 a level, vitality 5, 10 health a point of vitality, 100 health to start with.
+        var status = Status((1, 10f), (2, 2f), (9, 5f), (13, 10f), (18, 1f), (51, 100f));
+
+        static Dictionary<byte, float> Read(HelperStatValue[] stats) => stats.ToDictionary(e => e.Type, e => e.Value);
+
+        var first = Read(HelperStats.Origin(status, 0, default, 1));
+        var eleventh = Read(HelperStats.Origin(status, 0, default, 11));
+        var added = Read(HelperStats.Origin(status, 0, new StatBonuses { Health = 500f, PhysicalAttack = 50f }, 1));
+
+        Assert.AreEqual(100f, first[21]);
+        Assert.AreEqual(80f, first[20]);
+        Assert.AreEqual(300f, eleventh[21], "the level of the owner raises the strength and the attack");
+        Assert.AreEqual(150f, first[10]);
+        Assert.AreEqual(650f, added[10], "the health of the monster row is added");
+        Assert.AreEqual(150f, added[21], "the attack of the monster row is added");
+        Assert.IsTrue(first.Keys.All(e => e < 61), "the client has room for 61 stats");
+
+        var now = DateTimeOffset.FromUnixTimeSeconds(1_000_000);
+        var orb = new HelperSupportInfoValue(7, HelperStats.AttackOrb, 30f, now.AddHours(1), 0, true);
+
+        var worn = Read(HelperStats.Additional([(157, 42)], orb, now));
+        var expired = Read(HelperStats.Additional([(157, 42)], orb with { Date = now.AddSeconds(-1) }, now));
+
+        CollectionAssert.AreEquivalent(new byte[] { 20, 21, 24 }, worn.Keys.ToArray());
+        Assert.AreEqual(187f, worn[20]);
+        Assert.AreEqual(187f, worn[21]);
+        Assert.AreEqual(42f, worn[24]);
+        Assert.AreEqual(157f, expired[21], "an orb whose date is past adds nothing");
+        Assert.IsEmpty(HelperStats.Additional([], default, now), "nothing worn adds nothing");
     }
 
     [TestMethod]

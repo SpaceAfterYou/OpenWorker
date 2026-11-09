@@ -9,6 +9,7 @@ using OpenWorker.Hotspot.Modules.Helpers.Responses;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress;
 
 namespace OpenWorker.Gameplay.Modules.Helpers;
@@ -22,7 +23,8 @@ public sealed class HelperManager(
     World world,
     PersonStateStore store,
     HelperCatalog catalog,
-    AchievementManager? achievements = null)
+    AchievementManager? achievements = null,
+    HelperStats? stats = null)
 {
     /// <summary>
     /// Helpers are not called, nor sent away, outside a maze: "supporters cannot be summoned in town".
@@ -77,7 +79,7 @@ public sealed class HelperManager(
             .Send(new HelperListLoadResponse
             {
                 Person = person,
-                Helpers = book.Helpers.Select(ToValue).ToArray(),
+                Helpers = book.Helpers.Select(e => ToValue(player, e)).ToArray(),
                 AutoSummon = book.AutoSummon ? (byte)1 : (byte)0
             });
     }
@@ -93,7 +95,7 @@ public sealed class HelperManager(
         }
 
         world.Get<ServerSessionComponent>(player)
-            .Send(new HelperAddResponse { Helper = ToValue(entry) });
+            .Send(new HelperAddResponse { Helper = ToValue(player, entry) });
 
         achievements?.OnHelperGained(player, helper);
 
@@ -193,14 +195,34 @@ public sealed class HelperManager(
 
     public void RefuseEquip(Entity player, HelperOpcode command) => SendError(player, command, CannotEquip);
 
-    private HelperValue ToValue(HelperEntry entry)
+    /// <summary>
+    /// The person has reached a level: what its helpers have by themselves follows it. Only the owner is told.
+    /// </summary>
+    public void OnLevelReached(Entity player, byte level)
     {
+        if (stats is null || !TryGet(player, out var book) || book.Helpers.Count == 0)
+        {
+            return;
+        }
+
+        world.Get<ServerSessionComponent>(player)
+            .Send(new HelperUserStatUpdateResponse
+            {
+                Helpers = book.Helpers.Select(e => new HelperStatUpdateValue(e.Helper, stats.Origin(e.Helper, level))).ToArray()
+            });
+    }
+
+    private HelperValue ToValue(Entity player, HelperEntry entry)
+    {
+        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
+
+        // Helpers wear nothing and no orb of a friend yet.
         return new HelperValue
         {
             Helper = entry.Helper,
             Order = entry.Order,
-            Origin = [],
-            Additional = []
+            Origin = stats?.Origin(entry.Helper, level) ?? [],
+            Additional = stats?.Additional([], default) ?? []
         };
     }
 

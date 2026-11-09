@@ -5,6 +5,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.League;
 using OpenWorker.Gameplay.Modules.Persons.Components;
@@ -30,6 +31,7 @@ public sealed class ExperienceService
     private readonly PlayerStatsService? _stats;
     private readonly AchievementManager? _achievements;
     private readonly LeagueGrowth? _league;
+    private readonly HelperManager? _helpers;
     private readonly Dictionary<int, int> _need;
     private readonly Dictionary<int, MonsterExpRow> _monsterExp;
     private readonly Dictionary<int, MonsterRow> _monsters;
@@ -49,7 +51,8 @@ public sealed class ExperienceService
         IOptions<RewardsOptions>? options = null,
         AchievementManager? achievements = null,
         LeagueGrowth? league = null,
-        ReadOnlyCollection<PartyExpLevelRow>? levelGaps = null)
+        ReadOnlyCollection<PartyExpLevelRow>? levelGaps = null,
+        HelperManager? helpers = null)
     {
         _rate = options?.Value.ExpRate ?? 1f;
         _world = world;
@@ -57,6 +60,7 @@ public sealed class ExperienceService
         _stats = stats;
         _achievements = achievements;
         _league = league;
+        _helpers = helpers;
         _need = levels.GroupBy(e => (int)e.Id).ToDictionary(e => e.Key, e => e.First().Experience);
         _monsterExp = monsterExp.GroupBy(e => e.Id).ToDictionary(e => (int)e.Key, e => e.First());
         _monsters = monsters.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
@@ -245,5 +249,6 @@ public sealed class ExperienceService
 
         _achievements?.OnLevelReached(player, level);
         _league?.OnLevelReached(player, level);
+        _helpers?.OnLevelReached(player, level);
     }
 }

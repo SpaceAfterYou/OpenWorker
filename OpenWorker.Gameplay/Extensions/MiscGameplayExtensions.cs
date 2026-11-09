@@ -53,6 +53,7 @@ public static class MiscGameplayExtensions
         services.AddSingleton<VaccumManager>();
 
         services.AddSingleton<HelperCatalog>();
+        services.AddSingleton<HelperStats>();
         services.AddSingleton<HelperManager>();
 
         services.AddSingleton<AttendanceCatalog>();

@@ -11,7 +11,7 @@ public readonly partial struct HelperRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
     public byte Number { get; } = reader.ReadByte();
-    public short Field2 { get; } = reader.ReadInt16();
-    public string Field3 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field4 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public short TypeText { get; } = reader.ReadInt16();
+    public string Icon { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Illustration { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
 }
