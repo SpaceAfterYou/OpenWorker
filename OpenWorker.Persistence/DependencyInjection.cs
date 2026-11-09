@@ -30,6 +30,7 @@ public static class DependencyInjection
     public static IServiceCollection AddPersistenceStores(this IServiceCollection services)
     {
         services.TryAddSingleton<IPersonStore, PersonStore>();
+        services.TryAddSingleton<IPostStore, PostStore>();
 
         return services;
     }

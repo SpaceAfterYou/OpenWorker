@@ -418,6 +418,10 @@ wrote last. A handler never waits for these writes.
   the gate; once more when the host stops (see Stopping a server). A `kill -9` loses at most one interval of what the
   players still on the server changed.
 - **Uniqueness and limits** stay in the database (rule 3): names, friends and leagues are written by their stores at once.
+- **Letters of the post** (`IPostStore`, `PostStore`, the handlers in `PostService` of the district) are written by their store
+  when they change, each change one statement that says what the letter must still be, so what a letter carries is taken
+  once from any server; what it carries moves through `InventoryService`, and the person is flushed right after
+  (`docs/notes-post.md`).
 
 ### Connections and queries
 
