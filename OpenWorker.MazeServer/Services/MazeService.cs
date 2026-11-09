@@ -49,6 +49,7 @@ public sealed partial class MazeService(
     IPersonFlush persons,
     IOptions<GateOptions> gate,
     QuestManager questManager,
+    PrologueService prologue,
     ILogger<MazeService> logger
 ) :
     IHotspotHandler<MazeCompleteRequest>,
@@ -583,6 +584,14 @@ public sealed partial class MazeService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)
     {
+        // The way out of the last tutorial maze ends the prologue.
+        await prologue.LeaveAsync(context.Player);
+
+        if (!ecs.IsAlive(context.Player))
+        {
+            return;
+        }
+
         var claims = ecs.Get<ClaimsComponent>(context.Player);
         var world = ecs.Get<WorldComponent>(context.Player);
 

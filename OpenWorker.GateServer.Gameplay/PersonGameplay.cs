@@ -43,7 +43,9 @@ public sealed class PersonGameplay(
     SecondPasswordGameplay secondPassword,
     LeaveManager leaving,
     WorldManager worldManager,
-    PersonCreationCatalog catalog)
+    PersonCreationCatalog catalog,
+    PrologueEntry prologue,
+    IOptions<GameOptions> game)
 {
     private short Gate { get; } = gate.Value.Id;
 
@@ -116,6 +118,9 @@ public sealed class PersonGameplay(
 
             Outfit = message.Outfit,
             LastSelectedAt = DateTime.UtcNow,
+
+            // The prologue waits for the character only while the server plays it.
+            ProloguePending = game.Value.Prologue,
 
             Location = 10003,
             PositionX = 10228.605f,
@@ -246,6 +251,17 @@ public sealed class PersonGameplay(
             {
                 Zone = EnterMapResultValue.Failed(EnterMapResultValue.CannotEnter)
             });
+            return;
+        }
+
+        // A character that has not played the prologue starts it instead of going to its district.
+        if (await prologue.TryEnterAsync(context.Player, message.Actor.Identifier))
+        {
+            if (world.IsAlive(context.Player))
+            {
+                await RememberSelectedAsync(context, message.Actor.Identifier);
+            }
+
             return;
         }
 
