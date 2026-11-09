@@ -101,9 +101,9 @@ public sealed class BoosterCatalog
     // The table has eight slots of every column, an unused slot has no effect.
     internal static BoosterDefinition Create(BoosterRow row)
     {
-        byte[] effects = [row.Field2, row.Field3, row.Field4, row.Field5, row.Field6, row.Field7, row.Field8, row.Field9];
-        byte[] applies = [row.Field10, row.Field11, row.Field12, row.Field13, row.Field14, row.Field15, row.Field16, row.Field17];
-        float[] values = [row.Field18, row.Field19, row.Field20, row.Field21, row.Field22, row.Field23, row.Field24, row.Field25];
+        byte[] effects = [row.Effect1, row.Effect2, row.Effect3, row.Effect4, row.Effect5, row.Effect6, row.Effect7, row.Effect8];
+        byte[] applies = [row.Apply1, row.Apply2, row.Apply3, row.Apply4, row.Apply5, row.Apply6, row.Apply7, row.Apply8];
+        float[] values = [row.Value1, row.Value2, row.Value3, row.Value4, row.Value5, row.Value6, row.Value7, row.Value8];
 
         var found = new List<BoosterEffectValue>();
 
@@ -115,6 +115,6 @@ public sealed class BoosterCatalog
             }
         }
 
-        return new BoosterDefinition(row.Id, row.Field1, (BoosterTime)row.Field35, row.Field36, found);
+        return new BoosterDefinition(row.Id, row.Group, (BoosterTime)row.TimeType, row.DurationMilliseconds, found);
     }
 }

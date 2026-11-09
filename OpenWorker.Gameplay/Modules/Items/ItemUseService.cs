@@ -41,8 +41,8 @@ public sealed class ItemUseService(
         // A booster item gives its booster, which the item row names; the item is used up when the person gets it.
         if (classify.ItemUseType == ItemUseType.BOOSTER)
         {
-            if (boosters is null || !catalog.TryGet(item.Item, out var boosterRow) || boosterRow.Field50 != BoosterEffect ||
-                !await boosters.AddAsync(player, (short)boosterRow.Field51, null, cancellationToken))
+            if (boosters is null || !catalog.TryGet(item.Item, out var boosterRow) || boosterRow.EffectType != BoosterEffect ||
+                !await boosters.AddAsync(player, (short)boosterRow.EffectValue, null, cancellationToken))
             {
                 return false;
             }
@@ -112,13 +112,13 @@ public sealed class ItemUseService(
                 continue;
             }
 
-            var ids = new[] { row.Field4, row.Field5, row.Field6, row.Field7, row.Field8, row.Field9, row.Field10, row.Field11, row.Field12, row.Field13 };
-            var counts = new[] { row.Field24, row.Field25, row.Field26, row.Field27, row.Field28, row.Field29, row.Field30, row.Field31, row.Field32, row.Field33 };
+            var ids = new[] { row.Item1, row.Item2, row.Item3, row.Item4, row.Item5, row.Item6, row.Item7, row.Item8, row.Item9, row.Item10 };
+            var counts = new[] { row.Count1, row.Count2, row.Count3, row.Count4, row.Count5, row.Count6, row.Count7, row.Count8, row.Count9, row.Count10 };
 
             return new Reward(
-                row.Field1,
-                row.Field2,
-                row.Field3,
+                row.Gold,
+                row.BattlePoint,
+                row.Ether,
                 ids.Zip(counts).Where(e => e.First > 0 && e.Second > 0).ToList());
         }
 
@@ -134,41 +134,41 @@ public sealed class ItemUseService(
                 continue;
             }
 
-            var rates = new[] { row.Field7, row.Field8, row.Field9, row.Field10, row.Field11, row.Field12, row.Field13, row.Field14, row.Field15, row.Field16, row.Field17, row.Field18, row.Field19, row.Field20, row.Field21 };
-            var ids = new[] { row.Field24, row.Field25, row.Field26, row.Field27, row.Field28, row.Field29, row.Field30, row.Field31, row.Field32, row.Field33, row.Field34, row.Field35, row.Field36, row.Field37, row.Field38 };
-            var counts = new[] { row.Field39, row.Field40, row.Field41, row.Field42, row.Field43, row.Field44, row.Field45, row.Field46, row.Field47, row.Field48, row.Field49, row.Field50, row.Field51, row.Field52, row.Field53 };
+            var rates = new[] { row.ItemRate1, row.ItemRate2, row.ItemRate3, row.ItemRate4, row.ItemRate5, row.ItemRate6, row.ItemRate7, row.ItemRate8, row.ItemRate9, row.ItemRate10, row.ItemRate11, row.ItemRate12, row.ItemRate13, row.ItemRate14, row.ItemRate15 };
+            var ids = new[] { row.Item1, row.Item2, row.Item3, row.Item4, row.Item5, row.Item6, row.Item7, row.Item8, row.Item9, row.Item10, row.Item11, row.Item12, row.Item13, row.Item14, row.Item15 };
+            var counts = new[] { row.Count1, row.Count2, row.Count3, row.Count4, row.Count5, row.Count6, row.Count7, row.Count8, row.Count9, row.Count10, row.Count11, row.Count12, row.Count13, row.Count14, row.Count15 };
 
-            var total = Math.Max(1, row.Field2);
+            var total = Math.Max(1, row.TotalRate);
             var items = new List<(int, int)>();
             long gold = 0, battlePoint = 0, ether = 0;
 
-            for (var roll = 0; roll < Math.Max(1, (int)row.Field1); roll++)
+            for (var roll = 0; roll < Math.Max(1, (int)row.Rolls); roll++)
             {
                 var point = Random.Shared.Next(total);
 
-                if (point < row.Field4)
+                if (point < row.GoldRate)
                 {
-                    gold += row.Field3;
+                    gold += row.Gold;
                     continue;
                 }
 
-                point -= row.Field4;
+                point -= row.GoldRate;
 
-                if (point < row.Field5)
+                if (point < row.BattlePointRate)
                 {
-                    battlePoint += row.Field22;
+                    battlePoint += row.BattlePoint;
                     continue;
                 }
 
-                point -= row.Field5;
+                point -= row.BattlePointRate;
 
-                if (point < row.Field6)
+                if (point < row.EtherRate)
                 {
-                    ether += row.Field23;
+                    ether += row.Ether;
                     continue;
                 }
 
-                point -= row.Field6;
+                point -= row.EtherRate;
 
                 for (var i = 0; i < rates.Length; i++)
                 {

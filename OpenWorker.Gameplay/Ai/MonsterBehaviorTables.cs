@@ -32,7 +32,7 @@ public sealed record MonsterBehavior(
 }
 
 /// <summary>
-/// Finds the rows that decide how a monster behaves. Columns of the table are named by their place, the table does not name them.
+/// Finds the rows that decide how a monster behaves.
 /// </summary>
 public sealed class MonsterBehaviorTables
 {
@@ -52,7 +52,7 @@ public sealed class MonsterBehaviorTables
 
         AnimationTimes = skills
             .DistinctBy(e => e.Id)
-            .ToDictionary(e => e.Id, e => e.Field66 * 0.001f);
+            .ToDictionary(e => e.Id, e => e.Duration * 0.001f);
     }
 
     public MonsterBehavior? Get(int monster)
@@ -77,14 +77,14 @@ public sealed class MonsterBehaviorTables
     {
         return new MonsterBehavior(
             row.Id,
-            row.Field1,
-            row.Field44,
-            row.Field35,
-            row.Field36,
-            row.Field37,
-            row.Field38,
-            [row.Field82, row.Field83, row.Field84, row.Field85, row.Field86, row.Field87, row.Field88, row.Field89, row.Field90, row.Field91],
-            (byte)row.Field51);
+            row.ActionFile,
+            row.AiScript,
+            row.WalkSpeed,
+            row.RunSpeed,
+            row.TurnSpeed,
+            row.GazeSpeed,
+            [row.Skill1, row.Skill2, row.Skill3, row.Skill4, row.Skill5, row.Skill6, row.Skill7, row.Skill8, row.Skill9, row.Skill10],
+            (byte)row.StandType);
     }
 
     private static AiSkill Create(SkillRow row)
@@ -93,11 +93,11 @@ public sealed class MonsterBehaviorTables
             row.Id,
             row.RangeMin,
             row.RangeMax,
-            row.Field52 * 0.001f,
-            row.Field53,
-            row.Field55 * 0.001f,
-            row.Field46,
-            row.Field47 != 0,
+            row.Cooldown * 0.001f,
+            row.CooldownGroup,
+            row.GlobalCooldown * 0.001f,
+            row.Angle,
+            row.RotationType != 0,
             false);
     }
 }

@@ -82,7 +82,7 @@ public sealed class ItemCatalog
     /// </summary>
     public StorageGroup HomeOf(int item)
     {
-        return Classify(item)?.Field10 switch
+        return Classify(item)?.StorageKind switch
         {
             2 => StorageGroup.Costume,
             9 => StorageGroup.Cube,
@@ -117,7 +117,7 @@ public sealed class ItemCatalog
             return null;
         }
 
-        var type = (int)classify.Field11;
+        var type = (int)classify.SlotType;
 
         switch (classify.ItemUseType)
         {
@@ -160,7 +160,7 @@ public sealed class ItemCatalog
     /// </summary>
     public (short Level, byte Class) Limits(int item)
     {
-        return _items.TryGetValue(item, out var row) ? (row.Field12, row.Field13) : ((short)0, (byte)0);
+        return _items.TryGetValue(item, out var row) ? (row.LevelLimit, row.ClassLimit) : ((short)0, (byte)0);
     }
 
     /// <summary>
@@ -200,17 +200,17 @@ public sealed class ItemCatalog
             {
                 foreach (var row in _inventory)
                 {
-                    if (row.Field1 != step)
+                    if (row.Step != step)
                     {
                         continue;
                     }
 
                     return group switch
                     {
-                        StorageGroup.Common => Create(row.Field2, row.Field3, row.Field4, row.Field6),
-                        StorageGroup.Costume => Create(row.Field7, row.Field8, row.Field9, row.Field11),
-                        StorageGroup.Cash => Create(row.Field12, row.Field13, row.Field14, row.Field16),
-                        _ => Create(row.Field17, row.Field18, row.Field19, row.Field21)
+                        StorageGroup.Common => Create(row.CommonNeedLevel, row.CommonPayment, row.CommonPrice, row.CommonSlots),
+                        StorageGroup.Costume => Create(row.CostumeNeedLevel, row.CostumePayment, row.CostumePrice, row.CostumeSlots),
+                        StorageGroup.Cash => Create(row.CashNeedLevel, row.CashPayment, row.CashPrice, row.CashSlots),
+                        _ => Create(row.CubeNeedLevel, row.CubePayment, row.CubePrice, row.CubeSlots)
                     };
                 }
 
@@ -222,14 +222,14 @@ public sealed class ItemCatalog
             {
                 foreach (var row in _bank)
                 {
-                    if (row.Field1 != step)
+                    if (row.Step != step)
                     {
                         continue;
                     }
 
                     return group == StorageGroup.CommonStorage
-                        ? Create(row.Field2, row.Field3, row.Field4, row.Field6)
-                        : Create(row.Field7, row.Field8, row.Field9, row.Field11);
+                        ? Create(row.CommonNeedLevel, row.CommonPayment, row.CommonPrice, row.CommonSlots)
+                        : Create(row.CostumeNeedLevel, row.CostumePayment, row.CostumePrice, row.CostumeSlots);
                 }
 
                 return null;

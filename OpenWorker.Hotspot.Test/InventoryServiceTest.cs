@@ -431,7 +431,7 @@ public sealed class InventoryServiceTest
         using var f = new Fixture(level: 20);
 
         var items = Load<ItemRow>("tb_Item");
-        var armor = items.First(e => e.Field23 > 0 && f.Catalog.EquipPlaceOf(e.Id) is { Storage: StorageGroup.AbilityEquip } && f.Catalog.Limits(e.Id) is (<= 20, 0 or 1));
+        var armor = items.First(e => e.PhysicalDefense > 0 && f.Catalog.EquipPlaceOf(e.Id) is { Storage: StorageGroup.AbilityEquip } && f.Catalog.Limits(e.Id) is (<= 20, 0 or 1));
 
         var tables = new CombatTables(
             Load<MonsterRow>("tb_Monster"),
@@ -447,7 +447,7 @@ public sealed class InventoryServiceTest
 
         var dressed = tables.GetPlayer(f.World, f.Player);
 
-        Assert.AreEqual(armor.Field23, dressed.Physical.Defense - bare.Physical.Defense);
+        Assert.AreEqual(armor.PhysicalDefense, dressed.Physical.Defense - bare.Physical.Defense);
         Assert.AreEqual(20, dressed.Level, "The level is the one the player has reached");
     }
 }

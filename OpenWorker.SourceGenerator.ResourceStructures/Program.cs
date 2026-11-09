@@ -1,35 +1,16 @@
-﻿using System.Text.Json;
-using OpenWorker.SourceGenerator.ResourceStructures;
+﻿using OpenWorker.SourceGenerator.ResourceStructures;
 
-// Solution directory
-var root = Directory
-    .GetParent(Directory.GetCurrentDirectory())?
-    .Parent?
-    .Parent?
-    .Parent?
-    .FullName;
+// Writes the rows of the client tables (OpenWorker.Res/Rows) from their definition, Structures.json, which is the one place
+// their columns are declared:
+//
+//     dotnet run --project OpenWorker.SourceGenerator.ResourceStructures [-- <root of the repository>]
+//
+// ResourceRowsTest fails when a row differs from what this writes.
 
-if (Directory.Exists(root) is false)
+var root = args.Length > 0 ? args[0] : RowWriter.FindRoot(AppContext.BaseDirectory);
+var folder = Path.Join([root, .. RowWriter.Folder]);
+
+foreach (var table in TableDefinition.Load(Path.Join([root, .. RowWriter.Definition])))
 {
-    throw new DirectoryNotFoundException();
+    await File.WriteAllTextAsync(Path.Join(folder, table.RowName + ".cs"), RowWriter.Render(table));
 }
-
-await using var stream = File.OpenRead("Structures.json");
-
-var tables = await JsonSerializer
-    .DeserializeAsync<Dictionary<string, List<string>>>(stream)
-    .ConfigureAwait(false);
-
-ArgumentNullException.ThrowIfNull(tables);
-
-await Parallel.ForEachAsync(tables, async (table, ct) =>
-{
-    var (tableName, tableTypes) = table;
-    var types = tableTypes.Select(e => Type.GetType($"System.{e}", true)!).ToArray();
-
-    var name = NameHelper.GetClassName(tableName);
-
-    var modelName = $"Resource{name}";
-
-    await FileHelper.WriteRes(root, tableName, modelName, $"{name}Row", types, ct);
-});

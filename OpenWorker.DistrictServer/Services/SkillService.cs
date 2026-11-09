@@ -133,7 +133,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
             return ValueTask.CompletedTask;
         }
 
-        if (skillPoint.FreeSkillPoint < nextSkill.Field9)
+        if (skillPoint.FreeSkillPoint < nextSkill.SkillPoints)
         {
             session.Send(new SkillLearnResponse());
             return ValueTask.CompletedTask;
@@ -167,7 +167,7 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
 
         world.Set(context.Player, skillPoint with
         {
-            FreeSkillPoint = unchecked((short)(skillPoint.FreeSkillPoint - nextSkill.Field9))
+            FreeSkillPoint = unchecked((short)(skillPoint.FreeSkillPoint - nextSkill.SkillPoints))
         });
         world.MarkDirty(context.Player, PersonSections.Skills);
 

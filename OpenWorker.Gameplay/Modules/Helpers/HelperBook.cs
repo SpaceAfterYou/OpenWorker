@@ -10,7 +10,7 @@ public sealed class HelperCatalog
 {
     private readonly Dictionary<int, int> _numbers;
 
-    public HelperCatalog(ReadOnlyCollection<HelperRow> rows) : this(rows.ToDictionary(e => e.Id, e => (int)e.Field1))
+    public HelperCatalog(ReadOnlyCollection<HelperRow> rows) : this(rows.ToDictionary(e => e.Id, e => (int)e.Number))
     {
     }
 

@@ -61,9 +61,9 @@ public sealed class TitleCatalog
     private static TitleDefinition Create(TitleInfoRow row)
     {
         // The table keeps each of the five effects in three columns.
-        byte[] groups = [row.Field8, row.Field9, row.Field10, row.Field11, row.Field12];
-        short[] types = [row.Field13, row.Field14, row.Field15, row.Field16, row.Field17];
-        float[] values = [row.Field18, row.Field19, row.Field20, row.Field21, row.Field22];
+        byte[] groups = [row.EffectGroup1, row.EffectGroup2, row.EffectGroup3, row.EffectGroup4, row.EffectGroup5];
+        short[] types = [row.EffectType1, row.EffectType2, row.EffectType3, row.EffectType4, row.EffectType5];
+        float[] values = [row.EffectValue1, row.EffectValue2, row.EffectValue3, row.EffectValue4, row.EffectValue5];
 
         var effects = new List<StatEffect>(EffectSlots);
 

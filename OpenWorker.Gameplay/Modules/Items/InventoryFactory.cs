@@ -60,7 +60,7 @@ public sealed class InventoryFactory(ItemCatalog catalog, ReadOnlyCollection<Cre
 
         if (outfit.Id != 0)
         {
-            foreach (var id in (int[])[outfit.Field1, outfit.Field2, outfit.Field3, outfit.Field4, outfit.Field5])
+            foreach (var id in (int[])[outfit.Item1, outfit.Item2, outfit.Item3, outfit.Item4, outfit.Item5])
             {
                 if (catalog.EquipPlaceOf(id) is { Storage: StorageGroup.ShapeEquip } place &&
                     inventory.At(StorageGroup.ShapeEquip, place.Slots[0]) is null)

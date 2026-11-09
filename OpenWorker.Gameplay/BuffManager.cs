@@ -30,7 +30,7 @@ public sealed class BuffManager(World world, ReadOnlyCollection<BuffRow> buffs)
         {
             Target = actor,
             Buff = (short)buff,
-            Time = (float)(item.Field7 * 0.001),
+            Time = (float)(item.DurationMilliseconds * 0.001),
             Count = 1,
             Owner = 0
         });

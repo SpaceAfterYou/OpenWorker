@@ -54,8 +54,8 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
             Serial = serials.NextSerial(),
             Item = item,
             Count = (short)count,
-            BindType = (ItemBindType)row.Field8,
-            Endurance = row.Field19
+            BindType = (ItemBindType)row.BindType,
+            Endurance = row.Endurance
         };
     }
 

@@ -24,7 +24,7 @@ public sealed class AttendanceCatalog
         ReadOnlyCollection<CheckAttendanceRewardRow> rewards,
         ReadOnlyCollection<CheckAccessRewardRow> playTime)
         : this(
-            tables.Select(e => new AttendanceTable(e.Id, e.Field2)),
+            tables.Select(e => new AttendanceTable(e.Id, e.Days)),
             rewards.ToDictionary(e => e.Id, Create),
             playTime.Where(e => e.Id == 1).Select(Steps).FirstOrDefault() ?? [])
     {
@@ -69,25 +69,25 @@ public sealed class AttendanceCatalog
 
     private static Reward Create(CheckAttendanceRewardRow row)
     {
-        int[] items = [row.Field4, row.Field5, row.Field6, row.Field7, row.Field8];
-        int[] counts = [row.Field9, row.Field10, row.Field11, row.Field12, row.Field13];
+        int[] items = [row.Item1, row.Item2, row.Item3, row.Item4, row.Item5];
+        int[] counts = [row.Count1, row.Count2, row.Count3, row.Count4, row.Count5];
 
         return new Reward(
             items.Zip(counts)
                 .Where(e => e is { First: > 0, Second: > 0 })
                 .Select(e => new RewardItem(e.First, (short)e.Second))
                 .ToArray(),
-            row.Field2,
-            row.Field3);
+            row.Gold,
+            row.Ether);
     }
 
     private static PlayTimeStep[] Steps(CheckAccessRewardRow row)
     {
         return
         [
-            new PlayTimeStep(row.Field1, row.Field4),
-            new PlayTimeStep(row.Field2, row.Field5),
-            new PlayTimeStep(row.Field3, row.Field6)
+            new PlayTimeStep(row.Seconds1, row.Item1),
+            new PlayTimeStep(row.Seconds2, row.Item2),
+            new PlayTimeStep(row.Seconds3, row.Item3)
         ];
     }
 

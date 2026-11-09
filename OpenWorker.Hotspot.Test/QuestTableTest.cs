@@ -59,7 +59,7 @@ public sealed class QuestTableTest
 
         foreach (var row in Episodes)
         {
-            var ids = new[] { row.Field96, row.Field97, row.Field98, row.Field99, row.Field100, row.Field101, row.Field102, row.Field103, row.Field104, row.Field105 };
+            var ids = new[] { row.Condition1, row.Condition2, row.Condition3, row.Condition4, row.Condition5, row.Condition6, row.Condition7, row.Condition8, row.Condition9, row.Condition10 };
             var used = ids.TakeWhile(e => e != 0).Count();
 
             Assert.IsTrue(ids.Skip(used).All(e => e == 0), $"episode {row.Id} has a gap among its conditions");
@@ -74,9 +74,9 @@ public sealed class QuestTableTest
         // The table names a condition the other table lacks, and the episode stops counting at it.
         var named = Episodes.Single(e => e.Id == 100165);
 
-        Assert.AreEqual(1001652, named.Field97);
+        Assert.AreEqual(1001652, named.Condition2);
         Assert.IsTrue(Catalog.TryGetEpisode(100165, out var quest));
-        CollectionAssert.AreEqual(new[] { named.Field96 }, quest.Conditions.ToArray());
+        CollectionAssert.AreEqual(new[] { named.Condition1 }, quest.Conditions.ToArray());
     }
 
     [TestMethod]
@@ -213,7 +213,7 @@ public sealed class QuestTableTest
     {
         TestTables.Load<QuestEpisodeRow>("tb_Quest_Episode");
 
-        var groups = Conditions.Where(e => e.Field3 == (byte)QuestConditionType.Hunt && e.Field6 == (byte)QuestConditionTarget.MonsterGroup).Select(e => e.Field7).ToHashSet();
+        var groups = Conditions.Where(e => e.Type == (byte)QuestConditionType.Hunt && e.Target == (byte)QuestConditionTarget.MonsterGroup).Select(e => e.TargetId).ToHashSet();
         var monsters = TestTables.Load<MonsterRow>("tb_Monster");
 
         // Every group a condition names has a monster that belongs to it.

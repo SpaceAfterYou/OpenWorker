@@ -246,12 +246,12 @@ public sealed partial class SoulMetryManager(
 
             return info.Hero switch
             {
-                Hero.Haru => reward.Field1,
-                Hero.Erwin => reward.Field2,
-                Hero.Lily => reward.Field3,
-                Hero.Jin => reward.Field4,
-                Hero.Stella => reward.Field5,
-                Hero.Iris => reward.Field6,
+                Hero.Haru => reward.HaruItem,
+                Hero.Erwin => reward.ErwinItem,
+                Hero.Lily => reward.LilyItem,
+                Hero.Jin => reward.JinItem,
+                Hero.Stella => reward.StellaItem,
+                Hero.Iris => reward.IrisItem,
                 _ => 0
             };
         }

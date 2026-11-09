@@ -923,7 +923,7 @@ public abstract class LeagueServiceBase(
 
     private int MaxMembers(LeagueRecord league)
     {
-        return levels.FirstOrDefault(e => e.Id == league.Rating).Field4 is var room and > 0 ? room : 30;
+        return levels.FirstOrDefault(e => e.Id == league.Rating).MemberLimit is var room and > 0 ? room : 30;
     }
 
     private static int? CheckName(string name)
