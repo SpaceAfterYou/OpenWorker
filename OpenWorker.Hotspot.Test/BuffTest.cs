@@ -239,6 +239,9 @@ public sealed class BuffTest
 
             await MetricAssertions.UntilAsync(() => connection.Frames.Select(PlayerFrame.Open).Any(e => e.Opcode.Value == died.Value), "The player falls.");
 
+            // The ticks are queued behind the fall of the player and reach the connection a moment after it.
+            await MetricAssertions.UntilAsync(() => Received(connection, SkillOpcode.BuffDamageBt).Length >= 6, "Every tick of both burns is told.");
+
             var playerActor = (int)world.Get<ActorComponent>(player);
             var hurt = Received(connection, SkillOpcode.BuffDamageBt).Select(e => BinaryPrimitives.ReadInt32LittleEndian(e.Body)).ToArray();
 
@@ -262,9 +265,14 @@ public sealed class BuffTest
         var scripts = Environment.GetEnvironmentVariable("OPENWORKER_TEST_AI");
         var actions = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
 
-        if (scripts is null || actions is null)
+        if (scripts is null)
         {
-            Assert.Inconclusive("OPENWORKER_TEST_AI and OPENWORKER_TEST_ACTION are not set.");
+            Assert.Inconclusive("OPENWORKER_TEST_AI is not set.");
+        }
+
+        if (actions is null)
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_ACTION is not set.");
         }
 
         var monsters = TestTables.Load<MonsterRow>("tb_Monster");
