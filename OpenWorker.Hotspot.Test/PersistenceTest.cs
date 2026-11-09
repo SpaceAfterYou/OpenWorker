@@ -377,4 +377,81 @@ public sealed class PersistenceTest
         Assert.AreEqual(0, await server.Loop.InvokeAsync(() => server.World.DirtyOf(dirty)!.Sections == PersonSections.None ? 0 : 1));
         Assert.IsTrue(await server.Loop.InvokeAsync(() => server.World.IsAlive(clean)));
     }
+
+    /// <summary>
+    /// Items put on a helper, swapped and taken off are written to a storage of their own where one place holds one item:
+    /// the flush writes two items that trade a place without breaking the unique index, and a new entry finds each where it
+    /// was left. The index refuses a second item at a taken place.
+    /// </summary>
+    [TestMethod]
+    public async Task AHelperPlaceHoldsOneItemThroughSwapsFlushesAndANewEntry()
+    {
+        var (account, person) = await CreatePersonAsync("outfitter");
+        var place = Inventory.HelperPlace(100, 0);
+
+        await using (var first = new Server())
+        {
+            await first.StartAsync();
+
+            var player = await first.EnterAsync(account, person);
+            var items = new InventoryService(first.World, new ItemCatalog(Empty<ItemRow>(), Empty<ItemClassifyRow>(), Empty<InvenSlotExtendRow>(),
+                Empty<BankSlotExtendRow>()), new LocalItemSerials());
+
+            ItemInstance weapon = null!, other = null!;
+
+            await first.RunAsync(() =>
+            {
+                var inventory = first.World.Get<InventoryComponent>(player).Value!;
+
+                weapon = new ItemInstance { Serial = 900_101, Item = 360010102, Count = 1 };
+                other = new ItemInstance { Serial = 900_102, Item = 360010103, Count = 1 };
+
+                inventory.Place(StorageGroup.Common, 4, weapon);
+                inventory.Place(StorageGroup.Common, 5, other);
+
+                Assert.IsTrue(items.PutOnHelper(player, weapon, place, swap: false));
+            });
+
+            Assert.IsTrue(await first.Flush.FlushAsync());
+
+            // The other item takes the place of the worn one, which goes to the bag slot it left.
+            await first.RunAsync(() => Assert.IsTrue(items.PutOnHelper(player, other, place, swap: true)));
+
+            Assert.IsTrue(await first.Flush.FlushAsync());
+
+            // Taken off and the first one put back on, written by the logout in one go.
+            await first.RunAsync(() =>
+            {
+                Assert.IsTrue(items.TakeOffHelper(player, place, StorageGroup.Common, 6));
+                Assert.IsTrue(items.PutOnHelper(player, weapon, place, swap: false));
+            });
+
+            await first.LeaveAsync(player);
+        }
+
+        await using (var second = new Server())
+        {
+            await second.StartAsync();
+
+            var back = await second.EnterAsync(account, person);
+
+            await second.RunAsync(() =>
+            {
+                var inventory = second.World.Get<InventoryComponent>(back).Value!;
+
+                Assert.AreEqual(900_101, inventory.WornByHelper(place)?.Serial, "the helper wears the item put back on");
+                Assert.AreEqual(900_102, inventory.At(StorageGroup.Common, 6)?.Serial, "the item taken off is in the bag");
+                Assert.IsNull(inventory.At(StorageGroup.Common, 4));
+                Assert.IsNull(inventory.At(StorageGroup.Common, 5));
+            });
+        }
+
+        await using var database = await Factory.CreateDbContextAsync();
+
+        database.Items.Add(new ItemPersistent { Id = 900_103, PersonId = person, Storage = ItemPersistent.HelperStorage, Slot = place, Item = 360010104, Count = 1 });
+
+        var refused = await Assert.ThrowsAsync<DbUpdateException>(() => database.SaveChangesAsync());
+
+        Assert.AreEqual(Npgsql.PostgresErrorCodes.UniqueViolation, (refused.InnerException as Npgsql.PostgresException)?.SqlState);
+    }
 }

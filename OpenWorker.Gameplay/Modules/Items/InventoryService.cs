@@ -296,6 +296,90 @@ public sealed class InventoryService(
 
     #endregion
 
+    #region What helpers wear
+
+    /// <summary>
+    /// The item a helper of the person wears at the place (<see cref="Inventory.HelperPlace"/>), if any.
+    /// </summary>
+    public ItemInstance? WornByHelper(Entity player, short place)
+    {
+        return InventoryOf(player)?.WornByHelper(place);
+    }
+
+    /// <summary>
+    /// Puts an item of a bag on a helper. The helper's place must be free unless <paramref name="swap"/> is set: then the
+    /// item worn there goes to the bag slot the new item leaves. The client is told that the item left its slot and, on a
+    /// swap, that the other one came into it.
+    /// </summary>
+    public bool PutOnHelper(Entity player, ItemInstance item, short place, bool swap)
+    {
+        var inventory = InventoryOf(player);
+        var group = item.Storage;
+        var slot = item.Slot;
+
+        if (inventory is null || place < 0 || !ReferenceEquals(inventory.At(group, slot), item))
+        {
+            return false;
+        }
+
+        var worn = inventory.WornByHelper(place);
+
+        if ((worn is not null) != swap)
+        {
+            return false;
+        }
+
+        inventory.Lift(group, slot);
+        Send(player, new ItemBreakResponse { Storage = group, Index = slot });
+
+        if (worn is not null)
+        {
+            inventory.TakeOffHelper(place);
+        }
+
+        inventory.PutOnHelper(place, item);
+
+        if (worn is not null)
+        {
+            inventory.Place(group, slot, worn);
+            Send(player, new ItemCreateResponse { List = [ToStorageValue(worn)] });
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Takes the item a helper wears at the place off it, into a free slot of the bag of its kind: the slot the client named
+    /// if that one is free, else the first free one. False, and nothing moves, when the bag is full.
+    /// </summary>
+    public bool TakeOffHelper(Entity player, short place, StorageGroup group, short slot)
+    {
+        var inventory = InventoryOf(player);
+
+        if (inventory?.WornByHelper(place) is not { } worn || inventory.Find(catalog.HomeOf(worn.Item)) is not { } bag)
+        {
+            return false;
+        }
+
+        if (group != bag.Group || slot < 0 || slot >= bag.Size || bag.Slots[slot] is not null)
+        {
+            slot = (short)bag.FirstFree();
+        }
+
+        if (slot < 0)
+        {
+            return false;
+        }
+
+        inventory.TakeOffHelper(place);
+        inventory.Place(bag.Group, slot, worn);
+        Send(player, new ItemCreateResponse { List = [ToStorageValue(worn)] });
+
+        return true;
+    }
+
+    #endregion
+
     #region Money
 
     public long Gold(Entity player) => world.Get<CurrencyComponent>(player).Gold;

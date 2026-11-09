@@ -148,6 +148,71 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("Gates");
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.HelperSupportPersistent", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Reward")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SupportType")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("Until")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<float>("Value")
+                        .HasColumnType("real");
+
+                    b.HasKey("PersonId");
+
+                    b.ToTable("HelperSupports");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.HelperSupportUsePersistent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SupporterId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Until")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SupporterId", "UserId", "Until")
+                        .IsUnique();
+
+                    b.ToTable("HelperSupportUses");
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.ItemPersistent", b =>
                 {
                     b.Property<long>("Id")
@@ -249,6 +314,11 @@ namespace OpenWorker.Persistence.Migrations
                         .HasColumnType("smallint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PersonId", "Slot")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Items_HelperPlace")
+                        .HasFilter("\"Storage\" = 105");
 
                     b.HasIndex("PersonId", "Storage", "Slot");
 
@@ -811,6 +881,30 @@ namespace OpenWorker.Persistence.Migrations
                     b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
                         .WithMany()
                         .HasForeignKey("TargetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.HelperSupportPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.HelperSupportUsePersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("SupporterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

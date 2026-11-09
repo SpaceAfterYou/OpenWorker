@@ -1,6 +1,7 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Gameplay.Modules.DailyMissions;
+using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Modules.SoulMetry;
@@ -12,8 +13,8 @@ namespace OpenWorker.Lua;
 
 /// <summary>
 /// What the maze tells the rest of the game: who was killed, which sector and maze were cleared, which object was
-/// used, and which of its objects belong to soul metries and cubes. Missions, quests, soul metries, achievements and share
-/// points hear it here. A failure on the other side never reaches the fight.
+/// used, and which of its objects belong to soul metries and cubes. Missions, quests, soul metries, achievements, share
+/// points and the orbs helpers wear hear it here. A failure on the other side never reaches the fight.
 /// </summary>
 public sealed partial class MazeReporter(
     DailyMissionManager missions,
@@ -23,7 +24,8 @@ public sealed partial class MazeReporter(
     QuestManager quests,
     ILogger<MazeReporter> logger,
     AchievementManager? achievements = null,
-    SharePointManager? sharePoints = null)
+    SharePointManager? sharePoints = null,
+    HelperGear? helperGear = null)
 {
     // The kinds of attack the table calls plain, from the ground, thrown and skills proper.
     private const byte PlainAttack = 1;
@@ -81,6 +83,7 @@ public sealed partial class MazeReporter(
 
             achievements?.OnMazeCleared(player, info.Id, seconds, info.Type);
             sharePoints?.OnMazeCleared(player, info.Id, info.Group, info.Episode);
+            helperGear?.OnMazeCleared(player);
 
             await missions.OnMazeClearedAsync(player, clear, false, CancellationToken.None);
             await soulMetries.OnMazeClearedAsync(player, info.Group, CancellationToken.None);

@@ -42,7 +42,13 @@ public sealed class ItemStorage(StorageGroup group, int size, byte grade)
 /// </summary>
 public sealed class Inventory(int person)
 {
+    /// <summary>
+    /// The places of the items a helper wears: three for each helper, by the number of the helper.
+    /// </summary>
+    public const int HelperItemSlots = 3;
+
     private readonly Dictionary<StorageGroup, ItemStorage> _storages = new();
+    private readonly Dictionary<short, ItemInstance> _helperItems = new();
     private readonly HashSet<ItemInstance> _pending = [];
     private readonly List<long> _removed = [];
 
@@ -85,9 +91,66 @@ public sealed class Inventory(int person)
     }
 
     /// <summary>
-    /// Every item in every storage.
+    /// Every item in every storage, and the items the helpers wear.
     /// </summary>
-    public IEnumerable<ItemInstance> Items => _storages.Values.SelectMany(e => e.Slots).OfType<ItemInstance>();
+    public IEnumerable<ItemInstance> Items => _storages.Values.SelectMany(e => e.Slots).OfType<ItemInstance>().Concat(_helperItems.Values);
+
+    /// <summary>
+    /// The place in the storage of helper items of one slot of a helper, or -1 for a helper number that has none. The
+    /// storage is not one the client names in its requests, so the requests that move items around never reach it.
+    /// </summary>
+    public static short HelperPlace(int number, int slot)
+    {
+        var place = number * HelperItemSlots + slot;
+
+        return number >= 0 && slot is >= 0 and < HelperItemSlots && place <= short.MaxValue ? (short)place : (short)-1;
+    }
+
+    /// <summary>
+    /// The item a helper wears at the place, if any.
+    /// </summary>
+    public ItemInstance? WornByHelper(short place)
+    {
+        return _helperItems.GetValueOrDefault(place);
+    }
+
+    /// <summary>
+    /// Puts an item that was saved on a helper back on it, without noting a change. False when the place is taken.
+    /// </summary>
+    internal bool LoadOnHelper(short place, ItemInstance item)
+    {
+        if (place < 0 || !_helperItems.TryAdd(place, item))
+        {
+            return false;
+        }
+
+        item.Storage = StorageGroup.HelperEquip;
+        item.Slot = place;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Puts the item on a helper at a free place, which also saves it later.
+    /// </summary>
+    internal void PutOnHelper(short place, ItemInstance item)
+    {
+        if (!LoadOnHelper(place, item))
+        {
+            throw new InvalidOperationException($"Helper place {place} is taken.");
+        }
+
+        _pending.Add(item);
+        MarkChanged();
+    }
+
+    /// <summary>
+    /// Takes the item a helper wears off it without destroying it, for moving it elsewhere.
+    /// </summary>
+    internal ItemInstance? TakeOffHelper(short place)
+    {
+        return _helperItems.Remove(place, out var item) ? item : null;
+    }
 
     /// <summary>
     /// Puts the item into an empty slot, which also saves it later.

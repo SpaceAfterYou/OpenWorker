@@ -35,5 +35,11 @@ public sealed class ItemConfiguration : IEntityTypeConfiguration<ItemPersistent>
 
         // Not unique: two items swapping places are saved one statement after the other.
         builder.HasIndex(x => new { x.PersonId, x.Storage, x.Slot });
+
+        // A place of a helper holds one item. The flush moves the items it writes there out of the way first.
+        builder.HasIndex(x => new { x.PersonId, x.Slot })
+            .IsUnique()
+            .HasFilter("\"Storage\" = " + ItemPersistent.HelperStorage.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .HasDatabaseName("IX_Items_HelperPlace");
     }
 }

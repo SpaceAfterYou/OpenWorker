@@ -126,7 +126,9 @@ and `Class` (they were `Rate` and `Hero`). **[client][ref]**
 
 The reference server answers some requests with nothing at all (no answer, no error): 06 when a valid registration whose
 reward was already taken exists, 07 when there is no reward to take, 09 when the friend's orb was already used by this
-person, 10 when the database refused, 12 when either helper is not the person's, 15 never silent. **[ref]**
+person or the helper is not the person's, 10 when the database refused, 12 when either helper is not the person's, 15
+never silent. **[ref]** Since 02, 06, 07, 08, 09 and 10 go through the client's "one request at a time" guard, a silent
+answer leaves the guard shut; we answer each of them (see sections 4 and 5 and step 7 of the plan).
 
 ## 3. A helper in a maze, step by step
 
@@ -250,8 +252,11 @@ for a person without stored helpers comes from a stored procedure that was not r
 - **Rules of 27/10** **[ref]**: the helper must be the person's and in `tb_Helper`; an item put on must be in the
   inventory, be of slot type 240..242, have the helper's number as class limit, and (swap) the worn item's serial must
   match the slot and both items be of the same slot type; a put-on goes only into an empty slot; take-off needs an empty slot
-  in the item's inventory: **52010** if none. Any other failure: **58004**. The client also refuses on its side items of
-  another class (52009) or above the owner's level. **[client]**
+  in the item's inventory (the inventory of its classify row, the bag for every helper item): **52010** if none. Any other
+  failure: **58004**. The client also refuses on its side items of another class (52009) or above the owner's level.
+  **[client]** Checked again for step 4 **[ref]**: the reference does not check the level of the item, takes the helper slot
+  of a swap from the request without a bound, and on a take-off checks only that the slot holds an item the tables know,
+  not the serial the request names. We check all three (see the comparison in step 4).
 - Success: the items move (inventory item removed with the usual "item gone" message, the taken-off item created in the
   inventory with the usual "item created" message), the stats are recomputed (a summoned helper's actor too), and `27/10`
   {0, record} is sent. Equipping works **anywhere** (district or maze). **[ref]**
@@ -262,7 +267,8 @@ for a person without stored helpers comes from a stored procedure that was not r
 **[ref]** unless marked.
 
 - **Register (06)**: type 0 = attack orb, value = **20 %** of the person's physical attack (max), type 1 = defense orb,
-  value = 20 % of its physical defense; valid **24 hours**. The registration is held by the cross-server part (one per
+  value = 20 % of its physical defense; valid **24 hours**. Another type registers an orb worth 0 in the reference; we refuse
+  it. The registration is held by the cross-server part (one per
   person, in memory in the reference server, not in its database). If a still-valid registration exists: **58003** in the
   result of 06 when its reward is still to take, no answer when it was taken. On success `27/06` {0, info with registered =
   1 and reward state 1}.
@@ -270,17 +276,27 @@ for a person without stored helpers comes from a stored procedure that was not r
   (0 none, 1 to take, 2 taken), type, value, expiry.
 - **Reward (07)**: only with reward state 1: the items of `tb_Helper_Reward` row 1 (item 800000999 × 1; friend points 0)
   are checked against the inventory (**52010** full, **52004** other failure), then the cross-server part sets the state to
-  2, the items are created, the friend points added, `27/07` {0}. **[ref][table]**
-- **List (08)**: the person's **friends** who have a valid registration and whose orb this person has **not used yet**
-  (each orb can be used once per user for its 24 hours). The value shown is scaled when the friend is more than 5 levels
-  above the reader: `value = original / friend level × reader level`. Neither strangers nor league members.
+  2, the items are created, the friend points added, `27/07` {0}. **[ref][table]** When it may be taken (checked for step
+  7): the reference allows it as soon as the orb is registered, at any time while the state is 1, and drops an expired
+  registration (with a reward never taken) when the window asks for the info. The client enables the reward button from
+  the reward state alone (state 1, with an orb kind), whatever the time **[client]**; the texts 21527, 21548 and 21549 ("the
+  reward can be taken after the support ends") are the window's wording, not a rule the client applies.
+- **List (08)**: the person's **friends** who have a registration and whose orb this person has **not used yet** (each
+  orb can be used once per user for its 24 hours). The value shown is scaled when the friend is more than 5 levels above
+  the reader: `value = original / friend level × reader level`. Neither strangers nor league members. The reference does not
+  check the time here (the research said "valid"): an expired orb is listed until something drops it, and then refused on
+  use with result 1; we list valid orbs only.
 - **Equip (09)**: the helper must be the person's; the friend's registration must exist (result 2 if not) and still be
   valid (result 1 if expired: it is also dropped); the same scaling by level; then the database stores the orb on the
   helper, the use is recorded (the friend leaves this person's list), the friend whose orb was used gets the friend points
   of `tb_Helper_Reward` row 2 (0 in both copies of the table) with this person, and `27/09` {0, helper, record with the
-  orb and recomputed stats}. The client sends 09 only for a friend marked usable in its list. **[client][ref]**
+  orb and recomputed stats}. The client sends 09 only for a friend marked usable in its list. **[client][ref]** Checked for
+  step 7 **[ref]**: the reference does not check that the one who offers is a friend of the user (only that it has a
+  registration), and gives the friend points only when the one who offers is online at that moment.
 - **Lifetime of a worn orb**: until the helper is released or the maze is cleared (then 27/11 and chat 21533); outside
-  that, the stats count it only while its date is in the future.
+  that, the stats count it only while its date is in the future. At the clear of a maze the reference releases the orbs of
+  the **called** helpers only (the research said every helper of anyone in the maze): a helper left out of the maze keeps
+  its orb. A new orb replaces the one a helper wore.
 
 ## 6. How a helper is obtained, and the tables
 
@@ -288,14 +304,16 @@ for a person without stored helpers comes from a stored procedure that was not r
   episodes") each give one helper through `tb_Quest_Episode.RewardHelper` (Mirium, Ralfh, Hidinger, Keinbarrel, Goodboy,
   Ryu, Zenis, Lucy). The server already grants it (`QuestManager` → `HelperManager.AddAsync` → `27/03`, achievement 48).
   **[table]** The quest "helper" of 15/09 and the daily mission "helper" are a different thing (the quest tracker).
+- **Helper items**: the NPC shops 1001, 1002 and 1003 of `tb_Shop` sell ranks 2 to 4 of the weapons and gears (48 rows);
+  the rank 1 items (level 1) appear in no shop, quest, reward or drop table of either copy of the tables, and the 242 slot
+  has no item at all. **[table]** The chat command `/item <id>` gives any of them (it existed already).
 - **Chat command** `/helper-add <id>` (testing). The reference server's own command (number, value) does: 1 add, 2 summon,
   3 release, 4 register, 5 reward, 6 list, 7 support equip, 8 equip.
 - **Proposed column names** (do not edit `Structures.json` here; for the implementation agent):
   - `tb_Helper`: `Id` (helper = monster id), `Number` (the class number items are limited to), `Field2` → `TypeText` (UI
     string of the type), `Field3` → `Icon`, `Field4` → `Illustration`.
-  - `tb_Helper_Reward`: `Id` (1 = registration reward, 2 = reward per use of the orb), `Field1` → `RewardType`, `Field2` →
-    `FriendPoints`, `Field3..5` → `Item1..3`, `Field6..8` → `Count1..3`. The server's own copy is identical: no server row
-    is needed.
+  - `tb_Helper_Reward`: `Id` (1 = registration reward, 2 = reward per use of the orb), `RewardType`, `FriendPoints`,
+    `Item1..3`, `Count1..3` — **named** (step 7). The server's own copy is identical: no server row is needed.
   - `tb_Maze_Info`: `Field7` → `RefuseHelpers` (1 = helpers cannot be summoned). It matches the reference server's own
     flag on 198 of the 199 mazes of the client (it differs on 21051 `DR01_GOLDENCITADEL`, which the server refuses and the
     client allows); the client checks the same byte before sending a summon. **[client][table]**
@@ -315,19 +333,29 @@ for a person without stored helpers comes from a stored procedure that was not r
 | 27/13 sync pos | missing | the AI warp |
 | 27/04 stat update | done | sent to the owner at every level reached (`ExperienceService`) |
 | Stats (origin / additional) | done | `HelperStats`: origin at the owner's level; additional from worn items and the orb, empty until they exist |
-| 27/10 equipment | missing (refused 58004) | an item place for helper equipment (schema), `InventoryService` moves, stats |
-| 27/11 update info | missing | orb release |
+| 27/10 equipment | done (district and maze) | — (step 4) |
+| 27/11 update info | done | sent by `HelperGear.ReleaseOrb`; the maze clear calls it for called helpers, the release of a helper must call it (summon branch) |
 | AI of a follower | missing | owner-aware guard variables, MOVE to owner, warp, recovery state, buff target = owner, enemy search both ways (helpers hit monsters, monsters target helpers except rank ≥ 3), monster→monster damage — `feature/combat` and the AI machine |
 | Kills credited to the owner | missing | the kill path of the creature manager |
 | Release on death / exit / maze clear, others' helpers on join and leave | missing | maze entry/exit hooks, `feature/party-maze` |
-| 27/05..09 support | partly (05, 06 answer without values; 07 and 09 refused; 08 always empty) | a registration store shared by all servers, friends (exist: `FriendBook`), friend points, item grant |
+| 27/05..09 support | done | the total friend points of the reward row 1 (0 in both tables; no wallet for them) |
 
 The e2e (`docs/tools/e2e_helper.py tester9 password [maze location]`, stand 9): before steps 1 to 3 **25 PASS, 0 FAIL**
 (district only); after them **40 PASS, 0 FAIL** on a build of `feature/helpers-base` over `dev` `b6e00cb`: the record read
 the way the client reads it, origin stats non-empty and below 61, 27/04 at a level reached (`/exp`, which now gives real
 experience) with grown stats, the list again after re-entry with the new level's stats, and in a maze (M04, 21311) the list
-with the same stats, 27/15 and 27/12 answered, a summon refused with 58007, a recall answered with nothing. It still asserts
-today's refusals (equip, support equip, support reward), which steps 4 and 7 change.
+with the same stats, 27/15 and 27/12 answered, a summon refused with 58007, a recall answered with nothing.
+
+After steps 4 and 7 (`feature/helpers-gear`, stand 3, `e2e_helper.py tester9 password 21311 tester10`, the last argument the
+friend who offers the orb): **70 PASS, 0 FAIL**. The old refusals are replaced by the equipment (items given by `/item`, put on, refused for
+another helper, a higher level and a taken slot, swapped, a gear in its slot, taken off, put back on; 08/05 and 08/06 with
+the right slots; the stats added) and the orbs (the two become friends through 19/11 and 19/13; info, an unknown kind
+refused, an attack orb offered for a day with its reward waiting, a second refused with 58003, the row in the database, the
+list of the friend and not of the one who offers, the orb put on with its value added to the attack, the list empty after,
+a second use refused with result 3, no orb from a person who offers none, the reward taken once with item 800000999); after
+re-entry the items and the orb are still on the helper; in the maze the list carries them and an item is taken off there.
+The old script on the new build: 37 PASS, 3 FAIL, all three intended (a type 2 orb is refused, 27/09 answers result 2
+instead of an error, no orb is offered at re-entry).
 
 ## 8. Implementation plan
 
@@ -357,12 +385,46 @@ Order matters: 1–3 need no maze work and give the window its real content; 4�
    to the reference's: stamina, soul gauge, move and attack speed and the attribute stats, which the calculator does not
    compute. Test: one unit test of the rule (the level raises the origin stats; the monster row's additions are in; items
    and a valid orb add to 20, 21, 24; an expired orb adds nothing).
-4. **Equipment 27/10** (M–L). Helper equipment kept as items in a storage of their own: a storage number not used by the
-   client for a helper's slots, slot = helper number × 3 + slot (or a storage per helper number 100..109, slot 0..2) —
-   **schema**: no new column if the storage/slot encoding is used; the index `(PersonId, Storage, Slot)` should become
-   unique for that storage (coordinator's migration). Moves through `InventoryService` / `Inventory.Touch` so the flush
-   carries them. The three shapes of the request, the checks and codes of section 4. Tests: one unit test per shape is too
-   many by rule 6 — one test of "put on, swap, take off keep one item per slot"; e2e with a granted helper item.
+4. **Equipment 27/10** (M–L) — **done** (`feature/helpers-gear`).
+   - **Where the items are.** What a helper wears stays an item of the person (`Items`), in the storage the client and the
+     reference call the helper storage, **105** (`StorageGroup.HelperEquip`, `ItemPersistent.HelperStorage`), at the place
+     `helper number × 3 + slot` (`Inventory.HelperPlace`; Ralfh, number 103, wears his weapon at 309). The inventory keeps
+     that storage apart from the storages the client names (`Inventory.WornByHelper`), so the requests that move, sell,
+     trade, upgrade or count items by storage and slot never reach a worn item; `Inventory.Items` includes them, so the
+     flush, the restore of a failed write and the sockets and broaches at entry see them. They move only through
+     `InventoryService.PutOnHelper` (put on, or swap: the worn item goes to the bag slot the new one leaves) and
+     `TakeOffHelper` (into the slot the client names when it is a free slot of the item's bag, else the first free one),
+     which send the usual "item gone" (08/05) and "item created" (08/06) and mark the inventory dirty.
+   - **Schema (coordinator's migration).** One unique index on `Items`: `IX_Items_HelperPlace` on `(PersonId, Slot)`
+     filtered by `"Storage" = 105`. The general index `(PersonId, Storage, Slot)` stays non-unique. Since a swap writes two
+     items that trade a place, the flush (`ItemStore`) first moves the rows of the items it is about to write that lie in
+     storage 105 to a place of their own (`Slot = -1 - Slot`, unique since the old places were), when one of them goes to
+     storage 105; the test fails without that step.
+   - **Rules** (`HelperGear.Equip`, shared by district and maze through `HelperService`): the three shapes by the serials
+     the request names; the helper the person's and in `tb_Helper`; the item in the slot the request names, with that
+     serial, in the bag of its kind; slot type 240..242, class limit = the helper's number, level limit ≤ the owner's level;
+     a put-on only into an empty slot; a swap only of the worn serial at that slot and an item of the same slot; a take-off
+     of the worn serial. Codes: **58004**, and **52010** for a take-off into a full bag. Then 27/10 {0, record}; the record
+     (`HelperGear.Record`, also used by 27/01 and 27/03 through `HelperManager`) carries the worn items and the additional
+     stats of `HelperStats` (attack to 20 and 21, defense to 24).
+   - **Comparison with the original:**
+
+     | Point | Ours | Why |
+     |---|---|---|
+     | Shapes of the request, order of the checks, codes 58004 and 52010 | same | |
+     | Messages: 08/05 for the item leaving the bag, 08/06 for the item coming back, then 27/10 {0, record} | same | |
+     | Storage 105 for the worn items, three per helper | same storage; the place encodes the helper | the reference keys the rows by helper in its own procedure; ours keeps the item table as it is |
+     | One item per place | a unique index | the reference relies on its procedure; rule 3 |
+     | Level limit of the item | checked | the reference does not; the client does, so a sound client never sends it |
+     | Helper slot of a swap | bound-checked | the reference indexes its array with the client's value |
+     | Serial of a take-off | checked against the worn item | the reference only checks that the slot holds an item |
+     | Bag item | must lie in the slot the request names, in the bag of its kind | the reference looks the serial up in any storage |
+     | Target of a take-off | the slot the client names when free, else the first free | the reference always takes the first free; the client names a free one |
+     | Answer when the database refuses | not possible (the flush writes later) | the reference sends nothing |
+     | Stats of a called helper's actor | not recomputed here | no helper is called yet (step 5) |
+   - **Tests**: `HelperGearTest.PuttingOnSwappingAndTakingOffKeepOneItemPerSlot` and `WornItemsAndAValidOrbRaiseTheStatsOfTheHelper`
+     (client tables), `PersistenceTest.AHelperPlaceHoldsOneItemThroughSwapsFlushesAndANewEntry` (Postgres: put on, swap and
+     take off over flushes and a new entry, and the index refusing a second item at a place).
 5. **Summon and release in the maze** (L). `OpenWorker.Gameplay/Modules/Helpers` (rules: cooldown 10 s, count of four
    bodies, maze flag, the order of checks and codes) + the maze side (`OpenWorker.MazeServer`/`OpenWorker.Lua`): spawn the
    monster row with an owner (a new owner component: owner entity, person, helper id), position behind the owner, stats,
@@ -378,13 +440,57 @@ Order matters: 1–3 need no maze work and give the window its real content; 4�
    helper credited to the owner (drops, experience, quests). Tests: `AiMachineTest`-style unit tests for "guard distance
    drives MOVE", "health 0 enters recovery and heals to full"; e2e: a summoned helper moves, uses skills on monsters,
    monsters die to it, the owner gets experience.
-7. **Support** (M–L). A registration store readable by every server: a table `HelperSupports` (person key, type, value,
-   expiry, reward state) and `HelperSupportUses` (supporter, user; unique pair) — **schema change**, the coordinator's
-   migration — or Redis with a 24 h expiry for the registration and a set for the uses (uniqueness then rests on Redis
-   set semantics, not memory). `OpenWorker.Channel` (shared, next to friends): register, info, reward, list (friends via
-   `FriendBook`, scaling by level), equip (orb stored on the helper's entry in the book), friend points to the supporter
-   (`FriendStore`), orb release on helper release and maze clear (27/11). Tests: one unit test of the scaling rule and one
-   of "used once per user"; e2e with two testers who are friends.
+7. **Support** (M–L) — **done** (`feature/helpers-gear`).
+   - **Where it is kept: the database.** An orb must be seen by every server and outlast a restart for its day, one orb per
+     person and one use per user are limits, and the reward is given once: all of that is what `ARCHITECTURE.md` gives the
+     database (rule 3: uniqueness and limits are constraints). Redis would hold the day, but a use and a reward taken would
+     then rest on Redis commands, and a restart of Redis would lose a reward still to take. **Schema (coordinator's
+     migration):** table `HelperSupports` (key `PersonId` → `Persons` cascade; `SupportType` smallint, `Value` real, `Until`
+     timestamptz, `Reward` smallint: 1 to take, 2 taken; `CreatedAt`, `UpdatedAt`), table `HelperSupportUses` (`Id` bigint
+     identity; `SupporterId`, `UserId` → `Persons` cascade; `Until` timestamptz, the day of the orb used; `CreatedAt`,
+     `UpdatedAt`; unique index `(SupporterId, UserId, Until)`, index `UserId`). The orb a helper wears is kept on its entry
+     of the book (`HelperEntry.Orb`, in the `MiscState` document, written by the flush).
+   - **Rules** (`OpenWorker.Channel/Community/HelperSupports`, store `HelperSupportStore`, handlers in `HelperService`):
+     - 06: type 0 or 1 (another is answered with result 1); value = 20 % of the person's physical attack (max) or defense
+       (`PlayerStatsService`); valid 24 h. One statement inserts the row or replaces it only when the old day is over and its
+       reward taken; else result **58003** (reward waiting) or 1 (still valid). The uses of the old orb are dropped.
+     - 05: registered while valid; an expired orb whose reward waits is still shown (so the window offers the reward); one
+       expired with its reward taken is shown as nothing.
+     - 07: state 1, room in the bag (**52010**), then a conditional update claims the reward once (**52004** for no reward,
+       or one already claimed), then the items of row 1 are given and 27/07 {0}. If the bag filled while the claim was being
+       written, the claim is given back and 52010 answered.
+     - 08: friends (both kinds `Friend`) with a valid orb not used by the reader; the value scaled by
+       `HelperSupports.Scaled` (friend more than 5 levels above: `value / friend level × reader level`), the friend's level
+       from its row.
+     - 09: the helper the person's (else **58004**); a friend's valid orb not used yet: the use is inserted (the unique
+       index decides between two servers), the friend points of row 2 are added to the friend's row for the user in the
+       same transaction, the scaled orb goes on the helper and 27/09 {0, helper, record}. Refusals answer 27/09 with result
+       1 (expired), 2 (no orb, or not a friend), 3 (used already) and the helper's unchanged record.
+     - 27/11: `HelperGear.ReleaseOrb(player, helper)` drops the orb of a helper and sends the record (the client says 21533).
+       `HelperGear.OnMazeCleared(player)` releases the orbs of the helpers that are called (`ISummonedHelpers`; the default
+       `NoSummonedHelpers` says none is), called by `MazeReporter.MazeClearedAsync`. The release of a called helper (step 5)
+       must call `ReleaseOrb`. An orb whose day ended adds nothing and is not shown; it stays on the entry until replaced or
+       released.
+   - **Comparison with the original:**
+
+     | Point | Ours | Why |
+     |---|---|---|
+     | Value (20 % of attack max or defense), 24 h, reward items of row 1, friend points of row 2 | same | |
+     | Codes 58003, 52010, 52004 and results 1 and 2 of 09 | same | |
+     | Where an orb is kept | database rows | the reference kept them in the memory of its relay: a restart lost them |
+     | A type other than 0 and 1 | refused | the reference registered an orb worth 0 |
+     | 06 when a valid orb exists with its reward taken; 07 without a reward; 09 used already or helper not owned | answered (result 1; error 52004; result 3; error 58004) | the reference is silent, which leaves the client's request guard shut |
+     | Reward of an orb whose day ended | kept until taken; blocks a new orb with 58003 | the reference dropped it at the next info, unclaimed; 58003's text and the window's texts speak of taking it after the end |
+     | List | valid orbs only | the reference listed expired ones too and refused them on use |
+     | Use by a person who is not a friend | refused (result 2) | the reference checked only that the orb exists |
+     | Record in a refused 27/09 | the helper as it is | the reference sends an empty record, which the client reads into its own copy |
+     | Friend points of a use | written to the friend's row whether online or not | the reference added them only when the friend was online |
+     | Total friend points of row 1 | not kept | 0 in both tables, and the wallet has no friend points |
+     | Level of the friend for scaling | its row (written by the flush) | the reference used the live level of its friend list |
+     | Orbs released at the clear of a maze | called helpers only | same; today none is called |
+   - **Tests**: `HelperSupportTest.AnOrbIsListedToFriendsAndUsedOncePerFriendWhileItsDayLasts` and
+     `TheRewardIsTakenOnceAndANewOrbWaitsForTheEndOfTheLast` (Postgres), the stats of a valid and an expired orb in
+     `HelperGearTest`.
 
 ### Open questions (only a run with the real client can answer)
 
@@ -394,7 +500,7 @@ Order matters: 1–3 need no maze work and give the window its real content; 4�
   are needed after the summon (the reference sets the stats after the spawn went out).
 - Whether the client's recall button really hides itself in a party of two or more (its guard reads a count that looks
   like the party size: not sure).
-- The reward timing of an orb: the reference lets it be taken while the registration is valid, but the window's texts
-  (21548, 21549) speak of "after the support ends"; check what the window enables.
-- Whether the support registration should survive a restart (the reference kept it only in memory).
+- The reward timing of an orb: answered for step 7 (the client enables the button from the reward state alone; see
+  section 5). Whether the window's text changes at the end of the day is the Scaleform part of the window, not read.
+- Whether the support registration should survive a restart: it does now (rows of the database).
 - Maze type 12 (refused by the reference) does not occur in the client's maze table: ignore unless the table grows.

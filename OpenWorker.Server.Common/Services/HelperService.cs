@@ -1,3 +1,4 @@
+using OpenWorker.Channel.Community;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -8,10 +9,10 @@ using OpenWorker.Hotspot.Modules.Helpers.Requests;
 namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
-/// The window of the helpers, in a district and in a maze: the list, its order, the automatic call, and the refusals of
-/// what is not done yet (calling a helper into a maze, items, the orbs of friends).
+/// The window of the helpers, in a district and in a maze: the list, its order, the automatic call, the items helpers wear,
+/// the orbs of friends, and the refusal of what is not done yet (calling a helper into a maze).
 /// </summary>
-public sealed class HelperService(HelperManager manager) :
+public sealed class HelperService(HelperManager manager, HelperGear gear, HelperSupports supports) :
     IHotspotHandler<HelperSummonRequest>,
     IHotspotHandler<HelperSupportInfoRequest>,
     IHotspotHandler<HelperSupportRegisterRequest>,
@@ -30,42 +31,34 @@ public sealed class HelperService(HelperManager manager) :
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportInfoRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportInfoRequest request)
     {
-        manager.SendSupportInfo(context.Player);
-
-        return ValueTask.CompletedTask;
+        await supports.SendInfoAsync(context.Player);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportRegisterRequest request)
     {
-        await manager.RegisterSupportAsync(context.Player, request.SupportType, context.CancellationToken);
+        await supports.RegisterAsync(context.Player, request.SupportType);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportRewardRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportRewardRequest request)
     {
-        manager.RefuseSupportReward(context.Player);
-
-        return ValueTask.CompletedTask;
+        await supports.RewardAsync(context.Player);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportListRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportListRequest request)
     {
-        manager.SendSupportList(context.Player);
-
-        return ValueTask.CompletedTask;
+        await supports.SendListAsync(context.Player);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportEquipRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, HelperSupportEquipRequest request)
     {
-        manager.RefuseEquip(context.Player, HelperOpcode.SupportEquip);
-
-        return ValueTask.CompletedTask;
+        await supports.EquipAsync(context.Player, request.Helper, request.Friend);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, HelperEquipRequest request)
     {
-        manager.RefuseEquip(context.Player, HelperOpcode.Equip);
+        gear.Equip(context.Player, request);
 
         return ValueTask.CompletedTask;
     }
