@@ -1466,7 +1466,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void CompleteCondition(int condition)
     {
-        questManager.TryApplyConditionProgress(player, condition, 1);
+        questManager.CompleteCondition(player, condition);
     }
 
     [LuaMember]

@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.ItemSetup.Responses;
@@ -26,7 +28,8 @@ public sealed class ItemDisassembleService(
     InventoryService inventory,
     ReadOnlyCollection<DisassembleResultRow> results,
     ItemSetupAnswers answers,
-    Random? random = null)
+    Random? random = null,
+    QuestManager? quests = null)
 {
     /// <summary>The person would hold more ether than a wallet can.</summary>
     public const ushort TooMuchEther = 52058;
@@ -100,10 +103,14 @@ public sealed class ItemDisassembleService(
             return;
         }
 
+        var item = target.Item;
+
         inventory.Spend(player, tool, 1);
         Give(player, target, result);
 
         answers.Send(player, new ItemSetupDisassembleResponse { Results = [result] });
+
+        quests?.OnEvent(player, QuestConditionType.Disassemble, QuestConditionTarget.Item, item);
     }
 
     /// <summary>
@@ -176,12 +183,20 @@ public sealed class ItemDisassembleService(
             return;
         }
 
+        var taken = targets.Select(e => e.Item).ToArray();
+
         for (var i = 0; i < targets.Count; i++)
         {
             Give(player, targets[i], rolled[i]);
         }
 
         answers.Send(player, new ItemSetupDisassembleExResponse { Results = rolled });
+
+        // Every item taken apart counts for the quests that ask to take it apart.
+        foreach (var item in taken)
+        {
+            quests?.OnEvent(player, QuestConditionType.Disassemble, QuestConditionTarget.Item, item);
+        }
     }
 
     private static bool InBag(ItemInstance item)

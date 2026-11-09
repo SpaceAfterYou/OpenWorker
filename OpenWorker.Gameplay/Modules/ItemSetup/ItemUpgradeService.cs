@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.ItemSetup.Enums;
 using OpenWorker.Hotspot.Modules.ItemSetup.Responses;
@@ -27,7 +29,8 @@ public sealed class ItemUpgradeService(
     ReadOnlyCollection<ReinforceRow> costs,
     ReadOnlyCollection<ReinforceChanceRow> chances,
     ItemSetupAnswers answers,
-    Random? random = null)
+    Random? random = null,
+    QuestManager? quests = null)
 {
     /// <summary>The item cannot be upgraded further, or with that protection.</summary>
     public const ushort CannotUpgrade = 52201;
@@ -181,6 +184,9 @@ public sealed class ItemUpgradeService(
         bag.Touch(target);
 
         answers.Send(player, new ItemSetupUpgradeResponse { Result = result, Item = target.ToValue() });
+
+        // Every try counts for the quests that ask to upgrade the item, whatever came of it.
+        quests?.OnEvent(player, QuestConditionType.Upgrade, QuestConditionTarget.Item, target.Item);
     }
 
     private bool HasMaterial(Entity player, int material, short count, int extra, short extraCount)

@@ -31,7 +31,12 @@ public readonly record struct StorageChange(StorageGroup Storage, short Slot);
 /// </summary>
 /// <remarks>Runs on the logic thread of the server, like everything that touches the world.</remarks>
 public sealed class InventoryService(
-    World world, ItemCatalog catalog, IItemSerials serials, PlayerStatsService? stats = null, CostumeBroachPlaces? broaches = null)
+    World world,
+    ItemCatalog catalog,
+    IItemSerials serials,
+    PlayerStatsService? stats = null,
+    CostumeBroachPlaces? broaches = null,
+    ItemArrivals? arrivals = null)
 {
     /// <summary>The client has nothing more specific for a refused item request.</summary>
     public const ushort Refused = 52011;
@@ -151,6 +156,8 @@ public sealed class InventoryService(
                 session.Send(new ItemCreateResponse { List = created.Select(ToStorageValue).ToArray() });
             }
         }
+
+        arrivals?.Arrived(player, item, count);
 
         return true;
     }

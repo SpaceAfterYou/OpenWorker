@@ -6,10 +6,12 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests.Components;
 using OpenWorker.Gameplay.Modules.Rewards;
+using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
@@ -29,8 +31,9 @@ namespace OpenWorker.Gameplay.Modules.Quests;
 /// </summary>
 /// <remarks>
 /// The rest of the game tells the manager what the person does: <see cref="OnMonsterKilledAsync"/>,
-/// <see cref="OnMazeClearedAsync"/>, <see cref="OnSectorClearedAsync"/>, <see cref="OnItemCollectedAsync"/> and
-/// <see cref="OnObjectUsedAsync"/>. The client tells what only it sees, such as talking to a character.
+/// <see cref="OnMazeClearedAsync"/>, <see cref="OnSectorClearedAsync"/>, <see cref="OnItemsArrived"/>,
+/// <see cref="OnObjectUsedAsync"/> and <see cref="OnEvent"/> for the work on items. The client tells what only it sees,
+/// talking to a character, and the server checks what it can of it.
 /// </remarks>
 public sealed partial class QuestManager(
     World world,
@@ -41,41 +44,85 @@ public sealed partial class QuestManager(
     HelperManager helpers,
     BoosterManager boosters,
     ILogger<QuestManager> logger,
-    AchievementManager? achievements = null)
+    AchievementManager? achievements = null,
+    ExperienceService? experience = null,
+    IQuestNpcs? npcs = null,
+    IQuestTitles? titles = null,
+    TimeProvider? time = null)
 {
     /// <summary>
-    /// The conditions the client may move on by itself because the server can not see them. The rest are counted
-    /// from what the server sees, so the client can not make them up.
+    /// The conditions the client tells the server about (<c>15/08</c>): talking to a character, and handing something in to
+    /// one, which the tables write as a talk that takes items. Everything else is counted from what the server sees.
     /// </summary>
-    private static readonly HashSet<QuestConditionType> ClientDriven =
+    private static readonly HashSet<QuestConditionType> ToldByTheClient =
     [
         QuestConditionType.Talk,
-        QuestConditionType.Move,
-        QuestConditionType.Trigger,
-        QuestConditionType.Deliver,
-        QuestConditionType.Protect,
-        QuestConditionType.Survival,
-        QuestConditionType.Trace,
-        QuestConditionType.Guard
+        QuestConditionType.Deliver
     ];
+
+    private readonly IQuestNpcs _npcs = npcs ?? new NoQuestNpcs();
+    private readonly IQuestTitles _titles = titles ?? new NoQuestTitles();
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
+    /// <summary>
+    /// How an episode comes to the person, which decides the checks it goes through.
+    /// </summary>
+    private enum Taking
+    {
+        /// <summary>The client asks at a character: every check.</summary>
+        Asked,
+
+        /// <summary>It starts by itself after the episode before it: no limit of episodes, no character.</summary>
+        ByItself,
+
+        /// <summary>A script gives it: only what the person can not have (an episode taken or finished, a level, a hero).</summary>
+        Given
+    }
 
     #region Loading
 
     /// <summary>
-    /// Loads the quests of the person and tells the client about them: the finished episodes first, then the ones
-    /// in progress.
+    /// Loads the quests of the person and tells the client about them: the episodes in progress, then the finished ones,
+    /// which is the order the client reads them in to know which episodes it may offer.
     /// </summary>
     public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
     {
         var book = await store.LoadAsync(person, cancellationToken) ?? new QuestBook();
 
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
         book.Normalize(catalog);
 
         world.Set(player, new QuestComponent { Person = person, Book = book });
 
+        var changed = QuestRules.MarkCountedConditions(book, catalog);
+
+        // Episodes that start by themselves once the one before them is finished, and that the person lacks: a finish that
+        // came from another server or a script, or a book from before they started by themselves. The lists that follow
+        // carry them.
+        foreach (var quest in catalog.StartingByThemselves)
+        {
+            if (QuestRules.ShouldStartByItself(book, catalog, quest))
+            {
+                changed |= await AcceptCoreAsync(player, quest.Id, Taking.ByItself, false, cancellationToken);
+            }
+        }
+
+        if (!TryGet(player, out book, out _))
+        {
+            return;
+        }
+
+        Send(player, BuildQuestListResponse(book));
         Send(player, new QuestCompleteListResponse { CompletedEpisodeBits = book.Finished.ToArray() });
 
-        SendQuestEpisodeList(player);
+        if (changed)
+        {
+            await SaveAsync(player);
+        }
     }
 
     /// <summary>
@@ -145,11 +192,17 @@ public sealed partial class QuestManager(
     #region Taking, finishing and giving up
 
     /// <summary>
-    /// The person asks to take an episode.
+    /// The person asks to take an episode, at the character that gives it.
     /// </summary>
-    public ValueTask<bool> AcceptAsync(Entity player, int episode, CancellationToken cancellationToken)
+    public async ValueTask<bool> AcceptAsync(Entity player, int episode, CancellationToken cancellationToken)
     {
-        return AcceptCoreAsync(player, episode, false, cancellationToken);
+        if (await AcceptCoreAsync(player, episode, Taking.Asked, true, cancellationToken))
+        {
+            await SaveAsync(player);
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -157,70 +210,96 @@ public sealed partial class QuestManager(
     /// </summary>
     public void AcceptEpisode(Entity player, int episode)
     {
-        Run(nameof(AcceptEpisode), () => AcceptCoreAsync(player, episode, true, CancellationToken.None).AsTask());
+        Run(nameof(AcceptEpisode), async () =>
+        {
+            if (await AcceptCoreAsync(player, episode, Taking.Given, true, CancellationToken.None))
+            {
+                await SaveAsync(player);
+            }
+        });
     }
 
-    private async ValueTask<bool> AcceptCoreAsync(Entity player, int episode, bool force, CancellationToken cancellationToken)
+    /// <summary>
+    /// Takes an episode: the book has it in progress afterwards, with the items it gives and its conditions counted for
+    /// the items the person already has. <paramref name="tell"/> sends the client the episode; the lists of an entry carry
+    /// it instead.
+    /// </summary>
+    private async ValueTask<bool> AcceptCoreAsync(Entity player, int episode, Taking taking, bool tell, CancellationToken cancellationToken)
     {
-        if (!TryGet(player, out var book, out var person))
+        if (!TryGet(player, out var book, out _))
         {
             return false;
         }
 
         if (!catalog.TryGetEpisode(episode, out var quest))
         {
-            SendError(player, QuestOpcode.Accept, QuestErrors.UnknownEpisode);
+            Refuse(player, QuestOpcode.Accept, QuestErrors.UnknownEpisode, tell);
             return false;
         }
 
-        var error = QuestRules.CheckAccept(catalog, book, quest, GetLevel(player), GetHero(player), force);
+        var error = QuestRules.CheckAccept(catalog, book, quest, GetLevel(player), GetHero(player), taking == Taking.Given) ??
+                    (taking == Taking.Given ? null : QuestRules.CheckRepeat(book, quest, Today()));
+
+        if (error is null && taking == Taking.Asked && quest.StartNpc != 0 && _npcs.Reach(player, quest.StartNpc) == NpcReach.Far)
+        {
+            LogTooFar(logger, nameof(AcceptAsync), episode, quest.StartNpc);
+            error = QuestErrors.NotAvailableYet;
+        }
 
         if (error is { } code)
         {
-            SendError(player, QuestOpcode.Accept, code);
+            Refuse(player, QuestOpcode.Accept, code, tell);
             return false;
         }
 
-        // The episode is taken before anything is waited for, so a second request for it is refused.
+        // What the episode gives comes first and all of it, or the episode is not taken. The episode is not in the book
+        // while it is given, so the items do not count for its conditions twice; they are counted below.
+        if (quest.GivenOnAccept.Count > 0 &&
+            !await rewards.TryGrantAsync(player, new Reward(ToRewardItems(quest.GivenOnAccept)), RewardSource.Quest, cancellationToken))
+        {
+            Refuse(player, QuestOpcode.Accept, QuestErrors.ObjectsNotGiven, tell);
+            return false;
+        }
+
+        // Another request may have taken it while the items were given.
+        if (!TryGet(player, out book, out _) || book.Find(quest.Id) is not null)
+        {
+            return false;
+        }
+
         var state = QuestRules.Start(quest, book.HelperCount < QuestRules.MaxHelperEpisodes);
 
         book.Episodes.Add(state);
 
-        if (quest.GivenOnAccept.Count > 0 &&
-            !await rewards.TryGrantAsync(player, new Reward(ToRewardItems(quest.GivenOnAccept)), RewardSource.Quest, cancellationToken))
+        if (tell)
         {
-            book.Episodes.Remove(state);
-
-            SendError(player, QuestOpcode.Accept, QuestErrors.ObjectsNotGiven);
-            return false;
+            Send(player, new QuestAcceptResponse { Episode = quest.Id, IsShowHelper = state.Helper ? (byte)1 : (byte)0 });
         }
 
-        Send(player, new QuestAcceptResponse { Episode = quest.Id, IsShowHelper = state.Helper ? (byte)1 : (byte)0 });
-
-        // Items the person already has count towards the conditions that ask for them.
-        foreach (var condition in quest.Conditions.Select(e => catalog.TryGetCondition(e, out var found) ? found : null))
+        // Items the person already has count towards the conditions that ask for them, as many as the person has.
+        foreach (var slot in Enumerable.Range(0, quest.Conditions.Count))
         {
-            if (condition is { Type: QuestConditionType.Collect, Target: QuestConditionTarget.Item })
+            if (catalog.TryGetCondition(quest.Conditions[slot], out var condition) &&
+                condition is { Type: QuestConditionType.Collect, Target: QuestConditionTarget.Item })
             {
-                var count = await items.CountAsync(player, condition.TargetId, cancellationToken);
+                var held = Math.Min(await items.CountAsync(player, condition.TargetId, cancellationToken), condition.Counter);
+                var missing = held - state.Steps[slot];
 
-                if (count > 0)
+                if (missing > 0)
                 {
                     var id = condition.Id;
 
-                    await ProgressAsync(player, e => e.Id == id, Math.Min(count, condition.Counter), false);
+                    await ProgressAsync(player, e => e.Id == id, missing, false);
                 }
             }
         }
-
-        await SaveAsync(player);
 
         return true;
     }
 
     /// <summary>
-    /// The person asks to finish an episode and take its reward. <paramref name="selected"/> is the item chosen from
-    /// the ones the episode offers, as it stands in the table.
+    /// The person asks to finish an episode and take its reward, at the character it is handed in to.
+    /// <paramref name="selected"/> is the item chosen from the ones the episode offers, as it stands in the table.
     /// </summary>
     public async ValueTask<bool> CompleteAsync(Entity player, int episode, int selected, CancellationToken cancellationToken)
     {
@@ -237,7 +316,7 @@ public sealed partial class QuestManager(
 
     private async ValueTask<bool> CompleteCoreAsync(Entity player, int episode, int selected, bool force, CancellationToken cancellationToken)
     {
-        if (!TryGet(player, out var book, out var person))
+        if (!TryGet(player, out var book, out _))
         {
             return false;
         }
@@ -250,15 +329,25 @@ public sealed partial class QuestManager(
             return false;
         }
 
+        // An episode handed in to a character is handed in where the character stands; one that ends by itself is not.
+        if (!force && !quest.FinishesByItself && quest.FinishNpc != 0 && _npcs.Reach(player, quest.FinishNpc) == NpcReach.Far)
+        {
+            LogTooFar(logger, nameof(CompleteAsync), episode, quest.FinishNpc);
+            SendError(player, QuestOpcode.EpisodeComplete, QuestErrors.CannotFinish);
+            return false;
+        }
+
         var payout = QuestRules.GetPayout(quest, catalog, GetHero(player), selected);
 
         // What the boosters of the person add is paid and told too.
-        var experience = (long)boosters.Apply(player, BoosterEffect.CompleteQuestIncExp, payout.Reward.Experience);
-        var reward = payout.Reward with { Experience = experience };
+        var earned = (long)boosters.Apply(player, BoosterEffect.CompleteQuestIncExp, payout.Reward.Experience);
+        var bonus = Math.Max(0, earned - payout.Reward.Experience);
+        var reward = payout.Reward with { Experience = earned };
 
         // The episode is done before anything is waited for, so it can not be finished twice.
         var index = book.Episodes.IndexOf(state);
         var wasFinished = book.IsFinished(quest.CompleteBit);
+        var repeats = book.Repeats.Find(e => e.Episode == quest.Id) is { } repeat ? (repeat.Day, repeat.Count) : ((DateTimeOffset, int)?)null;
 
         book.Episodes.RemoveAt(index);
 
@@ -266,6 +355,8 @@ public sealed partial class QuestManager(
         {
             book.SetFinished(quest.CompleteBit, true);
         }
+
+        QuestRules.CountRepeat(book, quest, Today());
 
         bool granted;
 
@@ -276,16 +367,39 @@ public sealed partial class QuestManager(
 
         catch
         {
-            Restore(book, state, index, quest, wasFinished);
+            Restore(book, state, index, quest, wasFinished, repeats);
             throw;
         }
 
         if (!granted)
         {
-            Restore(book, state, index, quest, wasFinished);
+            Restore(book, state, index, quest, wasFinished, repeats);
 
             SendError(player, QuestOpcode.EpisodeComplete, QuestErrors.ItemsNotGiven);
             return false;
+        }
+
+        if (quest.TakenOnFinish.Count > 0)
+        {
+            await items.TakeAsync(player, quest.TakenOnFinish, cancellationToken);
+        }
+
+        if (!world.IsAlive(player))
+        {
+            return false;
+        }
+
+        // Experience raises the level; the reward granter only hands over items and money.
+        experience?.Add(player, (int)Math.Min(earned, int.MaxValue), (int)Math.Min(bonus, int.MaxValue));
+
+        foreach (var title in new[] { payout.Prefix, payout.Suffix }.Where(e => e != 0))
+        {
+            await _titles.GrantAsync(player, title);
+
+            if (!world.IsAlive(player))
+            {
+                return false;
+            }
         }
 
         uint helper = 0;
@@ -295,15 +409,10 @@ public sealed partial class QuestManager(
             helper = (uint)payout.Helper;
         }
 
-        if (quest.TakenOnFinish.Count > 0)
-        {
-            await items.TakeAsync(player, quest.TakenOnFinish, cancellationToken);
-        }
-
         Send(player, new QuestEpisodeCompleteResponse
         {
             Episode = quest.Id,
-            Exp = (int)Math.Min(experience, int.MaxValue),
+            Exp = (int)Math.Min(earned, int.MaxValue),
             Money = reward.Gold,
             BattlePoints = reward.BattlePoints,
             Ether = reward.Ether,
@@ -314,12 +423,22 @@ public sealed partial class QuestManager(
 
         achievements?.OnQuestFinished(player, quest.Contents);
 
+        // The episodes that follow and start by themselves are taken at once.
+        foreach (var link in quest.Links)
+        {
+            if (catalog.TryGetEpisode(link, out var next) && next.StartsByItself)
+            {
+                await AcceptCoreAsync(player, link, Taking.ByItself, true, cancellationToken);
+            }
+        }
+
         await SaveAsync(player);
 
         return true;
     }
 
-    private static void Restore(QuestBook book, QuestEpisodeState state, int index, QuestDefinition quest, bool wasFinished)
+    private static void Restore(
+        QuestBook book, QuestEpisodeState state, int index, QuestDefinition quest, bool wasFinished, (DateTimeOffset Day, int Count)? repeats)
     {
         book.Episodes.Insert(Math.Min(index, book.Episodes.Count), state);
 
@@ -327,14 +446,22 @@ public sealed partial class QuestManager(
         {
             book.SetFinished(quest.CompleteBit, false);
         }
+
+        book.Repeats.RemoveAll(e => e.Episode == quest.Id);
+
+        if (repeats is { } before)
+        {
+            book.Repeats.Add(new QuestRepeatState { Episode = quest.Id, Day = before.Day, Count = before.Count });
+        }
     }
 
     /// <summary>
-    /// The person gives an episode up.
+    /// The person gives an episode up. What the episode gave goes back, and what its done conditions took is given back,
+    /// which has to fit.
     /// </summary>
     public async ValueTask<bool> GiveUpAsync(Entity player, int episode, CancellationToken cancellationToken)
     {
-        if (!TryGet(player, out var book, out var person))
+        if (!TryGet(player, out var book, out _))
         {
             return false;
         }
@@ -347,12 +474,34 @@ public sealed partial class QuestManager(
             return false;
         }
 
+        var done = Enumerable.Range(0, quest.Conditions.Count)
+            .Where(state.IsDone)
+            .Select(slot => catalog.TryGetCondition(quest.Conditions[slot], out var condition) ? condition : null)
+            .OfType<QuestConditionDefinition>()
+            .ToArray();
+
+        var returned = done.SelectMany(e => e.TakenOnDone).ToArray();
+
         book.Remove(episode);
 
-        // What the episode gave with it goes back.
-        if (quest.GivenOnAccept.Count > 0)
+        if (returned.Length > 0 &&
+            !await rewards.TryGrantAsync(player, new Reward(ToRewardItems(returned)), RewardSource.Quest, cancellationToken))
         {
-            await items.TakeAsync(player, quest.GivenOnAccept, cancellationToken);
+            if (TryGet(player, out book, out _) && book.Find(episode) is null)
+            {
+                book.Episodes.Add(state);
+            }
+
+            SendError(player, QuestOpcode.GiveUp, QuestErrors.CannotGiveUp);
+            return false;
+        }
+
+        // What the episode and its done conditions gave goes back.
+        var given = quest.GivenOnAccept.Concat(done.SelectMany(e => e.GivenOnDone)).ToArray();
+
+        if (given.Length > 0)
+        {
+            await items.TakeAsync(player, given, cancellationToken);
         }
 
         Send(player, new QuestGiveUpResponse { Episode = episode });
@@ -368,7 +517,7 @@ public sealed partial class QuestManager(
     /// </summary>
     public async ValueTask<bool> FailAsync(Entity player, int episode)
     {
-        if (!TryGet(player, out var book, out var person) || book.Find(episode) is not { Failed: false } state)
+        if (!TryGet(player, out var book, out _) || book.Find(episode) is not { Failed: false } state)
         {
             return false;
         }
@@ -387,7 +536,7 @@ public sealed partial class QuestManager(
     /// </summary>
     public async ValueTask<bool> RemoveFailedAsync(Entity player, int episode)
     {
-        if (!TryGet(player, out var book, out var person) || book.Find(episode) is not { Failed: true })
+        if (!TryGet(player, out var book, out _) || book.Find(episode) is not { Failed: true })
         {
             return false;
         }
@@ -404,7 +553,7 @@ public sealed partial class QuestManager(
     /// </summary>
     public async ValueTask<bool> SetHelperAsync(Entity player, QuestHelperType type, int episode)
     {
-        if (!TryGet(player, out var book, out var person))
+        if (!TryGet(player, out var book, out _))
         {
             return false;
         }
@@ -437,13 +586,14 @@ public sealed partial class QuestManager(
     /// </summary>
     public async ValueTask<bool> ResetEpisodeAsync(Entity player, int episode)
     {
-        if (!TryGet(player, out var book, out var person) || !catalog.TryGetEpisode(episode, out var quest))
+        if (!TryGet(player, out var book, out _) || !catalog.TryGetEpisode(episode, out var quest))
         {
             return false;
         }
 
         book.Remove(episode);
         book.SetFinished(quest.CompleteBit, false);
+        book.Repeats.RemoveAll(e => e.Episode == episode);
 
         Send(player, new QuestEpisodeResetResponse { Episode = episode });
 
@@ -457,12 +607,13 @@ public sealed partial class QuestManager(
     /// </summary>
     public async ValueTask<bool> ResetAllAsync(Entity player)
     {
-        if (!TryGet(player, out var book, out var person))
+        if (!TryGet(player, out var book, out _))
         {
             return false;
         }
 
         book.Episodes.Clear();
+        book.Repeats.Clear();
         Array.Clear(book.Finished);
 
         Send(player, new QuestResetResponse());
@@ -492,7 +643,7 @@ public sealed partial class QuestManager(
     {
         var groups = catalog.GetMonsterGroups(monster);
 
-        return ProgressAsync(
+        return CountAsync(
             player,
             e => e.Type == QuestConditionType.Hunt &&
                  (e.Target == QuestConditionTarget.Monster && QuestRules.AcceptsParameter(e, monster) ||
@@ -505,7 +656,7 @@ public sealed partial class QuestManager(
     /// </summary>
     public ValueTask OnMazeClearedAsync(Entity player, int maze, CancellationToken cancellationToken)
     {
-        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Clear, QuestConditionTarget.Maze, maze), 1);
+        return CountAsync(player, e => QuestRules.Matches(e, QuestConditionType.Clear, QuestConditionTarget.Maze, maze), 1);
     }
 
     /// <summary>
@@ -513,7 +664,7 @@ public sealed partial class QuestManager(
     /// </summary>
     public ValueTask OnSectorClearedAsync(Entity player, int maze, int sector, CancellationToken cancellationToken)
     {
-        return ProgressAsync(
+        return CountAsync(
             player,
             e => e.Maze == maze && QuestRules.Matches(e, QuestConditionType.Clear, QuestConditionTarget.Sector, sector),
             1);
@@ -524,7 +675,23 @@ public sealed partial class QuestManager(
     /// </summary>
     public ValueTask OnItemCollectedAsync(Entity player, int item, short count, CancellationToken cancellationToken)
     {
-        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Collect, QuestConditionTarget.Item, item), count);
+        return CountAsync(player, e => QuestRules.Matches(e, QuestConditionType.Collect, QuestConditionTarget.Item, item), count);
+    }
+
+    /// <summary>
+    /// Items came into the bags of the person, from wherever they came: they count for the conditions that ask to collect
+    /// them. The inventory reports every gift here (<c>ItemArrivals</c>), so the work runs without the caller waiting.
+    /// </summary>
+    public void OnItemsArrived(Entity player, int item, int count)
+    {
+        if (count <= 0 || !TryGet(player, out _, out _))
+        {
+            return;
+        }
+
+        var added = (short)Math.Min(count, short.MaxValue);
+
+        Run(nameof(OnItemsArrived), () => OnItemCollectedAsync(player, item, added, CancellationToken.None).AsTask());
     }
 
     /// <summary>
@@ -532,7 +699,7 @@ public sealed partial class QuestManager(
     /// </summary>
     public ValueTask OnObjectUsedAsync(Entity player, int box, CancellationToken cancellationToken)
     {
-        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Trigger, QuestConditionTarget.WorldObject, box), 1);
+        return CountAsync(player, e => QuestRules.Matches(e, QuestConditionType.Trigger, QuestConditionTarget.WorldObject, box), 1);
     }
 
     /// <summary>
@@ -540,7 +707,7 @@ public sealed partial class QuestManager(
     /// </summary>
     public ValueTask OnEventAsync(Entity player, int eventId, CancellationToken cancellationToken)
     {
-        return ProgressAsync(player, e => QuestRules.Matches(e, QuestConditionType.Clear, QuestConditionTarget.Event, eventId), 1);
+        return CountAsync(player, e => QuestRules.Matches(e, QuestConditionType.Clear, QuestConditionTarget.Event, eventId), 1);
     }
 
     /// <summary>
@@ -548,7 +715,22 @@ public sealed partial class QuestManager(
     /// </summary>
     public ValueTask OnItemUsedAsync(Entity player, QuestConditionType type, int item, CancellationToken cancellationToken)
     {
-        return ProgressAsync(player, e => QuestRules.Matches(e, type, QuestConditionTarget.Item, item), 1);
+        return CountAsync(player, e => QuestRules.Matches(e, type, QuestConditionTarget.Item, item), 1);
+    }
+
+    /// <summary>
+    /// The person has done something a condition counts, told by a feature that can not wait for the quests: an item bought,
+    /// sold, made, upgraded or taken apart (<see cref="QuestConditionTarget.Item"/>), a bonus of the skill deck. Each call
+    /// counts once.
+    /// </summary>
+    public void OnEvent(Entity player, QuestConditionType type, QuestConditionTarget target, int id, int count = 1)
+    {
+        if (count <= 0 || !TryGet(player, out _, out _))
+        {
+            return;
+        }
+
+        Run(nameof(OnEvent), () => ProgressAsync(player, e => QuestRules.Matches(e, type, target, id), count).AsTask());
     }
 
     /// <summary>
@@ -556,18 +738,56 @@ public sealed partial class QuestManager(
     /// </summary>
     public ValueTask OnConditionAdvancedAsync(Entity player, int condition, int count, CancellationToken cancellationToken)
     {
-        return ProgressAsync(player, e => e.Id == condition, count);
+        return CountAsync(player, e => e.Id == condition, count);
     }
 
     /// <summary>
-    /// The client says it has done a step of a condition, such as talking to a character.
+    /// A script of the maze finishes a condition, whatever its count.
     /// </summary>
-    public ValueTask OnEventUpdateAsync(Entity player, int condition, long parameter, CancellationToken cancellationToken)
+    public void CompleteCondition(Entity player, int condition)
     {
-        return ProgressAsync(
-            player,
-            e => e.Id == condition && ClientDriven.Contains(e.Type) && parameter is >= int.MinValue and <= int.MaxValue && QuestRules.AcceptsParameter(e, (int)parameter),
-            1);
+        if (!catalog.TryGetCondition(condition, out var definition))
+        {
+            return;
+        }
+
+        Run(nameof(CompleteCondition), () => ProgressAsync(player, e => e.Id == condition, definition.Counter).AsTask());
+    }
+
+    /// <summary>
+    /// The client says the person has talked to a character for a condition (<c>15/08</c>): the episode, the condition and
+    /// the character. It counts when the condition is one the client tells, names that character, the person stands at
+    /// the character when the server knows where it is, and has what the condition takes. False when it does not count.
+    /// </summary>
+    public async ValueTask<bool> OnEventUpdateAsync(Entity player, int condition, long parameter, CancellationToken cancellationToken)
+    {
+        if (!TryGet(player, out _, out _) ||
+            !catalog.TryGetCondition(condition, out var definition) ||
+            !ToldByTheClient.Contains(definition.Type) ||
+            parameter is < int.MinValue or > int.MaxValue ||
+            !QuestRules.AcceptsParameter(definition, (int)parameter))
+        {
+            return false;
+        }
+
+        if (definition.Target == QuestConditionTarget.Npc && _npcs.Reach(player, definition.TargetId) == NpcReach.Far)
+        {
+            LogTooFar(logger, nameof(OnEventUpdateAsync), condition, definition.TargetId);
+            return false;
+        }
+
+        // Handing something in needs the thing.
+        foreach (var (item, count) in definition.TakenOnDone)
+        {
+            if (await items.CountAsync(player, item, cancellationToken) < count)
+            {
+                return false;
+            }
+        }
+
+        var steps = await ProgressAsync(player, e => e.Id == condition, 1);
+
+        return steps > 0;
     }
 
     /// <summary>
@@ -598,18 +818,27 @@ public sealed partial class QuestManager(
         return false;
     }
 
-    private async ValueTask ProgressAsync(Entity player, Func<QuestConditionDefinition, bool> matches, int count, bool save = true)
+    private async ValueTask CountAsync(Entity player, Func<QuestConditionDefinition, bool> matches, int count)
     {
-        if (!TryGet(player, out var book, out var person))
+        await ProgressAsync(player, matches, count);
+    }
+
+    /// <summary>
+    /// Counts an act for every open condition it matches, tells the client and gives and takes what the conditions that are
+    /// done name. Returns how many conditions moved.
+    /// </summary>
+    private async ValueTask<int> ProgressAsync(Entity player, Func<QuestConditionDefinition, bool> matches, int count, bool save = true)
+    {
+        if (!TryGet(player, out var book, out _))
         {
-            return;
+            return 0;
         }
 
         var steps = QuestRules.Apply(book, catalog, matches, count);
 
         if (steps.Count == 0)
         {
-            return;
+            return 0;
         }
 
         var kept = new List<QuestStep>(steps.Count);
@@ -632,7 +861,7 @@ public sealed partial class QuestManager(
 
         if (kept.Count == 0)
         {
-            return;
+            return 0;
         }
 
         Send(player, new QuestUpdateResponse
@@ -655,6 +884,8 @@ public sealed partial class QuestManager(
         {
             await SaveAsync(player);
         }
+
+        return kept.Count;
     }
 
     #endregion Progress
@@ -694,6 +925,11 @@ public sealed partial class QuestManager(
         return world.IsAlive(player) && world.TryGet<PersonInfoComponent>(player, out var info) ? (int)info.Hero : 0;
     }
 
+    /// <summary>
+    /// The start of the game day that is running, which is when repeated episodes counted from.
+    /// </summary>
+    private DateTimeOffset Today() => GameDay.Get(_time.GetLocalNow(), QuestRules.RepeatResetTime).Start;
+
     private static RewardItem[] ToRewardItems(IReadOnlyList<QuestItem> list)
     {
         return list.Select(e => new RewardItem(e.Item, e.Count)).ToArray();
@@ -727,6 +963,17 @@ public sealed partial class QuestManager(
     }
 
     /// <summary>
+    /// Refuses taking an episode: the client is told when it asked, the log has it otherwise.
+    /// </summary>
+    private void Refuse(Entity player, QuestOpcode command, ushort code, bool tell)
+    {
+        if (tell)
+        {
+            SendError(player, command, code);
+        }
+    }
+
+    /// <summary>
     /// The quests of a player as the flush writes them (<see cref="PersonSections.Quests"/>).
     /// </summary>
     public static IPersonDocumentSource Document { get; } =
@@ -738,7 +985,10 @@ public sealed partial class QuestManager(
     /// </summary>
     private ValueTask SaveAsync(Entity player)
     {
-        world.MarkDirty(player, PersonSections.Quests);
+        if (world.IsAlive(player))
+        {
+            world.MarkDirty(player, PersonSections.Quests);
+        }
 
         return ValueTask.CompletedTask;
     }
@@ -767,6 +1017,9 @@ public sealed partial class QuestManager(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{Work} of the quests failed.")]
     private static partial void LogWorkFailed(ILogger logger, Exception exception, string work);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Work} of {Id} refused: the person is not near character {Npc}.")]
+    private static partial void LogTooFar(ILogger logger, string work, int id, int npc);
 
     #endregion Helpers
 }

@@ -8,6 +8,9 @@ namespace OpenWorker.Gameplay.Modules.Quests;
 /// </summary>
 internal static class QuestEpisodeRowExtensions
 {
+    private const byte ItemsAsTheyAre = 1;
+    private const byte ItemsByClass = 2;
+
     public static QuestDefinition ToDefinition(this QuestEpisodeRow row)
     {
         var conditions = new[] { row.Condition1, row.Condition2, row.Condition3, row.Condition4, row.Condition5, row.Condition6, row.Condition7, row.Condition8, row.Condition9, row.Condition10 }.TakeWhile(e => e != 0).ToArray();
@@ -43,19 +46,30 @@ internal static class QuestEpisodeRowExtensions
             given,
             taken,
             row.ToReward(),
-            conditions);
+            conditions)
+        {
+            Links = new[] { row.LinkEpisode1, row.LinkEpisode2, row.LinkEpisode3, row.LinkEpisode4, row.LinkEpisode5 }.Where(e => e != 0).ToArray(),
+            StartsByItself = row.AutoStart == 1,
+            StartNpc = row.StartObjectType == (byte)QuestConditionTarget.Npc ? row.StartObject : 0,
+            FinishNpc = row.FinishObjectType == (byte)QuestConditionTarget.Npc ? row.FinishObject : 0
+        };
     }
 
     private static QuestRewardDefinition ToReward(this QuestEpisodeRow row)
     {
-        // An item list given by the class of the hero has the value 2 in its column.
-        var items = Items(
-            [row.RewardItem1, row.RewardItem2, row.RewardItem3, row.RewardItem4, row.RewardItem5],
-            [row.RewardCount1, row.RewardCount2, row.RewardCount3, row.RewardCount4, row.RewardCount5]);
+        // A list of items is given as items when its column says 1 and by the class of the hero when it says 2; any other
+        // value gives nothing.
+        var items = row.RewardItemsBy is ItemsAsTheyAre or ItemsByClass
+            ? Items(
+                [row.RewardItem1, row.RewardItem2, row.RewardItem3, row.RewardItem4, row.RewardItem5],
+                [row.RewardCount1, row.RewardCount2, row.RewardCount3, row.RewardCount4, row.RewardCount5])
+            : [];
 
-        var selectable = Items(
-            [row.SelectItem1, row.SelectItem2, row.SelectItem3, row.SelectItem4, row.SelectItem5],
-            [row.SelectCount1, row.SelectCount2, row.SelectCount3, row.SelectCount4, row.SelectCount5]);
+        var selectable = row.SelectItemsBy is ItemsAsTheyAre or ItemsByClass
+            ? Items(
+                [row.SelectItem1, row.SelectItem2, row.SelectItem3, row.SelectItem4, row.SelectItem5],
+                [row.SelectCount1, row.SelectCount2, row.SelectCount3, row.SelectCount4, row.SelectCount5])
+            : [];
 
         return new QuestRewardDefinition(
             row.RewardExperience,
@@ -65,9 +79,9 @@ internal static class QuestEpisodeRowExtensions
             row.RewardPrefix,
             row.RewardSuffix,
             row.RewardHelper,
-            row.RewardItemsBy == 2,
+            row.RewardItemsBy == ItemsByClass,
             items,
-            row.SelectItemsBy == 2,
+            row.SelectItemsBy == ItemsByClass,
             selectable);
     }
 
@@ -92,6 +106,11 @@ internal static class QuestEpisodeRowExtensions
     /// The item the row gives to each hero, the first hero first.
     /// </summary>
     public static int[] Items(this QuestRewardRow row) => [row.HaruItem, row.ErwinItem, row.LilyItem, row.JinItem, row.StellaItem, row.IrisItem];
+
+    /// <summary>
+    /// The title a group of titles gives to each hero, the first hero first.
+    /// </summary>
+    public static int[] Titles(this TitleRewardRow row) => [row.HaruTitle, row.ErwinTitle, row.LilyTitle, row.JinTitle, row.StellaTitle, row.IrisTitle];
 
     /// <summary>
     /// The groups of the table that a monster counts for.

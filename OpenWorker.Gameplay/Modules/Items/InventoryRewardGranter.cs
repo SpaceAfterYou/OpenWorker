@@ -5,7 +5,8 @@ using OpenWorker.Hotspot.Modules.Shop.Enums;
 namespace OpenWorker.Gameplay.Modules.Items;
 
 /// <summary>
-/// Gives the rewards of the features that hand out items: into the bags of the person, with its money.
+/// Gives the rewards of the features that hand out items: into the bags of the person, with its gold, ether and battle
+/// points. Experience is not money: the feature that gives it raises the level through the experience of the person.
 /// </summary>
 public sealed class InventoryRewardGranter(InventoryService inventory) : IRewardGranter
 {
@@ -47,6 +48,11 @@ public sealed class InventoryRewardGranter(InventoryService inventory) : IReward
         if (reward.Ether != 0)
         {
             inventory.TryAddCurrency(player, ShopCurrency.Ether, reward.Ether);
+        }
+
+        if (reward.BattlePoints != 0)
+        {
+            inventory.TryAddCurrency(player, ShopCurrency.Bp, reward.BattlePoints);
         }
 
         return true;

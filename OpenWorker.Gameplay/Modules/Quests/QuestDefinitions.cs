@@ -81,6 +81,31 @@ public sealed record QuestDefinition(
     /// The bits that mean every condition is done.
     /// </summary>
     public short AllDone => (short)((1 << Conditions.Count) - 1);
+
+    /// <summary>
+    /// The episodes that follow this one. Those of them that start by themselves are taken as soon as this one is finished.
+    /// </summary>
+    public IReadOnlyList<int> Links { get; init; } = [];
+
+    /// <summary>
+    /// Whether the episode is taken without asking once the episode before it is finished.
+    /// </summary>
+    public bool StartsByItself { get; init; }
+
+    /// <summary>
+    /// The character the episode is taken from, or 0 when no one gives it (a script, an episode that starts by itself).
+    /// </summary>
+    public int StartNpc { get; init; }
+
+    /// <summary>
+    /// The character the episode is handed in to, or 0.
+    /// </summary>
+    public int FinishNpc { get; init; }
+
+    /// <summary>
+    /// How many times a day a repeated episode may be finished.
+    /// </summary>
+    public int RepeatsPerDay { get; init; } = 1;
 }
 
 /// <summary>
