@@ -8,7 +8,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
 /// <summary>
-/// Takes an akashic card apart.
+/// Takes a card out of the akashic record book, back into the bag.
 /// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
@@ -17,9 +17,9 @@ public readonly partial struct ItemSetupAkashicDisassembleRequest : IRequestHots
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
     private const ItemSetupOpcode Command = ItemSetupOpcode.AkashicDisassemble;
 
-    public int Card { get; init; }
+    public int Npc { get; init; }
 
-    public int Count { get; init; }
+    public int Card { get; init; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }
