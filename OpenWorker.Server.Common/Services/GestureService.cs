@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
-using OpenWorker.Channel;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Modules.Gestures.Components;
 using OpenWorker.Hotspot;
@@ -13,14 +12,14 @@ using OpenWorker.Hotspot.Modules.Gestures.Responses;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 
-namespace OpenWorker.DistrictServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
-/// Gestures: showing one to the others, and the six a player keeps ready.
+/// Gestures, in a district and in a maze: showing one to the others, and the six a player keeps ready.
 /// </summary>
 public sealed class GestureService(
     World world,
-    ServiceChannels channels,
+    IPlayerAudience audience,
     IDbContextFactory<PersistenceContext> factory,
     ReadOnlyCollection<GestureRow> table
 ) :
@@ -30,7 +29,8 @@ public sealed class GestureService(
     private HashSet<int> Known { get; } = table.Select(e => (int)e.Id).ToHashSet();
 
     /// <summary>
-    /// Everybody who sees the player sees the gesture, the one who makes it too.
+    /// Everybody who sees the player sees the gesture, the one who makes it too: in a district those around it, in a maze the
+    /// others of a shared maze.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, GestureShowRequest request)
     {
@@ -43,11 +43,14 @@ public sealed class GestureService(
 
         world.Set(context.Player, gesture with { Active = request.Identifier });
 
-        channels.Get(context.Player).BroadcastNearby(context.Player, new GestureShowResponse
+        var show = new GestureShowResponse
         {
             Gesture = request.Identifier,
             Actor = world.Get<ActorComponent>(context.Player)
-        });
+        };
+
+        world.Get<ServerSessionComponent>(context.Player).Send(show);
+        audience.NearbyToOthers(context.Player, show);
 
         return ValueTask.CompletedTask;
     }
