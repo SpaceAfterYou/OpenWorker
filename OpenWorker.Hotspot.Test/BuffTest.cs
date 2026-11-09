@@ -2,7 +2,14 @@ using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
+using Lua;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.Batch.Actions;
+using OpenWorker.Gameplay.Ai;
+using OpenWorker.Lua.Ai;
+using OpenWorker.Lua.Managers;
+using OpenWorker.Navigation;
+using OpenWorker.Res;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
@@ -243,6 +250,92 @@ public sealed class BuffTest
         {
             World.Destroy(world);
         }
+    }
+
+    /// <summary>
+    /// A monster that thinks stands still while a stun holds it: it neither moves nor attacks the player next to it, and acts
+    /// again when the stun is over. It needs the tables, the AI scripts and the action files of the client.
+    /// </summary>
+    [TestMethod]
+    public void AStunnedMonsterDoesNotActUntilTheStunEnds()
+    {
+        var scripts = Environment.GetEnvironmentVariable("OPENWORKER_TEST_AI");
+        var actions = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
+
+        if (scripts is null || actions is null)
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_AI and OPENWORKER_TEST_ACTION are not set.");
+        }
+
+        var monsters = TestTables.Load<MonsterRow>("tb_Monster");
+        var skills = TestTables.Load<SkillRow>("tb_Skill");
+        var combat = new CombatTables(monsters, TestTables.Load<StatusRow>("tb_Status"), skills, TestTables.Load<CharacterInfoRow>("tb_Character_Info"));
+        var behaviors = new MonsterBehaviorTables(monsters, skills);
+        var loader = new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, scripts);
+        var clock = TestMazes.Clock();
+        var provider = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions };
+        var services = new CreatureServices(loader, behaviors, provider, clock, new NavMeshProvider());
+
+        // A plain monster of a low level whose script makes it go for the player it sees.
+        var monster = monsters.First(e => e.Type == 0 && e.Level is > 1 and < 20 && behaviors.Get(e.Id) is { } behavior &&
+            !ReferenceEquals(loader.Get(behavior.AiScript), AiProfile.Empty) && File.Exists(Path.Join(actions, behavior.ActionFile + ".adf")));
+        var world = World.Create();
+
+        try
+        {
+            var connection = new RecordingConnection();
+            var player = Player(world, connection);
+            var batch = TestMazes.Map(PartyMazeTest.MapWithMonster(monster.Id));
+            var creatures = new LuaCreatureManager(world, batch, combat, services, NullLogger.Instance);
+            var maze = new LuaMaze(LuaState.Create(), world, player, creatures, new BuffManager(Buffs), TestMazes.Quests(world), batch,
+                TestMazes.None<InteractionObjectRow>().IndexBy(e => e.Id), provider, combat, default, null!, clock, NullLogger<LuaMaze>.Instance);
+
+            maze.SpawnSector(Sector);
+
+            var body = creatures.FindMonsters((_, _) => true).Single();
+            var actor = world.Get<ActorComponent>(body).Identifier;
+
+            // The player stands next to the monster.
+            world.Set(player, world.Get<WorldComponent>(player) with { Position = world.Get<WorldComponent>(body).Position + new Vector3(80f, 0f, 0f) });
+
+            Assert.IsTrue(maze.Buffs.Give(body, Stun, player));
+
+            var before = Acts(connection, actor);
+
+            // Two and a half seconds of the three of the stun.
+            for (var step = 0; step < 50; step++)
+            {
+                maze.Advance(TimeSpan.FromMilliseconds(50));
+            }
+
+            Assert.AreEqual(before, Acts(connection, actor), "A held monster does nothing.");
+
+            // The stun ends, and the monster has ten seconds to act.
+            for (var step = 0; step < 200 && Acts(connection, actor) == before; step++)
+            {
+                maze.Advance(TimeSpan.FromMilliseconds(50));
+                Thread.Sleep(5);
+            }
+
+            Assert.IsFalse(maze.Buffs.IsHeld(body));
+            Assert.IsGreaterThan(before, Acts(connection, actor), "Free again, the monster acts.");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// What a monster has done that the clients saw: moves, turns, battle poses and skills.
+    /// </summary>
+    private static int Acts(RecordingConnection connection, int actor)
+    {
+        Thread.Sleep(50);
+
+        return connection.Frames.Select(PlayerFrame.Open)
+            .Count(e => (e.Opcode.Group == (byte)GroupOpcode.Move || e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActiveSkillBt)) && e.Actor == actor);
     }
 
     /// <summary>
