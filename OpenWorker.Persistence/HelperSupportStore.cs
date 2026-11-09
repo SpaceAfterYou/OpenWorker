@@ -174,6 +174,12 @@ public static class HelperSupportStore
             return (SupportUseOutcome.Expired, offer);
         }
 
+        // The friendly answer; the unique index is what holds when two servers try at once.
+        if (await database.HelperSupportUses.AnyAsync(e => e.SupporterId == friend && e.UserId == person && e.Until == offer.Until))
+        {
+            return (SupportUseOutcome.AlreadyUsed, offer);
+        }
+
         database.HelperSupportUses.Add(new HelperSupportUsePersistent { SupporterId = friend, UserId = person, Until = offer.Until });
 
         try
