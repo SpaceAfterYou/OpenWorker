@@ -35,6 +35,52 @@ is listed at the end; a demonstration package with install steps is ready for th
 How sure each claim is: **read** = read in the client code (IDA); **measured** = checked on the files with the tools
 below; **inferred** = concluded, not seen run.
 
+## The English translation of 2026-11-09: what it covers and what stays Japanese
+
+A machine translation into English of every string table of the client was made on 2026-11-09 with a model that
+runs on the development machine, one request at a time, about three hours of model time. The pipeline, its data and
+its README are local (`docs/tools/l10n/`, `docs/localization/en/`); the package is
+`docs/localization/en/out/full/` (built 21:56), and its `datas/data12.v` is installed in the game client of this
+machine since 21:57, the original being kept outside the game folder (`AGENTS.local.md` names both).
+
+**Translated:** 43,240 cells of 17 tables, from 32,850 distinct strings: the dialogue (11,429), items (10,099), the
+interface (5,115), quests (4,094), cutscenes (3,309), skills, buffs, monsters, titles, achievements, boosters, NPC
+names, the shop, soulmetry, tooltips, the system mail and the broach sets.
+
+**Not translated, and why:**
+
+- *Kept Japanese on purpose*, 7,892 cells of the census: the chat and name filter word lists (6,967 cells: an English
+  server wants lists of its own, not translations), the dates of the daily missions (806), internal effect names, the
+  words players type as chat commands, and two test labels.
+- *Failed the automatic checks after three tries*, 8 cells (7 distinct strings), which keep their Japanese text in the
+  package: one quest story longer than its 511-unit column even after condensing; one quest objective with a kanji the
+  model left in; two dialogue lines whose `%username%` variable the model altered; three cutscene lines where the model
+  added a note instead of the bare line. The README says how to re-queue them (`l10n.py requeue --state flagged`) or
+  to enter a reviewer's translation.
+- *Outside the tables* (section 1 above): 97 pictures with Japanese text and 81 help screenshots with the old Korean
+  interface, which need an artist or new screenshots; the static text fields of the interface movies (believed to be
+  overwritten at run time from the tables, which a run of the game must confirm); the movies' own text; and on the
+  server side the gate names, the operator's notices and the one fixed English maze notice.
+
+**Quality.** It is a machine translation, sampled by a reviewer, not read in full. In the final pilot sample 9 of 280
+strings were wrong (3.2 %); the samples taken while the bulk ran found 3 errors in 49 item texts, 0 in 26 skill and
+buff texts, 1 in 10 quest texts and 3 in 45 dialogue lines, and each was fixed by a prompt rule, a glossary entry or a
+reviewer's translation with the affected strings re-translated. Known weak points: about 1,000 of the 1,411 glossary
+terms were proposed by the model and never reviewed (names with no official English form among them); 37 labels and
+names were accepted over their estimated field width; 60 long stories were condensed to fit their column and lose
+detail; the honorific variables print "-san" or "-kun"; malformed placeholders of the source are kept as they are.
+Markup, variables and line counts are intact in every string marked done.
+
+**Not yet seen in the game:** anything past the login window. The demonstration package showed that the client
+accepts a rebuilt archive and draws Latin proportionally with a wide space; the full package has not been played.
+What to look at first: talk windows (wrapping and cut lines), the result window of a maze, item tooltips, the titles
+and achievements windows, and the two dialogue lines and the quest objective that stayed Japanese.
+
+**To improve it:** fix a term in `glossary.json`, re-queue the strings that use it (`l10n.py requeue --contains`),
+run again with one worker (`l10n.py start`), rebuild (`l10n.py build`), and install the new `data12.v`. A reviewer's
+own wording goes in as the `reviewed` state and is never overwritten. Russian: the prompts take `ru`, but no glossary
+was seeded and no run was made.
+
 ## 1. Where the text lives
 
 ### Tables (`bin/Table`, inside `datas/data12.v`)
