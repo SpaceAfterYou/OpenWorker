@@ -62,12 +62,11 @@ holds nothing, and every refusal of a restore, 52012.
 
 ## Requests without a handler
 
-Of the 38 requests of the group, 15 have a handler now; 23 have none. 16 of those the client of this version never sends.
-The 7 the client sends and the server does not handle, and why:
+Of the 38 requests of the group, 19 have a handler now; 19 have none. 16 of those the client of this version never sends.
+The 3 the client sends and the server does not handle, and why:
 
 | Sub | Request | Missing |
 |---|---|---|
-| 14, 15, 17, 25 | AkashicMake, AkashicDisassemble, AkashicCompose, AkashicMakeEx | the akashic tables and cards; the answers of 15 and 17 are only partly read |
 | 20, 21, 23 | BroachEquip, BroachActive, BroachCompose | the broach rules and `TB_BroachData`; the answer of 21 is only partly read. The schema already keeps the broaches. |
 
 ## Assumptions
@@ -176,3 +175,93 @@ materials of two exchanges and gives two of the product; an evolution turns the 
 upgrade level and charges the row; a make takes the materials and the gold of two items and gives two; a make that lacks a
 material changes nothing. `ItemWireFormatTest` reads an evolution request whose item was written by the writer of the server.
 `ServerTablesTest` reads the server `tb_Disassemble` to its end.
+
+## Round 3: akashic records
+
+`AkashicService` (Gameplay, `Modules/ItemSetup`) handles AkashicMake (14), AkashicDisassemble (15), AkashicCompose (17) and
+AkashicMakeEx (25), and the use of a card from the bag (`ItemUseService`, use type `AKASHIC_RECORD`).
+
+### What an akashic record is on this client
+
+- A **card** is an item of the bag (use type 5, `AKASHIC_RECORD`) whose id is also a row of `tb_Akashic_Records`. It carries
+  experience in the `Exp` of the item, which the client shows as a gauge against what making the next card needs.
+- The **akashic record book** is a per-person list of cards, one per place of the book (the `Position` column of the card's
+  row). The skill window shows it. Using a card from the bag puts it into the book and removes it from the bag; taking it out
+  (AkashicDisassemble) puts it back into the bag.
+
+### The schema
+
+There is no new table or column. The book is a document of the person (`PersonStates`, kind `AkashicRecords` = 8, jsonb:
+`{"Records":[{"Card":…,"Position":…,"Exp":…}]}`). It is kept on `Inventory.AkashicRecords` and loaded with the items
+(`InventoryPersistence`). A new part of the dirty mask, `PersonSections.AkashicRecords` (1 << 7), writes it at the next flush
+whenever a card goes into the book or comes out. `dotnet ef migrations has-pending-model-changes` reports no change.
+
+### Messages
+
+| Message | Layout | Sent |
+|---|---|---|
+| `08/57` AkashicRecordLoad | `int count`, then `count × (int card, int position)` | at entry, with the quick slots, after the client asks for the common bag (always, even when empty: the client marks the book loaded) |
+| `08/58` AkashicRecordAdd | `int card, int position` | when a used card goes into the book |
+| `18/14` AkashicMake | empty | the answer to both AkashicMake and AkashicMakeEx; the client has no receiver for `18/25` |
+| `18/15` AkashicDisassemble | `byte result (1), int card, int position` | the client drops the card at that position from the book whatever the byte, so a refusal is only ever an error answer |
+| `18/17` AkashicCompose | `long serial, int exp` | the client sets the experience of the item with that serial |
+
+Requests: AkashicMake is `int npc, int index, slot`. AkashicMakeEx is `int index, int npc, slot, byte n, n × slot`: the recipe
+comes **before** the NPC, unlike AkashicMake. The round 1 declaration had the order wrong; it is fixed here. AkashicDisassemble
+is `int npc, int card`. The card is the id of a card in the book, not a slot. AkashicCompose is `int npc, slot target, byte n,
+n × slot`, and the client sends at most five materials.
+
+### Columns named
+
+- `tb_Akashic_Records`: `Position` (place in the book, unique per row), `RarePoint`, `Disassemble` (row of
+  `tb_Akashic_Disassemble`), `ExpGiven` (experience the card gives when it is fed to another), `MakeExp` (experience a card
+  needs to make the next one; 0 on the last card of a line).
+- `tb_Akashic_Make` (id = the card made): `MaterialKind` (1 a card, 0 a plain item), `Material`, `Card` (a card item the recipe
+  also takes, or 0), `ExtraCount` (extra cards, 0 to 2; a recipe with extra cards has no card item), `Gold`, `Result`.
+- `tb_Akashic_Disassemble`: `Item` (what comes back; the card itself in every row), `CostKind` (0 gold, 1 battle points,
+  2 ether; only 0 in the client's table), `Cost`. The second column (10000 in every row) stays unnamed: nothing reads it.
+
+### Rules
+
+- **Make** (14, 25): the recipe of the index. The material lies in the common or cash bag and is the recipe's material; a card
+  material must be full (its `Exp` at least the `MakeExp` of its row). The request must name exactly `ExtraCount` extra cards,
+  and when the material is a card they must have its rarity. The card item of the recipe is needed when the recipe names one.
+  Then the gold. Then room for the result. All of it is taken, and the result is given with experience 0. Refusals:
+  52012 for a slot outside the bags, 52002 when the items do not fit the recipe, 52437 for gold, 52010 for no room. Each is
+  sent with the sub of the request.
+- **Compose** (17): the target is a single card that is not full and whose row has a `MakeExp`. Every material is a card in
+  the bags other than the target. The target gains the sum of the materials' `ExpGiven`, capped at `MakeExp`, and the
+  materials are used up. Feeding is free (the client's table has no price column). Refusals: 52012 and 52002.
+- **Use a card**: the card goes into the book at its place with its experience, and one card leaves the bag. A place that
+  is taken answers `08/11 | 0x80` with 6028 ("an A.R card already obtained"), and the card stays.
+- **Disassemble** (15): the card must be in the book at its place. Its row of `tb_Akashic_Disassemble` gives the item and the
+  price. The item comes into a free slot (never a stack) with the experience the card had, and the price is charged. 52002
+  for a card not in the book or without a row, 52437 for the price, 52010 for no free slot.
+
+### Assumptions
+
+- The card item column of a make recipe is consumed. The client requires the person to own one, and the request does not
+  name its slot, so the server takes one from any stack.
+- A plain-item material (kind 0) has no experience to check. The rarity rule for extra cards applies only to a card material.
+- The NPC of the requests is not checked, as for the other handlers of the group.
+- No experience bonus (events, a lucky compose) and no quest condition (`AkashicMake`) are applied yet.
+- A card taken out of the book is created with the bind type of its item row, like any new item.
+
+### To check with the real client
+
+- The book loads at entry (the skill window shows the cards) and `08/58` adds a card after the confirmation dialog of a use.
+- The make dialog closes after `18/14` both for a recipe with extra cards (sent as 25) and without (14), and does not stay
+  waiting on 25.
+- The compose result: the gauge shows the new experience.
+- The disassemble result window shows on `result = 1`.
+
+### Tests
+
+`ItemSetupTest`, on the client tables:
+- a recipe with extra cards (sent as AkashicMakeEx) takes the full card, the extra cards and the gold, and gives the card;
+- feeding cards adds their experience and stops at `MakeExp`;
+- a used card goes into the book and comes back out with its experience, for the price of the table;
+- a refused make (a card that is not full) and taking out a card that is not in the book change nothing.
+
+`PersistenceTest.ALogoutAndANewLoginKeepWhatThePlayerHad` also checks that a card of the book survives the logout and loads
+at the next entry.
