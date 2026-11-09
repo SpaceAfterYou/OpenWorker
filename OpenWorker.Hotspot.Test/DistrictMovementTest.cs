@@ -138,7 +138,7 @@ internal sealed class DistrictHarness : IDisposable
         Ecs.Dispose();
     }
 
-    public void Forget(params Player[] players)
+    public static void Forget(params Player[] players)
     {
         foreach (var player in players)
         {
@@ -333,9 +333,14 @@ public sealed class DistrictMovementTest
 
         var hold = loop.InvokeAsync(() => held.Wait(TimeSpan.FromSeconds(10)));
 
-        var moves = new[] { 110f, 120f, 130f }
-            .Select(x => loop.InvokeAsync(() => district.MoveAsync(mover, x, 100f)))
-            .ToArray();
+        var moves = new List<Task>();
+
+        for (var x = 110f; x <= 130f; x += 10f)
+        {
+            var place = x;
+
+            moves.Add(loop.InvokeAsync(() => district.MoveAsync(mover, place, 100f)));
+        }
 
         held.Set();
 
@@ -348,7 +353,7 @@ public sealed class DistrictMovementTest
         Assert.AreEqual(130f, observer.Moves()[0].X, "The move that goes out has the last place.");
         Assert.HasCount(1, mover.Moves(), "The mover hears its moves once too.");
 
-        district.Forget(mover, observer);
+        DistrictHarness.Forget(mover, observer);
 
         await loop.InvokeAsync(() => district.MoveAsync(mover, 140f, 100f));
         await WaitForMovesAsync(observer);
@@ -377,7 +382,7 @@ public sealed class DistrictMovementTest
         await district.MoveAsync(mover, 600f, 100f);
         await WaitForMovesAsync(mover, observer);
 
-        district.Forget(mover, observer);
+        DistrictHarness.Forget(mover, observer);
 
         // Across the map at once.
         await district.MoveAsync(mover, 100_000f, 100f);
