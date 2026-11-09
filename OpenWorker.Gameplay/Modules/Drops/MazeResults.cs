@@ -1,6 +1,7 @@
 using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.League;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 
@@ -10,8 +11,9 @@ namespace OpenWorker.Gameplay.Modules.Drops;
 /// What a player has got in the maze it is in, told to it in the window that is shown when the maze is finished.
 /// The window shows what was really given, there is no scoring behind the rank yet: a maze that is finished by clearing
 /// all its sectors has the highest rank. The window also offers the key reward of the maze (<see cref="MazeKeyRewards"/>).
+/// The league of the player hears of the run when it starts and when it ends (<see cref="LeagueGrowth"/>).
 /// </summary>
-public sealed class MazeResults(World world, MazeKeyRewards? keys = null) : ISessionCloseHandler
+public sealed class MazeResults(World world, MazeKeyRewards? keys = null, LeagueGrowth? league = null) : ISessionCloseHandler
 {
     public const byte BestRank = 5;
 
@@ -31,6 +33,7 @@ public sealed class MazeResults(World world, MazeKeyRewards? keys = null) : ISes
     {
         _tallies[player] = new Tally(maze);
         keys?.Forget(player);
+        league?.OnMazeEntered(player, maze);
     }
 
     public void AddKill(Entity player, int experience)
@@ -71,6 +74,8 @@ public sealed class MazeResults(World world, MazeKeyRewards? keys = null) : ISes
         var session = world.Get<ServerSessionComponent>(player);
         var seconds = (int)Math.Min(int.MaxValue, (Environment.TickCount64 - tally.Started) / 1000);
         var offer = keys?.Roll(player, tally.Maze);
+
+        league?.OnMazeFinished(player, tally.Maze, tally.Gold);
 
         session.Send(new MazeRewardInfoResponse
         {

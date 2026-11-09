@@ -180,6 +180,11 @@ public sealed record LeagueMemberRecord(int Person, int League, string Name, byt
 
 public sealed record LeagueApplicantRecord(int Person, int League, string Name, byte Hero, byte Level, DateTime At);
 
+/// <summary>
+/// A league after it grew, and the level it had before.
+/// </summary>
+public sealed record LeagueGrowthRecord(byte LevelBefore, LeagueRecord League);
+
 public sealed record LeagueBoardRecord(int Serial, int League, int Person, string Name, string Message, DateTime At);
 
 public enum LeagueCreateOutcome
@@ -689,6 +694,68 @@ public static class LeagueStore
             : await database.Leagues.AsNoTracking().OrderByDescending(e => database.LeagueMembers.Count(m => m.LeagueId == e.Id)).ThenBy(e => e.Name).Take(limit).ToListAsync();
 
         return await RecordsAsync(database, found);
+    }
+
+    /// <summary>
+    /// Adds what a member did for the league: experience to the league and to the member, gold to the league. Experience counts
+    /// inside a level: while the league has what the next level asks for, that much is spent and the level rises. Every step
+    /// is one update the database checks, so servers that add at once neither lose a share nor raise a level twice. Null if
+    /// the league is gone.
+    /// </summary>
+    /// <param name="next">The experience the level after the given one asks for, null when there is none.</param>
+    public static async Task<LeagueGrowthRecord?> GrowAsync(
+        this IDbContextFactory<PersistenceContext> factory,
+        int league,
+        int person,
+        int exp,
+        long gold,
+        Func<byte, long?> next)
+    {
+        await using var database = await factory.CreateDbContextAsync();
+
+        var before = await database.Leagues.AsNoTracking().Where(e => e.Id == league).Select(e => (byte?)e.Rating).FirstOrDefaultAsync();
+
+        if (before is not { } level)
+        {
+            return null;
+        }
+
+        var added = await database.Leagues
+            .Where(e => e.Id == league)
+            .ExecuteUpdateAsync(e => e.SetProperty(x => x.Exp, x => x.Exp + exp).SetProperty(x => x.Money, x => x.Money + gold));
+
+        if (added == 0)
+        {
+            return null;
+        }
+
+        await database.LeagueMembers
+            .Where(e => e.LeagueId == league && e.PersonId == person)
+            .ExecuteUpdateAsync(e => e.SetProperty(x => x.Exp, x => x.Exp + exp));
+
+        // Another server may have raised the level in between: start from the one the database has now.
+        var current = await database.Leagues.AsNoTracking().Where(e => e.Id == league).Select(e => e.Rating).FirstOrDefaultAsync();
+
+        while (next(current) is { } need and > 0)
+        {
+            var from = current;
+            var reached = (byte)(current + 1);
+
+            var raised = await database.Leagues
+                .Where(e => e.Id == league && e.Rating == from && e.Exp >= need)
+                .ExecuteUpdateAsync(e => e.SetProperty(x => x.Rating, reached).SetProperty(x => x.Exp, x => x.Exp - need));
+
+            if (raised == 0)
+            {
+                break;
+            }
+
+            current = reached;
+        }
+
+        var entity = await database.Leagues.AsNoTracking().FirstOrDefaultAsync(e => e.Id == league);
+
+        return entity is null ? null : new LeagueGrowthRecord(Math.Min(level, entity.Rating), (await RecordsAsync(database, [entity]))[0]);
     }
 
     private static async Task<List<LeagueMemberRecord>> QueryMembersAsync(

@@ -374,7 +374,7 @@
     "Int16 Group",
     "Byte",
     "Byte Admission",
-    "Int16",
+    "Int16 FatiguePoint",
     "Byte",
     "Byte",
     "Byte",
