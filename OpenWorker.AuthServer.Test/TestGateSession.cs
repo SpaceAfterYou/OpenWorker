@@ -134,7 +134,7 @@ public sealed class TestGateSession
                 World,
                 Factory,
                 Registry,
-                new InventoryPersistence(World, Factory, inventories, NullLogger<InventoryPersistence>.Instance),
+                new InventoryPersistence(World, new PersonStore(Factory), inventories, NullLogger<InventoryPersistence>.Instance),
                 Options.Create(new PersonCreationOptions()),
                 gate,
                 NullLogger<PersonGameplay>.Instance,

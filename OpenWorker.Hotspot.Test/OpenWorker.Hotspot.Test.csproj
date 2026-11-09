@@ -31,7 +31,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
-      <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+      <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
+      <ProjectReference Include="..\OpenWorker.Infrastructure.Redis\OpenWorker.Infrastructure.Redis.csproj" />
       <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
       <ProjectReference Include="..\OpenWorker.Navigation\OpenWorker.Navigation.csproj" />
       <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />

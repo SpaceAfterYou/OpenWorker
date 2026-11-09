@@ -65,6 +65,33 @@ set of the gate by players (`MazeDirectory`, `ow:mazes:<gate>`); a player enteri
 with the fewest players, picked by one script that skips (and drops) a server whose record has expired. With none registered,
 `Maze:Host` / `Maze:Port` are used. More maze servers are more capacity, nothing else changes.
 
+### Projects and their layers
+
+The code of a server is cut into layers that point one way: a project references its own layer and the layers below it,
+never above, and `ProjectLayersTest` (`OpenWorker.Hotspot.Test`) reads the project files and fails on a reference that goes
+up or on a project that has no layer. From the bottom:
+
+| Layer | Projects | What it is |
+|---|---|---|
+| Foundation | `Wire`, `Wire.SourceGenerators`, `Commands.SourceGenerators`, `Navigation`, `Havok` | the span reader and writer, the generators, the navigation meshes |
+| Domain | `Domain` | value types, entities of the database, store interfaces (`OpenWorker.Domain.Stores`); no EF Core, no Redis |
+| Shared data | `Extensions`, `Res`, `Batch`, `SourceGenerator.ResourceStructures` | settings, readers of the client tables and the map files |
+| Protocol | `Protocol` | opcodes, messages (`Modules/<Group>`), header, encryption, `Frame`, `FrameEncoder` |
+| Runtime | `Runtime` | `WorldLoop`, `SimulationClock`, sessions and `SessionWriter`, the handler table and `HandlerExecutor`, error budget, rate limits, metrics, log scope |
+| Infrastructure | `Infrastructure.Redis`, `Persistence` | Redis (records, leases, `MazeDirectory`, index bootstrap) and Postgres (model, stores, migrations) |
+| Game logic | `Gameplay`, `Lua`, `AuthServer.Gameplay`, `DistrictServer.Gameplay` | rules of the game, maze scripts, the handlers of auth and district |
+| Channel | `Channel`, `GateServer.Gameplay`, `Commands` | services shared by district and maze: channels, chat, community |
+| Hosting | `DependencyInjection` | the host of a server: `ServerService`, health, shutdown, telemetry |
+| Servers | `AuthServer`, `GateServer`, `DistrictServer`, `MazeServer`, `RelayServer`, `UpdateContent`, `LoadTest` | the processes |
+
+Through every project it references, `Protocol` reaches neither EF Core, Redis nor `Batch`, `Runtime` neither EF Core nor Redis,
+and `Gameplay`, `Lua` and `DistrictServer.Gameplay` no EF Core: the game reads and writes a person through `IPersonStore`, which
+`Persistence` implements. `AuthServer.Gameplay` and `GateServer.Gameplay` still query the database in their handlers. The namespaces
+of the code that came out of `OpenWorker.Hotspot` did not change (`OpenWorker.Hotspot.*`): Redis.OM names the keys of a record after
+the full name of its type. `ServerService` stays in `DependencyInjection`: it builds the entity of a connection
+(`ArchComponentProvider`), reads the claims of `Gameplay` and kicks the players out at shutdown, which is the host's work, not the
+loop's. The move: `docs/phase-6/A-layers.md`.
+
 ## Inside one process
 
 ```mermaid
@@ -100,7 +127,7 @@ flowchart TB
   returns the array to the pool. The encoder of the world loop (`WorldLoop.Encoder`) is reused for every message;
   a body longer than `MessageHeader.MaxContentLength` is dropped with a warning and counted in `frames.dropped`,
   and the session stays open.
-- **Messages.** A request or a response is a struct in `OpenWorker.Hotspot/Modules/<Group>` with
+- **Messages.** A request or a response is a struct in `OpenWorker.Protocol/Modules/<Group>` with
   `[HotspotMessage]`. A message marked `[WireMessage]` (and `partial`) declares its format by its fields: the public
   auto-properties in the order of declaration are the order on the wire, their types say how they go, and
   `[WireString]`, `[WireArray]` and `[WireAs]` name a string format, a list prefix or count, another width. The generator of
@@ -151,9 +178,16 @@ flowchart TB
   (`PacketRateLimiter`, `PacketRateComponent`): movement, chat, items, everything else, each filling at its own rate up to its
   burst (`Hotspot:RateLimits`). A packet that finds its bucket empty is dropped and counted in `handler.refused`; it is no error
   and closes nothing.
-- **ECS.** Arch holds sessions, persons and creatures as components. Arch keeps one static registry
-  of component types for the whole process and it is not thread safe: touch it from the world loop only,
-  and keep tests that create entities out of parallel runs.
+- **ECS.** Arch holds sessions, persons and creatures as components. For a session and its person, Arch is a typed set of
+  components per entity: a handler reads and changes the components of the entity of its connection (`Get`, `Set`, `Has`,
+  `TryGet`), and there is no system that walks the sessions. What has to visit every player at once is an Arch query over the
+  component it concerns: the change of the day of attendance, boosters and daily missions, the snapshots of the flush
+  (`DirtyComponent`), the count of players of a maze server. Monsters are entities of one archetype that `LuaCreatureManager`
+  creates; the systems that move them are the steps of the simulation clock, which walk the monsters of each maze in
+  the order of their `StepList` instead of an Arch query, since a maze owns its monsters and the step must follow the maze.
+  Visibility is not in the ECS at all: each `ServiceChannel` keeps its members by entity and its own grid of cells, on the loop.
+  Arch keeps one static registry of component types for the whole process and it is not thread safe: touch it from the world
+  loop only, and keep tests that create entities out of parallel runs.
 - **Garbage collector.** The servers run Server GC with DATAS (`Directory.Build.props`), because at 1000 bots it
   paused the district for half to three quarters of the time workstation GC did and cut the p99 of a move by a third, for
   about a fifth more memory (`docs/phase-1/baseline/README.md`, "GC modes at 1000 bots"); each server logs the collector
@@ -211,8 +245,9 @@ instruments stay switched off. The compose file starts Prometheus and Grafana, a
 `eng/observability` (how to open it: the notes at the end of `compose.yaml`).
 
 The meters come from the `IMeterFactory` of the container, and each area has a small class that creates its instruments on it:
-`WorldLoopMetrics`, `HandlerMetrics`, `SimulationMetrics`, `SessionMetrics`, `RedisMetrics` and `PostgresMetrics` in
-`OpenWorker.Hotspot/Telemetry`, all registered by `AddOpenWorkerMetrics`. A test makes its own container and listens with
+`WorldLoopMetrics`, `HandlerMetrics`, `SimulationMetrics` and `SessionMetrics` in `OpenWorker.Runtime/Telemetry`, registered by
+`AddOpenWorkerMetrics`, `RedisMetrics` in `OpenWorker.Infrastructure.Redis` (`AddRedisMetrics`) and `PostgresMetrics` in
+`OpenWorker.Persistence` (`AddPostgresMetrics`); `AddTelemetry` registers all of them. A test makes its own container and listens with
 `MetricCollector<T>` (`MetricsHost` in `OpenWorker.Hotspot.Test`), so it sees only its own measurements. The classes that measure take
 the metrics class as the last, optional constructor parameter: `null` is a part nobody measures, as in most tests.
 
@@ -315,7 +350,8 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
    for them, and the number of tests is not a goal.
 
 The build enforces part of this: `Directory.Build.props` turns on the analyzers (`latest-recommended`), the
-projects `Hotspot`, `Channel`, `Gameplay`, `Persistence`, `Navigation`, `Lua` and `MazeServer` treat warnings as errors, and
+projects `Protocol`, `Runtime`, `Infrastructure.Redis`, `Channel`, `Gameplay`, `Persistence`, `Navigation`, `Lua` and `MazeServer`
+treat warnings as errors, `ProjectLayersTest` holds the projects to their layers, and
 `eng/check-forbidden.sh` (run by CI) fails on `Task.Factory.StartNew` and `Console` in product code, and on `Task.Delay` and
 `Timer` in `OpenWorker.Lua` and `OpenWorker.MazeServer` (its `SCOPED` rules, checked under one path). Path-scoped
 exceptions, such as the names of client enums, live in `.editorconfig` with the reason next to them.

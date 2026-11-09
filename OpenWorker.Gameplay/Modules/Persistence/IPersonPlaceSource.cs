@@ -1,5 +1,5 @@
 using Arch.Core;
-using OpenWorker.Persistence;
+using OpenWorker.Domain.Stores;
 
 namespace OpenWorker.Gameplay.Modules.Persistence;
 

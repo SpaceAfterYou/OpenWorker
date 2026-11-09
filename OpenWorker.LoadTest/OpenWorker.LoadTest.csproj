@@ -10,7 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+        <ProjectReference Include="..\OpenWorker.Protocol\OpenWorker.Protocol.csproj" />
         <ProjectReference Include="..\OpenWorker.Persistence\OpenWorker.Persistence.csproj" />
     </ItemGroup>
 

@@ -23,16 +23,17 @@ client reads.
 |---|---|
 | `OpenWorker.AuthServer`, `GateServer`, `DistrictServer`, `MazeServer`, `RelayServer` | The server processes. Each hop of the client is its own process. |
 | `*.Gameplay` | Game logic per server. `OpenWorker.Gameplay` is shared: combat, AI, items, quests, rewards. |
-| `OpenWorker.Hotspot` | Network layer: messages (`Modules/<Group>/Requests`, `Responses`, `Types`), opcodes, sessions, world loop. |
+| `OpenWorker.Protocol` | The protocol: messages (`Modules/<Group>/Requests`, `Responses`, `Types`), opcodes, header, encryption, frames. No database, Redis or batch files. |
+| `OpenWorker.Runtime` | World loop, simulation clock, sessions and their writers, handler table and executor, error budget, rate limits, metrics. No EF Core, no Redis. |
 | `OpenWorker.Channel` | Services shared by district and maze: chat, community, profiles. |
-| `OpenWorker.Persistence` | EF Core (PostgreSQL) model, stores, migrations. |
-| `OpenWorker.Cache` | Redis. |
+| `OpenWorker.Persistence` | EF Core (PostgreSQL) model, stores (behind the interfaces of `OpenWorker.Domain.Stores`), migrations. |
+| `OpenWorker.Infrastructure.Redis` | Redis: records of the servers and reservations, session leases, maze directory, index bootstrap. |
 | `OpenWorker.Res` | Readers for the client tables (`*.res`). `Rows/` holds client tables, `ServerRows/` holds server-only tables. |
 | `OpenWorker.Batch` | Readers for map batch files and action files. |
 | `OpenWorker.Lua` | Maze scripts and the creature manager. |
 | `OpenWorker.Navigation`, `OpenWorker.Havok` | Navigation meshes: walls, floor, paths. |
 | `OpenWorker.Commands` | Chat commands for testing (`/item`, `/title`, ...). |
-| `OpenWorker.Domain`, `Extensions`, `DependencyInjection` | Shared types, options, DI helpers. |
+| `OpenWorker.Domain`, `Extensions`, `DependencyInjection` | Shared types and store interfaces, options, the host of a server. |
 | `OpenWorker.Hotspot.Test`, `OpenWorker.AuthServer.Test` | Tests (MSTest on Microsoft.Testing.Platform). |
 | `Research.*`, `TestLang`, `OpenWorker.GameServer` | Experiments. They are not part of `OpenWorker.slnx`. Do not fix them unless asked. |
 
@@ -62,8 +63,11 @@ dotnet test --solution OpenWorker.slnx
   - a Release build;
   - `dotnet tool restore && dotnet ef migrations has-pending-model-changes --project OpenWorker.Persistence`;
   - the tests.
-- **Warnings are errors** in `Hotspot`, `Channel`, `Gameplay` and `Persistence`. Do not suppress an analyzer
-  without a reason in `.editorconfig`.
+- **Warnings are errors** in `Protocol`, `Runtime`, `Infrastructure.Redis`, `Channel`, `Gameplay`, `Persistence`,
+  `Navigation`, `Lua` and `MazeServer`. Do not suppress an analyzer without a reason in `.editorconfig`.
+- **Layers.** A project references its own layer and the ones below it (`ARCHITECTURE.md`, "Projects and their layers");
+  `ProjectLayersTest` fails otherwise. A new project gets its layer in that test. The code that came out of
+  `OpenWorker.Hotspot` kept its namespaces (`OpenWorker.Hotspot.*`).
 
 ### Database migrations
 

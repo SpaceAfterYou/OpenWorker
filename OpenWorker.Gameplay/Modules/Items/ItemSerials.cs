@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
-using Microsoft.EntityFrameworkCore;
-using OpenWorker.Persistence;
+using OpenWorker.Domain.Stores;
 
 namespace OpenWorker.Gameplay.Modules.Items;
 
@@ -29,7 +28,7 @@ public sealed class LocalItemSerials : IItemSerials
 /// Serials taken from the database in blocks. An item is created in the middle of a packet, so the
 /// next block is fetched ahead of time and the game never waits for the database for one.
 /// </summary>
-public sealed class DatabaseItemSerials(IDbContextFactory<PersistenceContext> factory) : IItemSerials
+public sealed class DatabaseItemSerials(IPersonStore store) : IItemSerials
 {
     private const int Block = 256;
     private const int Reserve = 64;
@@ -94,7 +93,7 @@ public sealed class DatabaseItemSerials(IDbContextFactory<PersistenceContext> fa
 
     private async Task FetchAsync()
     {
-        foreach (var serial in await factory.ReserveSerialsAsync(Block))
+        foreach (var serial in await store.ReserveSerialsAsync(Block))
         {
             _ready.Enqueue(serial);
         }

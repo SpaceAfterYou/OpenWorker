@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Redis: the one connection of the process and its metrics, the Redis.OM records of the servers and of the
+      reservations (Cache/Types), the session leases, the maze directory, the scripts and the bootstrap of the indexes.
+      The namespaces are those the code had in OpenWorker.Hotspot, and they must stay: Redis.OM names the key of a record
+      after the full name of its type.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <RootNamespace>OpenWorker.Hotspot</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Redis.OM" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="OpenWorker.Hotspot.Test" />
+    </ItemGroup>
+
+</Project>

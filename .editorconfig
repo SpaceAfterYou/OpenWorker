@@ -28,20 +28,20 @@ dotnet_diagnostic.CA1861.severity = none
 # and they keep the spelling of the client so a name can be searched in both places; the fields of a structure are the wire
 # layout in the order the client reads them. Renaming them would cost the link with the client and gain nothing.
 # CA1707: underscores in names. CA1711 and CA1712: a suffix or a prefix of the enum name. CA1051: public fields.
-[OpenWorker.Hotspot/Modules/Items/Enums/{E_BROACH_CLASSIFY_INDEX,E_EQUIP_REG_CATEGORY,EquipSlotType,ItemFlag}.cs]
+[OpenWorker.Protocol/Modules/Items/Enums/{E_BROACH_CLASSIFY_INDEX,E_EQUIP_REG_CATEGORY,EquipSlotType,ItemFlag}.cs]
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1711.severity = none
 dotnet_diagnostic.CA1712.severity = none
 
-[OpenWorker.Hotspot/Modules/Persons/Responses/STAT_TYPE.cs]
+[OpenWorker.Protocol/Modules/Persons/Responses/STAT_TYPE.cs]
 dotnet_diagnostic.CA1707.severity = none
 
-[OpenWorker.Hotspot/Modules/*/Types/{ST_,PS_}*.cs]
+[OpenWorker.Protocol/Modules/*/Types/{ST_,PS_}*.cs]
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1051.severity = none
 
 # The property that holds the id of a record is the field of the Redis index, which the other servers read by that name.
-[OpenWorker.Hotspot/Cache/Types/*.cs]
+[OpenWorker.Infrastructure.Redis/Cache/Types/*.cs]
 dotnet_diagnostic.CA1720.severity = none
 
 # Components of the ECS are plain structs: a system reads and changes the fields in place through `ref`,

@@ -1,12 +1,11 @@
 using Arch.Core;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
-using OpenWorker.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Items;
 
@@ -16,7 +15,7 @@ namespace OpenWorker.Gameplay.Modules.Items;
 /// </summary>
 public sealed partial class InventoryPersistence(
     World world,
-    IDbContextFactory<PersistenceContext> factory,
+    IPersonStore store,
     InventoryFactory inventories,
     ILogger<InventoryPersistence> logger)
 {
@@ -26,7 +25,7 @@ public sealed partial class InventoryPersistence(
     /// </summary>
     public async ValueTask LoadAsync(Entity player, PersonPersistent person, CancellationToken cancellationToken = default)
     {
-        var rows = await factory.LoadItemsAsync(person.Id, cancellationToken);
+        var rows = await store.LoadItemsAsync(person.Id, cancellationToken);
 
         // The player may have left while the items were read.
         if (!world.IsAlive(player))
@@ -69,7 +68,7 @@ public sealed partial class InventoryPersistence(
 
         try
         {
-            await factory.SaveChangesAsync(changes);
+            await store.SaveChangesAsync(changes);
         }
 
         catch (Exception exception)

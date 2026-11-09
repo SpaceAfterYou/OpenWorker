@@ -12,7 +12,7 @@ namespace OpenWorker.Hotspot.Test;
 /// </summary>
 internal sealed class MetricsHost : IDisposable
 {
-    private readonly ServiceProvider _services = new ServiceCollection().AddOpenWorkerMetrics().BuildServiceProvider();
+    private readonly ServiceProvider _services = new ServiceCollection().AddOpenWorkerMetrics().AddRedisMetrics().AddPostgresMetrics().BuildServiceProvider();
 
     public IMeterFactory Factory => _services.GetRequiredService<IMeterFactory>();
 

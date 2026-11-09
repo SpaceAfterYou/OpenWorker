@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.SoulWorker.Network;
-using OpenWorker.Hotspot.Telemetry;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot;
@@ -13,7 +12,7 @@ namespace OpenWorker.Hotspot;
 /// Turns a message into a <see cref="Frame"/>: room for the header, the opcode, the body, the body encrypted in place,
 /// then the header, all in the array the frame keeps, with no second copy. The writer and the stream under it are
 /// made once and reused for every message, so an encoder belongs to one thread: the world loop has its own
-/// (<see cref="WorldLoop"/>), and any other thread that sends gets one of its own.<br/>
+/// (<see cref="IEncoderThread"/>), and any other thread that sends gets one of its own.<br/>
 /// Two paths live side by side until every message has moved: a message that writes itself through
 /// <see cref="PacketWriter"/> (<see cref="IWireWritable"/>, generated for a <c>[WireMessage]</c>) is written straight into
 /// the array of the frame; any other goes through the <see cref="BinaryWriter"/> over <see cref="FrameStream"/>.<br/>
@@ -36,7 +35,7 @@ internal sealed partial class FrameEncoder : IDisposable
     private static FrameEncoder? t_encoder;
 
     private readonly ILogger _logger;
-    private readonly SessionMetrics? _metrics;
+    private readonly IFrameDrops? _metrics;
     private readonly ArrayPool<byte> _arrays;
     private readonly FrameStream _stream;
     private readonly BinaryWriter _writer;
@@ -46,7 +45,7 @@ internal sealed partial class FrameEncoder : IDisposable
     /// <param name="logger">Where a dropped message is reported.</param>
     /// <param name="metrics">Counts the dropped messages; <see langword="null"/> for an encoder nobody measures.</param>
     /// <param name="arrays">Where the arrays of the frames come from; the shared pool unless a test watches them.</param>
-    public FrameEncoder(ILogger logger, SessionMetrics? metrics = null, ArrayPool<byte>? arrays = null)
+    public FrameEncoder(ILogger logger, IFrameDrops? metrics = null, ArrayPool<byte>? arrays = null)
     {
         _logger = logger;
         _metrics = metrics;
@@ -58,7 +57,7 @@ internal sealed partial class FrameEncoder : IDisposable
     /// <summary>
     /// The encoder of the world loop on the loop thread, and one per thread elsewhere (it reports to nobody).
     /// </summary>
-    public static FrameEncoder Current => SynchronizationContext.Current is WorldLoop { IsCurrent: true } loop
+    public static FrameEncoder Current => SynchronizationContext.Current is IEncoderThread { IsCurrent: true } loop
         ? loop.Encoder
         : t_encoder ??= new FrameEncoder(NullLogger.Instance);
 

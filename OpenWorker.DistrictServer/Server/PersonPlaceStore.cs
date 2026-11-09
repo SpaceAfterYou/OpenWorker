@@ -1,10 +1,10 @@
 using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Components;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Persistence;
-using OpenWorker.Persistence;
 
 namespace OpenWorker.DistrictServer.Server;
 

@@ -24,9 +24,10 @@
 
     <ItemGroup>
       <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
+      <ProjectReference Include="..\OpenWorker.DependencyInjection\OpenWorker.DependencyInjection.csproj" />
       <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.GateServer.Gameplay\OpenWorker.GateServer.Gameplay.csproj" />
-      <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+      <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
     </ItemGroup>
 
 </Project>

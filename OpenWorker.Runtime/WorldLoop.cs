@@ -13,7 +13,7 @@ namespace OpenWorker.Hotspot;
 /// <c>ConfigureAwait(false)</c>, and slow synchronous work must go through <c>Task.Run</c>.<br/>
 /// Other connections run while a handler waits: see the rules in <c>ARCHITECTURE.md</c>.
 /// </summary>
-public sealed partial class WorldLoop : SynchronizationContext, IDisposable
+public sealed partial class WorldLoop : SynchronizationContext, IEncoderThread, IDisposable
 {
     /// <summary>
     /// How long <see cref="Dispose"/> waits for the thread to finish what is queued.
@@ -52,6 +52,8 @@ public sealed partial class WorldLoop : SynchronizationContext, IDisposable
     /// Encodes the messages sent on the loop, one after another: the loop has one thread, so one encoder.
     /// </summary>
     internal FrameEncoder Encoder { get; }
+
+    FrameEncoder IEncoderThread.Encoder => Encoder;
 
     /// <summary>
     /// Callbacks that wait for the thread. Safe to read from any thread, for the gauge.

@@ -7,7 +7,7 @@ namespace OpenWorker.Hotspot.Telemetry;
 /// A connection is open from the moment its <c>ServerSessionComponent</c> is made until its writer has sent what it had
 /// and closed the socket, and is counted closed exactly once, under the first reason it was given.
 /// </summary>
-public sealed class SessionMetrics
+public sealed class SessionMetrics : IFrameDrops
 {
     private readonly UpDownCounter<long> _active;
     private readonly Counter<long> _closed;
@@ -109,7 +109,7 @@ public sealed class SessionMetrics
     }
 
     /// <param name="opcode">The name of the opcode of the message, the tag.</param>
-    internal void Dropped(string opcode)
+    void IFrameDrops.Dropped(string opcode)
     {
         _framesDropped.Add(1, new KeyValuePair<string, object?>("opcode", opcode));
     }

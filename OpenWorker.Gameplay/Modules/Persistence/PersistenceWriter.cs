@@ -1,9 +1,8 @@
+using OpenWorker.Domain.Stores;
 using System.Threading.Channels;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Hotspot;
-using OpenWorker.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Persistence;
 
@@ -14,7 +13,7 @@ namespace OpenWorker.Gameplay.Modules.Persistence;
 /// person never lands after a newer one.
 /// </summary>
 public sealed partial class PersistenceWriter(
-    IDbContextFactory<PersistenceContext> factory,
+    IPersonStore store,
     WorldLoop loop,
     PersonSnapshots snapshots,
     ILogger<PersistenceWriter> logger) : IHostedService
@@ -130,7 +129,7 @@ public sealed partial class PersistenceWriter(
         {
             try
             {
-                await factory.SaveChangesAsync(writes.Select(e => e.Write!.Changes).ToList());
+                await store.SaveChangesAsync(writes.Select(e => e.Write!.Changes).ToList());
 
                 Complete(writes, true);
             }
@@ -171,7 +170,7 @@ public sealed partial class PersistenceWriter(
 
             try
             {
-                await factory.SaveChangesAsync(mine.Select(e => e.Write!.Changes).ToList());
+                await store.SaveChangesAsync(mine.Select(e => e.Write!.Changes).ToList());
 
                 Complete(mine, true);
             }
