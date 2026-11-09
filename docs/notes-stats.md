@@ -178,7 +178,7 @@ its rows. `TitleTest` covers the titles, `BuffTest` the buffs, `ServerTablesTest
 `docs/tools/e2e_stats.py <login> <password> [maze location]` (a stand without the prologue; M08 by default, whose monsters come
 for the player): a scripted client is told its origin stats and its whole list at entry, puts a weapon on and reads the attack
 it adds (and four fifths of it as the least), takes it off and reads it go back, upgrades it once in the bag (no stat changes)
-and reads the share of the upgrade when it is worn again, puts on two pieces of armour and reads their defence, enters the maze
+at an NPC that upgrades, and reads the share of the upgrade when it is worn again, puts on two pieces of armour and reads their defence, enters the maze
 with the same stats, and waits among the monsters bare-handed until it falls: the armour wears on the hits and by five at the
 fall (18/12).
 
@@ -188,4 +188,5 @@ weapon aimed at a walking monster; `e2e_helper.py` 88/0 and 88/0 (stand without 
 selection of a new character, which goes to the prologue). `e2e_stats.py` 7/9 on dev (no whole list at entry, no change on
 equip, no wear) and 16/0 after: the weapon adds its 1000 to the attack and its upgrade 10 more, two pieces of armour add 37
 defence, in M08 the player took 53 hits and fell, the body armour wore by the hits (99, 98, 97, 92 with the fall) and both pieces
-lost five at the fall. The stand logs show no error of the servers.
+lost five at the fall. The stand logs show no error of the servers. After the rebase on the NPC services (the upgrade is served
+only by an NPC that offers it, near the player) the script walks to an upgrading NPC of the city first: 17/0.
