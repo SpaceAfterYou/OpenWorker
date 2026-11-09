@@ -23,6 +23,10 @@ districts, tutorials and rooms). The gold of a run is what the window of the res
 league (`LeagueMemberPersistent.Exp`, shown in the list of members) grows by the same share. Nothing else brings anything:
 not quests, not levels, not gold picked up outside a maze.
 
+A player enters the maze before the server learns their league (`LeagueComponent` is set when the community hears of the
+player, after the maze is made, and every player starts with an empty one), so a share without a known league goes out with
+league 0 and the treasury finds the league of the person in the database; a person in no league brings nothing.
+
 Code: `OpenWorker.Gameplay/Modules/League/LeagueGrowth.cs` holds the rule and asks `ILeagueTreasury`;
 `OpenWorker.Channel/Community/LeagueTreasury.cs` writes it (`LeagueStore.GrowAsync`) and tells the members. The game calls it
 in two places, each with one optional constructor parameter: `MazeResults` (`Start` and `Complete`) and `ExperienceService`
@@ -133,8 +137,8 @@ friends list and the community saw as well; it now carries the real level.
 
 ### Tests
 
-- `LeagueGrowthTest`: a run brings half the fatigue on the way in and on the way out and a hundredth of the gold; a
-  person in no league and a maze without fatigue bring nothing.
+- `LeagueGrowthTest`: a run brings half the fatigue on the way in and on the way out and a hundredth of the gold; a maze
+  without fatigue brings nothing; a player whose league the server has not learnt yet brings the share with league 0.
 - `LeagueStoreTest` (Postgres): the experience of the next level raises the level, keeps the rest, raises the room for
   members, and the member keeps their whole share; the member shows the level of the person.
 - `LeagueWireFormatTest`: the bits of the rights, who may change rights, which positions are given and by whom.

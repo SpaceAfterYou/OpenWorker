@@ -8,7 +8,8 @@ using OpenWorker.UpdateContent.Res.Rows;
 namespace OpenWorker.Gameplay.Modules.League;
 
 /// <summary>
-/// What a member brings to the league: experience and gold, and the member's own share of the experience.
+/// What a member brings to the league: experience and gold, and the member's own share of the experience. A league of 0 is
+/// the league the person is in, for a player whose league this server has not learnt yet.
 /// </summary>
 public readonly record struct LeagueWealth(int League, int Person, int Exp, long Gold);
 
@@ -80,13 +81,19 @@ public sealed class LeagueGrowth(World world, ReadOnlyCollection<MazeInfoRow> ma
         }
     }
 
+    /// <summary>
+    /// The league of the player and their number. A player who has just come in does not know their league yet (a server learns
+    /// it after the maze is made, and every player starts with an empty one): the league is then 0 and the treasury finds it.
+    /// </summary>
     private (int League, int Person)? LeagueOf(Entity player)
     {
-        if (!world.IsAlive(player) || !world.TryGet<LeagueComponent>(player, out var league) || league.Id <= 0 || !world.Has<ActorComponent>(player))
+        if (!world.IsAlive(player) || !world.Has<ActorComponent>(player))
         {
             return null;
         }
 
-        return (league.Id, world.Get<ActorComponent>(player).Identifier);
+        var league = world.TryGet<LeagueComponent>(player, out var known) ? Math.Max(0, known.Id) : 0;
+
+        return (league, world.Get<ActorComponent>(player).Identifier);
     }
 }

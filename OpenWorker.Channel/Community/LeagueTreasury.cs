@@ -36,6 +36,16 @@ public sealed partial class LeagueTreasury(
     {
         try
         {
+            if (wealth.League <= 0)
+            {
+                if (await factory.MemberAsync(wealth.Person) is not { } member)
+                {
+                    return;
+                }
+
+                wealth = wealth with { League = member.League };
+            }
+
             var grown = await factory.GrowAsync(wealth.League, wealth.Person, wealth.Exp, wealth.Gold, levels.Next);
 
             if (grown is null)
@@ -78,13 +88,13 @@ public sealed partial class LeagueTreasury(
         {
             var member = await factory.MemberAsync(person);
 
-            if (member is null || member.League != league)
+            if (member is null || (league > 0 && member.League != league))
             {
                 return;
             }
 
             var online = await network.FindAsync(person);
-            var others = (await factory.MemberIdsAsync(league)).Where(e => e != person);
+            var others = (await factory.MemberIdsAsync(member.League)).Where(e => e != person);
 
             await network.SendAsync(others, LeagueSnapshots.Update(member with { Level = level }, online) with { Level = level });
         }

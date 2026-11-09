@@ -51,17 +51,20 @@ public sealed class LeagueGrowthTest
             new ActorComponent { Identifier = 7 },
             new LeagueComponent { Id = 3, Name = "Ab", Card = new LeagueComponentCard { Emblem = 0, Border = 0 } });
 
-        var loner = world.Create(new ActorComponent { Identifier = 8 });
+        // A player whose league the server has not learnt yet brings it all the same, for the treasury to find.
+        var newcomer = world.Create(
+            new ActorComponent { Identifier = 9 },
+            new LeagueComponent { Id = 0, Name = string.Empty, Card = new LeagueComponentCard { Emblem = 0, Border = 0 } });
 
         growth.OnMazeEntered(member, Maze);
         growth.OnMazeFinished(member, Maze, 1250);
 
-        // Somebody in no league brings nothing, and nor does a maze that costs no fatigue.
-        growth.OnMazeFinished(loner, Maze, 1250);
+        // A maze that costs no fatigue brings nothing.
         growth.OnMazeEntered(member, 1);
+        growth.OnMazeEntered(newcomer, Maze);
 
         CollectionAssert.AreEqual(
-            new[] { new LeagueWealth(3, 7, Fatigue / 2, 0), new LeagueWealth(3, 7, Fatigue / 2, 12) },
+            new[] { new LeagueWealth(3, 7, Fatigue / 2, 0), new LeagueWealth(3, 7, Fatigue / 2, 12), new LeagueWealth(0, 9, Fatigue / 2, 0) },
             treasury.Shares);
     }
 }
