@@ -90,7 +90,6 @@ await Host
         services.AddRegistrationService<MazeRegistrationService>();
 
         // services.AddHostedService<ServerBootstrapService>();
-        // services.AddHostedService<KeepAliveService>();
     })
     .Build()
     .RunAsync();

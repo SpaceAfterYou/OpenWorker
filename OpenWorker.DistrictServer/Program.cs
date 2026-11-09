@@ -64,7 +64,6 @@ await Host
         services.AddHotspot(context, EntityComponentService.District);
 
         services.AddRegistrationService<ServerBootstrapService>();
-        services.AddHostedService<KeepAliveService>();
     })
     .Build()
     .RunAsync();

@@ -13,10 +13,12 @@ using OpenWorker.Gameplay.Modules.Maze.Extensions;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Gameplay.Modules.Gestures.Components;
+using OpenWorker.Hotspot.Modules.Gestures.Types;
 
 namespace OpenWorker.Server.Common;
 
-public sealed class PersonRegistry(World world)
+public sealed class PersonRegistry(World world, TimeProvider time)
 {
     /// <summary>
     /// Sets what the person is from its row, and the options of its account.
@@ -120,5 +122,23 @@ public sealed class PersonRegistry(World world)
         world.Set(entity, persistent.ToCommunityComponent());
 
         world.Set(entity, accountOptions.ToPersonOptionComponent());
+
+        // The six gestures kept ready, in a district and in a maze.
+        world.Set(entity, new GestureComponent
+        {
+            Collection = persistent.GestureList.Length switch
+            {
+                < GesturesModuleDefines.MaxGestureCount => persistent.GestureList
+                    .Concat(Enumerable.Repeat(0, GesturesModuleDefines.MaxGestureCount - persistent.GestureList.Length))
+                    .ToArray(),
+
+                > GesturesModuleDefines.MaxGestureCount => persistent.GestureList.Take(GesturesModuleDefines.MaxGestureCount).ToArray(),
+
+                _ => persistent.GestureList
+            }
+        });
+
+        // Entering counts as the first answer to the keep-alive.
+        world.Set(entity, KeepAliveComponent.Start(time.GetTimestamp()));
     }
 }

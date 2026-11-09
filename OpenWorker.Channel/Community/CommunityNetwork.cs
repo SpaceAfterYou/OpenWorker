@@ -106,6 +106,31 @@ public sealed partial class CommunityNetwork(
         }
     }
 
+    /// <summary>
+    /// Brings what the others know about a person up to date at once, after a change they read from it (its options),
+    /// instead of at the next renewal.
+    /// </summary>
+    public async ValueTask RefreshAsync(Entity player)
+    {
+        if (!world.Has<ActorComponent>(player))
+        {
+            return;
+        }
+
+        var person = world.Get<ActorComponent>(player).Identifier;
+
+        if (!Players.TryGetValue(person, out var known) || known != player)
+        {
+            return;
+        }
+
+        var record = source.Describe(player, Instance);
+
+        Records[person] = record;
+
+        await TryAsync(() => presence.SetAsync(record, PresenceLifetime).AsTask(), "renew a person");
+    }
+
     public async ValueTask OnSessionClosedAsync(Entity player)
     {
         if (!world.Has<ActorComponent>(player))

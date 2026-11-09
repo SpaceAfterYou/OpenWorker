@@ -21,6 +21,7 @@ public static class ServiceCollectionExtensions
         return services
             .AddSingleton<PersonRegistry>()
             .AddSingleton<HelperSupports>()
+            .AddHostedService<KeepAliveService>()
             .AddSingleton<IPlayerAudience, TAudience>();
     }
 }

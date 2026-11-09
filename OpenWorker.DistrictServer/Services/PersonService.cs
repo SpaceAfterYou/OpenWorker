@@ -11,7 +11,6 @@ using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.DistrictServer.Server;
-using OpenWorker.DistrictServer.Server.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
@@ -151,24 +150,6 @@ public sealed partial class PersonService(
             .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
         ecs.Set(context.Player, GetReservedPlace(reserve));
-
-        ecs.Set(context.Player, KeepAliveComponent.Start(time.GetTimestamp()));
-
-        ecs.Set(context.Player, new GestureComponent
-        {
-            Collection = person.GestureList.Length switch
-            {
-                < GesturesModuleDefines.MaxGestureCount => person.GestureList
-                    .Concat(Enumerable
-                        .Repeat(0, GesturesModuleDefines.MaxGestureCount - person.GestureList.Length)
-                        .ToArray())
-                    .ToArray(),
-
-                > GesturesModuleDefines.MaxGestureCount => person.GestureList.Take(GesturesModuleDefines.MaxGestureCount).ToArray(),
-
-                _ => person.GestureList
-            }
-        });
 
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
