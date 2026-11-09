@@ -718,6 +718,27 @@
 
 Цель: границы между слоями, которые можно проверить автоматически, и отсутствие дублей.
 
+> **Статус (2026-11-09, `dev`): шаги 1, 2, 6 и 7 сделаны, слиты коммитом `0a02fc5`; шаги 3, 4 и 5 в работе.**
+> Заметки в `docs/phase-6/A-layers.md`.
+>
+> - Шаг 1. `OpenWorker.Hotspot` разделён на `OpenWorker.Protocol` (опкоды, сообщения, заголовок, шифрование, кадр;
+>   ссылается только на `Wire`, `Domain`, `Extensions`), `OpenWorker.Runtime` (петля, писатель, часы, диспетчер,
+>   телеметрия) и `OpenWorker.Infrastructure.Redis` (кэши, лизы, bootstrap). Пространства имён `OpenWorker.Hotspot.*`
+>   сохранены намеренно: Redis.OM строит ключи записей из полных имён типов, переименование сменило бы ключи,
+>   которые делят серверы. Перенос сделан через `git mv`, поведение не менялось. `ServerService` остался
+>   в `DependencyInjection`: ему нужны компоненты `Gameplay`.
+> - Шаг 2. `IPersonStore` в `Domain`, реализация в `Persistence`; `Gameplay` больше не ссылается на EF Core
+>   и на `Persistence`.
+> - Шаг 6. `ProjectLayersTest` читает csproj и падает на ссылке против порядка слоёв
+>   Wire ← Domain ← Protocol ← Runtime ← Infrastructure.Redis / Persistence ← Gameplay ← Channel ← серверы.
+>   Допущения записаны в тесте: `AuthServer.Gameplay` и `GateServer.Gameplay` пока ходят в EF напрямую.
+> - Шаг 7. Решение по ECS записано в `ARCHITECTURE.md`: сессия это типизированный набор компонентов без систем;
+>   обход всех игроков через запросы Arch; монстры одного архетипа шагают через `StepList`; видимость вне ECS.
+> - Тестовый проект остаётся `OpenWorker.Hotspot.Test`: `compose.yaml` монтирует его `Datas` по этому пути.
+>   Presence и pub/sub остались в `Channel`, их интерфейсы сначала надо опустить ниже.
+> - Пути раздела 7 ниже указаны на момент анализа: `OpenWorker.Hotspot/...` теперь читается как
+>   `OpenWorker.Protocol/...` или `OpenWorker.Runtime/...`.
+
 Шаги:
 
 1. Разделить `OpenWorker.Hotspot` на `OpenWorker.Protocol` (опкоды, сообщения, кадр,
