@@ -42,7 +42,8 @@ public sealed partial class SharePointManager(
     /// <summary>
     /// Loads the share points of the person as it enters a district and tells the client every district and group, the
     /// districts first: the client files a group under its district. The district the person is in gets a state when it has
-    /// none, and the client is told about it.
+    /// none. The client takes the lists only as it enters the world from the gate and the change of one state only once it
+    /// is in the world, so a new district is in the list and is told by itself as well.
     /// </summary>
     public async ValueTask EnterDistrictAsync(Entity player, int person, int district, CancellationToken cancellationToken)
     {
@@ -50,6 +51,8 @@ public sealed partial class SharePointManager(
         {
             return;
         }
+
+        var visited = book.Visit(catalog, district);
 
         Send(player, new PersonLoadDistrictStateResponse
         {
@@ -61,7 +64,7 @@ public sealed partial class SharePointManager(
             States = book.Groups.Take(MaxGroups).Select(e => e.ToValue()).ToArray()
         });
 
-        if (book.Visit(catalog, district) is { } visited)
+        if (visited is not null)
         {
             world.MarkDirty(player, PersonSections.Progress);
 

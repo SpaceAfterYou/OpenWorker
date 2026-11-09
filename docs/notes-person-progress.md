@@ -14,8 +14,8 @@ the quests, the skills and the daily missions are kept:
 
 | Kind | Document | Holds |
 |---|---|---|
-| `PersonStateKind.Achievements` (8) | `AchievementBook` | a counter per chain of achievements (type, target, the achievement it counts toward, the count), and the 128 bytes of the rewards taken, one bit per achievement by its `CompleteBit` |
-| `PersonStateKind.SharePoints` (9) | `SharePointBook` | per district: point, reward taken; per group of mazes: the maze cleared last, the district, clears, point, reward step |
+| `PersonStateKind.Achievements` (9) | `AchievementBook` | a counter per chain of achievements (type, target, the achievement it counts toward, the count), and the 128 bytes of the rewards taken, one bit per achievement by its `CompleteBit` |
+| `PersonStateKind.SharePoints` (10) | `SharePointBook` | per district: point, reward taken; per group of mazes: the maze cleared last, the district, clears, point, reward step |
 
 A change marks `PersonSections.Progress` on the dirty mask; the flush writes both documents (`AchievementManager.Document`,
 `SharePointManager.Document`), in the maze as in the district, so a clear in a maze is written by the flush of the maze
@@ -52,7 +52,8 @@ Without the server's tables: achievements count with target 0, and the six types
   district, int clears, int point, u8 step`), districts first: the client files a group under its district and drops a group
   whose district it does not know. The client reads both only while it enters the world from the gate (its login scene); in
   the play scene it has no receiver for them, so they are sent at every district entry and ignored after the first. The
-  district the person is in gets a state when it has a row and none yet, told by 03/58 with an empty group.
+  district the person is in gets a state when it has a row and none yet, first, so that it is in the list for a client
+  that comes from the gate, and also told by 03/58 with an empty group for a client already in the world.
 - **A cleared maze** (`MazeReporter.MazeClearedAsync`, maze server): the group of the maze (`tb_Maze_Info.Group`) gets the
   points of the episode of the maze (`tb_Maze_Info.Episode`, 0 to 4, more counts as 4: the first value of the row for
   episode 0, then one per episode), up to the points of its last step; one more clear; the maze cleared last. The district
