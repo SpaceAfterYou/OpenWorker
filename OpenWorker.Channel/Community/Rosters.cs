@@ -4,11 +4,21 @@ using OpenWorker.Hotspot.Modules.Items.Enums;
 namespace OpenWorker.Channel.Community;
 
 /// <summary>
-/// Who stands with a person in a party. A person alone gets an empty list.
+/// A party as the rest of the server sees it: its identifier, its master and everybody in it, the master included.
+/// </summary>
+public sealed record PartyView(int Id, int Master, IReadOnlyList<int> Members);
+
+/// <summary>
+/// Who stands with a person in a party. A person alone gets an empty list and no party.
 /// </summary>
 public interface IPartyRoster
 {
     ValueTask<IReadOnlyList<int>> MembersAsync(int person);
+
+    /// <summary>
+    /// The party of the person, or null when they are alone.
+    /// </summary>
+    ValueTask<PartyView?> PartyAsync(int person);
 }
 
 /// <summary>
@@ -46,6 +56,8 @@ public interface IMegaphoneSource
 internal sealed class NoPartyRoster : IPartyRoster
 {
     public ValueTask<IReadOnlyList<int>> MembersAsync(int person) => ValueTask.FromResult<IReadOnlyList<int>>([]);
+
+    public ValueTask<PartyView?> PartyAsync(int person) => ValueTask.FromResult<PartyView?>(null);
 }
 
 /// <summary>

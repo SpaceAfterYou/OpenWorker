@@ -18,6 +18,9 @@ public sealed class ChatTest
     {
         public ValueTask<IReadOnlyList<int>> MembersAsync(int person) =>
             ValueTask.FromResult<IReadOnlyList<int>>(members.Contains(person) ? members : []);
+
+        public ValueTask<PartyView?> PartyAsync(int person) =>
+            ValueTask.FromResult(members.Contains(person) ? new PartyView(1, members[0], members) : null);
     }
 
     private sealed class League(params int[] members) : ILeagueRoster
