@@ -11,13 +11,13 @@ namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 /// </summary>
 public readonly record struct MazeRewardPartyMember(byte Order, byte Rank, int Member, string Name, int PlayPoint);
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct MazeRewardPartyInfoResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_MAZE_REWARD_PARTY_INFO;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required IReadOnlyList<MazeRewardPartyMember> Members { get; init; }
 

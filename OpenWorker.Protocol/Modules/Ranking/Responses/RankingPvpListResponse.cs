@@ -8,13 +8,13 @@ using OpenWorker.Hotspot.Modules.Ranking.Types;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct RankingPvpListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Ranking;
     private const RankingOpcode Command = RankingOpcode.PvpList;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required PS_RANKING_LIST_RES Data { get; init; }
 

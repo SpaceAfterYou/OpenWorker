@@ -9,13 +9,13 @@ namespace OpenWorker.Hotspot.Modules.Items.Responses;
 /// <summary>
 /// What lies in the bank storages the client asked for.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ItemBankInfoResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.BankInfo;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required StorageItemValue[] List { get; init; }
 

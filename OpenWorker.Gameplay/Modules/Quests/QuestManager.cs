@@ -719,7 +719,7 @@ public sealed partial class QuestManager(
 
     private void SendError(Entity player, QuestOpcode command, ushort code)
     {
-        Send(player, new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Quest, command), code));
+        Send(player, new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Quest, command), code));
     }
 
     /// <summary>

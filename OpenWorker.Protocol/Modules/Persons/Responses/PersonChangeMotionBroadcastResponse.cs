@@ -12,7 +12,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// Shows the motion of a player to the others.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct PersonChangeMotionBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -20,7 +20,7 @@ public readonly partial struct PersonChangeMotionBroadcastResponse : IResponseHo
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.ChangeMotionBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

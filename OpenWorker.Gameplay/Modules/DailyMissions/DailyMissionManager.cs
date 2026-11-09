@@ -428,7 +428,7 @@ public sealed partial class DailyMissionManager(
     private void SendError(Entity player, DailyMissionOpcode command, ushort code)
     {
         world.Get<ServerSessionComponent>(player)
-            .Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.DailyMission, command), code));
+            .Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.DailyMission, command), code));
     }
 
     private bool TryGet(Entity player, out DailyMissionBook book)

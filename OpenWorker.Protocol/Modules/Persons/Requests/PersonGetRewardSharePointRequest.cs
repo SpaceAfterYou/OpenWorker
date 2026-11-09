@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 /// </summary>
 /// <param name="reader"></param>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct PersonGetRewardSharePointRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
@@ -20,5 +20,5 @@ public readonly partial struct PersonGetRewardSharePointRequest : IRequestHotspo
     public int Type { get; }
     public int Identifier { get; }
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Reflection;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 
@@ -13,56 +11,19 @@ public sealed class MessageOpcodeTest
     private const byte Command = 0x22;
 
     [TestMethod]
-    public void ConvertsToTheGroupFromTheGroupByte()
+    public void ATypedCommandGivesItsByte()
     {
-        GroupOpcode group = new MessageOpcode(Group, Command);
+        var opcode = MessageOpcode.From(GroupOpcode.Character, (CharacterOpcode)Command);
 
-        Assert.AreEqual(GroupOpcode.Character, group);
+        Assert.AreEqual(Group, opcode.Group);
+        Assert.AreEqual(Command, opcode.Command);
+        Assert.AreEqual(new MessageOpcode(Group, Command), opcode);
     }
 
     [TestMethod]
-    public void ConvertsToACommandFromTheCommandByte()
+    public void TheValueHasTheGroupFirst()
     {
-        SystemOpcode system = new MessageOpcode((byte)GroupOpcode.System, (byte)SystemOpcode.Ping);
-        CharacterOpcode character = new MessageOpcode(Group, Command);
-
-        Assert.AreEqual(SystemOpcode.Ping, system);
-        Assert.AreEqual((CharacterOpcode)Command, character);
-    }
-
-    [TestMethod]
-    public void EveryCommandEnumReadsTheCommandByte()
-    {
-        var opcode = new MessageOpcode(Group, Command);
-        var converted = 0;
-
-        foreach (var method in typeof(MessageOpcode).GetMethods(BindingFlags.Public | BindingFlags.Static))
-        {
-            if (method.Name != "op_Implicit" || method.ReturnType == typeof(short) || method.ReturnType == typeof(GroupOpcode))
-            {
-                continue;
-            }
-
-            var result = method.Invoke(null, [opcode]);
-
-            Assert.AreEqual(Command, Convert.ToByte(result, CultureInfo.InvariantCulture), $"{method.ReturnType.Name} must read the command.");
-
-            converted++;
-        }
-
-        // One conversion for each command enum; a new one that is not in the file would go unchecked.
-        var commandEnums = typeof(GroupOpcode).Assembly.GetTypes()
-            .Count(e => e is { IsEnum: true, Namespace: not null } && e.Namespace == typeof(GroupOpcode).Namespace && e != typeof(GroupOpcode));
-
-        Assert.AreEqual(commandEnums, converted);
-    }
-
-    [TestMethod]
-    public void ConvertsToTheValueWithTheGroupFirst()
-    {
-        short value = new MessageOpcode(Group, Command);
-
-        Assert.AreEqual((short)(Group | Command << 8), value);
+        Assert.AreEqual((short)(Group | Command << 8), new MessageOpcode(Group, Command).Value);
     }
 
     [TestMethod]
@@ -76,12 +37,24 @@ public sealed class MessageOpcodeTest
         Assert.AreEqual(Command, opcode.Command);
     }
 
+    /// <summary>
+    /// The name of a command is looked up in the enum named after its group, so a group whose enum is named otherwise would
+    /// lose the names of its commands in the logs and the metrics.
+    /// </summary>
+    [TestMethod]
+    public void EveryGroupNamesItsCommandsFromItsEnum()
+    {
+        var unnamed = Enum.GetValues<GroupOpcode>()
+            .Where(group => new MessageOpcode(group, 0).ToCommandString().StartsWith("0x", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.IsEmpty(unnamed, "Groups with no enum of commands: " + string.Join(", ", unnamed));
+        Assert.AreEqual("System:Ping", MessageOpcode.From(GroupOpcode.System, SystemOpcode.Ping).ToFullString());
+    }
+
     [TestMethod]
     public void NamesAnOpcodeOfAGroupNobodyKnowsWithoutThrowing()
     {
-        var opcode = new MessageOpcode(0xF0, 0x01);
-
-        Assert.AreEqual("240:0x01", opcode.ToFullString());
-        Assert.AreEqual("System:Ping", new MessageOpcode(GroupOpcode.System, SystemOpcode.Ping).ToFullString());
+        Assert.AreEqual("240:0x01", new MessageOpcode(0xF0, 0x01).ToFullString());
     }
 }

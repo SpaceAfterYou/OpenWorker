@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Modules.Login.Types;
 
 namespace OpenWorker.Hotspot.Modules.Login.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct LoginOptionUpdateRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Login;
@@ -14,5 +14,5 @@ public readonly struct LoginOptionUpdateRequest(BinaryReader reader) : IRequestH
 
     public IReadOnlyCollection<byte> Values { get; } = reader.ReadBytes(LoginModuleDefines.PersonOptionCount);
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

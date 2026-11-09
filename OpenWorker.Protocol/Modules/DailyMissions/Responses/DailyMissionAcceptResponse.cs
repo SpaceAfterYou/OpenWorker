@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.DailyMissions.Responses;
 /// The mission is accepted. The client takes the second byte for the tracker flag, not for a state.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct DailyMissionAcceptResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -19,7 +19,7 @@ public readonly partial struct DailyMissionAcceptResponse : IResponseHotspotMess
     private const GroupOpcode Group = GroupOpcode.DailyMission;
     private const DailyMissionOpcode Command = DailyMissionOpcode.Accept;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

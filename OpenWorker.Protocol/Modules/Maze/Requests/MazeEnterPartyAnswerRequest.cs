@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Maze.Requests;
 /// The answer of a player to the call of the party to enter a maze together.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct MazeEnterPartyAnswerRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
@@ -19,5 +19,5 @@ public readonly partial struct MazeEnterPartyAnswerRequest : IRequestHotspotMess
     public int Maze { get; }
     public bool Agree { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

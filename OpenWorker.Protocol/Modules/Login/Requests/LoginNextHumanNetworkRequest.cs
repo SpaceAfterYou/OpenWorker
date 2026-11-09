@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Login.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct LoginNextHumanNetworkRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Login;
@@ -17,7 +17,7 @@ public readonly struct LoginNextHumanNetworkRequest(BinaryReader reader) : IRequ
     public string PurpleUserId { get; } = ReadFixedString(reader, 21);
     public string MacAddress { get; } = ReadFixedString(reader, 18);
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     private static string ReadFixedString(BinaryReader reader, int size)
     {

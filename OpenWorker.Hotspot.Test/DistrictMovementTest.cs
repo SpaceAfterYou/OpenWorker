@@ -96,7 +96,7 @@ internal sealed class DistrictHarness : IDisposable
         Channel.Broadcast(new Marker());
 
         await MetricAssertions.UntilAsync(
-            () => players.All(e => e.Received().Any(f => (short)f.Opcode == Marker.Code)),
+            () => players.All(e => e.Received().Any(f => f.Opcode.Value == Marker.Code.Value)),
             "Every player gets the marker.");
     }
 
@@ -152,7 +152,7 @@ internal sealed class DistrictHarness : IDisposable
     /// </summary>
     public sealed class Marker : IResponseHotspotMessage
     {
-        public static readonly MessageOpcode Code = new(GroupOpcode.System, (SystemOpcode)0x7B);
+        public static readonly MessageOpcode Code = new(GroupOpcode.System, 0x7B);
 
         public MessageOpcode Opcode => Code;
 

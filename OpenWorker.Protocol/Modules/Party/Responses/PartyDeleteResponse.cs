@@ -6,13 +6,13 @@ using OpenWorker.Hotspot.Modules.Party.Types;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PartyDeleteResponse(BinaryReader reader) : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Delete;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public PartyMemberInfoValue Member { get; init; } = new(reader);
 

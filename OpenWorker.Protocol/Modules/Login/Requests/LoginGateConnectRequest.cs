@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Login.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct LoginGateConnectRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Login;
@@ -15,5 +15,5 @@ public readonly partial struct LoginGateConnectRequest : IRequestHotspotMessage
 
     public short Gate { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

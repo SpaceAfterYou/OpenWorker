@@ -529,12 +529,12 @@ public sealed partial class MazeService(
 
     private void SendError(Entity player, WorldOpcode command, ushort code)
     {
-        ecs.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.World, command), code));
+        ecs.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.World, command), code));
     }
 
     private void SendError(Entity player, MazeOpcode command, ushort code)
     {
-        ecs.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Maze, command), code));
+        ecs.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Maze, command), code));
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeSwitchNpcClickRequest request)

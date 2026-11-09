@@ -20,7 +20,7 @@ public readonly partial record struct MovementTraceAggro(int Actor, float Value)
 /// the client keeps it for its debug window.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MovementTraceBtResponse : IResponseHotspotMessage
 {
     public const int FuzzyCount = 4;
@@ -29,7 +29,7 @@ public readonly partial struct MovementTraceBtResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Move;
     private const MoveOpcode Command = MoveOpcode.TraceBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; init; }
     public Vector3 Position { get; init; }

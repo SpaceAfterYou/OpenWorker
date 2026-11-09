@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.System.Types;
 
 namespace OpenWorker.Hotspot.Modules.System.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct SystemXignCodeRequest(BinaryReader reader) : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -15,7 +15,7 @@ public readonly struct SystemXignCodeRequest(BinaryReader reader) : IRequestHots
     private const GroupOpcode Group = GroupOpcode.System;
     private const SystemOpcode Command = SystemOpcode.Xigncode;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

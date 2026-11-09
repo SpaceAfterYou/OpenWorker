@@ -7,13 +7,13 @@ using OpenWorker.Hotspot.Messages.Response.Person;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonEnterBattleZoneResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.EnterBattleZone;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required ZoneValue Zone { get; init; }
     public short Unknown96 { get; init; }

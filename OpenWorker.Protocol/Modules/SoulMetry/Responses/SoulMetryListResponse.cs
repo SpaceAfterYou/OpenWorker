@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 
 namespace OpenWorker.Hotspot.Modules.SoulMetry.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct SoulMetryListResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -14,7 +14,7 @@ public readonly struct SoulMetryListResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.SoulMetry;
     private const SoulMetryOpcode Command = SoulMetryOpcode.List;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

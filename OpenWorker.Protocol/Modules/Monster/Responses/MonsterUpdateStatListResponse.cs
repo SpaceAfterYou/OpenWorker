@@ -8,13 +8,13 @@ using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Hotspot.Modules.Monster.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct MonsterUpdateStatListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Monster;
     private const MonsterOpcode Command = MonsterOpcode.UpdateStatList;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; init; }
     public required StatKeyValuePair[] Stats { get; init; }

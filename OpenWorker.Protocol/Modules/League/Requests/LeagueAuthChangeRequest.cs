@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// <summary>
 /// Sets what each position may do.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct LeagueAuthChangeRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -23,5 +23,5 @@ public readonly struct LeagueAuthChangeRequest(BinaryReader reader) : IRequestHo
     public IReadOnlyList<LeagueRewardInfo> Rewards { get; } = Enumerable.Range(0, LeagueModuleDefines.LeagueRewardCount).Select(_ => new LeagueRewardInfo(reader)).ToArray();
     public int Result { get; } = reader.ReadInt32();
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

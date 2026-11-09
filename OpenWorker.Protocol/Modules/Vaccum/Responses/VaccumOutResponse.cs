@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.Vaccum.Responses;
 /// A cube is gone.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct VaccumOutResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -19,7 +19,7 @@ public readonly partial struct VaccumOutResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Vaccum;
     private const VaccumOpcode Command = VaccumOpcode.Out;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

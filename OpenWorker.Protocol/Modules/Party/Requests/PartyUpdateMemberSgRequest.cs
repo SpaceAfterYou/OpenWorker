@@ -10,11 +10,11 @@ namespace OpenWorker.Hotspot.Modules.Party.Requests;
 /// Unprocessed on the client: unknown_libname_8
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct PartyUpdateMemberSgRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.UpdateMemberSg;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

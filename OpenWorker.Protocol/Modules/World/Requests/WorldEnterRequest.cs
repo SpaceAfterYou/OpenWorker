@@ -11,13 +11,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.World.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct WorldEnterRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.World;
     private const WorldOpcode Command = WorldOpcode.EnterReq;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public int Account { get; }
     public ActorValue Actor { get; }

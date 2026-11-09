@@ -12,7 +12,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// What a player says about themselves.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct PersonCommunityResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -20,7 +20,7 @@ public readonly partial struct PersonCommunityResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.Community;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

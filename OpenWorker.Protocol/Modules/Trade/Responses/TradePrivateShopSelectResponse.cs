@@ -9,13 +9,13 @@ using OpenWorker.Hotspot.Modules.Trade.Types;
 
 namespace OpenWorker.Hotspot.Modules.Trade.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct TradePrivateShopSelectResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.PrivateShopSelect;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required ActorValue Actor { get; init; }
     public required PrivateShopItemValue[] Items { get; init; }

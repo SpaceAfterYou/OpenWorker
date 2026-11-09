@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// registered, not at the code that stands before it in the list.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct PersonReviveResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -22,7 +22,7 @@ public readonly partial struct PersonReviveResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.ReviveBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

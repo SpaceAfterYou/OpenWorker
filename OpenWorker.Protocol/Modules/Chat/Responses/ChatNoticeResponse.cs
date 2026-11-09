@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.Chat.Responses;
 /// A line across the top of the screen. The colour is six hex digits.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct ChatNoticeResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Chat;
@@ -34,5 +34,5 @@ public readonly partial struct ChatNoticeResponse : IResponseHotspotMessage
         Color = DefaultColor;
     }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

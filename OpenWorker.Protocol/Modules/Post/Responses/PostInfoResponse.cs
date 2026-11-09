@@ -7,13 +7,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Post.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct PostInfoResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Post;
     private const PostOpcode Command = PostOpcode.Info;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required short NewPostCount { get; init; }
     public required short NewAccountPostCount { get; init; }

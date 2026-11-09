@@ -10,7 +10,7 @@ using OpenWorker.Hotspot.Modules.Ranking.Types;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessag
     private const GroupOpcode Group = GroupOpcode.Ranking;
     private const RankingOpcode Command = RankingOpcode.InfiniteTowerList;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

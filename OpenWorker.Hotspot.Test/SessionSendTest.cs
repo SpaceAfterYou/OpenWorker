@@ -12,7 +12,7 @@ public sealed class SessionSendTest
 {
     private readonly struct Filler(byte value, int size) : IResponseHotspotMessage
     {
-        public MessageOpcode Opcode => new(GroupOpcode.Move, MoveOpcode.MoveBt);
+        public MessageOpcode Opcode => new(GroupOpcode.Move, (byte)MoveOpcode.MoveBt);
 
         public void Write(BinaryWriter writer)
         {

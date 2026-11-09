@@ -12,7 +12,7 @@ namespace OpenWorker.Hotspot.Modules.Maze.Requests;
 /// A monster controlled by the client has summoned another one.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct MazeMonsterClientSpawnRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
@@ -28,5 +28,5 @@ public readonly partial struct MazeMonsterClientSpawnRequest : IRequestHotspotMe
 
     public int Owner { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

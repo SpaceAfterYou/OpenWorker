@@ -9,13 +9,13 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Gestures.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct GestureSlotUpdateRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Gesture;
     private const GestureOpcode Command = GestureOpcode.SlotUpdate;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     [WireArray(Count = GesturesModuleDefines.MaxGestureCount)]
     public int[] GestureList { get; }

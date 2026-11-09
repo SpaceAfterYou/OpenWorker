@@ -8,13 +8,13 @@ using OpenWorker.Hotspot.Modules.Party.Types;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PartyRecruitApplyInfoResponse(BinaryReader reader) : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.RecruitApplyInfo;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public int Party { get; init; } = reader.ReadInt32();
     public PartyMemberInfoValue[] MemberList { get; init; } = reader.ReadPartyMemberInfoListWithIntCount();

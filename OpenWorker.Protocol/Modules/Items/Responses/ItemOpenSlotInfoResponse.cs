@@ -6,13 +6,13 @@ using OpenWorker.Hotspot.Modules.Items.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Items.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ItemOpenSlotInfoResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.OpenSlotInfo;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public required IReadOnlyList<ItemOpenSlotGroupEntry> Groups { get; init; }
 

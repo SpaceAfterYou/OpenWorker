@@ -8,7 +8,7 @@ namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 /// <summary>
 /// TODO: Deleted mech. Research.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct SkillEndSoulViperBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -16,7 +16,7 @@ public readonly struct SkillEndSoulViperBroadcastResponse(BinaryReader reader) :
     private const GroupOpcode Group = GroupOpcode.Skill;
     private const SkillOpcode Command = SkillOpcode.SkillEndSoulViperBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

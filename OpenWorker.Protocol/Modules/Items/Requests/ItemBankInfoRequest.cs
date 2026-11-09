@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.Items.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct ItemBankInfoRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
@@ -15,5 +15,5 @@ public readonly struct ItemBankInfoRequest(BinaryReader reader) : IRequestHotspo
 
     public IReadOnlyCollection<StorageGroup> IdentifierList { get; } = reader.ReadStorageGroupList(reader.ReadByte());
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

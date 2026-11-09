@@ -8,13 +8,13 @@ using OpenWorker.Hotspot.Modules.Ranking.Types;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct RankingTimeAttackListResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Ranking;
     private const RankingOpcode Command = RankingOpcode.TimeAttackList;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ST_RANKING_TIME_ATTACK_USER2 Data { get; init; }
 

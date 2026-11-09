@@ -5,13 +5,13 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Login.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct LoginEnterGateResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Login;
     private const LoginOpcode Command = LoginOpcode.EnterServerRes;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public bool HasError { get; init; }
     public int Account { get; init; }

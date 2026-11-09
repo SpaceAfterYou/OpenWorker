@@ -138,7 +138,7 @@ public sealed partial class SoulMetryManager(
 
         if (!TryGet(player, out var state))
         {
-            session.Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.SoulMetry, SoulMetryOpcode.Complete), NotLoaded));
+            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.SoulMetry, SoulMetryOpcode.Complete), NotLoaded));
             return;
         }
 

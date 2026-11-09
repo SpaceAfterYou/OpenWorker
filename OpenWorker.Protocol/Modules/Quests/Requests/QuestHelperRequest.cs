@@ -9,7 +9,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Quests.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct QuestHelperRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Quest;
@@ -18,5 +18,5 @@ public readonly partial struct QuestHelperRequest : IRequestHotspotMessage
     public QuestHelperType Type { get; }
     public int Episode { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

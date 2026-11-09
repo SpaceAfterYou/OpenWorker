@@ -26,7 +26,7 @@ namespace OpenWorker.Hotspot.Test;
 /// <summary>
 /// A request on an opcode no real message uses. The first byte says what happens next.
 /// </summary>
-[HotspotMessage(GroupOpcode.System, ProbeRequest.Command, HotspotMessageDirection.Request)]
+[HotspotMessage(GroupOpcode.System, (byte)ProbeRequest.Command, HotspotMessageDirection.Request)]
 public readonly struct ProbeRequest : IRequestHotspotMessage
 {
     public const SystemOpcode Command = (SystemOpcode)0x7E;
@@ -38,7 +38,7 @@ public readonly struct ProbeRequest : IRequestHotspotMessage
     public const byte Logs = 4;
     public const byte Records = 5;
 
-    public MessageOpcode Opcode => new(GroupOpcode.System, Command);
+    public MessageOpcode Opcode => new(GroupOpcode.System, (byte)Command);
 
     public byte Mode { get; }
 
@@ -128,12 +128,12 @@ public sealed partial class ProbeHandler(ILogger<ProbeHandler>? logger = null) :
 /// <summary>
 /// A request with a span format, on an opcode no real message uses: a list of numbers with an int count.
 /// </summary>
-[HotspotMessage(GroupOpcode.System, WireProbeRequest.Command, HotspotMessageDirection.Request)]
+[HotspotMessage(GroupOpcode.System, (byte)WireProbeRequest.Command, HotspotMessageDirection.Request)]
 public readonly struct WireProbeRequest : IRequestHotspotMessage, IWireReadable<WireProbeRequest>
 {
     public const SystemOpcode Command = (SystemOpcode)0x7C;
 
-    public MessageOpcode Opcode => new(GroupOpcode.System, Command);
+    public MessageOpcode Opcode => new(GroupOpcode.System, (byte)Command);
 
     public int[] Values { get; init; }
 

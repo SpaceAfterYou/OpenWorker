@@ -14,7 +14,7 @@ namespace OpenWorker.Hotspot.Modules.League.Requests;
 /// <summary>
 /// Looks for a league by its name or its master.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct LeagueSearchRequest(BinaryReader reader) : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
@@ -26,5 +26,5 @@ public readonly struct LeagueSearchRequest(BinaryReader reader) : IRequestHotspo
     public int Reserved { get; } = reader.ReadInt32();
     public IReadOnlyList<LeagueInfo> Leagues { get; } = Enumerable.Range(0, reader.ReadByte()).Select(_ => new LeagueInfo(reader)).ToArray();
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

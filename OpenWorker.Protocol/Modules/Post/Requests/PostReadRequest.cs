@@ -5,13 +5,13 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 
 namespace OpenWorker.Hotspot.Modules.Post.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct PostReadRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
 {
     private const GroupOpcode Group = GroupOpcode.Post;
     private const PostOpcode Command = PostOpcode.Read;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public int Npc { get; } = reader.ReadInt32();
     public long Serial { get; } = reader.ReadInt64();

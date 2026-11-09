@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Boosters.Responses;
 /// <summary>
 /// All the boosters of the person. The client forgets the ones it knew, so this also clears them.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct BoosterLoadResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly struct BoosterLoadResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Booster;
     private const BoosterOpcode Command = BoosterOpcode.ListLoad;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

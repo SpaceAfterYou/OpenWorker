@@ -676,14 +676,14 @@ public sealed class LuaCreatureManager
 
         if (Vitals.IsAlive(player))
         {
-            session.Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotFallen));
+            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotFallen));
 
             return;
         }
 
         if (type is not (ReviveType.Auto or ReviveType.MazeFree or ReviveType.ModeMazeAuto or ReviveType.Cash))
         {
-            session.Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotAllowed));
+            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotAllowed));
 
             return;
         }

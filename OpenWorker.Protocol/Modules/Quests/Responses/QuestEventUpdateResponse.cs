@@ -10,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 /// Legacy client handler only logs; no payload consumed.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct QuestEventUpdateResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -18,7 +18,7 @@ public readonly partial struct QuestEventUpdateResponse : IResponseHotspotMessag
     private const GroupOpcode Group = GroupOpcode.Quest;
     private const QuestOpcode Command = QuestOpcode.EventUpdate;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 }

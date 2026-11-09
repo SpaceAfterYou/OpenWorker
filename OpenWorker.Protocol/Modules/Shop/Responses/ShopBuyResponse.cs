@@ -9,7 +9,7 @@ using OpenWorker.Hotspot.Modules.Shop.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Responses;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ShopBuyResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -17,7 +17,7 @@ public readonly struct ShopBuyResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Shop;
     private const ShopOpcode Command = ShopOpcode.Buy;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

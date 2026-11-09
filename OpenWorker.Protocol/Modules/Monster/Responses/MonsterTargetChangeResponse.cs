@@ -12,7 +12,7 @@ namespace OpenWorker.Hotspot.Modules.Monster.Responses;
 /// A monster looks at somebody else now. No target is the actor with every bit set.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MonsterTargetChangeResponse : IResponseHotspotMessage
 {
     public const int NoTarget = -1;
@@ -20,7 +20,7 @@ public readonly partial struct MonsterTargetChangeResponse : IResponseHotspotMes
     private const GroupOpcode Group = GroupOpcode.Monster;
     private const MonsterOpcode Command = MonsterOpcode.TargetChangeBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; init; }
 

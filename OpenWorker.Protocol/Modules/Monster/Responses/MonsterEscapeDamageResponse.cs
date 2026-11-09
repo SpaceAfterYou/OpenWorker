@@ -12,13 +12,13 @@ namespace OpenWorker.Hotspot.Modules.Monster.Responses;
 /// A monster takes a defense of its own for a while to get out of a fight.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MonsterEscapeDamageResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Monster;
     private const MonsterOpcode Command = MonsterOpcode.EscapeDamageBt;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; init; }
     public byte DefenseType { get; init; }

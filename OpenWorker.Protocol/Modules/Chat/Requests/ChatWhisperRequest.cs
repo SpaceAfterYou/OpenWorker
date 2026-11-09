@@ -8,7 +8,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Chat.Requests;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct ChatWhisperRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Chat;
@@ -22,5 +22,5 @@ public readonly partial struct ChatWhisperRequest : IRequestHotspotMessage
     public string Message { get; }
     public int Result { get; }
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

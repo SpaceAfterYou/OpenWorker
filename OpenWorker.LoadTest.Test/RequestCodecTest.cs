@@ -35,23 +35,23 @@ public sealed class RequestCodecTest
     [TestMethod]
     public void OpcodesAreTheOnesOfTheMessagesOfTheServer()
     {
-        Assert.AreEqual(default(LoginAuthRequest).Opcode, Of(Opcodes.LoginRequest));
-        Assert.AreEqual(default(LoginGateListRequest).Opcode, Of(Opcodes.GateListRequest));
-        Assert.AreEqual(default(LoginGateConnectRequest).Opcode, Of(Opcodes.GateConnectRequest));
-        Assert.AreEqual(default(LoginEnterServerRequest).Opcode, Of(Opcodes.EnterGateRequest));
-        Assert.AreEqual(default(PersonListRequest).Opcode, Of(Opcodes.PersonListRequest));
-        Assert.AreEqual(default(PersonCreateRequest).Opcode, Of(Opcodes.PersonCreateRequest));
-        Assert.AreEqual(default(PersonSelectRequest).Opcode, Of(Opcodes.PersonSelectRequest));
-        Assert.AreEqual(default(PersonEnterGameServerRequest).Opcode, Of(Opcodes.PersonEnterRequest));
-        Assert.AreEqual(default(WorldObjectRequest).Opcode, Of(Opcodes.WorldObjectRequest));
-        Assert.AreEqual(default(MazeCreateRequest).Opcode, Of(Opcodes.MazeCreateRequest));
-        Assert.AreEqual(default(MovementMoveRequest).Opcode, Of(Opcodes.MoveRequest));
-        Assert.AreEqual(default(SystemPingRequest).Opcode, Of(Opcodes.Ping));
-        Assert.AreEqual(default(SystemKeepAliveRequest).Opcode, Of(Opcodes.KeepAlive));
-        Assert.AreEqual(default(ChatNormalRequest).Opcode, Of(Opcodes.ChatNormal));
-        Assert.AreEqual(default(ChannelChangeRequest).Opcode, Of(Opcodes.ChannelChangeRequest));
-        Assert.AreEqual(default(MazeCompleteRequest).Opcode, Of(Opcodes.MazeCompleteRequest));
-        Assert.AreEqual(default(SkillActiveSkillRequest).Opcode, Of(Opcodes.SkillActiveRequest));
+        Assert.AreEqual(default(LoginAuthRequest).Opcode.Value, Of(Opcodes.LoginRequest));
+        Assert.AreEqual(default(LoginGateListRequest).Opcode.Value, Of(Opcodes.GateListRequest));
+        Assert.AreEqual(default(LoginGateConnectRequest).Opcode.Value, Of(Opcodes.GateConnectRequest));
+        Assert.AreEqual(default(LoginEnterServerRequest).Opcode.Value, Of(Opcodes.EnterGateRequest));
+        Assert.AreEqual(default(PersonListRequest).Opcode.Value, Of(Opcodes.PersonListRequest));
+        Assert.AreEqual(default(PersonCreateRequest).Opcode.Value, Of(Opcodes.PersonCreateRequest));
+        Assert.AreEqual(default(PersonSelectRequest).Opcode.Value, Of(Opcodes.PersonSelectRequest));
+        Assert.AreEqual(default(PersonEnterGameServerRequest).Opcode.Value, Of(Opcodes.PersonEnterRequest));
+        Assert.AreEqual(default(WorldObjectRequest).Opcode.Value, Of(Opcodes.WorldObjectRequest));
+        Assert.AreEqual(default(MazeCreateRequest).Opcode.Value, Of(Opcodes.MazeCreateRequest));
+        Assert.AreEqual(default(MovementMoveRequest).Opcode.Value, Of(Opcodes.MoveRequest));
+        Assert.AreEqual(default(SystemPingRequest).Opcode.Value, Of(Opcodes.Ping));
+        Assert.AreEqual(default(SystemKeepAliveRequest).Opcode.Value, Of(Opcodes.KeepAlive));
+        Assert.AreEqual(default(ChatNormalRequest).Opcode.Value, Of(Opcodes.ChatNormal));
+        Assert.AreEqual(default(ChannelChangeRequest).Opcode.Value, Of(Opcodes.ChannelChangeRequest));
+        Assert.AreEqual(default(MazeCompleteRequest).Opcode.Value, Of(Opcodes.MazeCompleteRequest));
+        Assert.AreEqual(default(SkillActiveSkillRequest).Opcode.Value, Of(Opcodes.SkillActiveRequest));
     }
 
     private static short Of(ushort opcode) => (short)opcode;

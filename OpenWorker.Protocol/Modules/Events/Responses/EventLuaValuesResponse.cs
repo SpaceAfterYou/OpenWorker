@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Events.Responses;
 /// <summary>
 /// Names that the client hands one by one to the function of its script that handles event values.
 /// </summary>
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct EventLuaValuesResponse : IResponseHotspotMessage
 {
     /// <summary>
@@ -22,7 +22,7 @@ public readonly struct EventLuaValuesResponse : IResponseHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Event;
     private const EventOpcode Command = EventOpcode.LuaValues;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

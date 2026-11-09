@@ -10,13 +10,13 @@ namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 /// The window shown when a maze is finished: the rank, how long it took and what the player got for it.
 /// </summary>
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MazeRewardInfoResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
     private const MazeOpcode Command = MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     /// <summary>Higher is better, 0 is the lowest of six.</summary>
     public byte Rank { get; init; }

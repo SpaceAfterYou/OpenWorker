@@ -182,9 +182,9 @@ internal static class ChannelMembers
 [DoNotParallelize]
 public sealed class FrameTest
 {
-    private static readonly MessageOpcode FillerOpcode = new(GroupOpcode.Move, MoveOpcode.MoveBt);
+    private static readonly MessageOpcode FillerOpcode = new(GroupOpcode.Move, (byte)MoveOpcode.MoveBt);
 
-    private static readonly MessageOpcode CountingOpcode = new(GroupOpcode.System, (SystemOpcode)0x7D);
+    private static readonly MessageOpcode CountingOpcode = new(GroupOpcode.System, 0x7D);
 
     /// <summary>
     /// A body of <c>size + 1</c> bytes of one value after the opcode.
@@ -273,7 +273,7 @@ public sealed class FrameTest
 
         // Each member gets the joins of the players after it first, then the broadcast.
         await MetricAssertions.UntilAsync(
-            () => connections.All(e => e.Frames is { Length: > 0 } frames && (short)OpcodeOf(frames[^1]) == CountingOpcode),
+            () => connections.All(e => e.Frames is { Length: > 0 } frames && OpcodeOf(frames[^1]).Value == CountingOpcode.Value),
             "Every member gets the broadcast.");
 
         var first = connections[0].Frames[^1];

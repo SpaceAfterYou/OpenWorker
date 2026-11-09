@@ -27,7 +27,7 @@ internal sealed class TestClient : TcpClient
 
                 /* using */ var writer = new BinaryWriter(stream);
 
-                writer.Write(message.Opcode);
+                writer.Write(message.Opcode.Value);
 
                 message.Write(writer);
 

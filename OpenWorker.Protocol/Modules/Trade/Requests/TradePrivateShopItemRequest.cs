@@ -6,13 +6,13 @@ using OpenWorker.Hotspot.Modules.Items.Types;
 
 namespace OpenWorker.Hotspot.Modules.Trade.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct TradePrivateShopItemRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.PrivateShopItem;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public StorageSlot Slot { get; } = new(reader);
     public long Money { get; } = reader.ReadInt64();

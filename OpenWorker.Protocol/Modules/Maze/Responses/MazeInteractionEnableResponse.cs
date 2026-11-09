@@ -7,7 +7,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
 [WireMessage]
-[HotspotMessage(Group, Command, HotspotMessageDirection.Response)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct MazeInteractionEnableResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Maze;
@@ -18,5 +18,5 @@ public readonly partial struct MazeInteractionEnableResponse : IResponseHotspotM
     public int BoxIndex { get; init; }
     public int CallCount { get; init; }
     
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 }

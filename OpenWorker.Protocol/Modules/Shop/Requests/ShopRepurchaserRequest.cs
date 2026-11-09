@@ -7,7 +7,7 @@ using OpenWorker.Hotspot.Modules.Items.Types;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct ShopRepurchaserRequest(BinaryReader reader) : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
@@ -15,7 +15,7 @@ public readonly struct ShopRepurchaserRequest(BinaryReader reader) : IRequestHot
     private const GroupOpcode Group = GroupOpcode.Shop;
     private const ShopOpcode Command = ShopOpcode.Repurchaser;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 

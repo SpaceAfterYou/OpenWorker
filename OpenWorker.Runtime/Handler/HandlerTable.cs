@@ -23,7 +23,7 @@ public sealed class HandlerTable(HandlerTableBuilder builder)
         return count;
     }
 
-    internal Handler this[MessageOpcode key] => Collection[key];
+    internal Handler this[MessageOpcode key] => Collection[key.Value];
 
     /// <summary>
     /// The table is indexed by the two bytes of the opcode read as a short, so an opcode with a command
@@ -31,7 +31,7 @@ public sealed class HandlerTable(HandlerTableBuilder builder)
     /// </summary>
     internal bool TryGet(MessageOpcode key, out Handler handler)
     {
-        short index = key;
+        var index = key.Value;
 
         if ((uint)index < (uint)Collection.Length)
         {

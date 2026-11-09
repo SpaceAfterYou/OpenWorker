@@ -83,7 +83,7 @@ internal sealed partial class FrameEncoder : IDisposable
         {
             _stream.Begin();
 
-            _writer.Write(message.Opcode);
+            _writer.Write(message.Opcode.Value);
 
             message.Write(_writer);
 
@@ -125,7 +125,7 @@ internal sealed partial class FrameEncoder : IDisposable
 
         try
         {
-            writer.WriteInt16(message.Opcode);
+            writer.WriteInt16(message.Opcode.Value);
 
             message.Write(ref writer);
         }
@@ -161,7 +161,7 @@ internal sealed partial class FrameEncoder : IDisposable
 
         try
         {
-            writer.WriteInt16(message.Opcode);
+            writer.WriteInt16(message.Opcode.Value);
 
             wire.Write(ref writer);
         }

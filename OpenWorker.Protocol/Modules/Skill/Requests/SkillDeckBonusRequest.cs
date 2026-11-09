@@ -6,7 +6,7 @@ using OpenWorker.Hotspot.Modules.Skill.Extensions;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
-[HotspotMessage(Group, Command, HotspotMessageDirection.Request)]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly struct SkillDeckBonusRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
 {
 #region Interface: IHotspotMessage
@@ -14,7 +14,7 @@ public readonly struct SkillDeckBonusRequest(BinaryReader reader) : IRequestHots
     private const GroupOpcode Group = GroupOpcode.Skill;
     private const SkillOpcode Command = SkillOpcode.SkillDeckBonus;
 
-    public MessageOpcode Opcode => new(Group, Command);
+    public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
 
