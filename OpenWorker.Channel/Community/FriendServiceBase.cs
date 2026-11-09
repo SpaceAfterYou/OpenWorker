@@ -81,7 +81,7 @@ public abstract class FriendServiceBase(
         {
             Session(context).Send(new FriendLoadBlocklistResponse
             {
-                List = blocked.Select(e => new FriendBlockValue(e.Person, e.Name, PersonModuleDefines.DefaultLevel)).Take(byte.MaxValue).ToArray()
+                List = blocked.Select(e => new FriendBlockValue(e.Person, e.Name, e.Level)).Take(byte.MaxValue).ToArray()
             });
         }
     }
@@ -240,7 +240,7 @@ public abstract class FriendServiceBase(
 
                 Session(context).Send(new FriendBlockAddResponse
                 {
-                    Value = new FriendBlockValue(target.Person, target.Name, PersonModuleDefines.DefaultLevel)
+                    Value = new FriendBlockValue(target.Person, target.Name, target.Level)
                 });
                 break;
 
@@ -305,7 +305,7 @@ public abstract class FriendServiceBase(
             {
                 Person = e.Card.Person,
                 Name = e.Card.Name,
-                Level = e.Online?.Level ?? PersonModuleDefines.DefaultLevel,
+                Level = e.Online?.Level ?? e.Card.Level,
                 Channel = (byte)(e.Online?.Channel ?? 0),
                 World = e.Online?.Location ?? 0,
                 IsLoggedIn = e.Online is not null
@@ -335,7 +335,7 @@ public abstract class FriendServiceBase(
             {
                 Name = e.Card.Name,
                 Actor = new ActorValue(e.Card.Person, ActorType.User),
-                Level = e.Online?.Level ?? PersonModuleDefines.DefaultLevel,
+                Level = e.Online?.Level ?? e.Card.Level,
                 Hero = (Hero)e.Card.Hero,
                 Channel = (byte)(e.Online?.Channel ?? 0),
                 World = e.Online?.Location ?? 0,

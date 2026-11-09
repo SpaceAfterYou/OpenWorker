@@ -20,8 +20,8 @@ using OpenWorker.Server.Common.Services;
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// What an account keeps that a district or a maze changes, against a real Postgres (OPENWORKER_TEST_POSTGRES): the next entry
-/// must find it there.
+/// What the rows of accounts and persons keep for a district or a maze, against a real Postgres (OPENWORKER_TEST_POSTGRES): what
+/// a server changes, the next entry must find there, and what the others are shown of a person away comes from there.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
@@ -72,7 +72,7 @@ public sealed class AccountStateTest
         await Services.DisposeAsync();
     }
 
-    private static async Task<(int Person, int Account)> PersonAsync(string name)
+    private static async Task<(int Person, int Account)> PersonAsync(string name, byte level = 1)
     {
         await using var database = await Factory.CreateDbContextAsync();
 
@@ -80,7 +80,7 @@ public sealed class AccountStateTest
         {
             Name = name,
             Hero = Hero.Haru,
-            Level = 1,
+            Level = level,
             DefaultHairStyle = 0, DefaultHairColor = 0, DefaultEyeColor = 0, DefaultSkinColor = 0,
             EquippedHairStyle = 0, EquippedHairColor = 0, EquippedEyeColor = 0, EquippedSkinColor = 0,
             Location = 10003, PositionX = 0, PositionY = 0, PositionZ = 0, RotationX = 0, FatiguePointCommon = 0,
@@ -169,6 +169,28 @@ public sealed class AccountStateTest
 
         Assert.AreEqual((LoginRules.TradePasswordInvalid, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1235"));
         Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(PasswordCheckType.Check, "1234"));
+    }
+
+    /// <summary>
+    /// A person who is not online is shown at the level its row keeps, in the list of friends, the block list and a search,
+    /// instead of one level for everybody.
+    /// </summary>
+    [TestMethod]
+    public async Task APersonAwayIsShownAtTheLevelOfItsRow()
+    {
+        var (owner, _) = await PersonAsync("lister");
+        var (friend, _) = await PersonAsync("farfriend", 42);
+        var (blocked, _) = await PersonAsync("farblocked", 17);
+
+        Assert.AreEqual(InviteOutcome.Sent, await Factory.InviteAsync(owner, friend));
+        Assert.AreEqual(AnswerOutcome.Befriended, await Factory.AnswerAsync(friend, owner, accept: true));
+        Assert.AreEqual(BlockOutcome.Done, await Factory.BlockAsync(owner, blocked));
+
+        var entry = (await Factory.ListAsync(owner)).Single(e => e.Person == friend);
+
+        Assert.AreEqual((byte)42, FriendBook.ToValue(entry, online: null).Level);
+        Assert.AreEqual((byte)17, (await Factory.BlockedAsync(owner)).Single().Level);
+        Assert.AreEqual((byte)42, (await Factory.SearchAsync("farfriend", 0, 10)).Single().Level);
     }
 
     private static PersonTradePasswordRequest Request(PasswordCheckType type, string password)

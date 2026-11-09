@@ -30,7 +30,7 @@ public sealed class FriendBook(IDbContextFactory<PersistenceContext> factory) : 
         {
             Name = entry.Name,
             Friend = entry.Person,
-            Level = online?.Level ?? PersonModuleDefines.DefaultLevel,
+            Level = online?.Level ?? entry.Level,
             Class = entry.Hero,
             State = (FriendState)(byte)entry.Kind,
             CommunityState = (CommunityState)entry.CommunityState,
