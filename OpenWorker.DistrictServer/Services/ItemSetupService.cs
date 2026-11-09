@@ -6,15 +6,20 @@ using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The work on items at the NPCs of a city: repairs so far. The other requests of the group are listed in
-/// <c>docs/notes-itemsetup.md</c> with what is missing for them.
+/// The work on items at the NPCs of a city: repairs and the tools that restore, unseal or lower a count of
+/// an item. What each request does and what is still missing for the others: <c>docs/notes-item-setup-handlers.md</c>.
 /// </summary>
-public sealed class ItemSetupService(ItemRepairService repairs) :
+public sealed class ItemSetupService(
+    ItemRepairService repairs,
+    ItemRestoreService restores) :
     IHotspotHandler<ItemSetupMakeRequest>,
     IHotspotHandler<ItemSetupRepairRequest>,
     IHotspotHandler<ItemSetupRepairNpcRequest>,
     IHotspotHandler<ItemSetupRepairEquipRequest>,
-    IHotspotHandler<ItemSetupRepairAllRequest>
+    IHotspotHandler<ItemSetupRepairAllRequest>,
+    IHotspotHandler<ItemSetupRestoreRequest>,
+    IHotspotHandler<ItemSetupUnsealRequest>,
+    IHotspotHandler<ItemSetupUseEffectRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupMakeRequest request)
     {
@@ -45,6 +50,27 @@ public sealed class ItemSetupService(ItemRepairService repairs) :
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupRepairAllRequest request)
     {
         repairs.RepairMany(context.Player, carried: true);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupRestoreRequest request)
+    {
+        restores.Restore(context.Player, request.Tool, request.Target);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupUnsealRequest request)
+    {
+        restores.Unseal(context.Player, request.Tool, request.Target);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupUseEffectRequest request)
+    {
+        restores.UseEffect(context.Player, request.Tool, request.Target);
 
         return ValueTask.CompletedTask;
     }

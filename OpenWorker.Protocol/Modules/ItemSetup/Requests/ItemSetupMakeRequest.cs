@@ -6,6 +6,9 @@ using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
+/// <summary>
+/// Makes items of a recipe at an NPC: the recipe and how many times.
+/// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
 public readonly partial struct ItemSetupMakeRequest : IRequestHotspotMessage
@@ -15,8 +18,8 @@ public readonly partial struct ItemSetupMakeRequest : IRequestHotspotMessage
 
     public int Npc { get; }
     public int MakeIndex { get; }
-    public short Unknown { get; }
     public byte MakeCount { get; }
-    
+    public short Unknown { get; }
+
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }

@@ -17,9 +17,9 @@ public readonly partial struct ItemSetupUnsealRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
     private const ItemSetupOpcode Command = ItemSetupOpcode.Unseal;
 
-    public StorageSlot Target { get; init; }
-
     public StorageSlot Tool { get; init; }
+
+    public StorageSlot Target { get; init; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }
