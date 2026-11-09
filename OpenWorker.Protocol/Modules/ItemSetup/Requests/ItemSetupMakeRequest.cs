@@ -7,7 +7,8 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 
 /// <summary>
-/// Makes items of a recipe at an NPC: the recipe and how many times.
+/// Makes items of a recipe of <c>tb_Make</c> at an NPC: the NPC, the recipe and how many items. The client sends two more
+/// bytes after the count, which the server does not read.
 /// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
@@ -16,10 +17,10 @@ public readonly partial struct ItemSetupMakeRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
     private const ItemSetupOpcode Command = ItemSetupOpcode.Make;
 
-    public int Npc { get; }
-    public int MakeIndex { get; }
-    public byte MakeCount { get; }
-    public short Unknown { get; }
+    public int Npc { get; init; }
+    public int MakeIndex { get; init; }
+    public byte MakeCount { get; init; }
+    public short Unknown { get; init; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }

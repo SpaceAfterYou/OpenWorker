@@ -48,7 +48,8 @@ public sealed class ServerTablesTest
             ("tb_Drop", typeof(DropRow)),
             ("tb_Drop_Group", typeof(DropGroupRow)),
             ("tb_MazeReward_Item", typeof(MazeRewardItemRow)),
-            ("tb_Reinforce", typeof(ReinforceChanceRow))
+            ("tb_Reinforce", typeof(ReinforceChanceRow)),
+            ("tb_Disassemble", typeof(DisassembleResultRow))
         ];
 
         foreach (var (table, row) in tables)

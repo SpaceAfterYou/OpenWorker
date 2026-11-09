@@ -479,10 +479,11 @@ or wrong setting stops the server with a message that names the key. A setting w
 - **Table folders.** The client tables are read from `res/` in the working directory, the tables only the server has from
   `res-server/` next to it (a container mounts them at `/app/res-server`); `BinaryResourceTableAttribute.PathIn` is the one
   place that decides. A server-only table is marked `Optional` and is optional: without it the server starts and the feature
-  it serves goes without (no drops, no key reward of a maze, every upgrade refused). One with a name of its own (`tb_Drop`,
+  it serves goes without (no drops, no key reward of a maze, every upgrade and disassembly refused). One with a name of its own (`tb_Drop`,
   `tb_Monster_EXP`, `tb_MazeReward_Item`, ...) is also found in `res/` when `res-server/` lacks it, for a deployment that
   copied the server tables next to the client's; one under the name of a client table, the server's own version of it, is
-  marked `Server` and is read from `res-server/` only (today `tb_Reinforce`, which carries the chances of an upgrade).
+  marked `Server` and is read from `res-server/` only (today `tb_Reinforce`, which carries the chances of an upgrade, and
+  `tb_Disassemble`, which carries what taking an item apart gives).
 - `Rewards:ExpRate` and `Rewards:DropRate` of the district and the maze multiply the experience of a kill and the
   chances of a drop; 1 unless set, never negative.
 - `Attendance:ResetHour` and `DailyMission:ResetHour` are optional (the hour the game day starts at); the rules of the

@@ -1,8 +1,11 @@
 using OpenWorker.Hotspot.Extensions;
+using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -99,5 +102,49 @@ public sealed class ItemWireFormatTest
         Assert.AreEqual(5, bytes[2]);
         Assert.AreEqual(7, BitConverter.ToInt32(bytes, 3));
         Assert.AreEqual(100, BitConverter.ToInt32(bytes, bytes.Length - 4));
+    }
+
+    [TestMethod]
+    public void EvolutionRequestReadsTheItemInTheLayoutTheServerWritesIt()
+    {
+        var item = new ItemValue
+        {
+            Item = 113000030,
+            Serial = new SerialValue(0x0102030405060708),
+            Count = 1,
+            BindType = ItemBindType.OnEquip,
+            OptionList = Enumerable.Range(1, 5).Select(e => new ItemOption((short)e, e * 10)).ToList(),
+            Upgrade = 9,
+            Endurance = 80,
+            SocketActiveCount = 2,
+            DueTo = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000),
+            UpgradeCount = 3,
+            UpgradeLimit = 4,
+            Flag = 2,
+            Exp = 1234,
+            BroachState = "000000000000000",
+            RestoreCount = 5,
+            SealCount = 6
+        };
+
+        var bytes = ToBytes(writer =>
+        {
+            writer.Write(7);
+            writer.Write((byte)StorageGroup.Common);
+            writer.Write((short)12);
+            writer.Write(item);
+        });
+
+        var reader = new PacketReader(bytes);
+        var request = ItemSetupEvolutionRequest.Read(ref reader);
+
+        Assert.AreEqual(0, reader.Remaining);
+        Assert.AreEqual(7, request.Npc);
+        Assert.AreEqual(12, request.Target.Slot);
+        Assert.AreEqual(item.Serial.Number, request.Item.Serial.Number);
+        Assert.AreEqual(50, request.Item.OptionList[4].Option);
+        Assert.AreEqual(item.DueTo, request.Item.DueTo);
+        Assert.AreEqual(item.BroachState, request.Item.BroachState);
+        Assert.AreEqual(6, request.Item.SealCount);
     }
 }

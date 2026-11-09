@@ -45,7 +45,7 @@ server-only tables is in `ARCHITECTURE.md`, "Table folders". Without the table e
 
 | Sub | Request | What the handler does | Answer |
 |---|---|---|---|
-| 01 | Make | nothing yet (empty handler, as before) | none |
+| 01, 03, 04, 13, 18 | Make, Exchange, Disassemble, Evolution, DisassembleEx | see "Round 3" below | |
 | 02 | Upgrade | the cost of the level the item is at from the client's `tb_Reinforce` (gold, battle points, ether, two materials and their counts), all checked before anything is taken; then a roll from 1 to 10000 against the server's `tb_Reinforce` of the same id: up to the chance of going up the item gains a level, past it and up to the chance of breaking it breaks (flag 2), past that it stays. From level 4 an item that protects it (use type `UPGRADE_HELP`) may be named, and is used up; it then breaks instead of the item. An item with a limit of tries (`UpgradeLimit`) spends one try on every upgrade and is refused when none are left. A broken item, an item at the last level of its row and an item without a row are refused. | `18/02`: result (1 up, 2 stayed, 3 broken, 4 the protection broke) and the item |
 | 05 | SocketEquip | one gem at a time: the gem lies in the common bag, is a socket gem (use type `ITEM_SOCKET_EQUIP`) of no higher level than the item; the socket is open and empty; the gold of `tb_Socket` is charged. The gem is used up, the socket takes the gem and the options of the gem, and an unbound item is bound. | `18/05`: the socket list of the gem; an update of the item when it was bound |
 | 06 | SocketActive | only the next socket opens, up to the sockets of the row of `tb_Socket` (through the socket column of `tb_Item`); its gold and its item are charged. | `18/06`: the item and the socket |
@@ -62,14 +62,11 @@ holds nothing, and every refusal of a restore, 52012.
 
 ## Requests without a handler
 
-Of the 38 requests of the group, 11 have a handler now (Make's is empty); 27 have none. 16 of those the client of this
-version never sends. The 11 the client sends and the server does not handle, and why:
+Of the 38 requests of the group, 15 have a handler now; 23 have none. 16 of those the client of this version never sends.
+The 7 the client sends and the server does not handle, and why:
 
 | Sub | Request | Missing |
 |---|---|---|
-| 03 | Exchange | the rules of `tb_Reinforce_Exchange` and the meaning of its fields |
-| 04, 18 | Disassemble, DisassembleEx | `tb_Disassemble` (the client's has only an id column) and the fields of the answer |
-| 13 | Evolution | the request carries an item that has no span reader yet, and the answer is not read |
 | 14, 15, 17, 25 | AkashicMake, AkashicDisassemble, AkashicCompose, AkashicMakeEx | the akashic tables and cards; the answers of 15 and 17 are only partly read |
 | 20, 21, 23 | BroachEquip, BroachActive, BroachCompose | the broach rules and `TB_BroachData`; the answer of 21 is only partly read. The schema already keeps the broaches. |
 
@@ -99,3 +96,83 @@ goes up at the highest roll that still succeeds and breaks at the next, charging
 socket and setting a gem puts the gem in, uses it up and shows it in the entry load and in the saved row; a restoring item
 mends a broken item and an unsealing item frees a bound one. `ItemRepairTest` shares the fixture. `ServerTablesTest` reads
 the server `tb_Reinforce` to its end.
+
+## Round 3: disassembly, exchange, evolution and production
+
+The handlers of these five requests are `ItemCraftService` in `OpenWorker.DistrictServer` (its own class, so that the
+handlers of the other item work stay in `ItemSetupService`); the rules are `ItemMakeService`, `ItemExchangeService`,
+`ItemDisassembleService` and `ItemEvolutionService` in `OpenWorker.Gameplay.Modules.ItemSetup`. Each checks everything
+before it takes anything, so a refusal changes nothing, and each refusal answers with the client's code.
+
+| Sub | Request | What the handler does | Answer |
+|---|---|---|---|
+| 01 | Make | a recipe of the client's `tb_Make`, 1 to 100 items: the gold and the battle points of the recipe times the count, then each of its four materials times the count (at most 32 000 of one), then room for the product; the materials, the gold and the battle points are taken and the product is given, `count` of it | `18/01`, empty: the client closes the production dialog |
+| 03 | Exchange | a row of `tb_Reinforce_Exchange`: the count the client sends is how many products it wants and must be a whole number of exchanges (a multiple of the product count of the row); each exchange takes the material count of the row | `18/03`, empty: the client refreshes the upgrade or the akashic dialog |
+| 04 | Disassemble | the tool (first slot) lies in the common bag and is a disassembly tool (use type `DISASSEMBLE`); the item (second slot) lies in the common, costume or cash bag and its row of `tb_Item` names a disassembly row. The row of the server's `tb_Disassemble` gives ether between its two bounds and, by a roll from 1 to 10 000 over the chances of its seven items, one item in a count between the two bounds of that item (or none when the roll passes them all). The tool and the item are used up (one of a stack) | `18/04`: what came out |
+| 18 | DisassembleEx | the same for up to 20 items at an NPC, without a tool; a stack may be named once for each of its items. Each item has its own roll | `18/18`: what came out of each |
+| 13 | Evolution | the item lies in the common bag, is upgraded to 9 or more and its row of `tb_Item` names a row of `tb_Item_Evolution`; the gold, the battle points, the ether and the material of the row must be there. A roll from 1 to 10 000 up to the success rate of the row evolves the item: it gives way to one of the six items of the row, by a second roll over their chances, which keeps the upgrade level of the old one. A failed roll costs the same and leaves the item | `18/13`: 1 and the serial of the new item, or 0 and 0 |
+
+The answer of 04 and 18 is `int n`, then for each item taken apart `int item, int result, short count, int ether` (the
+client writes one line in the chat for each, message 881, or message 882 when the list is empty). It is a generated format.
+The evolution request carries the whole item as the client sees it after the slot; `ItemValue` reads itself from a packet now
+(`IWireReadable`), and the handler takes the item from its own bag, not from the request.
+
+### Columns named
+
+- `tb_Item`: `Evolution` (the `Int32` after `Reinforce`, the row of `tb_Item_Evolution`; only one item of the client has one)
+  and `Disassemble` (the `Int16` after it, the row of `tb_Disassemble`; 179 of its 182 values are ids of the client's
+  `tb_Disassemble`).
+- `tb_Make`: `Product`, `Material1..4`, `MaterialCount1..4`, `BattlePoint`, `Gold`. The two columns after the group (values
+  2100..4150 and 1406..4156) look like the tabs of the production dialog and stay unnamed; `Field5` and `Field6` (two more
+  products) are 0 on every row.
+- `tb_Reinforce_Exchange`: `Material`, `MaterialCount`, `Product`, `ProductCount`; `Field1` is the kind of NPC that offers it.
+- `tb_Item_Evolution`: `SuccessRate`, `Material`, `MaterialCount`, `Ether`, `Gold`, `BattlePoint`, `Result1..6`,
+  `ResultRate1..6`; `Field1` is not read.
+- The server's `tb_Disassemble` (`DisassembleResultRow`, `Server = true`): the id, the bounds of the ether, seven items, their
+  chances out of 10 000 and the bounds of their counts. The client's table has the id column only. Without the server's
+  table nothing can be taken apart (every request is refused with 52272).
+
+### Error codes
+
+Make 52254 (materials), 52256 (no room), 52257 (no recipe, a count of 0 or over 100, too many of a material), 52310 (gold or
+battle points). Exchange 52261 (no row), 52262 (the product does not exist), 52264 (materials or room), 52265 (not a whole
+number of exchanges). Disassembly 52012 (a slot that holds nothing), 52058 (the ether would pass 99 999 999 999 999), 52270
+(an empty list or more than 20 items), 52271 (the tool not in the bag, the item not in a bag of items), 52272 (not a tool,
+an item that cannot be taken apart, no row), 52273 (no room). Evolution 52012 (the item is not in the common bag), 52471
+(no item, the material short), 52472 (no row, upgrade below 9), 52473 (gold, battle points or ether), 52474 (the row gives no
+item), 52475 (no room).
+
+### Assumptions
+
+- The room for what comes out is counted as if what is used up stayed in its slot (only the item taken apart by a tool, or
+  the evolved item, frees its own slot): a full bag that the used-up items would have made room in is refused.
+- An item evolves only from the common bag: the new item goes into the bag, and an equipped item would leave the equipment
+  without the stats being worked out again.
+- The second roll of an evolution picks the first item whose chance covers what is left of the roll (the same rule as
+  disassembly), so a row whose chances make 10 000 always gives an item.
+- The two bytes that follow the count of a make request are not read.
+- Production has no limit of items per day or week: the client's `tb_Make` has no columns for it.
+
+### Not done
+
+- The NPC of a request is not checked (that it stands near the player and offers production, the exchange of its row,
+  disassembly or evolution), as for the other item work.
+- A product whose hero is not open to players is not refused, and the credit of an NPC lowers neither the price of a recipe
+  nor the materials past the first.
+- The new item of an evolution keeps the upgrade level only, not the options, gems or broaches of the old one.
+
+### To check with the real client
+
+- That the chat lines of 04 and 18 name the item taken apart, what came out, its count and the ether.
+- That the upgrade dialog shows a successful and a failed evolution from `18/13` (the only evolution row the client can reach
+  is item 113000030 at upgrade 9).
+- That the count the exchange dialog sends is the count of products, not of exchanges.
+
+### Tests
+
+`ItemCraftTest` (with `OPENWORKER_TEST_RES`, and `OPENWORKER_TEST_SERVER_RES` for disassembly): a disassembly with a tool and
+one of two items at an NPC take the items and give the first item and the least ether of their row; an exchange takes the
+materials of two exchanges and gives two of the product; an evolution turns the item into the item of its row with the same
+upgrade level and charges the row; a make takes the materials and the gold of two items and gives two; a make that lacks a
+material changes nothing. `ItemWireFormatTest` reads an evolution request whose item was written by the writer of the server.
+`ServerTablesTest` reads the server `tb_Disassemble` to its end.
