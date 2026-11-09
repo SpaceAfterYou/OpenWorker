@@ -193,7 +193,7 @@ public sealed partial class PersonService(
 
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
-        registry.PullPerson(context.Player, person, entry.AccountOptions);
+        registry.PullPerson(context.Player, entry);
 
         // The skills are checked in the maze, and a character that starts in the prologue has seen no district to learn them.
         await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);

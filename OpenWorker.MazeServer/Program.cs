@@ -71,6 +71,7 @@ await Host
         services.AddSingleton<MazeReporter>();
         services.AddItems();
         services.AddRewardsOptions();
+        services.AddCommandOptions();
         services.AddSingleton<DropService>();
         services.AddSingleton<KillRewards>();
         services.AddSingleton<MazeKeyRewards>();

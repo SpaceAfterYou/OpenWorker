@@ -14,7 +14,8 @@ public sealed class ChatService(
     IPartyRoster parties,
     ILeagueRoster leagues,
     IPersonRelations relations,
-    IMegaphoneSource megaphones
+    IMegaphoneSource megaphones,
+    CommandAccess access
 ) :
     ChatServiceBase(world, network, throttle, parties, leagues, relations, megaphones)
 {
@@ -25,6 +26,6 @@ public sealed class ChatService(
 
     protected override ValueTask<bool> TryCommandAsync(Entity player, string text)
     {
-        return commands.TryExecute(player, text);
+        return commands.TryExecute(player, text, access.LevelOf(player));
     }
 }

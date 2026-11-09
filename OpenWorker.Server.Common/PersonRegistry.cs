@@ -13,6 +13,9 @@ using OpenWorker.Gameplay.Modules.Maze.Extensions;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Hotspot.Enums;
+using OpenWorker.Persistence;
 using OpenWorker.Gameplay.Modules.Gestures.Components;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
 
@@ -21,10 +24,13 @@ namespace OpenWorker.Server.Common;
 public sealed class PersonRegistry(World world, TimeProvider time)
 {
     /// <summary>
-    /// Sets what the person is from its row, and the options of its account.
+    /// Sets what the person is from its row, and what its account keeps for it.
     /// </summary>
-    public void PullPerson(Entity entity, PersonPersistent persistent, byte[] accountOptions)
+    public void PullPerson(Entity entity, PersonAtEntry entry)
     {
+        var persistent = entry.Person;
+        var accountOptions = entry.AccountOptions;
+
         world.Set(entity, new ActorComponent
         {
             Identifier = persistent.Id,
@@ -137,6 +143,8 @@ public sealed class PersonRegistry(World world, TimeProvider time)
                 _ => persistent.GestureList
             }
         });
+
+        world.Set(entity, new AccessComponent(Enum.IsDefined((AccessLevel)entry.AccessLevel) ? (AccessLevel)entry.AccessLevel : AccessLevel.None));
 
         // Entering counts as the first answer to the keep-alive.
         world.Set(entity, KeepAliveComponent.Start(time.GetTimestamp()));

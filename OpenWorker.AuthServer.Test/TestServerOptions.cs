@@ -78,6 +78,7 @@ public sealed class TestServerOptions
                 services.AddChannels();
                 services.AddAttendanceOptions();
                 services.AddRewardsOptions();
+                services.AddCommandOptions();
                 services.AddDailyMissionOptions();
                 break;
 
@@ -90,6 +91,7 @@ public sealed class TestServerOptions
                 services.AddChannels();
                 services.AddAttendanceOptions();
                 services.AddRewardsOptions();
+                services.AddCommandOptions();
                 services.AddDailyMissionOptions();
                 break;
 

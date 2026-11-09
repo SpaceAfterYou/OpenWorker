@@ -153,7 +153,7 @@ public sealed partial class PersonService(
 
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
-        registry.PullPerson(context.Player, person, entry.AccountOptions);
+        registry.PullPerson(context.Player, entry);
 
         await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
 

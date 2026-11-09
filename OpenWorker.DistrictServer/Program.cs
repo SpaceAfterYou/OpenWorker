@@ -43,6 +43,7 @@ await Host
         services.AddPersistence();
         services.AddItems();
         services.AddRewardsOptions();
+        services.AddCommandOptions();
         services.AddSingleton<CombatTables>();
         services.AddGameplay();
         services.AddMiscGameplay();

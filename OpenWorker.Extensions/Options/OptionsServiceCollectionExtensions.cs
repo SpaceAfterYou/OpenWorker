@@ -130,6 +130,14 @@ public static class OptionsServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Who may use the test commands of the chat: what the district and the maze have.
+    /// </summary>
+    public static IServiceCollection AddCommandOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<CommandOptions, CommandOptionsValidator>(CommandOptions.SectionName);
+    }
+
+    /// <summary>
     /// How generous the game servers are with experience and drops: what the district and the maze have.
     /// </summary>
     public static IServiceCollection AddRewardsOptions(this IServiceCollection services)
