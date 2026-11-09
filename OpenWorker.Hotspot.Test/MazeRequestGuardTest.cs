@@ -64,6 +64,10 @@ public sealed class MazeRequestGuardTest
             TestMazes.Quests(world),
             null!,
             null!,
+            null!,
+            null!,
+            null!,
+            null!,
             NullLogger<MazeService>.Instance);
     }
 

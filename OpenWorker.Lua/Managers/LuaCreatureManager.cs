@@ -811,6 +811,9 @@ public sealed class LuaCreatureManager
         Vitals.Restore(player);
         Vitals.Protect(player);
 
+        // Coming back fills the gauges as it fills the life.
+        Services?.Gauges?.Fill(player);
+
         var actor = ecs.Get<ActorComponent>(player);
         var place = ecs.Get<WorldComponent>(player);
 

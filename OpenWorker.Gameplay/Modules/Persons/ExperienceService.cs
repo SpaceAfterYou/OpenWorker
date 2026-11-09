@@ -10,6 +10,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.League;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress;
+using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -32,6 +33,7 @@ public sealed class ExperienceService
     private readonly AchievementManager? _achievements;
     private readonly LeagueGrowth? _league;
     private readonly HelperManager? _helpers;
+    private readonly SkillLearning? _skills;
     private readonly Dictionary<int, int> _need;
     private readonly Dictionary<int, MonsterExpRow> _monsterExp;
     private readonly Dictionary<int, MonsterRow> _monsters;
@@ -52,7 +54,8 @@ public sealed class ExperienceService
         AchievementManager? achievements = null,
         LeagueGrowth? league = null,
         ReadOnlyCollection<PartyExpLevelRow>? levelGaps = null,
-        HelperManager? helpers = null)
+        HelperManager? helpers = null,
+        SkillLearning? skills = null)
     {
         _rate = options?.Value.ExpRate ?? 1f;
         _world = world;
@@ -61,6 +64,7 @@ public sealed class ExperienceService
         _achievements = achievements;
         _league = league;
         _helpers = helpers;
+        _skills = skills;
         _need = levels.GroupBy(e => (int)e.Id).ToDictionary(e => e.Key, e => e.First().Experience);
         _monsterExp = monsterExp.GroupBy(e => e.Id).ToDictionary(e => (int)e.Key, e => e.First());
         _monsters = monsters.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
@@ -233,11 +237,11 @@ public sealed class ExperienceService
 
         if (level != rank.Level)
         {
-            LevelChanged(player, (byte)level);
+            LevelChanged(player, rank.Level, (byte)level);
         }
     }
 
-    private void LevelChanged(Entity player, byte level)
+    private void LevelChanged(Entity player, byte from, byte level)
     {
         if (_world.Has<ServerSessionComponent>(player))
         {
@@ -250,5 +254,8 @@ public sealed class ExperienceService
         _achievements?.OnLevelReached(player, level);
         _league?.OnLevelReached(player, level);
         _helpers?.OnLevelReached(player, level);
+
+        // Every level passed gives its skill points.
+        _skills?.OnLevelReached(player, from, level);
     }
 }

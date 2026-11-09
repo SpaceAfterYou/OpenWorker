@@ -113,6 +113,13 @@ public sealed class DamageCalculatorTest
     }
 
     [TestMethod]
+    public void AMonsterWithBrokenSuperArmorTakesHalfAsMuchAgain()
+    {
+        // 98 after defense, 147 with the armor broken, before the skill scales it.
+        Assert.AreEqual(147, DamageCalculator.Calculate(Attacker, Target, Skill, DefenseType.Normal, 1f, Plain, superArmorBroken: true).Damage);
+    }
+
+    [TestMethod]
     public void AHitAlwaysDoesAtLeastOne()
     {
         var weak = Attacker with { Physical = Weapon with { AttackMin = 0, AttackMax = 0 } };

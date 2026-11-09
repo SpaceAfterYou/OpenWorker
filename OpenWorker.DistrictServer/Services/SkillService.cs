@@ -1,6 +1,5 @@
 using OpenWorker.Channel;
 using OpenWorker.Gameplay.Messages.Response.Person;
-using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
@@ -14,12 +13,15 @@ using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
-using OpenWorker.Res;
-using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.Skill;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Modules.System.Responses;
 
 namespace OpenWorker.DistrictServer.Services;
 
-public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skills, ReadOnlyCollection<CharacterInfoRow> characterInfo) :
+public sealed class SkillService(World world, SkillLearning learning, PersonSkills book) :
     IHotspotHandler<SkillDeckBonusRequest>,
     IHotspotHandler<SkillAddDeckSlotRequest>,
     IHotspotHandler<SkillAkashicRecordRequest>,
@@ -42,8 +44,11 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
     IHotspotHandler<SkillUpdateDeckRequest>,
     IHotspotHandler<SkillWarpPositionRequest>
 {
-    private readonly RowIndex<int, SkillRow> _skills = skills.IndexBy(e => e.Id);
-    private readonly RowIndex<byte, CharacterInfoRow> _heroes = characterInfo.IndexBy(e => e.Character);
+    /// <summary>
+    /// The deck has every slot it can have.
+    /// </summary>
+    private const ushort DeckSlotsFull = 56013;
+
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillActiveSkillRequest request)
     {
@@ -53,18 +58,22 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// One more skill in each position of the deck, up to four. The count the client asks for is not taken: it can only grow
+    /// by one.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillAddDeckSlotRequest request)
     {
-        ref readonly var session = ref world.Get<ServerSessionComponent>(context.Player);
-        ref readonly var skillDeck = ref world.Get<SkillDeckComponent>(context.Player);
+        var count = learning.AddDeckSlot(context.Player);
 
-        world.Set(context.Player, skillDeck with { SlotCount = request.SlotCount });
-        world.MarkDirty(context.Player, PersonSections.Skills);
-
-        session.Send(new SkillAddDeckSlotResponse
+        if (count == 0)
         {
-            SlotCount = request.SlotCount
-        });
+            SendError(context.Player, SkillOpcode.SkillAddDeckSlot, DeckSlotsFull);
+
+            return ValueTask.CompletedTask;
+        }
+
+        world.Get<ServerSessionComponent>(context.Player).Send(new SkillAddDeckSlotResponse { SlotCount = count });
 
         return ValueTask.CompletedTask;
     }
@@ -98,23 +107,19 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillDivergenceLearnRequest request)
     {
-        ref readonly var session = ref world.Get<ServerSessionComponent>(context.Player);
-        ref readonly var learned = ref world.Get<SkillLearnedComponent>(context.Player);
+        var refusal = learning.LearnDivergence(context.Player, request.Info.Skill, request.Info.Divergence);
 
-        var index = Array.FindIndex(learned.Values, s => s.Skill == request.Info.Skill);
-
-        if (index == -1)
+        if (refusal != SkillRefusal.None)
         {
+            SendError(context.Player, SkillOpcode.SkillDivergenceLearn, refusal);
+
             return ValueTask.CompletedTask;
         }
 
-        learned.Values[index] = request.Info;
-        world.MarkDirty(context.Player, PersonSections.Skills);
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
-        session.Send(new SkillDivergenceLearnResponse
-        {
-            Info = request.Info,
-        });
+        session.Send(new SkillDivergenceLearnResponse { Info = request.Info });
+        SendPoints(context.Player);
 
         return ValueTask.CompletedTask;
     }
@@ -122,64 +127,36 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillKeypressRequest request) =>
         ValueTask.CompletedTask;
 
+    /// <summary>
+    /// Learns a skill or its next level, by the rules of <see cref="SkillLearning"/>. A refusal is the error answer with the
+    /// code of the original server.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillLearnRequest request)
     {
-        ref readonly var session = ref world.Get<ServerSessionComponent>(context.Player);
+        var (refusal, replaced) = learning.Learn(context.Player, request.Info.Skill);
 
-        ref readonly var skillPoint = ref world.Get<SkillPointComponent>(context.Player);
-        ref readonly var skillsCmp = ref world.Get<SkillLearnedComponent>(context.Player);
-
-        var nextSkill = _skills.GetOrDefault(request.Info.Skill);
-
-        if (nextSkill.Id == 0)
+        if (refusal != SkillRefusal.None)
         {
-            session.Send(new SkillLearnResponse());
+            SendError(context.Player, SkillOpcode.SkillLearn, refusal);
+
             return ValueTask.CompletedTask;
         }
 
-        if (skillPoint.FreeSkillPoint < nextSkill.SkillPoints)
-        {
-            session.Send(new SkillLearnResponse());
-            return ValueTask.CompletedTask;
-        }
-
-        var currentIndex = Array.FindIndex(skillsCmp.Values, s => s.Skill == request.Info.Skill);
-
-        if (currentIndex == -1)
-        {
-            var freeIndex = Array.FindIndex(skillsCmp.Values, s => s.Skill == 0);
-
-            if (freeIndex == -1)
-            {
-                session.Send(new SkillLearnResponse());
-                return ValueTask.CompletedTask;
-            }
-
-            skillsCmp.Values[freeIndex] = request.Info with
-            {
-                Skill = request.Info.Skill,
-            };
-        }
-
-        else
-        {
-            skillsCmp.Values[currentIndex] = request.Info with
-            {
-                Skill = request.Info.Skill,
-            };
-        }
-
-        world.Set(context.Player, skillPoint with
-        {
-            FreeSkillPoint = unchecked((short)(skillPoint.FreeSkillPoint - nextSkill.SkillPoints))
-        });
-        world.MarkDirty(context.Player, PersonSections.Skills);
+        var session = world.Get<ServerSessionComponent>(context.Player);
 
         session.Send(new SkillLearnResponse
         {
-            Info = request.Info,
+            Info = new SkillInfoValue { Skill = request.Info.Skill },
             IsSuccessful = true
         });
+
+        SendPoints(context.Player);
+
+        // A new level takes the place of the old one in the deck.
+        if (replaced != 0)
+        {
+            session.Send(new SkillUpdateDeckResponse { IsSuccessed = true });
+        }
 
         return ValueTask.CompletedTask;
     }
@@ -209,59 +186,36 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillProjectileRequest request) =>
         ValueTask.CompletedTask;
 
+    /// <summary>
+    /// Forgets the skills learned: the default skills of the hero stay, every point comes back and the decks empty.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillResetRequest request)
     {
-        ref readonly var session = ref world.Get<ServerSessionComponent>(context.Player);
+        var person = world.Get<PersonInfoComponent>(context.Player);
 
-        ref readonly var actor = ref world.Get<ActorComponent>(context.Player);
-        ref readonly var personInfo = ref world.Get<PersonInfoComponent>(context.Player);
+        learning.Reset(context.Player, book.DefaultSkills(person.Hero));
 
-        ref readonly var skillPoint = ref world.Get<SkillPointComponent>(context.Player);
-        ref readonly var skillLearned = ref world.Get<SkillLearnedComponent>(context.Player);
-        ref readonly var skillDeck = ref world.Get<SkillDeckComponent>(context.Player);
-        ref readonly var skillDeckBonus = ref world.Get<SkillDeckBonusComponent>(context.Player);
+        var points = world.Get<SkillPointComponent>(context.Player);
+        var deck = world.Get<SkillDeckComponent>(context.Player);
 
-        var defaultSkills = GetDefaultSkills(personInfo.Hero);
-
-        var spentPoints = skillLearned.Values.Length;
-        var newFreePoints = (short)(skillPoint.FreeSkillPoint + spentPoints);
-
-        world.Set(context.Player, skillLearned with { Values = defaultSkills });
-        world.Set(context.Player, skillDeck with { SlotList = [] });
-        world.Set(context.Player, skillPoint with { FreeSkillPoint = newFreePoints });
-        world.MarkDirty(context.Player, PersonSections.Skills);
-
-        session.Send(new SkillResetResponse
+        world.Get<ServerSessionComponent>(context.Player).Send(new SkillResetResponse
         {
             State = new SkillSnapshotValue
             {
-                Target = actor,
+                Target = world.Get<ActorComponent>(context.Player),
                 SkillPoint = new SkillPointValue
                 {
-                    TotalSkillPoint = skillPoint.TotalSkillPoint,
-                    FreeSkillPoint = newFreePoints,
+                    TotalSkillPoint = points.TotalSkillPoint,
+                    FreeSkillPoint = points.FreeSkillPoint
                 },
-                DeckSlotCount = skillDeck.SlotCount,
-                DeckBonus = skillDeckBonus.Values,
-                SkillList = defaultSkills,
+                DeckSlotCount = deck.SlotCount,
+                DeckBonus = world.Get<SkillDeckBonusComponent>(context.Player).Values ?? [],
+                SkillList = world.Get<SkillLearnedComponent>(context.Player).Values ?? [],
                 DeckSlotList = []
             }
         });
 
         return ValueTask.CompletedTask;
-    }
-
-    private SkillInfoValue[] GetDefaultSkills(Hero hero)
-    {
-        var charInfo = _heroes.GetOrDefault((byte)hero);
-        if (charInfo.Id == 0)
-            return [];
-
-        return charInfo
-            .GetSkillList()
-            .Where(id => id > 0)
-            .Select(id => new SkillInfoValue { Skill = id, Divergence = 0 })
-            .ToArray();
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillResetTagetRequest request) =>
@@ -279,44 +233,31 @@ public sealed class SkillService(World world, ReadOnlyCollection<SkillRow> skill
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTrapPosUpdateRequest request) =>
         ValueTask.CompletedTask;
 
+    /// <summary>
+    /// Puts learned skills into the positions of the deck; a skill not learned or a place outside the deck changes nothing.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillUpdateDeckRequest request)
     {
-        ref readonly var session = ref world.Get<ServerSessionComponent>(context.Player);
+        var changed = learning.UpdateDeck(context.Player, request.SlotList ?? []);
 
-        ref readonly var skillDeck = ref world.Get<SkillDeckComponent>(context.Player);
-        ref readonly var skillLearned = ref world.Get<SkillLearnedComponent>(context.Player);
+        world.Get<ServerSessionComponent>(context.Player).Send(new SkillUpdateDeckResponse { IsSuccessed = changed });
 
-        foreach (var deck in request.SlotList)
-        {
-            foreach (var skillId in deck.GetList().Where(e => e != 0))
-            {
-                if (!skillLearned.Values.Any(s => s.Skill == skillId))
-                {
-                    session.Send(new SkillUpdateDeckResponse());
-                    return ValueTask.CompletedTask;
-                }
-            }
-        }
-
-        var updatedDecks = skillDeck.SlotList.ToList();
-        foreach (var newDeck in request.SlotList)
-        {
-            var existingIndex = updatedDecks.FindIndex(d => d.Position == newDeck.Position);
-            if (existingIndex >= 0)
-            {
-                updatedDecks[existingIndex] = newDeck;
-            }
-            else
-            {
-                updatedDecks.Add(newDeck);
-            }
-        }
-
-        world.Set(context.Player, skillDeck with { SlotList = updatedDecks.ToArray() });
-        world.MarkDirty(context.Player, PersonSections.Skills);
-
-        session.Send(new SkillUpdateDeckResponse { IsSuccessed = true });
         return ValueTask.CompletedTask;
+    }
+
+    private void SendPoints(Entity player)
+    {
+        var points = world.Get<SkillPointComponent>(player);
+
+        world.Get<ServerSessionComponent>(player).Send(new SkillUpdatePointResponse
+        {
+            SkillPoint = new SkillPointValue { TotalSkillPoint = points.TotalSkillPoint, FreeSkillPoint = points.FreeSkillPoint }
+        });
+    }
+
+    private void SendError(Entity player, SkillOpcode command, ushort code)
+    {
+        world.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Skill, command), code));
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillWarpPositionRequest request) =>
