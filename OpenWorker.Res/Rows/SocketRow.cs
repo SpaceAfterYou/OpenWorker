@@ -11,7 +11,7 @@ public readonly partial struct SocketRow(BinaryReader reader)
     public int Id { get; } = reader.ReadInt32();
     public byte Field1 { get; } = reader.ReadByte();
     public byte MaxSockets { get; } = reader.ReadByte();
-    public byte Field3 { get; } = reader.ReadByte();
+    public byte FixedSockets { get; } = reader.ReadByte();
     public int EquipCost { get; } = reader.ReadInt32();
     public int Field5 { get; } = reader.ReadInt32();
     public short Field6 { get; } = reader.ReadInt16();

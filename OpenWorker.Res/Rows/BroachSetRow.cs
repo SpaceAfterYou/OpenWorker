@@ -10,7 +10,7 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct BroachSetRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public string Field1 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public short Field2 { get; } = reader.ReadInt16();
-    public short Field3 { get; } = reader.ReadInt16();
+    public string Name { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public short Text { get; } = reader.ReadInt16();
+    public short Buff { get; } = reader.ReadInt16();
 }
