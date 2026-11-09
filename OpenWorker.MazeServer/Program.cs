@@ -57,6 +57,8 @@ await Host
         services.AddGateOptions();
         services.AddPlayerTransfer();
         services.AddServerCommon<MazeAudience>();
+        services.AddSingleton<MazeInstances>();
+        services.AddSingleton<PartyMazeEvents>();
         services.AddSingleton<ISessionCloseHandler, MazeCloseHandler>();
 
         services.AddPersistence();

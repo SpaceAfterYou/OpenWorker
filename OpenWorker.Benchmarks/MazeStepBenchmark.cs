@@ -100,7 +100,7 @@ public class MazeStepBenchmark
 
         while (creatures.FindMonsters((_, _) => true).Length < Monsters)
         {
-            creatures.Create(player, box.Id);
+            creatures.Create(box.Id);
         }
 
         for (var timer = 0; timer < Timers; timer++)

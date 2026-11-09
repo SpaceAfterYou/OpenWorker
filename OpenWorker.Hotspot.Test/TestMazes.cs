@@ -66,7 +66,7 @@ internal static class TestMazes
     }
 
     public static LuaMaze Create(World world, Entity player, ILogger<LuaMaze>? logger = null, SimulationClock? clock = null, LuaState? state = null, string map = EmptyMap,
-        VBatchFile? batch = null, QuestManager? quests = null, MazeReporter? reports = null)
+        VBatchFile? batch = null, QuestManager? quests = null, MazeReporter? reports = null, Guid instance = default)
     {
         batch ??= Map(map);
         var tables = new CombatTables(None<MonsterRow>(), None<StatusRow>(), None<SkillRow>(), None<CharacterInfoRow>());
@@ -86,6 +86,9 @@ internal static class TestMazes
             // Most tests do nothing a maze reports.
             reports!,
             clock ?? Clock(),
-            logger ?? NullLogger<LuaMaze>.Instance);
+            logger ?? NullLogger<LuaMaze>.Instance)
+        {
+            Instance = instance
+        };
     }
 }

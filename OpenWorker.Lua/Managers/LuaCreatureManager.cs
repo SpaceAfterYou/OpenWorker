@@ -104,6 +104,11 @@ public sealed class LuaCreatureManager
 
     private List<Entity> Creatures { get; } = [];
     private List<Entity> Players { get; } = [];
+
+    /// <summary>
+    /// Creatures that wait for their delay before the clients see them.
+    /// </summary>
+    private HashSet<Entity> Unseen { get; } = [];
     private Dictionary<Entity, MonsterBody> Bodies { get; } = [];
 
     /// <summary>
@@ -134,10 +139,22 @@ public sealed class LuaCreatureManager
         }
     }
 
-    public void Create(Entity player, int box)
+    /// <summary>
+    /// A player who has left the maze: the monsters forget them and their client hears no more of the maze.
+    /// </summary>
+    public void Detach(Entity player)
     {
-        Attach(player);
+        Players.Remove(player);
+        Vitals.Forget(player);
+    }
 
+    /// <summary>
+    /// The players in the maze, in the order they came.
+    /// </summary>
+    public IReadOnlyList<Entity> Members => Players;
+
+    public void Create(int box)
+    {
         // Maps can point at boxes they no longer have, and a client walks through such a trigger like any other.
         if (batch.EventBox.MonsterSpawns.Find(box) is not { } spawn)
         {
@@ -175,36 +192,31 @@ public sealed class LuaCreatureManager
             }
         }
 
-        var session = ecs.Get<ServerSessionComponent>(player);
-
         switch (spawn.CreationCondition)
         {
             case CreationConditionType.Immediate:
-                Show(session, created);
+                Show(created);
                 break;
 
             case CreationConditionType.WaitSignal:
-                ShowLater(session, created, TimeSpan.FromSeconds(float.IsFinite(spawn.WaitCreationDelayTime) ? Math.Clamp(spawn.WaitCreationDelayTime, 0f, 86_400f) : 0f));
+                ShowLater(created, TimeSpan.FromSeconds(float.IsFinite(spawn.WaitCreationDelayTime) ? Math.Clamp(spawn.WaitCreationDelayTime, 0f, 86_400f) : 0f));
                 break;
         }
     }
 
-    private void Show(ServerSessionComponent session, List<Entity> created)
+    private void Show(List<Entity> created)
     {
         var npcs = created.Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Npc).ToArray();
         var monsters = created.Except(npcs).ToArray();
 
         if (monsters.Length > 0)
         {
-            session.Send(new WorldOtherInfosMonsterResponse
-            {
-                Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e, Bodies.TryGetValue(e, out var body) ? body.IsBattlePose : true)).ToArray()
-            });
+            Broadcast(DescribeMonsters(monsters));
         }
 
         if (npcs.Length > 0)
         {
-            session.Send(new WorldOtherInfosNpcResponse { List = npcs.Select(ToNpcEntry).ToArray() });
+            Broadcast(new WorldOtherInfosNpcResponse { List = npcs.Select(ToNpcEntry).ToArray() });
         }
 
         // From now on the clients know the monsters, so the monsters start to think.
@@ -214,6 +226,34 @@ public sealed class LuaCreatureManager
             {
                 body.Reveal();
             }
+        }
+    }
+
+    private WorldOtherInfosMonsterResponse DescribeMonsters(Entity[] monsters)
+    {
+        return new WorldOtherInfosMonsterResponse
+        {
+            Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e, Bodies.TryGetValue(e, out var body) ? body.IsBattlePose : true)).ToArray()
+        };
+    }
+
+    /// <summary>
+    /// Tells a player who comes into a maze that runs what lives in it now: the monsters and the townsfolk the others see.
+    /// </summary>
+    public void ShowAllTo(ServerSessionComponent session)
+    {
+        var seen = Creatures.Where(e => !Unseen.Contains(e) && ecs.IsAlive(e)).ToArray();
+        var npcs = seen.Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Npc).ToArray();
+        var monsters = seen.Except(npcs).ToArray();
+
+        if (monsters.Length > 0)
+        {
+            session.Send(DescribeMonsters(monsters));
+        }
+
+        if (npcs.Length > 0)
+        {
+            session.Send(new WorldOtherInfosNpcResponse { List = npcs.Select(ToNpcEntry).ToArray() });
         }
     }
 
@@ -342,11 +382,11 @@ public sealed class LuaCreatureManager
     /// <summary>
     /// Spawns the box the first time a sector asks for it: entering a sector again must not repeat it.
     /// </summary>
-    public void SpawnOnce(Entity player, int box)
+    public void SpawnOnce(int box)
     {
         if (SpawnedBoxes.Add(box))
         {
-            Create(player, box);
+            Create(box);
         }
     }
 
@@ -433,6 +473,7 @@ public sealed class LuaCreatureManager
         Defenses.Remove(creature);
         Creatures.Remove(creature);
         Scenery.Remove(creature);
+        Unseen.Remove(creature);
 
         ecs.Destroy(creature);
     }
@@ -456,25 +497,30 @@ public sealed class LuaCreatureManager
         SpareBodies.Clear();
         Defenses.Clear();
         Players.Clear();
+        Unseen.Clear();
     }
 
     /// <summary>
     /// The creatures of a box that waits for a signal show themselves after its delay, if the maze still runs.
     /// </summary>
-    private void ShowLater(ServerSessionComponent session, List<Entity> created, TimeSpan delay)
+    private void ShowLater(List<Entity> created, TimeSpan delay)
     {
         if (Schedule is not { } schedule)
         {
-            Show(session, created);
+            Show(created);
 
             return;
         }
+
+        Unseen.UnionWith(created);
 
         schedule.Schedule(delay, () =>
         {
             if (!Closed)
             {
-                Show(session, created.Where(ecs.IsAlive).ToList());
+                Unseen.ExceptWith(created);
+
+                Show(created.Where(ecs.IsAlive).ToList());
             }
         });
     }
@@ -785,16 +831,41 @@ public sealed class LuaCreatureManager
         });
     }
 
-    internal void Broadcast(IResponseHotspotMessage message)
+    /// <summary>
+    /// Tells every player of the maze, written once for all of them.
+    /// </summary>
+    public void Broadcast(IResponseHotspotMessage message)
     {
         if (Players.Count == 0)
         {
             return;
         }
 
-        // Written once for every player of the maze.
         using var frame = Frame.Encode(message);
 
+        Broadcast(frame, Entity.Null);
+    }
+
+    /// <summary>
+    /// Tells every player of the maze but one.
+    /// </summary>
+    public void BroadcastToOthers(Entity except, IResponseHotspotMessage message)
+    {
+        if (Players.Count < 2)
+        {
+            return;
+        }
+
+        using var frame = Frame.Encode(message);
+
+        Broadcast(frame, except);
+    }
+
+    /// <summary>
+    /// Sends a message written already to every player of the maze but <paramref name="except"/>.
+    /// </summary>
+    public void Broadcast(Frame? frame, Entity except)
+    {
         if (frame is null)
         {
             return;
@@ -802,7 +873,7 @@ public sealed class LuaCreatureManager
 
         foreach (var player in Players)
         {
-            if (ecs.IsAlive(player) && ecs.Has<ServerSessionComponent>(player))
+            if (player != except && ecs.IsAlive(player) && ecs.Has<ServerSessionComponent>(player))
             {
                 ecs.Get<ServerSessionComponent>(player).Send(frame);
             }

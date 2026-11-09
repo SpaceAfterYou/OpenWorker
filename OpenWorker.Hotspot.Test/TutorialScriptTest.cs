@@ -232,7 +232,7 @@ public sealed class TutorialScriptTest
             CollectionAssert.AreEqual(new[] { 4101d, 4102d, 4103d, 4104d, 4105d, 4106d, 4107d, 4109d, 4110d, 4111d, 4115d }, Numbers(state, "reached"));
 
             // A skill the tutorial asks for.
-            maze.StartSkill(12001211, default);
+            maze.StartSkill(player, 12001211, default);
             Assert.AreEqual(1d, state.Environment["skills"].Read<double>());
 
             // Each sector ends by what the client reports: a quest condition, an object, a box, two talks.

@@ -28,6 +28,11 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
 
     private Dictionary<Entity, long> Protected { get; } = [];
 
+    /// <summary>
+    /// The life of a player has changed: the others of a party in the maze are told.
+    /// </summary>
+    public event Action<Entity>? HealthChanged;
+
     public CombatStats StatsOf(Entity player)
     {
         return tables.GetPlayer(ecs, player);
@@ -95,5 +100,10 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
         var ability = ecs.Get<AbilityComponent>(player);
 
         ecs.Set(player, ability with { Health = new AbilityComponentEntry { Current = current, Max = maximum } });
+
+        if (ability.Health.Current != current || ability.Health.Max != maximum)
+        {
+            HealthChanged?.Invoke(player);
+        }
     }
 }
