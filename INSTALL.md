@@ -93,7 +93,8 @@ of the client.
 - A server reads them at run time, never from the repository: put the folder at `res-server/` next to `res/` (in a
   container, mount it at `/app/res-server`). Tables with names of their own are also found in `res/`; the server's own
   versions of client tables, such as `tb_Reinforce`, only in `res-server/`. Never copy a `.res` file into the repository.
-  Without them the server starts and goes without drops, maze key rewards and upgrades (ARCHITECTURE.md, "Table folders").
+  Without them the server starts and goes without drops, maze key rewards, upgrades and disassembly (ARCHITECTURE.md,
+  "Table folders").
 
 ## 5. Reference materials
 

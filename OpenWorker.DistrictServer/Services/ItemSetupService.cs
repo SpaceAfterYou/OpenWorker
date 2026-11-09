@@ -14,7 +14,6 @@ public sealed class ItemSetupService(
     ItemRestoreService restores,
     ItemSocketService sockets,
     ItemUpgradeService upgrades) :
-    IHotspotHandler<ItemSetupMakeRequest>,
     IHotspotHandler<ItemSetupRepairRequest>,
     IHotspotHandler<ItemSetupRepairNpcRequest>,
     IHotspotHandler<ItemSetupRepairEquipRequest>,
@@ -26,11 +25,6 @@ public sealed class ItemSetupService(
     IHotspotHandler<ItemSetupSocketEquipRequest>,
     IHotspotHandler<ItemSetupUpgradeRequest>
 {
-    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupMakeRequest request)
-    {
-        return ValueTask.CompletedTask;
-    }
-
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupRepairRequest request)
     {
         repairs.RepairWithKit(context.Player, request.Kit, request.Target);
