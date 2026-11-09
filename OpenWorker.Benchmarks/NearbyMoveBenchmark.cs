@@ -7,7 +7,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.DependencyInjection;
-using OpenWorker.DistrictServer.Services;
+using OpenWorker.DistrictServer.Server;
+using OpenWorker.Server.Common.Services;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
@@ -63,6 +64,7 @@ public class NearbyMoveBenchmark
         GC.KeepAlive(typeof(ChannelMemberComponent).Assembly);
         GC.KeepAlive(typeof(ServiceChannels).Assembly);
         GC.KeepAlive(typeof(MovementService).Assembly);
+        GC.KeepAlive(typeof(ChannelAudience).Assembly);
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { [ConfigurationUtils.InstanceTargetKey] = nameof(EntityComponentService.District) })
@@ -97,7 +99,7 @@ public class NearbyMoveBenchmark
         var errors = new HandlerExecutor(table, new ServiceCollection().BuildServiceProvider(), _world, budget, NullLogger<HandlerExecutor>.Instance);
         var pace = new MovementPace(new Dictionary<Hero, float> { [Hero.Lily] = 560f }, new WorldOptions(), TimeProvider.System);
 
-        _service = new MovementService(_world, _channels, pace, errors, NullLogger<MovementService>.Instance);
+        _service = new MovementService(_world, new ChannelAudience(_world, _channels), pace, errors, NullLogger<MovementService>.Instance);
         _context = new ServiceHandleContext(mover, CancellationToken.None);
 
         // Back and forth by a hair, far slower than a run, so the check of the speed passes and the cell stays.

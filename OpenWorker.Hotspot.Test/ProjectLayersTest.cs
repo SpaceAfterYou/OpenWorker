@@ -28,7 +28,9 @@ public sealed class ProjectLayersTest
         ["Infrastructure.Redis", "Persistence"],
         ["Gameplay", "Lua", "AuthServer.Gameplay", "DistrictServer.Gameplay"],
         // GateServer.Gameplay sends a chosen character on to the world through WorldManager and LeaveManager of Channel.
-        ["Channel", "GateServer.Gameplay", "Commands"],
+        // Server.Common holds the concrete handlers of the district and the maze on the bases of Channel, and the chat
+        // commands of Commands: a peer of both, kept out of Channel because the gate loads Channel too.
+        ["Channel", "GateServer.Gameplay", "Commands", "Server.Common"],
         ["DependencyInjection"],
         ["AuthServer", "GateServer", "DistrictServer", "MazeServer", "RelayServer", "UpdateContent", "LoadTest"],
         ["AuthServer.Test", "Hotspot.Test", "LoadTest.Test", "Benchmarks"]

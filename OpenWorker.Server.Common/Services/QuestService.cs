@@ -4,7 +4,7 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Quests.Requests;
 
-namespace OpenWorker.MazeServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
 /// The requests about quests that the client sends in a maze: the same as in a district.
