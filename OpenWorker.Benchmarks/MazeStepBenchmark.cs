@@ -66,7 +66,9 @@ public class MazeStepBenchmark
         _world = World.Create();
         _clock = new SimulationClock(new WorldLoop(NullLogger<WorldLoop>.Instance), NullLogger<SimulationClock>.Instance);
 
-        var services = new CreatureServices(loader, behaviors, new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance), _clock, new NavMeshProvider());
+        // The gauges of the player fill with the steps, as on the server.
+        var services = new CreatureServices(loader, behaviors, new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance), _clock, new NavMeshProvider(),
+            new PlayerGauges(_world, combat));
 
         // A box that shows its monsters at once, all of which think.
         var box = batch.EventBox.MonsterSpawns.First(e =>
@@ -97,6 +99,8 @@ public class MazeStepBenchmark
         creatures.Attach(player);
 
         _maze.TryStart();
+        _maze.MarkLoaded(player);
+        services.Gauges!.Fill(player);
 
         while (creatures.FindMonsters((_, _) => true).Length < Monsters)
         {
@@ -140,6 +144,7 @@ public class MazeStepBenchmark
             Speed = new SpeedComponentEntry { Move = 1f, Attack = 1f }
         });
         _world.Add(player, _session);
+        _world.Add(player, new GaugeComponent());
 
         return player;
     }
