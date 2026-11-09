@@ -54,6 +54,13 @@ public sealed class PersonPersistent : BasicPersistent
     public DateTime? LastSelectedAt { get; set; }
 
     /// <summary>
+    /// The character has not played the prologue yet: the gate sends it to the first tutorial maze instead of its
+    /// district, and leaving the tutorial clears it, once. Characters made before there was a prologue count as having
+    /// played it.
+    /// </summary>
+    public bool ProloguePending { get; set; }
+
+    /// <summary>
     /// When the person last left a server of the game, for the friends who look at the list.
     /// </summary>
     public DateTime? LastLogoutAt { get; set; }

@@ -571,6 +571,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<float>("PositionZ")
                         .HasColumnType("real");
 
+                    b.Property<bool>("ProloguePending")
+                        .HasColumnType("boolean");
+
                     b.PrimitiveCollection<int[]>("QuickSlotCards")
                         .IsRequired()
                         .HasColumnType("integer[]");

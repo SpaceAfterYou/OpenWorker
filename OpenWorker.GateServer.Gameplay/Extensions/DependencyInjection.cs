@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddSingleton<PersonGameplay>();
         services.AddSingleton<OptionGameplay>();
         services.AddSingleton<SecondPasswordGameplay>();
+        services.AddSingleton<PrologueEntry>();
         
         services.AddSingleton<PersonRegistry>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<PersonRegistry>());

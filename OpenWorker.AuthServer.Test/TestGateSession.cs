@@ -145,7 +145,10 @@ public sealed class TestGateSession
                     new ReadOnlyCollection<CharacterInfoRow>([]),
                     new ReadOnlyCollection<CustomizeHairRow>([]),
                     new ReadOnlyCollection<CustomizeEyesRow>([]),
-                    new ReadOnlyCollection<CustomizeSkinRow>([])));
+                    new ReadOnlyCollection<CustomizeSkinRow>([])),
+                // These tests select no character: the prologue is never asked.
+                (PrologueEntry)null!,
+                Options.Create(new GameOptions { Version = "1.0", Prologue = false }));
         }
 
         public async Task<(int ActivePerson, int OtherPerson)> SeedAsync()

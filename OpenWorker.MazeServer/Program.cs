@@ -69,6 +69,7 @@ await Host
         services.AddSingleton<KillRewards>();
         services.AddSingleton<MazeKeyRewards>();
         services.AddSingleton<MazeResults>();
+        services.AddSingleton<PrologueService>();
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<MazeResults>());
         services.AddSingleton<ISessionCloseHandler, DropCleaner>();
         services.AddHostedService<DropExpiryService>();

@@ -62,6 +62,7 @@ public sealed class MazeRequestGuardTest
             NoPersonFlush.Instance,
             Options.Create(new GateOptions { Id = 1 }),
             TestMazes.Quests(world),
+            null!,
             NullLogger<MazeService>.Instance);
     }
 

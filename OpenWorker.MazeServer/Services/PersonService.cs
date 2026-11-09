@@ -76,6 +76,8 @@ public sealed partial class PersonService(
     CommunityNetwork community,
     AchievementManager achievements,
     SharePointManager sharePoints,
+    PrologueService prologue,
+    QuestCatalog questCatalog,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -184,6 +186,8 @@ public sealed partial class PersonService(
 
         registry.PullPerson(context.Player, person, entry.AccountOptions);
 
+        prologue.Enter(context.Player, person);
+
         var state = LuaState.Create();
         state.OpenStandardLibraries();
 
@@ -228,6 +232,8 @@ public sealed partial class PersonService(
         var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, _interactions, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger);
 
         world.Add(context.Player, maze);
+
+        maze.FollowQuests(questCatalog);
 
         creatures.Attach(context.Player);
         creatures.Vitals.Initialize(context.Player);
