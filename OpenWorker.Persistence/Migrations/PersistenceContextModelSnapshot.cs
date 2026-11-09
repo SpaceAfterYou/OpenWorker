@@ -619,6 +619,100 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("PersonStates");
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.PostPersistent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("MainType")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("Money")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Postage")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("ReceiverAccountId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("ReceiverHero")
+                        .HasColumnType("smallint");
+
+                    b.Property<int?>("ReceiverId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReceiverName")
+                        .IsRequired()
+                        .HasMaxLength(21)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(21)");
+
+                    b.Property<byte>("SenderHero")
+                        .HasColumnType("smallint");
+
+                    b.Property<int?>("SenderId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(21)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(21)");
+
+                    b.Property<byte>("State")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SubType")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiverAccountId");
+
+                    b.HasIndex("ReceiverId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("Posts", t =>
+                        {
+                            t.HasCheckConstraint("CK_Posts_Money", "\"Money\" >= 0");
+
+                            t.HasCheckConstraint("CK_Posts_Postage", "\"Postage\" >= 0");
+
+                            t.HasCheckConstraint("CK_Posts_Receiver", "(\"Kind\" = 0 AND \"ReceiverId\" IS NOT NULL AND \"ReceiverAccountId\" IS NULL) OR (\"Kind\" = 1 AND \"ReceiverAccountId\" IS NOT NULL AND \"ReceiverId\" IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.RankingEntryPersistent", b =>
                 {
                     b.Property<int>("Id")
@@ -776,6 +870,80 @@ namespace OpenWorker.Persistence.Migrations
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.PostPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.AccountPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("ReceiverAccountId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("ReceiverId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.OwnsMany("OpenWorker.Domain.Persistent.PostItemPersistent", "Items", b1 =>
+                        {
+                            b1.Property<long>("PostPersistentId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<byte>("BindType");
+
+                            b1.Property<string>("BroachState")
+                                .IsRequired();
+
+                            b1.Property<short>("Count");
+
+                            b1.Property<DateTime?>("DueTo");
+
+                            b1.Property<byte>("Endurance");
+
+                            b1.Property<int>("Exp");
+
+                            b1.Property<byte>("Flag");
+
+                            b1.Property<int>("Item");
+
+                            b1.PrimitiveCollection<string>("OptionType")
+                                .IsRequired();
+
+                            b1.PrimitiveCollection<string>("OptionValue")
+                                .IsRequired();
+
+                            b1.Property<byte>("RestoreCount");
+
+                            b1.Property<byte>("SealCount");
+
+                            b1.Property<byte>("SocketActive");
+
+                            b1.Property<byte>("Upgrade");
+
+                            b1.Property<byte>("UpgradeCount");
+
+                            b1.Property<byte>("UpgradeLimit");
+
+                            b1.HasKey("PostPersistentId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Posts");
+
+                            b1
+                                .ToJson("Items")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PostPersistentId");
+                        });
+
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.RankingEntryPersistent", b =>

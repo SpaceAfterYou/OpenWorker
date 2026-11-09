@@ -16,6 +16,7 @@ public sealed class PersistenceContext(DbContextOptions<PersistenceContext> opti
     public DbSet<ItemPersistent> Items { get; init; }
     public DbSet<PersonPersistent> Persons { get; init; }
     public DbSet<PersonStatePersistent> PersonStates { get; init; }
+    public DbSet<PostPersistent> Posts { get; init; }
     public DbSet<RankingEntryPersistent> RankingEntries { get; init; }
     public DbSet<ServerContentPersistent> ServerContents { get; init; }
 
