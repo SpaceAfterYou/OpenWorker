@@ -39,6 +39,12 @@ public readonly record struct GaugeComponent
     /// Whether the gauges have been filled for the fight; until then they are not counted.
     /// </summary>
     public bool Ready { get; init; }
+
+    /// <summary>
+    /// Whether the size of the soul gauge is known (the server's own status table is there); without it the soul gauge is
+    /// not counted and its costs are not checked.
+    /// </summary>
+    public bool SoulCounted { get; init; }
 }
 
 /// <summary>
@@ -82,7 +88,7 @@ public sealed class PlayerGauges(World world, CombatTables tables, ReadOnlyColle
 
         var stats = tables.GetPlayer(world, player);
 
-        world.Set(player, new GaugeComponent { SoulGauge = stats.SoulGaugeMax, Stamina = stats.StaminaMax, Ready = true });
+        world.Set(player, new GaugeComponent { SoulGauge = stats.SoulGaugeMax, Stamina = stats.StaminaMax, Ready = true, SoulCounted = stats.SoulGaugeMax > 0f });
 
         Mirror(player, stats.SoulGaugeMax, stats.SoulGaugeMax, stats.StaminaMax, stats.StaminaMax);
 
@@ -185,7 +191,7 @@ public sealed class PlayerGauges(World world, CombatTables tables, ReadOnlyColle
         return kind switch
         {
             SkillCostKind.Health => world.TryGet<AbilityComponent>(player, out var ability) && cost < ability.Health.Current,
-            SkillCostKind.SoulGauge => !gauges.Ready || cost <= (int)gauges.SoulGauge,
+            SkillCostKind.SoulGauge => !gauges.Ready || !gauges.SoulCounted || cost <= (int)gauges.SoulGauge,
             SkillCostKind.Stamina => !gauges.Ready || cost <= (int)gauges.Stamina,
             SkillCostKind.SoulVapor => world.TryGet<AbilityComponent>(player, out var vapor) && cost <= vapor.SoulVapor.Current,
             _ => true
@@ -204,7 +210,7 @@ public sealed class PlayerGauges(World world, CombatTables tables, ReadOnlyColle
 
         switch (kind)
         {
-            case SkillCostKind.SoulGauge:
+            case SkillCostKind.SoulGauge when gauges.SoulCounted:
                 gauges = gauges with { SoulGauge = Math.Max(0f, gauges.SoulGauge - cost) };
                 world.Set(player, gauges);
                 Send(player, [new ST_STAT { wStatID = (short)STAT_TYPE.STAT_SG_CUR, fValue = gauges.SoulGauge }]);

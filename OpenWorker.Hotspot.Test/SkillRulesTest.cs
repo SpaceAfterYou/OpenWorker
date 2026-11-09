@@ -59,7 +59,7 @@ public sealed class SkillRulesTest
             },
             new PersonInfoComponent { Name = "Haru", Hero = Hero.Haru },
             new LevelComponent(level, 0),
-            new GaugeComponent { SoulGauge = soul, Stamina = stamina, Ready = true },
+            new GaugeComponent { SoulGauge = soul, Stamina = stamina, Ready = true, SoulCounted = true },
             new SkillCooldownComponent(),
             new SkillPointComponent { TotalSkillPoint = total, FreeSkillPoint = free },
             new SkillLearnedComponent { Values = [new SkillInfoValue { Skill = Strike }, new SkillInfoValue { Skill = Unlearned + 1 }] },
