@@ -81,16 +81,16 @@ from the original server (they usually do) or the client alone decides.
 Branch `fix/session-gaps` (the comparison with the original and what is still open: `docs/notes-session-gaps.md`):
 
 - **A1** a change of channel is answered with the map of the new channel, and refused for the same, a missing or a full channel
-  and during a trade (`0b09dfff`).
-- **A7** options changed in the game are saved to the account by the district and the maze (`c9a95e85`).
-- **A9** the players who see a person get 08/0D with the worn slots that changed, in a district and in a maze (`bf80033a`).
+  and during a trade (`8fb0367d`).
+- **A7** options changed in the game are saved to the account by the district and the maze (`66da9b5e`).
+- **A9** the players who see a person get 08/0D with the worn slots that changed, in a district and in a maze (`fcef1b64`).
 - **A11** (a) a test command of the chat runs for the access level of the account, `Commands:OpenToEveryone` opens them on a
-  test stand (`42f9aa43`); (b) a megaphone is taken from the bag (`73af53a2`); (c) the trade password is kept hashed and
-  checked (`75bd98bf`).
-- **A12** the maze answers the ping and keeps its players alive with the keep-alive of the district (`c9a95e85`).
-- **B2** a person who is away is shown at the level of its row (`571cc31b`, `01db57b3`).
-- The skill window, gestures and daily missions are answered in the maze through the services of the district (`38fac2ae`);
-  boxes a maze client names (11/31, 11/35, 11/7E, 11/77) must be where the player stands (`992bca7d`).
+  test stand (`a031ca0e`); (b) a megaphone is taken from the bag (`90bf9b7b`); (c) the trade password is kept hashed and
+  checked (`b50eae3a`).
+- **A12** the maze answers the ping and keeps its players alive with the keep-alive of the district (`66da9b5e`).
+- **B2** a person who is away is shown at the level of its row (`26af1d03`, `1437b2e0`).
+- The skill window, gestures and daily missions are answered in the maze through the services of the district (`0e3deb77`);
+  boxes a maze client names (11/31, 11/35, 11/7E, 11/77) must be where the player stands (`6635650d`).
 
 ### A. What blocks or breaks a normal session, from login to the first hours
 
