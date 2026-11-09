@@ -15,6 +15,8 @@ using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Hotspot.Modules.Helpers.Types;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Lua;
@@ -52,6 +54,12 @@ public class MazeStepBenchmark
 
     private const int TickingBuff = 10000;
 
+    /// <summary>
+    /// Helpers the player has called into the maze: none, or as many as a player alone may have.
+    /// </summary>
+    [Params(0, 3)]
+    public int Helpers { get; set; }
+
     private World _world = null!;
     private SimulationClock _clock = null!;
     private LuaMaze _maze = null!;
@@ -67,8 +75,9 @@ public class MazeStepBenchmark
 
         var monsters = Load<MonsterRow>(tables, "tb_Monster");
         var skills = Load<SkillRow>(tables, "tb_Skill");
-        var combat = new CombatTables(monsters, Load<StatusRow>(tables, "tb_Status"), skills, Load<CharacterInfoRow>(tables, "tb_Character_Info"));
-        var behaviors = new MonsterBehaviorTables(monsters, skills);
+        var statuses = Load<StatusRow>(tables, "tb_Status");
+        var combat = new CombatTables(monsters, statuses, skills, Load<CharacterInfoRow>(tables, "tb_Character_Info"));
+        var behaviors = new MonsterBehaviorTables(monsters, skills, Load<FactionRow>(tables, "tb_Faction"));
         var loader = new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, scripts);
         var batch = VBatchFile.CreateFromPath(map);
 
@@ -124,6 +133,15 @@ public class MazeStepBenchmark
             {
                 _maze.Buffs.Give(monster, TickingBuff, player);
             }
+        }
+
+        // The helpers of the player fight beside it, at its level.
+        int[] called = [10105166, 10105162, 10105221];
+        var stats = new HelperStats(HelperCatalog.From(called), monsters, statuses);
+
+        foreach (var helper in called.Take(Helpers))
+        {
+            _maze.SummonHelper(player, stats.Combat(helper, 30, []), new HelperValue { Helper = helper, Summoned = true });
         }
 
         for (var timer = 0; timer < Timers; timer++)

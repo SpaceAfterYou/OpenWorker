@@ -31,6 +31,7 @@ using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.World.Types;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Buffs;
+using OpenWorker.Lua.Helpers;
 using OpenWorker.Navigation;
 
 namespace OpenWorker.Lua.Managers;
@@ -61,7 +62,28 @@ public sealed class LuaCreatureManager
         Navigation = mesh is null ? OpenNavigation.Instance : new NavMeshNavigation(mesh, batch);
         Vitals = new PlayerVitals(ecs, tables);
         Logger = logger ?? NullLogger.Instance;
+        Helpers = new HelperSquad(ecs, this, tables);
     }
+
+    /// <summary>
+    /// The helpers the players have called into the maze.
+    /// </summary>
+    public HelperSquad Helpers { get; }
+
+    /// <summary>
+    /// A new actor of the maze: a helper is one too.
+    /// </summary>
+    internal int NextActor() => Offset++;
+
+    /// <summary>
+    /// Every creature of the maze, the townsfolk with the monsters.
+    /// </summary>
+    internal IReadOnlyList<Entity> Living => Creatures;
+
+    /// <summary>
+    /// The clients have been shown the creature: it is not waiting for its delay.
+    /// </summary>
+    internal bool IsSeen(Entity creature) => !Unseen.Contains(creature);
 
     internal CreatureServices? Services { get; }
 
@@ -507,6 +529,7 @@ public sealed class LuaCreatureManager
         Defenses.Clear();
         Players.Clear();
         Unseen.Clear();
+        Helpers.Clear();
     }
 
     /// <summary>
@@ -668,6 +691,8 @@ public sealed class LuaCreatureManager
         {
             Minds.EndStep();
         }
+
+        Helpers.Step(now, seconds);
     }
 
     /// <summary>
@@ -756,6 +781,8 @@ public sealed class LuaCreatureManager
         {
             body.Stagger(0f);
         }
+
+        Helpers.Hold(monster);
     }
 
     /// <summary>

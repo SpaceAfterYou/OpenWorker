@@ -9,7 +9,7 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct FactionRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public byte Field1 { get; } = reader.ReadByte();
-    public byte Field2 { get; } = reader.ReadByte();
-    public byte Field3 { get; } = reader.ReadByte();
+    public byte LocalFaction { get; } = reader.ReadByte();
+    public byte OtherFaction { get; } = reader.ReadByte();
+    public byte Relation { get; } = reader.ReadByte();
 }

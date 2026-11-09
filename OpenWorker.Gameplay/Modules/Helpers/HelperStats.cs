@@ -70,6 +70,31 @@ public sealed class HelperStats
     }
 
     /// <summary>
+    /// What a called helper fights with: what it has by itself at its owner's level, and on top of it what its record says
+    /// its items and orb add to the attacks and the defense.
+    /// </summary>
+    public CombatStats Combat(int helper, byte level, IEnumerable<HelperStatValue> additional)
+    {
+        var stats = _monsters.TryGet(helper, out var monster) && _statuses.TryGet((short)monster.StatusId, out var status)
+            ? CombatStatCalculator.Calculate(status, level, monster.StatusType, StatBonuses.From(monster))
+            : new CombatStats { Level = level, MaxHealth = 1 };
+        var physical = stats.Physical;
+
+        foreach (var (stat, value) in additional)
+        {
+            physical = stat switch
+            {
+                PhysicalAttackMin => physical with { AttackMin = physical.AttackMin + value },
+                PhysicalAttackMax => physical with { AttackMax = physical.AttackMax + value },
+                PhysicalDefense => physical with { Defense = physical.Defense + value },
+                _ => physical
+            };
+        }
+
+        return stats with { Physical = physical };
+    }
+
+    /// <summary>
     /// What the items a helper wears and the orb of a friend add to it.
     /// </summary>
     public HelperStatValue[] Additional(IEnumerable<int> worn, in HelperSupportInfoValue orb)

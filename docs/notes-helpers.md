@@ -146,12 +146,13 @@ answer leaves the guard shut; we answer each of them (see sections 4 and 5 and s
 
 Then **[ref]**:
 
-- the helper becomes a **monster** of the maze (its `tb_Monster` row), created at the owner's position moved 100 units
-  behind it along its facing (the point is kept only if the ground there is found within 200 units of height, else the
-  owner's own position), facing where the owner moves, in the owner's sector, its parent and owner the owner's actor. The
-  creation sends the usual monster spawn to the maze (`STMonsterInfo` with `uxParentActorID` = the owner's actor; the
-  client handles a helper the same way in `04/15` "in info" and `04/23` "other infos", which one the reference uses for a
-  single new monster was not read; our creature manager sends `04/23`);
+- the helper becomes a **monster** of the maze (its `tb_Monster` row), created 100 units **ahead of** the owner along its
+  facing (the reference turns (0, -100, 0) by the owner's facing; in this client's convention facing 0 looks along -Y, so the
+  point is in front, not behind as this section said before) — the point is kept only if the ground there is found within
+  200 units of height, else the owner's own position — facing where the owner moves, its parent and owner the owner's
+  actor. The creation sends the spawn of **one new monster, `04/15`** "in info", to everybody in the maze (`STMonsterInfo`
+  with `uxParentActorID` = the owner's actor). **[ref][client]** `04/15` is a byte count then the records of `04/23`, which
+  counts with a short; the client renames a helper and adds it to the party panel from either;
 - its stats are set (section 4), its health set to the new maximum;
 - it is counted in the maze's list of helpers and in the owner's list of summoned helpers; the summon time is noted;
 - `27/02` {owner person id, helper actor, 1, the helper record with `summoned` = 1} goes **to the party** if the owner is
@@ -212,8 +213,15 @@ What is particular to a follower **[ref]**:
 - **Recall** (`27/14`): every summoned helper of the person teleports to the person the same way (27/13 each), if its
   warp is enabled (it is, from summon until release). Nothing else is answered.
 - **Targets**: the enemy search takes the nearest live actor the helper may hit (the usual enemy rule by origin and
-  faction: helpers are faction 10, enemies of monsters), within its sight. Skills whose target type is not "enemy" (buffs,
-  heals) target the **owner**.
+  faction: helpers are faction 10, at war with the sides `tb_Faction` marks 1 against it — 1, 6, 7, 8, 9, 12, 15..19 — and
+  at peace with the rest, among them side 3 of the training dummies and boxes), within its sight. Skills whose target type
+  (`tb_Skill.TargetType`, column 78) is not "enemy" (buffs, heals) target the **owner**. **[ref][table]**
+- **`ENEMY_COUNT` and `USER_COUNT`** count, within the distance the script gives as its second number, the monsters of a side
+  at war with the counting one and the players; **without a distance they are 0**. The scripts of the helpers wait in WAIT
+  with `ENEMY_COUNT = 0` and `GUARD_DISTANCE > 320..350` and then MOVE to the owner. **[ref]**
+- **Escape**: `SetEscapeInfo(points, chance, min, max, reset, kind, value)`: every blow adds points (skill 1, projectile 0.5,
+  trap 0.2); full points start again from a random half and, with the chance, kind 2 plays skill `value` (kinds 0 and 1:
+  super armor or invincible for `value` ms); points start again after `reset` seconds without a blow. **[ref]**
 - **Damage**: when a follower's health would reach 0 it stays at **1** and enters **RECOVERY**: target forgotten, buffs
   cleared, stops, invincible, defense type 3, plays its recovery skill (50000), and heals **5 % of its maximum health every
   second** until full, then SELECT_ACTION. A follower never dies by damage; only release kills it (below).
@@ -232,6 +240,9 @@ What is particular to a follower **[ref]**:
   others in the maze, so its client forgets them.
 - When a person **enters a maze** where party members have helpers, after the monster list it is sent `27/02` summon=1
   for each of them (so its client names them).
+- **The life of a helper in the party panel** follows the hits it takes (06/13, the life after the hit), its healing (17/12)
+  and 12/12, all three by actor and whatever the kind of the panel entry; the entry starts from the life and maximum of the
+  spawn. No message of its own is needed. **[client]**
 - When the maze is **cleared** (its reward step), every orb worn by a helper of anyone in the maze is released (27/11 each).
 
 ### Auto summon **[ref]**
@@ -328,16 +339,17 @@ for a person without stored helpers comes from a stored procedure that was not r
 | 27/12 change order | done (district and maze) | — |
 | 27/15 auto summon | done (district and maze) | flag > 1: the reference echoes the current flag |
 | 27/02 summon outside a maze | done | 58006 for summon and release |
-| 27/02 summon/release in a maze | missing | answered (58007 for both) by the shared handler; creature spawn with owner, limits, cooldown, maze flag — depends on the creature manager (`OpenWorker.Lua`) and the shared maze instance of `feature/party-maze` |
-| 27/14 recall | missing | the AI warp; answered with nothing on both servers, as the reference does |
-| 27/13 sync pos | missing | the AI warp |
+| 27/02 summon/release in a maze | done (step 5) | — |
+| 27/14 recall | done (step 5) | answered with 27/13 per called helper; nothing in a district |
+| 27/13 sync pos | done (step 6) | the far warp and the recall |
+| Auto summon after loading a maze | done (step 5) | — |
 | 27/04 stat update | done | sent to the owner at every level reached (`ExperienceService`) |
 | Stats (origin / additional) | done | `HelperStats`: origin at the owner's level; additional from worn items and the orb, empty until they exist |
 | 27/10 equipment | done (district and maze) | — (step 4) |
-| 27/11 update info | done | sent by `HelperGear.ReleaseOrb`; the maze clear calls it for called helpers, the release of a helper must call it (summon branch) |
-| AI of a follower | missing | owner-aware guard variables, MOVE to owner, warp, recovery state, buff target = owner, enemy search both ways (helpers hit monsters, monsters target helpers except rank ≥ 3), monster→monster damage — `feature/combat` and the AI machine |
-| Kills credited to the owner | missing | the kill path of the creature manager |
-| Release on death / exit / maze clear, others' helpers on join and leave | missing | maze entry/exit hooks, `feature/party-maze` |
+| 27/11 update info | done | sent by `HelperGear.ReleaseOrb`: at the release of a helper by any way, and at a maze clear for the called helpers |
+| AI of a follower | done (step 6) | — |
+| Kills credited to the owner | done (step 6) | — |
+| Release on death / exit / portal / change of server, others' helpers on join and leave | done (step 5) | — |
 | 27/05..09 support | done | the total friend points of the reward row 1 (0 in both tables; no wallet for them) |
 
 The e2e (`docs/tools/e2e_helper.py tester9 password [maze location]`, stand 9): before steps 1 to 3 **25 PASS, 0 FAIL**
@@ -356,6 +368,17 @@ a second use refused with result 3, no orb from a person who offers none, the re
 re-entry the items and the orb are still on the helper; in the maze the list carries them and an item is taken off there.
 The old script on the new build: 37 PASS, 3 FAIL, all three intended (a type 2 orb is refused, 27/09 answers result 2
 instead of an error, no orb is offered at re-entry).
+
+After steps 5 and 6 (`feature/helpers-summon` rebased on the merge of steps 4 and 7, stand 2,
+`e2e_helper.py tester11 password 21311 tester10`): **88 PASS, 0 FAIL** (the script of steps 4 and 7 gave 70; it also checks the gear part as before). The maze part now: two helpers more are given, the person
+enters M04 with the automatic call on and after loading gets three helpers in the order of its list (04/15 with the person
+as parent, then 27/02 each, the record called), a call at once is refused 58005, after ten seconds a fourth body 58008, one
+that is out already and one the person does not have 58007; one is sent away (17/11 for its actor, 27/02 summon 0) and a
+second release of it is 58007; with room again the fourth comes; a recall gives one 27/13 per called helper; the person
+walks to the puppets and stands, and the helpers walk after it (05/02), use their skills (06/10), hit monsters (06/13 with a
+helper as attacker), kill them (17/11) and the person gets the experience (03/37); the helper with the friend's orb is sent
+away and the orb comes back (27/11 without it). Reading the maze connection needs a deadline (`deadline_frames`): monsters
+and helpers keep it busy.
 
 ## 8. Implementation plan
 
@@ -425,21 +448,89 @@ Order matters: 1–3 need no maze work and give the window its real content; 4�
    - **Tests**: `HelperGearTest.PuttingOnSwappingAndTakingOffKeepOneItemPerSlot` and `WornItemsAndAValidOrbRaiseTheStatsOfTheHelper`
      (client tables), `PersistenceTest.AHelperPlaceHoldsOneItemThroughSwapsFlushesAndANewEntry` (Postgres: put on, swap and
      take off over flushes and a new entry, and the index refusing a second item at a place).
-5. **Summon and release in the maze** (L). `OpenWorker.Gameplay/Modules/Helpers` (rules: cooldown 10 s, count of four
-   bodies, maze flag, the order of checks and codes) + the maze side (`OpenWorker.MazeServer`/`OpenWorker.Lua`): spawn the
-   monster row with an owner (a new owner component: owner entity, person, helper id), position behind the owner, stats,
-   the spawn (04/23) with `uxParentActorID`, then 27/02 to party or owner; release by removal (no drop, no reward), 27/02; release on death,
-   exit, portal; auto summon after load; 27/14 recall. Needs from `feature/party-maze`: the members of the maze and a party
-   send (`PartyView`); without it, solo only. Tests: unit test of the limit rule (solo 3, party of 2 → 2, party of 4 → 0);
-   e2e: enter a maze, `/helper-add`, summon, see 04/23 then 27/02, summon again → 58007, a fourth → 58008, release → 27/02.
-6. **The follower AI** (L). `OpenWorker.Gameplay/Ai` (`AiMachine`, `IAiHost`): an owner on the host (position, radius,
-   health); guard variables from it; MOVE to the owner for followers; `SetHelperFarDist`, `SetRecoverySkill`,
-   `SetEscapeInfo` parsed (`OpenWorker.Lua/AiScriptLoader.cs`); the far-warp with 27/13; the RECOVERY state (HP floor 1,
-   invincible, 5 %/s); buff skills on the owner. `OpenWorker.Lua/Managers/LuaCreatureManager.cs`: enemies of a helper are
-   monsters, monsters find helpers (rank < 3), monster-to-monster hits (the damage path of `feature/combat`), kills by a
-   helper credited to the owner (drops, experience, quests). Tests: `AiMachineTest`-style unit tests for "guard distance
-   drives MOVE", "health 0 enters recovery and heals to full"; e2e: a summoned helper moves, uses skills on monsters,
-   monsters die to it, the owner gets experience.
+5. **Summon and release in the maze** — **done** (`feature/helpers-summon`).
+   - **Rules** (`OpenWorker.Gameplay/Modules/Helpers/HelperRules`): the checks in the reference's order and with its codes
+     (down: nothing; 10 s since the last call: 58005; not in a maze: 58006; a maze that refuses helpers (`tb_Maze_Info.RefuseHelpers`,
+     column 7, or type 12), a helper not owned or out already: 58007; no room: 58008; the actor not made: 58007). Room: the
+     helpers of the whole instance plus the people of the party (one alone) stay under four; the party is read from
+     `IPartyRoster` (the players of the maze when Redis cannot answer). Release: down nothing, 58006, 58007.
+   - **The place** (`IHelperField`, given by the maze server as `MazeHelperField`; the district has none and answers as
+     before): `HelperService` hands summon, release and recall to it. The record of 27/02 is `HelperGear.Record(…, summoned:
+     true)` (what the helper wears and a valid orb), and the stats of the actor are `HelperStats.Combat` of the record: origin at
+     the owner's level plus what the record adds to the attacks and the defense.
+   - **The helper in the maze** (`OpenWorker.Lua/Helpers`: `HelperSquad` per creature manager, `HelperBody`, `SummonedHelper`;
+     `LuaMaze.Helpers.cs`): a monster entity of the helper's row outside the creatures of the maze (players do not hit it,
+     scripts and sector counts do not see it), its actor from the maze's counter, stats as above, no super armor, never
+     holding a sector. 04/15 to everybody in the instance, then its mind starts, then 27/02 to everybody in the instance.
+     Release: 17/11 for its actor (no drop, no reward, no kill), 27/02 summon=0, `HelperGear.ReleaseOrb` (27/11). A person
+     who falls (`PlayerVitals.HealthChanged` to 0) or leaves (`LuaMaze.Leave`: exit, portal, change of server, disconnect)
+     loses its helpers, and its client is sent 27/02 summon=0 for the helpers of the others. A member who comes later sees
+     the helpers (04/23) and gets 27/02 for each. Auto summon after 11/22 for a person in no party, in list order while there
+     is room, without the delay. `MazeSummonedHelpers` tells the maze clear which helpers are called (their orbs go back).
+   - **Comparison with the original**:
+
+     | Piece | Original | Ours | |
+     |---|---|---|---|
+     | Order of the checks and codes | as above | same | same |
+     | Count of the party | the people of the party | the people of the party from Redis, the players of the maze when Redis fails | same |
+     | Spawn | 04/15 of one monster to the maze | same | same (the research guessed 04/23) |
+     | Place | 100 ahead along the facing, ground within 200, else the owner's place | same | same (the research said behind) |
+     | 27/02 at a summon | to the party wherever its members are, else the person | to the players of the instance | kept different: only they can see the actor; a member elsewhere has nothing to name |
+     | 27/02 at a release | to the party of the maze, else the person | to the players of the instance | same in effect |
+     | Release of the actor | death with a special reason | 17/11 of the actor | same in effect (no drop, no reward) |
+     | Orb at a release | released (27/11) | same | same |
+     | Release paths | death, exit, maze exit, world enter, district transport | death, every way out of the maze | same |
+     | Others' helpers at leaving | 27/02 summon=0 to the leaver | same | same |
+     | Joining later | 27/02 after the monster list | 04/23 of the helpers then 27/02 | same |
+     | Auto summon | after loading, alone, flag, maze allows, no delay | same, before the script hears the entry | same |
+     | Last call time | kept by the person across mazes | kept by the instance per person | kept different: a person leaves a maze to reach another, which takes longer than the delay |
+     | Logs of the database (16/2, 16/3) | written | not written | no such log here |
+   - **Tests**: `HelperSummonTest`: the checks in their order and the room alone, in a party of two and of four; a called
+     helper shown (04/15, then 27/02) to both players of an instance and gone with its owner; a monster killed by a helper
+     is the owner's kill; the byte layout of 04/15.
+6. **The follower AI and its fighting** — **done** (`feature/helpers-summon`).
+   - **The machine** (`OpenWorker.Gameplay/Ai/AiMachine.Follower.cs`, called from a few places of `AiMachine`; `IAiHost.Owner`,
+     `HasGround`, `WarpTo`, `Heal`, `FindSkill`, `CountUsers` with defaults for the hosts of monsters): the guard variables
+     read the owner (distance, distance less its radius, health in percent; -1, -1, 100 without one); MOVE goes to a place
+     around the owner at the state's distances and angles; too far (3500 out of a fight, 9000 at the start of ATTACK; 500
+     after ten ways not found) with ground at the owner it is put there (27/13), forgets its target and chooses again; a
+     follower never returns home; a skill with `TargetType` 1 is used on the owner; at 0 life it keeps 1 and enters RECOVERY
+     (recovery skill played, invincible, a twentieth of its life each second, 17/12, then whole and fighting again); escape
+     points from the blows it takes and the escape skill. `SetHelperFarDist`, `SetRecoverySkill`, `SetEscapeInfo` are read
+     by `AiScriptLoader`. `ENEMY_COUNT` and `USER_COUNT` now count within the script's distance and are 0 without one, as the
+     original counts them (they counted every player of the maze before, which kept the helpers in WAIT for ever).
+   - **Sides**: the enemies of a helper are the monsters of a side at war with it (`tb_Faction`, named `LocalFaction`,
+     `OtherFaction`, `Relation`; side 10 of the helpers); monsters of a side at war with side 10 may target a helper when it
+     hits them and find it by themselves below rank 3; their hits (`HitBy`) go through `DamageCalculator` with the helper's
+     stats; a helper getting up takes nothing.
+   - **Its blows**: queued while the helpers think and dealt by the maze after them (`LuaMaze.StrikeAsync`): the damage of a
+     player's hit (`ApplyDamage` with the helper's stats and the monster's aggro on the helper), 06/13 from the helper, and the
+     dead go the way of a player's kill with the owner as killer (`MonsterKilled` → experience by the party rules and drops,
+     the reporter for quests and missions, the script's `OnDie`, the sector).
+   - **Comparison with the original**:
+
+     | Piece | Original | Ours | |
+     |---|---|---|---|
+     | Guard variables, MOVE to the owner, far warp, forced 500 | as above | same | same |
+     | TRACE_MOVE | far check at its start | not done | the scripts of the helpers do not use it |
+     | Recovery | as above, buffs cleared, idle motion at the end | same without the buffs and the idle motion | approximately: no buffs on helpers yet |
+     | Escape | for every monster, from every blow | parsed for every script, run for helpers from the blows they take | kept different: 127 monster scripts have it, and their blows come through the shared damage path of the player |
+     | `ENEMY_COUNT`, `USER_COUNT` | within the distance, 0 without one | same | fixed (counted every player) |
+     | Skill on the owner | a skill of target type 1 → owner for followers, nothing (WAIT) for monsters | owner for followers; a monster still uses it on its target | kept different for monsters: unchanged behaviour |
+     | Enemies | the enemy rule of origins, the hit bits of a summoned monster row and factions | factions only | approximately: no summoned monster uses the bits here |
+     | Rank | rank ≥ 3 does not search followers | same | same |
+     | Kills | owner's: drops, experience, quests, title, killer of the death message | owner's: drops, experience, quests, missions, achievements | same |
+     | Buffs of its skills | applied | through the buffs of the maze (`MazeBuffs`): a trigger for its own side gives its buff to the helper, or to the players and helpers its area reaches; a buff-only trigger to the monsters it reaches; a hit's buff to the monsters it hit; the blows it takes carry their buffs to it; a held helper stands still; stats and defence of both sides read with their buffs | same |
+   - **Tests**: `HelperAiTest`: follows its owner and is put next to it when too far; beaten down it gets up instead of dying.
+   - **Cost on the maze step** (`MazeStepBenchmark`, new parameter `Helpers`: none or three called beside the player;
+     BenchmarkDotNet short job): 10 monsters 1.695 → 1.991 µs (24 → 72 B), 10 monsters and 100 timers 8.650 → 8.682 µs,
+     100 monsters 13.970 → 14.005 µs, 100 monsters and 100 timers 19.126 → 22.609 µs (the last with an error of ±70 µs of the
+     short job). The heaviest case stays near 23 µs a maze, 4.5 ms for 200 mazes, inside the 5 ms of a pass.
+   - **Other scripts on the stand** (after the rebase on the merge of the buffs): `e2e_helper.py` 88 PASS, 0 FAIL;
+     `e2e_maze.py` 62 PASS, 2 FAIL, the two projectile checks that fail on `dev` too; `e2e_party_maze.py` 24 PASS, 0 FAIL;
+     `e2e_prologue_fight.py` 20 PASS, 0 FAIL; `e2e_buffs.py` 12 PASS, 0 FAIL in one run, 11/1 in two: its last check compares
+     the mean damage of a few combo hits on two monsters, which hit parts land varies (18 against 38 on one target); on a stand
+     of `dev` it passed twice with the same spread. No helper is in the tutorial.
 7. **Support** (M–L) — **done** (`feature/helpers-gear`).
    - **Where it is kept: the database.** An orb must be seen by every server and outlast a restart for its day, one orb per
      person and one use per user are limits, and the reward is given once: all of that is what `ARCHITECTURE.md` gives the
@@ -496,8 +587,8 @@ Order matters: 1–3 need no maze work and give the window its real content; 4�
 
 - Whether the client accepts 27/02 before 04/23 for its own helper in practice (both orders are coded; the reference
   sends the spawn first).
-- What the party panel shows for a helper (HP bar from which message) and whether `17/xx` stat updates of the helper actor
-  are needed after the summon (the reference sets the stats after the spawn went out).
+- What the party panel shows for a helper: answered from the client (section 3, release): 06/13, 17/12 and 12/12 by actor;
+  to see on the real client.
 - Whether the client's recall button really hides itself in a party of two or more (its guard reads a count that looks
   like the party size: not sure).
 - The reward timing of an orb: answered for step 7 (the client enables the button from the reward state alone; see

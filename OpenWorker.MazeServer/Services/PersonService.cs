@@ -46,6 +46,7 @@ using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Skill;
+using OpenWorker.Gameplay.Modules.Helpers;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -85,6 +86,7 @@ public sealed partial class PersonService(
     PartyMazeEvents partyEvents,
     PersonSkills skills,
     PlayerGauges gauges,
+    HelperGear helperGear,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -340,6 +342,9 @@ public sealed partial class PersonService(
         maze.MonsterKilled += (killer, monster, position) => rewards.OnKilled(killer, PresentOf(maze), monster, position);
         maze.Completed += () => partyEvents.Completed(maze);
         creatures.Vitals.HealthChanged += partyEvents.HealthChanged;
+
+        // A helper sent away, by whatever way, gives back the orb of a friend it wore.
+        creatures.Helpers.Released += helper => helperGear.ReleaseOrb(helper.Owner, helper.Helper);
 
         return maze;
     }

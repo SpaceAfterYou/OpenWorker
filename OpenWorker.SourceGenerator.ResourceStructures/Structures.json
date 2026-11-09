@@ -376,7 +376,7 @@
     "Byte Admission",
     "Int16 FatiguePoint",
     "Byte",
-    "Byte",
+    "Byte RefuseHelpers",
     "Byte",
     "Byte",
     "Byte Episode",
@@ -1741,9 +1741,9 @@
   ],
   "tb_Faction": [
     "Int32",
-    "Byte",
-    "Byte",
-    "Byte"
+    "Byte LocalFaction",
+    "Byte OtherFaction",
+    "Byte Relation"
   ],
   "tb_Maze_Portal": [
     "Int16",
@@ -2265,7 +2265,7 @@
     "String",
     "Byte",
     "Byte",
-    "Byte",
+    "Byte TargetType",
     "Byte",
     "Byte",
     "Byte"
