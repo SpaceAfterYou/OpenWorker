@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using Arch.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -663,6 +664,13 @@ public sealed class HandlerExecutorTest
 
         Assert.AreEqual(Packets + 1, ProbeHandler.Handled);
         Assert.AreEqual(1, provider.Calls, "The handler is resolved once, by the first packet, and kept.");
+
+        // A debug build makes a class of every async method, one allocation per call: only an optimized build, the one CI
+        // tests, can show that the dispatch allocates nothing.
+        if (typeof(HandlerExecutor).Assembly.GetCustomAttribute<System.Diagnostics.DebuggableAttribute>() is { IsJITOptimizerDisabled: true })
+        {
+            Assert.Inconclusive($"{allocated} bytes for {Packets} packets in a debug build; run the tests in Release to measure them.");
+        }
 
         // Nothing per packet: a few bytes in all are left for what the runtime may allocate once on this thread.
         Assert.IsLessThan(Packets, allocated, $"{allocated} bytes for {Packets} packets.");
