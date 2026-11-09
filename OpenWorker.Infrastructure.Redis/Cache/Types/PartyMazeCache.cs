@@ -15,6 +15,8 @@ public sealed class PartyMazeCache
     /// </summary>
     public static TimeSpan Lifetime { get; } = TimeSpan.FromHours(6);
 
+    // The index of the relay needs a field to be made; the record is only ever read by its key.
+    [Indexed]
     [RedisIdField]
     public required int Party { get; init; }
 
