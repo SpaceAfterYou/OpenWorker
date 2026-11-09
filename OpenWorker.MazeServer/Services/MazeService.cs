@@ -280,32 +280,26 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// Skills that move the player report the place along the way, and the next attack starts from there.
+    /// Skills that move the player report the place along the way, and the next attack starts from there: when the player
+    /// could have run there, as for a move and the place of a skill.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillSyncPositionRequest request)
     {
-        if (Place.IsValid(request.Position, request.Yaw))
-        {
-            ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Position = request.Position, Rotation = request.Yaw });
-        }
+        TakePlace(context.Player, request.Position, request.Yaw, SkillOpcode.SkillSyncPositionReq);
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// A skill that jumps the player somewhere. The new place goes back to the client.
+    /// A skill that jumps the player somewhere. The place is taken when the player could have got there; otherwise the player
+    /// stays where the server has it. Everybody in the maze is told where the player is (06/46).
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillWarpPositionRequest request)
     {
-        if (!Place.IsValid(request.Position))
-        {
-            return ValueTask.CompletedTask;
-        }
+        TakePlace(context.Player, request.Position, null, SkillOpcode.SkillWarpPositionReq);
 
-        var place = ecs.Get<WorldComponent>(context.Player) with { Position = request.Position };
-
-        ecs.Set(context.Player, place);
-        ecs.Get<ServerSessionComponent>(context.Player).Send(new SkillWarpPositionBroadcastResponse
+        var place = ecs.Get<WorldComponent>(context.Player);
+        var warp = new SkillWarpPositionBroadcastResponse
         {
             Actor = ecs.Get<ActorComponent>(context.Player),
             PosInfo = new SkillPositionValue
@@ -314,9 +308,45 @@ public sealed partial class MazeService(
                 Angle = place.Rotation,
                 MotionClass = NoMotion
             }
-        });
+        };
+
+        if (ecs.Has<LuaMaze>(context.Player))
+        {
+            ecs.Get<LuaMaze>(context.Player).Creatures.Broadcast(warp);
+        }
+        else
+        {
+            ecs.Get<ServerSessionComponent>(context.Player).Send(warp);
+        }
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// A place a skill reports for the player, taken when it is a place and the player could have run there since the last
+    /// one. A refused place counts against the error budget once a second, as a refused move does, and the player stays.
+    /// </summary>
+    private void TakePlace(Entity player, Vector3 position, float? yaw, SkillOpcode request)
+    {
+        var world = ecs.Get<WorldComponent>(player);
+        var rotation = yaw is { } turned && Place.IsValid(world.Position, turned) ? turned : world.Rotation;
+
+        if (!Place.IsValid(position))
+        {
+            return;
+        }
+
+        if (!pace.TryMove(ecs, player, world.Position, position, out var charge))
+        {
+            if (charge)
+            {
+                errors.Charge(player, MessageOpcode.From(GroupOpcode.Skill, request), HandlerErrorReason.Violation);
+            }
+
+            return;
+        }
+
+        ecs.Set(player, world with { Position = position, Rotation = rotation });
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request)
@@ -326,14 +356,14 @@ public sealed partial class MazeService(
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// A passive move (evade, dash) ends where the client says, when the player could have got there.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request)
     {
         var place = request.Skill.Position;
 
-        if (Place.IsValid(place.Position, place.Angle))
-        {
-            ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Position = place.Position, Rotation = place.Angle });
-        }
+        TakePlace(context.Player, place.Position, place.Angle, SkillOpcode.PassiveSkillEndReq);
 
         return ValueTask.CompletedTask;
     }
