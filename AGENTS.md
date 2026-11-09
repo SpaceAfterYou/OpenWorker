@@ -106,6 +106,22 @@ Paths and the exact commands are in `AGENTS.local.md`.
 - A session lease holds an account for about a minute after it disconnects. Scripts that log in with the
   same account wait 65 s between runs.
 
+## Reading the client with IDA Pro
+
+The client decides every wire format, and IDA Pro is available on the development machine. Use it whenever a
+layout, a field or a rule is unclear, instead of guessing:
+
+- **Headless.** `idat` runs a script over a database and exits. The scripts are in `docs/tools/`:
+  - `client_eval.py` decompiles the functions you name;
+  - `client_export.py` exports the senders and receivers of every message;
+  - `client_dispatch.py` walks the receive switch.
+- **MCP.** When the session has the IDA MCP server (tools named `ida`), open a database through it and
+  decompile, list cross-references, strings and types directly.
+- **Paths and limits.** `AGENTS.local.md` names `idat`, the databases and what must not be opened. Work on a fresh
+  copy of a database for every headless run, and never open one database from two processes.
+- **What you learn is research data.** It goes to the git-ignored `docs/` only (see "Research data stays out of
+  git").
+
 ## Code rules
 
 The full list is in `ARCHITECTURE.md`. The ones that are broken most often:
