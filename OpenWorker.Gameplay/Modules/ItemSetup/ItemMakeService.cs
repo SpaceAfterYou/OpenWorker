@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.ItemSetup.Responses;
@@ -17,7 +18,11 @@ namespace OpenWorker.Gameplay.Modules.ItemSetup;
 /// </summary>
 /// <remarks>Runs on the world loop. Every refusal answers the request and changes nothing.</remarks>
 public sealed class ItemMakeService(
-    InventoryService inventory, ReadOnlyCollection<MakeRow> recipes, ItemSetupAnswers answers, QuestManager? quests = null)
+    InventoryService inventory,
+    ReadOnlyCollection<MakeRow> recipes,
+    ItemSetupAnswers answers,
+    QuestManager? quests = null,
+    NpcCreditManager? credit = null)
 {
     /// <summary>The person lacks the materials.</summary>
     public const ushort NotEnoughMaterials = 52254;
@@ -39,7 +44,16 @@ public sealed class ItemMakeService(
 
     private readonly RowIndex<int, MakeRow> _recipes = recipes.IndexBy(e => e.Id);
 
-    public void Make(Entity player, int index, byte count)
+    /// <summary>
+    /// The group of a recipe: an NPC makes the recipes of the group its production names. 0 for a recipe the table lacks.
+    /// </summary>
+    public int GroupOf(int index) => _recipes.TryGet(index, out var row) ? row.Group : 0;
+
+    /// <summary>
+    /// Makes <paramref name="count"/> items of a recipe at the NPC <paramref name="npc"/>: the credit with its group takes a
+    /// part off the gold of an item and off the materials past the first, and the making raises that credit.
+    /// </summary>
+    public void Make(Entity player, int index, byte count, ServiceNpc? npc = null)
     {
         const ItemSetupOpcode command = ItemSetupOpcode.Make;
 
@@ -49,7 +63,9 @@ public sealed class ItemMakeService(
             return;
         }
 
-        var gold = (long)row.Gold * count;
+        var price = credit is not null && npc is { } at ? credit.Discount(player, at, CreditBenefit.MakeMoney, row.Gold) : row.Gold;
+        var saved = credit is not null && npc is { } near ? credit.Benefit(player, near, CreditBenefit.MakeMaterials) : 0;
+        var gold = price * count;
         var battlePoints = (long)row.BattlePoint * count;
 
         if (gold < 0 || battlePoints < 0 || inventory.Gold(player) < gold || inventory.Balance(player, ShopCurrency.Bp) < battlePoints)
@@ -61,8 +77,12 @@ public sealed class ItemMakeService(
         // A material may come back in several places of a recipe: what one request takes of it is the sum.
         var materials = new Dictionary<int, int>();
 
-        foreach (var (material, each) in row.Materials)
+        var recipe = row.Materials;
+
+        for (var place = 0; place < recipe.Length; place++)
         {
+            var (material, each) = recipe[place];
+
             if (material == 0 || each <= 0)
             {
                 continue;
@@ -74,6 +94,12 @@ public sealed class ItemMakeService(
             {
                 answers.Refuse(player, command, WrongRecipe);
                 return;
+            }
+
+            // The credit spares a part of every material but the first, one being left at the least.
+            if (place > 0 && saved > 0)
+            {
+                needed = Math.Max(1, needed - (int)(needed * (double)saved / NpcCreditManager.Parts));
             }
 
             materials[material] = materials.GetValueOrDefault(material) + needed;
@@ -110,7 +136,12 @@ public sealed class ItemMakeService(
 
         answers.Send(player, new ItemSetupMakeResponse());
 
-        // Every item made counts for the quests that ask to make it.
+        // Every item made counts for the quests that ask to make it, and the making raises the credit.
         quests?.OnEvent(player, QuestConditionType.Make, QuestConditionTarget.Item, row.Product, count);
+
+        if (credit is not null && npc is { } served)
+        {
+            credit.Raise(player, served, CreditRaise.Make);
+        }
     }
 }

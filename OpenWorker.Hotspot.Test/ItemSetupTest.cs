@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Items;
@@ -64,7 +65,7 @@ public sealed class ItemSetupTest
             f.Give(cost.ExtraMaterial, cost.ExtraMaterialCount * 2);
         }
 
-        var request = new ItemSetupUpgradeRequest { Npc = 1, Target = ItemSetupFixture.SlotOf(target) };
+        var request = new ItemSetupUpgradeRequest { Npc = f.NpcOffering(NpcFunction.Upgrade), Target = ItemSetupFixture.SlotOf(target) };
 
         // The highest roll that still goes up.
         target.Upgrade = (byte)level;
@@ -213,7 +214,7 @@ public sealed class ItemSetupTest
         await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicMakeExRequest
         {
             Index = recipe.Id,
-            Npc = 1,
+            Npc = f.NpcOffering(NpcFunction.None),
             Material = ItemSetupFixture.SlotOf(material),
             Extras = extras.Select(ItemSetupFixture.SlotOf).ToList()
         });
@@ -239,7 +240,7 @@ public sealed class ItemSetupTest
 
         await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicComposeRequest
         {
-            Npc = 1,
+            Npc = f.NpcOffering(NpcFunction.AkashicMix),
             Target = ItemSetupFixture.SlotOf(card),
             Materials = [ItemSetupFixture.SlotOf(first)]
         });
@@ -253,7 +254,7 @@ public sealed class ItemSetupTest
 
         await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicComposeRequest
         {
-            Npc = 1,
+            Npc = f.NpcOffering(NpcFunction.AkashicMix),
             Target = ItemSetupFixture.SlotOf(card),
             Materials = [ItemSetupFixture.SlotOf(second)]
         });
@@ -291,7 +292,7 @@ public sealed class ItemSetupTest
 
         f.Gold = back.Cost + 3;
 
-        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicDisassembleRequest { Npc = 1, Card = row.Id });
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicDisassembleRequest { Npc = f.NpcOffering(NpcFunction.None), Card = row.Id });
 
         Assert.AreEqual(0, f.Bag.AkashicRecords.Records.Count, "The card left the book");
         Assert.AreEqual(17, f.Bag.Items.Single(e => e.Item == back.Item).Exp, "The card comes back with its experience");
@@ -321,7 +322,7 @@ public sealed class ItemSetupTest
 
         await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicMakeRequest
         {
-            Npc = 1,
+            Npc = f.NpcOffering(NpcFunction.None),
             Index = recipe.Id,
             Material = ItemSetupFixture.SlotOf(material)
         });
@@ -331,7 +332,7 @@ public sealed class ItemSetupTest
         Assert.AreEqual(recipe.Gold, f.Gold, "No gold is charged");
 
         // A card that is not in the book cannot be taken out of it.
-        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicDisassembleRequest { Npc = 1, Card = recipe.Material });
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupAkashicDisassembleRequest { Npc = f.NpcOffering(NpcFunction.None), Card = recipe.Material });
 
         Assert.AreEqual(1, f.Inventory.CountOf(f.Player, recipe.Material), "Nothing comes out of an empty book");
         Assert.AreEqual(recipe.Gold, f.Gold);

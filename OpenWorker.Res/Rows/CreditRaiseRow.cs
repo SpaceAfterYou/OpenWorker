@@ -9,8 +9,8 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct CreditRaiseRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public short Field1 { get; } = reader.ReadInt16();
-    public byte Field2 { get; } = reader.ReadByte();
-    public byte Field3 { get; } = reader.ReadByte();
-    public byte Field4 { get; } = reader.ReadByte();
+    public short Group { get; } = reader.ReadInt16();
+    public byte Type { get; } = reader.ReadByte();
+    public byte Minimum { get; } = reader.ReadByte();
+    public byte Maximum { get; } = reader.ReadByte();
 }

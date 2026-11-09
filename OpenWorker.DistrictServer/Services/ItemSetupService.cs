@@ -1,5 +1,7 @@
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.ItemSetup;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
@@ -8,7 +10,9 @@ namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
 /// The work on items at the NPCs of a city: repairs, upgrades, sockets, broaches, akashic cards, and the tools that restore,
-/// unseal or lower a count of an item. What each request does and what is still missing for the others: <c>docs/notes-item-setup-handlers.md</c>.
+/// unseal or lower a count of an item. A request that names an NPC is served only by an NPC of the city near the player that
+/// offers the service (<see cref="ServiceNpcs"/>). What each request does and what is still missing for the others:
+/// <c>docs/notes-item-setup-handlers.md</c>, <c>docs/notes-npc-services.md</c>.
 /// </summary>
 public sealed class ItemSetupService(
     ItemRepairService repairs,
@@ -16,7 +20,8 @@ public sealed class ItemSetupService(
     ItemSocketService sockets,
     ItemUpgradeService upgrades,
     AkashicService akashic,
-    ItemBroachService broaches) :
+    ItemBroachService broaches,
+    ServiceNpcs npcs) :
     IHotspotHandler<ItemSetupRepairRequest>,
     IHotspotHandler<ItemSetupRepairNpcRequest>,
     IHotspotHandler<ItemSetupRepairEquipRequest>,
@@ -44,21 +49,30 @@ public sealed class ItemSetupService(
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupRepairNpcRequest request)
     {
-        repairs.RepairOne(context.Player, request.Target);
+        if (npcs.TryServe(context.Player, request.Npc, NpcFunction.Shop, Opcode(ItemSetupOpcode.RepairNpc), ServiceNpcCodes.Repair, out var npc))
+        {
+            repairs.RepairOne(context.Player, request.Target, npc);
+        }
 
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupRepairEquipRequest request)
     {
-        repairs.RepairMany(context.Player, carried: false);
+        if (npcs.TryServe(context.Player, request.Npc, NpcFunction.Shop, Opcode(ItemSetupOpcode.RepairEquip), ServiceNpcCodes.Repair, out var npc))
+        {
+            repairs.RepairMany(context.Player, carried: false, npc);
+        }
 
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupRepairAllRequest request)
     {
-        repairs.RepairMany(context.Player, carried: true);
+        if (npcs.TryServe(context.Player, request.Npc, NpcFunction.Shop, Opcode(ItemSetupOpcode.RepairAll), ServiceNpcCodes.Repair, out var npc))
+        {
+            repairs.RepairMany(context.Player, carried: true, npc);
+        }
 
         return ValueTask.CompletedTask;
     }
@@ -100,35 +114,50 @@ public sealed class ItemSetupService(
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupUpgradeRequest request)
     {
-        upgrades.Upgrade(context.Player, request.Protect, request.Protection, request.Target);
+        if (npcs.TryServe(context.Player, request.Npc, NpcFunction.Upgrade, Opcode(ItemSetupOpcode.Upgrade), ServiceNpcCodes.Upgrade, out var npc))
+        {
+            upgrades.Upgrade(context.Player, request.Protect, request.Protection, request.Target, npc);
+        }
 
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupAkashicMakeRequest request)
     {
-        akashic.Make(context.Player, ItemSetupOpcode.AkashicMake, request.Index, request.Material, []);
+        if (npcs.TryServe(context.Player, request.Npc, NpcFunction.None, Opcode(ItemSetupOpcode.AkashicMake), ServiceNpcCodes.Akashic, out _))
+        {
+            akashic.Make(context.Player, ItemSetupOpcode.AkashicMake, request.Index, request.Material, []);
+        }
 
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupAkashicMakeExRequest request)
     {
-        akashic.Make(context.Player, ItemSetupOpcode.AkashicMakeEx, request.Index, request.Material, request.Extras);
+        if (npcs.TryServe(context.Player, request.Npc, NpcFunction.None, Opcode(ItemSetupOpcode.AkashicMakeEx), ServiceNpcCodes.Akashic, out _))
+        {
+            akashic.Make(context.Player, ItemSetupOpcode.AkashicMakeEx, request.Index, request.Material, request.Extras);
+        }
 
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupAkashicComposeRequest request)
     {
-        akashic.Compose(context.Player, request.Target, request.Materials);
+        if (npcs.TryServe(context.Player, request.Npc, NpcFunction.AkashicMix, Opcode(ItemSetupOpcode.AkashicCompose), ServiceNpcCodes.AkashicCompose, out _))
+        {
+            akashic.Compose(context.Player, request.Target, request.Materials);
+        }
 
         return ValueTask.CompletedTask;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupAkashicDisassembleRequest request)
     {
-        akashic.Disassemble(context.Player, request.Card);
+        if (npcs.TryServe(context.Player, request.Npc, NpcFunction.None, Opcode(ItemSetupOpcode.AkashicDisassemble), ServiceNpcCodes.Akashic, out _))
+        {
+            akashic.Disassemble(context.Player, request.Card);
+        }
 
         return ValueTask.CompletedTask;
     }
@@ -153,4 +182,6 @@ public sealed class ItemSetupService(
 
         return ValueTask.CompletedTask;
     }
+
+    private static MessageOpcode Opcode(ItemSetupOpcode command) => MessageOpcode.From(GroupOpcode.ItemSetup, command);
 }

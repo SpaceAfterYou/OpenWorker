@@ -3,6 +3,7 @@ using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -22,7 +23,11 @@ namespace OpenWorker.Gameplay.Modules.ItemSetup;
 /// columns of its kind (weapon, sub weapon, gear) and of the way it is repaired (at an NPC or with a kit).
 /// </summary>
 /// <remarks>Runs on the world loop. Every refusal answers the request with the error of the client, so its dialog never waits.</remarks>
-public sealed class ItemRepairService(World world, InventoryService inventory, ReadOnlyCollection<ItemRepairRow> repairs)
+public sealed class ItemRepairService(
+    World world,
+    InventoryService inventory,
+    ReadOnlyCollection<ItemRepairRow> repairs,
+    NpcCreditManager? credit = null)
 {
     /// <summary>The repair failed: no such item, nothing to repair, a table without a row for it.</summary>
     public const ushort Failed = 52450;
@@ -77,9 +82,9 @@ public sealed class ItemRepairService(World world, InventoryService inventory, R
     }
 
     /// <summary>
-    /// Repairs the item in one slot at an NPC.
+    /// Repairs the item in one slot at an NPC, for less with credit at its group.
     /// </summary>
-    public void RepairOne(Entity player, StorageSlot target)
+    public void RepairOne(Entity player, StorageSlot target, ServiceNpc? npc = null)
     {
         var opcode = Opcode(ItemSetupOpcode.RepairNpc);
 
@@ -101,6 +106,8 @@ public sealed class ItemRepairService(World world, InventoryService inventory, R
             return;
         }
 
+        price = Discount(player, npc, price);
+
         if (!inventory.TryAddGold(player, -price))
         {
             Refuse(player, opcode, NotEnoughGold);
@@ -109,12 +116,13 @@ public sealed class ItemRepairService(World world, InventoryService inventory, R
 
         Restore(bag, item);
         Send(player, new ItemSetupRepairNpcResponse { Item = InventoryService.ToStorageValue(item), Spent = price });
+        Raise(player, npc);
     }
 
     /// <summary>
     /// Repairs at an NPC every worn item, and with <paramref name="carried"/> every item of the bag as well.
     /// </summary>
-    public void RepairMany(Entity player, bool carried)
+    public void RepairMany(Entity player, bool carried, ServiceNpc? npc = null)
     {
         var opcode = Opcode(carried ? ItemSetupOpcode.RepairAll : ItemSetupOpcode.RepairEquip);
 
@@ -151,6 +159,8 @@ public sealed class ItemRepairService(World world, InventoryService inventory, R
             return;
         }
 
+        total = Discount(player, npc, total);
+
         if (!inventory.TryAddGold(player, -total))
         {
             Refuse(player, opcode, NotEnoughGold);
@@ -172,6 +182,27 @@ public sealed class ItemRepairService(World world, InventoryService inventory, R
         else
         {
             Send(player, new ItemSetupRepairEquipResponse { Items = values, Spent = total });
+        }
+
+        Raise(player, npc);
+    }
+
+    /// <summary>
+    /// The price of a repair at an NPC, less what the credit with its group and the boosters of the person take off.
+    /// </summary>
+    private long Discount(Entity player, ServiceNpc? npc, long price)
+    {
+        return credit is not null && npc is { } at ? credit.Discount(player, at, CreditBenefit.RepairMoney, price) : price;
+    }
+
+    /// <summary>
+    /// A repair at an NPC raises the credit with its group.
+    /// </summary>
+    private void Raise(Entity player, ServiceNpc? npc)
+    {
+        if (credit is not null && npc is { } at)
+        {
+            credit.Raise(player, at, CreditRaise.Repair);
         }
     }
 

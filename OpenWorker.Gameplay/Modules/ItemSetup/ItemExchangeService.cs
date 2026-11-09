@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Hotspot.Modules.ItemSetup.Responses;
 using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -14,7 +15,11 @@ namespace OpenWorker.Gameplay.Modules.ItemSetup;
 /// exchanges.
 /// </summary>
 /// <remarks>Runs on the world loop. Every refusal answers the request and changes nothing.</remarks>
-public sealed class ItemExchangeService(InventoryService inventory, ReadOnlyCollection<ReinforceExchangeRow> exchanges, ItemSetupAnswers answers)
+public sealed class ItemExchangeService(
+    InventoryService inventory,
+    ReadOnlyCollection<ReinforceExchangeRow> exchanges,
+    ItemSetupAnswers answers,
+    NpcCreditManager? credit = null)
 {
     /// <summary>The table has no such exchange.</summary>
     public const ushort NoExchange = 52261;
@@ -30,7 +35,15 @@ public sealed class ItemExchangeService(InventoryService inventory, ReadOnlyColl
 
     private readonly RowIndex<int, ReinforceExchangeRow> _exchanges = exchanges.IndexBy(e => e.Id);
 
-    public void Exchange(Entity player, int index, byte count)
+    /// <summary>
+    /// The kind of NPC that offers an exchange of the table, besides offering exchanges at all; none for a row the table lacks.
+    /// </summary>
+    public NpcFunction FunctionOf(int index) => _exchanges.TryGet(index, out var row) ? (NpcFunction)row.NpcFunction : NpcFunction.None;
+
+    /// <summary>
+    /// Exchanges at the NPC <paramref name="npc"/>, which raises the credit with its group.
+    /// </summary>
+    public void Exchange(Entity player, int index, byte count, ServiceNpc? npc = null)
     {
         const ItemSetupOpcode command = ItemSetupOpcode.Exchange;
 
@@ -65,5 +78,10 @@ public sealed class ItemExchangeService(InventoryService inventory, ReadOnlyColl
         inventory.TryGive(player, row.Product, count);
 
         answers.Send(player, new ItemSetupExchangeResponse());
+
+        if (credit is not null && npc is { } at)
+        {
+            credit.Raise(player, at, CreditRaise.Exchange);
+        }
     }
 }

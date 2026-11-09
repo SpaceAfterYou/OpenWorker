@@ -9,7 +9,7 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct MakeRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public int Field1 { get; } = reader.ReadInt32();
+    public int Group { get; } = reader.ReadInt32();
     public int Field2 { get; } = reader.ReadInt32();
     public int Field3 { get; } = reader.ReadInt32();
     public int Product { get; } = reader.ReadInt32();

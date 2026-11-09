@@ -30,5 +30,10 @@ public enum PersonStateKind : byte
     /// <summary>
     /// The points of the districts and of the groups of mazes, and the rewards taken for them.
     /// </summary>
-    SharePoints = 10
+    SharePoints = 10,
+
+    /// <summary>
+    /// The credit of the person with each group of NPCs of the cities.
+    /// </summary>
+    NpcCredit = 11
 }

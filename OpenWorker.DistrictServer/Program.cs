@@ -14,6 +14,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Res.Extensions;
@@ -53,6 +54,8 @@ await Host
 
         services.AddSingleton<NpcManager>();
         services.Replace(ServiceDescriptor.Singleton<IQuestNpcs, DistrictQuestNpcs>());
+        services.AddSingleton<INpcPlaces, DistrictNpcPlaces>();
+        services.AddNpcServices();
         services.AddServerCommon<ChannelAudience>();
         services.AddSingleton<IPersonPlaceSource, PersonPlaceStore>();
         services.AddTrade();
