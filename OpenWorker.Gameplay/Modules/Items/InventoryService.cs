@@ -41,6 +41,9 @@ public sealed class InventoryService(
     /// <summary>The client has nothing more specific for a refused item request.</summary>
     public const ushort Refused = 52011;
 
+    /// <summary>The item may not be put into the bank, or not straight from the equipment.</summary>
+    public const ushort CannotStore = 52044;
+
     public ItemCatalog Catalog => catalog;
 
     public Inventory? InventoryOf(Entity player)
@@ -465,6 +468,12 @@ public sealed class InventoryService(
             return;
         }
 
+        if (!MayStore(item, from, to) || (other is not null && !MayStore(other, to, from)))
+        {
+            Refuse(player, ItemOpcode.Move, CannotStore);
+            return;
+        }
+
         inventory.Lift(src.Storage, src.Index);
         inventory.Lift(dest.Storage, dest.Index);
 
@@ -764,6 +773,20 @@ public sealed class InventoryService(
         storage = inventory.Find(group)!;
 
         return storage is not null && slot >= 0 && slot < storage.Size;
+    }
+
+    /// <summary>
+    /// Whether an item may go from one storage to the other as far as the bank goes: a worn item goes through the bags, and
+    /// items whose row keeps them out of storage stay out.
+    /// </summary>
+    private bool MayStore(ItemInstance item, ItemStorage from, ItemStorage to)
+    {
+        if (to.Group is not (StorageGroup.CommonStorage or StorageGroup.CostumeStorage or StorageGroup.CashStorage))
+        {
+            return true;
+        }
+
+        return !ItemCatalog.IsEquipment(from.Group) && (!catalog.TryGet(item.Item, out var row) || row.SellLimit is not (4 or 5 or 6 or 7));
     }
 
     /// <summary>

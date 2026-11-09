@@ -380,6 +380,12 @@ public sealed class PersistenceTest
                 inventory.Place(StorageGroup.Common, 2, new ItemInstance { Serial = 900_201, Item = 710105001, Count = 4 });
                 first.Items.Move(player, Slot(StorageGroup.Common, 2), Slot(StorageGroup.CommonStorage, 5));
 
+                // A worn item goes to the bag before the bank.
+                inventory.Place(StorageGroup.AbilityEquip, 0, new ItemInstance { Serial = 900_202, Item = 710105002, Count = 1 });
+                first.Items.Move(player, Slot(StorageGroup.AbilityEquip, 0), Slot(StorageGroup.CommonStorage, 6));
+
+                Assert.AreEqual(900_202, inventory.At(StorageGroup.AbilityEquip, 0)?.Serial, "a worn item stays out of the bank");
+
                 first.World.Get<NpcCreditComponent>(player).Book!.Groups.Add(new NpcCreditEntry { Group = 1001, Grade = 2, Point = 7, DayPoint = 3 });
                 first.World.MarkDirty(player, PersonSections.MiscState);
             });
