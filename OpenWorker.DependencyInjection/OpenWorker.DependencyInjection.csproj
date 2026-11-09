@@ -25,7 +25,8 @@
         <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
         <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>
-        <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
+        <ProjectReference Include="..\OpenWorker.Infrastructure.Redis\OpenWorker.Infrastructure.Redis.csproj" />
         <ProjectReference Include="..\OpenWorker.Persistence\OpenWorker.Persistence.csproj"/>
     </ItemGroup>
 

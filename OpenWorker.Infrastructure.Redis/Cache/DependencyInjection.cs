@@ -23,7 +23,7 @@ public static class DependencyInjection
     public static IServiceCollection AddRedisConnection(this IServiceCollection services)
     {
         services.AddRedisOptions();
-        services.AddOpenWorkerMetrics();
+        services.AddRedisMetrics();
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IConnectionMultiplexer>(provider =>

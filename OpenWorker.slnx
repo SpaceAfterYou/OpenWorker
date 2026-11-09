@@ -46,12 +46,13 @@
   <Project Path="OpenWorker.Gameplay/OpenWorker.Gameplay.csproj" />
   <Project Path="OpenWorker.Havok/OpenWorker.Havok.csproj" />
   <Project Path="OpenWorker.Hotspot.Test/OpenWorker.Hotspot.Test.csproj" />
-  <Project Path="OpenWorker.Hotspot/OpenWorker.Hotspot.csproj" />
+  <Project Path="OpenWorker.Infrastructure.Redis/OpenWorker.Infrastructure.Redis.csproj" />
   <Project Path="OpenWorker.Lua/OpenWorker.Lua.csproj" />
   <Project Path="OpenWorker.Navigation/OpenWorker.Navigation.csproj" />
   <Project Path="OpenWorker.Persistence/OpenWorker.Persistence.csproj" />
   <Project Path="OpenWorker.Protocol/OpenWorker.Protocol.csproj" />
   <Project Path="OpenWorker.Res/OpenWorker.Res.csproj" />
+  <Project Path="OpenWorker.Runtime/OpenWorker.Runtime.csproj" />
   <Project Path="OpenWorker.SourceGenerator.ResourceStructures/OpenWorker.SourceGenerator.ResourceStructures.csproj" />
   <Project Path="OpenWorker.UpdateContent/OpenWorker.UpdateContent.csproj" />
   <Project Path="OpenWorker.Wire.SourceGenerators/OpenWorker.Wire.SourceGenerators.csproj" />

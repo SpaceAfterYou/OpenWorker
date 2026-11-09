@@ -7,7 +7,6 @@
     <ItemGroup>
         <PackageReference Include="Arch" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" />
-        <PackageReference Include="Redis.OM" />
     </ItemGroup>
 
     <ItemGroup>

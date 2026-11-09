@@ -17,6 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
     </ItemGroup>
 

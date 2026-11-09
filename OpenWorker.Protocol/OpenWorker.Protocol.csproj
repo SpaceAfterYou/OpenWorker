@@ -27,7 +27,7 @@
 
     <ItemGroup>
         <!-- The world loop builds the encoder it keeps; the tests and the benchmarks build frames and encoders directly. -->
-        <InternalsVisibleTo Include="OpenWorker.Hotspot" />
+        <InternalsVisibleTo Include="OpenWorker.Runtime" />
         <InternalsVisibleTo Include="OpenWorker.Hotspot.Test" />
         <InternalsVisibleTo Include="OpenWorker.Benchmarks" />
     </ItemGroup>

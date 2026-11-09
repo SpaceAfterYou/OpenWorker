@@ -30,6 +30,8 @@ public static class TelemetryHostingExtensions
     {
         services.AddTelemetryOptions();
         services.AddOpenWorkerMetrics();
+        services.AddRedisMetrics();
+        services.AddPostgresMetrics();
 
         // Every server says once which garbage collector it runs with, next to the runtime metrics it exports.
         services.AddHostedService<RuntimeSettingsLogService>();

@@ -24,7 +24,7 @@ public static class Persistence
         return services
             .AddPersistenceOptions()
             .AddPostgresHealthCheck()
-            .AddOpenWorkerMetrics()
+            .AddPostgresMetrics()
             .AddPersistenceBootstrapService()
             .AddPooledDbContextFactory<PersistenceContext>((provider, builder) =>
             {

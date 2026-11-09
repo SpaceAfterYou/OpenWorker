@@ -24,7 +24,7 @@ public static class OpenWorkerMeter
         0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 5
     ];
 
-    internal static Meter Create(IMeterFactory factory)
+    public static Meter Create(IMeterFactory factory)
     {
         return factory.Create(new MeterOptions(Name));
     }
@@ -32,7 +32,7 @@ public static class OpenWorkerMeter
     /// <summary>
     /// A histogram of durations in seconds with the bucket edges of <see cref="LatencyEdges"/>.
     /// </summary>
-    internal static Histogram<double> CreateDuration(this Meter meter, string name, string description)
+    public static Histogram<double> CreateDuration(this Meter meter, string name, string description)
     {
         return meter.CreateHistogram(
             name,
