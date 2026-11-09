@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
@@ -88,6 +89,71 @@ public sealed class SkillRulesTest
 
             // A move of the hero needs no deck.
             Assert.AreEqual(SkillRefusal.None, use.Check(player, Evade, TimeSpan.Zero));
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A buff that holds the player (a stun) refuses every skill with the code of a player who cannot attack, and nothing is
+    /// taken.
+    /// </summary>
+    [TestMethod]
+    public void AHeldPlayerCannotStartASkill()
+    {
+        var (world, player) = Create();
+
+        try
+        {
+            var use = new SkillUse(world, Skills, new PlayerGauges(world, EmptyTables()));
+            var book = new BuffBook();
+            var stun = new BuffDefinition(1, 10, BuffKind.Debuff, BuffEffect.Stun, 1, 10000, 1, 3f, 0f, 0f, 0, 1, 0, 0, 0, default, default, default);
+
+            Assert.IsTrue(BuffRules.Apply(book, new BuffCatalog([stun]), stun, 0, new BuffCarrier(1, 100, 100, false), []));
+            world.Add(player, new BuffBookComponent { Book = book });
+
+            Assert.AreEqual(SkillRefusal.CannotAttack, use.Check(player, Strike, TimeSpan.Zero));
+            Assert.AreEqual(SkillRefusal.CannotAttack, use.Check(player, Evade, TimeSpan.Zero));
+            Assert.AreEqual(100f, world.Get<GaugeComponent>(player).SoulGauge);
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// The bonus a deck page gives shortens the cooldown of the skills in the deck, and a buff lowers what a skill costs in soul
+    /// gauge.
+    /// </summary>
+    [TestMethod]
+    public void TheDeckBonusAndBuffsShortenCooldownsAndLowerCosts()
+    {
+        var (world, player) = Create();
+
+        try
+        {
+            var bonuses = new ReadOnlyCollection<DeckBonusRow>(
+            [
+                TestRows.Build<DeckBonusRow>(("Id", 2), ("BonusType", (byte)DeckBonusKind.Cooldown), ("RequiredLevel", 1), ("BonusValue", 0.5f))
+            ]);
+            var use = new SkillUse(world, Skills, new PlayerGauges(world, EmptyTables()), bonuses);
+            var book = new BuffBook();
+            var thrift = new BuffDefinition(2, 10, BuffKind.Buff, BuffEffect.SoulCost, 2, 10000, 1, 30f, 0f, 0f, 0, 1, 0, 0, 0, new BuffStat(0, 20), default, default);
+
+            BuffRules.Apply(book, new BuffCatalog([thrift]), thrift, 0, new BuffCarrier(1, 100, 100, false), []);
+            world.Add(player, new BuffBookComponent { Book = book });
+            world.Add(player, new SkillDeckBonusComponent { Values = [2] });
+
+            use.Use(player, Strike, TimeSpan.Zero);
+
+            Assert.AreEqual(72f, world.Get<GaugeComponent>(player).SoulGauge, "35 less a fifth.");
+            Assert.AreEqual(SkillRefusal.Cooldown, use.Check(player, Strike, TimeSpan.FromMilliseconds(2499)));
+            Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.FromMilliseconds(2500)), "Half of 5 s.");
         }
 
         finally

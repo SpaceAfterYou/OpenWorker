@@ -78,7 +78,18 @@ public readonly record struct CombatStats
     /// </summary>
     public StatKeyValuePair[] ToStatList()
     {
-        (STAT_TYPE Type, float Value)[] stats =
+        return Values()
+            .Where(e => e.Value > 0)
+            .Select(e => new StatKeyValuePair { byIndex = e.Type, statValue = e.Value })
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Every stat the client stores, by its number, zero or not.
+    /// </summary>
+    public (STAT_TYPE Type, float Value)[] Values()
+    {
+        return
         [
             (STAT_TYPE.STAT_STR, Strength),
             (STAT_TYPE.STAT_AGI, Agility),
@@ -111,10 +122,25 @@ public readonly record struct CombatStats
             (STAT_TYPE.STAT_PARP, Physical.Evasion),
             (STAT_TYPE.STAT_MARP, Magical.Evasion)
         ];
+    }
 
-        return stats
-            .Where(e => e.Value > 0)
-            .Select(e => new StatKeyValuePair { byIndex = e.Type, statValue = e.Value })
-            .ToArray();
+    /// <summary>
+    /// The stats that differ between two states of a character, with their new values.
+    /// </summary>
+    public static List<(STAT_TYPE Type, float Value)> Differences(in CombatStats before, in CombatStats after)
+    {
+        var old = before.Values();
+        var now = after.Values();
+        var changed = new List<(STAT_TYPE Type, float Value)>();
+
+        for (var index = 0; index < now.Length; index++)
+        {
+            if (old[index].Value != now[index].Value)
+            {
+                changed.Add(now[index]);
+            }
+        }
+
+        return changed;
     }
 }

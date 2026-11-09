@@ -30,6 +30,7 @@ using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.World.Types;
 using OpenWorker.Lua.Ai;
+using OpenWorker.Lua.Buffs;
 using OpenWorker.Navigation;
 
 namespace OpenWorker.Lua.Managers;
@@ -75,6 +76,11 @@ public sealed class LuaCreatureManager
     /// How much life the players of the maze have and who can be hurt.
     /// </summary>
     public PlayerVitals Vitals { get; }
+
+    /// <summary>
+    /// The buffs of the players and monsters of the maze; none in a maze made without them.
+    /// </summary>
+    public MazeBuffs? Buffs { get; internal set; }
 
     /// <summary>
     /// Where a monster can walk.
@@ -255,6 +261,8 @@ public sealed class LuaCreatureManager
         {
             session.Send(new WorldOtherInfosNpcResponse { List = npcs.Select(ToNpcEntry).ToArray() });
         }
+
+        Buffs?.ShowTo(session);
     }
 
     private WorldNpcListEntry ToNpcEntry(Entity npc)
@@ -474,6 +482,7 @@ public sealed class LuaCreatureManager
         Creatures.Remove(creature);
         Scenery.Remove(creature);
         Unseen.Remove(creature);
+        Buffs?.Forget(creature);
 
         ecs.Destroy(creature);
     }
@@ -639,6 +648,12 @@ public sealed class LuaCreatureManager
                 {
                     RestoreSuperArmor(body.Entity);
 
+                    // A monster that is stunned, asleep, paralysed or frozen does nothing until it is over.
+                    if (Buffs?.IsHeld(body.Entity) == true)
+                    {
+                        continue;
+                    }
+
                     body.Update(now, seconds);
                 }
 
@@ -731,6 +746,17 @@ public sealed class LuaCreatureManager
     }
 
     private const float FlinchSeconds = 0.6f;
+
+    /// <summary>
+    /// A buff holds a monster: it stops where it stands and drops the attack it was making.
+    /// </summary>
+    internal void Hold(Entity monster)
+    {
+        if (Bodies.TryGetValue(monster, out var body))
+        {
+            body.Stagger(0f);
+        }
+    }
 
     /// <summary>
     /// Armor that has had time to recover is whole again.
@@ -969,12 +995,20 @@ public sealed class LuaCreatureManager
     /// </summary>
     internal void HitPlayers(MonsterBody attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims)
     {
+        // An attack for the side of the monster, or one that only gives a buff, hurts nobody.
+        if (trigger.ForAllies || (trigger.Buff > 0 && trigger.DamageRate <= 0f))
+        {
+            Buffs?.GiveFromAttack(attacker.Entity, trigger, victims);
+
+            return;
+        }
+
         if (victims.Count == 0 || !trigger.AffectsTargets || !ecs.IsAlive(attacker.Entity))
         {
             return;
         }
 
-        var stats = ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats;
+        var stats = Buffs?.StatsOf(attacker.Entity, ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats) ?? ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats;
         var skill = tables.GetSkill(skillId);
         var hits = new List<SkillDmgValue>();
         var fallen = new List<Entity>();
@@ -986,10 +1020,11 @@ public sealed class LuaCreatureManager
                 continue;
             }
 
-            var shielded = Vitals.IsProtected(victim);
+            var defense = Buffs?.DefenseOf(victim, DefenseType.Normal) ?? DefenseType.Normal;
+            var shielded = Vitals.IsProtected(victim) || defense == DefenseType.Invincible;
             var result = shielded
                 ? new DamageResult(0, HitResults.None)
-                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, DefenseType.Normal, trigger.DamageRate, Random);
+                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random);
             var left = Vitals.Hurt(victim, result.Damage);
 
             hits.Add(default(SkillDmgValue) with
@@ -999,7 +1034,7 @@ public sealed class LuaCreatureManager
                 DamageFlags = (byte)result.Flags,
                 Damage = result.Damage,
                 Health = left,
-                DefenseType = (byte)(shielded ? DefenseType.Invincible : DefenseType.Normal)
+                DefenseType = (byte)(shielded ? DefenseType.Invincible : defense)
             });
 
             if (left == 0)
@@ -1044,6 +1079,10 @@ public sealed class LuaCreatureManager
                 Attacker = default,
                 PvpKillCount = 0
             });
+
+            Buffs?.OnDeath(victim);
         }
+
+        Buffs?.GiveFromHit(attacker.Entity, trigger, victims);
     }
 }

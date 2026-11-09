@@ -9,9 +9,9 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct DeckBonusRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public byte Field1 { get; } = reader.ReadByte();
-    public byte Field2 { get; } = reader.ReadByte();
+    public byte Phase { get; } = reader.ReadByte();
+    public byte BonusType { get; } = reader.ReadByte();
     public short Field3 { get; } = reader.ReadInt16();
-    public byte Field4 { get; } = reader.ReadByte();
+    public byte RequiredLevel { get; } = reader.ReadByte();
     public float BonusValue { get; } = reader.ReadSingle();
 }

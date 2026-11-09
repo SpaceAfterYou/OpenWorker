@@ -86,6 +86,29 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
     }
 
     /// <summary>
+    /// Gives life back, up to the greatest. Returns what the player has now.
+    /// </summary>
+    public int Heal(Entity player, int amount)
+    {
+        var ability = ecs.Get<AbilityComponent>(player);
+        var health = (int)Math.Min((long)ability.Health.Max, (long)ability.Health.Current + Math.Max(0, amount));
+
+        SetHealth(player, health, ability.Health.Max);
+
+        return health;
+    }
+
+    /// <summary>
+    /// The greatest life of a player has changed (a buff): what they have stays, up to the new greatest.
+    /// </summary>
+    public void Resize(Entity player, int maximum)
+    {
+        var ability = ecs.Get<AbilityComponent>(player);
+
+        SetHealth(player, Math.Min(ability.Health.Current, maximum), maximum);
+    }
+
+    /// <summary>
     /// Fills the life of a player up.
     /// </summary>
     public void Restore(Entity player)

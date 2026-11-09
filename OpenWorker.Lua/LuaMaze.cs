@@ -11,7 +11,7 @@ using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
-using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Gameplay.Modules.Persons.Components;
@@ -29,6 +29,7 @@ using OpenWorker.Hotspot.Modules.Chat.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Lua.Buffs;
 using OpenWorker.Lua.Enums;
 using OpenWorker.Lua.Managers;
 using OpenWorker.Res;
@@ -262,6 +263,11 @@ public partial class LuaMaze(
     /// </summary>
     private readonly List<Fighter> _members = First(creatureManager, player);
 
+    /// <summary>
+    /// The buffs of the players and the monsters of the maze.
+    /// </summary>
+    private readonly MazeBuffs _buffs = CreateBuffs(ecs, creatureManager, buffManager, combat, player);
+
     private static List<Fighter> First(LuaCreatureManager creatures, Entity player)
     {
         creatures.Attach(player);
@@ -353,6 +359,7 @@ public partial class LuaMaze(
             member.Flights.Clear();
             member.Chains.Clear();
             member.Playback = null;
+            _buffs.Detach(member.Player);
         }
 
         creatureManager.Close();
@@ -404,6 +411,7 @@ public partial class LuaMaze(
 
         _members.Add(new Fighter(player) { Quests = _questCatalog is { } catalog ? new QuestWatch(Ecs, player, catalog) : null });
         creatureManager.Attach(player);
+        _buffs.Attach(player);
 
         return true;
     }
@@ -428,6 +436,7 @@ public partial class LuaMaze(
 
         _members.Remove(member);
         creatureManager.Detach(player);
+        _buffs.Detach(player);
 
         if (_members.Count == 0)
         {
@@ -493,6 +502,8 @@ public partial class LuaMaze(
                 }
             }
         }
+
+        _buffs.Step((float)elapsed.TotalSeconds);
 
         creatureManager.Step(elapsed);
     }
@@ -1167,6 +1178,12 @@ public partial class LuaMaze(
     {
         var player = member.Player;
 
+        // An attack for the side of the player, or one that only gives a buff, hurts nobody.
+        if (GivesBuffOnly(member, trigger, targets))
+        {
+            return;
+        }
+
         // A hit that was on its way when the player left lands on nothing.
         if (targets.Length == 0 || !trigger.AffectsTargets || member.Gone || !Ecs.IsAlive(player))
         {
@@ -1214,6 +1231,9 @@ public partial class LuaMaze(
                 ContinuousHit = 1
             }
         });
+
+        // The buff of the attack reaches the targets it hit and left standing.
+        _buffs.GiveFromHit(player, trigger, targets);
 
         // Another hit can land while a script runs, so the dead leave the fight before the first script starts.
         var dead = targets
@@ -1263,7 +1283,7 @@ public partial class LuaMaze(
         var body = Ecs.Get<MonsterCombatComponent>(target);
         // A super armor that was broken before this hit lets half as much again through.
         var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
-        var result = DamageCalculator.Calculate(attacker, body.Stats, skill, body.Defense, attackRate, Random.Shared, broken);
+        var result = DamageCalculator.Calculate(attacker, _buffs.StatsOf(target, body.Stats), skill, _buffs.DefenseOf(target, body.Defense), attackRate, Random.Shared, broken);
         var lost = result.Damage;
 
         if (body.CountsHits)
@@ -1539,6 +1559,7 @@ public partial class LuaMaze(
 
         Started = true;
         StartedAt = Stopwatch.GetTimestamp();
+        _buffs.MonsterKilled += OnBuffKill;
 
         // The quests the player has when the maze starts are where the script begins to follow them.
         foreach (var member in _members)
@@ -1693,16 +1714,11 @@ public partial class LuaMaze(
     public void ApplyBuff(int actor, int buff)
     {
         Logger.CallApplyBuff(actor, buff);
-        
-        // Everybody in the maze sees the buff on the one it is for.
-        foreach (var member in _members)
-        {
-            if (!buffManager.Apply(member.Player, actor, buff))
-            {
-                Logger.UnknownBuff(actor, buff);
 
-                return;
-            }
+        // Everybody in the maze sees the buff on the one it is for.
+        if (!ApplyScriptBuff(actor, buff))
+        {
+            Logger.UnknownBuff(actor, buff);
         }
     }
 

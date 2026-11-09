@@ -233,6 +233,53 @@ public sealed class PlayerGauges(World world, CombatTables tables, ReadOnlyColle
     }
 
     /// <summary>
+    /// A buff gives soul gauge or stamina back: a number, or a share in percent of the size of the gauge. The player is told.
+    /// </summary>
+    public void Restore(Entity player, SkillCostKind kind, float amount, bool share)
+    {
+        if (amount <= 0f || !world.TryGet<GaugeComponent>(player, out var gauges) || !gauges.Ready)
+        {
+            return;
+        }
+
+        var stats = tables.GetPlayer(world, player);
+
+        switch (kind)
+        {
+            case SkillCostKind.SoulGauge when gauges.SoulCounted:
+                var soul = Math.Min(stats.SoulGaugeMax, gauges.SoulGauge + (share ? stats.SoulGaugeMax * amount * 0.01f : amount));
+
+                if (soul == gauges.SoulGauge)
+                {
+                    return;
+                }
+
+                gauges = gauges with { SoulGauge = soul };
+                world.Set(player, gauges);
+                Send(player, [new ST_STAT { wStatID = (short)STAT_TYPE.STAT_SG_CUR, fValue = soul }]);
+                break;
+
+            case SkillCostKind.Stamina:
+                var stamina = Math.Min(stats.StaminaMax, gauges.Stamina + (share ? stats.StaminaMax * amount * 0.01f : amount));
+
+                if (stamina == gauges.Stamina)
+                {
+                    return;
+                }
+
+                gauges = gauges with { Stamina = stamina };
+                world.Set(player, gauges);
+                Send(player, [new ST_STAT { wStatID = (short)STAT_TYPE.STAT_ST_CUR, fValue = stamina }]);
+                break;
+
+            default:
+                return;
+        }
+
+        Mirror(player, gauges.SoulGauge, stats.SoulGaugeMax, gauges.Stamina, stats.StaminaMax);
+    }
+
+    /// <summary>
     /// A skill was used: a hero whose soul gauge rests after a skill waits before it fills again.
     /// </summary>
     public void Rest(Entity player, byte skipPriorityGroup)

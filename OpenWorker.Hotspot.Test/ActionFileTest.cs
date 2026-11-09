@@ -107,9 +107,10 @@ public sealed class ActionFileTest
 
         e.Write(new byte[1 + 2 + 4 + 4 + 4 + 12 + 4 + 4 + 4]);
         e.Write(new byte[1 + 4 + 4 + 4 + 4 + 4]);
-        e.Write(new byte[8]);
+        e.Write(7);
+        e.Write(1);
         e.Write(0.5f);
-        e.Write(0);
+        e.Write(1406);
         e.Write(9);
         e.Write(new byte[12 + 4 + 20 + 2]);
         e.Write(1);
@@ -202,7 +203,7 @@ public sealed class ActionFileTest
             var attack = animation.Attacks[0];
 
             Assert.AreEqual(
-                new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain),
+                new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty),
                 attack);
             Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
             Assert.AreEqual(0.75f, animation.Attacks[1].Start);
