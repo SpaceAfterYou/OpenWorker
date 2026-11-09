@@ -39,7 +39,7 @@ public readonly record struct StatBonuses
             PhysicalEvasion = row.AddPhysicalEvasion,
             MagicalEvasion = row.AddMagicalEvasion,
             GrazeDamage = row.AddGrazeDamage,
-            PhysicalCriticalChance = row.AddPhysicalCriticalChance,
+            // The original leaves the physical critical chance of the row out, and takes the magical one.
             MagicalCriticalChance = row.AddMagicalCriticalChance,
             PhysicalCriticalResist = row.AddPhysicalCriticalResist,
             MagicalCriticalResist = row.AddMagicalCriticalResist,
