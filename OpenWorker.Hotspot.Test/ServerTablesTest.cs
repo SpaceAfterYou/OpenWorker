@@ -33,19 +33,30 @@ public sealed class ServerTablesTest
         return (count, stream.Length - stream.Position);
     }
 
+    /// <summary>
+    /// Every hand-written row layout of a server table reads its file to the trailer: a column too many or too few would
+    /// stop short of it or run past it.
+    /// </summary>
     [TestMethod]
-    [DataRow("tb_Monster_EXP", typeof(MonsterExpRow))]
-    [DataRow("tb_PartyExp_Mob", typeof(PartyExpMobRow))]
-    [DataRow("tb_DropRate_Mob", typeof(DropRateMobRow))]
-    [DataRow("tb_Drop", typeof(DropRow))]
-    [DataRow("tb_Drop_Group", typeof(DropGroupRow))]
-    [DataRow("tb_MazeReward_Item", typeof(MazeRewardItemRow))]
-    [DataRow("tb_Reinforce", typeof(ReinforceChanceRow))]
-    public void RowsFillTheFileUpToTheTrailer(string table, Type row)
+    public void RowsFillTheFileUpToTheTrailer()
     {
-        var (count, rest) = Read(table, row);
+        (string Table, Type Row)[] tables =
+        [
+            ("tb_Monster_EXP", typeof(MonsterExpRow)),
+            ("tb_PartyExp_Mob", typeof(PartyExpMobRow)),
+            ("tb_DropRate_Mob", typeof(DropRateMobRow)),
+            ("tb_Drop", typeof(DropRow)),
+            ("tb_Drop_Group", typeof(DropGroupRow)),
+            ("tb_MazeReward_Item", typeof(MazeRewardItemRow)),
+            ("tb_Reinforce", typeof(ReinforceChanceRow))
+        ];
 
-        Assert.IsGreaterThan(0, count);
-        Assert.AreEqual(Trailer, rest);
+        foreach (var (table, row) in tables)
+        {
+            var (count, rest) = Read(table, row);
+
+            Assert.IsGreaterThan(0, count, table);
+            Assert.AreEqual(Trailer, rest, table);
+        }
     }
 }
