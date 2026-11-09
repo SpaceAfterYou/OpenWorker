@@ -28,23 +28,50 @@ dotnet_diagnostic.CA1861.severity = none
 # and they keep the spelling of the client so a name can be searched in both places; the fields of a structure are the wire
 # layout in the order the client reads them. Renaming them would cost the link with the client and gain nothing.
 # CA1707: underscores in names. CA1711 and CA1712: a suffix or a prefix of the enum name. CA1051: public fields.
-[OpenWorker.Hotspot/Modules/Items/Enums/{E_BROACH_CLASSIFY_INDEX,E_EQUIP_REG_CATEGORY,EquipSlotType,ItemFlag}.cs]
+[OpenWorker.Protocol/Modules/Items/Enums/{E_BROACH_CLASSIFY_INDEX,E_EQUIP_REG_CATEGORY,EquipSlotType,ItemFlag}.cs]
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1711.severity = none
 dotnet_diagnostic.CA1712.severity = none
 
-[OpenWorker.Hotspot/Modules/Persons/Responses/STAT_TYPE.cs]
+[OpenWorker.Protocol/Modules/Persons/Responses/STAT_TYPE.cs]
 dotnet_diagnostic.CA1707.severity = none
 
-[OpenWorker.Hotspot/Modules/*/Types/{ST_,PS_}*.cs]
+[OpenWorker.Protocol/Modules/*/Types/{ST_,PS_}*.cs]
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1051.severity = none
 
 # The property that holds the id of a record is the field of the Redis index, which the other servers read by that name.
-[OpenWorker.Hotspot/Cache/Types/*.cs]
+[OpenWorker.Infrastructure.Redis/Cache/Types/*.cs]
 dotnet_diagnostic.CA1720.severity = none
 
 # Components of the ECS are plain structs: a system reads and changes the fields in place through `ref`,
 # which a property would not allow.
 [OpenWorker.Gameplay/Modules/*/Components/*.cs]
 dotnet_diagnostic.CA1051.severity = none
+
+# What a maze script calls on the server is named by the scripts of the client: AddTimerEx, RemoveTimerEx and CreateTrapEx
+# keep the names the scripts call, and a member a script calls on its helper object is an instance member even when it
+# needs nothing of the object. CA1711: the suffix Ex. CA1822: a member that could be static.
+[OpenWorker.Lua/{LuaMaze,LuaGameHelper}.cs]
+dotnet_diagnostic.CA1711.severity = none
+dotnet_diagnostic.CA1822.severity = none
+
+# The enumerations of the map files (batch) keep the names and the values the files of the client spell: a file is read by
+# those names (XmlEnum), and N_Stand and N_stand are two actions of the files. The layers of a map reuse the values of the
+# difficulties for the modes (Racon is Normal). CA1707: underscores. CA1708: names that differ by case. CA1069: one value
+# under two names.
+[OpenWorker.Domain/Batch/Enums/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1708.severity = none
+dotnet_diagnostic.CA1069.severity = none
+
+# The kinds of use of an item are the values of the item table of the client, under the names the client gives them; the
+# client has one value for the brooch and for the socket of a costume. CA1707: underscores. CA1069: one value under two names.
+[OpenWorker.Res/Types/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1069.severity = none
+
+# TimeSpanSize says how wide a time span is on the wire, and the width is the name of the type it is written as.
+# CA1720: an identifier that names a type.
+[OpenWorker.Extensions/BinaryWriterExtension.cs]
+dotnet_diagnostic.CA1720.severity = none

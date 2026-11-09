@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 using StackExchange.Redis;
 
 namespace OpenWorker.Channel.Community;
@@ -10,14 +11,17 @@ public sealed class RedisPresenceStore(IConnectionMultiplexer redis) : IPresence
     private const string PersonPrefix = "ow:who:";
     private const string NamePrefix = "ow:who-name:";
 
-    // The record starts with the instance as 32 hex digits.
-    private const string RemoveIfOwned = """
-        local value = redis.call('GET', KEYS[1])
-        if value and string.sub(value, 1, 32) == ARGV[1] then
-            return redis.call('DEL', KEYS[1])
+    // The record starts with the instance as 32 hex digits. Both keys of the person go in one call, run by its hash.
+    private static RedisScript RemoveIfOwned { get; } = new("""
+        local removed = 0
+        for _, key in ipairs(KEYS) do
+            local value = redis.call('GET', key)
+            if value and string.sub(value, 1, 32) == ARGV[1] then
+                removed = removed + redis.call('DEL', key)
+            end
         end
-        return 0
-        """;
+        return removed
+        """);
 
     private IDatabase Database => redis.GetDatabase();
 
@@ -34,9 +38,7 @@ public sealed class RedisPresenceStore(IConnectionMultiplexer redis) : IPresence
     {
         var instance = (RedisValue)record.Instance.ToString("N");
 
-        await Task.WhenAll(
-            Database.ScriptEvaluateAsync(RemoveIfOwned, [PersonKey(record.Person)], [instance]),
-            Database.ScriptEvaluateAsync(RemoveIfOwned, [NameKey(record.Name)], [instance]));
+        await RemoveIfOwned.EvaluateAsync(redis, [PersonKey(record.Person), NameKey(record.Name)], [instance]);
     }
 
     public async ValueTask<PresenceRecord?> GetAsync(int person)

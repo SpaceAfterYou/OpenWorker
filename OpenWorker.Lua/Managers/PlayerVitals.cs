@@ -28,9 +28,14 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
 
     private Dictionary<Entity, long> Protected { get; } = [];
 
+    /// <summary>
+    /// The life of a player has changed: the others of a party in the maze are told.
+    /// </summary>
+    public event Action<Entity>? HealthChanged;
+
     public CombatStats StatsOf(Entity player)
     {
-        return tables.GetPerson(ecs.Get<PersonInfoComponent>(player).Hero, PersonModuleDefines.DefaultLevel);
+        return tables.GetPlayer(ecs, player);
     }
 
     public int Health(Entity player) => ecs.Get<AbilityComponent>(player).Health.Current;
@@ -81,6 +86,29 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
     }
 
     /// <summary>
+    /// Gives life back, up to the greatest. Returns what the player has now.
+    /// </summary>
+    public int Heal(Entity player, int amount)
+    {
+        var ability = ecs.Get<AbilityComponent>(player);
+        var health = (int)Math.Min((long)ability.Health.Max, (long)ability.Health.Current + Math.Max(0, amount));
+
+        SetHealth(player, health, ability.Health.Max);
+
+        return health;
+    }
+
+    /// <summary>
+    /// The greatest life of a player has changed (a buff): what they have stays, up to the new greatest.
+    /// </summary>
+    public void Resize(Entity player, int maximum)
+    {
+        var ability = ecs.Get<AbilityComponent>(player);
+
+        SetHealth(player, Math.Min(ability.Health.Current, maximum), maximum);
+    }
+
+    /// <summary>
     /// Fills the life of a player up.
     /// </summary>
     public void Restore(Entity player)
@@ -95,5 +123,10 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
         var ability = ecs.Get<AbilityComponent>(player);
 
         ecs.Set(player, ability with { Health = new AbilityComponentEntry { Current = current, Max = maximum } });
+
+        if (ability.Health.Current != current || ability.Health.Max != maximum)
+        {
+            HealthChanged?.Invoke(player);
+        }
     }
 }

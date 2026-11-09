@@ -2,12 +2,15 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Arch" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" />
-        <PackageReference Include="Redis.OM" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OpenWorker.Wire\OpenWorker.Wire.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -20,7 +20,7 @@ public static class RankingStore
     {
         await using var database = await factory.CreateDbContextAsync();
 
-        var entry = await database.RankingEntries.FirstOrDefaultAsync(e => e.Kind == kind && e.Scope == scope && e.PersonId == person);
+        var entry = await database.RankingEntries.AsTracking().FirstOrDefaultAsync(e => e.Kind == kind && e.Scope == scope && e.PersonId == person);
 
         if (entry is null)
         {

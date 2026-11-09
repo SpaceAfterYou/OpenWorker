@@ -2,6 +2,7 @@ using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM.Searching;
 
@@ -10,9 +11,11 @@ namespace OpenWorker.MazeServer.Services;
 /// <summary>
 /// Tells the other servers that this maze server runs, where clients reach it and how busy it is,
 /// so that players are sent to the least busy one. Several maze servers of a gate share the load this way.
+/// When the server drains the record is removed first, and no player is sent to a maze server that is going away.
 /// </summary>
-public sealed class MazeRegistrationService(
+public sealed partial class MazeRegistrationService(
     IRedisCollection<MazeCache> mazes,
+    MazeDirectory directory,
     WorldLoop loop,
     World world,
     IOptions<InstanceOptions> instance,
@@ -20,7 +23,7 @@ public sealed class MazeRegistrationService(
     IOptions<MazeEndpointOptions> maze,
     ILogger<MazeRegistrationService> logger
 ) :
-    BackgroundService
+    RegistrationService
 {
     public static TimeSpan RenewInterval { get; } = TimeSpan.FromSeconds(10);
 
@@ -35,9 +38,9 @@ public sealed class MazeRegistrationService(
     private short Gate { get; } = gate.Value.Id;
     private (string Host, short Port) Address { get; } = (instance.Value.PublicHost, (short)(instance.Value.PublicPort ?? maze.Value.Port));
 
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogDebug("Maze server {Instance} of gate {Gate} at {Host}:{Port}.", Instance, Gate, Address.Host, Address.Port);
+        LogServer(Instance, Gate, Address.Host, Address.Port);
 
         using var timer = new PeriodicTimer(RenewInterval);
 
@@ -47,44 +50,56 @@ public sealed class MazeRegistrationService(
             {
                 var players = await loop.InvokeAsync(() => world.CountEntities(Players));
 
-                await mazes.InsertAsync(new MazeCache
-                {
-                    Guid = Instance,
-                    Gate = Gate,
-                    Players = players,
-                    Host = Address.Host,
-                    Port = Address.Port
-                }, Lifetime);
+                // The record with its lifetime, and the place of the server in the sorted set the pick reads.
+                await Task.WhenAll(
+                    mazes.InsertAsync(new MazeCache
+                    {
+                        Guid = Instance,
+                        Gate = Gate,
+                        Players = players,
+                        Host = Address.Host,
+                        Port = Address.Port
+                    }, Lifetime),
+                    directory.RecordAsync(Gate, Instance, players));
             }
 
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                logger.LogWarning(e, "Failed to renew the maze server record.");
+                LogRenewFailed(e);
             }
         }
-        while (await timer.WaitForNextTickAsync(cancellationToken));
+        while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    protected override async Task RemoveAsync(CancellationToken cancellationToken)
     {
-        await base.StopAsync(cancellationToken);
-
         try
         {
-            await mazes.DeleteAsync(new MazeCache
-            {
-                Guid = Instance,
-                Gate = Gate,
-                Players = 0,
-                Host = Address.Host,
-                Port = Address.Port
-            });
+            await Task.WhenAll(
+                directory.RemoveAsync(Gate, Instance),
+                mazes.DeleteAsync(new MazeCache
+                {
+                    Guid = Instance,
+                    Gate = Gate,
+                    Players = 0,
+                    Host = Address.Host,
+                    Port = Address.Port
+                }));
         }
 
         catch (Exception e)
         {
             // The record expires by itself.
-            logger.LogDebug(e, "Failed to remove the maze server record.");
+            LogRemoveFailed(e);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Maze server {Instance} of gate {Gate} at {Host}:{Port}.")]
+    private partial void LogServer(Guid instance, short gate, string host, short port);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to renew the maze server record.")]
+    private partial void LogRenewFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Failed to remove the maze server record.")]
+    private partial void LogRemoveFailed(Exception exception);
 }

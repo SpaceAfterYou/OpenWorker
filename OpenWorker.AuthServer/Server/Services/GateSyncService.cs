@@ -9,10 +9,16 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.AuthServer.Server.Services;
 
+/// <summary>
+/// Keeps the list of gates the login server shows: the names from the database, the address and the load from the
+/// records the gates renew in Redis. A gate whose record expired (it stopped or crashed) is shown offline.
+/// </summary>
 public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext> factory, IRedisCollection<GateCache> gateCache, List<GateInfo> registry, ILogger<GateSyncService> logger) : BackgroundService
 {
-    // TODO: 15sec
-    private static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(1);
+    /// <summary>
+    /// The list changes when a gate starts or stops, and its load is a hint; a round every 15 s is two small queries.
+    /// </summary>
+    public static TimeSpan Frequency { get; } = TimeSpan.FromSeconds(15);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -51,8 +57,8 @@ public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext
 
         var cacheList = await AsyncEnumerable.ToArrayAsync(gateCache.Where(e => e.UpdatedAt > updatedAt), cancellationToken);
 
+        // The gates only: their persons are not part of the list.
         var persistentList = await database.Gates
-            .Include(e => e.Persons)
             .ToArrayAsync(cancellationToken);
 
         foreach (var persistent in persistentList)

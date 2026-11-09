@@ -3,26 +3,33 @@ using OpenWorker.Hotspot.Cache;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
+using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM;
 using Redis.OM.Contracts;
 using Redis.OM.Searching;
+using StackExchange.Redis;
 
 namespace OpenWorker.DependencyInjection;
 
 public static class Cache
 {
     /// <summary>
-    /// The Redis of <c>ConnectionStrings:Redis</c>, the one the notifications between servers use as well.
+    /// The Redis of <c>ConnectionStrings:Redis</c>, the one the notifications between servers use as well: both use the one
+    /// connection of the process (<see cref="OpenWorker.Hotspot.Cache.DependencyInjection.AddRedisConnection"/>). The
+    /// readiness of the server includes a <c>PING</c> on that connection.
     /// </summary>
     public static IServiceCollection AddCache(this IServiceCollection services)
     {
         return services
-            .AddRedisOptions()
+            .AddRedisConnection()
+            .AddRedisHealthCheck()
             .AddSingleton<IRedisConnectionProvider>(provider => new RedisConnectionProvider(
-                provider.GetRequiredService<IOptions<RedisOptions>>().Value.ConnectionString))
+                provider.GetRequiredService<IConnectionMultiplexer>()))
             .AddCacheCollection<MazeReserveCache>()
+            .AddCacheCollection<PartyMazeCache>()
             .AddCacheCollection<MazeCache>()
+            .AddSingleton<MazeDirectory>()
             .AddCacheCollection<ChannelChatCache>();
     }
 
@@ -30,7 +37,7 @@ public static class Cache
     {
         services.AddSingleton<SessionLeaseManager>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<SessionLeaseManager>());
-        services.AddHostedService<SessionLeaseRenewalService>();
+        services.AddRegistrationService<SessionLeaseRenewalService>();
 
         return services.AddCacheCollection<SessionCache>();
     }

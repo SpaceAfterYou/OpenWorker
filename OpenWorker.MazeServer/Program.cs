@@ -1,25 +1,31 @@
-using OpenWorker.Batch;
+﻿using OpenWorker.Batch;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands;
 using OpenWorker.Commands.Extensions;
 using OpenWorker.DependencyInjection;
+using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Ai;
+using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
+using OpenWorker.Navigation;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.Res.Extensions;
+using OpenWorker.Server.Common.Extensions;
 
 await Host
     .CreateDefaultBuilder(args)
+    .UseHealthEndpoint()
     .ConfigureServices((context, services) =>
     {
         context.Configuration[ConfigurationUtils.InstanceIdentifierKey] = Guid.CreateVersion7().ToString();
@@ -41,7 +47,9 @@ await Host
         services.AddSingleton<CombatTables>();
         services.AddSingleton(provider => new AiScriptLoader(provider.GetRequiredService<ILogger<AiScriptLoader>>()));
         services.AddSingleton<MonsterBehaviorTables>();
+        services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<CreatureServices>();
+        services.AddSingleton(_ => new MazeScripts());
         services.AddSingleton<SimulationClock>();
         services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());
 
@@ -49,26 +57,37 @@ await Host
 
         services.AddGateOptions();
         services.AddPlayerTransfer();
-        services.AddSingleton<PersonRegistry>();
-        services.AddSingleton<ISessionCloseHandler, PlayerStorageCleaner>();
+        services.AddServerCommon<MazeAudience>();
+        services.AddSingleton<MazeInstances>();
+        services.AddSingleton<PartyMazeEvents>();
+        services.AddSingleton<MazeHelperField>();
+        services.AddSingleton<OpenWorker.Gameplay.Modules.Helpers.ISummonedHelpers, MazeSummonedHelpers>();
+        services.AddSingleton<OpenWorker.Gameplay.Modules.Helpers.IHelperField>(provider => provider.GetRequiredService<MazeHelperField>());
         services.AddSingleton<ISessionCloseHandler, MazeCloseHandler>();
 
-        services.AddSingleton<StorageItemFactory>();
-        services.AddSingleton<StorageFactory>();
-        services.AddSingleton<CostumeFactory>();
-        services.AddSingleton<StorageManager>();
-        services.AddSingleton<QuestManager>();
         services.AddPersistence();
         services.AddMiscGameplay();
+        services.AddQuestGameplay();
+        services.AddSingleton<MazeReporter>();
+        services.AddItems();
+        services.AddRewardsOptions();
+        services.AddSingleton<DropService>();
+        services.AddSingleton<KillRewards>();
+        services.AddSingleton<MazeKeyRewards>();
+        services.AddSingleton<MazeResults>();
+        services.AddSingleton<PrologueService>();
+        services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<MazeResults>());
+        services.AddSingleton<ISessionCloseHandler, DropCleaner>();
+        services.AddHostedService<DropExpiryService>();
 
         services.AddChannels();
 
         // services.AddSingleton<ItemSystem>();
         // services.AddSingleton<NpcManager>();
-        // services.AddSingleton<PersonRegistry>();
 
+        // A player in a maze is the person of the district, with the same components.
         services.AddHotspot(context, EntityComponentService.District);
-        services.AddHostedService<MazeRegistrationService>();
+        services.AddRegistrationService<MazeRegistrationService>();
 
         // services.AddHostedService<ServerBootstrapService>();
         // services.AddHostedService<KeepAliveService>();

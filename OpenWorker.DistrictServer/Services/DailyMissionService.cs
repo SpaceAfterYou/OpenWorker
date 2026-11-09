@@ -6,7 +6,6 @@ using OpenWorker.Hotspot.Modules.DailyMissions.Requests;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class DailyMissionService(DailyMissionManager manager) :
     IHotspotHandler<DailyMissionAcceptRequest>,
     IHotspotHandler<DailyMissionHelperRequest>

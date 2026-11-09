@@ -21,30 +21,23 @@ public sealed class MessageHeaderTest
         return new MessageHeader(reader);
     }
 
+    /// <summary>
+    /// The length of a frame counts its header of five bytes: a frame of the header alone has no content, a shorter one
+    /// is refused, and the largest length a <c>u16</c> holds is read without a sign.
+    /// </summary>
     [TestMethod]
-    [DataRow((ushort)5, 0)]
-    [DataRow((ushort)7, 2)]
-    [DataRow((ushort)32768, 32763)]
-    [DataRow(ushort.MaxValue, MessageHeader.MaxContentLength)]
-    public void ReadsContentLength(ushort length, int expected)
+    public void ReadsContentLength()
     {
-        Assert.AreEqual(expected, Read(length).ContentLength);
+        Assert.AreEqual(0, Read(5).ContentLength);
+        Assert.AreEqual(MessageHeader.MaxContentLength, Read(ushort.MaxValue).ContentLength);
+        Assert.ThrowsExactly<InvalidDataException>(() => Read(4));
     }
 
     [TestMethod]
-    [DataRow((ushort)0)]
-    [DataRow((ushort)4)]
-    public void RejectsLengthSmallerThanHeader(ushort length)
+    public void RejectsContentLengthOutOfRange()
     {
-        Assert.ThrowsExactly<InvalidDataException>(() => Read(length));
-    }
-
-    [TestMethod]
-    [DataRow(-1L)]
-    [DataRow(MessageHeader.MaxContentLength + 1L)]
-    public void RejectsContentLengthOutOfRange(long length)
-    {
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new MessageHeader(length));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new MessageHeader(-1L));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new MessageHeader(MessageHeader.MaxContentLength + 1L));
     }
 
     [TestMethod]

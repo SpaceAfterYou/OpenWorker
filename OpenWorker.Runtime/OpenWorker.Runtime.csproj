@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      What runs a game server on top of the protocol: the world loop, the simulation clock and its scheduler, the sessions
+      and their writers, the handler table, its builder and executor, the error budget and the rate limits, the metrics
+      and the log scope of a session. It knows nothing of EF Core (the dependency test of OpenWorker.Hotspot.Test holds it
+      to that). The namespaces are those the code had in OpenWorker.Hotspot: only the assembly changed.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <RootNamespace>OpenWorker.Hotspot</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Protocol\OpenWorker.Protocol.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Arch" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The sessions over a stream, the loop and the handlers, which the tests and the benchmarks build directly. -->
+        <InternalsVisibleTo Include="OpenWorker.Hotspot.Test" />
+        <InternalsVisibleTo Include="OpenWorker.Benchmarks" />
+    </ItemGroup>
+
+</Project>

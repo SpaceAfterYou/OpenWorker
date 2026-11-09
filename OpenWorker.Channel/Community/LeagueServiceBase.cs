@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Components;
@@ -19,7 +18,8 @@ using OpenWorker.Hotspot.Modules.League.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Persistence;
-using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Channel.Community;
 
@@ -35,7 +35,7 @@ public abstract class LeagueServiceBase(
     LeagueNotifier notifier,
     LeagueSnapshots snapshots,
     IPersonRelations relations,
-    ReadOnlyCollection<LeagueInfoRow> levels
+    LeagueLevels levels
 ) :
     IHotspotHandler<LeagueCreateRequest>,
     IHotspotHandler<LeagueDeleteRequest>,
@@ -98,10 +98,22 @@ public abstract class LeagueServiceBase(
     }
 
     /// <summary>
-    /// Every position starts with what its name suggests: the master and the sub master with everything, the ones between with
-    /// the care for new members.
+    /// What a position may do in a new league, a slot for each position from the base one to the sub master and one for the
+    /// master: the base members nothing, the named positions the care for new members, the elders, managers and chairmen that
+    /// and the notice, the sub master everything. The master changes it in the window of the league.
     /// </summary>
-    public static int[] DefaultAuth { get; } = [0, 3, 3, 3, 11, 11, 11, (int)LeagueRight.All, (int)LeagueRight.All];
+    public static int[] DefaultAuth { get; } =
+    [
+        0,
+        (int)LeagueRight.Join,
+        (int)LeagueRight.Join,
+        (int)LeagueRight.Join,
+        (int)(LeagueRight.Join | LeagueRight.Notice),
+        (int)(LeagueRight.Join | LeagueRight.Notice),
+        (int)(LeagueRight.Join | LeagueRight.Notice),
+        (int)LeagueRight.All,
+        (int)LeagueRight.All
+    ];
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LeagueOverlapNameRequest request)
     {
@@ -174,6 +186,7 @@ public abstract class LeagueServiceBase(
 
         var currency = world.Get<CurrencyComponent>(context.Player);
         currency.Gold -= LeagueRules.CreateCost;
+        world.MarkDirty(context.Player, PersonSections.Currencies);
 
         var session = Session(context);
 
@@ -259,7 +272,7 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (!league.Allows(member.Position, LeagueRight.Invite))
+        if (!league.Allows(member.Position, LeagueRight.Join))
         {
             Fail(context, LeagueOpcode.Invite, Text.NoRights);
             return;
@@ -464,7 +477,7 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (!league.Allows(member.Position, LeagueRight.Kick))
+        if (!league.Allows(member.Position, LeagueRight.KickOut))
         {
             Fail(context, LeagueOpcode.Kick, Text.NoRights);
             return;
@@ -552,7 +565,7 @@ public abstract class LeagueServiceBase(
         if (league is not null)
         {
             await network.SendAsync(
-                members.Where(e => league.Allows(e.Position, LeagueRight.Applicants)).Select(e => e.Person),
+                members.Where(e => league.Allows(e.Position, LeagueRight.Join)).Select(e => e.Person),
                 new LeagueApplicantAddResponse { Applicant = applicant });
         }
     }
@@ -566,7 +579,7 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (!league.Allows(member.Position, LeagueRight.Applicants))
+        if (!league.Allows(member.Position, LeagueRight.Join))
         {
             Fail(context, LeagueOpcode.ApplicantAccept, Text.NoRights);
             return;
@@ -608,7 +621,7 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (!league.Allows(member.Position, LeagueRight.Applicants))
+        if (!league.Allows(member.Position, LeagueRight.Join))
         {
             Fail(context, LeagueOpcode.ApplicantReject, Text.NoRights);
             return;
@@ -666,15 +679,15 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (member.Position != LeagueRules.Master)
-        {
-            Fail(context, LeagueOpcode.AuthChange, Text.NotMaster);
-            return;
-        }
-
         var rewards = request.Rewards
             .Select(e => new LeagueRewardInfo { Auth = e.Auth & (int)LeagueRight.All, LimitGoldOut = Math.Max(0, e.LimitGoldOut) })
             .ToArray();
+
+        if (!league.MayChange(member.Position, rewards.Select(e => e.Auth).ToArray(), rewards.Select(e => e.LimitGoldOut).ToArray()))
+        {
+            Fail(context, LeagueOpcode.AuthChange, Text.NoRights);
+            return;
+        }
 
         await factory.SetAuthAsync(league.Id, rewards.Select(e => e.Auth).ToArray(), rewards.Select(e => e.LimitGoldOut).ToArray());
 
@@ -732,9 +745,9 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (member.Position != LeagueRules.Master)
+        if (!league.Allows(member.Position, LeagueRight.SetPosition))
         {
-            Fail(context, LeagueOpcode.PositionNameChange, Text.NotMaster);
+            Fail(context, LeagueOpcode.PositionNameChange, Text.NoRights);
             return;
         }
 
@@ -769,9 +782,9 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (member.Position != LeagueRules.Master)
+        if (!league.Allows(member.Position, LeagueRight.SetPosition))
         {
-            Fail(context, LeagueOpcode.MemberPositionChange, Text.NotMaster);
+            Fail(context, LeagueOpcode.MemberPositionChange, Text.NoRights);
             return;
         }
 
@@ -789,10 +802,19 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        // A state of zero takes the position away.
-        var position = request.State == 0 ? LeagueRules.BasePosition : request.Position;
+        // The client gives a position with a state of zero and takes it away by giving the base position.
+        var position = request.Position;
 
-        if (!LeagueRules.CanBeGiven(position) || !await factory.SetPositionAsync(league.Id, target.Person, position))
+        if (!LeagueRules.MayAppoint(member.Position, target.Position, position))
+        {
+            Fail(context, LeagueOpcode.MemberPositionChange, Text.NoRights);
+            return;
+        }
+
+        var unnamed = position is >= LeagueRules.FirstNamed and <= LeagueRules.LastNamed &&
+                      string.IsNullOrEmpty(league.PositionNames[position - LeagueRules.FirstNamed]);
+
+        if (!LeagueRules.CanBeGiven(position) || unnamed || !await factory.SetPositionAsync(league.Id, target.Person, position))
         {
             Fail(context, LeagueOpcode.MemberPositionChange, Text.PositionTaken);
             return;
@@ -812,9 +834,10 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (!league.Allows(member.Position, LeagueRight.Open))
+        // The client offers the switch to the master alone.
+        if (member.Position != LeagueRules.Master)
         {
-            Fail(context, LeagueOpcode.OpenOrNot, Text.NoRights);
+            Fail(context, LeagueOpcode.OpenOrNot, Text.NotMaster);
             return;
         }
 
@@ -887,18 +910,12 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        await network.SendAsync(members, new LeagueInfoUpdateResponse
-        {
-            League = fresh.Id,
-            Rank = 0,
-            Money = fresh.Money,
-            Members = (short)fresh.MemberCount
-        });
+        await network.SendAsync(members, LeagueMapper.ToUpdate(fresh));
     }
 
     private async Task<IEnumerable<int>> OfficersAsync(LeagueRecord league)
     {
-        return (await factory.MembersAsync(league.Id)).Where(e => league.Allows(e.Position, LeagueRight.Applicants)).Select(e => e.Person).ToArray();
+        return (await factory.MembersAsync(league.Id)).Where(e => league.Allows(e.Position, LeagueRight.Join)).Select(e => e.Person).ToArray();
     }
 
     /// <summary>
@@ -918,10 +935,7 @@ public abstract class LeagueServiceBase(
         return Alive(context) ? (member, league) : null;
     }
 
-    private int MaxMembers(LeagueRecord league)
-    {
-        return levels.FirstOrDefault(e => e.Id == league.Rating).Field4 is var room and > 0 ? room : 30;
-    }
+    private int MaxMembers(LeagueRecord league) => levels.MemberLimit(league.Rating);
 
     private static int? CheckName(string name)
     {
@@ -934,13 +948,12 @@ public abstract class LeagueServiceBase(
     }
 
     /// <summary>
-    /// The level of the person who asks. A person has no level of their own yet: it is not saved (PersonPersistent) and no
-    /// component of the entity carries it (RankComponent is the echelon, and it is zero), so the whole server shows the one
-    /// default level. Every rule that depends on the level asks here, so the rule stays in place and is already true when
-    /// the level exists.
-    /// TODO(Phase 4, step 1-2): read the level of the person from the entity once it is persisted and loaded at the login.
+    /// The level of the person who asks. Every rule that depends on the level asks here.
     /// </summary>
-    private static byte LevelOf(ServiceHandleContext context) => PersonModuleDefines.DefaultLevel;
+    private byte LevelOf(ServiceHandleContext context)
+    {
+        return world.TryGet<LevelComponent>(context.Player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel;
+    }
 
     private int Me(ServiceHandleContext context) => world.Get<ActorComponent>(context.Player).Identifier;
 

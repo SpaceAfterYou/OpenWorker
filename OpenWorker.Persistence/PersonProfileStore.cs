@@ -14,7 +14,10 @@ public readonly record struct OtherPersonProfile(
     string CommunityComment,
     string CommunityMemo,
     byte[] OptionList,
-    bool IsFriend);
+    bool IsFriend,
+    byte Level = 1,
+    int Experience = 0,
+    IReadOnlyList<ItemPersistent>? Gear = null);
 
 /// <summary>
 /// What a person says about themselves. These are saved at once: the others can ask for them at any time.
@@ -96,7 +99,9 @@ public static class PersonProfileStore
                 e.CommunityState,
                 e.CommunityComment,
                 e.CommunityMemo,
-                e.OptionList
+                e.Account.OptionList,
+                e.Level,
+                e.Experience
             })
             .FirstOrDefaultAsync();
 
@@ -109,6 +114,12 @@ public static class PersonProfileStore
             .AsNoTracking()
             .AnyAsync(e => e.OwnerId == viewer && e.TargetId == person && e.Kind == FriendKind.Friend);
 
+        // What the person wears: the clothes and the gear.
+        var gear = await database.Items
+            .AsNoTracking()
+            .Where(e => e.PersonId == person && e.Storage <= 1)
+            .ToListAsync();
+
         return new OtherPersonProfile(
             profile.Name,
             (byte)profile.Hero,
@@ -120,6 +131,9 @@ public static class PersonProfileStore
             profile.CommunityComment,
             profile.CommunityMemo,
             profile.OptionList,
-            isFriend);
+            isFriend,
+            profile.Level,
+            profile.Experience,
+            gear);
     }
 }

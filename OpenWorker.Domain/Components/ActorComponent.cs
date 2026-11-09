@@ -2,11 +2,12 @@
 using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Domain.Components;
 
 [EntityComponent(EntityComponentService.District)]
-public readonly struct ActorComponent
+public readonly struct ActorComponent : IWireReadable<ActorComponent>, IWireWritable
 {
     /// <summary>
     /// 29 bits
@@ -29,6 +30,13 @@ public readonly struct ActorComponent
         Identifier = identifier;
         Type = type;
     }
+
+    /// <summary>
+    /// The actor on the wire, as <see cref="ActorValue"/>: one 32-bit number.
+    /// </summary>
+    public static ActorComponent Read(ref PacketReader reader) => new(reader.ReadInt32());
+
+    public void Write(ref PacketWriter writer) => writer.WriteInt32(this);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator ActorComponent(int value) => new(value);

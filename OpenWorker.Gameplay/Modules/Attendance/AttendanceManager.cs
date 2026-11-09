@@ -8,6 +8,7 @@ using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Events.Responses;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Attendance;
 
@@ -201,26 +202,14 @@ public sealed partial class AttendanceManager(
         return false;
     }
 
-    private async ValueTask SaveAsync(Entity player, AttendanceBook book, CancellationToken cancellationToken)
+    /// <summary>
+    /// The flush of the person writes the book (<see cref="PersonSections.MiscState"/>); nothing waits for the database here.
+    /// </summary>
+    private ValueTask SaveAsync(Entity player, AttendanceBook book, CancellationToken cancellationToken)
     {
-        if (!world.IsAlive(player))
-        {
-            return;
-        }
+        world.MarkDirty(player, PersonSections.MiscState);
 
-        var person = world.Get<AttendanceComponent>(player).Person;
-
-        await book.Gate.WaitAsync(cancellationToken);
-
-        try
-        {
-            await store.SaveAsync(person, PersonStateKind.Attendance, book, cancellationToken);
-        }
-
-        finally
-        {
-            book.Gate.Release();
-        }
+        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Attendance of a person failed.")]

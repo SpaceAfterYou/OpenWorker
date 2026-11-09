@@ -13,11 +13,15 @@ public readonly record struct SkillHit(float Time, AttackTrigger Trigger);
 /// <summary>
 /// Finds what a skill hits from the animations the table names for it.
 /// </summary>
-public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
+public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
 {
-    private const string Folder = "action";
     private const string Extension = ".adf";
     private const string HeroFilePrefix = "PC_";
+
+    /// <summary>
+    /// The table says this when a skill has no animation for a step.
+    /// </summary>
+    private const string NoAnimation = "0";
 
     /// <summary>
     /// Skills that depend on the direction of movement have one animation for each. Without input a character goes forward.
@@ -25,6 +29,20 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     private const string ForwardSuffix = "_F";
 
     private const byte FlownByClient = 2;
+
+    private const byte Charging = 2;
+    private const byte ChargingToTheEnd = 5;
+    private const byte ChargingBothSides = 8;
+
+    /// <summary>
+    /// The trap this skill places follows the cursor of the player until the skill is over.
+    /// </summary>
+    private const byte FollowsCursor = 4;
+
+    /// <summary>
+    /// Where the action files of the client are.
+    /// </summary>
+    public string Folder { get; init; } = "action";
 
     private Dictionary<int, SkillRow> Rows { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<string, ActionFile?> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -110,6 +128,38 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     }
 
     /// <summary>
+    /// What a skill plays, step by step, and how its charge grows. Null when nothing is known about the skill.
+    /// </summary>
+    public SkillAnimations? GetAnimations(int skill, Hero hero)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(GetHeroFileName(hero)) is not { } file)
+        {
+            return null;
+        }
+
+        var charging = row.ControlType is Charging or ChargingToTheEnd;
+        var steps = charging ? ChargeSteps(row) : [];
+
+        return new SkillAnimations(
+            Find(file, row.AnimationStart),
+            Find(file, row.AnimationLoop),
+            Find(file, row.AnimationExtra),
+            Find(file, row.AnimationEnd),
+            row.LoopTime / 1000f,
+            charging || row.ControlType == ChargingBothSides,
+            steps,
+            Enumerable.Range(1, steps.Count).Select(level => Find(file, $"{row.AnimationEnd}_{level:00}", false)).ToArray());
+    }
+
+    private static List<float> ChargeSteps(SkillRow row)
+    {
+        return new[] { row.ChargeTime1, row.ChargeTime2, row.ChargeTime3, row.ChargeTime4 }
+            .Take(row.ChargeCount)
+            .Select(e => e / 1000f)
+            .ToList();
+    }
+
+    /// <summary>
     /// Finds the attack a client says it has just fired.
     /// </summary>
     public bool TryGetProjectile(int skill, Hero hero, int attack, out AttackTrigger trigger)
@@ -118,6 +168,44 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
     }
 
     public bool TryGetProjectile(int skill, string actionFile, int attack, out AttackTrigger trigger)
+    {
+        return TryGet(skill, actionFile, attack, e => e.IsProjectile, out trigger);
+    }
+
+    /// <summary>
+    /// Finds the chain a client says it has just let go.
+    /// </summary>
+    public bool TryGetChain(int skill, Hero hero, int attack, out AttackTrigger trigger)
+    {
+        return TryGet(skill, GetHeroFileName(hero), attack, e => e.IsChain && e.Chain is not null && e.Projectile is not null, out trigger);
+    }
+
+    /// <summary>
+    /// Whether the player moves the trap of this skill with the mouse.
+    /// </summary>
+    public bool FollowsMouse(int skill)
+    {
+        return Rows.TryGetValue(skill, out var row) && row.ControlType == FollowsCursor;
+    }
+
+    /// <summary>
+    /// How far the skill reaches, as the table says.
+    /// </summary>
+    public float GetMaxRange(int skill)
+    {
+        return Rows.TryGetValue(skill, out var row) ? row.RangeMax : 0f;
+    }
+
+    /// <summary>
+    /// What kind of attack the table says a skill is: 1 for the plain attacks, 7 for the ones from the ground, 3 for
+    /// a thrown weapon, 0 and 18 for the skills proper. Zero when the table does not know the skill.
+    /// </summary>
+    public byte GetPassiveType(int skill)
+    {
+        return Rows.TryGetValue(skill, out var row) ? row.PassiveType : (byte)0;
+    }
+
+    private bool TryGet(int skill, string actionFile, int attack, Func<AttackTrigger, bool> accepts, out AttackTrigger trigger)
     {
         trigger = default;
 
@@ -130,7 +218,7 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
         {
             foreach (var candidate in Find(file, name)?.Attacks ?? [])
             {
-                if (candidate.Id == attack && candidate.IsProjectile)
+                if (candidate.Id == attack && accepts(candidate))
                 {
                     trigger = candidate;
                     return true;
@@ -177,14 +265,14 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
         return hits.ToArray();
     }
 
-    private static ActionAnimation? Find(ActionFile file, string name)
+    private static ActionAnimation? Find(ActionFile file, string name, bool forward = true)
     {
-        if (string.IsNullOrEmpty(name))
+        if (string.IsNullOrEmpty(name) || name == NoAnimation)
         {
             return null;
         }
 
-        return file.Animations.GetValueOrDefault(name) ?? file.Animations.GetValueOrDefault(name + ForwardSuffix);
+        return file.Animations.GetValueOrDefault(name) ?? (forward ? file.Animations.GetValueOrDefault(name + ForwardSuffix) : null);
     }
 
     private static string GetHeroFileName(Hero hero)
@@ -208,11 +296,14 @@ public sealed class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILo
 
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or EndOfStreamException)
         {
-            logger.LogWarning(e, "Skills of {Name} will not hit anything: cannot read {Path}", name, path);
+            LogUnreadable(logger, e, name, path);
         }
 
         Files.Add(name, file);
 
         return file;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skills of {Name} will not hit anything: cannot read {Path}")]
+    private static partial void LogUnreadable(ILogger logger, Exception exception, string name, string path);
 }

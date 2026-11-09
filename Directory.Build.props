@@ -9,4 +9,36 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
   </PropertyGroup>
 
+  <!--
+    Garbage collector and JIT settings of the server executables (the projects named *Server). They end up in the
+    runtimeconfig.json next to each server, and so in its image.
+
+    The servers run Server GC with dynamic adaptation (DATAS), background collections, and tiered compilation with
+    dynamic PGO. Server GC is the choice of step 7 of phase 1 of REFACTORING.md, decided on 2026-11-08 by four runs of
+    1000 bots, two with each collector (docs/phase-1/baseline/README.md, "GC modes at 1000 bots"): against workstation
+    GC, Rocco Town paused for 1.0 to 1.5 s instead of 1.9 s in a run, the p99 of move.echo was 2.4 to 2.8 ms instead of
+    3.8 to 4.4 ms, and the working set peaked at 450 to 493 MB instead of 395 MB. DATAS starts with one heap and adds
+    heaps with the load, so an idle server does not take a heap per core. The other values are the defaults of .NET,
+    written out so that they are chosen on purpose.
+
+    To try another setting without editing this file: dotnet publish -p:ServerGarbageCollection=false, or, in a
+    container, the environment variables of the runtime (DOTNET_gcServer=0), which take precedence over the
+    runtimeconfig.json. Each server logs the collector it runs with when it starts (RuntimeSettingsLogService).
+  -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Server'))">
+    <!-- true: Server GC, a heap and a GC thread per core at most (with DATAS, below, as many as the load needs).
+         false: workstation GC, one heap. -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+
+    <!-- Background collections of generation 2 on a thread of their own. Meaningful for either GC. -->
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+
+    <!-- Dynamic adaptation to application sizes (DATAS): Server GC that starts with one heap and grows with the load.
+         1 is on, 0 is off. Only Server GC reads it. -->
+    <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
+
+    <!-- Profile guided optimization of the tiered JIT. On by default since .NET 8, written out so that it is on on purpose. -->
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
 </Project>

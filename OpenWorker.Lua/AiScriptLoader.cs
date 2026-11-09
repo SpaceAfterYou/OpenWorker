@@ -115,7 +115,7 @@ public sealed class AiScriptLoader
         {
             if (!_files.Value.TryGetValue(name, out var path))
             {
-                _logger.LogWarning("No script of the AI named {Name}, the monster will not think", name);
+                _logger.NoAiScript(name);
 
                 return AiProfile.Empty;
             }
@@ -125,7 +125,7 @@ public sealed class AiScriptLoader
 
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or LuaParseException or LuaCompileException or LuaRuntimeException or InvalidOperationException)
         {
-            _logger.LogWarning(e, "The script of the AI named {Name} cannot be read, the monster will not think", name);
+            _logger.AiScriptUnreadable(e, name);
 
             return AiProfile.Empty;
         }
@@ -193,6 +193,28 @@ public sealed class AiScriptLoader
     }
 
     /// <summary>
+    /// A whole number the script gives either as a number or as text (the scripts name skills both ways).
+    /// </summary>
+    private static int? Whole(LuaFunctionExecutionContext context, int index)
+    {
+        if (index >= context.ArgumentCount)
+        {
+            return null;
+        }
+
+        var argument = context.GetArgument(index);
+
+        if (argument.TryRead<double>(out var number))
+        {
+            return double.IsFinite(number) ? (int)number : null;
+        }
+
+        return argument.TryRead<string>(out var text) && int.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    /// <summary>
     /// The object a script gets as the AI of its monster. What it does not know is accepted and left alone.
     /// </summary>
     private LuaTable CreateAi(AiProfileBuilder builder, string name)
@@ -211,7 +233,7 @@ public sealed class AiScriptLoader
 
                 catch (Exception e) when (e is InvalidOperationException or LuaRuntimeException or InvalidCastException)
                 {
-                    _logger.LogDebug("{Script}: {Method} was called with something it cannot take: {Message}", name, method, e.Message);
+                    _logger.AiScriptBadArgument(name, method, e.Message);
                 }
 
                 return new ValueTask<int>(context.Return());
@@ -251,6 +273,19 @@ public sealed class AiScriptLoader
         });
 
         Add("SetCommonAction", c => { if (N(c, 1, out var a)) { builder.SetCommonAction((int)a, Text(c, 2)); } });
+
+        // What the scripts of the helpers say about following their owner.
+        Add("SetHelperFarDist", c => { if (N(c, 1, out var a) && N(c, 2, out var b)) { builder.SetHelperFarDist((float)a, (float)b); } });
+        Add("SetRecoverySkill", c => { if (Whole(c, 1) is { } skill) { builder.SetRecoverySkill(skill); } });
+
+        Add("SetEscapeInfo", c =>
+        {
+            if (N(c, 1, out var a) && N(c, 2, out var b) && N(c, 3, out var d) && N(c, 4, out var e) && N(c, 5, out var f) && N(c, 6, out var g)
+                && Whole(c, 7) is { } value)
+            {
+                builder.SetEscapeInfo((float)a, (int)b, (float)d, (float)e, (float)f, (byte)g, value);
+            }
+        });
 
         Add("SetSkillGroupInfo", c =>
         {

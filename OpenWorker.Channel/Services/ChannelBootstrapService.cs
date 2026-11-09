@@ -24,14 +24,18 @@ internal sealed class ChannelBootstrapService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await cache
-            .InsertAsync(channels.Select(CreateChannelCache));
+        // With a lifetime: ChannelLifecycleService renews the records, and those of a server that crashed expire.
+        foreach (var channel in channels)
+        {
+            await cache.InsertAsync(CreateChannelCache(channel), ChannelLifecycleService.Lifetime);
+        }
     }
 
 #endregion BackgroundService
 
     private ChannelCache CreateChannelCache(ServiceChannel channel) => new()
     {
+        Guid = channel.Record,
         Owner = Instance,
         Gate = Gate,
         Location = Location,

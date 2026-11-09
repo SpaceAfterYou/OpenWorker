@@ -6,7 +6,6 @@ using OpenWorker.Hotspot.Modules.SoulMetry.Requests;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class SoulMetryService(SoulMetryManager manager) : IHotspotHandler<SoulCompleteRequest>
 {
     public async ValueTask OnHandleAsync(ServiceHandleContext context, SoulCompleteRequest request)

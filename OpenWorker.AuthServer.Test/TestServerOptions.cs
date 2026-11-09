@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.DependencyInjection;
@@ -64,6 +66,7 @@ public sealed class TestServerOptions
                 services.AddPlayerTransfer();
                 services.AddGateOptions();
                 services.AddGateEndpointOptions();
+                services.AddPersonCreationOptions();
                 break;
 
             case District:
@@ -74,6 +77,7 @@ public sealed class TestServerOptions
                 services.AddPlayerTransfer();
                 services.AddChannels();
                 services.AddAttendanceOptions();
+                services.AddRewardsOptions();
                 services.AddDailyMissionOptions();
                 break;
 
@@ -85,12 +89,14 @@ public sealed class TestServerOptions
                 services.AddPlayerTransfer();
                 services.AddChannels();
                 services.AddAttendanceOptions();
+                services.AddRewardsOptions();
                 services.AddDailyMissionOptions();
                 break;
 
             case Relay:
                 services.AddCache();
                 services.AddPersistence();
+                services.AddTelemetryOptions();
                 services.AddCredentialsOptions();
                 break;
 
@@ -135,117 +141,130 @@ public sealed class TestServerOptions
         return Assert.ThrowsExactly<OptionsValidationException>(() => Validate(host));
     }
 
-    [TestMethod]
-    [DataRow(Auth)]
-    [DataRow(Gate)]
-    [DataRow(District)]
-    [DataRow(Maze)]
-    [DataRow(Relay)]
-    [DataRow(UpdateContent)]
-    public void DefaultsOfTheServerPassTheValidation(string server)
+    /// <summary>
+    /// The options the classes of each server take as <see cref="IOptions{TOptions}"/>: one that the server does not
+    /// register would stop the class from being built when the first player connects, not when the host starts.
+    /// </summary>
+    private static readonly Dictionary<string, Type[]> OptionsReadByClasses = new()
     {
-        using var host = CreateHost(server);
+        [Gate] = [typeof(GateOptions), typeof(GateEndpointOptions), typeof(MazeEndpointOptions), typeof(AuthEndpointOptions)],
+        [District] = [typeof(InstanceOptions), typeof(GateOptions), typeof(MazeEndpointOptions), typeof(ChannelOptions)],
+        [Maze] = [typeof(InstanceOptions), typeof(GateOptions), typeof(MazeEndpointOptions), typeof(ChannelOptions)]
+    };
 
-        Validate(host);
+    /// <summary>
+    /// Every server ships an <c>appsettings.json</c> whose settings pass the checks of the host, and registers the
+    /// options its classes read.
+    /// </summary>
+    [TestMethod]
+    public void EveryServerStartsWithTheSettingsItShips()
+    {
+        foreach (var server in AllServers)
+        {
+            Assert.IsTrue(File.Exists(AppSettings(server)), $"{server} has no appsettings.json next to the tests.");
+
+            using var host = CreateHost(server);
+
+            Validate(host);
+
+            foreach (var type in OptionsReadByClasses.GetValueOrDefault(server, []))
+            {
+                var service = host.Services.GetRequiredService(typeof(IOptions<>).MakeGenericType(type));
+                var value = service.GetType().GetProperty(nameof(IOptions<object>.Value))!.GetValue(service);
+
+                Assert.IsNotNull(value, $"{server} has no {type.Name}.");
+            }
+        }
     }
 
+    /// <summary>
+    /// A setting the server cannot run without stops the host at start, and the message names it. Each case reaches
+    /// another check: a section with no default in code, a secret no file carries, what only a district must have, and
+    /// what the server assigns itself before the options are read.
+    /// </summary>
     [TestMethod]
-    [DataRow(Auth)]
-    [DataRow(Gate)]
-    [DataRow(District)]
-    [DataRow(Maze)]
-    public void ServerNeedsItsListeningPortAndGameVersion(string server)
+    public void AMissingSettingStopsTheHostAndNamesIt()
     {
-        var port = Fails(server, new() { ["Server:Port"] = "0" });
-        StringAssert.Contains(port.Message, "Server:Port");
+        (string Server, Dictionary<string, string?> Changes, string[] Keys)[] cases =
+        [
+            (Maze, new() { ["Hotspot:ErrorBudget:MaxErrors"] = null, ["Hotspot:ErrorBudget:Window"] = null },
+                ["Hotspot:ErrorBudget:MaxErrors", "Hotspot:ErrorBudget:Window"]),
+            (Relay, new() { ["Credentials:DiscordToken"] = null }, ["Credentials:DiscordToken"]),
+            (District, new() { ["Instance:PublicPort"] = null }, ["Instance:PublicPort"]),
+            (Maze, new() { [ConfigurationUtils.InstanceIdentifierKey] = null }, ["Instance:Identifier"])
+        ];
 
-        var version = Fails(server, new() { ["Game:Version"] = "" });
-        StringAssert.Contains(version.Message, "Game:Version");
+        foreach (var (server, changes, keys) in cases)
+        {
+            var error = Fails(server, changes);
+
+            foreach (var key in keys)
+            {
+                StringAssert.Contains(error.Message, key, $"{server} without {string.Join(", ", changes.Keys)}");
+            }
+        }
     }
 
+    /// <summary>
+    /// A setting with a value the server cannot use stops the host at start, and the message names it. One case for
+    /// each rule the settings are checked by, the rules that weigh two settings together included.
+    /// </summary>
     [TestMethod]
-    [DataRow(Auth)]
-    [DataRow(Gate)]
-    [DataRow(District)]
-    [DataRow(Maze)]
-    public void SessionMayFailTenPacketsInAMinuteByDefault(string server)
+    public void AWrongSettingStopsTheHostAndNamesIt()
     {
-        using var host = CreateHost(server);
+        (string Server, Dictionary<string, string?> Changes, string[] Keys)[] cases =
+        [
+            (Auth, new() { ["Server:Port"] = "0" }, ["Server:Port"]),
+            // The version names the folder of the packet dumps.
+            (Auth, new() { ["Game:Version"] = "../../etc" }, ["Game:Version"]),
+            (Auth, new() { ["ConnectionStrings:Redis"] = "http://redis:6379" }, ["ConnectionStrings:Redis"]),
+            (Gate, new() { ["Hotspot:ErrorBudget:Window"] = "00:00:00" }, ["Hotspot:ErrorBudget:Window"]),
+            (Relay, new() { ["Health:LoopTimeout"] = "00:00:00" }, ["Health:LoopTimeout"]),
+            // Two listeners on one port: one of them would fail to start, and the failure would not name the setting.
+            (Gate, new() { ["Health:Port"] = "10000", ["Server:Port"] = "10000" }, ["Health:Port", "Server:Port"]),
+            // The services that stop after the drain would get no time at all.
+            (District, new() { ["Shutdown:Timeout"] = "00:00:15", ["Shutdown:DrainTimeout"] = "00:00:15" }, ["Shutdown:Timeout"]),
+            (Maze, new() { ["Telemetry:Endpoint"] = "ftp://prometheus/metrics" }, ["Telemetry:Endpoint"]),
+            (Auth, new() { ["Telemetry:Protocol"] = "7" }, ["Telemetry:Protocol"]),
+            (Gate, new() { ["Telemetry:ExportInterval"] = "00:00:00.5" }, ["Telemetry:ExportInterval"]),
+            (District, new() { ["Instance:Location"] = "0" }, ["Instance:Location"]),
+            (District, new() { ["Channel:From"] = "5", ["Channel:To"] = "1" }, ["Channel:To"]),
+            (District, new() { ["Attendance:ResetHour"] = "24" }, ["Attendance:ResetHour"]),
+            (Maze, new() { ["DailyMission:ResetHour"] = "-1" }, ["DailyMission:ResetHour"]),
+            (Maze, new() { ["Rewards:DropRate"] = "-1" }, ["Rewards:DropRate"])
+        ];
 
-        Validate(host);
+        foreach (var (server, changes, keys) in cases)
+        {
+            var error = Fails(server, changes);
 
-        var budget = host.Services.GetRequiredService<IOptions<HandlerErrorBudgetOptions>>().Value;
-
-        Assert.AreEqual(10, budget.MaxErrors);
-        Assert.AreEqual(TimeSpan.FromMinutes(1), budget.Window);
+            foreach (var key in keys)
+            {
+                StringAssert.Contains(error.Message, key, $"{server} with {string.Join(", ", changes)}");
+            }
+        }
     }
 
+    /// <summary>
+    /// What may be left empty turns its feature off instead of stopping the host: an empty endpoint of the collector
+    /// (<c>Telemetry__Endpoint=</c> in the environment of a container) stops the export, a maze needs no public port,
+    /// and without reset hours the rules of the features decide.
+    /// </summary>
     [TestMethod]
-    [DataRow(Auth)]
-    [DataRow(Gate)]
-    [DataRow(District)]
-    [DataRow(Maze)]
-    public void ErrorBudgetNeedsAtLeastOneErrorAndAWindowThatHasLength(string server)
+    public void ASettingThatMayBeEmptyTurnsItsFeatureOff()
     {
-        var none = Fails(server, new() { ["Hotspot:ErrorBudget:MaxErrors"] = "0" });
-        StringAssert.Contains(none.Message, "Hotspot:ErrorBudget:MaxErrors");
+        using var auth = CreateHost(Auth, new() { ["Telemetry:Endpoint"] = "" });
+        using var maze = CreateHost(Maze);
+        using var district = CreateHost(District);
 
-        var negative = Fails(server, new() { ["Hotspot:ErrorBudget:MaxErrors"] = "-5" });
-        StringAssert.Contains(negative.Message, "Hotspot:ErrorBudget:MaxErrors");
+        Validate(auth);
+        Validate(maze);
+        Validate(district);
 
-        var noWindow = Fails(server, new() { ["Hotspot:ErrorBudget:Window"] = "00:00:00" });
-        StringAssert.Contains(noWindow.Message, "Hotspot:ErrorBudget:Window");
-
-        var backwards = Fails(server, new() { ["Hotspot:ErrorBudget:Window"] = "-00:01:00" });
-        StringAssert.Contains(backwards.Message, "Hotspot:ErrorBudget:Window");
-    }
-
-    [TestMethod]
-    public void ErrorBudgetCanBeChangedFromTheEnvironment()
-    {
-        // `Hotspot__ErrorBudget__MaxErrors=3` and `Hotspot__ErrorBudget__Window=00:00:30` in the environment of a container.
-        using var host = CreateHost(District, new() { ["Hotspot:ErrorBudget:MaxErrors"] = "3", ["Hotspot:ErrorBudget:Window"] = "00:00:30" });
-
-        Validate(host);
-
-        var budget = host.Services.GetRequiredService<IOptions<HandlerErrorBudgetOptions>>().Value;
-
-        Assert.AreEqual(3, budget.MaxErrors);
-        Assert.AreEqual(TimeSpan.FromSeconds(30), budget.Window);
-    }
-
-    [TestMethod]
-    public void ErrorBudgetNeedsToBeInTheFileOfEveryServerThatHandlesPackets()
-    {
-        // No default in code: a server whose file lacks the section stops at start and names the key.
-        var error = Fails(Maze, new() { ["Hotspot:ErrorBudget:MaxErrors"] = null, ["Hotspot:ErrorBudget:Window"] = null });
-
-        StringAssert.Contains(error.Message, "Hotspot:ErrorBudget:MaxErrors");
-        StringAssert.Contains(error.Message, "Hotspot:ErrorBudget:Window");
-    }
-
-    [TestMethod]
-    public void GameVersionIsNeverAPath()
-    {
-        // The version names the folder of the packet dumps.
-        var error = Fails(Auth, new() { ["Game:Version"] = "../../etc" });
-
-        StringAssert.Contains(error.Message, "Game:Version");
-    }
-
-    [TestMethod]
-    [DataRow(Auth)]
-    [DataRow(Gate)]
-    [DataRow(District)]
-    [DataRow(Maze)]
-    [DataRow(Relay)]
-    public void RedisAndPostgresAreRequired(string server)
-    {
-        var redis = Fails(server, new() { ["ConnectionStrings:Redis"] = "" });
-        StringAssert.Contains(redis.Message, "ConnectionStrings:Redis");
-
-        var postgres = Fails(server, new() { ["ConnectionStrings:Postgres"] = "" });
-        StringAssert.Contains(postgres.Message, "ConnectionStrings:Postgres");
+        Assert.IsFalse(auth.Services.GetRequiredService<IOptions<TelemetryOptions>>().Value.IsExporting);
+        Assert.IsNull(maze.Services.GetRequiredService<IOptions<InstanceOptions>>().Value.PublicPort);
+        Assert.IsNull(district.Services.GetRequiredService<IOptions<AttendanceOptions>>().Value.ResetHour);
+        Assert.IsNull(district.Services.GetRequiredService<IOptions<DailyMissionOptions>>().Value.ResetHour);
     }
 
     [TestMethod]
@@ -286,204 +305,6 @@ public sealed class TestServerOptions
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
-    [TestMethod]
-    public void UpdateContentNeedsOnlyTheDatabase()
-    {
-        var error = Fails(UpdateContent, new() { ["ConnectionStrings:Postgres"] = "" });
-
-        StringAssert.Contains(error.Message, "ConnectionStrings:Postgres");
-    }
-
-    [TestMethod]
-    [DataRow("localhost:6379")]
-    [DataRow("http://redis:6379")]
-    [DataRow("redis://")]
-    public void RedisMustBeAnAddress(string address)
-    {
-        var error = Fails(Auth, new() { ["ConnectionStrings:Redis"] = address });
-
-        StringAssert.Contains(error.Message, "ConnectionStrings:Redis");
-    }
-
-    [TestMethod]
-    public void DistrictNeedsTheLocationItServes()
-    {
-        var error = Fails(District, new() { ["Instance:Location"] = "0" });
-
-        StringAssert.Contains(error.Message, "Instance:Location");
-    }
-
-    [TestMethod]
-    public void DistrictNeedsItsOwnPublicPort()
-    {
-        // Every district listens behind its own port, so there is no default to fall back to.
-        var error = Fails(District, new() { ["Instance:PublicPort"] = null });
-
-        StringAssert.Contains(error.Message, "Instance:PublicPort");
-    }
-
-    [TestMethod]
-    [DataRow(District)]
-    [DataRow(Maze)]
-    public void DistrictAndMazeAssignTheirIdentifier(string server)
-    {
-        var error = Fails(server, new() { [ConfigurationUtils.InstanceIdentifierKey] = null });
-
-        StringAssert.Contains(error.Message, "Instance:Identifier");
-    }
-
-    [TestMethod]
-    [DataRow(Gate)]
-    [DataRow(District)]
-    [DataRow(Maze)]
-    public void EveryServerOfAGateNeedsItsNumber(string server)
-    {
-        var error = Fails(server, new() { ["Gate:Id"] = "0" });
-
-        StringAssert.Contains(error.Message, "Gate:Id");
-    }
-
-    [TestMethod]
-    public void GateServerNeedsTheAddressItIsReachedAt()
-    {
-        var host = Fails(Gate, new() { ["Gate:Host"] = "" });
-        StringAssert.Contains(host.Message, "Gate:Host");
-
-        var port = Fails(Gate, new() { ["Gate:Port"] = "0" });
-        StringAssert.Contains(port.Message, "Gate:Port");
-    }
-
-    [TestMethod]
-    [DataRow(Gate)]
-    [DataRow(District)]
-    [DataRow(Maze)]
-    public void ServersThatSendPlayersAwayNeedTheAddressOfAuthAndMaze(string server)
-    {
-        var auth = Fails(server, new() { ["Auth:Host"] = "" });
-        StringAssert.Contains(auth.Message, "Auth:Host");
-
-        var maze = Fails(server, new() { ["Maze:Port"] = "70000" });
-        StringAssert.Contains(maze.Message, "Maze:Port");
-    }
-
-    [TestMethod]
-    public void ChannelsRunFromTheFirstToTheLast()
-    {
-        var error = Fails(District, new() { ["Channel:From"] = "5", ["Channel:To"] = "1" });
-
-        StringAssert.Contains(error.Message, "Channel:To");
-    }
-
-    [TestMethod]
-    public void PublicPortOfAMazeIsOptional()
-    {
-        using var without = CreateHost(Maze);
-        using var with = CreateHost(Maze, new() { ["Instance:PublicPort"] = "10102" });
-
-        Validate(without);
-        Validate(with);
-
-        Assert.IsNull(without.Services.GetRequiredService<IOptions<InstanceOptions>>().Value.PublicPort);
-        Assert.AreEqual(10102, with.Services.GetRequiredService<IOptions<InstanceOptions>>().Value.PublicPort);
-    }
-
-    [TestMethod]
-    public void EmptyPacketDumpPathTurnsTheDumpsOff()
-    {
-        // `Hotspot__PacketDumpPath=` in the environment of a container is an empty value over the default of the file.
-        using var host = CreateHost(Auth, new() { ["Hotspot:PacketDumpPath"] = "" });
-
-        Validate(host);
-
-        Assert.IsTrue(string.IsNullOrWhiteSpace(host.Services.GetRequiredService<IOptions<HotspotOptions>>().Value.PacketDumpPath));
-    }
-
-    [TestMethod]
-    public void PacketDumpsAreOnByDefault()
-    {
-        using var host = CreateHost(Auth);
-
-        Assert.AreEqual("test/hotspot", host.Services.GetRequiredService<IOptions<HotspotOptions>>().Value.PacketDumpPath);
-    }
-
-    [TestMethod]
-    public void RelayNeedsTheDiscordToken()
-    {
-        // The token is a secret, so no file carries it and the relay stops at start when the environment has none.
-        var missing = Fails(Relay, new() { ["Credentials:DiscordToken"] = null });
-        StringAssert.Contains(missing.Message, "Credentials:DiscordToken");
-
-        var empty = Fails(Relay, new() { ["Credentials:DiscordToken"] = "" });
-        StringAssert.Contains(empty.Message, "Credentials:DiscordToken");
-    }
-
-    [TestMethod]
-    [DataRow(District, "Attendance:ResetHour")]
-    [DataRow(District, "DailyMission:ResetHour")]
-    [DataRow(Maze, "Attendance:ResetHour")]
-    [DataRow(Maze, "DailyMission:ResetHour")]
-    public void ResetHourIsAnHourOfTheDay(string server, string key)
-    {
-        var tooLate = Fails(server, new() { [key] = "24" });
-        StringAssert.Contains(tooLate.Message, key);
-
-        var negative = Fails(server, new() { [key] = "-1" });
-        StringAssert.Contains(negative.Message, key);
-
-        using var halfPast = CreateHost(server, new() { [key] = "9.5" });
-
-        Validate(halfPast);
-    }
-
-    [TestMethod]
-    public void ResetHoursAreOptional()
-    {
-        // Without them the rules of the features decide.
-        using var host = CreateHost(District);
-
-        Validate(host);
-
-        Assert.IsNull(host.Services.GetRequiredService<IOptions<AttendanceOptions>>().Value.ResetHour);
-        Assert.IsNull(host.Services.GetRequiredService<IOptions<DailyMissionOptions>>().Value.ResetHour);
-    }
-
-    [TestMethod]
-    public void MazeAddressOfAPlayerTransferComesFromTheFile()
-    {
-        // WorldManager sends players here while no maze server has registered itself.
-        using var host = CreateHost(District);
-
-        Validate(host);
-
-        var maze = host.Services.GetRequiredService<IOptions<MazeEndpointOptions>>().Value;
-
-        Assert.AreEqual("127.0.0.1", maze.Host);
-        Assert.AreEqual(10101, maze.Port);
-    }
-
-    /// <summary>
-    /// The classes of a server take these as <see cref="IOptions{TOptions}"/>: one that the server does not register
-    /// would stop the class from being built when the first player connects, not when the host starts.
-    /// </summary>
-    [TestMethod]
-    [DataRow(Gate, typeof(GateOptions), typeof(GateEndpointOptions), typeof(MazeEndpointOptions), typeof(AuthEndpointOptions))]
-    [DataRow(District, typeof(InstanceOptions), typeof(GateOptions), typeof(MazeEndpointOptions), typeof(ChannelOptions))]
-    [DataRow(Maze, typeof(InstanceOptions), typeof(GateOptions), typeof(MazeEndpointOptions), typeof(ChannelOptions))]
-    public void ServerRegistersTheOptionsItsClassesRead(string server, params Type[] options)
-    {
-        using var host = CreateHost(server);
-
-        Validate(host);
-
-        foreach (var type in options)
-        {
-            var service = host.Services.GetRequiredService(typeof(IOptions<>).MakeGenericType(type));
-            var value = service.GetType().GetProperty(nameof(IOptions<object>.Value))!.GetValue(service);
-
-            Assert.IsNotNull(value, $"{server} has no {type.Name}.");
-        }
-    }
-
     private static void AssertEndpoint(string host, int port, StackExchange.Redis.ConfigurationOptions options)
     {
         var endpoint = Assert.IsInstanceOfType<System.Net.DnsEndPoint>(options.EndPoints.Single());
@@ -522,12 +343,27 @@ public sealed class TestServerOptions
         AssertEndpoint("redis", 6379, options);
     }
 
+    /// <summary>
+    /// The console prints the scope of a session (<c>SessionLogScope</c>) after each line. The options of the formatter
+    /// are the place for it: the older <c>Logging:Console:IncludeScopes</c> replaces them with defaults.
+    /// </summary>
     [TestMethod]
-    public void EveryServerShipsItsDefaults()
+    public void TheConsolePrintsTheScopes()
     {
-        foreach (var server in AllServers)
+        foreach (var server in AllServers.Where(server => server != UpdateContent))
         {
-            Assert.IsTrue(File.Exists(AppSettings(server)), $"{server} has no appsettings.json next to the tests.");
+            using var host = new HostBuilder()
+                .ConfigureAppConfiguration(configuration => configuration.AddJsonFile(AppSettings(server), optional: false))
+                .ConfigureLogging((context, logging) => logging
+                    .AddConfiguration(context.Configuration.GetSection("Logging"))
+                    .AddConsole())
+                .Build();
+
+            var console = host.Services.GetRequiredService<IOptionsMonitor<ConsoleLoggerOptions>>().CurrentValue;
+            var simple = host.Services.GetRequiredService<IOptionsMonitor<SimpleConsoleFormatterOptions>>().CurrentValue;
+
+            Assert.AreEqual(ConsoleFormatterNames.Simple, console.FormatterName, server);
+            Assert.IsTrue(simple.IncludeScopes, $"{server} does not print the scopes of its log lines.");
         }
     }
 

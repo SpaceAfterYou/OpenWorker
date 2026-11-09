@@ -14,16 +14,31 @@ namespace OpenWorker.Extensions;
 public static class OptionsServiceCollectionExtensions
 {
     /// <summary>
-    /// The port the server listens on, the game version, the packet dumps and the errors a session may cause:
-    /// what every server has.
+    /// The port the server listens on, the game version, the packet dumps, the errors a session may cause, the packets it
+    /// may send, the time the server takes to stop and where the metrics go: what every server has.
     /// </summary>
     public static IServiceCollection AddServerOptions(this IServiceCollection services)
     {
         services.AddValidated<ServerOptions, ServerOptionsValidator>(ServerOptions.SectionName);
         services.AddValidated<GameOptions, GameOptionsValidator>(GameOptions.SectionName);
+        services.AddValidated<ShutdownOptions, ShutdownOptionsValidator>(ShutdownOptions.SectionName);
         services.AddHandlerErrorBudgetOptions();
+        services.AddPacketRateLimitOptions();
+        services.AddTelemetryOptions();
 
         return services.AddBound<HotspotOptions>(HotspotOptions.SectionName);
+    }
+
+    /// <summary>
+    /// The port of the health endpoint and the time its checks may take: every server that serves one has it,
+    /// the relay included.
+    /// </summary>
+    public static IServiceCollection AddHealthOptions(this IServiceCollection services)
+    {
+        services.AddValidated<HealthOptions, HealthOptionsValidator>(HealthOptions.SectionName);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<HealthOptions>, HealthPortValidator>());
+
+        return services;
     }
 
     /// <summary>
@@ -32,6 +47,23 @@ public static class OptionsServiceCollectionExtensions
     public static IServiceCollection AddHandlerErrorBudgetOptions(this IServiceCollection services)
     {
         return services.AddValidated<HandlerErrorBudgetOptions, HandlerErrorBudgetOptionsValidator>(HandlerErrorBudgetOptions.SectionName);
+    }
+
+    /// <summary>
+    /// How many packets of each group a session may send: what the handlers read.
+    /// </summary>
+    public static IServiceCollection AddPacketRateLimitOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<PacketRateLimitOptions, PacketRateLimitOptionsValidator>(PacketRateLimitOptions.SectionName);
+    }
+
+    /// <summary>
+    /// Where the metrics of the process are sent. The servers that run a world loop get it with <see cref="AddServerOptions"/>;
+    /// the relay asks for it itself.
+    /// </summary>
+    public static IServiceCollection AddTelemetryOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<TelemetryOptions, TelemetryOptionsValidator>(TelemetryOptions.SectionName);
     }
 
     /// <summary>
@@ -87,6 +119,30 @@ public static class OptionsServiceCollectionExtensions
     public static IServiceCollection AddChannelOptions(this IServiceCollection services)
     {
         return services.AddValidated<ChannelOptions, ChannelOptionsValidator>(ChannelOptions.SectionName);
+    }
+
+    /// <summary>
+    /// What the players of a channel see of each other: what the district and the maze have.
+    /// </summary>
+    public static IServiceCollection AddWorldOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<WorldOptions, WorldOptionsValidator>(WorldOptions.SectionName);
+    }
+
+    /// <summary>
+    /// How generous the game servers are with experience and drops: what the district and the maze have.
+    /// </summary>
+    public static IServiceCollection AddRewardsOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<RewardsOptions, RewardsOptionsValidator>(RewardsOptions.SectionName);
+    }
+
+    /// <summary>
+    /// How a new character starts: what the gate, which creates characters, has.
+    /// </summary>
+    public static IServiceCollection AddPersonCreationOptions(this IServiceCollection services)
+    {
+        return services.AddValidated<PersonCreationOptions, PersonCreationOptionsValidator>(PersonCreationOptions.SectionName);
     }
 
     /// <summary>

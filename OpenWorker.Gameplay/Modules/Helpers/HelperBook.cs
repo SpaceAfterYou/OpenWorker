@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Text.Json.Serialization;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Modules.Helpers;
@@ -11,7 +10,7 @@ public sealed class HelperCatalog
 {
     private readonly Dictionary<int, int> _numbers;
 
-    public HelperCatalog(ReadOnlyCollection<HelperRow> rows) : this(rows.ToDictionary(e => e.Id, e => (int)e.Field1))
+    public HelperCatalog(ReadOnlyCollection<HelperRow> rows) : this(rows.ToDictionary(e => e.Id, e => (int)e.Number))
     {
     }
 
@@ -25,6 +24,11 @@ public sealed class HelperCatalog
     public IEnumerable<int> All => _numbers.Keys;
 
     public bool Contains(int helper) => _numbers.ContainsKey(helper);
+
+    /// <summary>
+    /// The number of a helper, which the items it may wear name as their class.
+    /// </summary>
+    public bool TryGetNumber(int helper, out int number) => _numbers.TryGetValue(helper, out number);
 }
 
 /// <summary>
@@ -35,6 +39,25 @@ public sealed class HelperEntry
     public int Helper { get; set; }
 
     public byte Order { get; set; }
+
+    /// <summary>
+    /// The orb of a friend the helper wears, if any.
+    /// </summary>
+    public HelperOrb? Orb { get; set; }
+}
+
+/// <summary>
+/// The orb of a friend on a helper: the friend, the kind of orb, what it adds to the helper and until when it counts.
+/// </summary>
+public sealed class HelperOrb
+{
+    public int Friend { get; set; }
+
+    public byte SupportType { get; set; }
+
+    public float Value { get; set; }
+
+    public DateTimeOffset Until { get; set; }
 }
 
 /// <summary>
@@ -45,20 +68,9 @@ public sealed class HelperBook
     public List<HelperEntry> Helpers { get; set; } = [];
 
     /// <summary>
-    /// Whether helpers are called by themselves when the person enters a maze.
+    /// Whether helpers are called by themselves when the person enters a maze. It is on until the person turns it off.
     /// </summary>
-    public bool AutoSummon { get; set; }
-
-    /// <summary>
-    /// What the person offers its friends as support, or 0 if it does not.
-    /// </summary>
-    public byte SupportType { get; set; }
-
-    /// <summary>
-    /// Writes of the book to the database go one after another, so the last one has the latest state.
-    /// </summary>
-    [JsonIgnore]
-    public SemaphoreSlim Gate { get; } = new(1, 1);
+    public bool AutoSummon { get; set; } = true;
 
     public HelperEntry? Find(int helper) => Helpers.Find(e => e.Helper == helper);
 

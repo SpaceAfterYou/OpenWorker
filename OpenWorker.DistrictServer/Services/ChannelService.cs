@@ -16,7 +16,6 @@ using OpenWorker.Hotspot.Modules.World.Types;
 
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class ChannelService(
     World world,
     NpcManager npcManager,
@@ -27,10 +26,11 @@ public sealed class ChannelService(
     IHotspotHandler<ChannelInfoRequest>,
     IHotspotHandler<ChannelChangeRequest>
 {
-    public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelChangeRequest request)
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ChannelChangeRequest request)
     {
-        await serverChannels
-            .SwitchAsync(context.Player, request.Channel);
+        serverChannels.Switch(context.Player, request.Channel);
+
+        return ValueTask.CompletedTask;
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelInfoRequest request)

@@ -1,4 +1,6 @@
-using OpenWorker.Gameplay.Modules.Persons.Components;
+﻿using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Batch;
+using OpenWorker.Server.Common;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
@@ -19,6 +21,7 @@ using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Gameplay.Modules.Quests;
@@ -36,12 +39,17 @@ using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
 using OpenWorker.Persistence;
+using OpenWorker.Gameplay.Modules.Drops;
+using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
+using OpenWorker.Gameplay.Modules.Progress;
+using OpenWorker.Gameplay.Modules.Skill;
+using OpenWorker.Gameplay.Modules.Helpers;
 
 namespace OpenWorker.MazeServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed partial class PersonService(
     World world,
     ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
@@ -53,18 +61,32 @@ public sealed partial class PersonService(
     IRedisCollection<MazeReserveCache> mazeReserves,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
+    InventoryPersistence inventories,
+    KillRewards rewards,
+    MazeResults results,
     LeaveManager leaving,
     BuffManager buffManager,
     QuestManager questManager,
     SkillActionProvider skillActions,
     CombatTables combatTables,
     MiscStateLoader miscState,
+    MazeReporter reports,
     CreatureServices creatureServices,
+    MazeScripts mazeScripts,
     ILogger<LuaCreatureManager> creatureLogger,
     ILogger<LuaMaze> mazeLogger,
     ILogger<LuaGameHelper> helperLogger,
     IOptions<GateOptions> gate,
     CommunityNetwork community,
+    AchievementManager achievements,
+    SharePointManager sharePoints,
+    PrologueService prologue,
+    QuestCatalog questCatalog,
+    MazeInstances instances,
+    PartyMazeEvents partyEvents,
+    PersonSkills skills,
+    PlayerGauges gauges,
+    HelperGear helperGear,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -73,6 +95,9 @@ public sealed partial class PersonService(
     IHotspotHandler<PersonChangeServerRequest>
 {
     private short Gate { get; } = gate.Value.Id;
+
+    private readonly RowIndex<short, MazeInfoRow> _mazes = mazeInfoCollection.IndexBy(e => e.Id);
+    private readonly RowIndex<int, InteractionObjectRow> _interactions = interactionCollection.IndexBy(e => e.Id);
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
     {
@@ -125,30 +150,30 @@ public sealed partial class PersonService(
 
         // Everything the entry needs is looked up before the reservation is used up: a client that is turned away
         // for a row the tables do not have must not wait on the loop, and its reservation is not spent on it.
-        if (!TryGetMazeInfo(mazeInfoCollection, mazeReserve.Location, out var mazeInfo))
+        if (!TryGetMazeInfo(_mazes, mazeReserve.Location, out var mazeInfo))
         {
             LogNoMazeInfo(logger, request.Account, request.Actor.Identifier, mazeReserve.Location);
             session.Disconnect();
             return;
         }
 
-        await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken);
+        var entry = await factory
+            .LoadPersonAtEntryAsync(request.Account, request.Actor.Identifier, context.CancellationToken);
 
-        var person = await database.Persons
-            .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken);
-
-        if (person is null)
+        if (entry is null)
         {
             session.Disconnect();
             return;
         }
 
+        var person = entry.Person;
+
         await mazeReserves
             .DeleteAsync(mazeReserve);
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
+
+        world.SetLogAccount(context.Player, request.Session.Account);
 
         await leases
             .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
@@ -166,18 +191,104 @@ public sealed partial class PersonService(
             }
         });
 
-        world.Set(context.Player, new CurrencyComponent
+        await inventories.LoadAsync(context.Player, person, context.CancellationToken);
+
+        registry.PullPerson(context.Player, person, entry.AccountOptions);
+
+        // The skills are checked in the maze, and a character that starts in the prologue has seen no district to learn them.
+        await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
         {
-            Gold = 5_000_000,
-            Cash = 7_000_000,
-            BattlePoint = 10_000_000,
-            Ether = 15_000_000
-        });
+            return;
+        }
 
-        registry.PullPerson(context.Player, person);
+        prologue.Enter(context.Player, person);
 
+        // A party shares the instance its reservation names; a player alone gets one of their own.
+        var instance = mazeReserve.Instance == Guid.Empty ? Guid.NewGuid() : mazeReserve.Instance;
+        var maze = await EnterInstanceAsync(context.Player, instance, mazeReserve.Party, mazeInfo, batch, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
+        {
+            if (maze is not null)
+            {
+                await instances.AbandonAsync(maze, context.Player);
+            }
+
+            return;
+        }
+
+        if (maze is null)
+        {
+            session.Disconnect();
+            return;
+        }
+
+        world.Add(context.Player, maze);
+
+        maze.FollowQuests(questCatalog);
+
+        maze.Creatures.Vitals.Initialize(context.Player);
+        gauges.Fill(context.Player);
+        results.Start(context.Player, mazeInfo.Id);
+
+        session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
+        skills.Send(context.Player);
+
+        session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
+
+        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
+
+        await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
+        await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await sharePoints.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
+        await community.EnterAsync(context.Player);
+    }
+
+    /// <summary>
+    /// Joins the instance where it stands, or opens it when the player is the first to come. A maze whose instance is over
+    /// by the time the player gets in, or that plays another maze, is opened anew.
+    /// </summary>
+    private async ValueTask<LuaMaze?> EnterInstanceAsync(Entity player, Guid instance, int party, MazeInfoRow mazeInfo, VBatchFile batch, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var maze = await instances.GetOrOpenAsync(instance, () => OpenAsync(player, instance, party, mazeInfo, batch, cancellationToken));
+
+            // The player may have left while the maze was opened.
+            if (!world.IsAlive(player))
+            {
+                return maze;
+            }
+
+            // The member who was opening it left before it was open: this one opens it.
+            if (maze is null)
+            {
+                continue;
+            }
+
+            if (maze.Maze != mazeInfo.Id)
+            {
+                instance = Guid.NewGuid();
+                continue;
+            }
+
+            if (maze.Members.Contains(player) || maze.Join(player))
+            {
+                return maze;
+            }
+        }
+
+        return null;
+    }
+
+    private async ValueTask<LuaMaze?> OpenAsync(Entity player, Guid instance, int party, MazeInfoRow mazeInfo, VBatchFile batch, CancellationToken cancellationToken)
+    {
         var state = LuaState.Create();
         state.OpenStandardLibraries();
+
+        LuaCompatibility.Apply(state);
 
         var table = new LuaTable
         {
@@ -191,25 +302,59 @@ public sealed partial class PersonService(
         state.Environment["Soulworker"] = new LuaValue(table);
 
 
-        await state
-            .DoFileAsync(Path.Join("scripts", $"{mazeInfo.Script}.lua"), context.CancellationToken);
+        // A few mazes have no script among the files of the client, and are played without one. The script is read and
+        // compiled once, off the loop; each maze runs the compiled chunk in its own state.
+        try
+        {
+            if (!await mazeScripts.RunAsync(state, mazeInfo.Script, cancellationToken))
+            {
+                LogNoScript(logger, mazeScripts.PathOf(mazeInfo.Script));
+            }
+        }
 
-        var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, interactionCollection, skillActions, combatTables, mazeLogger);
+        // A script that does not load is no fault of the client: the maze runs without it.
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogScriptFailed(logger, e, mazeScripts.PathOf(mazeInfo.Script));
+        }
 
-        world.Add(context.Player, maze);
+        var (mesh, meshError) = await creatureServices.Meshes.GetAsync(mazeInfo.Batch);
 
-        creatures.Attach(context.Player);
-        creatures.Vitals.Initialize(context.Player);
+        if (mesh is null)
+        {
+            LogNoNavigationMesh(logger, mazeInfo.Batch, meshError);
+        }
 
-        session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
+        // Nobody to open the maze for any more: the player left while its script and mesh were read.
+        if (!world.IsAlive(player))
+        {
+            return null;
+        }
 
-        session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
+        var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
+        var maze = new LuaMaze(state, world, player, creatures, buffManager, questManager, batch, _interactions, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger)
+        {
+            Instance = instance,
+            Party = party
+        };
 
-        questManager.SendQuestEpisodeList(context.Player);
+        // What happens in the instance is wired once, for every player who is in it then.
+        maze.MonsterKilled += (killer, monster, position) => rewards.OnKilled(killer, PresentOf(maze), monster, position);
+        maze.Completed += () => partyEvents.Completed(maze);
+        creatures.Vitals.HealthChanged += partyEvents.HealthChanged;
 
-        await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
-        await community.EnterAsync(context.Player);
+        // A helper sent away, by whatever way, gives back the orb of a friend it wore.
+        creatures.Helpers.Released += helper => helperGear.ReleaseOrb(helper.Owner, helper.Helper);
+
+        return maze;
+    }
+
+    /// <summary>
+    /// The players of the maze who stand to share what a kill gives: those still on their feet.
+    /// </summary>
+    private static Entity[] PresentOf(LuaMaze maze)
+    {
+        return maze.Members.Where(maze.Creatures.Vitals.IsAlive).ToArray();
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)
@@ -221,21 +366,9 @@ public sealed partial class PersonService(
     /// <summary>
     /// The row of the maze table for the location, or nothing when the table has none.
     /// </summary>
-    public static bool TryGetMazeInfo(ReadOnlyCollection<MazeInfoRow> table, short location, out MazeInfoRow info)
+    public static bool TryGetMazeInfo(RowIndex<short, MazeInfoRow> table, short location, out MazeInfoRow info)
     {
-        foreach (var row in table)
-        {
-            if (row.Id == location)
-            {
-                info = row;
-
-                return true;
-            }
-        }
-
-        info = default;
-
-        return false;
+        return table.TryGet(location, out info);
     }
 
     private void SendSoulMetryList(ServerSessionComponent session)
@@ -273,4 +406,13 @@ public sealed partial class PersonService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the maze table has no row for the location {Location}, and it is turned away")]
     private static partial void LogNoMazeInfo(ILogger logger, int account, int person, short location);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The maze {Maze} has no navigation mesh, its monsters walk where they like: {Error}")]
+    private static partial void LogNoNavigationMesh(ILogger logger, string maze, string? error);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The script {Script} of the maze failed to load, the maze runs without it")]
+    private static partial void LogScriptFailed(ILogger logger, Exception exception, string script);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The script {Script} of the maze is missing, the maze runs without it")]
+    private static partial void LogNoScript(ILogger logger, string script);
 }

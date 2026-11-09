@@ -10,7 +10,9 @@
     <ItemGroup>
         <PackageReference Include="JetBrains.Annotations" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="MSTest" />
     </ItemGroup>
@@ -23,7 +25,8 @@
       <ProjectReference Include="..\OpenWorker.AuthServer.Gameplay\OpenWorker.AuthServer.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.DependencyInjection\OpenWorker.DependencyInjection.csproj" />
       <ProjectReference Include="..\OpenWorker.GateServer.Gameplay\OpenWorker.GateServer.Gameplay.csproj" />
-      <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+      <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
+      <ProjectReference Include="..\OpenWorker.Infrastructure.Redis\OpenWorker.Infrastructure.Redis.csproj" />
     </ItemGroup>
 
     <ItemGroup>

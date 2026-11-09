@@ -22,6 +22,9 @@ namespace OpenWorker.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("ItemSerial")
+                .StartsAt(1000L);
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.AccountPersistent", b =>
                 {
                     b.Property<int>("Id")
@@ -39,6 +42,10 @@ namespace OpenWorker.Persistence.Migrations
 
                     b.Property<DateTime>("LastLogin")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("OptionList")
+                        .IsRequired()
+                        .HasColumnType("bytea");
 
                     b.Property<byte[]>("PasswordHash")
                         .IsRequired()
@@ -139,6 +146,183 @@ namespace OpenWorker.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Gates");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.HelperSupportPersistent", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Reward")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SupportType")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("Until")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<float>("Value")
+                        .HasColumnType("real");
+
+                    b.HasKey("PersonId");
+
+                    b.ToTable("HelperSupports");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.HelperSupportUsePersistent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SupporterId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Until")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SupporterId", "UserId", "Until")
+                        .IsUnique();
+
+                    b.ToTable("HelperSupportUses");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.ItemPersistent", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("BindType")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("BroachState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasDefaultValue("000000000000000");
+
+                    b.PrimitiveCollection<int[]>("Broaches")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer[]")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.Property<short>("Count")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DueTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Endurance")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("Exp")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("Flag")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("Item")
+                        .HasColumnType("integer");
+
+                    b.PrimitiveCollection<short[]>("OptionType")
+                        .IsRequired()
+                        .HasColumnType("smallint[]");
+
+                    b.PrimitiveCollection<int[]>("OptionValue")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("RestoreCount")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SealCount")
+                        .HasColumnType("smallint");
+
+                    b.Property<short>("Slot")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SocketActive")
+                        .HasColumnType("smallint");
+
+                    b.PrimitiveCollection<short[]>("SocketOptionType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint[]")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.PrimitiveCollection<int[]>("SocketOptionValue")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer[]")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.PrimitiveCollection<int[]>("Sockets")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer[]")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.Property<byte>("Storage")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Upgrade")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("UpgradeCount")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("UpgradeLimit")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonId", "Slot")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Items_HelperPlace")
+                        .HasFilter("\"Storage\" = 105");
+
+                    b.HasIndex("PersonId", "Storage", "Slot");
+
+                    b.ToTable("Items");
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.LeagueApplicantPersistent", b =>
@@ -336,6 +520,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<int>("AccountId")
                         .HasColumnType("integer");
 
+                    b.Property<long>("BattlePoint")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("CommunityComment")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -358,6 +545,10 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<long[]>("Currencies")
+                        .IsRequired()
+                        .HasColumnType("bigint[]");
 
                     b.Property<short>("DefaultEyeColor")
                         .HasColumnType("smallint");
@@ -383,6 +574,12 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<short>("EquippedSkinColor")
                         .HasColumnType("smallint");
 
+                    b.Property<long>("Ether")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Experience")
+                        .HasColumnType("integer");
+
                     b.Property<short>("FatiguePointBonus")
                         .HasColumnType("smallint");
 
@@ -395,6 +592,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.PrimitiveCollection<int[]>("GestureList")
                         .IsRequired()
                         .HasColumnType("integer[]");
+
+                    b.Property<long>("Gold")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("Hero")
                         .HasColumnType("integer");
@@ -410,6 +610,11 @@ namespace OpenWorker.Persistence.Migrations
 
                     b.Property<DateTime?>("LeagueJoinBlockedUntil")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Level")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((byte)1);
 
                     b.Property<short>("Location")
                         .HasColumnType("smallint");
@@ -436,8 +641,23 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<float>("PositionZ")
                         .HasColumnType("real");
 
+                    b.Property<bool>("ProloguePending")
+                        .HasColumnType("boolean");
+
+                    b.PrimitiveCollection<int[]>("QuickSlotCards")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.PrimitiveCollection<int[]>("QuickSlotItems")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
                     b.Property<float>("RotationX")
                         .HasColumnType("real");
+
+                    b.Property<byte[]>("StorageGrades")
+                        .IsRequired()
+                        .HasColumnType("bytea");
 
                     b.Property<int>("TitleAbilityPrimary")
                         .HasColumnType("integer");
@@ -494,6 +714,100 @@ namespace OpenWorker.Persistence.Migrations
                     b.HasKey("PersonId", "Kind");
 
                     b.ToTable("PersonStates");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.PostPersistent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("MainType")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("Money")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Postage")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("ReceiverAccountId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("ReceiverHero")
+                        .HasColumnType("smallint");
+
+                    b.Property<int?>("ReceiverId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReceiverName")
+                        .IsRequired()
+                        .HasMaxLength(21)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(21)");
+
+                    b.Property<byte>("SenderHero")
+                        .HasColumnType("smallint");
+
+                    b.Property<int?>("SenderId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(21)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(21)");
+
+                    b.Property<byte>("State")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SubType")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiverAccountId");
+
+                    b.HasIndex("ReceiverId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("Posts", t =>
+                        {
+                            t.HasCheckConstraint("CK_Posts_Money", "\"Money\" >= 0");
+
+                            t.HasCheckConstraint("CK_Posts_Postage", "\"Postage\" >= 0");
+
+                            t.HasCheckConstraint("CK_Posts_Receiver", "(\"Kind\" = 0 AND \"ReceiverId\" IS NOT NULL AND \"ReceiverAccountId\" IS NULL) OR (\"Kind\" = 1 AND \"ReceiverAccountId\" IS NOT NULL AND \"ReceiverId\" IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.RankingEntryPersistent", b =>
@@ -571,6 +885,41 @@ namespace OpenWorker.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.HelperSupportPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.HelperSupportUsePersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("SupporterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.ItemPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", "Person")
+                        .WithMany("Items")
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Person");
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.LeagueApplicantPersistent", b =>
                 {
                     b.HasOne("OpenWorker.Domain.Persistent.LeaguePersistent", null)
@@ -644,6 +993,88 @@ namespace OpenWorker.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.PostPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.AccountPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("ReceiverAccountId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("ReceiverId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.OwnsMany("OpenWorker.Domain.Persistent.PostItemPersistent", "Items", b1 =>
+                        {
+                            b1.Property<long>("PostPersistentId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<byte>("BindType");
+
+                            b1.Property<string>("BroachState")
+                                .IsRequired();
+
+                            b1.PrimitiveCollection<string>("Broaches");
+
+                            b1.Property<short>("Count");
+
+                            b1.Property<DateTime?>("DueTo");
+
+                            b1.Property<byte>("Endurance");
+
+                            b1.Property<int>("Exp");
+
+                            b1.Property<byte>("Flag");
+
+                            b1.Property<int>("Item");
+
+                            b1.PrimitiveCollection<string>("OptionType")
+                                .IsRequired();
+
+                            b1.PrimitiveCollection<string>("OptionValue")
+                                .IsRequired();
+
+                            b1.Property<byte>("RestoreCount");
+
+                            b1.Property<byte>("SealCount");
+
+                            b1.Property<byte>("SocketActive");
+
+                            b1.PrimitiveCollection<string>("SocketOptionType");
+
+                            b1.PrimitiveCollection<string>("SocketOptionValue");
+
+                            b1.PrimitiveCollection<string>("Sockets");
+
+                            b1.Property<byte>("Upgrade");
+
+                            b1.Property<byte>("UpgradeCount");
+
+                            b1.Property<byte>("UpgradeLimit");
+
+                            b1.HasKey("PostPersistentId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Posts");
+
+                            b1
+                                .ToJson("Items")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PostPersistentId");
+                        });
+
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.RankingEntryPersistent", b =>
                 {
                     b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
@@ -661,6 +1092,11 @@ namespace OpenWorker.Persistence.Migrations
             modelBuilder.Entity("OpenWorker.Domain.Persistent.GatePersistent", b =>
                 {
                     b.Navigation("Persons");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.PersonPersistent", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

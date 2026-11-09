@@ -1,4 +1,5 @@
-using OpenWorker.Gameplay.Modules.Persons.Components;
+﻿using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Server.Common;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -41,11 +42,14 @@ using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Persistence;
+using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Skill;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
 namespace OpenWorker.DistrictServer.Services;
 
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed partial class PersonService(
     World ecs,
     SoulMetryManager soulMetry,
@@ -60,11 +64,15 @@ public sealed partial class PersonService(
     IDbContextFactory<PersistenceContext> factory,
     IOptions<InstanceOptions> instance,
     PersonRegistry registry,
+    InventoryPersistence inventories,
+    PersonSkills skills,
+    PlayerStatsService stats,
     LeaveManager leaving,
     QuestManager questManager,
-    ReadOnlyCollection<CharacterInfoRow> characterInfo,
     CommunityNetwork community,
     TimeProvider time,
+    AchievementManager achievements,
+    SharePointManager sharePoints,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -118,21 +126,16 @@ public sealed partial class PersonService(
             return;
         }
 
-        await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken);
+        var entry = await factory
+            .LoadPersonAtEntryAsync(request.Account, request.Actor.Identifier, context.CancellationToken);
 
-        // TODO: Gate must make a request to reserve space for the player and
-        //       person loading must be done before the player is connected
-        //       without using Actor
-        var person = await database.Persons
-            .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Account.Id == request.Account && e.Id == request.Actor.Identifier, context.CancellationToken);
-
-        if (person is null)
+        if (entry is null)
         {
             session.Disconnect();
             return;
         }
+
+        var person = entry.Person;
 
         // A reservation is used up by the entry.
         await districtReserves
@@ -140,20 +143,14 @@ public sealed partial class PersonService(
 
         ecs.Set(context.Player, new ClaimsComponent(request.Session));
 
+        ecs.SetLogAccount(context.Player, request.Session.Account);
+
         await leases
             .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
         ecs.Set(context.Player, GetReservedPlace(reserve));
 
         ecs.Set(context.Player, KeepAliveComponent.Start(time.GetTimestamp()));
-
-        ecs.Set(context.Player, new CurrencyComponent
-        {
-            Gold = 5_000_000,
-            Cash = 7_000_000,
-            BattlePoint = 10_000_000,
-            Ether = 15_000_000
-        });
 
         ecs.Set(context.Player, new GestureComponent
         {
@@ -171,29 +168,11 @@ public sealed partial class PersonService(
             }
         });
 
-        registry.PullPerson(context.Player, person);
+        await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
-        ecs.Set(context.Player, new SkillPointComponent
-        {
-            TotalSkillPoint = 32,
-            FreeSkillPoint = 16
-        });
+        registry.PullPerson(context.Player, person, entry.AccountOptions);
 
-        ecs.Set(context.Player, new SkillLearnedComponent
-        {
-            Values = GetDefaultSkills(person.Hero)
-        });
-
-        ecs.Set(context.Player, new SkillDeckComponent
-        {
-            SlotList = [],
-            SlotCount = 4
-        });
-
-        ecs.Set(context.Player, new SkillDeckBonusComponent
-        {
-            Values = [1, 2, 3, 4]
-        });
+        await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(ecs, context.Player));
 
@@ -202,18 +181,21 @@ public sealed partial class PersonService(
         var actor = ecs.Get<ActorComponent>(context.Player);
 
         session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.Player).Collection });
-        session.Send(new PersonUpdateOriginStatListResponse { Actor = actor });
+        stats.Send(context.Player);
         await helpers.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await boosters.EnterAsync(context.Player, person.Id, BoosterConsumeArea.District, context.CancellationToken);
 
         await soulMetry.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await dailyMissions.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
-        questManager.SendQuestEpisodeList(context.Player);
+        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         JoinChannel(context.Player);
 
         await attendance.EnterAsync(context.Player, person.Id, context.CancellationToken);
+
+        await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await sharePoints.EnterDistrictAsync(context.Player, person.Id, Location, context.CancellationToken);
 
         // Get skill components
         ref readonly var skillPoint = ref ecs.Get<SkillPointComponent>(context.Player);
@@ -253,21 +235,6 @@ public sealed partial class PersonService(
             Rotation = reserve.R,
             Jump = reserve.Jump
         };
-    }
-
-    private SkillInfoValue[] GetDefaultSkills(Hero hero)
-    {
-        var charInfo = characterInfo.FirstOrDefault(c => c.Character == (byte)hero);
-        if (charInfo.Id == 0)
-        {
-            return [];
-        }
-
-        return charInfo
-            .GetSkillList()
-            .Where(id => id > 0)
-            .Select(id => new SkillInfoValue { Skill = id, Divergence = 0 })
-            .ToArray();
     }
 
     private void JoinChannel(Entity entity)

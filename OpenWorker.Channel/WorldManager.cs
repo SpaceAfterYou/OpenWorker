@@ -7,11 +7,13 @@ using OpenWorker.Batch.Entities;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
@@ -29,7 +31,8 @@ public sealed partial class WorldManager(
     IRedisCollection<ChannelCache> channels,
     IRedisCollection<DistrictCache> districts,
     IRedisCollection<MazeReserveCache> mazeReserves,
-    IRedisCollection<MazeCache> mazes,
+    MazeDirectory mazes,
+    IPersonFlush persons,
     ILogger<WorldManager> logger)
 {
     /// <summary>
@@ -45,17 +48,11 @@ public sealed partial class WorldManager(
     private (string Host, short Port) DefaultMaze { get; } = (mazeEndpoint.Value.Host, (short)mazeEndpoint.Value.Port);
 
     /// <summary>
-    /// The maze server of this gate with the fewest players.
+    /// The maze server of this gate with the fewest players: one call to the sorted set of <see cref="MazeDirectory"/>.
     /// </summary>
     private async ValueTask<(string Host, short Port)> GetMazeAsync()
     {
-        int gate = Gate;
-
-        var running = await mazes
-            .Where(x => x.Gate == gate)
-            .ToListAsync();
-
-        return running.MinBy(x => x.Players) is { } maze ? (maze.Host, maze.Port) : DefaultMaze;
+        return await mazes.PickAsync(Gate) ?? DefaultMaze;
     }
 
     /// <summary>
@@ -149,34 +146,50 @@ public sealed partial class WorldManager(
     /// Finds the requested start point, or the default one of the location when none was requested
     /// or the requested one does not exist.
     /// </summary>
-    private static bool TryGetStart(VBatchFile batch, short location, int jump, out StartEventBox start)
+    private static bool TryGetStart(VBatchFile batch, short location, int jump, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out StartEventBox? start)
     {
-        var fallback = location * 100 + 1;
-        var found = false;
+        var starts = batch.EventBox.StartEvents;
 
-        start = default!;
+        return (jump != 0 && starts.TryGet(jump, out start)) || starts.TryGet(location * 100 + 1, out start);
+    }
 
-        foreach (var box in batch.EventBox.StartEvents)
+    /// <summary>
+    /// Whether the location is a maze the client can be sent into.
+    /// </summary>
+    public bool IsMaze(short location)
+    {
+        return provider.TryGetAndCache(location, out _, out var type) && type == BatchType.Maze;
+    }
+
+    /// <summary>
+    /// The maze server of this gate with the fewest players and its identifier, or the configured one with an empty
+    /// identifier when none has registered.
+    /// </summary>
+    public async ValueTask<(Guid Server, string Host, short Port)> PickMazeServerAsync()
+    {
+        return await mazes.PickServerAsync(Gate) ?? (Guid.Empty, DefaultMaze.Host, DefaultMaze.Port);
+    }
+
+    /// <summary>
+    /// Sends the player into an instance of a maze on the given maze server: the instance a party shares, which the maze
+    /// server opens for the first member to come and the others join. False when the location has no start to enter by.
+    /// </summary>
+    public async ValueTask<bool> SendToMazeAsync(Entity player, short location, int jump, (string Host, short Port) maze, Guid instance, int party)
+    {
+        if (!provider.TryGetAndCache(location, out var batch, out var type) ||
+            type != BatchType.Maze ||
+            !TryGetStart(batch, location, jump, out var start))
         {
-            if (jump != 0 && box.Id == jump)
-            {
-                start = box;
-                return true;
-            }
-
-            if (box.Id == fallback)
-            {
-                start = box;
-                found = true;
-            }
+            return false;
         }
 
-        return found;
+        await SendToMazeAsync(player, location, start, maze, instance, party);
+
+        return true;
     }
 
     private async ValueTask EnterMaze(Entity player, short location, StartEventBox start)
     {
-        var session = ecs.Get<ServerSessionComponent>(player);
         var maze = await GetMazeAsync();
 
         // The player may have left while the servers were looked up.
@@ -184,6 +197,13 @@ public sealed partial class WorldManager(
         {
             return;
         }
+
+        await SendToMazeAsync(player, location, start, maze, Guid.Empty, 0);
+    }
+
+    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party)
+    {
+        var session = ecs.Get<ServerSessionComponent>(player);
 
         var map = new MapValue
         {
@@ -225,8 +245,13 @@ public sealed partial class WorldManager(
             Y = world.Position.Y,
             Z = world.Position.Z,
             R = world.Rotation,
-            Jump = start.Id
+            Jump = start.Id,
+            Instance = instance,
+            Party = party
         };
+
+        // The maze loads the person from the database: what this server has must be there first.
+        await persons.FlushAsync(player);
 
         await mazeReserves
             .InsertAsync(cache, ReservationLifetime);
@@ -295,6 +320,9 @@ public sealed partial class WorldManager(
             R = world.Rotation,
             Jump = start.Id
         };
+
+        // The district loads the person from the database: what this server has must be there first.
+        await persons.FlushAsync(player);
 
         await districtReserveCache
             .InsertAsync(cache, ReservationLifetime);
@@ -392,9 +420,18 @@ public sealed partial class WorldManager(
     /// </summary>
     public async Task<DistrictPlacement?> GetDistrictAsync(int location)
     {
-        var availableDistricts = await districts
+        // Both searches by the location at once: one round trip instead of two after each other. A channel whose district
+        // is not among the districts is left out by Pick.
+        var districtsOfLocation = districts
             .Where(x => x.Location == location)
             .ToArrayAsync();
+
+        var channelsOfLocation = channels
+            .Where(c => c.Location == location)
+            .ToArrayAsync();
+
+        var availableDistricts = await districtsOfLocation;
+        var allChannels = await channelsOfLocation;
 
         if (availableDistricts.Length == 0)
         {
@@ -402,14 +439,6 @@ public sealed partial class WorldManager(
 
             return null;
         }
-
-        var districtGuids = availableDistricts
-            .Select(d => d.Guid)
-            .ToArray();
-
-        var allChannels = await channels
-            .Where(c => districtGuids.Contains(c.Owner))
-            .ToArrayAsync();
 
         var placement = Pick(availableDistricts, allChannels);
 

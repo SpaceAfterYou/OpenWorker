@@ -1,52 +1,33 @@
 using Arch.Core;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Components;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
-using OpenWorker.Gameplay.Modules.Login.Components;
-using OpenWorker.Hotspot;
-using OpenWorker.Persistence;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.DistrictServer.Server;
 
 /// <summary>
-/// Saves where a person stood in this district when its connection closed.
+/// Says where a person stands in this district, for the flush of the person: every round writes the place if it has
+/// changed, and the flush on close writes it last, so that the next login starts there and a crash loses one interval
+/// of walking at most. A place in another location (the player is on the way out) is not this district's to keep.
 /// </summary>
-public sealed class PersonPlaceStore(
-    World world,
-    IDbContextFactory<PersistenceContext> factory,
-    IOptions<InstanceOptions> instance) : ISessionCloseHandler
+public sealed class PersonPlaceStore(IOptions<InstanceOptions> instance) : IPersonPlaceSource
 {
     private short Location { get; } = instance.Value.Location;
 
-    public async ValueTask OnSessionClosedAsync(Entity player)
+    public bool TryGetPlace(World world, Entity player, out PersonPlace place)
     {
-        if (!world.Has<WorldComponent>(player))
+        if (!world.TryGet<WorldComponent>(player, out var current) || current.Location != Location)
         {
-            return;
+            place = default;
+
+            return false;
         }
 
-        var account = world.Get<ClaimsComponent>(player).Account;
-        var person = world.Get<ActorComponent>(player).Identifier;
-        var place = world.Get<WorldComponent>(player);
+        place = new PersonPlace(Location, current.Position.X, current.Position.Y, current.Position.Z, current.Rotation);
 
-        // The connection never finished entering the game.
-        if (account == 0 || person == 0 || place.Location != Location)
-        {
-            return;
-        }
-
-        await using var database = await factory
-            .CreateDbContextAsync();
-
-        await database.Persons
-            .Where(e => e.Id == person && e.Account.Id == account)
-            .ExecuteUpdateAsync(e => e
-                .SetProperty(x => x.Location, Location)
-                .SetProperty(x => x.PositionX, place.Position.X)
-                .SetProperty(x => x.PositionY, place.Position.Y)
-                .SetProperty(x => x.PositionZ, place.Position.Z)
-                .SetProperty(x => x.RotationX, place.Rotation));
+        return true;
     }
 }

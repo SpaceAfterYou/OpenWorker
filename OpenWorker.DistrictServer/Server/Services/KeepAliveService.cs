@@ -77,7 +77,7 @@ public sealed partial class KeepAliveService(
         {
             LogDisconnected(logger, player.Id, component.PenaltyCount);
 
-            session.Disconnect();
+            session.Disconnect(SessionCloseReason.Timeout);
             return;
         }
 

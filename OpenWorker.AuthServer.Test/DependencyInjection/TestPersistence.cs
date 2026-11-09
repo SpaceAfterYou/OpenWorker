@@ -15,5 +15,6 @@ public static class TestPersistence
         .EnableDetailedErrors()
         .EnableThreadSafetyChecks()
         .EnableSensitiveDataLogging()
+        .UsePersistenceDefaults()
         .UseInMemoryDatabase(Guid.NewGuid().ToString());
 }

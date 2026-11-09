@@ -266,28 +266,48 @@ public sealed class LeagueWireFormatTest
             1, "Ab", 9, "Cd", string.Empty, 1, 0, 0, true, 0, 0, string.Empty, null, string.Empty, null,
             ["", "", ""], LeagueServiceBase.DefaultAuth, new int[9], DateTime.UtcNow, 1);
 
+        // The bits are the ones the client tests before it offers a button.
+        Assert.AreEqual(1, (int)LeagueRight.Join);
+        Assert.AreEqual(2, (int)LeagueRight.KickOut);
+        Assert.AreEqual(16, (int)LeagueRight.Notice);
+        Assert.AreEqual(64, (int)LeagueRight.SetPosition);
+        Assert.AreEqual(128, (int)LeagueRight.LimitOut);
+        Assert.AreEqual(256, (int)LeagueRight.RecruitNotice);
+
         // The master can do everything, whatever is written.
-        Assert.IsTrue(league.Allows(LeagueRules.Master, LeagueRight.Kick));
+        Assert.IsTrue(league.Allows(LeagueRules.Master, LeagueRight.KickOut));
 
-        // A new member can do nothing.
-        Assert.IsFalse(league.Allows(0, LeagueRight.Invite));
+        // A new member can do nothing; a named position invites and answers those who ask, but throws nobody out.
+        Assert.IsFalse(league.Allows(0, LeagueRight.Join));
+        Assert.IsTrue(league.Allows(1, LeagueRight.Join));
+        Assert.IsFalse(league.Allows(1, LeagueRight.KickOut));
+        Assert.IsTrue(league.Allows(LeagueRules.SubMaster, LeagueRight.KickOut));
 
-        // The first position invites and answers those who ask, but does not throw anybody out.
-        Assert.IsTrue(league.Allows(1, LeagueRight.Invite));
-        Assert.IsTrue(league.Allows(1, LeagueRight.Applicants));
-        Assert.IsFalse(league.Allows(1, LeagueRight.Kick));
+        // Changing what a position may do takes the right to set positions, and only below one's own position.
+        var auth = (int[])LeagueServiceBase.DefaultAuth.Clone();
+        auth[1] = (int)LeagueRight.All;
 
-        Assert.IsTrue(league.Allows(LeagueRules.SubMaster, LeagueRight.Kick));
+        Assert.IsTrue(league.MayChange(LeagueRules.SubMaster, auth, new int[9]));
+        Assert.IsFalse(league.MayChange(LeagueRules.Elder, auth, new int[9]));
+        Assert.IsFalse(league.MayChange(LeagueRules.SubMaster, LeagueServiceBase.DefaultAuth, [0, 0, 0, 0, 0, 0, 0, 100, 0]));
     }
 
     [TestMethod]
-    public void OnlyTheEditablePositionsAreGiven()
+    public void PositionsAreGivenAsTheClientOffersThem()
     {
-        Assert.IsTrue(LeagueRules.CanBeGiven(0));
-        Assert.IsTrue(LeagueRules.CanBeGiven(1));
-        Assert.IsTrue(LeagueRules.CanBeGiven(3));
+        Assert.IsTrue(LeagueRules.CanBeGiven(LeagueRules.BasePosition));
+        Assert.IsTrue(LeagueRules.CanBeGiven(LeagueRules.LastNamed));
+        Assert.IsTrue(LeagueRules.CanBeGiven(LeagueRules.Elder));
         Assert.IsTrue(LeagueRules.CanBeGiven(LeagueRules.SubMaster));
-        Assert.IsFalse(LeagueRules.CanBeGiven(4));
+        Assert.IsFalse(LeagueRules.CanBeGiven(LeagueRules.ChairMan));
         Assert.IsFalse(LeagueRules.CanBeGiven(LeagueRules.Master));
+
+        Assert.AreEqual(1, LeagueRules.HoldersOf(LeagueRules.SubMaster));
+
+        // Below oneself only, unless one is the master.
+        Assert.IsTrue(LeagueRules.MayAppoint(LeagueRules.SubMaster, LeagueRules.BasePosition, LeagueRules.Manager));
+        Assert.IsFalse(LeagueRules.MayAppoint(LeagueRules.Manager, LeagueRules.BasePosition, LeagueRules.SubMaster));
+        Assert.IsFalse(LeagueRules.MayAppoint(LeagueRules.Manager, LeagueRules.Manager, LeagueRules.BasePosition));
+        Assert.IsTrue(LeagueRules.MayAppoint(LeagueRules.Master, LeagueRules.SubMaster, LeagueRules.BasePosition));
     }
 }

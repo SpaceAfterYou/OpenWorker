@@ -1,18 +1,16 @@
 using Arch.Core;
 using OpenWorker.Hotspot;
-using OpenWorker.Lua;
 
 namespace OpenWorker.MazeServer.Services;
 
-public sealed class MazeCloseHandler(World world) : ISessionCloseHandler
+/// <summary>
+/// A player who loses the connection or leaves the game leaves the maze: it goes on for the rest of the party, and the
+/// last one out ends it.
+/// </summary>
+public sealed class MazeCloseHandler(MazeInstances instances) : ISessionCloseHandler
 {
     public ValueTask OnSessionClosedAsync(Entity player)
     {
-        if (world.Has<LuaMaze>(player))
-        {
-            world.Get<LuaMaze>(player).Close();
-        }
-
-        return ValueTask.CompletedTask;
+        return instances.LeaveAsync(player);
     }
 }

@@ -1,8 +1,8 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Modules.Items;
-using OpenWorker.Gameplay.Modules.Items.Components;
 using OpenWorker.GateServer.Gameplay;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -103,39 +103,127 @@ public sealed class TestPersonCreation
         Assert.IsFalse(PersonCreationCatalog.IsOffered(haru, 221));
     }
 
+    /// <summary>
+    /// The creation screen offers four costumes per hero, the ones of <c>tb_Create_Cloth</c>; the first is the one the
+    /// client picks when the player touches nothing (511 for Stella). Every hero reads the same columns, so one stands
+    /// for all.
+    /// </summary>
+    [TestMethod]
+    public void EveryCostumeOfTheCreationScreenIsOffered()
+    {
+        const Hero hero = Hero.Stella;
+
+        Assert.IsTrue(Catalog.TryGetCharacter(hero, out var character));
+
+        var first = (int)hero * 100 + 11;
+
+        Assert.IsTrue(PersonCreationCatalog.IsOffered(character, first), $"The first costume of {hero}, {first}, is refused.");
+
+        foreach (var outfit in (int[])[first + 10, first + 20, first + 30])
+        {
+            Assert.IsTrue(PersonCreationCatalog.IsOffered(character, outfit), $"The costume {outfit} of {hero} is refused.");
+        }
+
+        var cloth = Load<CreateClothRow>("tb_Create_Cloth").Select(e => (int)e.Id).Where(e => e / 100 == (int)hero).Order();
+
+        Assert.AreEqual(
+            string.Join(", ", cloth),
+            string.Join(", ", (int[])[character.Default_Cloth_ID_01, character.Default_Cloth_ID_02, character.Default_Cloth_ID_03, character.Default_Cloth_ID_04]),
+            "The costumes of the character table are not those of tb_Create_Cloth.");
+    }
+
+    /// <summary>
+    /// The column after the four costumes (50011 for Stella) was read as the fourth costume while the names of the columns
+    /// were one place off; it is not a costume, no row of <c>tb_Create_Cloth</c> has it.
+    /// </summary>
+    [TestMethod]
+    public void TheColumnAfterTheCostumesIsNotOffered()
+    {
+        Assert.IsTrue(Catalog.TryGetCharacter(Hero.Stella, out var character));
+
+        Assert.AreEqual(50011, character.Field24);
+        Assert.IsFalse(PersonCreationCatalog.IsOffered(character, 50011));
+    }
+
+    private static InventoryFactory CreateInventories()
+    {
+        var catalog = new ItemCatalog(
+            Load<ItemRow>("tb_Item"),
+            Load<ItemClassifyRow>("tb_Item_Classify"),
+            Load<InvenSlotExtendRow>("tb_Inven_Slot_Extend"),
+            Load<BankSlotExtendRow>("tb_Bank_Slot_Extend"));
+
+        return new InventoryFactory(catalog, Load<CreateClothRow>("tb_Create_Cloth"), new LocalItemSerials());
+    }
+
+    private static PersonPersistent Person(int outfit)
+    {
+        return new PersonPersistent
+        {
+            Id = 1,
+            Name = "Test",
+            Hero = Hero.Haru,
+            Outfit = outfit,
+            DefaultHairStyle = 0,
+            DefaultHairColor = 0,
+            DefaultEyeColor = 0,
+            DefaultSkinColor = 0,
+            EquippedHairStyle = 0,
+            EquippedHairColor = 0,
+            EquippedEyeColor = 0,
+            EquippedSkinColor = 0,
+            Location = 0,
+            PositionX = 0,
+            PositionY = 0,
+            PositionZ = 0,
+            RotationX = 0,
+            FatiguePointCommon = 0,
+            Account = null!,
+            Gate = null!
+        };
+    }
+
     [TestMethod]
     public void OutfitIsPutIntoTheSlotsOfItsItems()
     {
-        using var world = World.Create();
+        var inventory = CreateInventories().CreateNew(Person(121));
+        var shape = inventory.Find(StorageGroup.ShapeEquip)!;
 
-        var costumes = new CostumeFactory(world, Load<CreateClothRow>("tb_Create_Cloth"), Load<ItemRow>("tb_Item"));
-        var storage = new StorageFactory(world).Create(StorageGroup.ShapeEquip);
-
-        costumes.Dress(storage, 121);
-
-        var content = world.Get<StorageContentComponent>(storage);
-
-        int Item(int slot) => world.Get<StorageItemComponent>(content[slot]).Identifier;
+        int Item(int slot) => shape.Slots[slot]!.Item;
 
         Assert.AreEqual(211020701, Item(6));
         Assert.AreEqual(211021101, Item(8));
         Assert.AreEqual(211021201, Item(9));
         Assert.AreEqual(211020801, Item(11));
-        Assert.AreEqual(4, content.SlotList.Count(e => e != Entity.Null));
+        Assert.AreEqual(4, shape.Slots.Count(e => e is not null));
     }
 
     [TestMethod]
-    [DataRow(10011, DisplayName = "An outfit without a table row")]
-    [DataRow(421, DisplayName = "An outfit made of items that cannot be worn")]
-    public void OutfitWithoutWearableItemsLeavesTheCharacterWithoutClothes(int outfit)
+    public void CharacterStartsWithTheWeaponOfItsClass()
     {
-        using var world = World.Create();
+        var inventory = CreateInventories().CreateNew(Person(121));
 
-        var costumes = new CostumeFactory(world, Load<CreateClothRow>("tb_Create_Cloth"), Load<ItemRow>("tb_Item"));
-        var storage = new StorageFactory(world).Create(StorageGroup.ShapeEquip);
+        Assert.AreEqual(111000001, inventory.At(StorageGroup.AbilityEquip, (int)AbilityEquipSlot.SoulWeapon)!.Item);
+    }
 
-        costumes.Dress(storage, outfit);
+    /// <summary>
+    /// An outfit with no row of <c>tb_Create_Cloth</c> (the column after the costumes; no outfit at all goes the same
+    /// way) leaves the shape slots empty instead of failing the creation.
+    /// </summary>
+    [TestMethod]
+    public void OutfitWithoutWearableItemsLeavesTheCharacterWithoutClothes()
+    {
+        var inventory = CreateInventories().CreateNew(Person(10011));
 
-        Assert.IsTrue(world.Get<StorageContentComponent>(storage).SlotList.All(e => e == Entity.Null));
+        Assert.IsTrue(inventory.Find(StorageGroup.ShapeEquip)!.Slots.All(e => e is null));
+    }
+
+    [TestMethod]
+    public void OutfitOfOtherHeroesIsWornInTheSlotOfEachItem()
+    {
+        var shape = CreateInventories().CreateNew(Person(421)).Find(StorageGroup.ShapeEquip)!;
+
+        Assert.IsTrue(shape.Slots.Any(e => e is not null));
+        Assert.IsTrue(shape.Slots.OfType<ItemInstance>().All(e => e.Slot >= 0 && shape.Slots[e.Slot] == e));
     }
 }

@@ -4,6 +4,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Types;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
@@ -21,7 +22,8 @@ public sealed class LeaveManager(
     IOptions<GateOptions> gate,
     IOptions<AuthEndpointOptions> auth,
     IRedisCollection<GateCache> gates,
-    SessionLeaseManager leases)
+    SessionLeaseManager leases,
+    IPersonFlush persons)
 {
     private short Gate { get; } = gate.Value.Id;
 
@@ -43,6 +45,14 @@ public sealed class LeaveManager(
             LeaveDestination.CharacterSelect => await FindGateAsync(),
             _ => (Auth.Host, (short)0, false)
         };
+
+        // The gate shows the person from the database: what this server has must be there first.
+        await persons.FlushAsync(player);
+
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
 
         ActorValue actor = world.Has<ActorComponent>(player) ? world.Get<ActorComponent>(player).Identifier : 0;
 

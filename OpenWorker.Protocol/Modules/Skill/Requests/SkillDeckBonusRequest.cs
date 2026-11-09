@@ -1,0 +1,35 @@
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Skill.Extensions;
+
+namespace OpenWorker.Hotspot.Modules.Skill.Requests;
+
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
+public readonly struct SkillDeckBonusRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+{
+#region Interface: IHotspotMessage
+
+    private const GroupOpcode Group = GroupOpcode.Skill;
+    private const SkillOpcode Command = SkillOpcode.SkillDeckBonus;
+
+    public MessageOpcode Opcode => new(Group, (byte)Command);
+
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public ushort[] Values { get; init; } = reader.ReadSkillDeckBonusList();
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.WriteSkillDeckBonus(Values);
+    }
+
+#endregion Interface: IWritableData
+}

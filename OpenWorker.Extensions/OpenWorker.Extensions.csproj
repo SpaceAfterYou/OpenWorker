@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,6 +14,11 @@
 
     <ItemGroup>
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The connection of StackExchange.Redis is built from RedisOptions there, with the parser of the address. -->
+        <InternalsVisibleTo Include="OpenWorker.Infrastructure.Redis" />
     </ItemGroup>
 
 </Project>

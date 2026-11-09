@@ -43,10 +43,22 @@ public sealed class PersonPersistent : BasicPersistent
     public string CommunityMemo { get; set; } = string.Empty;
     
     public int[] GestureList { get; set; } = [];
+
+    /// <summary>
+    /// The options of the client as they were kept before they moved to the account (<see cref="AccountPersistent.OptionList"/>).
+    /// Nothing reads it any more; the migration that moved them copied it, and a later one can drop the column.
+    /// </summary>
     public byte[] OptionList { get; set; } = [];
 
     public int Outfit { get; set; }
     public DateTime? LastSelectedAt { get; set; }
+
+    /// <summary>
+    /// The character has not played the prologue yet: the gate sends it to the first tutorial maze instead of its
+    /// district, and leaving the tutorial clears it, once. Characters made before there was a prologue count as having
+    /// played it.
+    /// </summary>
+    public bool ProloguePending { get; set; }
 
     /// <summary>
     /// When the person last left a server of the game, for the friends who look at the list.
@@ -56,7 +68,28 @@ public sealed class PersonPersistent : BasicPersistent
     public required short FatiguePointCommon { get; set; }
     public short FatiguePointBonus { get; set; }
     
-    // public List<ItemPersistent> Items { get; init; } = [];
+    public byte Level { get; set; } = 1;
+    public int Experience { get; set; }
+
+    public long Gold { get; set; }
+    public long BattlePoint { get; set; }
+    public long Ether { get; set; }
+
+    /// <summary>
+    /// The whole wallet, indexed by the currency of the shop (cash, tokens, mileages). Gold, battle points and ether
+    /// are also kept in their own columns, which win when both are there, so rows written before the wallet keep them.
+    /// </summary>
+    public long[] Currencies { get; set; } = [];
+
+    /// <summary>
+    /// How far each storage has been extended, indexed by the storage group.
+    /// </summary>
+    public byte[] StorageGrades { get; set; } = [];
+
+    public int[] QuickSlotCards { get; set; } = [];
+    public int[] QuickSlotItems { get; set; } = [];
+
+    public List<ItemPersistent> Items { get; init; } = [];
     
     public required AccountPersistent Account { get; set; }
     public required GatePersistent Gate { get; set; }

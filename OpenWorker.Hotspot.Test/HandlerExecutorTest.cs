@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using Arch.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,13 +20,14 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Handler.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
 /// A request on an opcode no real message uses. The first byte says what happens next.
 /// </summary>
-[HotspotMessage(GroupOpcode.System, ProbeRequest.Command, HotspotMessageDirection.Request)]
+[HotspotMessage(GroupOpcode.System, (byte)ProbeRequest.Command, HotspotMessageDirection.Request)]
 public readonly struct ProbeRequest : IRequestHotspotMessage
 {
     public const SystemOpcode Command = (SystemOpcode)0x7E;
@@ -33,10 +36,17 @@ public readonly struct ProbeRequest : IRequestHotspotMessage
     public const byte Fails = 1;
     public const byte ReadsText = 2;
     public const byte Waits = 3;
+    public const byte Logs = 4;
+    public const byte Records = 5;
 
-    public MessageOpcode Opcode => new(GroupOpcode.System, Command);
+    public MessageOpcode Opcode => new(GroupOpcode.System, (byte)Command);
 
     public byte Mode { get; }
+
+    /// <summary>
+    /// What follows the mode, for <see cref="Records"/>.
+    /// </summary>
+    public byte[] Rest { get; } = [];
 
     public ProbeRequest(BinaryReader reader)
     {
@@ -46,17 +56,57 @@ public readonly struct ProbeRequest : IRequestHotspotMessage
         {
             _ = reader.ReadUtf8UnicodeString();
         }
+
+        if (Mode == Records)
+        {
+            Rest = reader.ReadBytes((int)(reader.BaseStream.Length - reader.BaseStream.Position));
+        }
     }
 }
 
-public sealed class ProbeHandler : IHotspotHandler<ProbeRequest>
+/// <param name="logger">Where <see cref="ProbeRequest.Logs"/> writes; only the tests of the log scope give one.</param>
+public sealed partial class ProbeHandler(ILogger<ProbeHandler>? logger = null) : IHotspotHandler<ProbeRequest>
 {
     // The tests that use it do not run side by side.
     public static int Handled { get; set; }
 
+    /// <summary>
+    /// What <see cref="ProbeRequest.Logs"/> waits for between its two lines; <see langword="null"/> to wait for nothing
+    /// but a round through the loop.
+    /// </summary>
+    public static TaskCompletionSource? Gate { get; set; }
+
+    /// <summary>
+    /// What the requests of <see cref="ProbeRequest.Records"/> carried after the mode, in the order they were handled.
+    /// </summary>
+    public static ConcurrentQueue<byte[]> Recorded { get; } = new();
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ProbeRequest request)
     {
         Handled++;
+
+        if (request.Mode == ProbeRequest.Records)
+        {
+            Recorded.Enqueue(request.Rest);
+        }
+
+        if (request.Mode == ProbeRequest.Logs && logger is { } log)
+        {
+            LogBefore(log);
+
+            // Off the loop and back: the line after the wait is written by a continuation of its own.
+            if (Gate is { } gate)
+            {
+                await gate.Task;
+            }
+
+            else
+            {
+                await Task.Delay(1, context.CancellationToken);
+            }
+
+            LogAfter(log);
+        }
 
         if (request.Mode == ProbeRequest.Fails)
         {
@@ -67,6 +117,43 @@ public sealed class ProbeHandler : IHotspotHandler<ProbeRequest>
         {
             await Task.Delay(Timeout.Infinite, context.CancellationToken);
         }
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Probe before the wait.")]
+    private static partial void LogBefore(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Probe after the wait.")]
+    private static partial void LogAfter(ILogger logger);
+}
+
+/// <summary>
+/// A request with a span format, on an opcode no real message uses: a list of numbers with an int count.
+/// </summary>
+[HotspotMessage(GroupOpcode.System, (byte)WireProbeRequest.Command, HotspotMessageDirection.Request)]
+public readonly struct WireProbeRequest : IRequestHotspotMessage, IWireReadable<WireProbeRequest>
+{
+    public const SystemOpcode Command = (SystemOpcode)0x7C;
+
+    public MessageOpcode Opcode => new(GroupOpcode.System, (byte)Command);
+
+    public int[] Values { get; init; }
+
+    public static WireProbeRequest Read(ref PacketReader reader)
+    {
+        return new WireProbeRequest { Values = reader.ReadInt32Array(reader.ReadLength(WireLength.Signed32, sizeof(int))) };
+    }
+}
+
+public sealed class WireProbeHandler : IHotspotHandler<WireProbeRequest>
+{
+    // The tests that use it do not run side by side.
+    public static int[]? Last { get; set; }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, WireProbeRequest request)
+    {
+        Last = request.Values;
+
+        return ValueTask.CompletedTask;
     }
 }
 
@@ -139,7 +226,11 @@ public sealed class HandlerExecutorTest
             // The slot of an opcode nobody handles holds the empty handler, which the container has to know.
             var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
 
-            var services = new ServiceCollection().AddSingleton<ProbeHandler>().AddSingleton(empty).BuildServiceProvider();
+            var services = new ServiceCollection()
+                .AddSingleton<ProbeHandler>()
+                .AddSingleton<WireProbeHandler>()
+                .AddSingleton(empty)
+                .BuildServiceProvider();
 
             Executor = new HandlerExecutor(
                 Collection,
@@ -391,6 +482,39 @@ public sealed class HandlerExecutorTest
         Assert.AreEqual(0, ProbeHandler.Handled, "The handler must not run on a request that did not parse.");
     }
 
+    /// <summary>
+    /// A request with a span format goes the other way through the executor: it is parsed from the span of the packet,
+    /// whole, before its handler runs. A count it cannot hold is malformed and counted like any other, and the handler does
+    /// not run.
+    /// </summary>
+    [TestMethod]
+    public async Task ARequestWithASpanFormatIsParsedFromThePacketAndAHostileCountIsMalformed()
+    {
+        using var harness = new Harness();
+
+        byte[] opcode = [(byte)GroupOpcode.System, (byte)WireProbeRequest.Command];
+
+        WireProbeHandler.Last = null;
+
+        await harness.SendAsync([.. opcode, 0x02, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00]);
+
+        int[] values = [7, 8];
+
+        CollectionAssert.AreEqual(values, WireProbeHandler.Last);
+        Assert.AreEqual(0, harness.Errors.Count);
+
+        WireProbeHandler.Last = null;
+
+        await harness.SendAsync([.. opcode, 0xFF, 0xFF, 0xFF, 0x7F, 0x07, 0x00, 0x00, 0x00]);
+
+        var entry = harness.Warnings.Single();
+
+        Assert.IsInstanceOfType<InvalidDataException>(entry.Exception);
+        Assert.AreEqual("malformed", entry.Values["Reason"]);
+        Assert.AreEqual(1, harness.Errors.Count);
+        Assert.IsNull(WireProbeHandler.Last, "The handler must not run on a request that did not parse.");
+    }
+
     [TestMethod]
     public async Task APacketAfterTheCloseIsDropped()
     {
@@ -481,5 +605,126 @@ public sealed class HandlerExecutorTest
         Assert.AreSame(TimeProvider.System, services.GetRequiredService<TimeProvider>());
         Assert.AreEqual(7, budget.Options.MaxErrors);
         Assert.AreEqual(TimeSpan.FromSeconds(150), budget.Options.Window);
+    }
+
+    /// <summary>
+    /// Counts what is asked of the container.
+    /// </summary>
+    private sealed class CountingProvider(IServiceProvider inner) : IServiceProvider
+    {
+        public int Calls { get; private set; }
+
+        public object? GetService(Type serviceType)
+        {
+            Calls++;
+
+            return inner.GetService(serviceType);
+        }
+    }
+
+    [TestMethod]
+    public async Task APacketFindsItsHandlerOnceAndAllocatesNothingAfterwards()
+    {
+        using var world = World.Create();
+
+        var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
+
+        await using var services = new ServiceCollection().AddSingleton<ProbeHandler>().AddSingleton(empty).BuildServiceProvider();
+
+        var provider = new CountingProvider(services);
+
+        var executor = new HandlerExecutor(
+            Collection,
+            provider,
+            world,
+            new HandlerErrorBudget(TimeProvider.System, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = 10, Window = Minute })),
+            NullLogger<HandlerExecutor>.Instance);
+
+        var player = world.Create();
+        var packet = Packet(ProbeRequest.Fine);
+
+        ProbeHandler.Handled = 0;
+
+        // The first packet resolves the handler, and the code of the path is compiled.
+        await executor.ExecuteAsync(packet, player, null, CancellationToken.None);
+
+        const int Packets = 10_000;
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (var sent = 0; sent < Packets; sent++)
+        {
+            // The handler completes at once, as most do, so the dispatch never leaves this thread.
+            var dispatch = executor.ExecuteAsync(packet, player, null, CancellationToken.None);
+
+            Assert.IsTrue(dispatch.IsCompletedSuccessfully);
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.AreEqual(Packets + 1, ProbeHandler.Handled);
+        Assert.AreEqual(1, provider.Calls, "The handler is resolved once, by the first packet, and kept.");
+
+        // A debug build makes a class of every async method, one allocation per call: only an optimized build, the one CI
+        // tests, can show that the dispatch allocates nothing.
+        if (typeof(HandlerExecutor).Assembly.GetCustomAttribute<System.Diagnostics.DebuggableAttribute>() is { IsJITOptimizerDisabled: true })
+        {
+            Assert.Inconclusive($"{allocated} bytes for {Packets} packets in a debug build; run the tests in Release to measure them.");
+        }
+
+        // Nothing per packet: a few bytes in all are left for what the runtime may allocate once on this thread.
+        Assert.IsLessThan(Packets, allocated, $"{allocated} bytes for {Packets} packets.");
+    }
+
+    /// <summary>
+    /// A session that sends the packets of a group faster than its limit loses the packets over it: they are dropped
+    /// before their handler, counted under their group, and are no error of the session. The bucket fills again with time.
+    /// </summary>
+    [TestMethod]
+    public async Task APacketOverTheRateOfItsGroupIsDroppedAndCountedWithoutAnError()
+    {
+        using var metrics = new MetricsHost();
+        using var refused = metrics.Listen<long>("handler.refused");
+        using var world = World.Create();
+
+        var time = new FakeTimeProvider();
+        var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
+
+        await using var services = new ServiceCollection().AddSingleton<ProbeHandler>().AddSingleton(empty).BuildServiceProvider();
+
+        // The probe is of the system group, which falls under the other packets.
+        var limits = new PacketRateLimitOptions { Other = new PacketRateLimit { PerSecond = 2, Burst = 3 } };
+
+        var executor = new HandlerExecutor(
+            Collection,
+            services,
+            world,
+            new HandlerErrorBudget(time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = 10, Window = Minute })),
+            NullLogger<HandlerExecutor>.Instance,
+            metrics.Get<Telemetry.HandlerMetrics>(),
+            new PacketRateLimiter(time, Options.Create(limits)));
+
+        var player = world.Create(new ActorComponent(7, ActorType.User), new HandlerErrorsComponent());
+
+        ProbeHandler.Handled = 0;
+
+        for (var sent = 0; sent < 5; sent++)
+        {
+            await executor.ExecuteAsync(Packet(ProbeRequest.Fine), player, null, CancellationToken.None);
+        }
+
+        Assert.AreEqual(3, ProbeHandler.Handled, "The burst of three goes through, the two after it do not.");
+        Assert.AreEqual(2, refused.Sum("group", "other"));
+        Assert.AreEqual(0, world.Get<HandlerErrorsComponent>(player).Count, "A dropped packet is no error of the session.");
+
+        time.Advance(TimeSpan.FromSeconds(1));
+
+        for (var sent = 0; sent < 3; sent++)
+        {
+            await executor.ExecuteAsync(Packet(ProbeRequest.Fine), player, null, CancellationToken.None);
+        }
+
+        Assert.AreEqual(5, ProbeHandler.Handled, "A second later two more fit.");
+        Assert.AreEqual(3, refused.Sum("group", "other"));
     }
 }

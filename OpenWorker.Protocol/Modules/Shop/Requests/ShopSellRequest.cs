@@ -1,0 +1,32 @@
+using OpenWorker.Domain.Types;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Shop.Types;
+
+namespace OpenWorker.Hotspot.Modules.Shop.Requests;
+
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
+public readonly struct ShopSellRequest(BinaryReader reader) : IRequestHotspotMessage
+{
+#region Interface: IHotspotMessage
+
+    private const GroupOpcode Group = GroupOpcode.Shop;
+    private const ShopOpcode Command = ShopOpcode.Sell;
+
+    public MessageOpcode Opcode => new(Group, (byte)Command);
+
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public ActorValue Npc { get; } = new(reader);
+
+    public IReadOnlyList<ShopSellEntry> Entries { get; } = Enumerable
+        .Range(0, reader.ReadByte())
+        .Select(_ => new ShopSellEntry(reader))
+        .ToArray();
+
+#endregion Message: Body
+}

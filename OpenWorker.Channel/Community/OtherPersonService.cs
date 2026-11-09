@@ -6,7 +6,6 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
-using OpenWorker.Gameplay.Modules.Items.Components;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -179,18 +178,19 @@ public sealed partial class OtherPersonService(
     {
         var info = world.Get<PersonInfoComponent>(target);
         var community = world.Get<CommunityComponent>(target);
-        var title = world.Get<TitleComponent>(target);
         var rank = world.Get<RankComponent>(target);
+        var title = world.Get<TitleComponent>(target);
+        var level = world.TryGet<LevelComponent>(target, out var reached) ? reached.Level : PersonModuleDefines.DefaultLevel;
 
         var stats = combat
-            .GetPerson(info.Hero, PersonModuleDefines.DefaultLevel, title)
+            .GetPlayer(world, target)
             .ToStatList()
             .Select(e => new ST_STAT { wStatID = (short)e.byIndex, fValue = e.statValue })
             .ToArray();
 
         return new OtherPersonValue
         {
-            Level = PersonModuleDefines.DefaultLevel,
+            Level = level,
             State = community.State,
             Comment = community.Comment,
             BaseStats = stats,
@@ -209,18 +209,18 @@ public sealed partial class OtherPersonService(
     }
 
     /// <summary>
-    /// A player who is not connected: what is saved, so no equipment and no characteristics.
+    /// A player who is not connected: what is saved, so what they wear but no characteristics.
     /// </summary>
     public static OtherPersonValue FromProfile(OtherPersonProfile profile)
     {
         return new OtherPersonValue
         {
-            Level = PersonModuleDefines.DefaultLevel,
+            Level = profile.Level,
             State = (CommunityState)profile.CommunityState,
             Comment = profile.CommunityComment,
             BaseStats = [],
             Stats = [],
-            Equipment = [],
+            Equipment = EquipmentOf(profile),
             Memo = profile.CommunityMemo,
             Class = profile.Hero,
             Name = profile.Name,
@@ -235,24 +235,17 @@ public sealed partial class OtherPersonService(
     {
         try
         {
-            var storage = world.Get<StorageComponent>(target);
+            if (!world.TryGet<InventoryComponent>(target, out var component) || component.Value is not { } inventory)
+            {
+                return [];
+            }
 
-            return storage.Collection
-                .Where(e => world.Get<StorageGroupComponent>(e).Group is StorageGroup.AbilityEquip or StorageGroup.ShapeEquip)
-                .SelectMany(e =>
-                {
-                    var group = world.Get<StorageGroupComponent>(e).Group;
-
-                    return world.Get<StorageContentComponent>(e).SlotList
-                        .Select((item, slot) => (Item: item, Slot: slot))
-                        .Where(x => x.Item != Entity.Null)
-                        .Select(x => new StorageValue
-                        {
-                            Item = ItemDtoFactory.FromEntity(world, x.Item),
-                            Storage = group,
-                            Slot = (short)x.Slot
-                        });
-                })
+            return inventory.Storages
+                .Where(e => e.Group is StorageGroup.AbilityEquip or StorageGroup.ShapeEquip)
+                .SelectMany(e => e.Slots
+                    .Select((item, slot) => (Item: item, Slot: slot))
+                    .Where(x => x.Item is not null)
+                    .Select(x => new StorageValue { Item = x.Item!.ToValue(), Storage = e.Group, Slot = (short)x.Slot }))
                 .ToArray();
         }
 
@@ -263,6 +256,16 @@ public sealed partial class OtherPersonService(
 
             return [];
         }
+    }
+
+    /// <summary>
+    /// What a player who is not connected wears, as the database remembers it.
+    /// </summary>
+    private static StorageValue[] EquipmentOf(OtherPersonProfile profile)
+    {
+        return (profile.Gear ?? [])
+            .Select(e => new StorageValue { Storage = (StorageGroup)e.Storage, Slot = e.Slot, Item = ItemInstance.From(e).ToValue() })
+            .ToArray();
     }
 
     private static byte[] Encode(int viewer, OtherInfoWindow window, bool check, bool calculate)

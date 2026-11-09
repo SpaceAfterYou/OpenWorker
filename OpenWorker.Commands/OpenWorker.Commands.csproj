@@ -11,6 +11,7 @@
     <ItemGroup>
       <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
       <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
+      <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -3,7 +3,8 @@ using System.Text;
 
 namespace OpenWorker.Batch.Actions;
 
-public sealed record ActionAnimation(string Name, float Length, IReadOnlyList<AttackTrigger> Attacks);
+/// <param name="Repeats">Whether the animation starts over by itself until something stops it, like the waiting and the loop of a skill.</param>
+public sealed record ActionAnimation(string Name, float Length, IReadOnlyList<AttackTrigger> Attacks, bool Repeats = false);
 
 /// <summary>
 /// An action file of the client: what happens during each animation of a character.
@@ -107,7 +108,10 @@ public sealed class ActionFile
 
         var length = reader.ReadSingle();
 
-        reader.BaseStream.Seek(2 * sizeof(short), SeekOrigin.Current);
+        // Animations that play once are marked, those that repeat are not.
+        var repeats = reader.ReadInt16() == 0;
+
+        reader.ReadInt16();
 
         var attacks = new List<AttackTrigger>();
         var events = reader.ReadInt32();
@@ -132,7 +136,7 @@ public sealed class ActionFile
             SkipFrames(reader);
         }
 
-        return new ActionAnimation(name, length, attacks);
+        return new ActionAnimation(name, length, attacks, repeats);
     }
 
     private static AttackTrigger? ReadEvent(BinaryReader reader, short version)
@@ -180,12 +184,19 @@ public sealed class ActionFile
         var height = reader.ReadSingle();
         var startPosition = reader.ReadSingle();
 
-        var (projectile, chain, damageRate, reactionType) = ReadProjectile(reader, version);
+        var (projectile, chain, reaction) = ReadProjectile(reader, version);
 
-        return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition, damageRate, reactionType, projectile, chain);
+        return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition,
+            reaction.DamageRate, reaction.ReactionType, projectile, chain, reaction.Buff, reaction.TargetType);
     }
 
-    private static (ProjectileInfo Projectile, ChainInfo Chain, float DamageRate, int ReactionType) ReadProjectile(BinaryReader reader, short version)
+    /// <summary>
+    /// Whom an attack is for and what it does to them: the kind of target, the share of the damage, the buff it gives each
+    /// target and how the target reacts.
+    /// </summary>
+    private readonly record struct Reaction(int TargetType, float DamageRate, int Buff, int ReactionType);
+
+    private static (ProjectileInfo Projectile, ChainInfo Chain, Reaction Reaction) ReadProjectile(BinaryReader reader, short version)
     {
         var start = ReadVector3(reader);
         var speed = reader.ReadSingle();
@@ -229,13 +240,13 @@ public sealed class ActionFile
 
         // What a hit looks like.
         Skip(reader, 1 + sizeof(float) + sizeof(int) + sizeof(float) + sizeof(int) + sizeof(float));
-        // Which targets it may affect.
-        Skip(reader, 2 * sizeof(int));
-
-        var damageRate = reader.ReadSingle();
+        // Which targets it may affect: the kind of target, then the states of the targets it reaches.
+        var targetType = reader.ReadInt32();
 
         reader.ReadInt32();
 
+        var damageRate = reader.ReadSingle();
+        var buff = reader.ReadInt32();
         var reactionType = reader.ReadInt32();
 
         // How a target reacts.
@@ -305,7 +316,7 @@ public sealed class ActionFile
         var projectile = new ProjectileInfo(start, speed, lifeTime, hasGravity, directionType, radius, isContinuous, continuousTime, isGuided, targetOnly, explodeDecision, direction, penetrates, penetrateCount);
         var chain = new ChainInfo(connectionType, chainLifeTime, chainMaxCount, damageMultiple, chainCenter, chainRadius, chainStartPosition, recalculates);
 
-        return (projectile, chain, damageRate, reactionType);
+        return (projectile, chain, new Reaction(targetType, damageRate, buff, reactionType));
     }
 
     private static Vector3 ReadVector3(BinaryReader reader)

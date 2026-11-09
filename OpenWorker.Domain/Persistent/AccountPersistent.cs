@@ -16,5 +16,10 @@ public sealed class AccountPersistent : BasicPersistent
     public string TradePassword { get; set; } = string.Empty;
     public string SecondPassword { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The options of the client (the system menu). The client treats them as one set for the account.
+    /// </summary>
+    public byte[] OptionList { get; set; } = [];
+
     public List<PersonPersistent> Persons { get; init; } = [];
 }

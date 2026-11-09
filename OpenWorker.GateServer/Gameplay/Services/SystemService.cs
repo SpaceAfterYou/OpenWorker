@@ -5,7 +5,6 @@ using OpenWorker.Hotspot.Modules.System.Requests;
 
 namespace OpenWorker.GateServer.Gameplay.Services;
 
-[HotspotHandler(HotspotHandlerType.Gate)]
 public sealed class SystemService(OptionGameplay option) :
     IHotspotHandler<SystemOptionUpdateRequest>,
     IHotspotHandler<SystemXignCodeRequest>

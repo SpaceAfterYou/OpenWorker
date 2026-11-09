@@ -20,7 +20,6 @@ namespace OpenWorker.DistrictServer.Services;
 /// The rankings, from what the servers recorded: a clear of a map and the kills in the arena. Where nothing is recorded the
 /// list is empty. The infinite tower has nothing to show yet.
 /// </summary>
-[HotspotHandler(HotspotHandlerType.District)]
 public sealed class RankingService(World world, IDbContextFactory<PersistenceContext> factory) :
     IHotspotHandler<RankingTimeAttackListRequest>,
     IHotspotHandler<RankingPvpListRequest>,

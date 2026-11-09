@@ -13,6 +13,7 @@ using OpenWorker.Hotspot.Modules.DailyMissions.Enums;
 using OpenWorker.Hotspot.Modules.DailyMissions.Responses;
 using OpenWorker.Hotspot.Modules.DailyMissions.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.DailyMissions;
 
@@ -427,7 +428,7 @@ public sealed partial class DailyMissionManager(
     private void SendError(Entity player, DailyMissionOpcode command, ushort code)
     {
         world.Get<ServerSessionComponent>(player)
-            .Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.DailyMission, command), code));
+            .Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.DailyMission, command), code));
     }
 
     private bool TryGet(Entity player, out DailyMissionBook book)
@@ -442,26 +443,14 @@ public sealed partial class DailyMissionManager(
         return false;
     }
 
-    private async ValueTask SaveAsync(Entity player, DailyMissionBook book, CancellationToken cancellationToken)
+    /// <summary>
+    /// The flush of the person writes the book (<see cref="PersonSections.MiscState"/>); nothing waits for the database here.
+    /// </summary>
+    private ValueTask SaveAsync(Entity player, DailyMissionBook book, CancellationToken cancellationToken)
     {
-        if (!world.IsAlive(player))
-        {
-            return;
-        }
+        world.MarkDirty(player, PersonSections.MiscState);
 
-        var person = world.Get<DailyMissionComponent>(player).Person;
-
-        await book.Gate.WaitAsync(cancellationToken);
-
-        try
-        {
-            await store.SaveAsync(person, PersonStateKind.DailyMission, book, cancellationToken);
-        }
-
-        finally
-        {
-            book.Gate.Release();
-        }
+        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "The reward of the daily mission {Mission} could not be given.")]

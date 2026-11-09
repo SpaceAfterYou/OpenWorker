@@ -89,6 +89,11 @@ public interface IAiHost
     int CountEnemies(float distance);
 
     /// <summary>
+    /// How many players stand within the distance, whatever side they are on.
+    /// </summary>
+    int CountUsers(float distance) => CountEnemies(distance);
+
+    /// <summary>
     /// How many monsters of the sector the monster lives in are alive.
     /// </summary>
     int CountSectorMonsters();
@@ -142,4 +147,32 @@ public interface IAiHost
     void Teleport(Vector3 position);
 
     void Die();
+
+    /// <summary>
+    /// The person a helper follows and fights for, or nothing for a monster of the maze.
+    /// </summary>
+    AiTarget? Owner => null;
+
+    /// <summary>
+    /// Whether there is ground to stand on at a place, near its height.
+    /// </summary>
+    bool HasGround(Vector3 position) => true;
+
+    /// <summary>
+    /// A helper is put where its owner stands, and everybody is told where it is now.
+    /// </summary>
+    void WarpTo(Vector3 position) => Teleport(position);
+
+    /// <summary>
+    /// Gets back some life, never above the maximum.
+    /// </summary>
+    void Heal(int amount)
+    {
+    }
+
+    /// <summary>
+    /// A skill by its number, whether or not it is in one of the slots: the skills a script names for getting up and
+    /// for escaping.
+    /// </summary>
+    AiSkill? FindSkill(int id) => null;
 }

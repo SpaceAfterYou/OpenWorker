@@ -1,0 +1,109 @@
+# Settings for a load test, laid over compose.yaml by eng/loadtest.sh and by nobody else:
+#
+#   docker compose -f compose.yaml -f eng/loadtest/compose.loadtest.yaml up -d --build
+#
+# compose.yaml stays what it is for development. This file only makes the servers fit to be measured:
+#
+#   * Release builds. The Debug build saves every packet it receives to a file under a lock (Hotspot:PacketDumpPath) and
+#     logs a line for each packet that is not a move.
+#   * Logs at Warning, so the console of the container is not the thing that is measured.
+#   * No packet dumps.
+#   * The line each server logs about its garbage collector when it starts (RuntimeSettingsLogService) stays at
+#     Information, so a run shows which collector it was measured with.
+#   * Twenty channels in a district instead of ten. A channel holds 65 players (it is Full above 64), so a thousand bots
+#     in one district need at least sixteen. Set LOADTEST_CHANNELS to change it.
+#
+# The bots sign in with accounts they find in the database (OpenWorker.LoadTest seed creates them). Nothing here turns on
+# Auth__AllowNextHumanNetworkLogin: that login signs everybody in as the first account of the database, which cannot
+# carry more than one bot, and the production settings stay as they are.
+
+x-server: &server
+  build:
+    args:
+      - BUILD_CONFIGURATION=Release
+  environment:
+    - Logging__LogLevel__Default=Warning
+    - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
+    - Hotspot__PacketDumpPath=
+
+# The other servers start when the relay is healthy. On a fresh database (the Postgres container has no volume, so every
+# `down` makes one) the maze server reads ServerContents while it builds its services, before any server has migrated, and
+# dies with `relation "ServerContents" does not exist`; and a gate that starts before the relay has made the Redis indexes
+# cannot write its record (`No such index channelcache-idx`), so the first bots find no gate online. The relay migrates
+# and makes the missing indexes when it starts; it never deletes a record, so a start of it later loses nothing either.
+x-after-relay: &after-relay
+  depends_on:
+    openworker.relayserver:
+      condition: service_healthy
+
+services:
+  # The relay creates the Redis indexes the other servers search by, so it has to run, and it will not start without a
+  # token. It talks to Discord only if the token is real; a placeholder lets it make the indexes. It runs once: a restart
+  # would not hurt the sessions of the bots (the bootstrap keeps the records), but nothing needs it.
+  openworker.relayserver:
+    <<: *server
+    restart: "no"
+    environment:
+      - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
+      - Credentials__DiscordToken=${LOADTEST_DISCORD_TOKEN:-loadtest-placeholder}
+
+  openworker.authserver:
+    <<: [*server, *after-relay]
+
+  openworker.gateserver:
+    <<: [*server, *after-relay]
+
+  openworker.mazeserver:
+    <<: [*server, *after-relay]
+
+  openworker.districtserver-roccotown:
+    <<: *after-relay
+    build:
+      args:
+        - BUILD_CONFIGURATION=Release
+    environment:
+      - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
+      - Hotspot__PacketDumpPath=
+      - Channel__To=${LOADTEST_CHANNELS:-20}
+
+  openworker.districtserver-canduscity:
+    <<: *after-relay
+    build:
+      args:
+        - BUILD_CONFIGURATION=Release
+    environment:
+      - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
+      - Hotspot__PacketDumpPath=
+      - Channel__To=${LOADTEST_CHANNELS:-20}
+
+  openworker.districtserver-gracecity:
+    <<: *after-relay
+    build:
+      args:
+        - BUILD_CONFIGURATION=Release
+    environment:
+      - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
+      - Hotspot__PacketDumpPath=
+      - Channel__To=${LOADTEST_CHANNELS:-20}
+
+  openworker.districtserver-ruinfortress:
+    <<: *after-relay
+    build:
+      args:
+        - BUILD_CONFIGURATION=Release
+    environment:
+      - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
+      - Hotspot__PacketDumpPath=
+      - Channel__To=${LOADTEST_CHANNELS:-20}
+
+  openworker.updatecontent:
+    build:
+      args:
+        - BUILD_CONFIGURATION=Release
+    environment:
+      - Logging__LogLevel__Default=Warning

@@ -1,43 +1,33 @@
 using Arch.Core;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Commands.Attributes;
-using OpenWorker.Domain.Batch.Enums;
-using OpenWorker.Hotspot;
-using OpenWorker.Gameplay.Messages.Response.Person;
-using OpenWorker.Hotspot.Modules.Maze.Responses;
+using OpenWorker.Lua;
 
 namespace OpenWorker.Commands.SectorsCommands;
 
+/// <summary>
+/// Kills what lives in a sector of the maze and clears it, as if the player had done it: <c>/sector-clear [sector]</c>.
+/// Without a number it is the sector the player stands in.
+/// </summary>
 [CommandTrigger("sector", "clear")]
 [CommandDescription("Clear maze sector")]
 internal sealed partial class SectorClearCommand : ICommand
 {
     [ExternalDependency]
     private World World { get; }
-    
-    [ExternalDependency]
-    private BatchManager Provider { get; }
-    
-    ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
+
+    async ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
-        var worldComponent = World.Get<WorldComponent>(player);
-        
-        if (!Provider.TryGetAndCache(worldComponent.Location, out var maze, out var type) || type != BatchType.Maze)
+        if (!World.Has<LuaMaze>(player))
         {
             // TODO: Not in maze message
-            return ValueTask.FromResult(false);
+            return false;
         }
-        
-        PrivateExecute(player);
-        
-        return ValueTask.FromResult(true);
-    }
-    
-    private void PrivateExecute(Entity player)
-    {
-        var session = World.Get<ServerSessionComponent>(player);
 
-        // TODO: resolve sector and success from maze state (command currently has no sector argument).
-        session.Send(new MazeClearSectorResponse { Sector = 0, Status = true });
+        _ = int.TryParse(tokens.ElementAtOrDefault(0), out var sector);
+
+        await World.Get<LuaMaze>(player).ClearSectorAsync(sector);
+
+        return true;
     }
 }

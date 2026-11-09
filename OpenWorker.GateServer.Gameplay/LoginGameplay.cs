@@ -1,4 +1,4 @@
-using OpenWorker.Hotspot.Cache;
+﻿using OpenWorker.Hotspot.Cache;
 using OpenWorker.Gameplay.Modules.Login.Extensions;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +15,7 @@ using OpenWorker.Hotspot.Messages.Response.World;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Requests;
 using OpenWorker.Hotspot.Modules.Login.Responses;
+using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Persistence;
 using Redis.OM.Searching;
 
@@ -76,12 +77,8 @@ public sealed class LoginGameplay(
             return;
         }
 
-        await using var database = await factory
-            .CreateDbContextAsync(context.CancellationToken);
-
-        var account = await database.Accounts
-            .Include(e => e.Persons.Where(p => p.Gate.Id == Gate))
-            .FirstOrDefaultAsync(e => e.Id == request.Account, context.CancellationToken);
+        var account = await factory
+            .LoadAccountAtGateAsync(request.Account, Gate, (byte)StorageGroup.AbilityEquip, context.CancellationToken);
 
         if (account is null)
         {
@@ -93,6 +90,8 @@ public sealed class LoginGameplay(
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
 
+        world.SetLogAccount(context.Player, request.Session.Account);
+
         await leases
             .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
@@ -100,7 +99,7 @@ public sealed class LoginGameplay(
 
         world.Set(context.Player, account.ToTradePasswordComponent());
 
-        var list = registry.CreatePersonListComponent(account.Persons);
+        var list = registry.CreatePersonListComponent(account.Persons, account.OptionList);
 
         world.Set(context.Player, list);
 

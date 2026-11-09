@@ -1,0 +1,188 @@
+# INSTALL.md
+
+How an agent sets up a machine for OpenWorker and writes `AGENTS.local.md`, the git-ignored file next to
+`AGENTS.md` that holds everything specific to this machine.
+
+Rules for this file:
+- **Never guess a path.** Find it with the commands below or ask the user.
+- **Never copy secrets into it.** That includes passwords, tokens and connection strings with credentials.
+- **Write it in English.**
+- **Do not commit it.** `.gitignore` covers it; check with `git check-ignore AGENTS.local.md`.
+
+## 1. Tools
+
+Check each tool and record its version or path:
+
+```bash
+dotnet --version            # SDK 10.0.100 or a later 10.0 feature band, see global.json
+dotnet tool restore         # installs dotnet-ef from .config/dotnet-tools.json
+docker --version && docker ps   # the test stand runs in Docker
+python3 --version           # 3.11 or newer, for docs/tools
+git --version
+```
+
+The build and the tests also need the **ASP.NET Core runtime and targeting pack** of the same .NET version: the
+health endpoint of the servers is served by Kestrel (`FrameworkReference Microsoft.AspNetCore.App` in
+`OpenWorker.DependencyInjection`). The installers from Microsoft carry both; distribution packages often split them
+off. Check:
+
+```bash
+dotnet --list-runtimes      # must list Microsoft.AspNetCore.App 10.0.x
+```
+
+Without them `dotnet build` stops with `NETSDK1226` ("Prune Package data not found ... Microsoft.AspNetCore.App") and
+the test executables stop with "You must install or update .NET to run this application ... Microsoft.AspNetCore.App".
+Fix it in one of two ways, and record which one in `AGENTS.local.md`:
+
+- Install the distribution packages, for example `aspnet-runtime` and `aspnet-targeting-pack` (this needs root: ask
+  the user).
+- Or install a full SDK for the user with the `dotnet-install` script into `~/.dotnet`, and run every `dotnet`
+  command with `export DOTNET_ROOT=$HOME/.dotnet; export PATH=$HOME/.dotnet:$PATH`. Check `dotnet --version` and
+  `dotnet --list-runtimes` again in that shell.
+
+If `docker ps` cannot reach the daemon, it is probably stopped after a reboot. Starting it needs root
+(`sudo systemctl start docker`): ask the user to start it rather than trying yourself.
+
+Optional: a disassembler for research. Find it with `command -v idat`. Record where it is if it exists.
+
+## 2. Repository and local notes
+
+- **Repository root:** `git rev-parse --show-toplevel`. Run this in the main checkout, not in a worktree. If
+  you are in a worktree, `git worktree list` shows the main checkout first.
+- **Local notes:** check whether `docs/` exists in the main checkout. It is git-ignored, so a fresh clone does
+  not have it. Without it there are no stand scripts (`docs/tools/`); ask the user for a copy.
+
+## 3. Game client
+
+The emulator needs the files of the game client, version 1.4.2.3.
+
+- Ask the user where the client is installed, or search for it:
+  `find / -name SoulWorker100.exe -not -path '*/proc/*' 2>/dev/null`.
+- The install folder contains the executable and the `datas/` folder with the archives `data00.v` and up.
+- Record the install folder and the `datas/` folder.
+
+## 4. Data for the stand and the tests
+
+Extract the client data into a persistent folder. Do not use `/tmp`: on many machines it is a RAM disk
+that a reboot wipes.
+
+```bash
+mkdir -p ~/.cache/openworker/stand
+python3 -I docs/tools/stand_prepare.py <client datas folder> ~/.cache/openworker/stand
+```
+
+The script writes the following, each folder with a file count when it finishes:
+
+| Folder or file | Contents | Expected files |
+|---|---|---|
+| `client_res/` | Tables | about 168 |
+| `client_batch/` | Maps | about 103 |
+| `client_scripts/` | Maze scripts | about 167 |
+| `client_scripts/AI/` | Monster scripts | about 1167 |
+| `client_action/` | Action files | about 2331 |
+| `client_navmesh/` | Navigation meshes | about 107 |
+| `seed.sql` | The `tester` account | — |
+
+If a count is zero, the client version differs from 1.4.2.3: stop and tell the user.
+
+Server-only tables (`OPENWORKER_TEST_SERVER_RES`, the files behind `OpenWorker.Res/ServerRows`) are not part
+of the client.
+- Ask the user whether a folder with them exists. It contains files such as `tb_Drop.res` and
+  `tb_DropRate_Mob.res`.
+- Record it if it exists. Otherwise leave the variable unset; those tests then skip.
+- A server reads them at run time, never from the repository: put the folder at `res-server/` next to `res/` (in a
+  container, mount it at `/app/res-server`). Tables with names of their own are also found in `res/`; the server's own
+  versions of client tables, such as `tb_Reinforce`, only in `res-server/`. Never copy a `.res` file into the repository.
+  Without them the server starts and goes without drops, maze key rewards, upgrades and disassembly (ARCHITECTURE.md,
+  "Table folders").
+
+## 5. Reference materials
+
+Research may use other material:
+- disassembler databases of the client;
+- a reference server build;
+- a mounted disk.
+
+Ask the user what exists, where it is, and what limits apply. Record each item with its limits, for
+example:
+- open only copies;
+- never open a given configuration file;
+- do not read given folders;
+- mount read-only.
+
+If a disk has to be mounted, record the exact mount command. None of this goes into git (see "Research
+data stays out of git" in `AGENTS.md`).
+
+## 6. Write `AGENTS.local.md`
+
+Fill in this template. Keep the headings, drop rows that do not apply, and add rows for anything else local.
+
+````markdown
+# AGENTS.local.md
+
+Local data of this machine for agents. Generated by following INSTALL.md on <date>. Not in git.
+
+## Paths
+
+| What | Path |
+|---|---|
+| Repository (main checkout) | <path> |
+| Local notes and stand tooling | <repo>/docs, <repo>/docs/tools |
+| Game client install | <path> |
+| Client archives | <path>/datas |
+| Stand data (from stand_prepare.py) | <path, e.g. ~/.cache/openworker/stand> |
+| Server-only tables | <path or "none"> |
+| Agent notes and scratch (persistent) | <path, e.g. <repo>/docs/agents/<agent name>/> |
+
+## Tools
+
+| Tool | Version or path | Notes |
+|---|---|---|
+| .NET SDK | <version> | |
+| dotnet-ef | <version> | `dotnet tool restore` |
+| Docker | <version> | how to start it if it is down |
+| Python | <version> | |
+| Disassembler | <path or "none"> | how to run it headless |
+
+## Reference materials and their limits
+
+| What | Path | Limits |
+|---|---|---|
+| <item> | <path> | <rules> |
+
+## Test environment
+
+```bash
+export OPENWORKER_TEST_RES=<stand data>/client_res
+export OPENWORKER_TEST_AI=<stand data>/client_scripts/AI
+export OPENWORKER_TEST_ACTION=<stand data>/client_action
+export OPENWORKER_TEST_NAVMESH=<stand data>/client_navmesh
+export OPENWORKER_TEST_SERVER_RES=<server tables, or leave unset>
+export OPENWORKER_TEST_REDIS=redis://127.0.0.1:<port of a running stand redis>
+```
+
+## Stand
+
+```bash
+dotnet build OpenWorker.slnx
+OW_STAND=<n> bash <repo>/docs/tools/stand_up.sh <stand data> <checkout to run>
+OW_STAND=<n> python3 -I <repo>/docs/tools/e2e_client.py <ports...>   # see the docstring of each script
+```
+
+## Machine notes
+
+<anything else: RAM disk /tmp, how to start Docker, mounts, known quirks>
+````
+
+## 7. Check
+
+Verify each item before you finish.
+
+1. `git check-ignore -q AGENTS.local.md && echo ignored` prints `ignored`.
+2. Every path in the file exists: `ls -d <path>`.
+3. Tests pass with the variables exported:
+   `dotnet build OpenWorker.slnx && dotnet test --solution OpenWorker.slnx`.
+   With the client data in place, the only tests left skipped are the ones whose data this machine lacks.
+4. If Docker is running, `docs/tools/stand_up.sh` starts a stand, and `docs/tools/e2e_client.py` passes
+   against it.
+5. Tell the user what you could not find. Leave those rows marked `unknown`; do not invent values.

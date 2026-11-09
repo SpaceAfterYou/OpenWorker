@@ -6,6 +6,8 @@ namespace OpenWorker.Batch.Actions;
 /// The moment of an animation when an attack is judged, and the space it covers.
 /// </summary>
 /// <param name="Id">How the client names this attack in packets.</param>
+/// <param name="Buff">The buff the attack gives every target it reaches, zero for none.</param>
+/// <param name="TargetType">Whom the attack is for: the enemies of the attacker, the attacker itself, its friends or its party.</param>
 public readonly record struct AttackTrigger(
     int Id,
     short RangeType,
@@ -22,8 +24,37 @@ public readonly record struct AttackTrigger(
     float DamageRate = 1f,
     int ReactionType = 1,
     ProjectileInfo? Projectile = null,
-    ChainInfo? Chain = null)
+    ChainInfo? Chain = null,
+    int Buff = 0,
+    int TargetType = AttackTrigger.Enemies)
 {
+    /// <summary>
+    /// The attacker itself, wherever it stands.
+    /// </summary>
+    public const int Self = 1;
+
+    /// <summary>
+    /// The attacker and its friends in the area.
+    /// </summary>
+    public const int SelfAndFriends = 2;
+
+    public const int Enemies = 3;
+
+    /// <summary>
+    /// The attacker and its party in the area.
+    /// </summary>
+    public const int SelfAndParty = 7;
+
+    /// <summary>
+    /// The party of the attacker in the area, without the attacker.
+    /// </summary>
+    public const int Party = 8;
+
+    /// <summary>
+    /// The friends of the attacker in the area, without the attacker.
+    /// </summary>
+    public const int Friends = 6;
+
     private const short Melee = 0;
     private const short Thrown = 1;
     private const short Trap = 2;
@@ -33,9 +64,9 @@ public readonly record struct AttackTrigger(
     public const short BoxRange = 1;
 
     /// <summary>
-    /// Other types leave it to an object they spawn: a projectile or a trap.
+    /// Other types leave it to an object they spawn: a projectile, a trap or a chain.
     /// </summary>
-    public bool HitsArea => AttackType is Melee or Chained;
+    public bool HitsArea => AttackType is Melee;
 
     public bool IsProjectile => AttackType is Thrown or FromBody;
 
@@ -52,7 +83,17 @@ public readonly record struct AttackTrigger(
     /// <summary>
     /// Some attacks only show something and affect nobody.
     /// </summary>
-    public bool AffectsTargets => DamageRate > 0f || ReactionType != 0;
+    public bool AffectsTargets => DamageRate > 0f || ReactionType != 0 || Buff > 0;
+
+    /// <summary>
+    /// Whether the attack is for the side of the attacker (itself, its friends, its party) rather than its enemies.
+    /// </summary>
+    public bool ForAllies => TargetType is Self or SelfAndFriends or Friends or SelfAndParty or Party;
+
+    /// <summary>
+    /// Whether the attacker is among the targets of an attack for its side.
+    /// </summary>
+    public bool IncludesAttacker => TargetType is Self or SelfAndFriends or SelfAndParty;
 }
 
 /// <summary>

@@ -165,6 +165,12 @@ public sealed class AiProfile
     public float RunawayMaxTime { get; init; }
 
     /// <summary>
+    /// What a helper that fights beside a person keeps for itself: how far from its owner it may be before it comes back
+    /// to it, the skill it plays while it gets up, and how it gets away from blows.
+    /// </summary>
+    public AiFollowerSettings Follower { get; init; } = new();
+
+    /// <summary>
     /// The states the monster has: it cannot enter any other.
     /// </summary>
     public IReadOnlySet<AiState> States { get; init; } = new HashSet<AiState>();
@@ -298,6 +304,7 @@ public sealed class AiProfileBuilder
     private float _runawayMin;
     private float _runawayMax;
     private bool _hasGroups;
+    private AiFollowerSettings _follower = new();
 
     private static List<AiCondition>[][] Table()
     {
@@ -370,6 +377,28 @@ public sealed class AiProfileBuilder
         _runawayCount = count;
         _runawayMin = minTime;
         _runawayMax = maxTime;
+    }
+
+    /// <summary>
+    /// How far from its owner a helper may be, out of a fight and in one, before it comes back to the owner at once.
+    /// </summary>
+    public void SetHelperFarDist(float distance, float battleDistance)
+    {
+        _follower = _follower with { FarDistance = distance, FarBattleDistance = battleDistance };
+    }
+
+    /// <summary>
+    /// The skill a helper plays when it is beaten down and gets up again.
+    /// </summary>
+    public void SetRecoverySkill(int skill) => _follower = _follower with { RecoverySkill = skill };
+
+    /// <summary>
+    /// How the monster gets away from a run of blows: the points the blows add up to, the chance in ten thousand, the
+    /// distances, the time after which the points start again, the kind of escape and its value (a skill for kind 2).
+    /// </summary>
+    public void SetEscapeInfo(float points, int chance, float minDistance, float maxDistance, float resetTime, byte kind, int value)
+    {
+        _follower = _follower with { Escape = new AiEscape(points, chance, minDistance, maxDistance, resetTime, kind, value) };
     }
 
     public void SetCommonAction(int index, string animation)
@@ -571,6 +600,7 @@ public sealed class AiProfileBuilder
             RunawayCount = _runawayCount,
             RunawayMinTime = _runawayMin,
             RunawayMaxTime = _runawayMax,
+            Follower = _follower,
             States = new HashSet<AiState>(_states),
             Settings = new Dictionary<AiState, AiStateSettings>(_settings),
             Transitions = _transitions.ToDictionary(e => e.Key, e => (IReadOnlyList<AiTransition>)e.Value.ToArray()),

@@ -1,38 +1,27 @@
-﻿using Arch.Core;
+using System.Globalization;
+using Arch.Core;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Commands.Attributes;
-using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Modules.Persons.Responses;
+using OpenWorker.Gameplay.Modules.Persons;
 
 namespace OpenWorker.Commands.Persons;
 
 [CommandTrigger("exp")]
-[CommandDescription("Add player experience")]
+[CommandDescription("Give the player experience, raising its level as a kill would")]
 internal sealed partial class PersonExpCommand : ICommand
 {
     [ExternalDependency]
-    private World World { get; }
-    
+    private ExperienceService Experience { get; }
+
     ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
-        if (!int.TryParse(tokens.ElementAtOrDefault(0), out var value))
+        if (!int.TryParse(tokens.ElementAtOrDefault(0), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) || value <= 0)
         {
-            // TODO: Failed parser message
             return ValueTask.FromResult(false);
         }
 
-        _ = int.TryParse(tokens.ElementAtOrDefault(1), out var additional);
-        _ = int.TryParse(tokens.ElementAtOrDefault(2), out var bonus);
-        
-        PrivateExecute(player, value, additional, bonus);
-        
+        Experience.Add(player, value);
+
         return ValueTask.FromResult(true);
-    }
-    
-    private void PrivateExecute(Entity player, int value, int additional, int bonus)
-    {
-        var session = World.Get<ServerSessionComponent>(player);
-        
-        session.Send(new PersonExpResponse { Value = value, Additional = additional, Bonus = bonus });
     }
 }

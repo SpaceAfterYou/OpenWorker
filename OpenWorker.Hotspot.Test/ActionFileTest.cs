@@ -107,9 +107,10 @@ public sealed class ActionFileTest
 
         e.Write(new byte[1 + 2 + 4 + 4 + 4 + 12 + 4 + 4 + 4]);
         e.Write(new byte[1 + 4 + 4 + 4 + 4 + 4]);
-        e.Write(new byte[8]);
+        e.Write(7);
+        e.Write(1);
         e.Write(0.5f);
-        e.Write(0);
+        e.Write(1406);
         e.Write(9);
         e.Write(new byte[12 + 4 + 20 + 2]);
         e.Write(1);
@@ -183,29 +184,33 @@ public sealed class ActionFileTest
         return stream;
     }
 
+    /// <summary>
+    /// The attacks of every animation are read on both sides of the version that added the rotation frames.
+    /// </summary>
     [TestMethod]
-    [DataRow((short)236)]
-    [DataRow((short)245)]
-    public void ReadsAttacksOfEveryAnimation(short version)
+    public void ReadsAttacksOfEveryAnimation()
     {
-        var file = ActionFile.Read(Build(version));
+        foreach (var version in (short[])[236, 245])
+        {
+            var file = ActionFile.Read(Build(version));
 
-        Assert.HasCount(2, file.Animations);
+            Assert.HasCount(2, file.Animations);
 
-        var animation = file.Animations["second"];
+            var animation = file.Animations["second"];
 
-        Assert.AreEqual(1.5f, animation.Length);
-        Assert.HasCount(2, animation.Attacks);
-        var attack = animation.Attacks[0];
+            Assert.AreEqual(1.5f, animation.Length);
+            Assert.HasCount(2, animation.Attacks);
+            var attack = animation.Attacks[0];
 
-        Assert.AreEqual(
-            new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain),
-            attack);
-        Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
-        Assert.AreEqual(0.75f, animation.Attacks[1].Start);
-        Assert.AreEqual(
-            new ProjectileInfo(new Vector3(10, 20, 30), 500f, 2f, true, 1, 75f, true, 0.2f, true, version >= 218, 6, new Vector3(-7, 40, 0), true, 4),
-            attack.Projectile);
+            Assert.AreEqual(
+                new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty),
+                attack);
+            Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
+            Assert.AreEqual(0.75f, animation.Attacks[1].Start);
+            Assert.AreEqual(
+                new ProjectileInfo(new Vector3(10, 20, 30), 500f, 2f, true, 1, 75f, true, 0.2f, true, version >= 218, 6, new Vector3(-7, 40, 0), true, 4),
+                attack.Projectile);
+        }
     }
 
     [TestMethod]

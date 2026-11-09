@@ -22,6 +22,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
+using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
@@ -29,10 +30,13 @@ using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.World.Types;
 using OpenWorker.Lua.Ai;
+using OpenWorker.Lua.Buffs;
+using OpenWorker.Lua.Helpers;
+using OpenWorker.Navigation;
 
 namespace OpenWorker.Lua.Managers;
 
-public sealed class LuaCreatureManager : ISimulation
+public sealed class LuaCreatureManager
 {
     private static ComponentType[] Archetype { get; } = [
         ComponentRegistry.Add<ActorComponent>(),
@@ -48,19 +52,45 @@ public sealed class LuaCreatureManager : ISimulation
     private readonly VBatchFile batch;
     private readonly CombatTables tables;
 
-    public LuaCreatureManager(World ecs, VBatchFile batch, CombatTables tables, CreatureServices? services = null, ILogger? logger = null)
+    public LuaCreatureManager(World ecs, VBatchFile batch, CombatTables tables, CreatureServices? services = null, ILogger? logger = null, NavMesh? mesh = null)
     {
         this.ecs = ecs;
         this.batch = batch;
         this.tables = tables;
 
         Services = services;
-        Navigation = new SectorNavigation(batch.EventBox.Sectors);
+        Navigation = mesh is null ? OpenNavigation.Instance : new NavMeshNavigation(mesh, batch);
         Vitals = new PlayerVitals(ecs, tables);
         Logger = logger ?? NullLogger.Instance;
+        Helpers = new HelperSquad(ecs, this, tables);
     }
 
+    /// <summary>
+    /// The helpers the players have called into the maze.
+    /// </summary>
+    public HelperSquad Helpers { get; }
+
+    /// <summary>
+    /// A new actor of the maze: a helper is one too.
+    /// </summary>
+    internal int NextActor() => Offset++;
+
+    /// <summary>
+    /// Every creature of the maze, the townsfolk with the monsters.
+    /// </summary>
+    internal IReadOnlyList<Entity> Living => Creatures;
+
+    /// <summary>
+    /// The clients have been shown the creature: it is not waiting for its delay.
+    /// </summary>
+    internal bool IsSeen(Entity creature) => !Unseen.Contains(creature);
+
     internal CreatureServices? Services { get; }
+
+    /// <summary>
+    /// Where the creatures that appear later wait, the group of the maze that owns them. Without one they appear at once.
+    /// </summary>
+    public ScheduleGroup? Schedule { get; set; }
 
     internal ILogger Logger { get; }
 
@@ -70,9 +100,22 @@ public sealed class LuaCreatureManager : ISimulation
     public PlayerVitals Vitals { get; }
 
     /// <summary>
+    /// The buffs of the players and monsters of the maze; none in a maze made without them.
+    /// </summary>
+    public MazeBuffs? Buffs { get; internal set; }
+
+    /// <summary>
     /// Where a monster can walk.
     /// </summary>
     public INavigation Navigation { get; set; }
+
+    /// <summary>
+    /// A gate has been opened or closed, which opens or closes the way for the monsters.
+    /// </summary>
+    public void SetGate(int gate, bool open)
+    {
+        (Navigation as NavMeshNavigation)?.SetGate(gate, open);
+    }
 
     internal Random Random { get; } = new();
 
@@ -86,11 +129,30 @@ public sealed class LuaCreatureManager : ISimulation
     private HashSet<int> SpawnedBoxes { get; } = [];
     private HashSet<Entity> Scenery { get; } = [];
     private bool Closed { get; set; }
-    private bool Ticking { get; set; }
 
     private List<Entity> Creatures { get; } = [];
     private List<Entity> Players { get; } = [];
+
+    /// <summary>
+    /// Creatures that wait for their delay before the clients see them.
+    /// </summary>
+    private HashSet<Entity> Unseen { get; } = [];
     private Dictionary<Entity, MonsterBody> Bodies { get; } = [];
+
+    /// <summary>
+    /// The bodies in the order they think, walked in place by <see cref="Step"/>.
+    /// </summary>
+    private StepList<MonsterBody> Minds { get; } = new();
+
+    /// <summary>
+    /// Bodies of monsters that are gone, kept to give a mind to the next monster of the same script.
+    /// </summary>
+    private Dictionary<AiProfile, Stack<MonsterBody>> SpareBodies { get; } = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// Spare bodies of one script kept at most: a maze has a few kinds of monster and spawns them in waves.
+    /// </summary>
+    private const int MaxSpareBodies = 32;
     private Dictionary<Entity, DefenseType> Defenses { get; } = [];
     private Dictionary<int, SectorKillProgress> KillProgress { get; } = [];
 
@@ -105,12 +167,24 @@ public sealed class LuaCreatureManager : ISimulation
         }
     }
 
-    public void Create(Entity player, int box)
+    /// <summary>
+    /// A player who has left the maze: the monsters forget them and their client hears no more of the maze.
+    /// </summary>
+    public void Detach(Entity player)
     {
-        Attach(player);
+        Players.Remove(player);
+        Vitals.Forget(player);
+    }
 
+    /// <summary>
+    /// The players in the maze, in the order they came.
+    /// </summary>
+    public IReadOnlyList<Entity> Members => Players;
+
+    public void Create(int box)
+    {
         // Maps can point at boxes they no longer have, and a client walks through such a trigger like any other.
-        if (batch.EventBox.MonsterSpawns.FirstOrDefault(x => x.Id == box) is not { } spawn)
+        if (batch.EventBox.MonsterSpawns.Find(box) is not { } spawn)
         {
             return;
         }
@@ -146,36 +220,31 @@ public sealed class LuaCreatureManager : ISimulation
             }
         }
 
-        var session = ecs.Get<ServerSessionComponent>(player);
-
         switch (spawn.CreationCondition)
         {
             case CreationConditionType.Immediate:
-                Show(session, created);
+                Show(created);
                 break;
 
             case CreationConditionType.WaitSignal:
-                _ = ShowLaterAsync(session, created, box, TimeSpan.FromSeconds(spawn.WaitCreationDelayTime));
+                ShowLater(created, TimeSpan.FromSeconds(float.IsFinite(spawn.WaitCreationDelayTime) ? Math.Clamp(spawn.WaitCreationDelayTime, 0f, 86_400f) : 0f));
                 break;
         }
     }
 
-    private void Show(ServerSessionComponent session, List<Entity> created)
+    private void Show(List<Entity> created)
     {
         var npcs = created.Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Npc).ToArray();
         var monsters = created.Except(npcs).ToArray();
 
         if (monsters.Length > 0)
         {
-            session.Send(new WorldOtherInfosMonsterResponse
-            {
-                Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e, Bodies.TryGetValue(e, out var body) ? body.IsBattlePose : true)).ToArray()
-            });
+            Broadcast(DescribeMonsters(monsters));
         }
 
         if (npcs.Length > 0)
         {
-            session.Send(new WorldOtherInfosNpcResponse { List = npcs.Select(ToNpcEntry).ToArray() });
+            Broadcast(new WorldOtherInfosNpcResponse { List = npcs.Select(ToNpcEntry).ToArray() });
         }
 
         // From now on the clients know the monsters, so the monsters start to think.
@@ -186,6 +255,36 @@ public sealed class LuaCreatureManager : ISimulation
                 body.Reveal();
             }
         }
+    }
+
+    private WorldOtherInfosMonsterResponse DescribeMonsters(Entity[] monsters)
+    {
+        return new WorldOtherInfosMonsterResponse
+        {
+            Monsters = monsters.Select(e => MonsterSnapshotMapper.ToStMonsterInfo(ecs, e, Bodies.TryGetValue(e, out var body) ? body.IsBattlePose : true)).ToArray()
+        };
+    }
+
+    /// <summary>
+    /// Tells a player who comes into a maze that runs what lives in it now: the monsters and the townsfolk the others see.
+    /// </summary>
+    public void ShowAllTo(ServerSessionComponent session)
+    {
+        var seen = Creatures.Where(e => !Unseen.Contains(e) && ecs.IsAlive(e)).ToArray();
+        var npcs = seen.Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Npc).ToArray();
+        var monsters = seen.Except(npcs).ToArray();
+
+        if (monsters.Length > 0)
+        {
+            session.Send(DescribeMonsters(monsters));
+        }
+
+        if (npcs.Length > 0)
+        {
+            session.Send(new WorldOtherInfosNpcResponse { List = npcs.Select(ToNpcEntry).ToArray() });
+        }
+
+        Buffs?.ShowTo(session);
     }
 
     private WorldNpcListEntry ToNpcEntry(Entity npc)
@@ -209,7 +308,15 @@ public sealed class LuaCreatureManager : ISimulation
     {
         ecs.Set(creature, new CreatureComponent { Identifier = identifier, Health = NpcHealth });
         ecs.Set(creature, new NonPlayableCreatureComponent { SpawnBox = spawn.Id, Sector = spawn.Sector, Waypoint = spawn.Waypoint });
-        ecs.Set(creature, new WorldComponent { Location = 0, Position = spawn.GetPosition(), Rotation = spawn.Rotation, Jump = 0 });
+        ecs.Set(creature, new WorldComponent { Location = 0, Position = OnFloor(spawn.GetPosition()), Rotation = spawn.Rotation, Jump = 0 });
+    }
+
+    /// <summary>
+    /// A box says where in it a creature appears, not how high: the creature stands on the floor under that place.
+    /// </summary>
+    private Vector3 OnFloor(Vector3 position)
+    {
+        return Navigation.TryGetFloor(position, out var height) ? position with { Z = height } : position;
     }
 
     public Entity CreateMonster(int identifier, MonsterSpawnBox spawn)
@@ -239,7 +346,7 @@ public sealed class LuaCreatureManager : ISimulation
 
         Creatures.Add(creature);
 
-        GiveMind(creature, identifier, spawn.GetPosition());
+        GiveMind(creature, identifier, ecs.Get<WorldComponent>(creature).Position);
 
         return creature;
     }
@@ -262,9 +369,31 @@ public sealed class LuaCreatureManager : ISimulation
             return;
         }
 
-        Bodies.Add(creature, new MonsterBody(ecs, this, services.Actions, creature, behavior, profile, home));
+        var body = SpareBodies.TryGetValue(profile, out var spare) && spare.TryPop(out var used)
+            ? used.Revive(creature, behavior, home)
+            : new MonsterBody(ecs, this, services.Actions, creature, behavior, profile, home);
 
-        StartTicking();
+        Bodies.Add(creature, body);
+        Minds.Add(body);
+    }
+
+    /// <summary>
+    /// The mind of a monster that is gone waits for the next monster of its script.
+    /// </summary>
+    private void Retire(MonsterBody body)
+    {
+        Minds.Remove(body);
+
+        if (!SpareBodies.TryGetValue(body.Machine.Profile, out var spare))
+        {
+            spare = new Stack<MonsterBody>();
+            SpareBodies.Add(body.Machine.Profile, spare);
+        }
+
+        if (spare.Count < MaxSpareBodies)
+        {
+            spare.Push(body);
+        }
     }
 
     public Entity CreateNpc(int identifier, MonsterSpawnBox spawn)
@@ -283,12 +412,20 @@ public sealed class LuaCreatureManager : ISimulation
     /// <summary>
     /// Spawns the box the first time a sector asks for it: entering a sector again must not repeat it.
     /// </summary>
-    public void SpawnOnce(Entity player, int box)
+    public void SpawnOnce(int box)
     {
         if (SpawnedBoxes.Add(box))
         {
-            Create(player, box);
+            Create(box);
         }
+    }
+
+    /// <summary>
+    /// A box that has not appeared yet never will.
+    /// </summary>
+    public void Terminate(int box)
+    {
+        SpawnedBoxes.Add(box);
     }
 
     public Entity[] FindMonsters(Func<Vector3, MonsterCombatComponent, bool> touches)
@@ -326,7 +463,7 @@ public sealed class LuaCreatureManager : ISimulation
     {
         if (!KillProgress.TryGetValue(sector, out var progress))
         {
-            var box = batch.EventBox.Sectors.FirstOrDefault(e => e.Id == sector);
+            var box = batch.EventBox.Sectors.Find(sector);
 
             progress = box is null ? new SectorKillProgress(ClearType.None, 0, []) : new SectorKillProgress(box);
 
@@ -341,7 +478,7 @@ public sealed class LuaCreatureManager : ISimulation
     /// </summary>
     public int CountBoxesToCome(int sector)
     {
-        return batch.EventBox.MonsterSpawns.Count(e => e.Sector == sector && !SpawnedBoxes.Contains(e.Id) && HoldsSector(e));
+        return batch.EventBox.SpawnsOf(sector).Count(e => !SpawnedBoxes.Contains(e.Id) && HoldsSector(e));
     }
 
     private bool HoldsSector(MonsterSpawnBox box)
@@ -358,10 +495,16 @@ public sealed class LuaCreatureManager : ISimulation
             GetKillProgress(ecs.Get<NonPlayableCreatureComponent>(creature).Sector).Removed();
         }
 
-        Bodies.Remove(creature);
+        if (Bodies.Remove(creature, out var body))
+        {
+            Retire(body);
+        }
+
         Defenses.Remove(creature);
         Creatures.Remove(creature);
         Scenery.Remove(creature);
+        Unseen.Remove(creature);
+        Buffs?.Forget(creature);
 
         ecs.Destroy(creature);
     }
@@ -370,72 +513,141 @@ public sealed class LuaCreatureManager : ISimulation
     {
         Closed = true;
 
-        if (Ticking)
+        foreach (var creature in Creatures)
         {
-            Services?.Clock.Remove(this);
-
-            Ticking = false;
-        }
-
-        foreach (var creature in Creatures.Where(ecs.IsAlive))
-        {
-            ecs.Destroy(creature);
+            if (ecs.IsAlive(creature))
+            {
+                ecs.Destroy(creature);
+            }
         }
 
         Creatures.Clear();
         Scenery.Clear();
         Bodies.Clear();
+        Minds.Clear();
+        SpareBodies.Clear();
         Defenses.Clear();
         Players.Clear();
+        Unseen.Clear();
+        Helpers.Clear();
     }
 
-    private async Task ShowLaterAsync(ServerSessionComponent session, List<Entity> created, int box, TimeSpan delay)
+    /// <summary>
+    /// The creatures of a box that waits for a signal show themselves after its delay, if the maze still runs.
+    /// </summary>
+    private void ShowLater(List<Entity> created, TimeSpan delay)
     {
-        try
+        if (Schedule is not { } schedule)
         {
-            await Task.Delay(delay);
+            Show(created);
 
+            return;
+        }
+
+        Unseen.UnionWith(created);
+
+        schedule.Schedule(delay, () =>
+        {
             if (!Closed)
             {
-                Show(session, created.Where(ecs.IsAlive).ToList());
+                Unseen.ExceptWith(created);
+
+                Show(created.Where(ecs.IsAlive).ToList());
+            }
+        });
+    }
+
+    /// <summary>
+    /// How fast townsfolk walk, in units a second: the pace of a walking hero, as the tables give townsfolk no speed of their own.
+    /// </summary>
+    public const float NpcWalkSpeed = 300f;
+
+    /// <summary>
+    /// The creature of a table id that the maze holds, the first one when there are several.
+    /// </summary>
+    public bool TryFindCreature(int identifier, out Entity found)
+    {
+        // Asking a default entity whether it lives reads the world of id 0, which another maze may have destroyed.
+        foreach (var creature in Creatures)
+        {
+            if (ecs.IsAlive(creature) && ecs.Get<CreatureComponent>(creature) == identifier)
+            {
+                found = creature;
+                return true;
             }
         }
 
-        catch (Exception e)
-        {
-            Logger.LateShowFailed(e, box);
-        }
+        found = Entity.Null;
+        return false;
     }
 
-    public void MoveToPoint(int npc, int waypoint)
+    /// <summary>
+    /// A townsman sets off towards a place: the client sees it walk there. The time the walk takes comes back, in seconds.
+    /// </summary>
+    public float Walk(Entity npc, Vector3 target)
     {
-        var creature = Creatures.FirstOrDefault(x => ecs.Get<CreatureComponent>(x) == npc);
+        var place = ecs.Get<WorldComponent>(npc);
+        var distance = Vector2.Distance(new Vector2(place.Position.X, place.Position.Y), new Vector2(target.X, target.Y));
+        var yaw = distance > 0f ? AiMath.YawTo(place.Position, target) : place.Rotation;
 
-        if (creature.IsAlive() is false)
+        ecs.Set(npc, place with { Rotation = yaw });
+
+        Broadcast(new MovementMoveBtResponse
         {
-            Logger.UnknownNpcToMove(npc, waypoint);
-        }
+            Actor = ecs.Get<ActorComponent>(npc),
+            Map = place.Map,
+            Pos = place.Position,
+            Yaw = yaw,
+            TargetPosX = target.X,
+            TargetPosY = target.Y,
+            RunBit = 0,
+            Pitch = 0f,
+            MoveSpeed = NpcWalkSpeed,
+            ChangeMotion = 0
+        });
+
+        return distance / NpcWalkSpeed;
+    }
+
+    /// <summary>
+    /// A townsman turns where it stands, and the client sees it.
+    /// </summary>
+    public void Turn(Entity npc, float yaw)
+    {
+        ecs.Set(npc, ecs.Get<WorldComponent>(npc) with { Rotation = yaw });
+
+        Broadcast(new MovementUpdateDirResponse { Actor = ecs.Get<ActorComponent>(npc), Yaw = yaw, Pitch = 0f, Direct = false });
+    }
+
+    /// <summary>
+    /// A townsman has arrived: it stands at the place, and the client sees it stop there.
+    /// </summary>
+    public void Arrive(Entity npc, Vector3 target)
+    {
+        var place = ecs.Get<WorldComponent>(npc) with { Position = target };
+
+        ecs.Set(npc, place);
+
+        Broadcast(new MovementStopBtResponse
+        {
+            Actor = ecs.Get<ActorComponent>(npc),
+            MapId = place.Map,
+            PosX = target.X,
+            PosY = target.Y,
+            PosZ = target.Z,
+            Yaw = place.Rotation,
+            Pitch = 0f
+        });
     }
 
     // ---- Minds --------------------------------------------------------------------------------
 
     /// <summary>
-    /// The first monster with a mind puts the maze on the clock of the server; <see cref="Close"/> takes it off.
+    /// The monsters think on the thread of the world, one after another, so nothing they do can meet another change
+    /// halfway. The maze calls it at every step of the clock. A monster that goes during the step is skipped, one that
+    /// comes thinks from the next step on.
     /// </summary>
-    private void StartTicking()
-    {
-        if (!Ticking && !Closed && Services?.Clock is { } clock)
-        {
-            Ticking = true;
-
-            clock.Add(this);
-        }
-    }
-
-    /// <summary>
-    /// The monsters think on the thread of the world, one after another, so nothing they do can meet another change halfway.
-    /// </summary>
-    public void Advance(TimeSpan elapsed)
+    public void Step(TimeSpan elapsed)
     {
         if (Closed)
         {
@@ -443,21 +655,44 @@ public sealed class LuaCreatureManager : ISimulation
         }
 
         var seconds = (float)elapsed.TotalSeconds;
+        var now = Now;
+        var count = Minds.BeginStep();
 
-        foreach (var body in Bodies.Values.ToArray())
+        try
         {
-            try
+            for (var index = 0; index < count && !Closed; index++)
             {
-                RestoreSuperArmor(body.Entity);
+                if (Minds.At(index) is not { } body)
+                {
+                    continue;
+                }
 
-                body.Update(Now, seconds);
-            }
+                try
+                {
+                    RestoreSuperArmor(body.Entity);
 
-            catch (Exception e)
-            {
-                Logger.LogError(e, "The monster {Monster} failed to think", body.Behavior.Id);
+                    // A monster that is stunned, asleep, paralysed or frozen does nothing until it is over.
+                    if (Buffs?.IsHeld(body.Entity) == true)
+                    {
+                        continue;
+                    }
+
+                    body.Update(now, seconds);
+                }
+
+                catch (Exception e)
+                {
+                    Logger.MonsterFailedToThink(e, body.Behavior.Id);
+                }
             }
         }
+
+        finally
+        {
+            Minds.EndStep();
+        }
+
+        Helpers.Step(now, seconds);
     }
 
     /// <summary>
@@ -538,6 +773,19 @@ public sealed class LuaCreatureManager : ISimulation
     private const float FlinchSeconds = 0.6f;
 
     /// <summary>
+    /// A buff holds a monster: it stops where it stands and drops the attack it was making.
+    /// </summary>
+    internal void Hold(Entity monster)
+    {
+        if (Bodies.TryGetValue(monster, out var body))
+        {
+            body.Stagger(0f);
+        }
+
+        Helpers.Hold(monster);
+    }
+
+    /// <summary>
     /// Armor that has had time to recover is whole again.
     /// </summary>
     private void RestoreSuperArmor(Entity monster)
@@ -578,7 +826,7 @@ public sealed class LuaCreatureManager : ISimulation
     /// </summary>
     internal void Kill(Entity monster)
     {
-        Logger.LogDebug("Monster {Monster} wants to die, which a maze script has to finish", monster);
+        Logger.MonsterWantsToDie(monster.Id);
     }
 
     // ---- Players ------------------------------------------------------------------------------
@@ -601,20 +849,23 @@ public sealed class LuaCreatureManager : ISimulation
 
         if (Vitals.IsAlive(player))
         {
-            session.Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotFallen));
+            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotFallen));
 
             return;
         }
 
         if (type is not (ReviveType.Auto or ReviveType.MazeFree or ReviveType.ModeMazeAuto or ReviveType.Cash))
         {
-            session.Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotAllowed));
+            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotAllowed));
 
             return;
         }
 
         Vitals.Restore(player);
         Vitals.Protect(player);
+
+        // Coming back fills the gauges as it fills the life.
+        Services?.Gauges?.Fill(player);
 
         var actor = ecs.Get<ActorComponent>(player);
         var place = ecs.Get<WorldComponent>(player);
@@ -636,13 +887,51 @@ public sealed class LuaCreatureManager : ISimulation
         });
     }
 
-    internal void Broadcast(IResponseHotspotMessage message)
+    /// <summary>
+    /// Tells every player of the maze, written once for all of them.
+    /// </summary>
+    public void Broadcast(IResponseHotspotMessage message)
     {
+        if (Players.Count == 0)
+        {
+            return;
+        }
+
+        using var frame = Frame.Encode(message);
+
+        Broadcast(frame, Entity.Null);
+    }
+
+    /// <summary>
+    /// Tells every player of the maze but one.
+    /// </summary>
+    public void BroadcastToOthers(Entity except, IResponseHotspotMessage message)
+    {
+        if (Players.Count < 2)
+        {
+            return;
+        }
+
+        using var frame = Frame.Encode(message);
+
+        Broadcast(frame, except);
+    }
+
+    /// <summary>
+    /// Sends a message written already to every player of the maze but <paramref name="except"/>.
+    /// </summary>
+    public void Broadcast(Frame? frame, Entity except)
+    {
+        if (frame is null)
+        {
+            return;
+        }
+
         foreach (var player in Players)
         {
-            if (ecs.IsAlive(player) && ecs.Has<ServerSessionComponent>(player))
+            if (player != except && ecs.IsAlive(player) && ecs.Has<ServerSessionComponent>(player))
             {
-                ecs.Get<ServerSessionComponent>(player).Send(message);
+                ecs.Get<ServerSessionComponent>(player).Send(frame);
             }
         }
     }
@@ -733,12 +1022,20 @@ public sealed class LuaCreatureManager : ISimulation
     /// </summary>
     internal void HitPlayers(MonsterBody attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims)
     {
+        // An attack for the side of the monster, or one that only gives a buff, hurts nobody.
+        if (trigger.ForAllies || (trigger.Buff > 0 && trigger.DamageRate <= 0f))
+        {
+            Buffs?.GiveFromAttack(attacker.Entity, trigger, victims);
+
+            return;
+        }
+
         if (victims.Count == 0 || !trigger.AffectsTargets || !ecs.IsAlive(attacker.Entity))
         {
             return;
         }
 
-        var stats = ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats;
+        var stats = Buffs?.StatsOf(attacker.Entity, ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats) ?? ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats;
         var skill = tables.GetSkill(skillId);
         var hits = new List<SkillDmgValue>();
         var fallen = new List<Entity>();
@@ -750,10 +1047,11 @@ public sealed class LuaCreatureManager : ISimulation
                 continue;
             }
 
-            var shielded = Vitals.IsProtected(victim);
+            var defense = Buffs?.DefenseOf(victim, DefenseType.Normal) ?? DefenseType.Normal;
+            var shielded = Vitals.IsProtected(victim) || defense == DefenseType.Invincible;
             var result = shielded
                 ? new DamageResult(0, HitResults.None)
-                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, DefenseType.Normal, trigger.DamageRate, Random);
+                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random);
             var left = Vitals.Hurt(victim, result.Damage);
 
             hits.Add(default(SkillDmgValue) with
@@ -763,7 +1061,7 @@ public sealed class LuaCreatureManager : ISimulation
                 DamageFlags = (byte)result.Flags,
                 Damage = result.Damage,
                 Health = left,
-                DefenseType = (byte)(shielded ? DefenseType.Invincible : DefenseType.Normal)
+                DefenseType = (byte)(shielded ? DefenseType.Invincible : defense)
             });
 
             if (left == 0)
@@ -808,6 +1106,10 @@ public sealed class LuaCreatureManager : ISimulation
                 Attacker = default,
                 PvpKillCount = 0
             });
+
+            Buffs?.OnDeath(victim);
         }
+
+        Buffs?.GiveFromHit(attacker.Entity, trigger, victims);
     }
 }

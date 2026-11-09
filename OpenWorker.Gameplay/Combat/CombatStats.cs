@@ -47,11 +47,49 @@ public readonly record struct CombatStats
     public DamageStats Magical { get; init; }
 
     /// <summary>
+    /// How much soul gauge the character holds. Only the server's own status table says it; zero without it.
+    /// </summary>
+    public float SoulGaugeMax { get; init; }
+
+    /// <summary>
+    /// What a second adds to a full soul gauge, by the rule of the weapon of the hero.
+    /// </summary>
+    public float SoulGaugeRegen { get; init; }
+
+    /// <summary>
+    /// The soul gauge regeneration of the status, which the rule of the weapon multiplies.
+    /// </summary>
+    public float SoulGaugeConstant { get; init; }
+
+    /// <summary>
+    /// The share of the absorption of a skill that a hit on this character gives to its attacker.
+    /// </summary>
+    public float SoulGaugeAbsorbRate { get; init; }
+
+    public float StaminaMax { get; init; }
+
+    /// <summary>
+    /// What a second adds to the stamina.
+    /// </summary>
+    public float StaminaRegen { get; init; }
+
+    /// <summary>
     /// The stats as the client stores them. Zero values are left out, that is what the client expects them to be.
     /// </summary>
     public StatKeyValuePair[] ToStatList()
     {
-        (STAT_TYPE Type, float Value)[] stats =
+        return Values()
+            .Where(e => e.Value > 0)
+            .Select(e => new StatKeyValuePair { byIndex = e.Type, statValue = e.Value })
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Every stat the client stores, by its number, zero or not.
+    /// </summary>
+    public (STAT_TYPE Type, float Value)[] Values()
+    {
+        return
         [
             (STAT_TYPE.STAT_STR, Strength),
             (STAT_TYPE.STAT_AGI, Agility),
@@ -60,6 +98,10 @@ public readonly record struct CombatStats
             (STAT_TYPE.STAT_VIT, Vitality),
             (STAT_TYPE.STAT_LUC, Luck),
             (STAT_TYPE.STAT_HP_MAX, MaxHealth),
+            (STAT_TYPE.STAT_SG_MAX, SoulGaugeMax),
+            (STAT_TYPE.STAT_SG_REG, SoulGaugeRegen),
+            (STAT_TYPE.STAT_ST_MAX, StaminaMax),
+            (STAT_TYPE.STAT_ST_REG, StaminaRegen),
             (STAT_TYPE.STAT_PATK_MIN, Physical.AttackMin),
             (STAT_TYPE.STAT_PATK_MAX, Physical.AttackMax),
             (STAT_TYPE.STAT_MATK_MIN, Magical.AttackMin),
@@ -80,10 +122,25 @@ public readonly record struct CombatStats
             (STAT_TYPE.STAT_PARP, Physical.Evasion),
             (STAT_TYPE.STAT_MARP, Magical.Evasion)
         ];
+    }
 
-        return stats
-            .Where(e => e.Value > 0)
-            .Select(e => new StatKeyValuePair { byIndex = e.Type, statValue = e.Value })
-            .ToArray();
+    /// <summary>
+    /// The stats that differ between two states of a character, with their new values.
+    /// </summary>
+    public static List<(STAT_TYPE Type, float Value)> Differences(in CombatStats before, in CombatStats after)
+    {
+        var old = before.Values();
+        var now = after.Values();
+        var changed = new List<(STAT_TYPE Type, float Value)>();
+
+        for (var index = 0; index < now.Length; index++)
+        {
+            if (old[index].Value != now[index].Value)
+            {
+                changed.Add(now[index]);
+            }
+        }
+
+        return changed;
     }
 }

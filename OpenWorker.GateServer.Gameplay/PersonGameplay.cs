@@ -1,4 +1,4 @@
-using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Cache.Types;
@@ -22,6 +22,7 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot.Modules.Gestures.Types;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Login.Types;
@@ -35,12 +36,16 @@ public sealed class PersonGameplay(
     World world,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
+    InventoryPersistence inventories,
+    IOptions<PersonCreationOptions> creation,
     IOptions<GateOptions> gate,
     ILogger<PersonGameplay> logger,
     SecondPasswordGameplay secondPassword,
     LeaveManager leaving,
     WorldManager worldManager,
-    PersonCreationCatalog catalog)
+    PersonCreationCatalog catalog,
+    PrologueEntry prologue,
+    IOptions<GameOptions> game)
 {
     private short Gate { get; } = gate.Value.Id;
 
@@ -87,13 +92,16 @@ public sealed class PersonGameplay(
         }
 
         var account = await database.Accounts
+            .AsTracking()
             .FirstAsync(x => x.Id == claims.Account, context.CancellationToken);
 
         var gate = await database.Gates
+            .AsTracking()
             .FirstAsync(x => x.Id == Gate, context.CancellationToken);
 
         var person = new PersonPersistent
         {
+            Level = creation.Value.StartLevel,
             Name = message.Person.InfoValue.Name,
             Hero = hero,
 
@@ -111,6 +119,9 @@ public sealed class PersonGameplay(
             Outfit = message.Outfit,
             LastSelectedAt = DateTime.UtcNow,
 
+            // The prologue waits for the character only while the server plays it.
+            ProloguePending = game.Value.Prologue,
+
             Location = 10003,
             PositionX = 10228.605f,
             PositionY = 10058.951f,
@@ -121,10 +132,6 @@ public sealed class PersonGameplay(
 
             GestureList = Enumerable
                 .Repeat(0, GesturesModuleDefines.MaxGestureCount)
-                .ToArray(),
-
-            OptionList = Enumerable
-                .Repeat((byte)'1', LoginModuleDefines.PersonOptionCount)
                 .ToArray(),
 
             Account = account,
@@ -152,7 +159,10 @@ public sealed class PersonGameplay(
             return;
         }
 
-        registry.CreatePerson(context.Player, slotIndex, person);
+        var created = registry.CreatePerson(context.Player, slotIndex, person, account.OptionList);
+
+        // The first items are saved now, so the district finds them when the character enters the game.
+        await inventories.SaveItemsAsync(created);
 
         var session = world.Get<ServerSessionComponent>(context.Player);
         session.Send(PersonSnapshotMapper.CreateCharacterListResponse(world, context.Player));
@@ -182,6 +192,7 @@ public sealed class PersonGameplay(
             .CreateDbContextAsync(context.CancellationToken);
 
         var persistent = await database.Persons
+            .AsTracking()
             .FirstOrDefaultAsync(
                 x => x.Id == person && x.Account.Id == claims.Account && x.Gate.Id == Gate,
                 context.CancellationToken);
@@ -243,6 +254,17 @@ public sealed class PersonGameplay(
             return;
         }
 
+        // A character that has not played the prologue starts it instead of going to its district.
+        if (await prologue.TryEnterAsync(context.Player, message.Actor.Identifier))
+        {
+            if (world.IsAlive(context.Player))
+            {
+                await RememberSelectedAsync(context, message.Actor.Identifier);
+            }
+
+            return;
+        }
+
         var selected = await worldManager
             .SelectPerson(context.Player, message.Actor.Identifier);
 
@@ -261,6 +283,7 @@ public sealed class PersonGameplay(
             .CreateDbContextAsync(context.CancellationToken);
 
         var person = await database.Persons
+            .AsTracking()
             .FirstOrDefaultAsync(e => e.Id == identifier, context.CancellationToken);
 
         if (person is null)
@@ -279,7 +302,7 @@ public sealed class PersonGameplay(
     private void SendListError(Entity player, PersonErrorCode code)
     {
         world.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(
-            new MessageOpcode(GroupOpcode.Character, CharacterOpcode.ListRes),
+            MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ListRes),
             code));
     }
 }

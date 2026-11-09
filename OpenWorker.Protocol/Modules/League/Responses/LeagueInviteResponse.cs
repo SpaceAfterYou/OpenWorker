@@ -1,0 +1,47 @@
+using System.Diagnostics;
+using OpenWorker.Extensions;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Extensions;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.League.DataTypes;
+using OpenWorker.Hotspot.Modules.League.Extensions;
+using OpenWorker.Hotspot.Modules.Persons.Extensions;
+
+namespace OpenWorker.Hotspot.Modules.League.Responses;
+
+/// <summary>
+/// You are asked to join a league.
+/// </summary>
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
+public readonly struct LeagueInviteResponse : IResponseHotspotMessage
+{
+    private const GroupOpcode Group = GroupOpcode.League;
+    private const LeagueOpcode Command = LeagueOpcode.Invite;
+
+    public string LeagueName { get; init; } = string.Empty;
+    public string TargetName { get; init; } = string.Empty;
+    public string RequesterName { get; init; } = string.Empty;
+    public int Actor { get; init; }
+    public int TargetActor { get; init; }
+    public int League { get; init; }
+    public int Result { get; init; }
+
+    public LeagueInviteResponse()
+    {
+    }
+
+    public MessageOpcode Opcode => new(Group, (byte)Command);
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.WriteLeagueName(LeagueName);
+        writer.WritePersonName(TargetName);
+        writer.WritePersonName(RequesterName);
+        writer.Write(Actor);
+        writer.Write(TargetActor);
+        writer.Write(League);
+        writer.Write(Result);
+    }
+}

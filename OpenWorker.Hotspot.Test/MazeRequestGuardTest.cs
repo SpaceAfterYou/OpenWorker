@@ -1,3 +1,7 @@
+using System.Net;
+using System.Net.Sockets;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.SoulWorker.Network;
 using System.Collections.ObjectModel;
 using Arch.Core;
 using Lua;
@@ -9,6 +13,7 @@ using OpenWorker.Batch.Actions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -17,6 +22,7 @@ using OpenWorker.Lua;
 using OpenWorker.Lua.Managers;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -42,8 +48,6 @@ public sealed class MazeRequestGuardTest
         }
     }
 
-    private static ReadOnlyCollection<T> None<T>() => new([]);
-
     private static BinaryReader Box(int box) => new(new MemoryStream(BitConverter.GetBytes(box)));
 
     private static ServiceHandleContext Context(Entity player) => new(player, CancellationToken.None);
@@ -56,45 +60,22 @@ public sealed class MazeRequestGuardTest
             null!,
             null!,
             null!,
+            NoPersonFlush.Instance,
             Options.Create(new GateOptions { Id = 1 }),
-            new QuestManager(world, None<QuestEpisodeRow>(), None<QuestConditionRow>()),
+            TestMazes.Quests(world),
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
+            null!,
             NullLogger<MazeService>.Instance);
     }
 
     /// <summary>
     /// A maze whose map has no boxes at all, so that every box a client names is unknown.
     /// </summary>
-    private static LuaMaze Maze(World world, Entity player, ILogger<LuaMaze> logger)
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.vbatch");
-
-        File.WriteAllText(path, "<root><Batchs eventtype=\"EventBox\"/><Batchs eventtype=\"EventPoint\"/></root>");
-
-        try
-        {
-            var batch = VBatchFile.CreateFromPath(path);
-            var tables = new CombatTables(None<MonsterRow>(), None<StatusRow>(), None<SkillRow>(), None<CharacterInfoRow>());
-            var quests = new QuestManager(world, None<QuestEpisodeRow>(), None<QuestConditionRow>());
-
-            return new LuaMaze(
-                LuaState.Create(),
-                world,
-                player,
-                new LuaCreatureManager(world, batch, tables),
-                new BuffManager(world, None<BuffRow>()),
-                quests,
-                batch,
-                None<InteractionObjectRow>(),
-                new SkillActionProvider(None<SkillRow>(), NullLogger<SkillActionProvider>.Instance),
-                tables,
-                logger);
-        }
-
-        finally
-        {
-            File.Delete(path);
-        }
-    }
+    private static LuaMaze Maze(World world, Entity player, ILogger<LuaMaze> logger) => TestMazes.Create(world, player, logger);
 
     [TestMethod]
     public async Task PlayerWhoIsNotInAMazeIsIgnored()
@@ -118,26 +99,47 @@ public sealed class MazeRequestGuardTest
     }
 
     [TestMethod]
-    public async Task BoxesTheMapDoesNotHaveAreIgnored()
+    public async Task BoxTheMapDoesNotHaveIsAnsweredWithAnError()
     {
         var world = World.Create();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+
+        listener.Start();
+
+        using var client = new TcpClient();
+
+        client.Connect(IPAddress.Loopback, ((IPEndPoint)listener.LocalEndpoint).Port);
+
+        using var server = listener.AcceptTcpClient();
+        using var reader = new BinaryReader(client.GetStream());
+
+        client.ReceiveTimeout = 5000;
 
         try
         {
             var service = Service(world);
-
-            // The player has no session on purpose: an answer to a request that is ignored would throw.
             var player = world.Create();
 
+            world.Add(player, new ServerSessionComponent(server));
             world.Add(player, Maze(world, player, NullLogger<LuaMaze>.Instance));
 
-            await service.OnHandleAsync(Context(player), new MazeEventSpawnBoxRequest(Box(99)));
             await service.OnHandleAsync(Context(player), new MazeLuaFunctionRequest(Box(99)));
+
+            // The answer is the error of the request: its command with the high bit, then the code.
+            var header = new MessageHeader(reader);
+            var content = reader.ReadBytes(header.ContentLength);
+
+            MessageEncryption.Exchange(content, header.Version);
+
+            Assert.AreEqual((byte)GroupOpcode.Maze, content[0]);
+            Assert.AreEqual((byte)MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_REQ | 0x80, content[1]);
+            Assert.AreEqual(4, content.Length);
         }
 
         finally
         {
             World.Destroy(world);
+            listener.Stop();
         }
     }
 
@@ -168,18 +170,8 @@ public sealed class MazeRequestGuardTest
     [TestMethod]
     public void ScriptThatAppliesABuffTheTableDoesNotHaveIsRefused()
     {
-        var world = World.Create();
+        var buffs = new BuffManager(TestMazes.None<BuffRow>());
 
-        try
-        {
-            var buffs = new BuffManager(world, None<BuffRow>());
-
-            Assert.IsFalse(buffs.Apply(world.Create(), default, 12345));
-        }
-
-        finally
-        {
-            World.Destroy(world);
-        }
+        Assert.IsFalse(buffs.Catalog.TryGet(12345, out _));
     }
 }

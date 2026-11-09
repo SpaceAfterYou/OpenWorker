@@ -13,7 +13,9 @@ using OpenWorker.Hotspot.Modules.Rewards.Types;
 using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
 using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.SoulMetry;
 
@@ -29,6 +31,8 @@ public sealed partial class SoulMetryManager(
     IRewardGranter rewards,
     ILogger<SoulMetryManager> logger)
 {
+    private readonly RowIndex<int, QuestRewardRow> _questRewards = questRewards.IndexBy(e => (int)e.Id);
+
     /// <summary>
     /// The person has no loaded soul metries, so nothing can be finished.
     /// </summary>
@@ -137,7 +141,7 @@ public sealed partial class SoulMetryManager(
 
         if (!TryGet(player, out var state))
         {
-            session.Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.SoulMetry, SoulMetryOpcode.Complete), NotLoaded));
+            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.SoulMetry, SoulMetryOpcode.Complete), NotLoaded));
             return;
         }
 
@@ -236,26 +240,21 @@ public sealed partial class SoulMetryManager(
             return 0;
         }
 
-        foreach (var reward in questRewards)
+        if (!_questRewards.TryGet(row, out var reward))
         {
-            if (reward.Id != row)
-            {
-                continue;
-            }
-
-            return info.Hero switch
-            {
-                Hero.Haru => reward.Field1,
-                Hero.Erwin => reward.Field2,
-                Hero.Lily => reward.Field3,
-                Hero.Jin => reward.Field4,
-                Hero.Stella => reward.Field5,
-                Hero.Iris => reward.Field6,
-                _ => 0
-            };
+            return 0;
         }
 
-        return 0;
+        return info.Hero switch
+        {
+            Hero.Haru => reward.HaruItem,
+            Hero.Erwin => reward.ErwinItem,
+            Hero.Lily => reward.LilyItem,
+            Hero.Jin => reward.JinItem,
+            Hero.Stella => reward.StellaItem,
+            Hero.Iris => reward.IrisItem,
+            _ => 0
+        };
     }
 
     private void SendAll(Entity player, SoulMetryState state)
@@ -286,26 +285,14 @@ public sealed partial class SoulMetryManager(
         return false;
     }
 
-    private async ValueTask SaveAsync(Entity player, SoulMetryState state, CancellationToken cancellationToken)
+    /// <summary>
+    /// The flush of the person writes the state (<see cref="PersonSections.MiscState"/>); nothing waits for the database here.
+    /// </summary>
+    private ValueTask SaveAsync(Entity player, SoulMetryState state, CancellationToken cancellationToken)
     {
-        if (!world.IsAlive(player))
-        {
-            return;
-        }
+        world.MarkDirty(player, PersonSections.MiscState);
 
-        var person = world.Get<SoulMetryComponent>(player).Person;
-
-        await state.Gate.WaitAsync(cancellationToken);
-
-        try
-        {
-            await store.SaveAsync(person, PersonStateKind.SoulMetry, state, cancellationToken);
-        }
-
-        finally
-        {
-            state.Gate.Release();
-        }
+        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Soul metry {Id} is unknown.")]

@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using OpenWorker.Hotspot.Modules.Events.Enums;
 using OpenWorker.Hotspot.Modules.Events.Types;
 
@@ -32,12 +31,6 @@ public sealed class AttendanceBook
     /// The start of the game day the time was counted for.
     /// </summary>
     public DateTimeOffset PlayDay { get; set; }
-
-    /// <summary>
-    /// Writes of the book to the database go one after another, so the last one has the latest state.
-    /// </summary>
-    [JsonIgnore]
-    public SemaphoreSlim Gate { get; } = new(1, 1);
 
     public AttendanceInfo ToInfo()
     {

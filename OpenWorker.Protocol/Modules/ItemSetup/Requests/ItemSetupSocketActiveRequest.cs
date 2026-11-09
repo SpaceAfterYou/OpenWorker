@@ -1,0 +1,25 @@
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Wire;
+
+namespace OpenWorker.Hotspot.Modules.ItemSetup.Requests;
+
+/// <summary>
+/// Opens a socket of an item.
+/// </summary>
+[WireMessage]
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
+public readonly partial struct ItemSetupSocketActiveRequest : IRequestHotspotMessage
+{
+    private const GroupOpcode Group = GroupOpcode.ItemSetup;
+    private const ItemSetupOpcode Command = ItemSetupOpcode.SocketActive;
+
+    public StorageSlot Target { get; init; }
+
+    public byte Socket { get; init; }
+
+    public MessageOpcode Opcode => new(Group, (byte)Command);
+}

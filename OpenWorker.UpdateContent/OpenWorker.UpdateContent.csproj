@@ -20,7 +20,7 @@
     <ItemGroup>
         <ProjectReference Include="..\OpenWorker.Batch\OpenWorker.Batch.csproj"/>
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
-        <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Protocol\OpenWorker.Protocol.csproj" />
         <ProjectReference Include="..\OpenWorker.Persistence\OpenWorker.Persistence.csproj"/>
         <ProjectReference Include="..\OpenWorker.Res\OpenWorker.Res.csproj"/>
     </ItemGroup>

@@ -1,14 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.League;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Channel.Community;
 using OpenWorker.Channel.Services;
 
 using OpenWorker.Hotspot;
-using StackExchange.Redis;
+using OpenWorker.Hotspot.Cache;
 
 namespace OpenWorker.Channel.Extensions;
 
@@ -19,13 +20,17 @@ public static class ServiceCollectionExtensions
         services.AddInstanceOptions();
         services.AddGateOptions();
         services.AddChannelOptions();
+        services.AddWorldOptions();
 
         services.AddSingleton<ServiceChannels>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<ServiceChannels>());
         services.AddSingleton<ServerChannels>();
 
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<MovementPace>();
+
         services.AddHostedService<ChannelBootstrapService>();
-        services.AddHostedService<ChannelLifecycleService>();
+        services.AddRegistrationService<ChannelLifecycleService>();
 
         return services.AddCommunity();
     }
@@ -44,6 +49,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<WorldManager>();
         services.AddSingleton<LeaveManager>();
 
+        // A server with the write-behind of its players (AddPersonPersistence) writes them before they go; the gate keeps nothing.
+        services.TryAddSingleton<IPersonFlush>(NoPersonFlush.Instance);
+
         return services;
     }
 
@@ -52,10 +60,8 @@ public static class ServiceCollectionExtensions
     /// </summary>
     private static IServiceCollection AddCommunity(this IServiceCollection services)
     {
-        // The same Redis the cache uses; a server that starts before it is ready keeps trying.
-        services.AddRedisOptions();
-        services.AddSingleton<IConnectionMultiplexer>(provider => ConnectionMultiplexer.Connect(
-            provider.GetRequiredService<IOptions<RedisOptions>>().Value.ToConfigurationOptions()));
+        // The same Redis, and the same connection, the cache uses.
+        services.AddRedisConnection();
 
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<ICommunityTransport, RedisCommunityTransport>();
@@ -68,13 +74,29 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ChatThrottle>();
         services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<ChatThrottle>());
 
-        services.AddSingleton<IPartyRoster, NoPartyRoster>();
+        services.AddSingleton<PartyBook>();
+        services.AddSingleton<IPartyRoster>(e => e.GetRequiredService<PartyBook>());
+        services.AddSingleton<PartyNotifier>();
+        services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<PartyNotifier>());
+        services.AddHostedService<PartyUpkeepService>();
+        services.AddSingleton<PartyRecruitBoard>();
+        services.AddSingleton<PartyAwaiterBoard>();
+        services.AddSingleton<PartyRecruitNotifier>();
+        services.AddSingleton<IPartyJoinListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
+        services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
+        services.AddSingleton<IPartyClock>(e => e.GetRequiredService<PartyRecruitNotifier>());
+        services.AddSingleton<PartyMatching>();
+        services.AddSingleton<IPartyClock>(e => e.GetRequiredService<PartyMatching>());
+        services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<PartyMatching>());
         services.AddSingleton<LeagueBook>();
         services.AddSingleton<ILeagueRoster>(e => e.GetRequiredService<LeagueBook>());
         services.AddSingleton<LeagueSnapshots>();
         services.AddSingleton<LeagueNotifier>();
         services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<LeagueNotifier>());
         services.AddSingleton<ICommunityModule>(e => e.GetRequiredService<LeagueNotifier>());
+        services.AddSingleton<LeagueLevels>();
+        services.AddSingleton<ILeagueTreasury, LeagueTreasury>();
+        services.AddSingleton<LeagueGrowth>();
         services.AddSingleton<IMegaphoneSource, FreeMegaphone>();
 
         services.AddSingleton<FriendBook>();

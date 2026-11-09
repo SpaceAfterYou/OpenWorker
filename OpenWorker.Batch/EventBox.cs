@@ -4,95 +4,100 @@ using OpenWorker.Batch.Entities;
 
 namespace OpenWorker.Batch;
 
-public readonly struct EventBox(XElement x)
+/// <summary>
+/// The boxes of a map, each kind with an index by id; the spawn boxes and the starts of sectors are also found by sector.
+/// Read once with the map and shared by every maze on it.
+/// </summary>
+public sealed class EventBox(XElement x)
 {
-    public IReadOnlyList<SectorBox> Sectors { get; } = x
+    public BoxList<SectorBox> Sectors { get; } = new(x
         .XPathSelectElements("VSectorBox")
-        .Select(v => new SectorBox(v))
-        .ToArray();
+        .Select(v => new SectorBox(v)));
 
-    public IReadOnlyList<MonsterSpawnBox> MonsterSpawns { get; } = x
+    public BoxList<MonsterSpawnBox> MonsterSpawns { get; } = new(x
         .XPathSelectElements("VMonsterSpawnBox")
-        .Select(v => new MonsterSpawnBox(v))
-        .ToArray();
+        .Select(v => new MonsterSpawnBox(v)));
 
-    public IReadOnlyList<StartEventBox> StartEvents { get; } = x
+    public BoxList<StartEventBox> StartEvents { get; } = new(x
         .XPathSelectElements("VStartEventBox")
-        .Select(v => new StartEventBox(v))
-        .ToArray();
+        .Select(v => new StartEventBox(v)));
 
-    public IReadOnlyList<PortalExitBox> PortalExits { get; } = x
+    public BoxList<PortalExitBox> PortalExits { get; } = new(x
         .XPathSelectElements("VPortalExitBox")
-        .Select(v => new PortalExitBox(v))
-        .ToArray();
+        .Select(v => new PortalExitBox(v)));
 
-    public IReadOnlyList<PortalBox> Portals { get; } = x
+    public BoxList<PortalBox> Portals { get; } = new(x
         .XPathSelectElements("VPortalBox")
-        .Select(v => new PortalBox(v))
-        .ToArray();
+        .Select(v => new PortalBox(v)));
 
-    public IReadOnlyList<MazeEscapeBox> MazeEscapes { get; } = x
+    public BoxList<MazeEscapeBox> MazeEscapes { get; } = new(x
         .XPathSelectElements("VMazeEscapeBox")
-        .Select(v => new MazeEscapeBox(v))
-        .ToArray();
+        .Select(v => new MazeEscapeBox(v)));
 
-    public IReadOnlyList<SectorStartBox> SectorStarts { get; } = x
+    public BoxList<SectorStartBox> SectorStarts { get; } = new(x
         .XPathSelectElements("VSectorStartBox")
-        .Select(v => new SectorStartBox(v))
-        .ToArray();
+        .Select(v => new SectorStartBox(v)));
 
-    public IReadOnlyList<SocialItemExcludeBox> SocialItemExcludes { get; } = x
+    public BoxList<SocialItemExcludeBox> SocialItemExcludes { get; } = new(x
         .XPathSelectElements("VSocialItemExcludeBox")
-        .Select(v => new SocialItemExcludeBox(v))
-        .ToArray();
+        .Select(v => new SocialItemExcludeBox(v)));
 
-    public IReadOnlyList<LuaFunctionBox> LuaFunctions { get; } = x
+    public BoxList<LuaFunctionBox> LuaFunctions { get; } = new(x
         .XPathSelectElements("VLuaFunctionBox")
-        .Select(v => new LuaFunctionBox(v))
-        .ToArray();
+        .Select(v => new LuaFunctionBox(v)));
 
-    public IReadOnlyList<SafeAreaBox> SafeAreas { get; } = x
+    public BoxList<SafeAreaBox> SafeAreas { get; } = new(x
         .XPathSelectElements("VSafeAreaBox")
-        .Select(v => new SafeAreaBox(v))
-        .ToArray();
+        .Select(v => new SafeAreaBox(v)));
 
-    public IReadOnlyList<PersonalShopAreaBox> PersonalShopAreas { get; } = x
+    public BoxList<PersonalShopAreaBox> PersonalShopAreas { get; } = new(x
         .XPathSelectElements("VPersonalShopAreaBox")
-        .Select(v => new PersonalShopAreaBox(v))
-        .ToArray();
+        .Select(v => new PersonalShopAreaBox(v)));
 
-    public IReadOnlyList<InterActionBox> InterActions { get; } = x
+    public BoxList<InterActionBox> InterActions { get; } = new(x
         .XPathSelectElements("VInterActionBox")
-        .Select(v => new InterActionBox(v))
-        .ToArray();
+        .Select(v => new InterActionBox(v)));
 
-    public IReadOnlyList<CheckMonsterSpawnBox> CheckMonsterSpawns { get; } = x
+    public BoxList<CheckMonsterSpawnBox> CheckMonsterSpawns { get; } = new(x
         .XPathSelectElements("VCheckMonsterSpawnBox")
-        .Select(v => new CheckMonsterSpawnBox(v))
-        .ToArray();
+        .Select(v => new CheckMonsterSpawnBox(v)));
 
-    public IReadOnlyList<CommonPositionBox> CommonPositions { get; } = x
+    public BoxList<CommonPositionBox> CommonPositions { get; } = new(x
         .XPathSelectElements("VCommonPositionBox")
-        .Select(v => new CommonPositionBox(v))
-        .ToArray();
+        .Select(v => new CommonPositionBox(v)));
 
-    public IReadOnlyList<CheckSectorBox> CheckSectors { get; } = x
+    public BoxList<CheckSectorBox> CheckSectors { get; } = new(x
         .XPathSelectElements("VCheckSectorBox")
-        .Select(v => new CheckSectorBox(v))
-        .ToArray();
+        .Select(v => new CheckSectorBox(v)));
 
-    public IReadOnlyList<ServerGateBox> ServerGates { get; } = x
+    public BoxList<ServerGateBox> ServerGates { get; } = new(x
         .XPathSelectElements("VServerGateBox")
-        .Select(v => new ServerGateBox(v))
-        .ToArray();
+        .Select(v => new ServerGateBox(v)));
 
-    public IReadOnlyList<QuestMoveCheckBox> QuestMoveChecks { get; } = x
+    public BoxList<QuestMoveCheckBox> QuestMoveChecks { get; } = new(x
         .XPathSelectElements("VQuestMoveCheckBox")
-        .Select(v => new QuestMoveCheckBox(v))
-        .ToArray();
+        .Select(v => new QuestMoveCheckBox(v)));
 
-    public IReadOnlyList<CheckEventSpawnBox> CheckEventSpawns { get; } = x
+    public BoxList<CheckEventSpawnBox> CheckEventSpawns { get; } = new(x
         .XPathSelectElements("VCheckEventSpawnBox")
-        .Select(v => new CheckEventSpawnBox(v))
-        .ToArray();
+        .Select(v => new CheckEventSpawnBox(v)));
+
+    private ILookup<int, MonsterSpawnBox>? _spawnsOfSector;
+    private ILookup<int, SectorStartBox>? _startsOfSector;
+
+    /// <summary>
+    /// The spawn boxes of a sector, in the order of the map; none for a sector the map does not have.
+    /// </summary>
+    public IEnumerable<MonsterSpawnBox> SpawnsOf(int sector)
+    {
+        return (_spawnsOfSector ??= MonsterSpawns.ToLookup(e => e.Sector))[sector];
+    }
+
+    /// <summary>
+    /// The first start box of a sector, or nothing.
+    /// </summary>
+    public SectorStartBox? StartOf(int sector)
+    {
+        return (_startsOfSector ??= SectorStarts.ToLookup(e => e.Sector))[sector].FirstOrDefault();
+    }
 }

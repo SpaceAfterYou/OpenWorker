@@ -39,7 +39,7 @@ public readonly record struct StatBonuses
             PhysicalEvasion = row.AddPhysicalEvasion,
             MagicalEvasion = row.AddMagicalEvasion,
             GrazeDamage = row.AddGrazeDamage,
-            PhysicalCriticalChance = row.AddPhysicalCriticalChance,
+            // The original leaves the physical critical chance of the row out, and takes the magical one.
             MagicalCriticalChance = row.AddMagicalCriticalChance,
             PhysicalCriticalResist = row.AddPhysicalCriticalResist,
             MagicalCriticalResist = row.AddMagicalCriticalResist,
@@ -80,6 +80,10 @@ public static class CombatStatCalculator
             Luck = luck,
             MaxHealth = status.HealthFirst + vitality * status.HealthPerVitality + bonuses.Health,
             GrazeDamage = status.GrazeDamage + bonuses.GrazeDamage,
+            SoulGaugeConstant = status.SoulGaugeRegen,
+            SoulGaugeAbsorbRate = status.SoulGaugeAbsorbRate,
+            StaminaMax = status.StaminaFirst,
+            StaminaRegen = status.StaminaRegen,
             Physical = new DamageStats
             {
                 AttackMax = physicalAttack,

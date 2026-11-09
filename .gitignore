@@ -711,6 +711,9 @@ $RECYCLE.BIN/
 Reverse/
 docs/
 
+# Local data of the machine for agents, see INSTALL.md
+AGENTS.local.md
+
 # Local settings of compose.yaml
 .env
 

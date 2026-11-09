@@ -95,6 +95,7 @@ public sealed class SecondPasswordGameplay(
             .CreateDbContextAsync(context.CancellationToken);
 
         var account = await database.Accounts
+            .AsTracking()
             .FirstAsync(e => e.Id == accountId, context.CancellationToken);
 
         account.SecondPassword = encoded;

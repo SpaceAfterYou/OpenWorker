@@ -8,6 +8,9 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Helpers.Responses;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Progress;
 
 namespace OpenWorker.Gameplay.Modules.Helpers;
 
@@ -19,41 +22,55 @@ namespace OpenWorker.Gameplay.Modules.Helpers;
 public sealed class HelperManager(
     World world,
     PersonStateStore store,
-    HelperCatalog catalog)
+    HelperCatalog catalog,
+    AchievementManager? achievements = null,
+    HelperStats? stats = null,
+    HelperGear? gear = null)
 {
     /// <summary>
-    /// The helper cannot be called now, which is what the client is told about a call outside a maze.
+    /// Helpers are not called, nor sent away, outside a maze: "supporters cannot be summoned in town".
     /// </summary>
-    public const ushort CannotSummon = 58006;
+    public const ushort NotInMaze = 58006;
 
     /// <summary>
-    /// The helper cannot be sent away, as it is not called.
+    /// The helper cannot be called in this maze, or is not called and so cannot be sent away.
     /// </summary>
-    public const ushort CannotRelease = 58007;
+    public const ushort CannotSummon = 58007;
 
     /// <summary>
-    /// The item cannot be put on the helper.
+    /// Reads the helpers of a person entering a district and tells the client.
     /// </summary>
-    public const ushort CannotEquip = 58004;
+    public ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
+    {
+        return LoadAsync(player, person, false, cancellationToken);
+    }
 
     /// <summary>
-    /// There is no reward for the support to take.
+    /// Reads the helpers of a person entering a maze and tells the client, which replaces the list it had.
     /// </summary>
-    public const ushort NoSupportReward = 52004;
+    public ValueTask EnterMazeAsync(Entity player, int person, CancellationToken cancellationToken)
+    {
+        return LoadAsync(player, person, true, cancellationToken);
+    }
 
-    public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
+    private async ValueTask LoadAsync(Entity player, int person, bool inMaze, CancellationToken cancellationToken)
     {
         var book = await store.LoadAsync<HelperBook>(person, PersonStateKind.Helper, cancellationToken) ?? new HelperBook();
 
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
         book.Normalize(catalog);
 
-        world.Set(player, new HelperComponent { Person = person, Book = book });
+        world.Set(player, new HelperComponent { Person = person, Book = book, InMaze = inMaze });
 
         world.Get<ServerSessionComponent>(player)
             .Send(new HelperListLoadResponse
             {
                 Person = person,
-                Helpers = book.Helpers.Select(ToValue).ToArray(),
+                Helpers = book.Helpers.Select(e => ToValue(player, e)).ToArray(),
                 AutoSummon = book.AutoSummon ? (byte)1 : (byte)0
             });
     }
@@ -69,7 +86,9 @@ public sealed class HelperManager(
         }
 
         world.Get<ServerSessionComponent>(player)
-            .Send(new HelperAddResponse { Helper = ToValue(entry) });
+            .Send(new HelperAddResponse { Helper = ToValue(player, entry) });
+
+        achievements?.OnHelperGained(player, helper);
 
         await SaveAsync(player, book, cancellationToken);
 
@@ -77,11 +96,15 @@ public sealed class HelperManager(
     }
 
     /// <summary>
-    /// The person asks to call a helper or to send it away. Helpers are only called in mazes.
+    /// The person asks to call a helper or to send it away. Outside a maze both are refused as the original refuses them;
+    /// in a maze a helper is not called yet, so a call is refused as one the maze does not allow, and there is nothing
+    /// to send away.
     /// </summary>
     public void Summon(Entity player, bool summon)
     {
-        SendError(player, HelperOpcode.Summon, summon ? CannotSummon : CannotRelease);
+        var inMaze = world.IsAlive(player) && world.TryGet<HelperComponent>(player, out var component) && component.InMaze;
+
+        SendError(player, HelperOpcode.Summon, inMaze ? CannotSummon : NotInMaze);
     }
 
     public async ValueTask ChangeOrderAsync(Entity player, int first, int second, CancellationToken cancellationToken)
@@ -121,62 +144,40 @@ public sealed class HelperManager(
         await SaveAsync(player, book, cancellationToken);
     }
 
-    public void SendSupportInfo(Entity player)
-    {
-        if (!TryGet(player, out var book))
-        {
-            return;
-        }
-
-        world.Get<ServerSessionComponent>(player)
-            .Send(new HelperSupportInfoResponse { Info = ToSupport(book) });
-    }
-
-    public async ValueTask RegisterSupportAsync(Entity player, byte supportType, CancellationToken cancellationToken)
-    {
-        if (!TryGet(player, out var book))
-        {
-            return;
-        }
-
-        book.SupportType = supportType;
-
-        world.Get<ServerSessionComponent>(player)
-            .Send(new HelperSupportRegisterResponse { Result = 0, Info = ToSupport(book) });
-
-        await SaveAsync(player, book, cancellationToken);
-    }
-
     /// <summary>
-    /// The friends of the person that offer support. There are none until friends are kept by the server.
+    /// The person has reached a level: what its helpers have by themselves follows it. Only the owner is told.
     /// </summary>
-    public void SendSupportList(Entity player)
+    public void OnLevelReached(Entity player, byte level)
     {
-        if (TryGet(player, out _))
+        if (stats is null || !TryGet(player, out var book) || book.Helpers.Count == 0)
         {
-            world.Get<ServerSessionComponent>(player)
-                .Send(new HelperSupportListResponse { Friends = [] });
+            return;
         }
+
+        world.Get<ServerSessionComponent>(player)
+            .Send(new HelperUserStatUpdateResponse
+            {
+                Helpers = book.Helpers.Select(e => new HelperStatUpdateValue(e.Helper, stats.Origin(e.Helper, level))).ToArray()
+            });
     }
 
-    public void RefuseSupportReward(Entity player) => SendError(player, HelperOpcode.SupportReward, NoSupportReward);
-
-    public void RefuseEquip(Entity player, HelperOpcode command) => SendError(player, command, CannotEquip);
-
-    private HelperValue ToValue(HelperEntry entry)
+    private HelperValue ToValue(Entity player, HelperEntry entry)
     {
+        if (gear is not null)
+        {
+            return gear.Record(player, entry);
+        }
+
+        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
+
+        // Without the tables of items nothing is worn.
         return new HelperValue
         {
             Helper = entry.Helper,
             Order = entry.Order,
-            Origin = [],
-            Additional = []
+            Origin = stats?.Origin(entry.Helper, level) ?? [],
+            Additional = stats?.Additional([], default) ?? []
         };
-    }
-
-    private static HelperSupportInfoValue ToSupport(HelperBook book)
-    {
-        return new HelperSupportInfoValue(0, book.SupportType, 0, DateTimeOffset.UnixEpoch, 0, book.SupportType != 0);
     }
 
     private void SendError(Entity player, HelperOpcode command, ushort code)
@@ -184,7 +185,7 @@ public sealed class HelperManager(
         if (world.IsAlive(player))
         {
             world.Get<ServerSessionComponent>(player)
-                .Send(new ErrorMessageResponse(new MessageOpcode(GroupOpcode.Helper, command), code));
+                .Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Helper, command), code));
         }
     }
 
@@ -200,25 +201,13 @@ public sealed class HelperManager(
         return false;
     }
 
-    private async ValueTask SaveAsync(Entity player, HelperBook book, CancellationToken cancellationToken)
+    /// <summary>
+    /// The flush of the person writes the book (<see cref="PersonSections.MiscState"/>); nothing waits for the database here.
+    /// </summary>
+    private ValueTask SaveAsync(Entity player, HelperBook book, CancellationToken cancellationToken)
     {
-        if (!world.IsAlive(player))
-        {
-            return;
-        }
+        world.MarkDirty(player, PersonSections.MiscState);
 
-        var person = world.Get<HelperComponent>(player).Person;
-
-        await book.Gate.WaitAsync(cancellationToken);
-
-        try
-        {
-            await store.SaveAsync(person, PersonStateKind.Helper, book, cancellationToken);
-        }
-
-        finally
-        {
-            book.Gate.Release();
-        }
+        return ValueTask.CompletedTask;
     }
 }

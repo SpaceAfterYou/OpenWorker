@@ -110,10 +110,46 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrapEx: box {Box}, skill {Skill}")]
     public static partial void IgnoredCreateTrapEx(this ILogger logger, int box, int skill);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrapExLoop: box {Box}, skill {Skill}, index {Index}")]
-    public static partial void IgnoredCreateTrapExLoop(this ILogger logger, int box, int skill, int index);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrapExLoop: box {Box}, skill {Skill}, count {Count}")]
+    public static partial void IgnoredCreateTrapExLoop(this ILogger logger, int box, int skill, int count);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call ChangeMonster: {Source} -> {Target}")]
+    public static partial void IgnoredChangeMonster(this ILogger logger, string source, string target);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call ChangeNpcAnimation: npc {Npc}, animation {Animation}")]
+    public static partial void IgnoredChangeNpcAnimation(this ILogger logger, int npc, string animation);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call InitPartyQuest: quest {Quest}, condition {Condition}, sector {Sector}")]
+    public static partial void IgnoredInitPartyQuest(this ILogger logger, int quest, int condition, int sector);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetEscortCondition: condition {Condition}")]
+    public static partial void IgnoredSetEscortCondition(this ILogger logger, int condition);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetEscortMonster")]
+    public static partial void IgnoredSetEscortMonster(this ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetMonsterAllowPassiveType: monster {Monster}, type {Type}")]
+    public static partial void IgnoredSetMonsterAllowPassiveType(this ILogger logger, int monster, int type);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetMonsterDefenceType: monster {Monster}, type {Type}, {Seconds} s")]
+    public static partial void IgnoredSetMonsterDefenceType(this ILogger logger, int monster, int type, float seconds);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call {Call}: table {Table}")]
+    public static partial void IgnoredStartMode(this ILogger logger, string call, int table);
 
     // ---- The script asks for something that is not there ---------------------------------------
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script {Script} called {Function}, which the server does not do; the call does nothing (said once for the script and the function)")]
+    public static partial void NotDoneByServer(this ILogger logger, string function, string script);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The script {Script} failed in {Function}; the maze ends for the player")]
+    public static partial void ScriptFailed(this ILogger logger, Exception exception, string function, string script);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script added an event timer {Function} of the unknown type {Type}; it is left out")]
+    public static partial void UnknownEventTimerType(this ILogger logger, int type, string function);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script stored a value under something that is neither a key nor a number; nothing is stored")]
+    public static partial void UnreadableLuaValue(this ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script set the unknown maze state {State}")]
     public static partial void UnknownMazeState(this ILogger logger, int state);
@@ -127,6 +163,9 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Script moves npc {Npc} to waypoint {Waypoint}, but the maze has no such creature")]
     public static partial void UnknownNpcToMove(this ILogger logger, int npc, int waypoint);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script moves npc {Npc} to waypoint {Waypoint}, which the map does not have; it stays")]
+    public static partial void UnknownWayPoint(this ILogger logger, int npc, int waypoint);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Spawn box {Box} has the monster {Monster} of the unsupported type {Type}; it is left out")]
     public static partial void UnsupportedMonsterType(this ILogger logger, int box, int monster, MonsterSpawnType type);
 
@@ -138,9 +177,41 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Error, Message = "The flight of a projectile of skill {Skill} failed")]
     public static partial void ProjectileFlightFailed(this ILogger logger, Exception exception, int skill);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "The timer function {Function} of the script failed")]
+    public static partial void TimerFunctionFailed(this ILogger logger, Exception exception, string function);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The timer {Timer} of the script failed")]
+    public static partial void TimerFailed(this ILogger logger, Exception exception, int timer);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The timers of the maze stopped after a failure")]
+    public static partial void TimersFailed(this ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Playing a skill in the maze failed")]
+    public static partial void SkillPlaybackFailed(this ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "A chain between monsters failed")]
+    public static partial void ChainFailed(this ILogger logger, Exception exception);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "A delayed action of the maze failed")]
     public static partial void DelayedActionFailed(this ILogger logger, Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Showing the creatures of spawn box {Box} later failed")]
-    public static partial void LateShowFailed(this ILogger logger, Exception exception, int box);
+    // ---- Monsters ---------------------------------------------------------------------------
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No script of the AI named {Name}, the monster will not think")]
+    public static partial void NoAiScript(this ILogger logger, string name);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The script of the AI named {Name} cannot be read, the monster will not think")]
+    public static partial void AiScriptUnreadable(this ILogger logger, Exception exception, string name);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Script}: {Method} was called with something it cannot take: {Message}")]
+    public static partial void AiScriptBadArgument(this ILogger logger, string script, string method, string message);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The monster {Monster} failed to think")]
+    public static partial void MonsterFailedToThink(this ILogger logger, Exception exception, int monster);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} ({Actor}): {Old} -> {New}")]
+    public static partial void MonsterChangedState(this ILogger logger, int monster, int actor, OpenWorker.Gameplay.Ai.AiState old, OpenWorker.Gameplay.Ai.AiState @new);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} wants to die, which a maze script has to finish")]
+    public static partial void MonsterWantsToDie(this ILogger logger, int monster);
 }

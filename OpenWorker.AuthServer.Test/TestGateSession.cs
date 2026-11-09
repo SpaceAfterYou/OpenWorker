@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
@@ -27,6 +27,8 @@ using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM;
 using Redis.OM.Searching;
+using StackExchange.Redis;
+using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.AuthServer.Test;
 
@@ -41,6 +43,7 @@ public sealed class TestGateSession
     private const short OtherGateId = 2;
 
     private static IRedisCollection<SessionCache> Sessions { get; set; } = null!;
+    private static IConnectionMultiplexer Redis { get; set; } = null!;
     private static IRedisCollection<GateCache> Gates { get; set; } = null!;
 
     [ClassInitialize]
@@ -53,7 +56,9 @@ public sealed class TestGateSession
             Assert.Inconclusive("OPENWORKER_TEST_REDIS is not set.");
         }
 
-        var provider = new RedisConnectionProvider(connection);
+        Redis = await ConnectionMultiplexer.ConnectAsync(new RedisOptions { ConnectionString = connection }.ToConfigurationOptions());
+
+        var provider = new RedisConnectionProvider(Redis);
 
         Sessions = Cache.CreateCollection<SessionCache>(provider);
         Gates = Cache.CreateCollection<GateCache>(provider);
@@ -102,13 +107,18 @@ public sealed class TestGateSession
 
             var gate = Options.Create(new GateOptions { Id = GateId });
 
-            var leases = new SessionLeaseManager(Sessions);
+            var leases = new SessionLeaseManager(Sessions, Redis);
             var secondPassword = new SecondPasswordGameplay(World, Factory, new ServerContent([]));
 
-            Registry = new PersonRegistry(
-                World,
-                new StorageFactory(World),
-                new CostumeFactory(World, new ReadOnlyCollection<CreateClothRow>([]), new ReadOnlyCollection<ItemRow>([])));
+            var catalog = new ItemCatalog(
+                new ReadOnlyCollection<ItemRow>([]),
+                new ReadOnlyCollection<ItemClassifyRow>([]),
+                new ReadOnlyCollection<InvenSlotExtendRow>([]),
+                new ReadOnlyCollection<BankSlotExtendRow>([]));
+
+            var inventories = new InventoryFactory(catalog, new ReadOnlyCollection<CreateClothRow>([]), new LocalItemSerials());
+
+            Registry = new PersonRegistry(World, inventories);
 
             Login = new LoginGameplay(
                 World,
@@ -124,16 +134,21 @@ public sealed class TestGateSession
                 World,
                 Factory,
                 Registry,
+                new InventoryPersistence(World, new PersonStore(Factory), inventories, NullLogger<InventoryPersistence>.Instance),
+                Options.Create(new PersonCreationOptions()),
                 gate,
                 NullLogger<PersonGameplay>.Instance,
                 secondPassword,
-                new LeaveManager(World, gate, Options.Create(new AuthEndpointOptions()), Gates, leases),
+                new LeaveManager(World, gate, Options.Create(new AuthEndpointOptions()), Gates, leases, NoPersonFlush.Instance),
                 (WorldManager)null!,
                 new PersonCreationCatalog(
                     new ReadOnlyCollection<CharacterInfoRow>([]),
                     new ReadOnlyCollection<CustomizeHairRow>([]),
                     new ReadOnlyCollection<CustomizeEyesRow>([]),
-                    new ReadOnlyCollection<CustomizeSkinRow>([])));
+                    new ReadOnlyCollection<CustomizeSkinRow>([])),
+                // These tests select no character: the prologue is never asked.
+                (PrologueEntry)null!,
+                Options.Create(new GameOptions { Version = "1.0", Prologue = false }));
         }
 
         public async Task<(int ActivePerson, int OtherPerson)> SeedAsync()
@@ -250,7 +265,7 @@ public sealed class TestGateSession
 
     private static async Task ReserveSessionAsync(Harness harness)
     {
-        await new SessionLeaseManager(Sessions).AttachAsync(default, harness.Session.Key, harness.Account);
+        await new SessionLeaseManager(Sessions, Redis).AttachAsync(default, harness.Session.Key, harness.Account);
     }
 
     [TestMethod]

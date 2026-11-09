@@ -7,7 +7,7 @@ namespace OpenWorker.Extensions;
 /// Where the database is, in <c>ConnectionStrings:Postgres</c> (or <c>ConnectionStrings__Postgres</c> in the environment),
 /// and how it logs, in the <c>Persistence</c> section.
 /// </summary>
-public sealed class PersistenceOptions
+public sealed class PersistenceOptions : IValidatableObject
 {
     public const string SectionName = "Persistence";
 
@@ -27,6 +27,24 @@ public sealed class PersistenceOptions
 #else
     public bool SensitiveDataLogging { get; set; }
 #endif
+
+    public static TimeSpan MinFlushInterval { get; } = TimeSpan.FromSeconds(1);
+    public static TimeSpan MaxFlushInterval { get; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// How often a game server writes what its players changed (<c>Persistence:FlushInterval</c>, <c>00:00:30</c> by
+    /// default). A crash of the process loses at most this much; a logout, a move to another server and a stop write at once.
+    /// </summary>
+    public TimeSpan FlushInterval { get; set; } = TimeSpan.FromSeconds(30);
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (FlushInterval < MinFlushInterval || FlushInterval > MaxFlushInterval)
+        {
+            yield return new ValidationResult(
+                "Persistence:FlushInterval must be a time from 00:00:01 to 00:05:00, for example 00:00:30.", [nameof(FlushInterval)]);
+        }
+    }
 }
 
 [OptionsValidator]

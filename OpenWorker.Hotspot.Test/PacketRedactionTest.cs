@@ -97,20 +97,24 @@ public sealed class PacketRedactionTest
         Assert.AreEqual("user", request.PurpleUserId);
     }
 
+    /// <summary>
+    /// Both passwords of a character, the second password and the one of the trade post, are hidden from the dumps.
+    /// </summary>
     [TestMethod]
-    [DataRow((byte)CharacterOpcode.SecondPassword)]
-    [DataRow((byte)CharacterOpcode.TradePassword)]
-    public void CharacterPasswordsAreHidden(byte command)
+    public void CharacterPasswordsAreHidden()
     {
-        var content = Message(GroupOpcode.Character, command, writer =>
+        foreach (var command in (byte[])[(byte)CharacterOpcode.SecondPassword, (byte)CharacterOpcode.TradePassword])
         {
-            writer.Write((byte)1);
-            WriteAscii(writer, "4040");
-        });
+            var content = Message(GroupOpcode.Character, command, writer =>
+            {
+                writer.Write((byte)1);
+                WriteAscii(writer, "4040");
+            });
 
-        PacketRedaction.Redact(content);
+            PacketRedaction.Redact(content);
 
-        Assert.AreEqual("****", new PersonSecondPasswordRequest(Body(content)).Password);
+            Assert.AreEqual("****", new PersonSecondPasswordRequest(Body(content)).Password);
+        }
     }
 
     [TestMethod]

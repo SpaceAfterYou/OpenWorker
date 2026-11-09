@@ -5,7 +5,6 @@ using OpenWorker.Hotspot.Modules.Login.Requests;
 
 namespace OpenWorker.GateServer.Gameplay.Services;
 
-[HotspotHandler(HotspotHandlerType.Gate)]
 public sealed class LoginService(LoginGameplay login, OptionGameplay option) : 
     IHotspotHandler<LoginEnterServerRequest>,
     IHotspotHandler<LoginOptionUpdateRequest>

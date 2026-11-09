@@ -7,7 +7,8 @@
 
     <ItemGroup>
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj" />
-        <ProjectReference Include="..\OpenWorker.Hotspot\OpenWorker.Hotspot.csproj" />
+        <ProjectReference Include="..\OpenWorker.Batch\OpenWorker.Batch.csproj" />
+        <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
         <ProjectReference Include="..\OpenWorker.Res\OpenWorker.Res.csproj" />
     </ItemGroup>
 

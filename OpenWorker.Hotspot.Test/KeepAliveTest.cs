@@ -65,7 +65,6 @@ public sealed class KeepAliveTest
 
             Channels = new ServiceChannels(
                 Options.Create(new ChannelOptions { From = 1, To = 1 }),
-                Options.Create(new InstanceOptions { Identifier = Guid.NewGuid() }),
                 World);
 
             Player = World.Create(new ServerSessionComponent(_server), KeepAliveComponent.Start(Time.GetTimestamp()));
@@ -362,7 +361,7 @@ public sealed class KeepAliveTest
         using var fixture = new Fixture();
 
         // A channel that cannot be walked: every check of the players fails on it.
-        fixture.Channels.Add(default);
+        fixture.Channels.Add(null!);
 
         await fixture.Service.StartAsync(CancellationToken.None);
 

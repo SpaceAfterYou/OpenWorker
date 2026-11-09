@@ -21,13 +21,14 @@ public enum DefenseType : byte
     Invincible = 3
 }
 
-public readonly record struct SkillDamage(byte Attribute, float BasicDamage, float AddDamage, float DamageRate, float SuperArmorAttack = 0f)
+/// <param name="SoulGaugeAbsorb">What a hit of the skill gives to the soul gauge of the attacker, before the share of the target.</param>
+public readonly record struct SkillDamage(byte Attribute, float BasicDamage, float AddDamage, float DamageRate, float SuperArmorAttack = 0f, float SoulGaugeAbsorb = 0f)
 {
     public const byte MagicalAttribute = 2;
 
     public static SkillDamage From(in SkillRow row)
     {
-        return new SkillDamage(row.Attribute, row.BasicDamage, row.AddDamage, row.DamageRate, row.SuperArmorAttack);
+        return new SkillDamage(row.Attribute, row.BasicDamage, row.AddDamage, row.DamageRate, row.SuperArmorAttack, row.SoulGaugeAbsorb);
     }
 }
 
@@ -39,6 +40,7 @@ public static class DamageCalculator
     private const float DefenseBaseByLevel = 50f;
     private const float GuardedDamage = 0.2f;
     private const float Percent = 0.01f;
+    private const float BrokenSuperArmorDamage = 1.5f;
 
     public static DamageResult Calculate(
         in CombatStats attacker,
@@ -46,7 +48,8 @@ public static class DamageCalculator
         in SkillDamage skill,
         DefenseType defense,
         float attackRate,
-        Random random)
+        Random random,
+        bool superArmorBroken = false)
     {
         if (defense == DefenseType.Invincible)
         {
@@ -104,6 +107,12 @@ public static class DamageCalculator
         result -= result * ((own.ClassDamageReduction + other.DamageReduction) * Percent);
 
         var afterDefense = ApplyDefense((int)result, other.Defense, target.Level, defense);
+
+        // A monster whose super armor is broken takes half as much again.
+        if (superArmorBroken)
+        {
+            afterDefense = (int)(afterDefense * BrokenSuperArmorDamage);
+        }
 
         if (attackRate > 0)
         {

@@ -50,14 +50,14 @@ jobs:
           --health-retries 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
       - name: Cache NuGet packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
@@ -67,6 +67,10 @@ jobs:
       # Cheap, so it goes before the build.
       - name: Forbidden patterns
         run: bash eng/check-forbidden.sh
+
+      # What two servers share lives in one project they both reference, never in two copies.
+      - name: Files repeated across projects
+        run: python3 eng/check-duplicates.py
 
       - name: Restore
         run: dotnet restore OpenWorker.slnx
@@ -91,15 +95,17 @@ jobs:
           dotnet ef database update
           --project OpenWorker.Persistence --configuration Release --no-build
 
-      # No test reads a Postgres setting: they run the stores on the EF Core in-memory provider. The tests that
-      # need Redis skip themselves when OPENWORKER_TEST_REDIS is not set, so it is set here and the check below
-      # fails the run if any of them is skipped.
-      # The tests that read the tables of the client (OPENWORKER_TEST_RES, _AI, _ACTION) stay skipped:
-      # the client files are not in the repository.
+      # Most tests run the stores on the EF Core in-memory provider. The tests that need Redis skip themselves when
+      # OPENWORKER_TEST_REDIS is not set, and the write-behind tests against Postgres when OPENWORKER_TEST_POSTGRES is not
+      # (a connection string without a database: each run migrates a database of its own and drops it). Both are set
+      # here, and the check below fails the run if any of them is skipped.
+      # The tests that read the tables and navigation meshes of the client (OPENWORKER_TEST_RES, _AI, _ACTION, _NAVMESH)
+      # and the tables only the server has (OPENWORKER_TEST_SERVER_RES) stay skipped: the files are not in the repository.
       - name: Test
         id: test
         env:
           OPENWORKER_TEST_REDIS: redis://localhost:6379
+          OPENWORKER_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
         run: >-
           dotnet test --solution OpenWorker.slnx -c Release --no-build
           --report-trx --results-directory TestResults
@@ -112,8 +118,8 @@ jobs:
           path: TestResults/*.trx
           if-no-files-found: warn
 
-      # Fails on a failed test, on a run with no results, and on a skip for any reason but the client tables.
+      # Fails on a failed test, on a run with no results, and on a skip for any reason but the tables.
       # Prints the skipped tests per reason, and writes the same to the job summary.
       - name: Check test results
         if: ${{ !cancelled() && steps.test.outcome != 'skipped' }}
-        run: python3 eng/check-trx.py --allow-skip 'OPENWORKER_TEST_(RES|AI|ACTION) is not set' TestResults
+        run: python3 eng/check-trx.py --allow-skip 'OPENWORKER_TEST_(RES|AI|ACTION|NAVMESH|SERVER_RES) is not set' TestResults

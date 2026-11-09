@@ -20,7 +20,7 @@ namespace OpenWorker.Lua.Ai;
 /// <summary>
 /// A monster as its mind sees it. The mind decides, the body walks, turns, attacks, and tells the clients about it.
 /// </summary>
-internal sealed class MonsterBody : IAiHost
+internal class MonsterBody : IAiHost
 {
     /// <summary>
     /// How often a client hears about a monster that keeps walking, in seconds.
@@ -28,6 +28,11 @@ internal sealed class MonsterBody : IAiHost
     private const double MoveResend = 0.6;
 
     private const float TurnToReport = 1f;
+
+    /// <summary>
+    /// How wide a way a monster needs at most: the body of a monster that fills a room does not make it walk round the walls.
+    /// </summary>
+    private const float MaxWayRadius = 100f;
     private const float Arrived = 3f;
     private const float AttackDefaultLength = 1f;
     private const short NoMotion = -1;
@@ -36,6 +41,11 @@ internal sealed class MonsterBody : IAiHost
     private readonly LuaCreatureManager _manager;
     private readonly SkillActionProvider _actions;
     private readonly List<PendingHit> _pending = [];
+
+    private readonly List<Vector3> _route = [];
+    private readonly List<Vector3> _found = [];
+
+    private Vector3 _home;
 
     private Vector3? _destination;
     private bool _run;
@@ -55,16 +65,64 @@ internal sealed class MonsterBody : IAiHost
 
         Entity = entity;
         Behavior = behavior;
-        HomePosition = home;
+        _home = home;
         _born = manager.Now;
 
-        Machine = new AiMachine(profile, this, manager.Random);
-        Machine.StateChanged += (old, state) => manager.Logger.LogDebug("Monster {Monster} ({Actor}): {Old} -> {New}", behavior.Id, entity.Id, old, state);
+        Machine = CreateMind(profile);
     }
 
-    public Entity Entity { get; }
-    public MonsterBehavior Behavior { get; }
-    public AiMachine Machine { get; }
+    protected World Ecs => _ecs;
+
+    protected LuaCreatureManager Manager => _manager;
+
+    public Entity Entity { get; private set; }
+    public MonsterBehavior Behavior { get; private set; }
+    public AiMachine Machine { get; private set; }
+
+    private AiMachine CreateMind(AiProfile profile)
+    {
+        var machine = new AiMachine(profile, this, _manager.Random);
+
+        machine.StateChanged += OnStateChanged;
+
+        return machine;
+    }
+
+    private void OnStateChanged(AiState old, AiState state)
+    {
+        _manager.Logger.MonsterChangedState(Behavior.Id, Entity.Id, old, state);
+    }
+
+    /// <summary>
+    /// The body of a monster that is gone takes a new monster of the same script: its lists are kept, everything it
+    /// knew is forgotten, and the mind starts afresh, because a mind carries too much to clear by hand.
+    /// </summary>
+    public MonsterBody Revive(Entity entity, MonsterBehavior behavior, Vector3 home)
+    {
+        Entity = entity;
+        Behavior = behavior;
+        _home = home;
+        IsRevealed = false;
+
+        _pending.Clear();
+        _route.Clear();
+        _found.Clear();
+        _flights.Clear();
+        _destination = null;
+        _run = false;
+        _battlePose = false;
+        _gazing = false;
+        _attackEnd = 0;
+        _staggerEnd = 0;
+        _lastMoveSent = 0;
+        _lastYawSent = float.NaN;
+        _born = _manager.Now;
+        _shotSession = 0;
+
+        Machine = CreateMind(Machine.Profile);
+
+        return this;
+    }
 
     /// <summary>
     /// The clients know the monster and can be told what it does.
@@ -89,7 +147,7 @@ internal sealed class MonsterBody : IAiHost
 
     public Vector3 Position => _ecs.Get<WorldComponent>(Entity).Position;
 
-    public Vector3 HomePosition { get; }
+    public virtual Vector3 HomePosition => _home;
 
     public float Yaw => _ecs.Get<WorldComponent>(Entity).Rotation;
 
@@ -175,36 +233,54 @@ internal sealed class MonsterBody : IAiHost
 
     private void Advance(double now, float elapsed)
     {
-        if (_destination is not { } destination)
+        if (_destination is null)
         {
             return;
         }
 
-        var position = Position;
-        var offset = new Vector2(destination.X - position.X, destination.Y - position.Y);
-        var distance = offset.Length();
-        var step = Speed * elapsed;
+        var left = Speed * elapsed;
+        var turned = false;
 
-        if (distance <= Math.Max(step, Arrived))
+        while (_route.Count > 0)
         {
-            Place(new Vector3(destination.X, destination.Y, position.Z), Yaw);
+            var position = Position;
+            var waypoint = _route[0];
+            var offset = new Vector2(waypoint.X - position.X, waypoint.Y - position.Y);
+            var distance = offset.Length();
 
-            _destination = null;
+            if (distance <= Math.Max(left, Arrived))
+            {
+                Place(OnFloor(new Vector3(waypoint.X, waypoint.Y, position.Z)), Yaw);
 
-            SendStop();
+                left = Math.Max(0f, left - distance);
+
+                _route.RemoveAt(0);
+
+                turned = turned || _route.Count > 0;
+
+                continue;
+            }
+
+            var direction = offset / distance;
+
+            Place(OnFloor(new Vector3(position.X + direction.X * left, position.Y + direction.Y * left, position.Z)), AiMath.YawOf(direction.X, direction.Y));
+
+            if (turned || now - _lastMoveSent >= MoveResend)
+            {
+                SendMove(now);
+            }
 
             return;
         }
 
-        var direction = offset / distance;
-        var yaw = AiMath.YawOf(direction.X, direction.Y);
+        _destination = null;
 
-        Place(new Vector3(position.X + direction.X * step, position.Y + direction.Y * step, position.Z), yaw);
+        SendStop();
+    }
 
-        if (now - _lastMoveSent >= MoveResend)
-        {
-            SendMove(now);
-        }
+    private Vector3 OnFloor(Vector3 position)
+    {
+        return _manager.Navigation.TryGetFloor(position, out var height) ? position with { Z = height } : position;
     }
 
     private void Place(Vector3 position, float yaw)
@@ -217,6 +293,7 @@ internal sealed class MonsterBody : IAiHost
         var moved = _destination is not null;
 
         _destination = null;
+        _route.Clear();
 
         if (send || moved)
         {
@@ -231,17 +308,27 @@ internal sealed class MonsterBody : IAiHost
             return false;
         }
 
-        if (_manager.Navigation.Clamp(Position, destination) is not { } reachable)
+        var position = Position;
+
+        if (!_manager.Navigation.TryFindPath(position, destination, Math.Min(Radius, MaxWayRadius), _found))
         {
             return false;
         }
 
+        _route.Clear();
+
+        // The first point of the way is the place the monster stands at.
+        _route.AddRange(_found.Skip(1));
+
         _run = run;
-        _destination = reachable;
+        _destination = _route.Count > 0 ? _route[^1] : position;
 
-        var position = Position;
+        if (_route.Count == 0)
+        {
+            return true;
+        }
 
-        Place(position, AiMath.YawTo(position, reachable));
+        Place(position, AiMath.YawTo(position, _route[0]));
 
         SendMove(_manager.Now);
 
@@ -274,6 +361,7 @@ internal sealed class MonsterBody : IAiHost
     public void Teleport(Vector3 position)
     {
         _destination = null;
+        _route.Clear();
 
         Place(position, Yaw);
 
@@ -347,6 +435,38 @@ internal sealed class MonsterBody : IAiHost
         _manager.Kill(Entity);
     }
 
+    /// <summary>
+    /// A monster of the maze has no owner; a helper has.
+    /// </summary>
+    public virtual AiTarget? Owner => null;
+
+    /// <summary>
+    /// How far above or below a place the ground may be for something to stand there.
+    /// </summary>
+    private const float GroundReach = 200f;
+
+    public bool HasGround(Vector3 position)
+    {
+        return _manager.Navigation.TryGetFloor(position, out var height) && MathF.Abs(height - position.Z) <= GroundReach;
+    }
+
+    public virtual void WarpTo(Vector3 position) => Teleport(position);
+
+    public void Heal(int amount)
+    {
+        var health = Math.Min(MaxHealth, Health + Math.Max(0, amount));
+
+        _ecs.Set(Entity, _ecs.Get<CreatureComponent>(Entity) with { Health = health });
+
+        Broadcast(new MonsterUpdateStatListResponse
+        {
+            Actor = Actor,
+            Stats = [new StatKeyValuePair { byIndex = STAT_TYPE.STAT_HP_CUR, statValue = health }]
+        });
+    }
+
+    public AiSkill? FindSkill(int id) => _manager.Services?.Behaviors.GetSkill(id);
+
     // ---- Seeing -------------------------------------------------------------------------------
 
     public AiSkill? GetSkill(int slot)
@@ -359,17 +479,30 @@ internal sealed class MonsterBody : IAiHost
         return _manager.Services?.Behaviors.GetSkill(Behavior.Skills[slot]);
     }
 
-    public AiTarget? GetTarget(int id)
+    /// <summary>
+    /// The enemies of a monster are the players and the helpers that fight beside them.
+    /// </summary>
+    public virtual AiTarget? GetTarget(int id)
     {
-        return _manager.FindPlayer(id);
+        return _manager.FindPlayer(id) ?? _manager.Helpers.FindTarget(id);
     }
 
-    public AiTarget? FindEnemy(float distance)
+    public virtual AiTarget? FindEnemy(float distance)
     {
-        return _manager.NearestPlayer(Position, distance);
+        var player = _manager.NearestPlayer(Position, distance);
+
+        return _manager.Helpers.Count == 0 ? player : _manager.Helpers.Nearest(this, distance, player);
     }
 
-    public int CountEnemies(float distance)
+    /// <summary>
+    /// The enemies a monster counts are the monsters of a side at war with its own: the helpers of the players.
+    /// </summary>
+    public virtual int CountEnemies(float distance)
+    {
+        return _manager.Helpers.CountFoes(this, distance);
+    }
+
+    public int CountUsers(float distance)
     {
         return _manager.CountPlayers(Position, distance);
     }
@@ -405,7 +538,7 @@ internal sealed class MonsterBody : IAiHost
         return length;
     }
 
-    public bool UseSkill(AiSkill skill, AiTarget target)
+    public virtual bool UseSkill(AiSkill skill, AiTarget target)
     {
         var now = _manager.Now;
         var duration = _actions.GetDuration(skill.Id, Behavior.ActionFile);
@@ -468,10 +601,38 @@ internal sealed class MonsterBody : IAiHost
                 continue;
             }
 
-            var area = new AttackArea(pending.Hit.Trigger, Position, Yaw);
-
-            _manager.HitPlayers(this, pending.Skill, pending.Hit.Trigger, _manager.PlayersTouching(area));
+            Strike(pending.Skill, pending.Hit.Trigger, new AttackArea(pending.Hit.Trigger, Position, Yaw), null, false);
         }
+    }
+
+    /// <summary>
+    /// A blow of the monster lands on an area, and on what a projectile ran into: the players and the helpers in it are hit.
+    /// </summary>
+    protected virtual void Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
+    {
+        IReadOnlyList<Entity> victims = colliderOnly ? [] : _manager.PlayersTouching(area);
+
+        if (collider is { } key && _manager.FindPlayerEntity(key) is { } hit && !victims.Contains(hit))
+        {
+            victims = [.. victims, hit];
+        }
+
+        _manager.HitPlayers(this, skill, trigger, victims);
+
+        if (_manager.Helpers.Count > 0)
+        {
+            _manager.Helpers.HitBy(this, skill, trigger, area, collider, colliderOnly);
+        }
+    }
+
+    /// <summary>
+    /// What the projectiles of the monster can run into.
+    /// </summary>
+    protected virtual FlightTarget[] FlightTargets()
+    {
+        var players = _manager.GetPlayerTargets();
+
+        return _manager.Helpers.Count == 0 ? players : [.. players, .. _manager.Helpers.FlightTargets(this)];
     }
 
     /// <summary>
@@ -517,38 +678,35 @@ internal sealed class MonsterBody : IAiHost
             return;
         }
 
-        var targets = _manager.GetPlayerTargets();
+        var targets = FlightTargets();
 
-        foreach (var flight in _flights.ToArray())
+        // In place: a projectile that is over leaves the list after the round.
+        for (var index = 0; index < _flights.Count; index++)
         {
+            var flight = _flights[index];
+
             foreach (var explosion in flight.Projectile.Advance(elapsed, targets))
             {
                 var area = new AttackArea(flight.Trigger, explosion.Position, Yaw);
-                List<Entity> victims = flight.Trigger.Projectile is { TargetOnly: true } ? [] : [.. _manager.PlayersTouching(area)];
 
-                if (explosion.Collider is { } key && _manager.FindPlayerEntity(key) is { } hit && !victims.Contains(hit))
-                {
-                    victims.Add(hit);
-                }
-
-                _manager.HitPlayers(this, flight.Skill, flight.Trigger, victims);
-            }
-
-            if (flight.Projectile.IsOver)
-            {
-                _flights.Remove(flight);
+                Strike(flight.Skill, flight.Trigger, area, explosion.Collider, flight.Trigger.Projectile is { TargetOnly: true });
             }
         }
+
+        _flights.RemoveAll(static e => e.Projectile.IsOver);
     }
 
     // ---- Telling the clients ------------------------------------------------------------------
 
     private void SendMove(double now)
     {
-        if (_destination is not { } destination)
+        if (_destination is not { } end)
         {
             return;
         }
+
+        // The client walks to the next point of the way; it hears of the next one when it gets there.
+        var destination = _route.Count > 0 ? _route[0] : end;
 
         _lastMoveSent = now;
         _lastYawSent = Yaw;
@@ -584,7 +742,7 @@ internal sealed class MonsterBody : IAiHost
         });
     }
 
-    private void Broadcast(OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage message)
+    protected void Broadcast(OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage message)
     {
         if (IsRevealed)
         {

@@ -49,6 +49,7 @@ public sealed class GateInteractions(IDbContextFactory<PersistenceContext> facto
             .ConfigureAwait(false);
 
         var gate = await context.Gates
+            .AsTracking()
             .FirstOrDefaultAsync(x => x.Id == id)
             .ConfigureAwait(false);
         

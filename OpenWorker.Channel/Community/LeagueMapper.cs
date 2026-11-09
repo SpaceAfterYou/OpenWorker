@@ -1,7 +1,7 @@
 using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
 using OpenWorker.Hotspot.Modules.League.Enums;
-using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Hotspot.Modules.League.Responses;
 using OpenWorker.Persistence;
 
 namespace OpenWorker.Channel.Community;
@@ -26,7 +26,7 @@ public static class LeagueMapper
         return new LeagueInfo
         {
             Identifier = league.Id,
-            Rank = 0,
+            Rank = league.Rank,
             GroupType = LeagueListType.Normal,
             Rating = league.Rating,
             MemberCount = (short)league.MemberCount,
@@ -67,10 +67,24 @@ public static class LeagueMapper
             Channel = (byte)(online?.Channel ?? 0),
             Person = member.Person,
             Name = member.Name,
-            Level = online?.Level ?? PersonModuleDefines.DefaultLevel,
+            Level = online?.Level ?? member.Level,
             BoardLimitTime = 0,
             Hero = (Hero)member.Hero,
             PlayDate = (ulong)Math.Max(0, ToUnix(member.LastLogout))
+        };
+    }
+
+    /// <summary>
+    /// The numbers of the league the client keeps up to date without the whole league: its rank, gold and members.
+    /// </summary>
+    public static LeagueInfoUpdateResponse ToUpdate(LeagueRecord league)
+    {
+        return new LeagueInfoUpdateResponse
+        {
+            League = league.Id,
+            Rank = league.Rank,
+            Money = league.Money,
+            Members = (short)league.MemberCount
         };
     }
 
@@ -81,7 +95,7 @@ public static class LeagueMapper
             League = applicant.League,
             Actor = applicant.Person,
             Name = applicant.Name,
-            Level = PersonModuleDefines.DefaultLevel,
+            Level = applicant.Level,
             Date = ToUnix(applicant.At),
             Class = applicant.Hero
         };

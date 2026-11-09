@@ -1,0 +1,40 @@
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Skill.Extensions;
+using OpenWorker.Hotspot.Modules.Skill.Requests;
+using OpenWorker.Hotspot.Modules.Skill.Types;
+
+namespace OpenWorker.Hotspot.Modules.Skill.Responses;
+
+[HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
+public readonly struct SkillActionBroadcastResponse : IResponseHotspotMessage
+{
+#region Interface: IHotspotMessage
+
+    private const GroupOpcode Group = GroupOpcode.Skill;
+    private const SkillOpcode Command = SkillOpcode.ActionSkillBt;
+
+    public MessageOpcode Opcode => new(Group, (byte)Command);
+
+#endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+public required SkillDmgValue[] SkillDmgValueList { get; init; }
+public SkillActionValue SkillAction { get; init; }
+
+#endregion Message: Body
+
+#region Interface: IWritableData
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(SkillDmgValueList);
+
+        SkillAction.Write(writer);
+    }
+
+#endregion Interface: IWritableData
+}
