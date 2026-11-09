@@ -4,7 +4,7 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.DailyMissions.Requests;
 
-namespace OpenWorker.DistrictServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 public sealed class DailyMissionService(DailyMissionManager manager) :
     IHotspotHandler<DailyMissionAcceptRequest>,

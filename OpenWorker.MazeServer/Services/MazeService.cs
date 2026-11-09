@@ -586,6 +586,11 @@ public sealed partial class MazeService(
             return ValueTask.CompletedTask;
         }
 
+        if (!StandsAt(context.Player, box, MazeOpcode.eSUB_CMD_CHECK_EVENT_SPAWN_BOX_REQ, nameof(MazeCheckEventSpawnBoxRequest)))
+        {
+            return ValueTask.CompletedTask;
+        }
+
         if (maze.Progress.TryUseBox(box.Id))
         {
             foreach (var spawn in box.SpawnBoxList.Where(e => e != 0))
@@ -613,10 +618,8 @@ public sealed partial class MazeService(
         }
 
         // The box counts where the person stands, not where the client says it stepped.
-        if (!IsAtBox(box, ecs.Get<WorldComponent>(context.Player).Position))
+        if (!StandsAt(context.Player, box, MazeOpcode.eSUB_CMD_MAZE_QUEST_MOVE_CHECK_REQ, nameof(MazeQuestMoveCheckRequest)))
         {
-            LogFarFromBox(nameof(MazeQuestMoveCheckRequest), box.Id);
-
             return ValueTask.CompletedTask;
         }
 
@@ -634,6 +637,24 @@ public sealed partial class MazeService(
     /// How far outside a box a person may stand and still be in it, for the moves the server has not heard yet.
     /// </summary>
     private const float BoxSlack = 1000f;
+
+    /// <summary>
+    /// Whether the person stands at the box the client names. A box named from afar is a claim the client cannot make: it
+    /// does nothing and counts against the error budget of the session, as a move that is too fast does.
+    /// </summary>
+    private bool StandsAt(Entity player, BasicEntity box, MazeOpcode command, string request)
+    {
+        if (IsAtBox(box, ecs.Get<WorldComponent>(player).Position))
+        {
+            return true;
+        }
+
+        LogFarFromBox(request, box.Id);
+
+        errors.Charge(player, MessageOpcode.From(GroupOpcode.Maze, command), HandlerErrorReason.Violation);
+
+        return false;
+    }
 
     /// <summary>
     /// Whether a place is in a box of the map, on the ground: within the half of its diagonal from its middle, with some slack.
@@ -657,6 +678,13 @@ public sealed partial class MazeService(
         var maze = ecs.Get<LuaMaze>(context.Player);
 
         if (!maze.Progress.TryGetInteraction(request.Box, out var interaction) || !interaction.Enable)
+        {
+            SendError(context.Player, MazeOpcode.eSUB_CMD_MAZE_INTERACTION_CLICK_REQ, InteractionFailed);
+            return;
+        }
+
+        if (maze.Batch.EventBox.InterActions.Find(request.Box) is { } place &&
+            !StandsAt(context.Player, place, MazeOpcode.eSUB_CMD_MAZE_INTERACTION_CLICK_REQ, nameof(MazeInteractionClickRequest)))
         {
             SendError(context.Player, MazeOpcode.eSUB_CMD_MAZE_INTERACTION_CLICK_REQ, InteractionFailed);
             return;
@@ -888,6 +916,11 @@ public sealed partial class MazeService(
             return ValueTask.CompletedTask;
         }
 
+        if (!StandsAt(context.Player, boxes, MazeOpcode.eSUB_CMD_EVENT_SPAWN_BOX_REQ, nameof(MazeEventSpawnBoxRequest)))
+        {
+            return ValueTask.CompletedTask;
+        }
+
         foreach (var box in boxes.CheckBoxList.Where(x => x is not 0))
         {
             maze.ExecuteEventSpawnLua(box);
@@ -919,6 +952,11 @@ public sealed partial class MazeService(
         {
             RefuseUnknownBox(context.Player, MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_REQ, nameof(MazeLuaFunctionRequest), request.Box);
 
+            return;
+        }
+
+        if (!StandsAt(context.Player, function, MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_REQ, nameof(MazeLuaFunctionRequest)))
+        {
             return;
         }
 

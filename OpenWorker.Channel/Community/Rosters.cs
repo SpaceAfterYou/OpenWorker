@@ -1,3 +1,5 @@
+using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Res.Types;
 using Arch.Core;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 
@@ -51,9 +53,37 @@ public interface IMegaphoneSource
 }
 
 /// <summary>
-/// The bag does not keep a megaphone yet, so every use is free.
+/// A megaphone is one item of the bag, of the use kind of a megaphone, which a use takes away, as the original does.
 /// </summary>
-internal sealed class FreeMegaphone : IMegaphoneSource
+public sealed class InventoryMegaphone(InventoryService inventory) : IMegaphoneSource
 {
-    public ValueTask<ushort> TakeAsync(Entity player, StorageGroup storage, short slot) => ValueTask.FromResult<ushort>(0);
+    /// <summary>The client's line for a slot without a usable item.</summary>
+    public const ushort NoItem = 52011;
+
+    /// <summary>The client's line for an item that is not a megaphone.</summary>
+    public const ushort NotAMegaphone = 52002;
+
+    public ValueTask<ushort> TakeAsync(Entity player, StorageGroup storage, short slot)
+    {
+        var item = inventory.InventoryOf(player)?.At(storage, slot);
+
+        if (item is null || item.Count <= 0)
+        {
+            return ValueTask.FromResult(NoItem);
+        }
+
+        if (inventory.Catalog.Classify(item.Item) is not { } classify)
+        {
+            return ValueTask.FromResult(NoItem);
+        }
+
+        if (classify.ItemUseType != ItemUseType.MEGAPHONE)
+        {
+            return ValueTask.FromResult(NotAMegaphone);
+        }
+
+        inventory.Spend(player, item, 1);
+
+        return ValueTask.FromResult<ushort>(0);
+    }
 }

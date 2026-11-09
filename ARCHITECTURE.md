@@ -96,8 +96,9 @@ the full name of its type. `ServerService` stays in `DependencyInjection`: it bu
 loop's. The move: `docs/phase-6/A-layers.md`.
 
 What the district and the maze both run lives once, in `OpenWorker.Server.Common`, which only those two reference: the person
-of a player read from its row (`PersonRegistry`) and the concrete handlers of chat, friends, leagues, items, quests, profiles and
-movement on the bases of `Channel`. The handlers are found by the scan of the loaded assemblies, so they live apart from
+of a player read from its row (`PersonRegistry`), the keep-alive (`KeepAliveService`, which walks the players who entered with
+an Arch query) and the concrete handlers of the system group, chat, friends, leagues, items, quests, profiles, movement, the skill
+window, gestures, daily missions, helpers and the trade password, most on the bases of `Channel`. The handlers are found by the scan of the loaded assemblies, so they live apart from
 `Channel`, which the gate loads as well. Where the two servers differ, in who hears what a player does, a handler asks the
 `IPlayerAudience` the server registers with `AddServerCommon`: `ChannelAudience` of the district (the channel for the chat, the
 players in sight for the rest, the grid for a move), `MazeAudience` of the maze (the player alone, as every player has a maze of
@@ -298,7 +299,7 @@ the metrics class as the last, optional constructor parameter: `null` is a part 
 Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_total`, `handler.duration` is `handler_duration_seconds_bucket`.
 
 - **Why a connection closed.** `SessionWriter` ends once per connection and counts it there; the first `SessionCloseReason` given to the
-  writer is the one reported. `ServerSessionComponent.Disconnect(reason)` is how code gives one (`Timeout` in the keep-alive of a district,
+  writer is the one reported. `ServerSessionComponent.Disconnect(reason)` is how code gives one (`Timeout` in the keep-alive of a district or a maze,
   `Malformed` in `HandlerExecutor` when the error budget runs out; `Disconnect()` alone is `Server`). The writer gives `Backpressure` for a
   full queue or a write that times out, and `Client` for a socket that fails; the read loop in `ServerService` gives `Client` for the end
   of the stream and `Shutdown` for a session the drain closes. The drain names `Shutdown` with `SetCloseReason` before the close
@@ -475,6 +476,9 @@ or wrong setting stops the server with a message that names the key. A setting w
 - `Credentials:DiscordToken` of the relay is a secret: no file carries it, it comes from the environment
   (`Credentials__DiscordToken`), and the relay stops at start without it.
 - `PersonCreation:StartLevel` of the gate is the level a new character starts at, 1 unless set (1 to 100).
+- `Commands:OpenToEveryone` of the district and the maze lets every account use the test commands of the chat as a game master
+  would; false unless set, and only for a test stand. Otherwise a command runs for the access level of the account
+  (`Accounts.AccessLevel`).
 - `Persistence:FlushInterval` of the district and the maze (`00:00:30`, from one second to five minutes) is how often the
   changes of the players are written (see Database). `Maximum Pool Size` in `ConnectionStrings:Postgres` is the size of
   the pool of connections of a server: 16 for the gate, a district and the maze, 8 for auth, 4 for the relay and the

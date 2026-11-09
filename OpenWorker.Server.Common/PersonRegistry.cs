@@ -13,16 +13,25 @@ using OpenWorker.Gameplay.Modules.Maze.Extensions;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Hotspot.Enums;
+using OpenWorker.Hotspot.Messages.Response.Person.Enums;
+using OpenWorker.Persistence;
+using OpenWorker.Gameplay.Modules.Gestures.Components;
+using OpenWorker.Hotspot.Modules.Gestures.Types;
 
 namespace OpenWorker.Server.Common;
 
-public sealed class PersonRegistry(World world)
+public sealed class PersonRegistry(World world, TimeProvider time)
 {
     /// <summary>
-    /// Sets what the person is from its row, and the options of its account.
+    /// Sets what the person is from its row, and what its account keeps for it.
     /// </summary>
-    public void PullPerson(Entity entity, PersonPersistent persistent, byte[] accountOptions)
+    public void PullPerson(Entity entity, PersonAtEntry entry)
     {
+        var persistent = entry.Person;
+        var accountOptions = entry.AccountOptions;
+
         world.Set(entity, new ActorComponent
         {
             Identifier = persistent.Id,
@@ -120,5 +129,32 @@ public sealed class PersonRegistry(World world)
         world.Set(entity, persistent.ToCommunityComponent());
 
         world.Set(entity, accountOptions.ToPersonOptionComponent());
+
+        // The six gestures kept ready, in a district and in a maze.
+        world.Set(entity, new GestureComponent
+        {
+            Collection = persistent.GestureList.Length switch
+            {
+                < GesturesModuleDefines.MaxGestureCount => persistent.GestureList
+                    .Concat(Enumerable.Repeat(0, GesturesModuleDefines.MaxGestureCount - persistent.GestureList.Length))
+                    .ToArray(),
+
+                > GesturesModuleDefines.MaxGestureCount => persistent.GestureList.Take(GesturesModuleDefines.MaxGestureCount).ToArray(),
+
+                _ => persistent.GestureList
+            }
+        });
+
+        world.Set(entity, new AccessComponent(Enum.IsDefined((AccessLevel)entry.AccessLevel) ? (AccessLevel)entry.AccessLevel : AccessLevel.None));
+
+        // A password the account has must be given again on this server before a trade.
+        world.Set(entity, new TradePasswordComponent
+        {
+            Password = entry.TradePassword,
+            State = string.IsNullOrEmpty(entry.TradePassword) ? PasswordProtectionState.None : PasswordProtectionState.UnAuthenticated
+        });
+
+        // Entering counts as the first answer to the keep-alive.
+        world.Set(entity, KeepAliveComponent.Start(time.GetTimestamp()));
     }
 }

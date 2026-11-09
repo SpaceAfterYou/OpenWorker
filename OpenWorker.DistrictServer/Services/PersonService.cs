@@ -11,7 +11,6 @@ using Microsoft.Extensions.Options;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.DistrictServer.Server;
-using OpenWorker.DistrictServer.Server.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
@@ -79,7 +78,6 @@ public sealed partial class PersonService(
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
-    IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
     private short Location { get; } = instance.Value.Location;
@@ -152,27 +150,9 @@ public sealed partial class PersonService(
 
         ecs.Set(context.Player, GetReservedPlace(reserve));
 
-        ecs.Set(context.Player, KeepAliveComponent.Start(time.GetTimestamp()));
-
-        ecs.Set(context.Player, new GestureComponent
-        {
-            Collection = person.GestureList.Length switch
-            {
-                < GesturesModuleDefines.MaxGestureCount => person.GestureList
-                    .Concat(Enumerable
-                        .Repeat(0, GesturesModuleDefines.MaxGestureCount - person.GestureList.Length)
-                        .ToArray())
-                    .ToArray(),
-
-                > GesturesModuleDefines.MaxGestureCount => person.GestureList.Take(GesturesModuleDefines.MaxGestureCount).ToArray(),
-
-                _ => person.GestureList
-            }
-        });
-
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
-        registry.PullPerson(context.Player, person, entry.AccountOptions);
+        registry.PullPerson(context.Player, entry);
 
         await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
 
@@ -271,21 +251,6 @@ public sealed partial class PersonService(
     {
         await leaving
             .LeaveAsync(context.Player, request.Destination);
-    }
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)
-    {
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
-
-        // session.Send(new PersonTradePasswordResponse(request.Password));
-
-        session.Send(new CharacterTradePasswordResponse
-        {
-            ProtectionState = PasswordProtectionState.Authenticated,
-            ErrorCode = 0
-        });
-
-        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to district {Location} as person {Person} with no reservation, or with one that has expired, and is turned away")]

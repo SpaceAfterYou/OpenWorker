@@ -43,6 +43,7 @@ await Host
         services.AddPersistence();
         services.AddItems();
         services.AddRewardsOptions();
+        services.AddCommandOptions();
         services.AddSingleton<CombatTables>();
         services.AddGameplay();
         services.AddMiscGameplay();
@@ -64,7 +65,6 @@ await Host
         services.AddHotspot(context, EntityComponentService.District);
 
         services.AddRegistrationService<ServerBootstrapService>();
-        services.AddHostedService<KeepAliveService>();
     })
     .Build()
     .RunAsync();

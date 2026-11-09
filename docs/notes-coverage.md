@@ -1,6 +1,7 @@
 # Coverage: what the client 1.4.2.3 can do, and what the server really does
 
-An audit of `dev` at `3c67dbc2` (2026-11-09), made without changing the server. It answers two questions: for every
+An audit of `dev` at `3c67dbc2` (2026-11-09), made without changing the server; the counts and tables were brought up to date
+after `fix/session-gaps` (the list "Closed since the audit" below). It answers two questions: for every
 message of the client, does the server do the real thing; and for every feature a player can reach, is it there. The
 result is a backlog in the order a real player would hit the gaps.
 
@@ -49,9 +50,9 @@ a feature lands, change its overrides and rerun. The client side (`ida_callers.p
 
 | Verdict | Count | What it means |
 |---|---|---|
-| real | 193 | the handler does what the request asks, with the checks the notes list |
-| partial | 26 | it does part of it (what is missing is in the table) |
-| invented | 4 | it answers with fixed or made-up data, or succeeds without the effect: the trade password, the megaphone, the cash shop list, the tower ranking |
+| real | 203 | the handler does what the request asks, with the checks the notes list |
+| partial | 18 | it does part of it (what is missing is in the table) |
+| invented | 2 | it answers with fixed or made-up data, or succeeds without the effect: the cash shop list, the tower ranking |
 | ignored | 50 | no type (29: my room, exchange, social items, infinite tower, defensive weapons) or a handler that does nothing (21) |
 | never sent by this client | 19 | request types the server has (16 of the item work, 3 of movement) that client 1.4.2.3 never sends |
 
@@ -59,30 +60,39 @@ a feature lands, change its overrides and rerun. The client side (`ida_callers.p
 
 | Verdict | Count |
 |---|---|
-| real | 314 |
-| partial | 11 |
-| invented | 3 |
-| not sent | 149 |
+| real | 321 |
+| partial | 7 |
+| invented | 2 |
+| not sent | 147 |
 
 By group (requests on the left, notices on the right) the table opens the section "Messages per group" at the end.
 Groups with nothing at all on the server: my room (0x26), infinite tower (0x28), exchange (0x2B), social items (0x2D),
 and the defensive weapons and controlled monsters of group 0x17. Groups where requests are real but the server never
 tells the others: skills (0x06: 25 notices never sent, among them what the others see of a held, charged, aimed or
-synchronised skill) and items (0x08: a change of gear and the use of an item).
+synchronised skill) and items (0x08: the use of an item).
 
 ## The backlog, in the order a player meets it
 
 Size: **S** a day or less, **M** a few days, **L** a week or more. "Original" says whether the rules have to be read
 from the original server (they usually do) or the client alone decides.
 
-### A. What blocks or breaks a normal session, from login to the first hours
+### Closed since the audit
 
-**A1. A change of channel never answers (F1/02). S, client alone.** The district moves the player into the new channel
-but sends nothing back. The client's answer handler is what sends the request for the objects around it
-(04/06) and takes the new map number, so after picking a channel the client waits for an answer that never comes and
-never asks what is around it: the players of the new channel are told the person arrived (04/11), the person is told
-nothing. Whether the window stays open or the client gives up is on the play-session list. The answer is an "enter map" record (result,
-change-server flag, address); the refusals (`Same`, `NotFound`, `Full`) need its error form. Nothing else depends on it.
+Branch `fix/session-gaps` (the comparison with the original and what is still open: `docs/notes-session-gaps.md`):
+
+- **A1** a change of channel is answered with the map of the new channel, and refused for the same, a missing or a full channel
+  and during a trade (`8fb0367d`).
+- **A7** options changed in the game are saved to the account by the district and the maze (`66da9b5e`).
+- **A9** the players who see a person get 08/0D with the worn slots that changed, in a district and in a maze (`fcef1b64`).
+- **A11** (a) a test command of the chat runs for the access level of the account, `Commands:OpenToEveryone` opens them on a
+  test stand (`a031ca0e`); (b) a megaphone is taken from the bag (`90bf9b7b`); (c) the trade password is kept hashed and
+  checked (`b50eae3a`).
+- **A12** the maze answers the ping and keeps its players alive with the keep-alive of the district (`66da9b5e`).
+- **B2** a person who is away is shown at the level of its row (`26af1d03`, `1437b2e0`).
+- The skill window, gestures and daily missions are answered in the maze through the services of the district (`0e3deb77`);
+  boxes a maze client names (11/31, 11/35, 11/7E, 11/77) must be where the player stands (`6635650d`).
+
+### A. What blocks or breaks a normal session, from login to the first hours
 
 **A2. Using items: potions and almost every other kind (08/11). L, original.** The use handler knows 5 kinds of use of
 about 60 (boosters, akashic cards, packages, costume packages, random boxes); everything else is refused with an error.
@@ -112,35 +122,15 @@ client walks anywhere, including into a district it has not reached) and second 
 Needs the columns of `tb_Maze_Info` that the server does not name yet and the original's entry checks and error codes.
 Depends on A4 for fatigue.
 
-**A7. Options changed in the game are lost (01/02). S, client alone.** The gate and the auth server save the 27 option
-values; the district handler is empty and the maze has none. The client sends them from its options window (and once
-after the character info). A player who changes key or display settings in town finds them back as they were after the
-next login. The saving code exists (`OptionGameplay`): the district and maze need the same call.
-
 **A8. Revive (03/42). S to M, original.** A fallen player gets up free whatever the kind: the cash revive takes nothing,
 there is no revive item (use kind `REVIVE`), no count of free revives per maze, no safe-zone or buff revive. The window
 offers what the client computes, so the effect today is "every revive is free". Needs the original's revive rules and
 the counts of `tb_Maze_Info`.
 
-**A9. The others never see a change of gear (08/0D). S, client alone for the layout.** Equipping is real for the person,
-but the notice the client uses to change the model of another player is never sent: in town and in a party everybody
-keeps the look the player had when they met. The handler of the move is the one place to add it, to the players who see
-the person.
-
 **A10. Skill points are reset and the deck grows without taking anything (06/72, 06/76). S, original.** The original
 resets skills through the use of an item of that kind, and the client has an item kind for a deck slot too; whether the
 original accepts the bare requests without an item was not read. Here both are answered for free. Learning, the deck and
-divergence are real but exist only on the district: whether the client lets the skill window work in a maze is on the
-play-session list.
-
-**A11. Three holes a player can use against the game. S each.** (a) The test commands of the chat (`/item`, `/currency`,
-`/exp`, ...) run for every player: no access level is checked anywhere (07/0A). (b) The megaphone is free: no item is
-taken (`FreeMegaphone`). (c) The trade password (03/18) is answered "authenticated" without a check and is never stored
-(M, with the original's rules for when it is asked). Client alone for (a) and (b).
-
-**A12. The maze answers no ping and sends no keep-alive (01/05, 01/06). S, client alone.** The district does both; the
-maze has no system handler (and its keep-alive service is commented out). The client sends its keep-alive only in answer
-to the server's, so nothing breaks unless the client times out or shows latency without them: on the play-session list.
+divergence are real in a district and in a maze.
 
 ### B. Visible, but the game goes on
 
@@ -149,10 +139,6 @@ skill (06/42), a change of target (06/44), the place of a moving skill (06/48), 
 06/50), the motion of using an object (11/79) and of using an item (08/13). The requests behind 06/44, 06/4B and 06/4D
 have no handler in the maze at all. Alone in a maze this changes nothing; in a party the others see a skill start and
 its hits, not what happens in between.
-
-**B2. Offline people are level 25 (19/01, 19/02, 19/33, 19/51, 2C/01, 2C/02). S.** The friend list, the block list,
-the search, the recommendations and both rankings show 25 for anybody not online (a project constant). The card of a
-person in the database has the level (the league already reads it).
 
 **B3. Rankings are always empty (2C/01-03). S once A4 exists.** The store can record a time and a kill score, but nothing
 calls it; the tower ranking is zeros. Depends on A4 for times and scores, on C2 for the tower.
@@ -169,8 +155,7 @@ needs a hand-written row and the original's reward rule.
 raised. Experience of monsters and mazes, drop rates, gold, ether, battle points, upgrade chances and the status
 boosters (a buff) are not applied; account boosters are kept per character.
 
-**B7. Gestures are town-only and need no unlock (23/01). S.** Showing a gesture works in the district for any gesture of
-the table; the maze has no handler.
+**B7. Gestures need no unlock (23/01). S.** Showing a gesture works in a district and a maze for any gesture of the table.
 
 **B8. Transports of the district (05/16) and the costume look (08/50, 08/52). M each, original.** The ride a dialog
 offers is ignored (`tb_District_Transport`, `tb_Transport_Info`); appearance items are not kept, so the look of a costume
@@ -226,13 +211,13 @@ means nothing on the server.
 | Character creation and customization | class select, customizing scene; `tb_Customize_*`, `tb_Create_Cloth` | 03/01, 03/11 | done | name filter (`tb_NameFilter`) |
 | Character list, delete, second password | character select scene | 03/02, 03/11, 03/13, 03/17 | done | waiting time of a deletion |
 | Prologue and tutorial | tutorial pop-ups, `T01`, `T02` mazes | 03/15, 03/19, 03/20, 11/23 | done | checks on the real client |
-| District, channels, objects around | channel list, minimap, total map | F1/01, F1/02, 04/06, 04/21-23 | partial | the channel change answer (A1) |
+| District, channels, objects around | channel list, minimap, total map | F1/01, F1/02, 04/06, 04/21-23 | done | checks on the real client |
 | Movement | (all) | 05/xx | done | transports (B8), ground state |
 | Transport between areas | regional movement; `tb_District_Transport`, `tb_Transport_Info` | 05/16 | missing | B8 |
 | Portals between districts and mazes | maze board, special maze entrance; `tb_Maze_Info`, `tb_SpecialMaze_Open` | 04/01, 04/41, 04/44-45 | partial | entry rules and limits (A6) |
 | Chat, whisper, trade chat | chatting, chat log | 07/01-03 | done | |
-| Megaphone | chatting | 07/06 | invented | the item is not taken (A11) |
-| Friends, blocks, recruitment of friends | community, add/block friend | 19/xx | done | offline level 25 (B2) |
+| Megaphone | chatting | 07/06 | done | item links in the text |
+| Friends, blocks, recruitment of friends | community, add/block friend | 19/xx | done | |
 | League | league window, management, ranking, support | 22/xx | done | checks on the real client (notes-league) |
 | Parties, recruitment board, awaiters, auto matching | party, party search, party find, auto matching | 12/xx | done | matching ignores blocks |
 | Story mazes (115) | maze HUD, result window | 11/xx, 04/xx | partial | results, rank, rewards, fatigue in progress; entry rules (A6) |
@@ -243,18 +228,18 @@ means nothing on the server.
 | Defensive weapons, controlled monsters | mech HUD; `tb_Defensive_Weapon` | 17/41-45, 17/51-52 | missing | C3 |
 | Battle zone or arena | (no request of this client) | 03/16, 2C/02 | missing | the client has no arena request; only the ranking window shows PvP |
 | Combat: skills, hits, death | skill bar, target frames, combo | 06/08-13, 03/41 | done | in the maze; what the party sees of held and charged skills (B1) |
-| Skills and their deck | skill window, skill navi; `tb_Skill`, `tb_Divergence`, `tb_Deck_Bonus` | 06/71-79 | partial | reset and deck slots are free (A10); district only |
+| Skills and their deck | skill window, skill navi; `tb_Skill`, `tb_Divergence`, `tb_Deck_Bonus` | 06/71-79 | partial | reset and deck slots are free (A10) |
 | Akashic cards in combat | skill window; `tb_Akashic_*` | 06/20-22, 06/7B | missing | C1 |
 | Buffs | special buff, status | 06/14-17 | done | passive skills, items, auras, resistances (notes-buffs) |
 | Inventory, bank, quick slots | inventory, bank | 08/01-05, 08/0F-10, 08/25-28 | done | the bank NPC is in progress |
 | Using items | inventory, package box, reward window | 08/11, 08/13, 08/48-49 | partial | 5 kinds of about 60, no cooldowns (A2) |
-| Equipment and its stats | equip, paper doll, status | 08/02, 03/51 | partial | stats in progress; others do not see the change (A9) |
+| Equipment and its stats | equip, paper doll, status | 08/02, 08/0D, 03/51 | partial | stats in progress |
 | Costume look | equip | 08/50, 08/52 | missing | B8 |
 | Item work at NPCs: upgrade, sockets, broaches, repair, restore, unseal, make, exchange, disassemble, evolution, akashic | upgrade, socket, brooch, fixing, sealing, production, division, akashic record make | 18/xx | done | NPC check, credit and endurance in progress |
 | Shops | shop | 09/01-04, 09/10-12 | partial | in progress |
 | Cash shop and gacha | cash shop, gacha pop-up and result | 09/20-27 | invented | B4 |
 | Trade and private shops | personal trade, personal shop | 0A/xx | done | the shop permit and zone; the visitor's purchase is a guess (notes-trade) |
-| Trade password | (a pop-up before trading) | 03/18 | invented | A11 |
+| Trade password | (a pop-up before trading) | 03/18 | done | given again on each server; trades do not ask the server for the state |
 | Mail | mail, mail read, mail write | 20/xx | done | letters of the game, expiry (C7) |
 | Quests | quest, NPC talk, quest alarm | 15/xx | done | checks on the real client (notes-quests) |
 | Daily missions | (quest window part) | 24/xx | done | friends and my room conditions |
@@ -270,21 +255,19 @@ means nothing on the server.
 | My room | my room inventory; `tb_Myroom_*` | 26/xx | missing | C4 |
 | Exchange | exchange | 2B/xx | missing | C5 |
 | Rankings | ranking | 2C/xx | partial | nothing records (B3) |
-| Gestures and social motions | gesture slots; `tb_Gesture`, `tb_Social_Motion` | 23/xx, 03/45 | partial | town only, no unlock (B7) |
+| Gestures and social motions | gesture slots; `tb_Gesture`, `tb_Social_Motion` | 23/xx, 03/45 | partial | no unlock (B7) |
 | Social items | social item; `tb_Social_Item` | 2D/xx | missing | C6 |
 | Revive | revival window | 03/42, 03/44 | partial | A8 |
 | Cutscenes | cinema talk | 03/19, 03/20 | done | in mazes; a district cutscene has no handler |
-| Options and key settings | option setting, outgame option setting, hotkey | 01/02, 02/31-32 | partial | lost when changed in the game (A7) |
+| Options and key settings | option setting, outgame option setting, hotkey | 01/02, 02/31-32 | done | |
 | NPC credit | credit | 03/65-67 | missing | in progress |
 | Fatigue | (status) | 03/64 | missing | in progress |
-| GM tools and notices | (chat) | 07/04, 07/0A | partial | the test commands run for everyone (A11) |
+| GM tools and notices | (chat) | 07/04, 07/0A | done | the level of an account is set in the database |
 | Help, loading tips, web notice | help, help pop-up, web notify | (none) | client only | |
 ## Gaps no single feature owns
 
 ### State that is never saved
 
-- **Options changed in the game** (01/02 in a district or a maze): dropped (A7).
-- **The trade password**: never stored, never checked (A11).
 - **The echelon** of a person: no storage, no notice (B9).
 - **Boosters of an account**: kept per character; the original shares them across the account (B6).
 - **Appearance items** (the look of a costume): not kept (B8).
@@ -298,10 +281,6 @@ flush or a store; this audit did not find another field kept only in memory, tho
 ### Hostile input not checked
 
 - **Where a player goes** (04/01, 04/41): any location, reachable or not (A6).
-- **Boxes of a maze** (11/31 event spawn, 11/35 check of an event spawn, 11/7E script function, 11/77 interaction): the
-  server checks that the box exists on the map and, for some, that it is used once, but not that the player stands at
-  it; only the quest move check (11/65) does. A client can set off spawns, scripts and objects from across the map. M.
-- **Chat commands** for everybody (A11).
 - **Quick slots** (08/27, 08/28): stored as sent, not checked against the book or the bag; the client shows what it
   sent. S.
 - Groups whose handlers showed the checks where they were spot-checked (lengths, indices, enum values, ownership): the
@@ -309,40 +288,36 @@ flush or a store; this audit did not find another field kept only in memory, tho
 
 ### What only the actor is told, that others should see
 
-The others are never sent: a change of gear (08/0D), the use of an item (08/13), the hold, target, place, sub input and
+The others are never sent: the use of an item (08/13), the hold, target, place, sub input and
 charging of a skill (06/42, 06/44, 06/48, 06/4B, 06/4D, 06/50), the motion of using an object (11/79), the start of a
 transport (05/16), the echelon (03/53), a gesture in a maze (23/01). The ones that are broadcast as they should be:
-moves, motions, chat, titles (03/26), the warp of a skill (06/46), buffs, revive (03/44), helpers, party health.
+moves, motions, chat, titles (03/26), the warp of a skill (06/46), buffs, revive (03/44), helpers, party health, a
+change of gear (08/0D).
 
 ### District here, maze there
 
 | What | District | Maze |
 |---|---|---|
-| Keep-alive and ping (01/05, 01/06) | answered | no handler, no keep-alive sent |
-| Options (01/02) | handler does nothing | no handler |
-| Skill window: learn, reset, deck, divergence, bonus (06/71-79) | real | no handler |
 | Charging, sub input, target change, pre-target list, akashic summon (06/4C, 06/4A, 06/43, 06/36, 06/20) | empty handlers | no handler |
-| Gestures (23/01, 23/03) | real | no handler |
-| Daily missions: accept, track (24/02, 24/04) | real | no handler |
-| Attendance rewards (2A/02, 2A/05) | real | no handler |
+| Attendance rewards (2A/02, 2A/05) | real | no handler (the maze does not load attendance) |
 | Script box (11/7E) | echoed without running | real |
 | Cutscene update (03/19) | no handler | real |
 | Monster minds | none (no monsters fight in a district) | real |
 
-Which of these the client sends in a maze at all is on the play-session list; the skill window and the daily missions
-are the ones a player is most likely to open there.
+The keep-alive and ping, the options, the skill window, gestures and daily missions are answered by both servers through
+`OpenWorker.Server.Common` (`docs/notes-session-gaps.md`). Whether the client sends the attendance requests in a maze is
+on the play-session list.
 
 ### Project constants where the game has a rule
 
 | Constant | Where | The rule it stands for |
 |---|---|---|
-| Level 25 for anybody offline | friends, blocks, search, recommendations, rankings | the level on the person's card |
 | 100 gold of postage | post | the original's fee (the client shows its own) |
 | 1500 units to talk to a character | quests | the original's distance |
 | 20% of life and 3 s for a monster's super armor | monster minds | a column the client's table lacks |
 | 90 s offline before leaving a party | party | the original never removes a member |
 | 40 letters per list, no paging | post | |
-| A free megaphone, a free cash revive, a free skill reset and deck slot | chat, revive, skills | items of their kind |
+| A free cash revive, a free skill reset and deck slot | revive, skills | items of their kind |
 | The walking speed 300 of townsfolk | prologue | no column in the tables |
 | One hard-coded cash item | cash shop | `tb_CashShop` |
 
@@ -368,12 +343,14 @@ of a session. Two accounts help: most party, trade, league and helper items need
 - The tutorial end button and Esc on a cutscene both send 11/23 and the client lands in the district.
 
 **District and channels**
-- **new** Change the channel: does the client hang without F1/02 (A1)?
-- **new** Open the options, change a key, relog: is it kept (A7)?
+- Change the channel: the window closes, the people of the new channel appear, the old ones go; the same channel and a
+  full one show 51008 (`docs/notes-session-gaps.md`).
+- Open the options in town and in a maze, change a key, relog: it is kept.
 - Sight: the bounds of the grid cells and whether 5000 units is enough; 04/08 as a correction in a district; running,
   dashing and knock-back are not rolled back; how often the client sends its keep-alive (REFACTORING 8).
 - The 07/xx notice of a server shutdown from the GM tool shows (REFACTORING 8).
-- **new** Equip an item while a second player watches: does the second player see the old gear (A9)?
+- Equip a weapon and a costume while a second player watches, in town and in a party maze: the second player sees the
+  new look at once (08/0D); a third who comes later sees it on arrival.
 - **new** The exchange lists asked at every entry get no answer: no hang or error message (C5).
 
 **Quest window and NPC talk** (notes-quests)
@@ -381,7 +358,8 @@ of a session. Two accounts help: most party, trade, league and helper items need
 - A talk from a little farther than 1500 units is ignored without an answer; the client does not wait.
 
 **Skill window**
-- **new** Open the skill window in a maze: does the client send learn, deck or reset there (no handler in the maze)?
+- Open the skill window, a gesture and the daily missions in a maze: they work as in town (the client's senders check no
+  kind of map; whether its windows open there is what this settles).
 - A refused skill (06/09 with a code) shows its message and the character stays usable; the evade spends stamina as
   the bar shows (notes-combat).
 
@@ -404,7 +382,9 @@ of a session. Two accounts help: most party, trade, league and helper items need
 - The answer to a failed maze (REFACTORING 8).
 - 06/14 shows a buff's icon and time on the player and on a monster and 06/15 removes it; a stunned monster plays its
   stun animation; 06/17 shows the damage of a burn (notes-buffs).
-- **new** Leave the client idle in a maze for several minutes: no disconnect or latency warning without ping answers (A12).
+- Leave the client idle in a maze for several minutes: the keep-alive of the maze is answered, no disconnect.
+- Walk into the event, script and quest boxes and use an interaction: nothing is refused (the server checks that the
+  player stands at the box, with a slack of 1000 units for moves it has not heard yet).
 - **new** Revive with the cash option: free today (A8).
 
 **Party and party maze** (notes-party, notes-party-maze)
@@ -432,6 +412,14 @@ of a session. Two accounts help: most party, trade, league and helper items need
   a level rebuilds the window; the reward bit shows taken after 03/74; the share point window may preview other items
   than those given.
 
+**Chat, megaphone, commands, trade password** (`docs/notes-session-gaps.md`)
+- A megaphone from the bag speaks to everybody and one is gone; without one the client shows 52011.
+- A test command of a player whose account has level 0 does nothing (no answer, as the original); with
+  `Commands:OpenToEveryone` it runs.
+- Whether the client shows anything for the GM byte of the person record, now 0 for players (it was always 1).
+- Set a trade password from the pop-up (four of the digits 0 to 7), trade, change server, trade again: the pop-up asks
+  again on the new server; a wrong one shows 49730, five wrong ones lock (49732).
+
 **Mail and trade** (notes-post, notes-trade)
 - The flags, the times, the trailing byte of a list and the fee of a letter.
 - A trade and a private shop end to end with two clients (no stand run yet); whether a visitor's purchase is sent the
@@ -441,20 +429,20 @@ of a session. Two accounts help: most party, trade, league and helper items need
 One line per message the client sends or reads. "Servers" are those that load a handler; "Built in" names the
 classes that build a notice. Opcodes in hex, as in the code.
 
-Requests (client to server): 273. real 193, partial 26, invented 4, ignored 50; never sent by this client but typed on the server: 19.
+Requests (client to server): 273. real 203, partial 18, invented 2, ignored 50; never sent by this client but typed on the server: 19.
 
-Answers and notices (server to client): 477. real 314, partial 11, invented 3, not sent 149.
+Answers and notices (server to client): 477. real 321, partial 7, invented 2, not sent 147.
 
 | Group | Requests | real | partial | invented | ignored | Notices | real | partial | invented | not sent |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 01 System | 4 | 1 | 2 | 0 | 1 | 3 | 2 | 0 | 0 | 1 |
+| 01 System | 4 | 3 | 0 | 0 | 1 | 3 | 2 | 0 | 0 | 1 |
 | 02 Login | 6 | 6 | 0 | 0 | 0 | 5 | 5 | 0 | 0 | 0 |
-| 03 Character | 18 | 14 | 3 | 1 | 0 | 43 | 28 | 1 | 1 | 13 |
+| 03 Character | 18 | 15 | 3 | 0 | 0 | 43 | 29 | 1 | 0 | 13 |
 | 04 World | 7 | 4 | 2 | 0 | 1 | 21 | 12 | 0 | 0 | 9 |
 | 05 Move | 12 | 10 | 0 | 0 | 2 | 22 | 12 | 0 | 0 | 10 |
 | 06 Skill | 21 | 10 | 5 | 0 | 6 | 44 | 20 | 0 | 0 | 24 |
-| 07 Chat | 5 | 3 | 1 | 1 | 0 | 7 | 5 | 0 | 0 | 2 |
-| 08 Item | 13 | 11 | 1 | 0 | 1 | 38 | 24 | 0 | 0 | 14 |
+| 07 Chat | 5 | 5 | 0 | 0 | 0 | 7 | 5 | 0 | 0 | 2 |
+| 08 Item | 13 | 11 | 1 | 0 | 1 | 38 | 25 | 0 | 0 | 13 |
 | 09 Shop | 10 | 0 | 1 | 1 | 8 | 17 | 1 | 1 | 1 | 14 |
 | 0A Trade | 11 | 9 | 2 | 0 | 0 | 15 | 14 | 0 | 0 | 1 |
 | 11 Maze | 13 | 11 | 0 | 0 | 2 | 30 | 16 | 3 | 0 | 11 |
@@ -464,7 +452,7 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 15 Quest | 6 | 6 | 0 | 0 | 0 | 11 | 10 | 0 | 0 | 1 |
 | 17 Monster | 4 | 0 | 0 | 0 | 4 | 12 | 4 | 0 | 0 | 8 |
 | 18 Item setup | 22 | 22 | 0 | 0 | 0 | 21 | 20 | 0 | 0 | 1 |
-| 19 Friend | 14 | 10 | 4 | 0 | 0 | 17 | 13 | 4 | 0 | 0 |
+| 19 Friend | 14 | 14 | 0 | 0 | 0 | 17 | 17 | 0 | 0 | 0 |
 | 20 Post | 15 | 15 | 0 | 0 | 0 | 17 | 17 | 0 | 0 | 0 |
 | 21 Soul metry | 1 | 1 | 0 | 0 | 0 | 6 | 6 | 0 | 0 | 0 |
 | 22 League | 20 | 20 | 0 | 0 | 0 | 36 | 35 | 0 | 0 | 1 |
@@ -479,16 +467,16 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 2B Exchange | 9 | 0 | 0 | 0 | 9 | 9 | 0 | 0 | 0 | 9 |
 | 2C Ranking | 3 | 0 | 2 | 1 | 0 | 3 | 0 | 2 | 1 | 0 |
 | 2D Social item | 3 | 0 | 0 | 0 | 3 | 7 | 0 | 0 | 0 | 7 |
-| F1 Channel | 2 | 1 | 1 | 0 | 0 | 2 | 1 | 0 | 0 | 1 |
+| F1 Channel | 2 | 2 | 0 | 0 | 0 | 2 | 2 | 0 | 0 | 0 |
 
 #### 01 System
 
 | Request | Name | Servers | Handler | Verdict | Note |
 |---|---|---|---|---|---|
-| 01/02 | SystemOptionUpdateRequest | Auth,District,Gate | SystemService | partial | saved by auth and gate; the district ignores it and the maze has no handler, so options changed in the game window are lost |
-| 01/03 | SystemXignCodeRequest | Auth,District,Gate | SystemService | ignored | anti-cheat token, accepted and dropped by design |
-| 01/05 | SystemKeepAliveRequest | District | SystemService | real | district; the client sends it only in answer to the server keep-alive, which the maze never sends |
-| 01/06 | SystemPingRequest | District | SystemService | partial | answered in the district; the maze has no handler |
+| 01/02 | SystemOptionUpdateRequest | Auth,District,Gate,Maze | SystemService | real | saved to the account by every server; a district and a maze also update the person and what the others read from it |
+| 01/03 | SystemXignCodeRequest | Auth,District,Gate,Maze | SystemService | ignored | anti-cheat token, accepted and dropped by design |
+| 01/05 | SystemKeepAliveRequest | District,Maze | SystemService | real | district and maze; the client sends it only in answer to the keep-alive of the server |
+| 01/06 | SystemPingRequest | District,Maze | SystemService | real | district and maze |
 
 | Notice | Name | Built in | Verdict | Note |
 |---|---|---|---|---|
@@ -524,7 +512,7 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 03/11 | PersonListRequest | Gate | PersonService | real |  |
 | 03/13 | PersonSelectRequest | Gate | PersonService | real |  |
 | 03/17 | PersonSecondPasswordRequest | Gate | PersonService | real |  |
-| 03/18 | PersonTradePasswordRequest | District,Maze | PersonService | invented | always answers "authenticated", the password is never checked or stored |
+| 03/18 | PersonTradePasswordRequest | District,Maze | TradePasswordService | real | kept hashed on the account and checked; five wrong ones lock it on that server; given again on each server |
 | 03/19 | PersonUpdateCutsceneRequest | Maze | MazeService | real | maze only; the district has no handler |
 | 03/21 | PersonEnterGameServerRequest | District,Maze | PersonService | real |  |
 | 03/23 | PersonLoadTitleRequest | District,Maze | PersonProfileService | real |  |
@@ -546,7 +534,7 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 03/15 | PersonEnterPrologueResponse | PrologueEntry | real |  |
 | 03/16 | PersonEnterBattleZoneResponse | - | not sent |  |
 | 03/17 | CharacterSecondPasswordResponse | SecondPasswordGameplay | real |  |
-| 03/18 | CharacterTradePasswordResponse | PersonService | invented | fixed "authenticated" |
+| 03/18 | CharacterTradePasswordResponse | TradePasswordService | real |  |
 | 03/20 | PersonPlayCutsceneResponse | LuaMaze | real |  |
 | 03/22 | PersonEnterGameServerResponse2 | - | not sent |  |
 | 03/23 | PersonLoadTitleResponse | TitleBook | real |  |
@@ -680,12 +668,12 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 06/47 | SkillSyncPositionRequest | District,Maze | MazeService, SkillService | partial | place taken when reachable; the others are not told (06/48 never sent) |
 | 06/4A | SkillSubInputRequest | District | SkillService | ignored | empty in the district, no handler in the maze |
 | 06/4C | SkillChargingStartRequest | District | SkillService | ignored | charging: empty in the district, no handler in the maze; 06/4D and 06/50 never sent |
-| 06/71 | SkillLearnRequest | District | SkillService | real | district only |
-| 06/72 | SkillResetRequest | District | SkillService | partial | free; the original resets through the use of an item of that kind |
-| 06/75 | SkillUpdateDeckRequest | District | SkillService | real | district only |
-| 06/76 | SkillAddDeckSlotRequest | District | SkillService | partial | free; whether the original takes an item for it was not read |
-| 06/77 | SkillDivergenceLearnRequest | District | SkillService | real | district only |
-| 06/79 | SkillDeckBonusRequest | District | SkillService | real | stored as sent, checked when a skill reads it |
+| 06/71 | SkillLearnRequest | District,Maze | SkillWindowService | real | district and maze |
+| 06/72 | SkillResetRequest | District,Maze | SkillWindowService | partial | district and maze; free: the original resets through the use of an item of that kind |
+| 06/75 | SkillUpdateDeckRequest | District,Maze | SkillWindowService | real | district and maze |
+| 06/76 | SkillAddDeckSlotRequest | District,Maze | SkillWindowService | partial | district and maze; free: whether the original takes an item for it was not read |
+| 06/77 | SkillDivergenceLearnRequest | District,Maze | SkillWindowService | real | district and maze |
+| 06/79 | SkillDeckBonusRequest | District,Maze | SkillWindowService | real | stored as sent, checked when a skill reads it |
 | 06/7A | SkillResetTagetRequest | District | SkillService | ignored | empty in the district, no handler in the maze |
 
 | Notice | Name | Built in | Verdict | Note |
@@ -722,13 +710,13 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 06/62 | SkillEndSoulViperBroadcastResponse | - | not sent |  |
 | 06/63 | SkillDeleteResponse | - | not sent |  |
 | 06/70 | SkillLoadInfoResponse | PersonService, PersonSkills | real |  |
-| 06/71 | SkillLearnResponse | SkillService | real |  |
-| 06/72 | SkillResetResponse | SkillService | real |  |
-| 06/73 | SkillUpdatePointResponse | SkillLearning, SkillService | real |  |
+| 06/71 | SkillLearnResponse | SkillWindowService | real |  |
+| 06/72 | SkillResetResponse | SkillWindowService | real |  |
+| 06/73 | SkillUpdatePointResponse | SkillLearning, SkillWindowService | real |  |
 | 06/74 | SkillLoadDeckResponse | - | not sent |  |
-| 06/75 | SkillUpdateDeckResponse | SkillService | real |  |
-| 06/76 | SkillAddDeckSlotResponse | SkillService | real |  |
-| 06/77 | SkillDivergenceLearnResponse | SkillService | real |  |
+| 06/75 | SkillUpdateDeckResponse | SkillWindowService | real |  |
+| 06/76 | SkillAddDeckSlotResponse | SkillWindowService | real |  |
+| 06/77 | SkillDivergenceLearnResponse | SkillWindowService | real |  |
 | 06/79 | SkillDeckBonusResponse | SkillService | real | the export labels it 06/78; the client reads it at 06/79 |
 | 06/7A | SkillResetTagetResponse | - | not sent |  |
 | 06/7B | SkillSummonAkashicResponse | - | not sent | akashic card summon |
@@ -742,8 +730,8 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 07/01 | ChatNormalRequest | District,Maze | ChatService | real |  |
 | 07/02 | ChatWhisperRequest | District,Maze | ChatService | real |  |
 | 07/03 | ChatTradeRequest | District,Maze | ChatService | real |  |
-| 07/06 | ChatMegaphoneRequest | District,Maze | ChatService | invented | free: no megaphone item is taken (`FreeMegaphone`) |
-| 07/0A | ChatStuffRequest | District,Maze | ChatService | partial | test commands run for every player, no game-master check |
+| 07/06 | ChatMegaphoneRequest | District,Maze | ChatService | real | takes one megaphone (use kind 71) from the slot it names; 52011 or 52002 without one |
+| 07/0A | ChatStuffRequest | District,Maze | ChatService | real | a command runs for the access level of the account (a game master by default); `Commands:OpenToEveryone` opens them on a test stand |
 
 | Notice | Name | Built in | Verdict | Note |
 |---|---|---|---|---|
@@ -760,7 +748,7 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | Request | Name | Servers | Handler | Verdict | Note |
 |---|---|---|---|---|---|
 | 08/01 | ItemInventoryInfoRequest | District,Maze | ItemService | real |  |
-| 08/02 | ItemMoveRequest | District,Maze | ItemService | real | the others are not told (08/0D never sent), so they keep seeing the old gear |
+| 08/02 | ItemMoveRequest | District,Maze | ItemService | real | the others who see the player get 08/0D with the worn slots that changed |
 | 08/03 | ItemCombineRequest | District,Maze | ItemService | real |  |
 | 08/04 | ItemDivideRequest | District,Maze | ItemService | real |  |
 | 08/05 | ItemBreakRequest | District,Maze | ItemService | real |  |
@@ -781,7 +769,7 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 08/04 | ItemDivideResponse | InventoryService | real |  |
 | 08/05 | ItemBreakResponse | InventoryService, TradeGoods | real |  |
 | 08/06 | ItemCreateResponse | AkashicService, InventoryService, ItemEvolutionService, PostService | real |  |
-| 08/0D | ItemMoveBtResponse | - | not sent | others never see a change of gear |
+| 08/0D | ItemMoveBtResponse | ItemServiceBase | real |  |
 | 08/0E | ItemOpenSlotInfoResponse | InventoryService | real |  |
 | 08/0F | ItemAddSlotResponse | InventoryService | real |  |
 | 08/10 | ItemBankInfoResponse | ItemServiceBase | real |  |
@@ -889,17 +877,17 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 |---|---|---|---|---|---|
 | 11/22 | MazeCompleteRequest | Maze | MazeService | real |  |
 | 11/23 | MazeExitRequest | Maze | MazeService | real |  |
-| 11/31 | MazeEventSpawnBoxRequest | Maze | MazeService | real |  |
+| 11/31 | MazeEventSpawnBoxRequest | Maze | MazeService | real | the player must stand at the box |
 | 11/33 | MazeSceneDirectingRequest | Maze | MazeService | real |  |
-| 11/35 | MazeCheckEventSpawnBoxRequest | Maze | MazeService | real |  |
+| 11/35 | MazeCheckEventSpawnBoxRequest | Maze | MazeService | real | the player must stand at the box |
 | 11/48 | MazeEnterPartyAnswerRequest | District,Maze | MazeService, WorldService | real |  |
 | 11/62 | MazeOperationEndRequest | Maze | MazeService | real |  |
-| 11/65 | MazeQuestMoveCheckRequest | Maze | MazeService | real |  |
+| 11/65 | MazeQuestMoveCheckRequest | Maze | MazeService | real | the player must stand at the box |
 | 11/71 | MazeMonsterClientSpawnRequest | Maze | MazeService | ignored | by design: the server keeps every monster |
-| 11/77 | MazeInteractionClickRequest | Maze | MazeService | real |  |
+| 11/77 | MazeInteractionClickRequest | Maze | MazeService | real | the player must stand at the object |
 | 11/79 | MazeInteractionMotionRequest | Maze | MazeService | ignored | the others do not see the motion |
 | 11/7C | MazeSwitchNpcClickRequest | Maze | MazeService | real |  |
-| 11/7E | MazeLuaFunctionRequest | District,Maze | MazeService | real | maze runs the script; the district echoes the box without running anything |
+| 11/7E | MazeLuaFunctionRequest | District,Maze | MazeService | real | maze runs the script when the player stands at the box; the district echoes the box without running anything |
 
 | Notice | Name | Built in | Verdict | Note |
 |---|---|---|---|---|
@@ -1122,25 +1110,25 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 
 | Request | Name | Servers | Handler | Verdict | Note |
 |---|---|---|---|---|---|
-| 19/01 | FriendLoadRequest | District,Maze | FriendService | partial | offline friends shown at level 25 (a project constant) |
-| 19/02 | FriendLoadBlocklistRequest | District,Maze | FriendService | partial | blocked people always level 25 |
+| 19/01 | FriendLoadRequest | District,Maze | FriendService | real |  |
+| 19/02 | FriendLoadBlocklistRequest | District,Maze | FriendService | real |  |
 | 19/11 | FriendInviteRequest | District,Maze | FriendService | real |  |
 | 19/13 | FriendInviteAcceptRequest | District,Maze | FriendService | real |  |
 | 19/15 | FriendDeleteRequest | District,Maze | FriendService | real |  |
 | 19/21 | FriendBlockAddRequest | District,Maze | FriendService | real |  |
 | 19/22 | FriendBlockDelRequest | District,Maze | FriendService | real |  |
 | 19/32 | FriendInfoRequest | District,Maze | FriendService | real |  |
-| 19/33 | FriendFindRequest | District,Maze | FriendService | partial | offline people shown at level 25 |
+| 19/33 | FriendFindRequest | District,Maze | FriendService | real |  |
 | 19/41 | FriendRecruitListRequest | District,Maze | FriendService | real |  |
 | 19/42 | FriendRecruitAddRequest | District,Maze | FriendService | real |  |
 | 19/43 | FriendRecruitDelRequest | District,Maze | FriendService | real |  |
 | 19/44 | FriendRecruitInfoRequest | District,Maze | FriendService | real |  |
-| 19/51 | FriendRecommendListRequest | District,Maze | FriendService | partial | offline people shown at level 25 |
+| 19/51 | FriendRecommendListRequest | District,Maze | FriendService | real |  |
 
 | Notice | Name | Built in | Verdict | Note |
 |---|---|---|---|---|
-| 19/01 | FriendLoadResponse | FriendServiceBase | partial | offline level 25 |
-| 19/02 | FriendLoadBlocklistResponse | FriendServiceBase | partial | level 25 |
+| 19/01 | FriendLoadResponse | FriendServiceBase | real |  |
+| 19/02 | FriendLoadBlocklistResponse | FriendServiceBase | real |  |
 | 19/11 | FriendInviteResponse | FriendServiceBase | real |  |
 | 19/12 | FriendInviteReqResponse | FriendServiceBase | real |  |
 | 19/13 | FriendInviteAcceptResponse | FriendServiceBase | real |  |
@@ -1150,12 +1138,12 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | 19/22 | FriendBlockDelResponse | FriendServiceBase | real |  |
 | 19/31 | FriendUpdateInfoResponse | FriendNotifier, FriendServiceBase | real |  |
 | 19/32 | FriendInfoResponse | OtherPersonService | real |  |
-| 19/33 | FriendFindResponse | FriendServiceBase | partial | offline level 25 |
+| 19/33 | FriendFindResponse | FriendServiceBase | real |  |
 | 19/41 | FriendRecruitListResponse | FriendServiceBase | real |  |
 | 19/42 | FriendRecruitAddResponse | FriendServiceBase | real |  |
 | 19/43 | FriendRecruitDelResponse | FriendServiceBase | real |  |
 | 19/44 | FriendRecruitInfoResponse | FriendServiceBase | real |  |
-| 19/51 | FriendRecommendListResponse | FriendServiceBase | partial | offline level 25 |
+| 19/51 | FriendRecommendListResponse | FriendServiceBase | real |  |
 
 #### 20 Post
 
@@ -1280,8 +1268,8 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 
 | Request | Name | Servers | Handler | Verdict | Note |
 |---|---|---|---|---|---|
-| 23/01 | GestureShowRequest | District | GestureService | partial | district only; any gesture of the table, owned or not |
-| 23/03 | GestureSlotUpdateRequest | District | GestureService | real |  |
+| 23/01 | GestureShowRequest | District,Maze | GestureService | partial | district and maze; any gesture of the table, owned or not |
+| 23/03 | GestureSlotUpdateRequest | District,Maze | GestureService | real |  |
 
 | Notice | Name | Built in | Verdict | Note |
 |---|---|---|---|---|
@@ -1292,8 +1280,8 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 
 | Request | Name | Servers | Handler | Verdict | Note |
 |---|---|---|---|---|---|
-| 24/02 | DailyMissionAcceptRequest | District | DailyMissionService | real |  |
-| 24/04 | DailyMissionHelperRequest | District | DailyMissionService | real |  |
+| 24/02 | DailyMissionAcceptRequest | District,Maze | DailyMissionService | real |  |
+| 24/04 | DailyMissionHelperRequest | District,Maze | DailyMissionService | real |  |
 
 | Notice | Name | Built in | Verdict | Note |
 |---|---|---|---|---|
@@ -1449,8 +1437,8 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 
 | Request | Name | Servers | Handler | Verdict | Note |
 |---|---|---|---|---|---|
-| 2C/01 | RankingTimeAttackListRequest | District | RankingService | partial | nothing ever records a time, so the list is empty; level 25 |
-| 2C/02 | RankingPvpListRequest | District | RankingService | partial | nothing ever records a kill, so the list is empty; level 25 |
+| 2C/01 | RankingTimeAttackListRequest | District | RankingService | partial | nothing ever records a time, so the list is empty |
+| 2C/02 | RankingPvpListRequest | District | RankingService | partial | nothing ever records a kill, so the list is empty |
 | 2C/03 | RankingInfiniteTowerListRequest | District | RankingService | invented | zeros for the chapter asked |
 
 | Notice | Name | Built in | Verdict | Note |
@@ -1482,12 +1470,12 @@ Answers and notices (server to client): 477. real 314, partial 11, invented 3, n
 | Request | Name | Servers | Handler | Verdict | Note |
 |---|---|---|---|---|---|
 | F1/01 | ChannelInfoRequest | District | ChannelService | real |  |
-| F1/02 | ChannelChangeRequest | District | ChannelService | partial | the server moves the player but never answers F1/02, which the client waits for |
+| F1/02 | ChannelChangeRequest | District | ChannelService | real | answered with the map of the new channel; 51008 for the same or a full channel, 50004 for a missing one, 55003 in a trade |
 
 | Notice | Name | Built in | Verdict | Note |
 |---|---|---|---|---|
 | F1/01 | ChannelInfoResponse | ServerChannels | real |  |
-| F1/02 | ChannelChangeResponse | - | not sent | the answer to a channel change: the client waits for it |
+| F1/02 | ChannelChangeResponse | ServerChannels | real |  |
 
 #### Request types this client never sends
 

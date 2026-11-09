@@ -81,7 +81,7 @@ public abstract class FriendServiceBase(
         {
             Session(context).Send(new FriendLoadBlocklistResponse
             {
-                List = blocked.Select(e => new FriendBlockValue(e.Person, e.Name, PersonModuleDefines.DefaultLevel)).Take(byte.MaxValue).ToArray()
+                List = blocked.Select(e => new FriendBlockValue(e.Person, e.Name, e.Level)).Take(byte.MaxValue).ToArray()
             });
         }
     }
@@ -240,7 +240,7 @@ public abstract class FriendServiceBase(
 
                 Session(context).Send(new FriendBlockAddResponse
                 {
-                    Value = new FriendBlockValue(target.Person, target.Name, PersonModuleDefines.DefaultLevel)
+                    Value = new FriendBlockValue(target.Person, target.Name, target.Level)
                 });
                 break;
 
@@ -305,7 +305,7 @@ public abstract class FriendServiceBase(
             {
                 Person = e.Card.Person,
                 Name = e.Card.Name,
-                Level = e.Online?.Level ?? PersonModuleDefines.DefaultLevel,
+                Level = e.Online?.Level ?? e.Card.Level,
                 Channel = (byte)(e.Online?.Channel ?? 0),
                 World = e.Online?.Location ?? 0,
                 IsLoggedIn = e.Online is not null
@@ -335,7 +335,7 @@ public abstract class FriendServiceBase(
             {
                 Name = e.Card.Name,
                 Actor = new ActorValue(e.Card.Person, ActorType.User),
-                Level = e.Online?.Level ?? PersonModuleDefines.DefaultLevel,
+                Level = e.Online?.Level ?? e.Card.Level,
                 Hero = (Hero)e.Card.Hero,
                 Channel = (byte)(e.Online?.Channel ?? 0),
                 World = e.Online?.Location ?? 0,
@@ -445,7 +445,7 @@ public abstract class FriendServiceBase(
 
         await network.SendAsync(target.Person, new FriendAddResponse
         {
-            Value = ValueOf(new PersonCard(me, myName, (byte)world.Get<PersonInfoComponent>(context.Player).Hero), FriendKind.Wait, myOnline, world.Get<CommunityComponent>(context.Player))
+            Value = ValueOf(new PersonCard(me, myName, (byte)world.Get<PersonInfoComponent>(context.Player).Hero, MyLevel(context)), FriendKind.Wait, myOnline, world.Get<CommunityComponent>(context.Player))
         });
 
         await network.SendAsync(target.Person, new FriendInviteReqResponse { Name = myName });
@@ -486,11 +486,15 @@ public abstract class FriendServiceBase(
                 (byte)(community?.State ?? CommunityState.LookingForParty),
                 community?.Memo ?? string.Empty,
                 null,
-                DateTime.UtcNow),
+                DateTime.UtcNow,
+                person.Level),
             online);
     }
 
     private int Me(ServiceHandleContext context) => world.Get<ActorComponent>(context.Player).Identifier;
+
+    private byte MyLevel(ServiceHandleContext context) =>
+        world.TryGet<LevelComponent>(context.Player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel;
 
     private ServerSessionComponent Session(ServiceHandleContext context) => world.Get<ServerSessionComponent>(context.Player);
 

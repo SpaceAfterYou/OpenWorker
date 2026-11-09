@@ -2,6 +2,7 @@
 using Arch.Core.Extensions;
 using OpenWorker.Channel;
 using OpenWorker.DistrictServer.Server;
+using OpenWorker.DistrictServer.Trade;
 using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
@@ -20,14 +21,28 @@ public sealed class ChannelService(
     World world,
     NpcManager npcManager,
     ServiceChannels serviceChannels,
-    ServerChannels serverChannels
+    ServerChannels serverChannels,
+    Trades trades
 ) :
     IHotspotHandler<WorldObjectRequest>,
     IHotspotHandler<ChannelInfoRequest>,
     IHotspotHandler<ChannelChangeRequest>
 {
+    /// <summary>
+    /// The client's line for a change of world that failed, which the original answers to a player in a trade.
+    /// </summary>
+    private const ushort TradingCode = 55003;
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, ChannelChangeRequest request)
     {
+        // A trade runs between two players of one channel.
+        if (trades.IsTrading(context.Player))
+        {
+            serverChannels.Refuse(context.Player, TradingCode);
+
+            return ValueTask.CompletedTask;
+        }
+
         serverChannels.Switch(context.Player, request.Channel);
 
         return ValueTask.CompletedTask;

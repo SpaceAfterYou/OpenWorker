@@ -91,7 +91,6 @@ public sealed partial class PersonService(
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
-    IHotspotHandler<PersonTradePasswordRequest>,
     IHotspotHandler<PersonChangeServerRequest>
 {
     private short Gate { get; } = gate.Value.Id;
@@ -193,7 +192,7 @@ public sealed partial class PersonService(
 
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
-        registry.PullPerson(context.Player, person, entry.AccountOptions);
+        registry.PullPerson(context.Player, entry);
 
         // The skills are checked in the maze, and a character that starts in the prologue has seen no district to learn them.
         await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
@@ -379,21 +378,6 @@ public sealed partial class PersonService(
             .ToArray();
 
         session.Send(new SoulMetryListResponse { Values = list });
-    }
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)
-    {
-        var session = world.Get<ServerSessionComponent>(context.Player);
-
-        // session.Send(new PersonTradePasswordResponse(request.Password));
-
-        session.Send(new CharacterTradePasswordResponse
-        {
-            ProtectionState = PasswordProtectionState.Authenticated,
-            ErrorCode = 0
-        });
-
-        return ValueTask.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person} with no reservation, or with one that has expired, and is turned away")]

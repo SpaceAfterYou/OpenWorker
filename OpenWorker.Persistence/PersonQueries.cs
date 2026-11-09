@@ -6,9 +6,10 @@ using OpenWorker.Domain.Persistent;
 namespace OpenWorker.Persistence;
 
 /// <summary>
-/// A person as a district or a maze loads it when the person enters, with the options of its account.
+/// A person as a district or a maze loads it when the person enters, with what its account keeps for every person: the
+/// options, the access level and the hash of the trade password.
 /// </summary>
-public sealed record PersonAtEntry(PersonPersistent Person, byte[] AccountOptions);
+public sealed record PersonAtEntry(PersonPersistent Person, byte[] AccountOptions, byte AccessLevel, string TradePassword);
 
 /// <summary>
 /// The queries every entry runs, compiled once: EF Core does not translate them again for each player.
@@ -19,7 +20,7 @@ public static class PersonQueries
         EF.CompileAsyncQuery((PersistenceContext database, int account, int person, CancellationToken _) => database.Persons
             .AsNoTracking()
             .Where(e => e.Id == person && e.Account.Id == account)
-            .Select(e => new PersonAtEntry(e, e.Account.OptionList))
+            .Select(e => new PersonAtEntry(e, e.Account.OptionList, e.Account.AccessLevel, e.Account.TradePassword))
             .FirstOrDefault()));
 
     private static readonly Compiled<Func<PersistenceContext, string, CancellationToken, Task<AccountPersistent?>>> AccountByName = new(() =>

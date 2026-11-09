@@ -5,6 +5,7 @@ namespace OpenWorker.Persistence;
 
 /// <param name="Memo">What the person wrote about themselves.</param>
 /// <param name="Since">When the entry was made.</param>
+/// <param name="Level">The level of the person as its row keeps it, what is shown while the person is away.</param>
 public readonly record struct FriendEntry(
     int Person,
     string Name,
@@ -14,9 +15,11 @@ public readonly record struct FriendEntry(
     byte CommunityState,
     string Memo,
     DateTime? LastLogout,
-    DateTime Since);
+    DateTime Since,
+    byte Level = 1);
 
-public readonly record struct PersonCard(int Person, string Name, byte Hero);
+/// <param name="Level">The level of the person as its row keeps it, what is shown while the person is away.</param>
+public readonly record struct PersonCard(int Person, string Name, byte Hero, byte Level = 1);
 
 public enum InviteOutcome
 {
@@ -86,7 +89,8 @@ public static class FriendStore
                 e.person.CommunityState,
                 e.person.CommunityMemo,
                 e.person.LastLogoutAt,
-                e.friend.CreatedAt))
+                e.friend.CreatedAt,
+                e.person.Level))
             .ToListAsync();
     }
 
@@ -99,7 +103,7 @@ public static class FriendStore
             .Where(e => e.OwnerId == owner && e.Kind == FriendKind.Block)
             .Join(database.Persons, e => e.TargetId, e => e.Id, (friend, person) => new { friend, person })
             .OrderBy(e => e.person.Name)
-            .Select(e => new PersonCard(e.person.Id, e.person.Name, (byte)e.person.Hero))
+            .Select(e => new PersonCard(e.person.Id, e.person.Name, (byte)e.person.Hero, e.person.Level))
             .ToListAsync();
     }
 
@@ -119,7 +123,8 @@ public static class FriendStore
                 person.CommunityState,
                 person.CommunityMemo,
                 person.LastLogoutAt,
-                friend.CreatedAt))
+                friend.CreatedAt,
+                person.Level))
             .Take(1)
             .ToListAsync();
 
@@ -138,7 +143,7 @@ public static class FriendStore
         var cards = await database.Persons
             .AsNoTracking()
             .Where(e => e.Name.ToLower() == key)
-            .Select(e => new PersonCard(e.Id, e.Name, (byte)e.Hero))
+            .Select(e => new PersonCard(e.Id, e.Name, (byte)e.Hero, e.Level))
             .Take(1)
             .ToListAsync();
 #pragma warning restore CA1304, CA1311, CA1862
@@ -158,7 +163,7 @@ public static class FriendStore
             .OrderBy(e => e.Name)
             .Skip(skip)
             .Take(limit)
-            .Select(e => new PersonCard(e.Id, e.Name, (byte)e.Hero))
+            .Select(e => new PersonCard(e.Id, e.Name, (byte)e.Hero, e.Level))
             .ToListAsync();
     }
 
@@ -176,7 +181,7 @@ public static class FriendStore
                         && !database.Friends.Any(f => f.OwnerId == e.Id && f.TargetId == owner && f.Kind == FriendKind.Block))
             .OrderByDescending(e => e.LastLogoutAt ?? DateTime.MaxValue)
             .Take(limit)
-            .Select(e => new PersonCard(e.Id, e.Name, (byte)e.Hero))
+            .Select(e => new PersonCard(e.Id, e.Name, (byte)e.Hero, e.Level))
             .ToListAsync();
     }
 

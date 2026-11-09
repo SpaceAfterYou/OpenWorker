@@ -73,9 +73,9 @@ public sealed class ServiceChannels : List<ServiceChannel>, ISessionCloseHandler
             return ChannelSwitchResult.Full;
         }
 
-        // Switch
+        // Switch: the player stays on the server, so it is told the people of the old channel are gone.
         
-        Leave(entity);
+        current.Leave(entity, tellPlayer: true);
         Join(index, entity);
 
         return ChannelSwitchResult.Ok;

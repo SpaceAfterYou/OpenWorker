@@ -45,4 +45,30 @@ public static class LoginRules
 
         return null;
     }
+
+    /// <summary>
+    /// The client's code for a trade password that is not four of the digits 0 to 7.
+    /// </summary>
+    public const ushort TradePasswordInvalid = 59504;
+
+    /// <summary>
+    /// The client's code for a trade password of one digit four times.
+    /// </summary>
+    public const ushort TradePasswordRepeated = 59505;
+
+    private const int TradePasswordLength = 4;
+
+    /// <summary>
+    /// A trade password has four of the digits 0 to 7 (the keys of the client's pad), not one digit four times. Returns
+    /// zero for a password that may be kept, otherwise the code of the refusal.
+    /// </summary>
+    public static ushort ValidateTradePassword(string password)
+    {
+        if (password.Length != TradePasswordLength || !password.All(e => e is >= '0' and <= '7'))
+        {
+            return TradePasswordInvalid;
+        }
+
+        return password.All(e => e == password[0]) ? TradePasswordRepeated : (ushort)0;
+    }
 }

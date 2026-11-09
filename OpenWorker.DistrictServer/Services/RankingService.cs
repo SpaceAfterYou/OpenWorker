@@ -4,6 +4,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -35,13 +36,13 @@ public sealed class RankingService(World world, IDbContextFactory<PersistenceCon
             return;
         }
 
-        ST_RANKING_TIME_ATTACK_USER Entry(int person, string name, byte hero, int order, int time, int score) => new()
+        ST_RANKING_TIME_ATTACK_USER Entry(int person, string name, byte hero, byte level, int order, int time, int score) => new()
         {
             Person = person,
             World = request.World,
             Order = (short)order,
             Hero = (Hero)hero,
-            Level = PersonModuleDefines.DefaultLevel,
+            Level = level,
             Name = name,
             Time = time,
             Score = score
@@ -53,11 +54,11 @@ public sealed class RankingService(World world, IDbContextFactory<PersistenceCon
         {
             Data = new ST_RANKING_TIME_ATTACK_USER2
             {
-                Player = Entry(me, info.Name, (byte)info.Hero, mine?.Order ?? 0, mine?.Time ?? 0, mine?.Score ?? 0),
+                Player = Entry(me, info.Name, (byte)info.Hero, Level(context.Player), mine?.Order ?? 0, mine?.Time ?? 0, mine?.Score ?? 0),
                 ParticipantList = new ST_RANKING_TIME_ATTACK_USER3
                 {
                     World = request.World,
-                    aUserList = top.Select(e => Entry(e.Person, e.Name, e.Hero, e.Order, e.Time, e.Score)).ToArray()
+                    aUserList = top.Select(e => Entry(e.Person, e.Name, e.Hero, e.Level, e.Order, e.Time, e.Score)).ToArray()
                 }
             }
         });
@@ -73,12 +74,12 @@ public sealed class RankingService(World world, IDbContextFactory<PersistenceCon
             return;
         }
 
-        ST_USER_RANKING_INFO Entry(int person, string name, byte hero, int order, int score) => new()
+        ST_USER_RANKING_INFO Entry(int person, string name, byte hero, byte level, int order, int score) => new()
         {
             Person = person,
             Order = (short)order,
             Hero = (Hero)hero,
-            Level = PersonModuleDefines.DefaultLevel,
+            Level = level,
             Name = name,
             KillScore = score
         };
@@ -90,8 +91,8 @@ public sealed class RankingService(World world, IDbContextFactory<PersistenceCon
             Data = new PS_RANKING_LIST_RES
             {
                 Type = request.Type,
-                Player = Entry(me, info.Name, (byte)info.Hero, mine?.Order ?? 0, mine?.Score ?? 0),
-                ParticipantList = top.Select(e => Entry(e.Person, e.Name, e.Hero, e.Order, e.Score)).ToArray()
+                Player = Entry(me, info.Name, (byte)info.Hero, Level(context.Player), mine?.Order ?? 0, mine?.Score ?? 0),
+                ParticipantList = top.Select(e => Entry(e.Person, e.Name, e.Hero, e.Level, e.Order, e.Score)).ToArray()
             }
         });
     }
@@ -102,4 +103,9 @@ public sealed class RankingService(World world, IDbContextFactory<PersistenceCon
 
         return ValueTask.CompletedTask;
     }
+
+    /// <summary>
+    /// The level of the player who asks; the others' come from their rows.
+    /// </summary>
+    private byte Level(Entity player) => world.TryGet<LevelComponent>(player, out var level) ? level.Level : (byte)1;
 }

@@ -2,6 +2,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 
 namespace OpenWorker.Hotspot.Modules.Channels.Responses;
@@ -26,9 +27,13 @@ public readonly struct ChannelChangeResponse : IResponseHotspotMessage
 
 #region Interface: IWritableData
 
+    /// <summary>
+    /// The same enter-map record as the move to another world: the client takes its map as the one it is in, and moves to
+    /// another server only when the flag says so.
+    /// </summary>
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Value.Result);
+        writer.Write(Value);
     }
 
 #endregion Interface: IWritableData

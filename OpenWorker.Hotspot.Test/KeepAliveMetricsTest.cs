@@ -5,8 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Channel;
-using OpenWorker.DistrictServer.Server.Components;
-using OpenWorker.DistrictServer.Server.Services;
+using OpenWorker.Server.Common;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot.Telemetry;
 
@@ -39,15 +38,12 @@ public sealed class KeepAliveMetricsTest
         var time = new FakeTimeProvider();
         using var world = World.Create();
 
-        var channels = new ServiceChannels(
-            Options.Create(new ChannelOptions { From = 1, To = 1 }),
-            world);
 
         var player = world.Create(
             new ServerSessionComponent(server, metrics.Get<SessionMetrics>()),
             KeepAliveComponent.Start(time.GetTimestamp()));
 
-        var service = new KeepAliveService(world, new WorldLoop(NullLogger<WorldLoop>.Instance), channels, time, NullLogger<KeepAliveService>.Instance);
+        var service = new KeepAliveService(world, new WorldLoop(NullLogger<WorldLoop>.Instance), time, NullLogger<KeepAliveService>.Instance);
 
         // Five keep-alives are sent and missed, and the next check gives up.
         for (var check = 0; check <= KeepAliveService.MaxMissedAnswers; check++)

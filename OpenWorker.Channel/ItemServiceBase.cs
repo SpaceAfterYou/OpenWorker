@@ -9,6 +9,9 @@ using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Requests;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Hotspot.Modules.Helpers.Types;
+using OpenWorker.Domain.Components;
 
 namespace OpenWorker.Channel;
 
@@ -83,10 +86,44 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemMoveRequest request)
     {
+        var bag = inventory.InventoryOf(context.Player);
+        var moving = bag?.At(request.Src.Storage, request.Src.Index);
+
         inventory.Move(context.Player, request.Src, request.Dest);
+
+        // The others see what the player wears: the worn slots of a move that took place.
+        if (bag is null || moving is null || bag.At(request.Dest.Storage, request.Dest.Index) != moving)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var worn = new List<StorageValue>(2);
+
+        foreach (var (storage, slot) in (ReadOnlySpan<(StorageGroup, short)>)[(request.Src.Storage, request.Src.Index), (request.Dest.Storage, request.Dest.Index)])
+        {
+            if (IsWorn(storage))
+            {
+                worn.Add(new StorageValue { Storage = storage, Slot = slot, Item = bag.At(storage, slot)?.ToValue() ?? HelperValue.NoItem });
+            }
+        }
+
+        if (worn.Count > 0)
+        {
+            WornChanged(context.Player, new ItemMoveBtResponse { Actor = world.Get<ActorComponent>(context.Player).Identifier, Slots = worn });
+        }
 
         return ValueTask.CompletedTask;
     }
+
+    /// <summary>
+    /// The places whose items the others see on the player: the look, the gear (the weapon among it) and the costume look.
+    /// </summary>
+    private static bool IsWorn(StorageGroup storage) => storage is StorageGroup.ShapeEquip or StorageGroup.AbilityEquip or StorageGroup.LookEquip;
+
+    /// <summary>
+    /// Tells the players who see the player what it now wears; the server knows who they are.
+    /// </summary>
+    protected abstract void WornChanged(Entity player, ItemMoveBtResponse notice);
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemCombineRequest request)
     {

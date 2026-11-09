@@ -1,26 +1,30 @@
 ﻿using Arch.Core;
-using OpenWorker.Channel;
-using OpenWorker.DistrictServer.Server.Components;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.System.Responses;
 
-namespace OpenWorker.DistrictServer.Server.Services;
+namespace OpenWorker.Server.Common;
 
 /// <summary>
-/// Asks a player that has gone quiet to answer, and disconnects the one that never does.<br/>
+/// Asks a player that has gone quiet to answer, and disconnects the one that never does, in a district and in a maze.<br/>
 /// Every <see cref="Frequency"/> a player that has not answered during the last period is sent a keep-alive
 /// and counts one more miss; an answer (see <c>SystemService</c>) forgives all misses.
 /// A player that missed <see cref="MaxMissedAnswers"/> keep-alives in a row is disconnected at the next check.
+/// The client sends its keep-alive only in answer to the server's.
 /// </summary>
 public sealed partial class KeepAliveService(
     World world,
     WorldLoop loop,
-    ServiceChannels channelCollection,
     TimeProvider time,
     ILogger<KeepAliveService> logger
 ) :
     BackgroundService
 {
+    private static readonly QueryDescription Players = new QueryDescription().WithAll<KeepAliveComponent, ServerSessionComponent>();
+
+    private readonly List<Entity> _players = [];
+
     public static TimeSpan Frequency { get; } = TimeSpan.FromMinutes(1);
 
     public const byte MaxMissedAnswers = 5;
@@ -51,12 +55,27 @@ public sealed partial class KeepAliveService(
         }
     }
 
-    private void CheckPlayers()
+    /// <summary>
+    /// The check of every player that has entered the game. Runs on the world loop.
+    /// </summary>
+    public void CheckPlayers()
     {
-        foreach (var channel in channelCollection)
+        _players.Clear();
+
+        world.Query(in Players, (Entity entity, ref KeepAliveComponent component) =>
         {
-            channel.ForEach(CheckPlayer);
+            if (component.Started)
+            {
+                _players.Add(entity);
+            }
+        });
+
+        foreach (var player in _players)
+        {
+            CheckPlayer(player);
         }
+
+        _players.Clear();
     }
 
     /// <summary>

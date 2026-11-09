@@ -1,7 +1,7 @@
 ﻿using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
 
-namespace OpenWorker.DistrictServer.Server.Components;
+namespace OpenWorker.Server.Common;
 
 /// <summary>
 /// What the server knows about whether a connected player is still there.<br/>
@@ -25,6 +25,11 @@ public readonly record struct KeepAliveComponent
     /// How many keep-alives were sent since the client last answered.
     /// </summary>
     public byte PenaltyCount { get; init; }
+
+    /// <summary>
+    /// Whether the player has entered the game: a connection that has not is not asked.
+    /// </summary>
+    public bool Started => AnsweredAt != 0;
 
     /// <summary>
     /// The state of a player that has just joined: the join counts as the first answer.

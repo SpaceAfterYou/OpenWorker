@@ -66,7 +66,8 @@ public sealed class FriendNotifier(World world, CommunityNetwork network, IDbCon
                 (byte)community.State,
                 community.Memo,
                 online ? null : now,
-                now);
+                now,
+                person.Level);
 
             await network.SendAsync(friend.Person, new FriendUpdateInfoResponse { Value = FriendBook.ToValue(entry, online ? person : null) });
         }

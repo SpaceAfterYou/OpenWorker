@@ -7,9 +7,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Channel;
 using OpenWorker.Extensions;
-using OpenWorker.DistrictServer.Server.Components;
-using OpenWorker.DistrictServer.Server.Services;
-using OpenWorker.DistrictServer.Services;
+using OpenWorker.Server.Common;
+using OpenWorker.Server.Common.Services;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.System.Requests;
@@ -63,15 +62,12 @@ public sealed class KeepAliveTest
 
             _server = _listener.AcceptTcpClient();
 
-            Channels = new ServiceChannels(
-                Options.Create(new ChannelOptions { From = 1, To = 1 }),
-                World);
 
             Player = World.Create(new ServerSessionComponent(_server), KeepAliveComponent.Start(Time.GetTimestamp()));
 
             Logger = new RecordingLogger<KeepAliveService>();
-            Service = new KeepAliveService(World, Loop, Channels, Time, Logger);
-            Handler = new SystemService(World, Time);
+            Service = new KeepAliveService(World, Loop, Time, Logger);
+            Handler = new SystemService(World, Time, null!, null!);
         }
 
         public FakeTimeProvider Time { get; }
@@ -81,8 +77,6 @@ public sealed class KeepAliveTest
         public WorldLoop Loop { get; }
 
         public TcpClient Client { get; }
-
-        public ServiceChannels Channels { get; }
 
         public Entity Player { get; }
 
@@ -360,8 +354,8 @@ public sealed class KeepAliveTest
     {
         using var fixture = new Fixture();
 
-        // A channel that cannot be walked: every check of the players fails on it.
-        fixture.Channels.Add(null!);
+        // A player whose connection is missing: every check of the players fails on it.
+        fixture.World.Create(default(ServerSessionComponent), KeepAliveComponent.Start(1));
 
         await fixture.Service.StartAsync(CancellationToken.None);
 
@@ -385,7 +379,7 @@ public sealed class KeepAliveTest
 
         await fixture.Service.StartAsync(CancellationToken.None);
 
-        // Nobody is on the channel, so the checks have nothing to send and nothing to fail on.
+        // The checks send keep-alives to the one player and fail on nothing.
         for (var period = 0; period < 3; period++)
         {
             fixture.Time.Advance(KeepAliveService.Frequency);

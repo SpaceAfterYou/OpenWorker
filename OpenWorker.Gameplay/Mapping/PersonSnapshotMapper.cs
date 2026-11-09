@@ -79,7 +79,7 @@ public static class PersonSnapshotMapper
             account,
             world.Get<LevelComponent>(personEntity).Level,
             FactionGroup.None,
-            StuffLevel.GameMaster,
+            world.TryGet<AccessComponent>(accountEntity, out var access) ? (StuffLevel)access.Level : StuffLevel.None,
             0,
             ItemEntry(gear?.Slots[(int)AbilityEquipSlot.SoulWeapon]),
             ItemEntry(gear?.Slots[(int)AbilityEquipSlot.SubWeapon]),
