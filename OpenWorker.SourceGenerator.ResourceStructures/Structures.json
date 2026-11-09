@@ -351,9 +351,9 @@
   "tb_Akashic_Disassemble": [
     "Int32",
     "Int16",
-    "Int32",
-    "Byte",
-    "Int32"
+    "Int32 Item",
+    "Byte CostKind",
+    "Int32 Cost"
   ],
   "Tb_Drop_Symbol": [
     "Int16",
@@ -446,12 +446,12 @@
   ],
   "tb_Akashic_Make": [
     "Int32",
-    "Byte",
-    "Int32",
-    "Int32",
-    "Byte",
-    "Int32",
-    "Int32"
+    "Byte MaterialKind",
+    "Int32 Material",
+    "Int32 Card",
+    "Byte ExtraCount",
+    "Int32 Gold",
+    "Int32 Result"
   ],
   "tb_Create_Cloth": [
     "Int16",
@@ -553,11 +553,11 @@
     "Int16",
     "Int32",
     "Int16",
-    "Int16",
+    "Int16 Position",
     "Byte",
     "Byte",
     "Byte",
-    "Byte",
+    "Byte RarePoint",
     "Byte",
     "String",
     "String",
@@ -574,9 +574,9 @@
     "Int32",
     "Byte",
     "Int16",
-    "Int32",
-    "Int32",
-    "Int32",
+    "Int32 Disassemble",
+    "Int32 ExpGiven",
+    "Int32 MakeExp",
     "Byte",
     "Int32",
     "Int32",
