@@ -7,15 +7,28 @@ using OpenWorker.Hotspot.Modules.Channels.Enums;
 
 namespace OpenWorker.Channel;
 
-/// <param name="sight">The size of the cells of the visibility grid; the default one when <see langword="null"/>.</param>
-public sealed class ServiceChannels(
-    IOptions<ChannelOptions> channels,
-    IOptions<InstanceOptions> instance,
-    World world,
-    IOptions<WorldOptions>? sight = null
-) : List<ServiceChannel>(CreateCollection(channels.Value, sight?.Value ?? new WorldOptions())), ISessionCloseHandler
+/// <summary>
+/// The channels of this server. A join or a leave of any of them notifies <see cref="Changes"/>, which the service that
+/// publishes the counts to Redis waits for.
+/// </summary>
+public sealed class ServiceChannels : List<ServiceChannel>, ISessionCloseHandler
 {
-    private Guid Owner { get; } = instance.Value.Identifier;
+    private readonly World world;
+
+    /// <param name="sight">The size of the cells of the visibility grid; the default one when <see langword="null"/>.</param>
+    public ServiceChannels(IOptions<ChannelOptions> channels, World world, IOptions<WorldOptions>? sight = null)
+        : this(channels.Value, sight?.Value ?? new WorldOptions(), new ChannelChanges(), world)
+    {
+    }
+
+    private ServiceChannels(ChannelOptions channels, WorldOptions sight, ChannelChanges changes, World world)
+        : base(CreateCollection(channels, sight, changes))
+    {
+        this.world = world;
+        Changes = changes;
+    }
+
+    internal ChannelChanges Changes { get; }
 
     public ServiceChannel Get(Entity entity)
     {
@@ -94,12 +107,12 @@ public sealed class ServiceChannels(
         channel.Leave(player);
     }
 
-    private static ServiceChannel[] CreateCollection(ChannelOptions options, WorldOptions sight)
+    private static ServiceChannel[] CreateCollection(ChannelOptions options, WorldOptions sight, ChannelChanges changes)
     {
         var count = options.To - options.From + 1;
 
         return Enumerable.Range(options.From, count)
-            .Select(e => new ServiceChannel((short)e, sight.VisibilityRadius))
+            .Select(e => new ServiceChannel((short)e, sight.VisibilityRadius, changes))
             .ToArray();
     }
 }

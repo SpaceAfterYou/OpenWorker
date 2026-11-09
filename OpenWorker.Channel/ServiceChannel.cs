@@ -48,15 +48,25 @@ public sealed class ServiceChannel : IEndOfPass
     // The number of members, written on the loop at every join and leave and read from anywhere.
     private int _online;
 
-    internal ServiceChannel(short identifier, float cellSize)
+    private readonly ChannelChanges? _changes;
+
+    /// <param name="changes">What is told about every join and leave; nobody when <see langword="null"/>.</param>
+    internal ServiceChannel(short identifier, float cellSize, ChannelChanges? changes = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(cellSize);
 
         Identifier = identifier;
         CellSize = cellSize;
+        _changes = changes;
     }
 
     public short Identifier { get; }
+
+    /// <summary>
+    /// The identifier of the record of the channel in Redis (<c>ChannelCache</c>), chosen when the server starts, so the
+    /// count is written to it without looking it up.
+    /// </summary>
+    public Guid Record { get; } = Guid.CreateVersion7();
 
     /// <summary>
     /// The side of a cell of the visibility grid, in game units.
@@ -360,6 +370,8 @@ public sealed class ServiceChannel : IEndOfPass
         _members[entity] = member;
 
         Volatile.Write(ref _online, _members.Count);
+
+        _changes?.Notify();
     }
 
     internal void Leave(Entity player)
@@ -371,6 +383,8 @@ public sealed class ServiceChannel : IEndOfPass
         }
 
         Volatile.Write(ref _online, _members.Count);
+
+        _changes?.Notify();
 
         // A move that has not gone out is of a player the others are told is gone.
         member.HasMove = false;
