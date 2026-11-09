@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
@@ -22,6 +23,16 @@ public readonly record struct SkillCooldownComponent
     public Dictionary<int, TimeSpan>? Groups { get; init; }
 
     public TimeSpan Global { get; init; }
+}
+
+/// <summary>
+/// What the bonus a deck gives does, by the type column of the deck bonus table.
+/// </summary>
+public enum DeckBonusKind : byte
+{
+    Damage = 0,
+    Cooldown = 1,
+    SoulCost = 2
 }
 
 /// <summary>
@@ -46,7 +57,7 @@ public static class SkillRefusal
 
     public const ushort NoSoulVapor = 56007;
 
-    /// <summary>The player cannot attack now (dead).</summary>
+    /// <summary>The player cannot attack now: dead, or stunned, paralysed, asleep or frozen by a buff.</summary>
     public const ushort CannotAttack = 56009;
 
     public const ushort Cooldown = 56010;
@@ -60,8 +71,10 @@ public static class SkillRefusal
 /// the skill is the player's own and in its deck, the level, the hero, the cost, the cooldown. Using it takes the cost
 /// and starts the cooldown of its group and the global cooldown.
 /// </summary>
-public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, PlayerGauges gauges)
+public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, PlayerGauges gauges, ReadOnlyCollection<DeckBonusRow>? deckBonuses = null)
 {
+    private readonly RowIndex<short, DeckBonusRow> _deckBonuses = (deckBonuses ?? new ReadOnlyCollection<DeckBonusRow>([])).IndexBy(e => e.Id);
+
     /// <summary>
     /// The skill every hero has without learning it (the akashic records).
     /// </summary>
@@ -126,6 +139,12 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
             return SkillRefusal.CannotAttack;
         }
 
+        // A buff that holds the player keeps it from attacking.
+        if (BuffBook.Of(world, player) is { IsHeld: true })
+        {
+            return SkillRefusal.CannotAttack;
+        }
+
         var kind = (SkillCostKind)row.CostAttribute;
 
         if (!gauges.CanPay(player, kind, Cost(player, row)))
@@ -152,7 +171,14 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
             return;
         }
 
-        gauges.Pay(player, (SkillCostKind)row.CostAttribute, Cost(player, row));
+        var kind = (SkillCostKind)row.CostAttribute;
+
+        // A buff can make the skills cost no soul gauge, though the player must still have it.
+        if (kind != SkillCostKind.SoulGauge || BuffBook.Of(world, player) is not { FreeSoulGauge: true })
+        {
+            gauges.Pay(player, kind, Cost(player, row));
+        }
+
         gauges.Rest(player, row.SkipPriorityGroup);
 
         StartCooldown(player, row, now);
@@ -160,11 +186,21 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
 
     /// <summary>
     /// What the skill costs the player now: the cost of the table, or a share in percent of the current value for a cost of
-    /// type 2. A cost under one point is one point.
+    /// type 2. A cost under one point is one point. A soul gauge cost is lower by the soul cost reductions of the buffs and the
+    /// deck bonus, a stamina cost by the stamina reduction of the buffs.
     /// </summary>
     public float Cost(Entity player, in SkillRow row)
     {
         float cost = row.Cost;
+        var buffs = BuffBook.Of(world, player);
+        var kind = (SkillCostKind)row.CostAttribute;
+
+        if (kind == SkillCostKind.SoulGauge)
+        {
+            var reduction = (buffs?.SoulCostDown ?? 0f) + DeckBonus(player, row, DeckBonusKind.SoulCost);
+
+            cost -= cost * reduction;
+        }
 
         if (row.CostType == 2)
         {
@@ -177,9 +213,19 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
             };
 
             cost = current * cost * 0.01f;
+
+            if (cost is > 0f and < 1f)
+            {
+                cost = 1f;
+            }
         }
 
-        return cost is > 0f and < 1f ? 1f : cost;
+        if (kind == SkillCostKind.Stamina && buffs is { StaminaCostDown: > 0f } book)
+        {
+            cost -= cost * book.StaminaCostDown;
+        }
+
+        return cost is > 0f and < 1f ? 1f : Math.Max(0f, cost);
     }
 
     /// <summary>
@@ -210,7 +256,7 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
 
         var cooldowns = world.TryGet<SkillCooldownComponent>(player, out var existing) ? existing : default;
         var groups = cooldowns.Groups ?? [];
-        var end = now + TimeSpan.FromMilliseconds(Math.Max(0, row.Cooldown));
+        var end = now + TimeSpan.FromMilliseconds(Math.Max(0, row.Cooldown) * (1f - CooldownRate(player, row) * 0.01f));
 
         if (!groups.TryGetValue(row.CooldownGroup, out var running) || end > running)
         {
@@ -230,6 +276,40 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
         }
 
         world.Set(player, new SkillCooldownComponent { Groups = groups, Global = global });
+    }
+
+    /// <summary>
+    /// How much shorter the cooldown of a skill is, in percent from 0 to 100: the buffs of the player and the cooldown bonus of
+    /// its deck. A passive skill keeps its whole cooldown.
+    /// </summary>
+    public float CooldownRate(Entity player, in SkillRow row)
+    {
+        if (row.SkillType == PassiveSkill)
+        {
+            return 0f;
+        }
+
+        var rate = (BuffBook.Of(world, player)?.CooldownRate ?? 0f) + DeckBonus(player, row, DeckBonusKind.Cooldown) * 100f;
+
+        return Math.Clamp(rate, 0f, 100f);
+    }
+
+    /// <summary>
+    /// The value of the bonus the player chose for the page of the deck a skill stands in, when it is of the kind asked for
+    /// and the player has its level. Skills outside the deck have no bonus. The client 1.4.2.3 uses the first page only.
+    /// </summary>
+    private float DeckBonus(Entity player, in SkillRow skill, DeckBonusKind kind)
+    {
+        if (IsDeckless(skill) || !StandsInDeck(player, skill) ||
+            !world.TryGet<SkillDeckBonusComponent>(player, out var chosen) || chosen.Values is not [var bonus, ..] ||
+            !_deckBonuses.TryGet((short)bonus, out var row) || (DeckBonusKind)row.BonusType != kind)
+        {
+            return 0f;
+        }
+
+        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
+
+        return level >= row.RequiredLevel ? row.BonusValue : 0f;
     }
 
     /// <summary>
@@ -272,13 +352,18 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
     /// </summary>
     private bool IsInDeck(Entity player, in SkillRow row)
     {
-        if (row.UsePosition == BasicPosition || row.Id == CommonSkill ||
-            (row.SkillType is PassiveSkill or ActiveSkill && row.PassiveType != 0) ||
-            Array.IndexOf(DecklessKinds, row.SkillType) >= 0 || row.UseState == AnyState)
-        {
-            return true;
-        }
+        return IsDeckless(row) || StandsInDeck(player, row);
+    }
 
+    private static bool IsDeckless(in SkillRow row)
+    {
+        return row.UsePosition == BasicPosition || row.Id == CommonSkill ||
+               (row.SkillType is PassiveSkill or ActiveSkill && row.PassiveType != 0) ||
+               Array.IndexOf(DecklessKinds, row.SkillType) >= 0 || row.UseState == AnyState;
+    }
+
+    private bool StandsInDeck(Entity player, in SkillRow row)
+    {
         if (!world.TryGet<SkillDeckComponent>(player, out var deck) || deck.SlotList is not { } decks)
         {
             return false;
