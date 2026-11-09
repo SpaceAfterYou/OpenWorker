@@ -2,7 +2,18 @@ using Arch.Core;
 using OpenWorker.Channel;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot.Handler.Attributes;
+using OpenWorker.Hotspot.Modules.Items.Responses;
 
 namespace OpenWorker.Server.Common.Services;
 
-public sealed class ItemService(World world, InventoryService inventory, ItemUseService use) : ItemServiceBase(world, inventory, use);
+/// <summary>
+/// The inventory in a district and in a maze; a change of what a player wears goes to those who see it.
+/// </summary>
+public sealed class ItemService(World world, InventoryService inventory, ItemUseService use, IPlayerAudience audience)
+    : ItemServiceBase(world, inventory, use)
+{
+    protected override void WornChanged(Entity player, ItemMoveBtResponse notice)
+    {
+        audience.NearbyToOthers(player, notice);
+    }
+}
