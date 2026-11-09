@@ -15,11 +15,11 @@ A member who runs a maze brings the league experience and gold:
 | When | Experience of the league | Gold of the league |
 |---|---|---|
 | The member enters a maze whose fatigue cost is more than 1 | half the cost, rounded down | none |
-| The member finishes the maze (the window of the results) | half the cost, rounded down | a hundredth of the gold the run gave, rounded down |
+| The member finishes the maze (the window of the results) | half the cost, rounded down | a hundredth of the gold of the clear, rounded down (the gold the rank of the run gives, `docs/notes-maze-results.md`; it was the gold picked up before) |
 
 The fatigue cost is the column `FatiguePoint` of `tb_Maze_Info` (named for this work; 4 to 18 in the client table, 0 for
-districts, tutorials and rooms). The gold of a run is what the window of the results shows as the gold of the run
-(`MazeResults`), since this server gives the gold of a maze as drops picked up in it. The member's own experience in the
+districts, tutorials and rooms). The gold of a run is the gold its clear gives at the rank of the run, as the
+reference counts it (`MazeResults`, `docs/notes-maze-results.md`). The member's own experience in the
 league (`LeagueMemberPersistent.Exp`, shown in the list of members) grows by the same share. Nothing else brings anything:
 not quests, not levels, not gold picked up outside a maze.
 
@@ -123,7 +123,8 @@ friends list and the community saw as well; it now carries the real level.
   again in the window (or a migration of data rewrites them).
 - **Working only below oneself** for the rights and positions of a member who is not the master: the client's window shows
   the buttons only for members below oneself; the rule for `22/32` is ours.
-- **The gold of a run** is the gold picked up in the maze, as the window of the results counts it.
+- **The gold of a run** is the gold of the clear at the rank of the run (the gold picked up does not count), as the reference
+  passes it.
 - **The rank** of a league with the same level and experience as another: both get the same rank.
 
 ### What to check with the real client

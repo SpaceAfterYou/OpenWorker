@@ -115,7 +115,8 @@ messages because it is about the maze, and nothing of the party protocol changed
 - **The end of the maze** (`PartyMazeEvents.Completed`): every member in the maze gets its own window (11/75 with its own
   experience, gold and the key reward offer of `MazeKeyRewards`, which is per player) and 11/76
   (`MazeRewardPartyInfoResponse`) with every member: order (1..n in the order they came), rank, actor, name, play point.
-  The rank is still the best rank for everybody and the play point zero, as for a player alone. Each member leaves by the
+  Each member has its own score and rank, the members are put in the order of their scores for the shares of a party, and
+  the list carries every rank and score (`docs/notes-maze-results.md`); a player alone gets no list. Each member leaves by the
   exit of the maze to a district of their own choosing, as before.
 - **The party** gets 12/46 (`PartyMazeClearResponse`, empty) through `PartyNotifier.MazeClearAsync`, as the reference
   sends it to the whole party; the client shows the clear when it waits for it.

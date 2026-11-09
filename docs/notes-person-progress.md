@@ -111,13 +111,13 @@ Without the server's tables: achievements count with target 0, and the six types
 | 32 | the level | `ExperienceService` at a level change |
 | 35 | a maze cleared, by maze and for any maze | `MazeReporter.MazeClearedAsync` |
 | 36 | a maze cleared within three minutes | same |
+| 37 to 42 | a maze cleared at rank SS, S, A, B, C, F (`docs/notes-maze-results.md`) | same, with the rank of the run |
 | 47 | a maze of a kind other than 0 cleared, by kind | same |
 | 48 | a helper gained, by helper | `HelperManager.AddAsync` |
 
 Not counted yet, with what they need: 15 consumable used and 16 shop purchases (a hook in the item use and the shop), 17
 repair cost (the repair of the item setup), 18 deaths (the death of a player is not handled by the server), 26 a skill used
-and 27 the longest combo (no combo count), 33 battle points gained (the wallet has no event), 37 to 42 maze clears by rank
-(no scoring: the window shows the best rank for every run), 43 play time (no timer of the person), 46 a maze challenged, 49
+and 27 the longest combo (no combo count), 33 battle points gained (the wallet has no event), 43 play time (no timer of the person), 46 a maze challenged, 49
 and 50 upgrades tried and failed, 51 making, 52 disassembling (the item setup work), 53 daily missions and hidden events,
 54 visits of a room, 55 purchases of the exchange, 56 skycraft, 57 trades with characters (their features). The reference
 server also opens titles when an achievement is reached; that is not done.
