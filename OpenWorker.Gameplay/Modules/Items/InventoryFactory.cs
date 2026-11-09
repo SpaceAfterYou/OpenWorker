@@ -10,7 +10,8 @@ namespace OpenWorker.Gameplay.Modules.Items;
 /// <summary>
 /// Builds the inventory of a person from what was saved, or from nothing for a person that has no items yet.
 /// </summary>
-public sealed class InventoryFactory(ItemCatalog catalog, ReadOnlyCollection<CreateClothRow> outfits, IItemSerials serials)
+public sealed class InventoryFactory(
+    ItemCatalog catalog, ReadOnlyCollection<CreateClothRow> outfits, IItemSerials serials, CostumeBroachPlaces? broaches = null)
 {
     private readonly RowIndex<int, CreateClothRow> _outfits = outfits.IndexBy(e => (int)e.Id);
 
@@ -32,6 +33,12 @@ public sealed class InventoryFactory(ItemCatalog catalog, ReadOnlyCollection<Cre
             }
 
             var item = ItemInstance.From(row);
+
+            // Clothing saved before it was given its places for broaches gets them from its table.
+            if (broaches is not null && item.BroachState == ItemInstance.NoBroaches)
+            {
+                item.BroachState = broaches.StateOf(item.Item);
+            }
 
             storage.Slots[row.Slot] = item;
         }

@@ -20,6 +20,7 @@ public static class ItemsServiceCollectionExtensions
     public static IServiceCollection AddItems(this IServiceCollection services)
     {
         services.AddSingleton<ItemCatalog>();
+        services.AddSingleton<CostumeBroachPlaces>();
         services.AddSingleton<DatabaseItemSerials>();
         services.AddSingleton<IItemSerials>(provider => provider.GetRequiredService<DatabaseItemSerials>());
         services.AddSingleton<InventoryFactory>();
