@@ -204,6 +204,54 @@ public sealed class PartyTest
         Assert.AreEqual(master, taken[0].Master);
     }
 
+    [TestMethod]
+    public async Task TheAutoMatchingMakesAPartyOfFourWithTheLeaderAsMaster()
+    {
+        var redis = await RedisAsync();
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var people = People(PartyRules.MaxMembers);
+        var maze = (short)Random.Shared.Next(20_000, 30_000);
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var services = Parties(server, redis, time);
+
+        var matching = services.GetRequiredService<PartyMatching>();
+        var players = people.Select(e => server.Join(e, "P" + e)).ToArray();
+
+        try
+        {
+            foreach (var player in players)
+            {
+                server.Run(() => matching.EnterAsync(player.Entity, maze, PartyRules.MatchingLimit(3)));
+            }
+
+            var groups = new List<PartyMatchingGroup?>();
+            server.Run(async () => groups.AddRange(await Task.WhenAll(people.Select(matching.OfAsync))));
+
+            Assert.AreEqual(1, groups.Select(e => e?.Id).Distinct().Count(), "All four wait in one group.");
+
+            // A full group names its leader at once, and becomes a party when the wait is over.
+            server.Run(() => matching.TickAsync());
+            time.Advance(PartyRules.MatchingStart);
+            server.Run(() => matching.TickAsync());
+
+            var party = await services.GetRequiredService<PartyBook>().OfAsync(people[0]);
+
+            Assert.IsNotNull(party);
+            Assert.HasCount(PartyRules.MaxMembers, party.Members);
+            Assert.AreEqual(people.Min(), party.Master, "Of equal levels the lowest number leads.");
+            Assert.AreEqual(PartyType.Auto, party.Type);
+        }
+
+        finally
+        {
+            foreach (var player in players)
+            {
+                player.Dispose();
+            }
+        }
+    }
+
     internal static ServiceProvider Parties(TestServer server, IConnectionMultiplexer redis, TimeProvider time)
     {
         var services = new ServiceCollection();
@@ -219,6 +267,7 @@ public sealed class PartyTest
         services.AddSingleton<PartyAwaiterBoard>();
         services.AddSingleton<PartyRecruitNotifier>();
         services.AddSingleton<IPartyJoinListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
+        services.AddSingleton<PartyMatching>();
 
         return services.BuildServiceProvider();
     }
