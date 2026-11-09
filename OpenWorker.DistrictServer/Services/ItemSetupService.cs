@@ -6,14 +6,15 @@ using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The work on items at the NPCs of a city: repairs, upgrades, sockets, and the tools that restore, unseal or lower a count of
-/// an item. What each request does and what is still missing for the others: <c>docs/notes-item-setup-handlers.md</c>.
+/// The work on items at the NPCs of a city: repairs, upgrades, sockets, broaches, and the tools that restore, unseal or lower a
+/// count of an item. What each request does and what is still missing for the others: <c>docs/notes-item-setup-handlers.md</c>.
 /// </summary>
 public sealed class ItemSetupService(
     ItemRepairService repairs,
     ItemRestoreService restores,
     ItemSocketService sockets,
-    ItemUpgradeService upgrades) :
+    ItemUpgradeService upgrades,
+    ItemBroachService broaches) :
     IHotspotHandler<ItemSetupRepairRequest>,
     IHotspotHandler<ItemSetupRepairNpcRequest>,
     IHotspotHandler<ItemSetupRepairEquipRequest>,
@@ -23,7 +24,10 @@ public sealed class ItemSetupService(
     IHotspotHandler<ItemSetupUseEffectRequest>,
     IHotspotHandler<ItemSetupSocketActiveRequest>,
     IHotspotHandler<ItemSetupSocketEquipRequest>,
-    IHotspotHandler<ItemSetupUpgradeRequest>
+    IHotspotHandler<ItemSetupUpgradeRequest>,
+    IHotspotHandler<ItemSetupBroachEquipRequest>,
+    IHotspotHandler<ItemSetupBroachActiveRequest>,
+    IHotspotHandler<ItemSetupBroachComposeRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupRepairRequest request)
     {
@@ -91,6 +95,27 @@ public sealed class ItemSetupService(
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupUpgradeRequest request)
     {
         upgrades.Upgrade(context.Player, request.Protect, request.Protection, request.Target);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupBroachEquipRequest request)
+    {
+        broaches.Equip(context.Player, request.Target, request.Broach, request.Place);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupBroachActiveRequest request)
+    {
+        broaches.Activate(context.Player, request.Target, request.Place);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupBroachComposeRequest request)
+    {
+        broaches.Compose(context.Player, request.Tool, request.Materials);
 
         return ValueTask.CompletedTask;
     }

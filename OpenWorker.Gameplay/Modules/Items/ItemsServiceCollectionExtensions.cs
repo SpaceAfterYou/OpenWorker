@@ -36,6 +36,7 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<ItemExchangeService>();
         services.AddSingleton<ItemDisassembleService>();
         services.AddSingleton<ItemEvolutionService>();
+        services.AddSingleton<ItemBroachService>();
         services.AddSingleton<InventoryPersistence>();
 
         // The features that give items hand them over here.

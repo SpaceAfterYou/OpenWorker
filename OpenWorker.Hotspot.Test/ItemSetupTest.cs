@@ -4,6 +4,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 using OpenWorker.Hotspot.Modules.ItemSetup.Types;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
@@ -172,5 +173,130 @@ public sealed class ItemSetupTest
         Assert.AreEqual(ItemBindType.None, target.BindType);
         Assert.AreEqual(row.SealLimit == 255 ? 0 : 1, target.SealCount);
         Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == unsealing.Serial), "The unsealing item is used up");
+    }
+
+    // The classify of the attack broaches; the defence and utility ones follow it.
+    private const int AttackBroach = 160201;
+
+    /// <summary>
+    /// Clothing of the table with an open and a closed place for a broach that the bag does not hold yet, and its row.
+    /// </summary>
+    private static (ItemRow Clothing, CostumeSocketRow Row) ClothingWithAClosedPlace(ItemSetupFixture f, CostumeBroachPlaces places)
+    {
+        var clothing = ItemSetupFixture.Load<ItemRow>("tb_Item").First(e =>
+            f.Catalog.HomeOf(e.Id) == StorageGroup.Costume && places.StateOf(e.Id).Contains(CostumeBroachPlaces.Closed) &&
+            places.StateOf(e.Id).Contains(CostumeBroachPlaces.Open) && !f.Bag.Items.Any(i => i.Item == e.Id));
+
+        return (clothing, places.RowOf(clothing.Id)!.Value);
+    }
+
+    [TestMethod]
+    public async Task BroachGoesIntoTheOpenedPlaceOfClothingAndTheEntryLoadShowsIt()
+    {
+        using var f = new ItemSetupFixture();
+
+        var places = new CostumeBroachPlaces(f.Catalog, ItemSetupFixture.Load<CostumeSocketRow>("tb_Costume_Socket"));
+        var (clothing, row) = ClothingWithAClosedPlace(f, places);
+        var target = f.Give(clothing.Id, 1);
+
+        // New clothing comes with the places of its row; a closed one opens for the item of the row.
+        var place = target.BroachState.IndexOf(CostumeBroachPlaces.Closed, StringComparison.Ordinal);
+
+        Assert.AreEqual(places.StateOf(clothing.Id), target.BroachState);
+        f.Give(row.OpenItem, row.OpenCount);
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupBroachActiveRequest { Target = ItemSetupFixture.SlotOf(target), Place = (byte)place });
+
+        Assert.AreEqual(CostumeBroachPlaces.Open, target.BroachState[place]);
+        Assert.AreEqual(0, f.Inventory.CountOf(f.Player, row.OpenItem), "The opening item is used up");
+
+        // A broach of the kind the place takes.
+        var broachId = ItemSetupFixture.Load<ItemRow>("tb_Item").First(e => e.Classify == AttackBroach + place % 3).Id;
+        var broach = f.Give(broachId, 1);
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupBroachEquipRequest
+        {
+            Target = ItemSetupFixture.SlotOf(target),
+            Broach = ItemSetupFixture.SlotOf(broach),
+            Place = (byte)place
+        });
+
+        Assert.AreEqual(broachId, target.Broaches[place]);
+        Assert.AreEqual(ST_ITEM_BROACH.ItemCount - 1, target.Broaches.Count(e => e == ItemBroachService.Empty));
+        Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == broach.Serial), "The broach is used up");
+
+        // What the entry sends with the bags, and what the next entry loads from the row the flush writes.
+        var load = f.Inventory.ListBroaches(f.Player).Single();
+        var saved = ItemInstance.From(target.ToPersistent(7));
+
+        Assert.AreEqual(target.Serial, load.biSerial.Value);
+        Assert.AreEqual(broachId, load.dwItemID[place]);
+        Assert.AreEqual(broachId, saved.Broaches[place]);
+        Assert.AreEqual(target.BroachState, saved.BroachState);
+        Assert.IsTrue(f.Dirty.Sections.HasFlag(PersonSections.Inventory), "The clothing is written by the flush");
+    }
+
+    [TestMethod]
+    public async Task ComposeThatPassesItsRollsGivesTheBroachTheServerTableNames()
+    {
+        using var f = new ItemSetupFixture(withServerTables: true);
+
+        // Five attack broaches of the lowest rank and the first theme, and the item that composes them.
+        var material = ItemSetupFixture.Load<ItemRow>("tb_Item").First(e => e.Classify == AttackBroach && e.Rank == 2 && e.EffectValue == 1).Id;
+        var tool = f.Give(FirstOfUse(f, ItemUseType.BROACH_COMPOSE), 1);
+
+        Assert.IsTrue(f.Inventory.TryGive(f.Player, material, ItemBroachService.Materials));
+
+        var materials = f.Bag.Items.Where(e => e.Item == material).ToList();
+        var toolCount = tool.Count;
+
+        // The rank roll falls past the first chance of its row (3000 of 10000 for five of the lowest rank) into the second, the
+        // kind and theme rolls into the first, and the last roll takes the fourth broach of the group.
+        f.Random.Queued.Enqueue(3001);
+        f.Random.Queued.Enqueue(1);
+        f.Random.Queued.Enqueue(1);
+        f.Random.Queued.Enqueue(4);
+
+        var expected = ItemSetupFixture.Load<BroachComposeItemRow>("TB_BroachData", ItemSetupFixture.ServerTablesVariable)
+            .Single(e => e.Index == 100_000 * 1 + 10_000 * 1 + 1_000 * 2 + 4).Item;
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupBroachComposeRequest
+        {
+            Tool = ItemSetupFixture.SlotOf(tool),
+            Materials = materials.Select(ItemSetupFixture.SlotOf).ToArray()
+        });
+
+        Assert.IsFalse(f.Bag.Items.Any(e => e.Item == material), "The five broaches are used up");
+        Assert.AreEqual(toolCount - 1, f.Bag.Items.Where(e => e.Item == tool.Item).Sum(e => e.Count));
+        Assert.AreEqual(1, f.Bag.Items.Count(e => e.Item == expected), "The broach of the table is in the bag");
+    }
+
+    [TestMethod]
+    public async Task RefusedBroachChangesNothing()
+    {
+        using var f = new ItemSetupFixture();
+
+        var places = new CostumeBroachPlaces(f.Catalog, ItemSetupFixture.Load<CostumeSocketRow>("tb_Costume_Socket"));
+        var (clothing, _) = ClothingWithAClosedPlace(f, places);
+        var target = f.Give(clothing.Id, 1);
+        var state = target.BroachState;
+        var closed = state.IndexOf(CostumeBroachPlaces.Closed, StringComparison.Ordinal);
+
+        // A closed place without the item that opens it, and a broach of another kind than its place.
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupBroachActiveRequest { Target = ItemSetupFixture.SlotOf(target), Place = (byte)closed });
+
+        var open = target.BroachState.IndexOf(CostumeBroachPlaces.Open, StringComparison.Ordinal);
+        var broach = f.Give(ItemSetupFixture.Load<ItemRow>("tb_Item").First(e => e.Classify == AttackBroach + (open + 1) % 3).Id, 1);
+
+        await f.Handler.OnHandleAsync(f.Context, new ItemSetupBroachEquipRequest
+        {
+            Target = ItemSetupFixture.SlotOf(target),
+            Broach = ItemSetupFixture.SlotOf(broach),
+            Place = (byte)open
+        });
+
+        Assert.AreEqual(state, target.BroachState);
+        Assert.IsEmpty(target.Broaches);
+        Assert.IsTrue(f.Bag.Items.Any(e => e.Serial == broach.Serial), "The broach is still in the bag");
     }
 }

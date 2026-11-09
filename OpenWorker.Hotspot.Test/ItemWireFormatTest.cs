@@ -4,6 +4,7 @@ using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
+using OpenWorker.Hotspot.Modules.ItemSetup.Responses;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Wire;
 
@@ -57,6 +58,22 @@ public sealed class ItemWireFormatTest
 
         Assert.HasCount(1 + 8 + 15 * 4, bytes);
         Assert.AreEqual(1, bytes[0]);
+    }
+
+    [TestMethod]
+    public void BroachEquipAnswerIsOneBroachWithoutCount()
+    {
+        var broach = new ST_ITEM_BROACH
+        {
+            biSerial = new SerialValue(0x0102030405060708),
+            dwItemID = Enumerable.Repeat(-1, ST_ITEM_BROACH.ItemCount).ToArray()
+        };
+
+        var bytes = ToBytes(new ItemSetupBroachEquipResponse { Broach = broach }.Write);
+
+        Assert.HasCount(8 + 15 * 4, bytes);
+        Assert.AreEqual(0x08, bytes[0]);
+        Assert.AreEqual(-1, BitConverter.ToInt32(bytes, 8));
     }
 
     [TestMethod]
