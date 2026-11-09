@@ -40,6 +40,7 @@ public sealed class ServerTablesTest
     [DataRow("tb_Drop", typeof(DropRow))]
     [DataRow("tb_Drop_Group", typeof(DropGroupRow))]
     [DataRow("tb_MazeReward_Item", typeof(MazeRewardItemRow))]
+    [DataRow("tb_Reinforce", typeof(ReinforceChanceRow))]
     public void RowsFillTheFileUpToTheTrailer(string table, Type row)
     {
         var (count, rest) = Read(table, row);

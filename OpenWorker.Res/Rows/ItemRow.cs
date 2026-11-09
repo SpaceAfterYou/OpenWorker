@@ -29,7 +29,7 @@ public readonly partial struct ItemRow(BinaryReader reader)
     public int Field17 { get; } = reader.ReadInt32();
     public string Field18 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public byte Endurance { get; } = reader.ReadByte();
-    public byte Field20 { get; } = reader.ReadByte();
+    public byte UseValue { get; } = reader.ReadByte();
     public int PhysicalAttack { get; } = reader.ReadInt32();
     public int MagicalAttack { get; } = reader.ReadInt32();
     public int PhysicalDefense { get; } = reader.ReadInt32();
@@ -67,6 +67,6 @@ public readonly partial struct ItemRow(BinaryReader reader)
     public int Field55 { get; } = reader.ReadInt32();
     public byte Field56 { get; } = reader.ReadByte();
     public int Field57 { get; } = reader.ReadInt32();
-    public byte Field58 { get; } = reader.ReadByte();
-    public byte Field59 { get; } = reader.ReadByte();
+    public byte SealLimit { get; } = reader.ReadByte();
+    public byte RestoreLimit { get; } = reader.ReadByte();
 }

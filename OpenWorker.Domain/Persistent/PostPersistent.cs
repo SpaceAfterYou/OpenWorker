@@ -1,4 +1,4 @@
-namespace OpenWorker.Domain.Persistent;
+﻿namespace OpenWorker.Domain.Persistent;
 
 /// <summary>
 /// Who a letter is for: a person, or an account, which any of its persons can open.
@@ -81,6 +81,14 @@ public sealed class PostItemPersistent
     public byte SealCount { get; init; }
     public short[] OptionType { get; init; } = new short[ItemPersistent.OptionCount];
     public int[] OptionValue { get; init; } = new int[ItemPersistent.OptionCount];
+
+    /// <summary>
+    /// The gems and broaches of the item, as <see cref="ItemPersistent"/> keeps them; missing in the letters written before.
+    /// </summary>
+    public int[]? Sockets { get; init; }
+    public short[]? SocketOptionType { get; init; }
+    public int[]? SocketOptionValue { get; init; }
+    public int[]? Broaches { get; init; }
 }
 
 /// <summary>

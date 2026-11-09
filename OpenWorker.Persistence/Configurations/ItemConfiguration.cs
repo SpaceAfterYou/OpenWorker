@@ -22,6 +22,12 @@ public sealed class ItemConfiguration : IEntityTypeConfiguration<ItemPersistent>
             .HasDefaultValue("000000000000000")
             .IsRequired();
 
+        // The gems and the broaches of an item: empty for the items that have none, which is most of them.
+        builder.Property(x => x.Sockets).HasDefaultValueSql("'{}'").IsRequired();
+        builder.Property(x => x.SocketOptionType).HasDefaultValueSql("'{}'").IsRequired();
+        builder.Property(x => x.SocketOptionValue).HasDefaultValueSql("'{}'").IsRequired();
+        builder.Property(x => x.Broaches).HasDefaultValueSql("'{}'").IsRequired();
+
         builder.HasOne(x => x.Person)
             .WithMany(x => x.Items)
             .HasForeignKey(x => x.PersonId)
