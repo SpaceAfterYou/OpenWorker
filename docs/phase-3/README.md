@@ -127,14 +127,16 @@ been measured. The burst of `Other` is large because a client sends a flurry of 
 `ChannelLifecycleService` read and wrote every channel every second (a query and an update each). Now a join or a leave
 notifies `ServiceChannels.Changes`, a bounded channel of one element that drops what comes while a notice is pending (the
 loop never waits and allocates nothing). The service waits for a notice, then waits a second on its `TimeProvider` for the
-joins and leaves that follow, then writes each channel whose count differs from what it wrote last: one `UpdateAsync` of the
-whole record per channel, built from the identifier the channel chose when the server started (`ServiceChannel.Record`, which
-the bootstrap uses too), with no lookup. A failed write is tried again after the next wait. A count in Redis is therefore at
-most about a second old, as before.
+joins and leaves that follow, then writes each channel whose count differs from what it wrote last: one `InsertAsync` of the
+whole record with its lifetime per channel, built from the identifier the channel chose when the server started
+(`ServiceChannel.Record`, which the bootstrap uses too), with no lookup. A failed write is tried again after the next wait. A
+count in Redis is therefore at most about a second old, as before.
 
-The service did not renew a lifetime: the district and channel records have none (`ARCHITECTURE.md`, "Known limits"), so
-there was nothing to keep. The drain still takes the records back. A record lost to a restart of the relay used to stay lost
-("Channel not found" every second); now it is written again with the next change of its channel.
+**The lifetime.** Phase 4, merged while this branch was under way, gave the records a lifetime of 30 s, which the old loop
+renewed every second, and made it write again a record that had expired. That is kept, less often: the wait for a change
+ends after `ChannelLifecycleService.Renewal` (10 s) at the latest, and then, or at the first write after that, every record is
+written again whether its count changed or not. A record expired while Redis was away comes back within 10 s; a record of a
+server that crashed goes within 30 s. The drain still takes the records back.
 
 ## Step 6. `ServerChannels.MoveAsync`
 
@@ -194,10 +196,10 @@ Six new test methods, all behavioural:
   once in its second, and three faults in three seconds use up a budget of three.
 - `HandlerExecutorTest.APacketOverTheRateOfItsGroupIsDroppedAndCountedWithoutAnError`: a burst of three passes, the two after
   it are dropped and counted under `other` with no error of the session, and a second later two more pass.
-- `ChannelCounterTest.TheCountIsWrittenOnceTheJoinsAndLeavesOfASecondAreInAndNotPolled` (needs `OPENWORKER_TEST_REDIS`): two
+- `ChannelCounterTest.TheCountIsWrittenOnceTheJoinsAndLeavesOfASecondAreInAndTheLifetimeIsRenewedLessOften` (needs `OPENWORKER_TEST_REDIS`): two
   joins and a leave are written as 1 once the second has passed on the clock of the service, nothing is written before it, a
   value written behind the back of the service stays through five seconds of its clock and more than a second of real time,
-  and the next join is written; the drain takes the record back.
+  the renewal then writes the record again with a lifetime, and the next join is written; the drain takes the record back.
 
 ## What to check on a real client
 
@@ -236,5 +238,4 @@ What a real client shows cannot be checked here. By hand, with two or three clie
 - **The chat** stays channel-wide; the reference server sends the normal chat to the area around.
 - **The district ignores the channel of its reservation** on entry, and the client gets no answer to a change of channel; both
   were so before.
-- **Channel records still have no lifetime** in Redis and stay after a crash until the relay clears Redis (phase 4).
 - **Crossings allocate** the snapshots of the players who come into sight; a crowded crossing could build them once per pass.

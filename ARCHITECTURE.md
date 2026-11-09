@@ -146,7 +146,7 @@ flowchart TB
   speed of its abilities, times `World:SpeedTolerance`, with `World:MoveBurst` of running saved up): the place stays, the player
   gets a warp back to it, and the first refusal in a second counts against the error budget of the session (`HandlerExecutor.Charge`,
   reason `violation`). The count of each channel goes to Redis when players join or leave, gathered for a second
-  (`ChannelLifecycleService`), not on a clock. Design and limits: `docs/phase-3/README.md`.
+  (`ChannelLifecycleService`), not on a clock; every 10 s it writes every record again, which renews its lifetime of 30 s. Design and limits: `docs/phase-3/README.md`.
 - **Rate limits.** Before it parses a packet, `HandlerExecutor` takes a token from the bucket of its group in the session
   (`PacketRateLimiter`, `PacketRateComponent`): movement, chat, items, everything else, each filling at its own rate up to its
   burst (`Hotspot:RateLimits`). A packet that finds its bucket empty is dropped and counted in `handler.refused`; it is no error
@@ -435,8 +435,9 @@ or wrong setting stops the server with a message that names the key. A setting w
 - **A changed index schema is rebuilt under the servers.** When a build changes the attributes of a document of the cache,
   the relay drops its index (not the records) and makes it again; for that moment, and until Redis has indexed the
   records, searches by that index fail or miss.
-- **The count of a channel renews its record.** `ChannelLifecycleService` writes the count and the lifetime of each
-  channel every second; whatever replaces that loop has to keep renewing the records.
+- **The count of a channel renews its record.** `ChannelLifecycleService` writes the count of a channel a second after
+  players join or leave it, and every record with its lifetime (30 s) every 10 s; a change of that loop has to keep
+  renewing the records.
 - **Skill points do not follow the level.** A person starts with the points of `PersonSkills` and keeps what it spends;
   the client counts points against the level, the server does not yet.
 - **The shutdown notice is untried.** What the client shows for a kick-out with `GmToolServerShutdown` on a district
