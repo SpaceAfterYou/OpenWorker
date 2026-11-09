@@ -97,7 +97,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<LeagueLevels>();
         services.AddSingleton<ILeagueTreasury, LeagueTreasury>();
         services.AddSingleton<LeagueGrowth>();
-        services.AddSingleton<IMegaphoneSource, FreeMegaphone>();
+        services.AddSingleton<IMegaphoneSource, InventoryMegaphone>();
 
         services.AddSingleton<FriendBook>();
         services.AddSingleton<IPersonRelations>(e => e.GetRequiredService<FriendBook>());
