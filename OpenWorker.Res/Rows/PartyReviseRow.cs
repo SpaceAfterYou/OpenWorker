@@ -9,7 +9,7 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct PartyReviseRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public short Field1 { get; } = reader.ReadInt16();
-    public byte Field2 { get; } = reader.ReadByte();
-    public int Field3 { get; } = reader.ReadInt32();
+    public short Group { get; } = reader.ReadInt16();
+    public byte MemberCount { get; } = reader.ReadByte();
+    public int SuperArmorRecovery { get; } = reader.ReadInt32();
 }

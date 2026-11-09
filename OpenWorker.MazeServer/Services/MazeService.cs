@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using OpenWorker.Gameplay.Mapping;
 using System.Numerics;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Entities;
@@ -50,6 +51,7 @@ public sealed partial class MazeService(
     IOptions<GateOptions> gate,
     QuestManager questManager,
     PrologueService prologue,
+    MazeInstances instances,
     ILogger<MazeService> logger
 ) :
     IHotspotHandler<MazeCompleteRequest>,
@@ -106,7 +108,9 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// The client has finished loading the maze, so what the script does now reaches it.
+    /// The client has finished loading the maze, so what the script does now reaches it. The first player starts the maze;
+    /// a member of the party who comes later finds it where it stands: what lives in it, the other members, and they the
+    /// newcomer.
     /// </summary>
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeCompleteRequest request)
     {
@@ -117,16 +121,28 @@ public sealed partial class MazeService(
 
         var maze = ecs.Get<LuaMaze>(context.Player);
 
-        if (!maze.TryStart())
+        if (!maze.MarkLoaded(context.Player))
         {
             return;
         }
 
-        maze.HideUnfoundSoulObjects();
+        var first = maze.TryStart();
+
+        if (first)
+        {
+            maze.HideUnfoundSoulObjects(context.Player);
+        }
 
         SendProgress(context.Player, maze);
 
-        maze.RegisterCubes();
+        if (!first)
+        {
+            maze.Creatures.ShowAllTo(ecs.Get<ServerSessionComponent>(context.Player));
+        }
+
+        ShowMembers(context.Player, maze);
+
+        maze.RegisterCubes(context.Player);
 
         if (FindSector(maze, ecs.Get<WorldComponent>(context.Player).Position) is { } sector)
         {
@@ -134,6 +150,38 @@ public sealed partial class MazeService(
         }
 
         await maze.State.OnEnterPlayerAsync(ecs.Get<ActorComponent>(context.Player), maze);
+    }
+
+    /// <summary>
+    /// The player and the other members of the party in the maze see each other.
+    /// </summary>
+    private void ShowMembers(Entity player, LuaMaze maze)
+    {
+        if (maze.MemberCount < 2)
+        {
+            return;
+        }
+
+        var session = ecs.Get<ServerSessionComponent>(player);
+
+        foreach (var other in maze.Members)
+        {
+            if (other != player && ecs.IsAlive(other))
+            {
+                session.Send(Arrival(other));
+            }
+        }
+
+        maze.Creatures.BroadcastToOthers(player, Arrival(player));
+    }
+
+    private WorldInInfoPcResponse Arrival(Entity player)
+    {
+        return new WorldInInfoPcResponse
+        {
+            Person = PersonSnapshotMapper.CreatePersonValue(ecs, player, player),
+            World = PersonSnapshotMapper.CreateWorldValue(ecs, player)
+        };
     }
 
     private void SendProgress(Entity player, LuaMaze maze)
@@ -175,7 +223,7 @@ public sealed partial class MazeService(
 
         if (ecs.Has<LuaMaze>(context.Player))
         {
-            ecs.Get<LuaMaze>(context.Player).StartSkill(skill.Skill, skill.Position);
+            ecs.Get<LuaMaze>(context.Player).StartSkill(context.Player, skill.Skill, skill.Position);
         }
 
         return ValueTask.CompletedTask;
@@ -247,14 +295,14 @@ public sealed partial class MazeService(
             Place.IsValid(request.Direction) &&
             ecs.Has<LuaMaze>(context.Player))
         {
-            ecs.Get<LuaMaze>(context.Player).FireProjectile(request);
+            ecs.Get<LuaMaze>(context.Player).FireProjectile(context.Player, request);
         }
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// The player holds the key of the skill or lets it go. Nobody else shares this maze to be told about it.
+    /// The player holds the key of the skill or lets it go.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillKeypressRequest request)
     {
@@ -268,7 +316,7 @@ public sealed partial class MazeService(
             ecs.Set(context.Player, ecs.Get<WorldComponent>(context.Player) with { Rotation = request.Rotation });
         }
 
-        ecs.Get<LuaMaze>(context.Player).PressKey(request.IsKeyPressed);
+        ecs.Get<LuaMaze>(context.Player).PressKey(context.Player, request.IsKeyPressed);
 
         return ValueTask.CompletedTask;
     }
@@ -279,20 +327,20 @@ public sealed partial class MazeService(
 
         if (Place.IsValid(chain.Position) && Place.IsValid(chain.Direction) && ecs.Has<LuaMaze>(context.Player))
         {
-            ecs.Get<LuaMaze>(context.Player).FireChain(chain);
+            ecs.Get<LuaMaze>(context.Player).FireChain(context.Player, chain);
         }
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// The player moves a trap with the mouse. The trap follows, and nobody else in the maze is told.
+    /// The player moves a trap with the mouse. The trap follows; the others see where it hits.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTrapPosUpdateRequest request)
     {
         if (Place.IsValid(request.Position) && ecs.Has<LuaMaze>(context.Player))
         {
-            ecs.Get<LuaMaze>(context.Player).MoveTrap(request.Position);
+            ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position);
         }
 
         return ValueTask.CompletedTask;
@@ -352,8 +400,8 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// Stepping out of a portal that waits for the whole party. Nothing waits while every player has a
-    /// maze of their own.
+    /// Stepping out of a portal that waits for the whole party. Nothing waits here: each member of a party takes a portal
+    /// alone.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, WorldWarpOutRequest request)
     {
@@ -527,7 +575,7 @@ public sealed partial class MazeService(
             Interaction = maze.Progress.UseInteraction(interaction)
         });
 
-        await maze.CollectSoulObjectAsync(request.Box);
+        await maze.CollectSoulObjectAsync(context.Player, request.Box);
 
         await maze.State.OnInteractionObject(request.Box, maze);
     }
@@ -581,8 +629,8 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// The motion of using an object is shown to the others. Nobody shares this maze, and the client
-    /// asks to use the object itself when the motion is over.
+    /// The motion of using an object is shown to the others. It is not shown yet, and the client asks to use the object
+    /// itself when the motion is over.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeInteractionMotionRequest request)
     {
@@ -599,7 +647,8 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// Nobody calls a player into a maze of one.
+    /// The call of a party into a maze is made in a district (<c>PartyMazeEntry</c> of the district server); in a maze
+    /// nobody is asked.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeEnterPartyAnswerRequest request)
     {
@@ -610,7 +659,7 @@ public sealed partial class MazeService(
     {
         if (ecs.Has<LuaMaze>(context.Player))
         {
-            await ecs.Get<LuaMaze>(context.Player).UpdateCutsceneAsync(request.Play, request.Name);
+            await ecs.Get<LuaMaze>(context.Player).UpdateCutsceneAsync(context.Player, request.Play, request.Name);
         }
     }
 
@@ -726,6 +775,9 @@ public sealed partial class MazeService(
             .InsertAsync(cache, WorldManager.ReservationLifetime);
 
         session.Send(new WorldEnterResponse { Map = enter });
+
+        // The player is on the way out: the maze goes on for the rest of the party, and the last one out ends it.
+        await instances.LeaveAsync(context.Player);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeEventSpawnBoxRequest request)

@@ -17,13 +17,13 @@ public sealed class MazeDirectory(IConnectionMultiplexer redis)
     private static string RecordPrefix { get; } = typeof(MazeCache).FullName + ":";
 
     /// <summary>
-    /// The server with the fewest players whose record is still there: its host and port, or nothing.
+    /// The server with the fewest players whose record is still there: its host, its port and its identifier, or nothing.
     /// </summary>
     private static RedisScript PickLeastBusy { get; } = new("""
         for _, member in ipairs(redis.call('ZRANGE', KEYS[1], 0, -1)) do
             local address = redis.call('HMGET', ARGV[1] .. member, 'Host', 'Port')
             if address[1] then
-                return address
+                return { address[1], address[2], member }
             end
             redis.call('ZREM', KEYS[1], member)
         end
@@ -44,15 +44,25 @@ public sealed class MazeDirectory(IConnectionMultiplexer redis)
 
     public async Task<(string Host, short Port)?> PickAsync(short gate)
     {
+        return await PickServerAsync(gate) is { } server ? (server.Host, server.Port) : null;
+    }
+
+    /// <summary>
+    /// The server with the fewest players and its identifier, which names its record: a party keeps its maze on it.
+    /// </summary>
+    public async Task<(Guid Server, string Host, short Port)?> PickServerAsync(short gate)
+    {
         var result = await PickLeastBusy.EvaluateAsync(redis, [Key(gate)], [RecordPrefix]);
 
-        if (result.IsNull || (RedisResult[]?)result is not [var hostValue, var portValue])
+        if (result.IsNull || (RedisResult[]?)result is not [var hostValue, var portValue, var memberValue])
         {
             return null;
         }
 
-        return short.TryParse((string?)portValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var port) && (string?)hostValue is { } host
-            ? (host, port)
+        return short.TryParse((string?)portValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var port) &&
+               (string?)hostValue is { } host &&
+               Guid.TryParse((string?)memberValue, CultureInfo.InvariantCulture, out var server)
+            ? (server, host, port)
             : null;
     }
 

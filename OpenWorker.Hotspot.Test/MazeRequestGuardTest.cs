@@ -63,6 +63,7 @@ public sealed class MazeRequestGuardTest
             Options.Create(new GateOptions { Id = 1 }),
             TestMazes.Quests(world),
             null!,
+            null!,
             NullLogger<MazeService>.Instance);
     }
 

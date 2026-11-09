@@ -15,12 +15,36 @@ public sealed partial class KillRewards(ExperienceService experience, DropServic
 {
     public void OnKilled(Entity player, int monster, Vector3 position)
     {
-        var given = experience.GiveForMonster(player, monster);
+        OnKilled(player, [player], monster, position);
+    }
 
-        LogKilled(logger, monster, given);
+    /// <summary>
+    /// A monster of a maze died by the hand of <paramref name="killer"/>. The experience goes to <paramref name="present"/>,
+    /// the members of the party in the maze who are on their feet (<see cref="ExperienceService.GiveForParty"/>), and the
+    /// killer alone when nobody is; what falls on the ground is the killer's.
+    /// </summary>
+    public void OnKilled(Entity killer, IReadOnlyList<Entity> present, int monster, Vector3 position)
+    {
+        IReadOnlyList<Entity> members = present.Count == 0 ? [killer] : present;
+        var given = experience.GiveForParty(members, monster);
+        var killerGot = 0;
 
-        results.AddKill(player, given);
-        drops.DropForKill(player, monster, position);
+        for (var index = 0; index < members.Count; index++)
+        {
+            if (members[index] == killer)
+            {
+                killerGot = given[index];
+            }
+            else
+            {
+                results.AddExperience(members[index], given[index]);
+            }
+        }
+
+        LogKilled(logger, monster, killerGot);
+
+        results.AddKill(killer, killerGot);
+        drops.DropForKill(killer, monster, position);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} killed, {Experience} experience given")]

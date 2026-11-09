@@ -30,4 +30,16 @@ public sealed class MazeReserveCache
     
     [RedisField]
     public required int Jump { get; set; }
+
+    /// <summary>
+    /// The instance the person joins, the one the party shares; empty for a person alone, who gets a maze of their own.
+    /// </summary>
+    [RedisField]
+    public Guid Instance { get; set; }
+
+    /// <summary>
+    /// The party the person enters with, or zero.
+    /// </summary>
+    [RedisField]
+    public int Party { get; set; }
 }

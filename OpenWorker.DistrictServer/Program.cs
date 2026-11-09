@@ -8,6 +8,7 @@ using OpenWorker.DistrictServer.Gameplay.Extensions;
 using OpenWorker.DistrictServer.Server;
 using OpenWorker.DistrictServer.Server.Services;
 using OpenWorker.DistrictServer.Trade;
+using OpenWorker.DistrictServer.Services;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
@@ -55,6 +56,7 @@ await Host
         services.AddServerCommon<ChannelAudience>();
         services.AddSingleton<IPersonPlaceSource, PersonPlaceStore>();
         services.AddTrade();
+        services.AddPartyMazeEntry();
 
         services.AddHotspot(context, EntityComponentService.District);
 

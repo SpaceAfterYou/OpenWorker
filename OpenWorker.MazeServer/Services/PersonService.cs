@@ -1,4 +1,5 @@
 ﻿using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Batch;
 using OpenWorker.Server.Common;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Hotspot.Cache;
@@ -78,6 +79,8 @@ public sealed partial class PersonService(
     SharePointManager sharePoints,
     PrologueService prologue,
     QuestCatalog questCatalog,
+    MazeInstances instances,
+    PartyMazeEvents partyEvents,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -188,6 +191,84 @@ public sealed partial class PersonService(
 
         prologue.Enter(context.Player, person);
 
+        // A party shares the instance its reservation names; a player alone gets one of their own.
+        var instance = mazeReserve.Instance == Guid.Empty ? Guid.NewGuid() : mazeReserve.Instance;
+        var maze = await EnterInstanceAsync(context.Player, instance, mazeReserve.Party, mazeInfo, batch, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
+        {
+            if (maze is not null)
+            {
+                await instances.AbandonAsync(maze, context.Player);
+            }
+
+            return;
+        }
+
+        if (maze is null)
+        {
+            session.Disconnect();
+            return;
+        }
+
+        world.Add(context.Player, maze);
+
+        maze.FollowQuests(questCatalog);
+
+        maze.Creatures.Vitals.Initialize(context.Player);
+        results.Start(context.Player, mazeInfo.Id);
+
+        session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
+
+        session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
+
+        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
+
+        await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
+        await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await sharePoints.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
+        await community.EnterAsync(context.Player);
+    }
+
+    /// <summary>
+    /// Joins the instance where it stands, or opens it when the player is the first to come. A maze whose instance is over
+    /// by the time the player gets in, or that plays another maze, is opened anew.
+    /// </summary>
+    private async ValueTask<LuaMaze?> EnterInstanceAsync(Entity player, Guid instance, int party, MazeInfoRow mazeInfo, VBatchFile batch, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var maze = await instances.GetOrOpenAsync(instance, () => OpenAsync(player, instance, party, mazeInfo, batch, cancellationToken));
+
+            // The player may have left while the maze was opened.
+            if (!world.IsAlive(player))
+            {
+                return maze;
+            }
+
+            // The member who was opening it left before it was open: this one opens it.
+            if (maze is null)
+            {
+                continue;
+            }
+
+            if (maze.Maze != mazeInfo.Id)
+            {
+                instance = Guid.NewGuid();
+                continue;
+            }
+
+            if (maze.Members.Contains(player) || maze.Join(player))
+            {
+                return maze;
+            }
+        }
+
+        return null;
+    }
+
+    private async ValueTask<LuaMaze?> OpenAsync(Entity player, Guid instance, int party, MazeInfoRow mazeInfo, VBatchFile batch, CancellationToken cancellationToken)
+    {
         var state = LuaState.Create();
         state.OpenStandardLibraries();
 
@@ -209,7 +290,7 @@ public sealed partial class PersonService(
         // compiled once, off the loop; each maze runs the compiled chunk in its own state.
         try
         {
-            if (!await mazeScripts.RunAsync(state, mazeInfo.Script, context.CancellationToken))
+            if (!await mazeScripts.RunAsync(state, mazeInfo.Script, cancellationToken))
             {
                 LogNoScript(logger, mazeScripts.PathOf(mazeInfo.Script));
             }
@@ -228,29 +309,33 @@ public sealed partial class PersonService(
             LogNoNavigationMesh(logger, mazeInfo.Batch, meshError);
         }
 
+        // Nobody to open the maze for any more: the player left while its script and mesh were read.
+        if (!world.IsAlive(player))
+        {
+            return null;
+        }
+
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
-        var maze = new LuaMaze(state, world, context.Player, creatures, buffManager, questManager, batch, _interactions, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger);
+        var maze = new LuaMaze(state, world, player, creatures, buffManager, questManager, batch, _interactions, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger)
+        {
+            Instance = instance,
+            Party = party
+        };
 
-        world.Add(context.Player, maze);
+        // What happens in the instance is wired once, for every player who is in it then.
+        maze.MonsterKilled += (killer, monster, position) => rewards.OnKilled(killer, PresentOf(maze), monster, position);
+        maze.Completed += () => partyEvents.Completed(maze);
+        creatures.Vitals.HealthChanged += partyEvents.HealthChanged;
 
-        maze.FollowQuests(questCatalog);
+        return maze;
+    }
 
-        creatures.Attach(context.Player);
-        creatures.Vitals.Initialize(context.Player);
-        maze.MonsterKilled += (monster, position) => rewards.OnKilled(context.Player, monster, position);
-        maze.Completed += () => results.Complete(context.Player);
-        results.Start(context.Player, mazeInfo.Id);
-
-        session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
-
-        session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
-
-        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
-
-        await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
-        await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
-        await sharePoints.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
-        await community.EnterAsync(context.Player);
+    /// <summary>
+    /// The players of the maze who stand to share what a kill gives: those still on their feet.
+    /// </summary>
+    private static Entity[] PresentOf(LuaMaze maze)
+    {
+        return maze.Members.Where(maze.Creatures.Vitals.IsAlive).ToArray();
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeServerRequest request)

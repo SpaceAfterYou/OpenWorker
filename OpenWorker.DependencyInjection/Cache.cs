@@ -27,6 +27,7 @@ public static class Cache
             .AddSingleton<IRedisConnectionProvider>(provider => new RedisConnectionProvider(
                 provider.GetRequiredService<IConnectionMultiplexer>()))
             .AddCacheCollection<MazeReserveCache>()
+            .AddCacheCollection<PartyMazeCache>()
             .AddCacheCollection<MazeCache>()
             .AddSingleton<MazeDirectory>()
             .AddCacheCollection<ChannelChatCache>();

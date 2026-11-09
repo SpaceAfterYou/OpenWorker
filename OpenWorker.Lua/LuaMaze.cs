@@ -225,8 +225,49 @@ public partial class LuaMaze(
         public bool Failed { get; set; }
     }
 
-    private readonly List<PlayerFlight> _flights = [];
-    private readonly List<ChainRun> _chains = [];
+    /// <summary>
+    /// A player in the maze and what they have going: the skill being played, its trap, its projectiles and chains.
+    /// </summary>
+    private sealed class Fighter(Entity player)
+    {
+        public Entity Player { get; } = player;
+        public int SkillGeneration { get; set; }
+        public int CurrentSkill { get; set; }
+        public TrapSite? MouseTrap { get; set; }
+        public SkillRun? Playback { get; set; }
+        public ScheduledAction SkillWake { get; set; }
+        public Queue<bool> PressedKeys { get; } = [];
+        public uint ProjectileSession { get; set; }
+        public List<PlayerFlight> Flights { get; } = [];
+        public List<ChainRun> Chains { get; } = [];
+
+        /// <summary>
+        /// What the script hears of the quests of the player, when it listens.
+        /// </summary>
+        public QuestWatch? Quests { get; set; }
+
+        /// <summary>
+        /// The client of the player has loaded the maze and hears what happens in it.
+        /// </summary>
+        public bool Loaded { get; set; }
+
+        /// <summary>
+        /// The player has left the maze: what they set going stops.
+        /// </summary>
+        public bool Gone { get; set; }
+    }
+
+    /// <summary>
+    /// The players of the maze in the order they came: the one who opened it, then those of the party who joined.
+    /// </summary>
+    private readonly List<Fighter> _members = First(creatureManager, player);
+
+    private static List<Fighter> First(LuaCreatureManager creatures, Entity player)
+    {
+        creatures.Attach(player);
+
+        return [new Fighter(player)];
+    }
 
     /// <summary>
     /// How long a townsman takes to turn, after which a script that waits for it hears of it.
@@ -242,22 +283,15 @@ public partial class LuaMaze(
     private const byte CutscenePlaying = 2;
 
     /// <summary>
-    /// A monster of the maze was killed: its id in the table and the place where it fell.
+    /// A monster of the maze was killed: the player who killed it, its id in the table and the place where it fell.
     /// </summary>
-    public event Action<int, System.Numerics.Vector3>? MonsterKilled;
+    public event Action<Entity, int, System.Numerics.Vector3>? MonsterKilled;
 
     /// <summary>
     /// The maze has been won: its last sector is cleared.
     /// </summary>
     public event Action? Completed;
 
-    private int SkillGeneration { get; set; }
-    private int CurrentSkill { get; set; }
-    private TrapSite? MouseTrap { get; set; }
-    private SkillRun? Playback { get; set; }
-    private ScheduledAction SkillWake { get; set; }
-    private Queue<bool> PressedKeys { get; } = [];
-    private uint ProjectileSession { get; set; }
     private bool Started { get; set; }
     private long StartedAt { get; set; }
     private bool Closed { get; set; }
@@ -285,7 +319,6 @@ public partial class LuaMaze(
     /// <summary>
     /// What the quests of the player do, for a script that follows them; none for a script that does not.
     /// </summary>
-    private QuestWatch? _quests;
 
     /// <summary>
     /// The cutscene the player is watching, if any.
@@ -313,11 +346,118 @@ public partial class LuaMaze(
         Clock.Remove(this);
 
         Timers.Clear();
-        _flights.Clear();
-        _chains.Clear();
-        Playback = null;
+
+        foreach (var member in _members)
+        {
+            member.Gone = true;
+            member.Flights.Clear();
+            member.Chains.Clear();
+            member.Playback = null;
+        }
 
         creatureManager.Close();
+    }
+
+    /// <summary>
+    /// The instance the maze is: the players of one party share it, a player alone has one of their own.
+    /// </summary>
+    public Guid Instance { get; init; }
+
+    /// <summary>
+    /// The party whose maze it is, or zero for a player alone.
+    /// </summary>
+    public int Party { get; init; }
+
+    /// <summary>
+    /// How many players are in the maze.
+    /// </summary>
+    public int MemberCount => _members.Count;
+
+    /// <summary>
+    /// The players in the maze, in the order they came.
+    /// </summary>
+    public IReadOnlyList<Entity> Members => creatureManager.Members;
+
+    private Fighter? Find(Entity player)
+    {
+        foreach (var member in _members)
+        {
+            if (member.Player == player)
+            {
+                return member;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// A player of the party comes into the maze where it stands. False when the maze is over or the player is in already.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool Join(Entity player)
+    {
+        if (Closed || Find(player) is not null)
+        {
+            return false;
+        }
+
+        _members.Add(new Fighter(player) { Quests = _questCatalog is { } catalog ? new QuestWatch(Ecs, player, catalog) : null });
+        creatureManager.Attach(player);
+
+        return true;
+    }
+
+    /// <summary>
+    /// A player leaves the maze: what they set going stops, the others see them go, and the monsters forget them. The maze
+    /// goes on for the rest; the last one out ends it. True when the maze has ended.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool Leave(Entity player)
+    {
+        if (Find(player) is not { } member)
+        {
+            return Closed;
+        }
+
+        member.Gone = true;
+        member.SkillWake.Cancel();
+        member.Flights.Clear();
+        member.Chains.Clear();
+        member.Playback = null;
+
+        _members.Remove(member);
+        creatureManager.Detach(player);
+
+        if (_members.Count == 0)
+        {
+            Close();
+
+            return true;
+        }
+
+        if (member.Loaded && Ecs.IsAlive(player) && Ecs.Has<ActorComponent>(player))
+        {
+            creatureManager.Broadcast(new WorldOutInfoPcResponse { Actors = [Ecs.Get<ActorComponent>(player)] });
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The client of the player has loaded the maze. True only the first time, so the player is shown to the others once.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool MarkLoaded(Entity player)
+    {
+        if (Find(player) is not { Loaded: false } member)
+        {
+            return false;
+        }
+
+        member.Loaded = true;
+
+        return true;
     }
 
     /// <summary>
@@ -334,8 +474,13 @@ public partial class LuaMaze(
 
         StepTimers((float)elapsed.TotalSeconds);
         StepQuests();
-        StepFlights();
-        StepChains();
+
+        // A player who leaves during the step is taken out of the list, so the list is walked by index.
+        for (var index = 0; index < _members.Count && !Closed; index++)
+        {
+            StepFlights(_members[index]);
+            StepChains(_members[index]);
+        }
 
         creatureManager.Step(elapsed);
     }
@@ -348,7 +493,12 @@ public partial class LuaMaze(
     /// <summary>
     /// The player has left or the script has failed: nothing of the maze runs any more.
     /// </summary>
-    internal bool IsClosed => Closed;
+    public bool IsClosed => Closed;
+
+    /// <summary>
+    /// The maze of the table this instance plays.
+    /// </summary>
+    public short Maze => info.Id;
 
     /// <summary>
     /// The script called something the server does not do: the call does nothing, and the log says so once for the
@@ -368,7 +518,7 @@ public partial class LuaMaze(
     private const string FailureNotice = "The maze has stopped: its script failed. Leave it through the menu.";
 
     /// <summary>
-    /// The script failed inside a call of the server: the maze ends for the player. Nothing of it runs any more, its
+    /// The script failed inside a call of the server: the maze ends for its players. Nothing of it runs any more, its
     /// requests are refused as those of a player who is in no maze, the player is told, and the way out of the maze
     /// stays open.
     /// </summary>
@@ -381,21 +531,26 @@ public partial class LuaMaze(
 
         Logger.ScriptFailed(exception, function, Script);
 
+        var members = Present();
+
         Close();
 
-        if (!Ecs.IsAlive(player))
+        foreach (var player in members)
         {
-            return;
-        }
+            if (!Ecs.IsAlive(player))
+            {
+                continue;
+            }
 
-        if (Ecs.TryGet(player, out LuaMaze? current) && ReferenceEquals(current, this))
-        {
-            Ecs.Remove<LuaMaze>(player);
-        }
+            if (Ecs.TryGet(player, out LuaMaze? current) && ReferenceEquals(current, this))
+            {
+                Ecs.Remove<LuaMaze>(player);
+            }
 
-        if (Ecs.TryGet(player, out ServerSessionComponent session))
-        {
-            session.Send(new ChatNoticeResponse { Type = 0, Message = FailureNotice, Color = "" });
+            if (Ecs.TryGet(player, out ServerSessionComponent session))
+            {
+                session.Send(new ChatNoticeResponse { Type = 0, Message = FailureNotice, Color = "" });
+            }
         }
     }
 
@@ -504,27 +659,45 @@ public partial class LuaMaze(
     [LuaIgnoreMember]
     public void FollowQuests(QuestCatalog catalog)
     {
-        if (State.Environment["OnUpdateQuest"].TryRead<LuaFunction>(out _))
+        if (!State.Environment["OnUpdateQuest"].TryRead<LuaFunction>(out _))
         {
-            _quests = new QuestWatch(Ecs, player, catalog);
+            return;
+        }
+
+        _questCatalog = catalog;
+
+        foreach (var member in _members)
+        {
+            member.Quests ??= new QuestWatch(Ecs, member.Player, catalog);
         }
     }
 
+    /// <summary>
+    /// The quests of every member are followed, and each change names the member it is of.
+    /// </summary>
+    private QuestCatalog? _questCatalog;
+
     private void StepQuests()
     {
-        if (_quests is null || !Started)
+        if (_questCatalog is null || !Started)
         {
             return;
         }
 
-        var changes = _quests.Look();
-
-        if (changes.Count == 0)
+        foreach (var member in _members)
         {
-            return;
-        }
+            if (member.Quests is not { } quests || !Ecs.IsAlive(member.Player))
+            {
+                continue;
+            }
 
-        Run(TellQuestsAsync((int)Ecs.Get<ActorComponent>(player).Identifier, changes.ToArray()));
+            var changes = quests.Look();
+
+            if (changes.Count > 0)
+            {
+                Run(TellQuestsAsync((int)Ecs.Get<ActorComponent>(member.Player).Identifier, changes.ToArray()));
+            }
+        }
     }
 
     private async ValueTask TellQuestsAsync(int user, (QuestUpdateType Type, int Identifier)[] changes)
@@ -552,7 +725,7 @@ public partial class LuaMaze(
 
         foreach (var box in Batch.EventBox.SpawnsOf(sector).Where(e => e.CreationCondition == CreationConditionType.Immediate && e.Step == kills.Step + 1))
         {
-            creatureManager.SpawnOnce(player, box.Id);
+            creatureManager.SpawnOnce(box.Id);
         }
     }
 
@@ -561,9 +734,9 @@ public partial class LuaMaze(
     /// A new skill interrupts the previous one, along with the attacks it has not reached yet.
     /// </summary>
     [LuaIgnoreMember]
-    public void StartSkill(int skill, SkillPositionValue position)
+    public void StartSkill(Entity player, int skill, SkillPositionValue position)
     {
-        if (!Started)
+        if (!Started || Find(player) is not { } member)
         {
             return;
         }
@@ -571,15 +744,15 @@ public partial class LuaMaze(
         // The script hears of every skill the player uses.
         Run(State.OnActionSkill(skill, this));
 
-        var generation = ++SkillGeneration;
+        var generation = ++member.SkillGeneration;
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
-        CurrentSkill = skill;
+        member.CurrentSkill = skill;
 
         // A trap follows the cursor only while its skill is being played.
-        MouseTrap = null;
-        Playback = null;
-        SkillWake.Cancel();
+        member.MouseTrap = null;
+        member.Playback = null;
+        member.SkillWake.Cancel();
 
         if (actions.GetAnimations(skill, hero) is not { } animations)
         {
@@ -588,25 +761,25 @@ public partial class LuaMaze(
 
         var run = new SkillRun(skill, new SkillPlayback(animations), position, generation, Clock.Time);
 
-        Playback = run;
-        PressedKeys.Clear();
+        member.Playback = run;
+        member.PressedKeys.Clear();
 
-        Play(run);
+        Play(member, run);
     }
 
     /// <summary>
     /// The player holds the attack key or lets it go. What it means depends on the skill that is being played.
     /// </summary>
     [LuaIgnoreMember]
-    public void PressKey(bool pressed)
+    public void PressKey(Entity player, bool pressed)
     {
-        if (Playback is { Playback.IsDone: false } run)
+        if (Find(player) is { Playback: { Playback.IsDone: false } run } member)
         {
-            PressedKeys.Enqueue(pressed);
-            SkillWake.Cancel();
+            member.PressedKeys.Enqueue(pressed);
+            member.SkillWake.Cancel();
 
             // The key cuts the step short now, not at the next tick.
-            Play(run);
+            Play(member, run);
         }
     }
 
@@ -615,7 +788,7 @@ public partial class LuaMaze(
     /// runs when the skill starts, when the key changes and at the tick of the next moment of the skill, so an attack
     /// lands at the first tick at or after its moment.
     /// </summary>
-    private void Play(SkillRun run)
+    private void Play(Fighter member, SkillRun run)
     {
         try
         {
@@ -623,11 +796,11 @@ public partial class LuaMaze(
 
             run.Last = now;
 
-            while (!Closed && run.Generation == SkillGeneration && run.Playback.NextTime is { } next)
+            while (!Closed && !member.Gone && run.Generation == member.SkillGeneration && run.Playback.NextTime is { } next)
             {
-                if (next > now && PressedKeys.Count == 0)
+                if (next > now && member.PressedKeys.Count == 0)
                 {
-                    SkillWake = _schedule.ScheduleAt(run.Began + Wait(next), () => Play(run));
+                    member.SkillWake = _schedule.ScheduleAt(run.Began + Wait(next), () => Play(member, run));
 
                     return;
                 }
@@ -636,24 +809,24 @@ public partial class LuaMaze(
                 {
                     if (hit.Trigger.IsTrap)
                     {
-                        PlaceTrap(run.Skill, hit.Trigger, run.Position);
+                        PlaceTrap(member, run.Skill, hit.Trigger, run.Position);
                     }
                     else
                     {
-                        Run(ApplyHitAsync(run.Skill, hit, run.Position));
+                        Run(ApplyHitAsync(member, run.Skill, hit, run.Position));
                     }
                 }
 
-                while (PressedKeys.TryDequeue(out var pressed))
+                while (member.PressedKeys.TryDequeue(out var pressed))
                 {
                     run.Playback.Press(pressed, now);
                 }
             }
 
             // The skill is over, and a trap that followed the cursor stays where it is.
-            if (run.Generation == SkillGeneration)
+            if (run.Generation == member.SkillGeneration)
             {
-                MouseTrap = null;
+                member.MouseTrap = null;
             }
         }
 
@@ -663,61 +836,61 @@ public partial class LuaMaze(
         }
     }
 
-    private ValueTask ApplyHitAsync(int skill, SkillHit hit, SkillPositionValue position)
+    private ValueTask ApplyHitAsync(Fighter member, int skill, SkillHit hit, SkillPositionValue position)
     {
-        var attacker = Ecs.Get<WorldComponent>(player);
+        var attacker = Ecs.Get<WorldComponent>(member.Player);
         var area = new AttackArea(hit.Trigger, attacker.Position, attacker.Rotation);
         var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
 
-        return ApplyDamageAsync(skill, hit.Trigger, targets, position);
+        return ApplyDamageAsync(member, skill, hit.Trigger, targets, position);
     }
 
     /// <summary>
     /// A trap outlives the skill that placed it: a new skill does not take it away.
     /// </summary>
-    private void PlaceTrap(int skill, AttackTrigger trigger, SkillPositionValue position)
+    private void PlaceTrap(Fighter member, int skill, AttackTrigger trigger, SkillPositionValue position)
     {
         var info = trigger.Projectile!;
-        var attacker = Ecs.Get<WorldComponent>(player);
+        var attacker = Ecs.Get<WorldComponent>(member.Player);
         var (sin, cos) = MathF.SinCos(attacker.Rotation * MathF.PI / 180f);
         var site = new TrapSite(attacker.Position);
 
         if (actions.FollowsMouse(skill))
         {
             // One trap follows the cursor at a time, a second attack of the skill only keeps it company.
-            if (MouseTrap is not null)
+            if (member.MouseTrap is not null)
             {
                 return;
             }
 
-            MouseTrap = site;
+            member.MouseTrap = site;
         }
 
         if (!actions.IsFlownByClient(skill))
         {
-            player.Get<ServerSessionComponent>().Send(new SkillProjectileBroadcastResponse
+            creatureManager.Broadcast(new SkillProjectileBroadcastResponse
             {
-                Owner = Ecs.Get<ActorComponent>(player),
+                Owner = Ecs.Get<ActorComponent>(member.Player),
                 Projectile = default(ProjectileShotValue) with
                 {
                     Skill = skill,
                     Attack = (short)trigger.Id,
                     Position = attacker.Position,
                     Direction = new Vector3(sin, -cos, 0f),
-                    Session = ++ProjectileSession
+                    Session = ++member.ProjectileSession
                 }
             });
         }
 
-        StrikeTrap(skill, trigger, position, site, attacker.Rotation, info.LifeTime);
+        StrikeTrap(member, skill, trigger, position, site, attacker.Rotation, info.LifeTime);
     }
 
     /// <summary>
     /// One hit of a trap. A trap that hits again and again waits for its next hit on the clock, as long as its life lasts.
     /// </summary>
-    private void StrikeTrap(int skill, AttackTrigger trigger, SkillPositionValue position, TrapSite site, float yaw, float left)
+    private void StrikeTrap(Fighter member, int skill, AttackTrigger trigger, SkillPositionValue position, TrapSite site, float yaw, float left)
     {
-        if (Closed)
+        if (Closed || member.Gone)
         {
             return;
         }
@@ -728,35 +901,40 @@ public partial class LuaMaze(
         var area = new AttackArea(trigger, site.Position, yaw);
         var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
 
-        Run(ApplyDamageAsync(skill, trigger, targets, position));
+        Run(ApplyDamageAsync(member, skill, trigger, targets, position));
 
         if (!info.IsContinuous || info.ContinuousTime <= 0f || left <= info.ContinuousTime)
         {
             return;
         }
 
-        _schedule.Schedule(Wait(info.ContinuousTime), () => StrikeTrap(skill, trigger, position, site, yaw, left - info.ContinuousTime));
+        _schedule.Schedule(Wait(info.ContinuousTime), () => StrikeTrap(member, skill, trigger, position, site, yaw, left - info.ContinuousTime));
     }
 
     /// <summary>
     /// The client fires a projectile when its animation gets there, and the server follows it to see whom it hits.
     /// </summary>
     [LuaIgnoreMember]
-    public void FireProjectile(SkillProjectileRequest request)
+    public void FireProjectile(Entity player, SkillProjectileRequest request)
     {
+        if (!Started || Find(player) is not { } member)
+        {
+            return;
+        }
+
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
-        if (!Started || !actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
+        if (!actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
         {
             return;
         }
 
         var flight = ProjectileFlight.Launch(trigger, request.Position, request.Right, request.Yaw, request.Direction, request.Target.Identifier);
-        var session = ++ProjectileSession;
+        var session = ++member.ProjectileSession;
 
         if (!actions.IsFlownByClient(request.Skill))
         {
-            player.Get<ServerSessionComponent>().Send(new SkillProjectileBroadcastResponse
+            creatureManager.Broadcast(new SkillProjectileBroadcastResponse
             {
                 Owner = Ecs.Get<ActorComponent>(player),
                 Projectile = default(ProjectileShotValue) with
@@ -773,16 +951,16 @@ public partial class LuaMaze(
         var position = default(SkillPositionValue) with { Position = request.Position, Angle = request.Yaw };
 
         // It flies with the steps of the maze from now on.
-        _flights.Add(new PlayerFlight(request.Skill, trigger, flight, position, Clock.Time));
+        member.Flights.Add(new PlayerFlight(request.Skill, trigger, flight, position, Clock.Time));
     }
 
     /// <summary>
-    /// The player drags the trap of a skill with the mouse. Nobody else shares this maze to be told about it.
+    /// The player drags the trap of a skill with the mouse. The trap hits where it is; the others see only the hits.
     /// </summary>
     [LuaIgnoreMember]
-    public void MoveTrap(Vector3 place)
+    public void MoveTrap(Entity player, Vector3 place)
     {
-        if (Started && MouseTrap is { } trap)
+        if (Started && Find(player) is { MouseTrap: { } trap })
         {
             trap.Position = place;
         }
@@ -793,22 +971,27 @@ public partial class LuaMaze(
     /// and the client draws it from what it is told: who it holds and when it lets go.
     /// </summary>
     [LuaIgnoreMember]
-    public void FireChain(SkillProjectileValue request)
+    public void FireChain(Entity player, SkillProjectileValue request)
     {
+        if (!Started || Find(player) is not { } member)
+        {
+            return;
+        }
+
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
         // Only the skill that is being played may let a chain go.
-        if (!Started || request.Skill != CurrentSkill || !actions.TryGetChain(request.Skill, hero, request.TriggerIndex, out var trigger))
+        if (request.Skill != member.CurrentSkill || !actions.TryGetChain(request.Skill, hero, request.TriggerIndex, out var trigger))
         {
             return;
         }
 
         var attacker = Ecs.Get<WorldComponent>(player);
         var chain = ChainLightning.Fire(trigger, attacker.Position, attacker.Rotation, creatureManager.GetFlightTargets());
-        var session = ++ProjectileSession;
+        var session = ++member.ProjectileSession;
         var first = chain.Targets.Count > 0 ? new ActorValue(chain.Targets[0], ActorType.Monster) : (ActorValue)(-1);
 
-        player.Get<ServerSessionComponent>().Send(new SkillChainBroadcastResponse
+        creatureManager.Broadcast(new SkillChainBroadcastResponse
         {
             Owner = Ecs.Get<ActorComponent>(player),
             SkillChainPosition = default(SkillChainPosition) with
@@ -824,27 +1007,29 @@ public partial class LuaMaze(
 
         var position = default(SkillPositionValue) with { Position = attacker.Position, Angle = attacker.Rotation };
 
-        _chains.Add(new ChainRun(request.Skill, trigger, chain, session, position, SkillGeneration, Clock.Time));
+        member.Chains.Add(new ChainRun(request.Skill, trigger, chain, session, position, member.SkillGeneration, Clock.Time));
     }
 
     /// <summary>
     /// The chains of the player step with the maze. A chain belongs to the skill that let it go: it lives its time, or
     /// until the player starts another skill.
     /// </summary>
-    private void StepChains()
+    private void StepChains(Fighter member)
     {
-        if (_chains.Count == 0)
+        var chains = member.Chains;
+
+        if (chains.Count == 0)
         {
             return;
         }
 
         var now = Clock.Time;
 
-        for (var index = 0; index < _chains.Count && !Closed; index++)
+        for (var index = 0; index < chains.Count && !Closed && !member.Gone; index++)
         {
-            var run = _chains[index];
+            var run = chains[index];
 
-            if (run.Failed || run.Chain.IsOver || run.Generation != SkillGeneration)
+            if (run.Failed || run.Chain.IsOver || run.Generation != member.SkillGeneration)
             {
                 continue;
             }
@@ -852,7 +1037,7 @@ public partial class LuaMaze(
             try
             {
                 var seconds = (float)Math.Max(0d, (now - run.Last).TotalSeconds);
-                var owner = Ecs.Get<WorldComponent>(player);
+                var owner = Ecs.Get<WorldComponent>(member.Player);
 
                 run.Last = now;
                 run.Hits.Clear();
@@ -862,7 +1047,7 @@ public partial class LuaMaze(
 
                 foreach (var change in run.Changes)
                 {
-                    player.Get<ServerSessionComponent>().Send(new SkillChainUpdateTargetResponse
+                    creatureManager.Broadcast(new SkillChainUpdateTargetResponse
                     {
                         Session = run.Session,
                         IsAdd = change.Added,
@@ -872,7 +1057,7 @@ public partial class LuaMaze(
 
                 if (run.Hits.Count > 0)
                 {
-                    Run(StrikeChainAsync(run.Skill, run.Trigger, run.Hits, run.Position));
+                    Run(StrikeChainAsync(member, run.Skill, run.Trigger, run.Hits, run.Position));
                 }
             }
 
@@ -884,13 +1069,13 @@ public partial class LuaMaze(
             }
         }
 
-        _chains.RemoveAll(e => e.Failed || e.Chain.IsOver || e.Generation != SkillGeneration);
+        chains.RemoveAll(e => e.Failed || e.Chain.IsOver || e.Generation != member.SkillGeneration);
     }
 
     /// <summary>
     /// Everyone the chain reaches at one moment is hit together. The links after the first carry a share of the damage.
     /// </summary>
-    private ValueTask StrikeChainAsync(int skill, AttackTrigger trigger, List<ChainHit> hits, SkillPositionValue position)
+    private ValueTask StrikeChainAsync(Fighter member, int skill, AttackTrigger trigger, List<ChainHit> hits, SkillPositionValue position)
     {
         var targets = new List<Entity>();
         var shares = new List<float>();
@@ -904,24 +1089,26 @@ public partial class LuaMaze(
             }
         }
 
-        return ApplyDamageAsync(skill, trigger, [.. targets], position, [.. shares]);
+        return ApplyDamageAsync(member, skill, trigger, [.. targets], position, [.. shares]);
     }
 
     /// <summary>
     /// The projectiles of the player step with the maze; one that has hit what it can or lived its time is gone.
     /// </summary>
-    private void StepFlights()
+    private void StepFlights(Fighter member)
     {
-        if (_flights.Count == 0)
+        var flights = member.Flights;
+
+        if (flights.Count == 0)
         {
             return;
         }
 
         var now = Clock.Time;
 
-        for (var index = 0; index < _flights.Count && !Closed; index++)
+        for (var index = 0; index < flights.Count && !Closed && !member.Gone; index++)
         {
-            var flight = _flights[index];
+            var flight = flights[index];
 
             try
             {
@@ -931,7 +1118,7 @@ public partial class LuaMaze(
 
                 foreach (var explosion in flight.Flight.Advance(seconds, creatureManager.GetFlightTargets()))
                 {
-                    Run(ExplodeAsync(flight.Skill, flight.Trigger, explosion, flight.Position));
+                    Run(ExplodeAsync(member, flight.Skill, flight.Trigger, explosion, flight.Position));
                 }
             }
 
@@ -943,12 +1130,12 @@ public partial class LuaMaze(
             }
         }
 
-        _flights.RemoveAll(static e => e.Failed || e.Flight.IsOver);
+        flights.RemoveAll(static e => e.Failed || e.Flight.IsOver);
     }
 
-    private ValueTask ExplodeAsync(int skill, AttackTrigger trigger, Explosion explosion, SkillPositionValue position)
+    private ValueTask ExplodeAsync(Fighter member, int skill, AttackTrigger trigger, Explosion explosion, SkillPositionValue position)
     {
-        var yaw = Ecs.Get<WorldComponent>(player).Rotation;
+        var yaw = Ecs.Get<WorldComponent>(member.Player).Rotation;
         var area = new AttackArea(trigger, explosion.Position, yaw);
         var targets = trigger.Projectile is { TargetOnly: true }
             ? []
@@ -959,25 +1146,27 @@ public partial class LuaMaze(
             targets = [.. targets, collider];
         }
 
-        return ApplyDamageAsync(skill, trigger, targets, position);
+        return ApplyDamageAsync(member, skill, trigger, targets, position);
     }
 
     /// <param name="shares">The share of the damage each target takes, by their place in the list. Everyone takes all of it without.</param>
-    private async ValueTask ApplyDamageAsync(int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null)
+    private async ValueTask ApplyDamageAsync(Fighter member, int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null)
     {
-        if (targets.Length == 0 || !trigger.AffectsTargets)
+        var player = member.Player;
+
+        // A hit that was on its way when the player left lands on nothing.
+        if (targets.Length == 0 || !trigger.AffectsTargets || member.Gone || !Ecs.IsAlive(player))
         {
             return;
         }
 
-        var session = player.Get<ServerSessionComponent>();
         var attacker = Ecs.Get<WorldComponent>(player);
 
         var attackerStats = combat.GetPlayer(Ecs, player);
         var skillDamage = combat.GetSkill(skill);
-        var hits = targets.Select((target, i) => ApplyDamage(target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
+        var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
 
-        session.Send(new SkillActionBroadcastResponse
+        creatureManager.Broadcast(new SkillActionBroadcastResponse
         {
             SkillDmgValueList = hits,
             SkillAction = default(SkillActionValue) with
@@ -1003,13 +1192,13 @@ public partial class LuaMaze(
         var dead = targets
             .Select((target, i) => (Target: target, Hit: hits[i]))
             .Where(e => Ecs.Get<CreatureComponent>(e.Target).Health == 0)
-            .Select(e => (Removed: RemoveDead(session, e.Target), e.Hit))
+            .Select(e => (Removed: RemoveDead(e.Target), e.Hit))
             .ToArray();
 
         // What the player killed pays out at once; monsters that a script or the end of the maze takes away do not.
         foreach (var ((identifier, _, fell), _) in dead)
         {
-            MonsterKilled?.Invoke(identifier, fell);
+            MonsterKilled?.Invoke(player, identifier, fell);
         }
 
         var kind = actions.GetPassiveType(skill);
@@ -1021,7 +1210,11 @@ public partial class LuaMaze(
                 return;
             }
 
-            await reports.MonsterKilledAsync(player, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)HitResults.Critical) != 0));
+            // The killer may have left while a script ran; the death still counts for the maze.
+            if (Ecs.IsAlive(player))
+            {
+                await reports.MonsterKilledAsync(player, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)HitResults.Critical) != 0));
+            }
 
             await State.OnDie(identifier, place.SpawnBox, this);
         }
@@ -1037,7 +1230,7 @@ public partial class LuaMaze(
         }
     }
 
-    private SkillDmgValue ApplyDamage(Entity target, in CombatStats attacker, in SkillDamage skill, float attackRate, int reaction)
+    private SkillDmgValue ApplyDamage(Entity player, Entity target, in CombatStats attacker, in SkillDamage skill, float attackRate, int reaction)
     {
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
@@ -1133,13 +1326,13 @@ public partial class LuaMaze(
         }
     }
 
-    private (int Identifier, NonPlayableCreatureComponent Place, System.Numerics.Vector3 Position) RemoveDead(ServerSessionComponent session, Entity target)
+    private (int Identifier, NonPlayableCreatureComponent Place, System.Numerics.Vector3 Position) RemoveDead(Entity target)
     {
         var identifier = Ecs.Get<CreatureComponent>(target).Identifier;
         var place = Ecs.Get<NonPlayableCreatureComponent>(target);
         var position = Ecs.Get<WorldComponent>(target).Position;
 
-        session.Send(new MonsterDieResponse { Actor = Ecs.Get<ActorComponent>(target) });
+        creatureManager.Broadcast(new MonsterDieResponse { Actor = Ecs.Get<ActorComponent>(target) });
 
         creatureManager.Remove(target);
 
@@ -1171,13 +1364,19 @@ public partial class LuaMaze(
             return;
         }
 
-        player.Get<ServerSessionComponent>().Send(new MazeClearSectorResponse { Sector = box.Id, Status = true });
+        creatureManager.Broadcast(new MazeClearSectorResponse { Sector = box.Id, Status = true });
 
-        await reports.SectorClearedAsync(player, info.Id, box.Id);
-
-        if (Closed)
+        foreach (var player in Present())
         {
-            return;
+            if (Ecs.IsAlive(player))
+            {
+                await reports.SectorClearedAsync(player, info.Id, box.Id);
+            }
+
+            if (Closed)
+            {
+                return;
+            }
         }
 
         // The way out of the last sector leads out of the maze: the maze is won before the door says so.
@@ -1197,7 +1396,25 @@ public partial class LuaMaze(
     {
         var group = new MazeClearValue(info.Group, (byte)Math.Min(info.Episode + 1, MaxEpisode), [(info.Id, 1)]);
 
-        player.Get<ServerSessionComponent>().Send(new MazeClearInfoResponse { Groups = [group], Person = Ecs.Get<ActorComponent>(player), IsReset = false });
+        foreach (var member in _members)
+        {
+            member.Player.Get<ServerSessionComponent>().Send(new MazeClearInfoResponse { Groups = [group], Person = Ecs.Get<ActorComponent>(member.Player), IsReset = false });
+        }
+    }
+
+    /// <summary>
+    /// The players in the maze now, written out: what is done for each of them may wait, and one may leave meanwhile.
+    /// </summary>
+    private Entity[] Present()
+    {
+        var players = new Entity[_members.Count];
+
+        for (var index = 0; index < players.Length; index++)
+        {
+            players[index] = _members[index].Player;
+        }
+
+        return players;
     }
 
     /// <summary>
@@ -1253,12 +1470,30 @@ public partial class LuaMaze(
 
         Completed?.Invoke();
 
-        await reports.MazeClearedAsync(
-            player,
-            info,
-            (int)Stopwatch.GetElapsedTime(StartedAt).TotalSeconds,
-            (int)Ecs.Get<PersonInfoComponent>(player).Hero,
-            Ecs.TryGet<LevelComponent>(player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel);
+        foreach (var player in Present())
+        {
+            if (Closed)
+            {
+                return;
+            }
+
+            if (!Ecs.IsAlive(player))
+            {
+                continue;
+            }
+
+            await reports.MazeClearedAsync(
+                player,
+                info,
+                (int)Stopwatch.GetElapsedTime(StartedAt).TotalSeconds,
+                (int)Ecs.Get<PersonInfoComponent>(player).Hero,
+                Ecs.TryGet<LevelComponent>(player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel);
+        }
+
+        if (Closed)
+        {
+            return;
+        }
 
         await DestroyAsync(creatureManager.FindMonsters((_, _) => true).Where(e => Ecs.Get<NonPlayableCreatureComponent>(e).Sector == last.Id).ToArray(), false);
     }
@@ -1277,7 +1512,10 @@ public partial class LuaMaze(
         StartedAt = Stopwatch.GetTimestamp();
 
         // The quests the player has when the maze starts are where the script begins to follow them.
-        _quests?.Look();
+        foreach (var member in _members)
+        {
+            member.Quests?.Look();
+        }
 
         // From now on the maze steps with the clock: its timers, the projectiles of the player and the monsters.
         if (!Closed)
@@ -1292,7 +1530,7 @@ public partial class LuaMaze(
     /// The objects of soul metries stand in the maze all the time, but only the ones the person is to find this
     /// time are shown. This is called before the client is told what the maze holds.
     /// </summary>
-    public void HideUnfoundSoulObjects()
+    public void HideUnfoundSoulObjects(Entity player)
     {
         var objects = reports.GetSoulObjects(info.Id);
 
@@ -1313,7 +1551,7 @@ public partial class LuaMaze(
     /// The person clicked an object of the maze: it counts for the quests, and if it is one of a soul metry, the soul
     /// metry finds it.
     /// </summary>
-    public async ValueTask CollectSoulObjectAsync(int box)
+    public async ValueTask CollectSoulObjectAsync(Entity player, int box)
     {
         await reports.ObjectUsedAsync(player, box);
 
@@ -1331,7 +1569,7 @@ public partial class LuaMaze(
     /// <summary>
     /// The cubes of the maze, which the person takes by holding the click for the time the table gives the object.
     /// </summary>
-    public void RegisterCubes()
+    public void RegisterCubes(Entity player)
     {
         foreach (var box in Batch.EventBox.InterActions.Where(e => e.ObjectKey.Contains(CubeKey, StringComparison.OrdinalIgnoreCase)))
         {
@@ -1344,7 +1582,10 @@ public partial class LuaMaze(
     [LuaMember]
     public void AcceptQuest(int episode)
     {
-        questManager.AcceptEpisode(player, episode);
+        foreach (var member in _members)
+        {
+            questManager.AcceptEpisode(member.Player, episode);
+        }
     }
 
     /// <summary>
@@ -1410,11 +1651,13 @@ public partial class LuaMaze(
     public void AllUserWarpInSector(VVector3 position, float rotation)
     {
         var place = new Vector3(position.X, position.Y, position.Z);
-        var world = Ecs.Get<WorldComponent>(player);
 
-        Ecs.Set(player, world with { Position = place, Rotation = rotation });
+        foreach (var member in _members)
+        {
+            Ecs.Set(member.Player, Ecs.Get<WorldComponent>(member.Player) with { Position = place, Rotation = rotation });
+        }
 
-        player.Get<ServerSessionComponent>().Send(new MazeWarpInSectorResponse { Position = place, Rotation = rotation });
+        creatureManager.Broadcast(new MazeWarpInSectorResponse { Position = place, Rotation = rotation });
     }
 
     [LuaMember]
@@ -1422,9 +1665,15 @@ public partial class LuaMaze(
     {
         Logger.CallApplyBuff(actor, buff);
         
-        if (!buffManager.Apply(player, actor, buff))
+        // Everybody in the maze sees the buff on the one it is for.
+        foreach (var member in _members)
         {
-            Logger.UnknownBuff(actor, buff);
+            if (!buffManager.Apply(member.Player, actor, buff))
+            {
+                Logger.UnknownBuff(actor, buff);
+
+                return;
+            }
         }
     }
 
@@ -1451,9 +1700,21 @@ public partial class LuaMaze(
     [LuaMember]
     public void ChatMessage(int user, string message)
     {
-        if (user == 0 || user == (int)Ecs.Get<ActorComponent>(player))
+        var notice = new ChatNoticeResponse { Type = 0, Message = message, Color = "" };
+
+        if (user == 0)
         {
-            player.Get<ServerSessionComponent>().Send(new ChatNoticeResponse { Type = 0, Message = message, Color = "" });
+            creatureManager.Broadcast(notice);
+
+            return;
+        }
+
+        foreach (var member in _members)
+        {
+            if (user == (int)Ecs.Get<ActorComponent>(member.Player))
+            {
+                member.Player.Get<ServerSessionComponent>().Send(notice);
+            }
         }
     }
 
@@ -1466,13 +1727,19 @@ public partial class LuaMaze(
     [LuaMember]
     public void CompleteCondition(int condition)
     {
-        questManager.CompleteCondition(player, condition);
+        foreach (var member in _members)
+        {
+            questManager.CompleteCondition(member.Player, condition);
+        }
     }
 
     [LuaMember]
     public void CompleteQuest(int episode)
     {
-        questManager.CompleteEpisode(player, episode);
+        foreach (var member in _members)
+        {
+            questManager.CompleteEpisode(member.Player, episode);
+        }
     }
 
     /// <summary>
@@ -1489,7 +1756,7 @@ public partial class LuaMaze(
     {
         if (Progress.SetInteraction(box, enable) is { } value)
         {
-            player.Get<ServerSessionComponent>().Send(new MazeInteractionEnableResponse
+            creatureManager.Broadcast(new MazeInteractionEnableResponse
             {
                 Show = value.Show,
                 Enable = value.Enable,
@@ -1511,7 +1778,7 @@ public partial class LuaMaze(
     {
         Logger.CallExecuteEventSpawn(box);
 
-        creatureManager.Create(player, box);
+        creatureManager.Create(box);
     }
 
     /// <summary>
@@ -1564,16 +1831,22 @@ public partial class LuaMaze(
         Logger.IgnoredInitPartyQuest(quest, condition, sector);
     }
 
+    /// <summary>
+    /// Whether anybody in the maze has a quest that counts the condition.
+    /// </summary>
     [LuaMember]
     public bool IsHaveCondition(int conditionId)
     {
-        return questManager.ActiveEpisodeUsesCondition(player, conditionId);
+        return _members.Exists(e => questManager.ActiveEpisodeUsesCondition(e.Player, conditionId));
     }
 
+    /// <summary>
+    /// Whether anybody in the maze has the quest.
+    /// </summary>
     [LuaMember]
     public bool IsHaveQuest(int episodeId)
     {
-        return questManager.HasActiveEpisode(player, episodeId);
+        return _members.Exists(e => questManager.HasActiveEpisode(e.Player, episodeId));
     }
 
     /// <summary>
@@ -1582,7 +1855,7 @@ public partial class LuaMaze(
     [LuaMember]
     public void LuaClientSync(int type, int value, int sector = 0, float time = 0)
     {
-        player.Get<ServerSessionComponent>().Send(new MazeLuaClientSyncResponse { Type = type, Value = value });
+        creatureManager.Broadcast(new MazeLuaClientSyncResponse { Type = type, Value = value });
     }
 
     /// <summary>
@@ -1639,7 +1912,10 @@ public partial class LuaMaze(
     [LuaMember]
     public void RemoveQuestAll()
     {
-        questManager.RemoveAllActiveEpisodes(player);
+        foreach (var member in _members)
+        {
+            questManager.RemoveAllActiveEpisodes(member.Player);
+        }
     }
 
     /// <summary>
@@ -1681,7 +1957,7 @@ public partial class LuaMaze(
         {
             var next = Batch.EventBox.ServerGates.Find(gate)?.NextSector ?? 0;
 
-            player.Get<ServerSessionComponent>().Send(new WorldGateEnableResponse { Gate = gate, Open = open, IsMazeComplete = IsComplete, NextSector = next });
+            creatureManager.Broadcast(new WorldGateEnableResponse { Gate = gate, Open = open, IsMazeComplete = IsComplete, NextSector = next });
 
             WakeSectorBehindGate(gate, open);
         }
@@ -1793,7 +2069,7 @@ public partial class LuaMaze(
     {
         if (Progress.SetPortal(box, flag))
         {
-            player.Get<ServerSessionComponent>().Send(new WorldWarpEnableResponse { Box = box, Open = flag, IsMazeComplete = IsComplete });
+            creatureManager.Broadcast(new WorldWarpEnableResponse { Box = box, Open = flag, IsMazeComplete = IsComplete });
 
             if (flag && Batch.EventBox.Portals.Find(box) is { NextSector: > 0 } portal)
             {
@@ -1903,9 +2179,11 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// The sector the player stands in.
+    /// The sector the first player of the maze stands in.
     /// </summary>
-    private int CurrentSector => Batch.EventBox.Sectors.FirstOrDefault(e => Contains(e, Ecs.Get<WorldComponent>(player).Position))?.Id ?? 0;
+    private int CurrentSector => _members.Count == 0
+        ? 0
+        : Batch.EventBox.Sectors.FirstOrDefault(e => Contains(e, Ecs.Get<WorldComponent>(_members[0].Player).Position))?.Id ?? 0;
 
     private static bool Contains(SectorBox box, Vector3 position)
     {
@@ -1926,8 +2204,7 @@ public partial class LuaMaze(
     /// <param name="scripts">Whether the script hears of each death.</param>
     private async ValueTask DestroyAsync(Entity[] targets, bool scripts)
     {
-        var session = player.Get<ServerSessionComponent>();
-        var dead = targets.Where(Ecs.IsAlive).Select(target => RemoveDead(session, target)).ToArray();
+        var dead = targets.Where(Ecs.IsAlive).Select(RemoveDead).ToArray();
 
         foreach (var (identifier, place, _) in dead)
         {
@@ -1977,9 +2254,9 @@ public partial class LuaMaze(
     /// hears when it is over.
     /// </summary>
     [LuaIgnoreMember]
-    public async ValueTask UpdateCutsceneAsync(bool play, string name)
+    public async ValueTask UpdateCutsceneAsync(Entity player, bool play, string name)
     {
-        if (!Started)
+        if (!Started || Find(player) is null)
         {
             return;
         }
@@ -2021,11 +2298,11 @@ public partial class LuaMaze(
 
         SwitchNpcs[npc] = status;
 
-        player.Get<ServerSessionComponent>().Send(new MazeSwitchNpcStatusResponse { Npc = npc, Status = status ? (byte)1 : (byte)0 });
+        creatureManager.Broadcast(new MazeSwitchNpcStatusResponse { Npc = npc, Status = status ? (byte)1 : (byte)0 });
     }
 
     private void ShowTimer(int value, float time, float next)
     {
-        player.Get<ServerSessionComponent>().Send(new MazeTimerResponse { Value = value, Time = time, Next = next });
+        creatureManager.Broadcast(new MazeTimerResponse { Value = value, Time = time, Next = next });
     }
 }

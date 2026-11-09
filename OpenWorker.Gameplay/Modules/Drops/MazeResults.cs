@@ -45,6 +45,17 @@ public sealed class MazeResults(World world, MazeKeyRewards? keys = null, League
         }
     }
 
+    /// <summary>
+    /// Experience the player got from a kill of another member of the party.
+    /// </summary>
+    public void AddExperience(Entity player, int experience)
+    {
+        if (_tallies.TryGetValue(player, out var tally))
+        {
+            tally.Experience += experience;
+        }
+    }
+
     public void AddGold(Entity player, int gold)
     {
         if (_tallies.TryGetValue(player, out var tally))
@@ -65,6 +76,15 @@ public sealed class MazeResults(World world, MazeKeyRewards? keys = null, League
     /// The maze is finished: shows the player how it went. Only once for a maze.
     /// </summary>
     public void Complete(Entity player)
+    {
+        Complete(player, [player]);
+    }
+
+    /// <summary>
+    /// The maze of a party is finished: shows the player how it went, and every member who finished it with them in the
+    /// list of the window, in the order they came. Only once for a maze.
+    /// </summary>
+    public void Complete(Entity player, IReadOnlyList<Entity> party)
     {
         if (!_tallies.Remove(player, out var tally) || !world.Has<ServerSessionComponent>(player))
         {
@@ -91,13 +111,22 @@ public sealed class MazeResults(World world, MazeKeyRewards? keys = null, League
             CashItem = offer?.Item ?? 0
         });
 
-        session.Send(new MazeRewardPartyInfoResponse
+        var members = new List<MazeRewardPartyMember>(party.Count);
+
+        foreach (var member in party)
         {
-            Members =
-            [
-                new MazeRewardPartyMember(1, BestRank, world.Get<ActorComponent>(player).Identifier, world.Get<PersonInfoComponent>(player).Name, 0)
-            ]
-        });
+            if (world.IsAlive(member) && world.Has<PersonInfoComponent>(member))
+            {
+                members.Add(new MazeRewardPartyMember(
+                    (byte)(members.Count + 1),
+                    BestRank,
+                    world.Get<ActorComponent>(member).Identifier,
+                    world.Get<PersonInfoComponent>(member).Name,
+                    0));
+            }
+        }
+
+        session.Send(new MazeRewardPartyInfoResponse { Members = members });
     }
 
     public ValueTask OnSessionClosedAsync(Entity player)

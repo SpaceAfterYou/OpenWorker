@@ -52,7 +52,8 @@ public sealed class PartyMatching(
     CommunityNetwork network,
     PartyNotifier parties,
     IConnectionMultiplexer redis,
-    TimeProvider time
+    TimeProvider time,
+    IEnumerable<IPartyMatchListener>? matched = null
 ) :
     IPartyClock,
     ICommunityListener
@@ -310,9 +311,19 @@ public sealed class PartyMatching(
             .Select(e => e.Card)
             .ToArray();
 
-        if (cards.Length < PartyRules.MinMembers || await parties.CreateAsync(cards, PartyType.Auto) == 0)
+        var party = cards.Length < PartyRules.MinMembers ? 0 : await parties.CreateAsync(cards, PartyType.Auto);
+
+        if (party == 0)
         {
             await network.SendAsync(group.Persons, new PartyMatchingExitResponse { Character = 0, Reason = PartyMatchingExit.Check });
+
+            return;
+        }
+
+        // The party goes into the maze it was made for.
+        foreach (var listener in matched ?? [])
+        {
+            await listener.OnMatchedAsync(party, group.Maze, cards.Select(e => e.Person).ToArray());
         }
     }
 
