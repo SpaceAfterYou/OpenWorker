@@ -157,7 +157,8 @@ flowchart TB
   game reads it and its meaning is known, and keeps `Field` and its place otherwise; to name one, change the definition and run
   the generator (`dotnet run --project OpenWorker.SourceGenerator.ResourceStructures`); `ResourceRowsTest` fails on a row that
   differs from what it writes. What a row gives beyond its columns is a partial struct in `OpenWorker.Res/Members`. The tables
-  only the server has (`OpenWorker.Res/ServerRows`) are written by hand. Code on the loop never walks a table to find a row: the
+  only the server has (`OpenWorker.Res/ServerRows`) are written by hand; one marked `Server = true` is the server's own version
+  of a client table of the same name and is read from `res-server/` instead (see Settings). Code on the loop never walks a table to find a row: the
   owner of a table makes a `RowIndex<TKey, TRow>` of it once (`rows.IndexBy(e => e.Id)`), which keeps the first row of a key as a
   search from the top did, and a key the table lacks is `false` or the empty row, which the handler answers.
 - **World loop.** `WorldLoop` is a `SynchronizationContext` with one thread. Every packet handler,
@@ -475,6 +476,12 @@ or wrong setting stops the server with a message that names the key. A setting w
   changes of the players are written (see Database). `Maximum Pool Size` in `ConnectionStrings:Postgres` is the size of
   the pool of connections of a server: 16 for the gate, a district and the maze, 8 for auth, 4 for the relay and the
   content loader in their `appsettings.json`.
+- **Table folders.** The client tables are read from `res/` in the working directory, the tables only the server has
+  under names of their own (`tb_Drop`, `tb_Monster_EXP`, ...) from the same folder, where the operator copies them, and the
+  server's own versions of client tables (`[BinaryResourceTable(..., Server = true)]`, today the chances of an upgrade in
+  `tb_Reinforce`) from `res-server/` next to it. Every server-only table is optional: without it the server starts and the
+  feature it serves goes without (no drops, every upgrade refused). A container mounts the server tables at
+  `/app/res-server`.
 - `Rewards:ExpRate` and `Rewards:DropRate` of the district and the maze multiply the experience of a kill and the
   chances of a drop; 1 unless set, never negative.
 - `Attendance:ResetHour` and `DailyMission:ResetHour` are optional (the hour the game day starts at); the rules of the
