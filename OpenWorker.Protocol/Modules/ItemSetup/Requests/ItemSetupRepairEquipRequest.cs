@@ -13,7 +13,7 @@ public readonly partial struct ItemSetupRepairEquipRequest : IRequestHotspotMess
     private const GroupOpcode Group = GroupOpcode.ItemSetup;
     private const ItemSetupOpcode Command = ItemSetupOpcode.RepairEquip;
 
-    public int Npc { get; }
+    public int Npc { get; init; }
     
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }

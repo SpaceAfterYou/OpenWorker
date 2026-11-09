@@ -12,8 +12,8 @@ public readonly partial struct ItemRow(BinaryReader reader)
     public int Id { get; } = reader.ReadInt32();
     public int Classify { get; } = reader.ReadInt32();
     public byte Field2 { get; } = reader.ReadByte();
-    public byte Field3 { get; } = reader.ReadByte();
-    public short Field4 { get; } = reader.ReadInt16();
+    public byte Rank { get; } = reader.ReadByte();
+    public short Level { get; } = reader.ReadInt16();
     public int Field5 { get; } = reader.ReadInt32();
     public int Price { get; } = reader.ReadInt32();
     public short Stack { get; } = reader.ReadInt16();
