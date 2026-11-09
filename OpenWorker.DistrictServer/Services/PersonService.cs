@@ -46,6 +46,7 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Progress;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
 namespace OpenWorker.DistrictServer.Services;
@@ -73,6 +74,7 @@ public sealed partial class PersonService(
     TimeProvider time,
     AchievementManager achievements,
     SharePointManager sharePoints,
+    NpcCreditManager npcCredit,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -196,6 +198,7 @@ public sealed partial class PersonService(
 
         await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await sharePoints.EnterDistrictAsync(context.Player, person.Id, Location, context.CancellationToken);
+        await npcCredit.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         // Get skill components
         ref readonly var skillPoint = ref ecs.Get<SkillPointComponent>(context.Player);

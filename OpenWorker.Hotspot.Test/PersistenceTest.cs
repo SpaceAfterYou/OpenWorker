@@ -13,6 +13,8 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Npcs;
+using OpenWorker.Gameplay.Modules.Npcs.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress;
@@ -24,6 +26,7 @@ using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Requests;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Persistence;
@@ -99,6 +102,7 @@ public sealed class PersistenceTest
         public World World { get; } = World.Create();
         public WorldLoop Loop { get; } = new(NullLogger<WorldLoop>.Instance);
         public InventoryPersistence Inventories { get; }
+        public InventoryService Items { get; }
         public PersonSkills Skills { get; }
         public PersonStateQuestStore Quests { get; }
         public PersonStateStore States { get; }
@@ -116,12 +120,16 @@ public sealed class PersistenceTest
 
             Inventories = new InventoryPersistence(World, store, new InventoryFactory(catalog, Empty<CreateClothRow>(), new LocalItemSerials()),
                 NullLogger<InventoryPersistence>.Instance, states);
+            Items = new InventoryService(World, catalog, new LocalItemSerials());
             Skills = new PersonSkills(World, states, Empty<CharacterInfoRow>());
             Quests = new PersonStateQuestStore(states);
 
             var snapshots = new PersonSnapshots(
                 World,
-                [new SkillDocumentSource(), QuestManager.Document, AkashicRecordBook.Document, AchievementManager.Document, SharePointManager.Document],
+                [
+                    new SkillDocumentSource(), QuestManager.Document, AkashicRecordBook.Document, AchievementManager.Document,
+                    SharePointManager.Document, NpcCreditManager.Document
+                ],
                 [new PersonPlaceStore(Options.Create(new InstanceOptions { Location = District }))]);
 
             Writer = new PersistenceWriter(store, Loop, snapshots, NullLogger<PersistenceWriter>.Instance);
@@ -149,6 +157,7 @@ public sealed class PersistenceTest
                 Component.GetComponentType(typeof(QuestComponent)),
                 Component.GetComponentType(typeof(AchievementComponent)),
                 Component.GetComponentType(typeof(SharePointComponent)),
+                Component.GetComponentType(typeof(NpcCreditComponent)),
                 Component.GetComponentType(typeof(SkillPointComponent)),
                 Component.GetComponentType(typeof(SkillLearnedComponent)),
                 Component.GetComponentType(typeof(SkillDeckComponent)),
@@ -178,6 +187,12 @@ public sealed class PersistenceTest
             {
                 Person = person,
                 Book = await States.LoadAsync<SharePointBook>(person, PersonStateKind.SharePoints, CancellationToken.None) ?? new SharePointBook()
+            });
+
+            World.Set(player, new NpcCreditComponent
+            {
+                Person = person,
+                Book = await States.LoadAsync<NpcCreditBook>(person, PersonStateKind.NpcCredit, CancellationToken.None) ?? new NpcCreditBook()
             });
 
             return player;
@@ -341,6 +356,76 @@ public sealed class PersistenceTest
             Assert.AreEqual((byte)1, sharePoints.FindGroup(32)!.Step, "the step of the group");
 
             Assert.AreEqual(new Vector3(50, 60, 70), world.Get<WorldComponent>(back).Position, "the place in the district");
+        });
+    }
+
+    [TestMethod]
+    public async Task AnItemMovedToTheBankAndBackAndTheCreditWithNpcsSurviveAFlush()
+    {
+        var (account, person) = await CreatePersonAsync("banker");
+
+        static MoveItemValue Slot(StorageGroup storage, short index) => new() { Storage = storage, Index = index };
+
+        // Into the bank, with credit gathered at a group of NPCs.
+        await using (var first = new Server())
+        {
+            await first.StartAsync();
+
+            var player = await first.EnterAsync(account, person);
+
+            await first.RunAsync(() =>
+            {
+                var inventory = first.World.Get<InventoryComponent>(player).Value!;
+
+                inventory.Place(StorageGroup.Common, 2, new ItemInstance { Serial = 900_201, Item = 710105001, Count = 4 });
+                first.Items.Move(player, Slot(StorageGroup.Common, 2), Slot(StorageGroup.CommonStorage, 5));
+
+                first.World.Get<NpcCreditComponent>(player).Book!.Groups.Add(new NpcCreditEntry { Group = 1001, Grade = 2, Point = 7, DayPoint = 3 });
+                first.World.MarkDirty(player, PersonSections.MiscState);
+            });
+
+            await first.LeaveAsync(player);
+        }
+
+        // Out of the bank again.
+        await using (var second = new Server())
+        {
+            await second.StartAsync();
+
+            var player = await second.EnterAsync(account, person);
+
+            await second.RunAsync(() =>
+            {
+                var inventory = second.World.Get<InventoryComponent>(player).Value!;
+
+                Assert.AreEqual(900_201, inventory.At(StorageGroup.CommonStorage, 5)?.Serial, "the item is in the bank");
+                Assert.IsNull(inventory.At(StorageGroup.Common, 2));
+
+                var credit = second.World.Get<NpcCreditComponent>(player).Book!.Find(1001);
+
+                Assert.AreEqual((byte)2, credit?.Grade, "the credit with the group");
+                Assert.AreEqual(7, credit?.Point);
+
+                second.Items.Move(player, Slot(StorageGroup.CommonStorage, 5), Slot(StorageGroup.Common, 0));
+            });
+
+            Assert.IsTrue(await second.Flush.FlushAsync());
+
+            await second.LeaveAsync(player);
+        }
+
+        await using var third = new Server();
+
+        await third.StartAsync();
+
+        var back = await third.EnterAsync(account, person);
+
+        await third.RunAsync(() =>
+        {
+            var inventory = third.World.Get<InventoryComponent>(back).Value!;
+
+            Assert.AreEqual((short)4, inventory.At(StorageGroup.Common, 0)?.Count, "the item is back in the bag");
+            Assert.IsNull(inventory.At(StorageGroup.CommonStorage, 5), "and no longer in the bank");
         });
     }
 

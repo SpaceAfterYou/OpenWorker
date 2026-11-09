@@ -10,11 +10,11 @@ public readonly partial struct CustomerBenefitRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
     public short Field1 { get; } = reader.ReadInt16();
-    public byte Field2 { get; } = reader.ReadByte();
-    public short Field3 { get; } = reader.ReadInt16();
+    public byte Type { get; } = reader.ReadByte();
+    public short Rate { get; } = reader.ReadInt16();
     public short Field4 { get; } = reader.ReadInt16();
-    public int Field5 { get; } = reader.ReadInt32();
-    public int Field6 { get; } = reader.ReadInt32();
-    public int Field7 { get; } = reader.ReadInt32();
+    public int Item1 { get; } = reader.ReadInt32();
+    public int Item2 { get; } = reader.ReadInt32();
+    public int Item3 { get; } = reader.ReadInt32();
     public int Field8 { get; } = reader.ReadInt32();
 }

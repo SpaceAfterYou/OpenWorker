@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -20,7 +21,7 @@ public sealed class ItemRepairTest
             f.Context,
             new ItemSetupRepairNpcRequest
             {
-                Npc = 1,
+                Npc = f.NpcOffering(NpcFunction.Shop),
                 Target = new StorageSlot { Storage = StorageGroup.AbilityEquip, Slot = (short)AbilityEquipSlot.SoulWeapon }
             });
     }

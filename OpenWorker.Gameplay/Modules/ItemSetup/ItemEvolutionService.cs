@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
@@ -23,7 +24,8 @@ public sealed class ItemEvolutionService(
     InventoryService inventory,
     ReadOnlyCollection<ItemEvolutionRow> evolutions,
     ItemSetupAnswers answers,
-    Random? random = null)
+    Random? random = null,
+    NpcCreditManager? credit = null)
 {
     /// <summary>The item is not there, or the person lacks the material.</summary>
     public const ushort NoItem = 52471;
@@ -49,7 +51,11 @@ public sealed class ItemEvolutionService(
     private readonly RowIndex<int, ItemEvolutionRow> _evolutions = evolutions.IndexBy(e => e.Id);
     private readonly Random _random = random ?? Random.Shared;
 
-    public void Evolve(Entity player, StorageSlot targetSlot)
+    /// <summary>
+    /// Evolves the item at the NPC <paramref name="npc"/>; a try that is paid for, evolved or not, raises the credit with its
+    /// group.
+    /// </summary>
+    public void Evolve(Entity player, StorageSlot targetSlot, ServiceNpc? npc = null)
     {
         const ItemSetupOpcode command = ItemSetupOpcode.Evolution;
 
@@ -93,6 +99,7 @@ public sealed class ItemEvolutionService(
             Charge(player, row, material);
 
             answers.Send(player, new ItemSetupEvolutionResponse { Evolved = 0, Serial = 0 });
+            Raise(player, npc);
             return;
         }
 
@@ -123,6 +130,15 @@ public sealed class ItemEvolutionService(
 
         answers.Send(player, new ItemCreateResponse { List = [InventoryService.ToStorageValue(evolved)] });
         answers.Send(player, new ItemSetupEvolutionResponse { Evolved = 1, Serial = evolved.Serial });
+        Raise(player, npc);
+    }
+
+    private void Raise(Entity player, ServiceNpc? npc)
+    {
+        if (credit is not null && npc is { } at)
+        {
+            credit.Raise(player, at, CreditRaise.Evolution);
+        }
     }
 
     /// <summary>

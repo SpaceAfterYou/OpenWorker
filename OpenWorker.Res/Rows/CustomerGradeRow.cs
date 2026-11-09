@@ -9,16 +9,16 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct CustomerGradeRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public short Field1 { get; } = reader.ReadInt16();
-    public byte Field2 { get; } = reader.ReadByte();
-    public short Field3 { get; } = reader.ReadInt16();
-    public byte Field4 { get; } = reader.ReadByte();
-    public int Field5 { get; } = reader.ReadInt32();
-    public byte Field6 { get; } = reader.ReadByte();
-    public int Field7 { get; } = reader.ReadInt32();
-    public int Field8 { get; } = reader.ReadInt32();
-    public int Field9 { get; } = reader.ReadInt32();
-    public int Field10 { get; } = reader.ReadInt32();
-    public int Field11 { get; } = reader.ReadInt32();
-    public int Field12 { get; } = reader.ReadInt32();
+    public short Group { get; } = reader.ReadInt16();
+    public byte Grade { get; } = reader.ReadByte();
+    public short NeedCredit { get; } = reader.ReadInt16();
+    public byte DayLimit { get; } = reader.ReadByte();
+    public int RewardItem { get; } = reader.ReadInt32();
+    public byte RewardCount { get; } = reader.ReadByte();
+    public int Benefit1 { get; } = reader.ReadInt32();
+    public int Benefit2 { get; } = reader.ReadInt32();
+    public int Benefit3 { get; } = reader.ReadInt32();
+    public int Benefit4 { get; } = reader.ReadInt32();
+    public int Benefit5 { get; } = reader.ReadInt32();
+    public int Benefit6 { get; } = reader.ReadInt32();
 }

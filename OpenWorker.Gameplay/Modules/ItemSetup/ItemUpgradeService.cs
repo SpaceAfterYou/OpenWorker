@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
@@ -30,7 +31,8 @@ public sealed class ItemUpgradeService(
     ReadOnlyCollection<ReinforceChanceRow> chances,
     ItemSetupAnswers answers,
     Random? random = null,
-    QuestManager? quests = null)
+    QuestManager? quests = null,
+    NpcCreditManager? credit = null)
 {
     /// <summary>The item cannot be upgraded further, or with that protection.</summary>
     public const ushort CannotUpgrade = 52201;
@@ -60,7 +62,11 @@ public sealed class ItemUpgradeService(
     private readonly RowIndex<int, ReinforceChanceRow> _chances = chances.IndexBy(e => e.Id);
     private readonly Random _random = random ?? Random.Shared;
 
-    public void Upgrade(Entity player, bool protect, StorageSlot protectionSlot, StorageSlot targetSlot)
+    /// <summary>
+    /// Upgrades the item at the NPC <paramref name="npc"/>: the credit with its group takes a part off the gold and adds to
+    /// the chance, and the try raises that credit.
+    /// </summary>
+    public void Upgrade(Entity player, bool protect, StorageSlot protectionSlot, StorageSlot targetSlot, ServiceNpc? npc = null)
     {
         const ItemSetupOpcode command = ItemSetupOpcode.Upgrade;
 
@@ -90,6 +96,11 @@ public sealed class ItemUpgradeService(
         {
             answers.Refuse(player, command, CannotUpgrade);
             return;
+        }
+
+        if (credit is not null && npc is { } at)
+        {
+            cost = cost with { Gold = (int)credit.Discount(player, at, CreditBenefit.UpgradeMoney, cost.Gold) };
         }
 
         if (inventory.Gold(player) < cost.Gold)
@@ -158,7 +169,7 @@ public sealed class ItemUpgradeService(
         }
 
         var roll = _random.Next(1, Chances + 1);
-        var up = chance.Up[level];
+        var up = chance.Up[level] + (credit is not null && npc is { } near ? credit.UpgradeBonus(player, near) : 0);
         var breaks = chance.Break[level];
         ItemSetupUpgradeResult result;
 
@@ -185,8 +196,13 @@ public sealed class ItemUpgradeService(
 
         answers.Send(player, new ItemSetupUpgradeResponse { Result = result, Item = target.ToValue() });
 
-        // Every try counts for the quests that ask to upgrade the item, whatever came of it.
+        // Every try counts for the quests that ask to upgrade the item, whatever came of it, and raises the credit.
         quests?.OnEvent(player, QuestConditionType.Upgrade, QuestConditionTarget.Item, target.Item);
+
+        if (credit is not null && npc is { } served)
+        {
+            credit.Raise(player, served, CreditRaise.Upgrade);
+        }
     }
 
     private bool HasMaterial(Entity player, int material, short count, int extra, short extraCount)

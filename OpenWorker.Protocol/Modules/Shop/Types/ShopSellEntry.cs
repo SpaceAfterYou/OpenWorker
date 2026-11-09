@@ -3,8 +3,22 @@ using OpenWorker.Hotspot.Modules.Items.Enums;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Types;
 
-public readonly struct ShopSellEntry(BinaryReader reader)
+/// <summary>
+/// A slot of the bags whose whole stack is sold.
+/// </summary>
+public readonly struct ShopSellEntry
 {
-    public StorageGroup Storage { get; } = reader.ReadStorageGroup();
-    public short Slot { get; } = reader.ReadInt16();
+    public ShopSellEntry(StorageGroup storage, short slot)
+    {
+        Storage = storage;
+        Slot = slot;
+    }
+
+    public ShopSellEntry(BinaryReader reader) : this(reader.ReadStorageGroup(), reader.ReadInt16())
+    {
+    }
+
+    public StorageGroup Storage { get; }
+
+    public short Slot { get; }
 }

@@ -6,8 +6,12 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.DistrictServer.Services;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using System.Numerics;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.ItemSetup;
+using OpenWorker.Gameplay.Modules.Npcs;
+using OpenWorker.Gameplay.Modules.Npcs.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
@@ -56,8 +60,29 @@ internal sealed class ItemSetupFixture : IDisposable
         public override int Next(int minValue, int maxValue) => Queued.TryDequeue(out var next) ? next : Roll;
     }
 
+    /// <summary>
+    /// Every NPC of <c>tb_NPC</c> stands where the player stands, under an actor equal to its row: a test names the NPC that
+    /// offers what it asks for (<see cref="NpcOffering"/>) and moves the player to stand far from it.
+    /// </summary>
+    public sealed class TableNpcPlaces(NpcCatalog catalog) : INpcPlaces
+    {
+        public Vector3 Position { get; set; }
+
+        public bool TryFind(Entity player, int actor, out int table, out Vector3 position)
+        {
+            table = actor;
+            position = Position;
+
+            return catalog.Exists(actor);
+        }
+    }
+
     public World World { get; } = World.Create();
     public ItemCatalog Catalog { get; }
+    public NpcCatalog NpcRows { get; }
+    public ReadOnlyCollection<NPCRow> NpcTable { get; }
+    public TableNpcPlaces Places { get; }
+    public ServiceNpcs Npcs { get; }
     public InventoryService Inventory { get; }
     public ReadOnlyCollection<ItemRepairRow> Repairs { get; }
     public FixedRandom Random { get; } = new(1);
@@ -79,6 +104,11 @@ internal sealed class ItemSetupFixture : IDisposable
             ? Load<ReinforceChanceRow>("tb_Reinforce", ServerTablesVariable)
             : new ReadOnlyCollection<ReinforceChanceRow>([]);
 
+        NpcTable = Load<NPCRow>("tb_NPC");
+        NpcRows = new NpcCatalog(NpcTable);
+        Places = new TableNpcPlaces(NpcRows);
+        Npcs = new ServiceNpcs(World, NpcRows, Places);
+
         var serials = new LocalItemSerials();
         var answers = new ItemSetupAnswers(World);
         var places = new CostumeBroachPlaces(Catalog, Load<CostumeSocketRow>("tb_Costume_Socket"));
@@ -99,7 +129,8 @@ internal sealed class ItemSetupFixture : IDisposable
                 ServerTable<BroachComposeThemeRow>("TB_BroachCompose_Theme", withServerTables),
                 ServerTable<BroachComposeItemRow>("TB_BroachData", withServerTables),
                 answers,
-                Random));
+                Random),
+            Npcs);
 
         var factory = new InventoryFactory(Catalog, Load<CreateClothRow>("tb_Create_Cloth"), serials);
 
@@ -108,7 +139,10 @@ internal sealed class ItemSetupFixture : IDisposable
             Component.GetComponentType(typeof(InventoryComponent)),
             Component.GetComponentType(typeof(LevelComponent)),
             Component.GetComponentType(typeof(PersonInfoComponent)),
-            Component.GetComponentType(typeof(CurrencyComponent)));
+            Component.GetComponentType(typeof(CurrencyComponent)),
+            Component.GetComponentType(typeof(WorldComponent)),
+            Component.GetComponentType(typeof(NpcCreditComponent)),
+            Component.GetComponentType(typeof(ShopRepurchaseComponent)));
 
         var person = new PersonPersistent
         {
@@ -129,6 +163,39 @@ internal sealed class ItemSetupFixture : IDisposable
         World.Set(Player, new LevelComponent(1, 0));
         World.Set(Player, new PersonInfoComponent { Name = "Test", Hero = Hero.Haru });
         World.Set(Player, new CurrencyComponent());
+        StandAway(0);
+    }
+
+    /// <summary>
+    /// The actor of an NPC that offers a function (with that id, when one is named) and a second function, as the tests name
+    /// the NPC of a request.
+    /// </summary>
+    public int NpcOffering(NpcFunction function, int functionId = 0, NpcFunction also = NpcFunction.None)
+    {
+        if (function == NpcFunction.None)
+        {
+            return NpcTable[0].Id;
+        }
+
+        foreach (var row in NpcTable)
+        {
+            if (NpcRows.FunctionOf(row.Id, function) is { } id && (functionId == 0 || id == functionId) &&
+                (also == NpcFunction.None || NpcRows.FunctionOf(row.Id, also) is not null))
+            {
+                return row.Id;
+            }
+        }
+
+        Assert.Fail($"No NPC of the tables offers {function} {functionId}");
+        return 0;
+    }
+
+    /// <summary>
+    /// Puts the player that far from every NPC on each axis.
+    /// </summary>
+    public void StandAway(float distance)
+    {
+        World.Set(Player, new WorldComponent { Location = 10003, Position = new Vector3(distance, 0, 0), Rotation = 0, Jump = 0 });
     }
 
     private static ReadOnlyCollection<T> ServerTable<T>(string table, bool load)

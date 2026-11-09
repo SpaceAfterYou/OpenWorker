@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.Npcs;
 using System.Collections.ObjectModel;
 using OpenWorker.DistrictServer.Services;
 using OpenWorker.Gameplay.Modules.ItemSetup;
@@ -38,7 +39,8 @@ public sealed class ItemCraftTest
             new ItemMakeService(f.Inventory, ItemSetupFixture.Load<MakeRow>("tb_Make"), answers),
             new ItemExchangeService(f.Inventory, ItemSetupFixture.Load<ReinforceExchangeRow>("tb_Reinforce_Exchange"), answers),
             new ItemDisassembleService(f.Inventory, results, answers, random),
-            new ItemEvolutionService(f.Inventory, ItemSetupFixture.Load<ItemEvolutionRow>("tb_Item_Evolution"), answers, random));
+            new ItemEvolutionService(f.Inventory, ItemSetupFixture.Load<ItemEvolutionRow>("tb_Item_Evolution"), answers, random),
+            f.Npcs);
     }
 
     private static long Balance(ItemSetupFixture f, ShopCurrency currency) => f.World.Get<CurrencyComponent>(f.Player)[currency];
@@ -81,7 +83,7 @@ public sealed class ItemCraftTest
 
         await handler.OnHandleAsync(f.Context, new ItemSetupDisassembleExRequest
         {
-            Npc = 1,
+            Npc = f.NpcOffering(NpcFunction.None),
             Targets = f.Bag.Items.Where(e => e.Item == row.Id).SelectMany(e => Enumerable.Repeat(ItemSetupFixture.SlotOf(e), e.Count)).ToArray()
         });
 
@@ -103,7 +105,7 @@ public sealed class ItemCraftTest
         f.Give(row.Material, row.MaterialCount * 3);
 
         // Two exchanges' worth of the product.
-        await handler.OnHandleAsync(f.Context, new ItemSetupExchangeRequest { Npc = 1, Index = row.Id, Count = (byte)(row.ProductCount * 2) });
+        await handler.OnHandleAsync(f.Context, new ItemSetupExchangeRequest { Npc = f.NpcOffering(NpcFunction.Exchange, also: (NpcFunction)row.NpcFunction), Index = row.Id, Count = (byte)(row.ProductCount * 2) });
 
         Assert.AreEqual(row.MaterialCount, CountOf(f, row.Material));
         Assert.AreEqual(row.ProductCount * 2, CountOf(f, row.Product));
@@ -133,7 +135,7 @@ public sealed class ItemCraftTest
             f.Give(evolution.Material, evolution.MaterialCount);
         }
 
-        await handler.OnHandleAsync(f.Context, new ItemSetupEvolutionRequest { Npc = 1, Target = ItemSetupFixture.SlotOf(target) });
+        await handler.OnHandleAsync(f.Context, new ItemSetupEvolutionRequest { Npc = f.NpcOffering(NpcFunction.Upgrade), Target = ItemSetupFixture.SlotOf(target) });
 
         Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == target.Serial), "The item gives way to the new one");
 
@@ -163,7 +165,7 @@ public sealed class ItemCraftTest
 
         f.Gold = recipe.Gold * 2L;
 
-        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest { Npc = 1, MakeIndex = recipe.Id, MakeCount = 2 });
+        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest { Npc = f.NpcOffering(NpcFunction.Production, recipe.Group), MakeIndex = recipe.Id, MakeCount = 2 });
 
         Assert.AreEqual(2, CountOf(f, recipe.Product));
         Assert.AreEqual(0, f.Gold);
@@ -187,7 +189,7 @@ public sealed class ItemCraftTest
 
         var items = f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray();
 
-        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest { Npc = 1, MakeIndex = recipe.Id, MakeCount = 1 });
+        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest { Npc = f.NpcOffering(NpcFunction.Production, recipe.Group), MakeIndex = recipe.Id, MakeCount = 1 });
 
         CollectionAssert.AreEqual(items, f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray(), "The bag is as it was");
         Assert.AreEqual(recipe.Gold, f.Gold);

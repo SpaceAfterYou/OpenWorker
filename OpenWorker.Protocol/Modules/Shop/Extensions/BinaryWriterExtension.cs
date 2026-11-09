@@ -3,11 +3,14 @@ using OpenWorker.Hotspot.Modules.Shop.Enums;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Extensions;
 
+/// <summary>
+/// The currency of a price is one byte, as the client reads it after a purchase.
+/// </summary>
 internal static class BinaryWriterExtension
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void Write(this BinaryWriter writer, ShopCurrency value)
     {
-        writer.Write((int)value);
+        writer.Write((byte)value);
     }
 }

@@ -10,7 +10,7 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct NPCRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public short Field1 { get; } = reader.ReadInt16();
+    public short Group { get; } = reader.ReadInt16();
     public byte Field2 { get; } = reader.ReadByte();
     public string Field3 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public int Field4 { get; } = reader.ReadInt32();
@@ -32,13 +32,13 @@ public readonly partial struct NPCRow(BinaryReader reader)
     public short Field20 { get; } = reader.ReadInt16();
     public byte Field21 { get; } = reader.ReadByte();
     public byte Field22 { get; } = reader.ReadByte();
-    public byte Field23 { get; } = reader.ReadByte();
-    public byte Field24 { get; } = reader.ReadByte();
-    public byte Field25 { get; } = reader.ReadByte();
+    public byte FunctionType1 { get; } = reader.ReadByte();
+    public byte FunctionType2 { get; } = reader.ReadByte();
+    public byte FunctionType3 { get; } = reader.ReadByte();
     public byte Field26 { get; } = reader.ReadByte();
-    public short Field27 { get; } = reader.ReadInt16();
-    public short Field28 { get; } = reader.ReadInt16();
-    public short Field29 { get; } = reader.ReadInt16();
+    public short Function1 { get; } = reader.ReadInt16();
+    public short Function2 { get; } = reader.ReadInt16();
+    public short Function3 { get; } = reader.ReadInt16();
     public string Field30 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public byte Field31 { get; } = reader.ReadByte();
     public int Field32 { get; } = reader.ReadInt32();

@@ -9,7 +9,7 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct ReinforceExchangeRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public byte Field1 { get; } = reader.ReadByte();
+    public byte NpcFunction { get; } = reader.ReadByte();
     public int Material { get; } = reader.ReadInt32();
     public byte MaterialCount { get; } = reader.ReadByte();
     public int Product { get; } = reader.ReadInt32();
