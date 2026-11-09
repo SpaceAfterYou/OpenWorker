@@ -36,11 +36,10 @@ the same layout.
 ## The server tables folder
 
 The chances of an upgrade are in a table only the server has, under the same name as a client table (`tb_Reinforce`), so it
-cannot share the folder of the client tables. A row marked `[BinaryResourceTable(..., Server = true)]` is read from
-`res-server/<table>.res` next to `res/` (in the container, `/app/res-server`), which the operator fills with the server
-tables; such a table is optional, and without it the feature it serves refuses its requests. The tables only the server has
-under names of their own (`tb_Drop`, `tb_Monster_EXP`, ...) are still read from `res/` as optional tables; they may move to
-`res-server/` later. `OPENWORKER_TEST_SERVER_RES` points the tests at the same files.
+cannot share the folder of the client tables. Its row is marked
+`[BinaryResourceTable("tb_Reinforce", Server = true)]` and is read from `res-server/` only; the convention for all
+server-only tables is in `ARCHITECTURE.md`, "Table folders". Without the table every upgrade is refused.
+`OPENWORKER_TEST_SERVER_RES` points the tests at the same files.
 
 ## What each request does
 

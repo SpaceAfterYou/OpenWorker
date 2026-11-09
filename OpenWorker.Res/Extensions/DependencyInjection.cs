@@ -23,9 +23,9 @@ public static class DependencyInjection
             var attribute = type.GetCustomAttribute<BinaryResourceTableAttribute>();
             Debug.Assert(attribute is not null);
 
-            var path = Path.Join(attribute.Server ? BinaryResourceTableAttribute.ServerFolder : "res", $"{attribute.Table}.res");
+            var path = attribute.PathIn();
 
-            if ((attribute.Optional || attribute.Server) && !File.Exists(path))
+            if (path is null)
             {
                 var empty = typeof(ReadOnlyCollection<>).MakeGenericType(type);
 

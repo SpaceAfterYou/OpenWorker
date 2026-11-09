@@ -90,10 +90,10 @@ of the client.
 - Ask the user whether a folder with them exists. It contains files such as `tb_Drop.res` and
   `tb_DropRate_Mob.res`.
 - Record it if it exists. Otherwise leave the variable unset; those tests then skip.
-- A server reads them at run time, never from the repository: the tables with names of their own from `res/` (copy them
-  next to the client tables), and the server's own versions of client tables, such as `tb_Reinforce`, from `res-server/`
-  next to `res/` (in a container, mount the folder at `/app/res-server`). Never copy a `.res` file into the repository.
-  Without them the server starts and goes without drops and upgrades.
+- A server reads them at run time, never from the repository: put the folder at `res-server/` next to `res/` (in a
+  container, mount it at `/app/res-server`). Tables with names of their own are also found in `res/`; the server's own
+  versions of client tables, such as `tb_Reinforce`, only in `res-server/`. Never copy a `.res` file into the repository.
+  Without them the server starts and goes without drops, maze key rewards and upgrades (ARCHITECTURE.md, "Table folders").
 
 ## 5. Reference materials
 

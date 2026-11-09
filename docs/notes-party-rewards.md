@@ -51,7 +51,7 @@ What the server does:
 Left: the reward by rank (the base item of the window) is not given; the window still shows none. The rank itself has no
 scoring behind it (`MazeResults.BestRank`).
 
-**Data.** The stand has the client tables only, so it offers nothing. With the server tables in the `res` folder, the
+**Data.** The stand has the client tables only, so it offers nothing. With the server tables in `res-server/` (or `res/`, see `ARCHITECTURE.md`, "Table folders"), the
 rows name boxes that the client copy of `tb_Item_RandomBox` lacks; the server copy of that table has them, in the same
 layout, with items the client knows. Which copy the server should read is for whoever assembles the `res` folder.
 
