@@ -22,7 +22,7 @@ public readonly partial struct ItemClassifyRow(BinaryReader reader)
     public byte Field9 { get; } = reader.ReadByte();
     public byte StorageKind { get; } = reader.ReadByte();
     public byte SlotType { get; } = reader.ReadByte();
-    public byte Field12 { get; } = reader.ReadByte();
+    public byte RepairType { get; } = reader.ReadByte();
     public byte Field13 { get; } = reader.ReadByte();
     public ItemUseType ItemUseType { get; } = (ItemUseType)reader.ReadByte();
     public short Field15 { get; } = reader.ReadInt16();

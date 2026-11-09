@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Persistence;
@@ -25,6 +26,7 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<PlayerStatsService>();
         services.AddSingleton<InventoryService>();
         services.AddSingleton<ItemUseService>();
+        services.AddSingleton<ItemRepairService>();
         services.AddSingleton<InventoryPersistence>();
 
         // The features that give items hand them over here.
