@@ -6,7 +6,6 @@
 
     <ItemGroup>
         <PackageReference Include="Arch" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" />
     </ItemGroup>
 
     <ItemGroup>

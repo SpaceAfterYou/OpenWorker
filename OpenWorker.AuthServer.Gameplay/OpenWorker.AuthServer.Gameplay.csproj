@@ -9,6 +9,7 @@
       <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
       <ProjectReference Include="..\OpenWorker.Infrastructure.Redis\OpenWorker.Infrastructure.Redis.csproj" />
+      <ProjectReference Include="..\OpenWorker.Persistence\OpenWorker.Persistence.csproj" />
     </ItemGroup>
 
 </Project>

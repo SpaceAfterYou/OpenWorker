@@ -1,10 +1,10 @@
 using Arch.Core;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
-using OpenWorker.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Persistence;
 

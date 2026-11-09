@@ -26,6 +26,7 @@ public static class Persistence
             .AddPostgresHealthCheck()
             .AddPostgresMetrics()
             .AddPersistenceBootstrapService()
+            .AddPersistenceStores()
             .AddPooledDbContextFactory<PersistenceContext>((provider, builder) =>
             {
                 var options = provider.GetRequiredService<IOptions<PersistenceOptions>>().Value;

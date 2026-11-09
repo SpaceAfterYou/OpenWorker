@@ -106,9 +106,10 @@ public sealed class PersistenceTest
         public Server()
         {
             var catalog = new ItemCatalog(Empty<ItemRow>(), Empty<ItemClassifyRow>(), Empty<InvenSlotExtendRow>(), Empty<BankSlotExtendRow>());
-            var states = new PersonStateStore(Factory);
+            var store = new PersonStore(Factory);
+            var states = new PersonStateStore(store);
 
-            Inventories = new InventoryPersistence(World, Factory, new InventoryFactory(catalog, Empty<CreateClothRow>(), new LocalItemSerials()),
+            Inventories = new InventoryPersistence(World, store, new InventoryFactory(catalog, Empty<CreateClothRow>(), new LocalItemSerials()),
                 NullLogger<InventoryPersistence>.Instance);
             Skills = new PersonSkills(World, states, Empty<CharacterInfoRow>());
             Quests = new PersonStateQuestStore(states);
@@ -118,8 +119,8 @@ public sealed class PersistenceTest
                 [new SkillDocumentSource(), QuestManager.Document],
                 [new PersonPlaceStore(Options.Create(new InstanceOptions { Location = District }))]);
 
-            Writer = new PersistenceWriter(Factory, Loop, snapshots, NullLogger<PersistenceWriter>.Instance);
-            Flush = new PersistenceFlushService(Loop, snapshots, Writer, new DatabaseItemSerials(Factory),
+            Writer = new PersistenceWriter(store, Loop, snapshots, NullLogger<PersistenceWriter>.Instance);
+            Flush = new PersistenceFlushService(Loop, snapshots, Writer, new DatabaseItemSerials(store),
                 Options.Create(new PersistenceOptions()), new FakeTimeProvider(), NullLogger<PersistenceFlushService>.Instance);
             Close = new PersonFlush(snapshots, Writer);
         }

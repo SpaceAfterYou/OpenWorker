@@ -1,16 +1,16 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
-using OpenWorker.Persistence;
+using OpenWorker.Domain.Stores;
 
 namespace OpenWorker.Gameplay.Modules.State;
 
 /// <summary>
 /// Reads and writes the progress documents of a person (<see cref="PersonStatePersistent"/>). The features read theirs
-/// when the person enters; they are written by the flush of the person (<c>PersistenceFlushService</c>).
+/// when the person enters; they are written by the flush of the person (<c>PersistenceFlushService</c>). The rows are
+/// read and written through <see cref="IPersonStore"/>.
 /// </summary>
-public sealed class PersonStateStore(IDbContextFactory<PersistenceContext> factory)
+public sealed class PersonStateStore(IPersonStore store)
 {
     internal static JsonSerializerOptions Options { get; } = new(JsonSerializerDefaults.General)
     {
@@ -21,13 +21,7 @@ public sealed class PersonStateStore(IDbContextFactory<PersistenceContext> facto
     public async ValueTask<T?> LoadAsync<T>(int person, PersonStateKind kind, CancellationToken cancellationToken)
         where T : class
     {
-        await using var database = await factory
-            .CreateDbContextAsync(cancellationToken);
-
-        var payload = await database.PersonStates
-            .Where(e => e.PersonId == person && e.Kind == kind)
-            .Select(e => e.Payload)
-            .FirstOrDefaultAsync(cancellationToken);
+        var payload = await store.LoadDocumentAsync(person, kind, cancellationToken);
 
         return payload is null ? null : JsonSerializer.Deserialize<T>(payload, Options);
     }
@@ -40,6 +34,6 @@ public sealed class PersonStateStore(IDbContextFactory<PersistenceContext> facto
     {
         var payload = JsonSerializer.Serialize(value, Options);
 
-        await factory.SaveChangesAsync(new PersonChanges { Person = person, Documents = [new PersonDocument(kind, payload)] }, cancellationToken);
+        await store.SaveChangesAsync(new PersonChanges { Person = person, Documents = [new PersonDocument(kind, payload)] }, cancellationToken);
     }
 }

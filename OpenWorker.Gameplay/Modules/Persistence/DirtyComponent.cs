@@ -1,7 +1,7 @@
 using Arch.Core;
 using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
-using OpenWorker.Persistence;
+using OpenWorker.Domain.Stores;
 
 namespace OpenWorker.Gameplay.Modules.Persistence;
 

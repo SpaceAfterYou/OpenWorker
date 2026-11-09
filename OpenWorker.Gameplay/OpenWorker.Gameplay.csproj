@@ -9,7 +9,6 @@
         <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj" />
         <ProjectReference Include="..\OpenWorker.Batch\OpenWorker.Batch.csproj" />
         <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
-        <ProjectReference Include="..\OpenWorker.Persistence\OpenWorker.Persistence.csproj" />
         <ProjectReference Include="..\OpenWorker.Res\OpenWorker.Res.csproj" />
     </ItemGroup>
 
