@@ -44,6 +44,14 @@ public class MazeStepBenchmark
     [Params(0, 100)]
     public int Timers { get; set; }
 
+    /// <summary>
+    /// Whether every monster and the player carry a buff that ticks (the tutorial's, which lasts and acts every half second).
+    /// </summary>
+    [Params(false, true)]
+    public bool Buffs { get; set; }
+
+    private const int TickingBuff = 10000;
+
     private World _world = null!;
     private SimulationClock _clock = null!;
     private LuaMaze _maze = null!;
@@ -86,7 +94,7 @@ public class MazeStepBenchmark
             _world,
             player,
             creatures,
-            new BuffManager(new ReadOnlyCollection<BuffRow>([])),
+            new BuffManager(Buffs ? Load<BuffRow>(tables, "tb_Buff") : new ReadOnlyCollection<BuffRow>([])),
             null!,
             batch,
             new ReadOnlyCollection<InteractionObjectRow>([]).IndexBy(e => e.Id),
@@ -106,6 +114,16 @@ public class MazeStepBenchmark
         while (creatures.FindMonsters((_, _) => true).Length < Monsters)
         {
             creatures.Create(box.Id);
+        }
+
+        if (Buffs)
+        {
+            _maze.Buffs.Give(player, TickingBuff, player);
+
+            foreach (var monster in creatures.FindMonsters((_, _) => true))
+            {
+                _maze.Buffs.Give(monster, TickingBuff, player);
+            }
         }
 
         for (var timer = 0; timer < Timers; timer++)
