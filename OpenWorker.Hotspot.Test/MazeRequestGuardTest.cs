@@ -5,6 +5,7 @@ using OpenWorker.Hotspot.SoulWorker.Network;
 using System.Collections.ObjectModel;
 using Arch.Core;
 using Lua;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -52,7 +53,7 @@ public sealed class MazeRequestGuardTest
 
     private static ServiceHandleContext Context(Entity player) => new(player, CancellationToken.None);
 
-    private static MazeService Service(World world)
+    private static MazeService Service(World world, Hotspot.Handler.HandlerExecutor? errors = null)
     {
         // The handlers under test never reach Redis, the batches or the other server.
         return new MazeService(
@@ -67,7 +68,7 @@ public sealed class MazeRequestGuardTest
             null!,
             null!,
             null!,
-            null!,
+            errors!,
             null!,
             NullLogger<MazeService>.Instance);
     }
@@ -75,7 +76,8 @@ public sealed class MazeRequestGuardTest
     /// <summary>
     /// A maze whose map has no boxes at all, so that every box a client names is unknown.
     /// </summary>
-    private static LuaMaze Maze(World world, Entity player, ILogger<LuaMaze> logger) => TestMazes.Create(world, player, logger);
+    private static LuaMaze Maze(World world, Entity player, ILogger<LuaMaze> logger, string map = TestMazes.EmptyMap) =>
+        TestMazes.Create(world, player, logger, map: map);
 
     [TestMethod]
     public async Task PlayerWhoIsNotInAMazeIsIgnored()
@@ -134,6 +136,78 @@ public sealed class MazeRequestGuardTest
             Assert.AreEqual((byte)GroupOpcode.Maze, content[0]);
             Assert.AreEqual((byte)MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_REQ | 0x80, content[1]);
             Assert.AreEqual(4, content.Length);
+        }
+
+        finally
+        {
+            World.Destroy(world);
+            listener.Stop();
+        }
+    }
+
+    /// <summary>
+    /// A map with one script function box, from (1000, 1000) to (2000, 1500).
+    /// </summary>
+    private const string MapWithAFunctionBox =
+        "<root><Batchs eventtype=\"EventBox\"><VLuaFunctionBox boxtype=\"eEventBoxType_LuaFunction\">" +
+        "<m_ID type=\"0\" value=\"7\" /><m_iGenerateID type=\"0\" value=\"7\" /><iLayerBitmask type=\"4\" value=\"Common\" />" +
+        "<m_vPosTopLeft type=\"7\" value=\"1000,1000,0\" /><m_vPosBottomRight type=\"7\" value=\"2000,1500,500\" />" +
+        "<m_fRotation type=\"2\" value=\"0\" /><m_vSize type=\"7\" value=\"1000,500,500\" />" +
+        "<m_bShowCustomEntity type=\"5\" value=\"TRUE\" /><m_ColorLDR type=\"132\" value=\"0,0,0,255\" />" +
+        "<m_eType type=\"4\" value=\"Party\" /><m_szFunction type=\"12\" value=\"OnNothing\" /><m_iCheckID type=\"0\" value=\"0\" />" +
+        "</VLuaFunctionBox></Batchs><Batchs eventtype=\"EventPoint\"/></root>";
+
+    /// <summary>
+    /// The client names the box it has stepped into, but the server knows where the person stands: a box named from across
+    /// the map does nothing (no script, no answer) and counts against the error budget of the session; at the box the same
+    /// request runs and is answered.
+    /// </summary>
+    [TestMethod]
+    public async Task ABoxNamedFromAfarDoesNothing()
+    {
+        var world = World.Create();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+
+        listener.Start();
+
+        using var client = new TcpClient();
+
+        client.Connect(IPAddress.Loopback, ((IPEndPoint)listener.LocalEndpoint).Port);
+
+        using var server = listener.AcceptTcpClient();
+        using var reader = new BinaryReader(client.GetStream());
+
+        client.ReceiveTimeout = 5000;
+
+        try
+        {
+            var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+            var budget = new Hotspot.Handler.HandlerErrorBudget(time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = 10, Window = TimeSpan.FromMinutes(1) }));
+            var errors = new Hotspot.Handler.HandlerExecutor(new Hotspot.Handler.HandlerTable(new Hotspot.Handler.HandlerTableBuilder(new Hotspot.Handler.HandlerBuilder(), NullLogger<Hotspot.Handler.HandlerTable>.Instance)), new ServiceCollection().BuildServiceProvider(), world, budget, NullLogger<Hotspot.Handler.HandlerExecutor>.Instance);
+            var service = Service(world, errors);
+            var player = world.Create();
+
+            world.Add(player, new ServerSessionComponent(server));
+            world.Add(player, Maze(world, player, NullLogger<LuaMaze>.Instance, MapWithAFunctionBox));
+            world.Add(player, new Gameplay.Messages.Response.Person.WorldComponent { Location = 1, Position = new System.Numerics.Vector3(20000f, 20000f, 0f), Rotation = 0f, Jump = 0 });
+
+            await service.OnHandleAsync(Context(player), new MazeLuaFunctionRequest(Box(7)));
+
+            Assert.AreEqual(1, world.Get<Hotspot.Handler.HandlerErrorsComponent>(player).Count, "The false claim is counted.");
+
+            world.Set(player, world.Get<Gameplay.Messages.Response.Person.WorldComponent>(player) with { Position = new System.Numerics.Vector3(1500f, 1200f, 0f) });
+
+            await service.OnHandleAsync(Context(player), new MazeLuaFunctionRequest(Box(7)));
+
+            // The first frame the client gets is the answer to the request made at the box: the one from afar got none.
+            var header = new MessageHeader(reader);
+            var content = reader.ReadBytes(header.ContentLength);
+
+            MessageEncryption.Exchange(content, header.Version);
+
+            Assert.AreEqual((byte)GroupOpcode.Maze, content[0]);
+            Assert.AreEqual((byte)MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_RES, content[1]);
+            Assert.AreEqual(1, world.Get<Hotspot.Handler.HandlerErrorsComponent>(player).Count, "The request at the box is no error.");
         }
 
         finally
