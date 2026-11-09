@@ -9,9 +9,9 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct LeagueInfoRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public int Field1 { get; } = reader.ReadInt32();
-    public int Field2 { get; } = reader.ReadInt32();
-    public int Field3 { get; } = reader.ReadInt32();
+    public int Level { get; } = reader.ReadInt32();
+    public int Exp { get; } = reader.ReadInt32();
     public int MemberLimit { get; } = reader.ReadInt32();
+    public int Field4 { get; } = reader.ReadInt32();
     public int Field5 { get; } = reader.ReadInt32();
 }

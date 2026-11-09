@@ -15,7 +15,7 @@ public sealed class RowIndexTest
         var bytes = new byte[1024];
 
         BitConverter.TryWriteBytes(bytes, id);
-        BitConverter.TryWriteBytes(bytes.AsSpan(4 * sizeof(int)), rooms);
+        BitConverter.TryWriteBytes(bytes.AsSpan(3 * sizeof(int)), rooms);
 
         return new LeagueInfoRow(new BinaryReader(new MemoryStream(bytes)));
     }

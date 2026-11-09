@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.League;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Channel.Community;
@@ -93,6 +94,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<LeagueNotifier>();
         services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<LeagueNotifier>());
         services.AddSingleton<ICommunityModule>(e => e.GetRequiredService<LeagueNotifier>());
+        services.AddSingleton<LeagueLevels>();
+        services.AddSingleton<ILeagueTreasury, LeagueTreasury>();
+        services.AddSingleton<LeagueGrowth>();
         services.AddSingleton<IMegaphoneSource, FreeMegaphone>();
 
         services.AddSingleton<FriendBook>();

@@ -5,6 +5,7 @@ using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 
@@ -43,8 +44,7 @@ internal sealed partial class PersonPresenceSource(
             actor.Identifier,
             info.Name,
             (byte)info.Hero,
-            // Levels are not earned yet, the character is shown at the one it has everywhere else.
-            PersonModuleDefines.DefaultLevel,
+            world.TryGet<LevelComponent>(player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel,
             place.Location,
             channel,
             IsMaze(place.Location),

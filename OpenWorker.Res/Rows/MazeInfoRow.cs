@@ -14,7 +14,7 @@ public readonly partial struct MazeInfoRow(BinaryReader reader)
     public short Group { get; } = reader.ReadInt16();
     public byte Field3 { get; } = reader.ReadByte();
     public byte Admission { get; } = reader.ReadByte();
-    public short Field5 { get; } = reader.ReadInt16();
+    public short FatiguePoint { get; } = reader.ReadInt16();
     public byte Field6 { get; } = reader.ReadByte();
     public byte Field7 { get; } = reader.ReadByte();
     public byte Field8 { get; } = reader.ReadByte();
