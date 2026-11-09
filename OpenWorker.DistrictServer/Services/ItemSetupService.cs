@@ -6,13 +6,14 @@ using OpenWorker.Hotspot.Modules.ItemSetup.Requests;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The work on items at the NPCs of a city: repairs, sockets, and the tools that restore, unseal or lower a count of
+/// The work on items at the NPCs of a city: repairs, upgrades, sockets, and the tools that restore, unseal or lower a count of
 /// an item. What each request does and what is still missing for the others: <c>docs/notes-item-setup-handlers.md</c>.
 /// </summary>
 public sealed class ItemSetupService(
     ItemRepairService repairs,
     ItemRestoreService restores,
-    ItemSocketService sockets) :
+    ItemSocketService sockets,
+    ItemUpgradeService upgrades) :
     IHotspotHandler<ItemSetupMakeRequest>,
     IHotspotHandler<ItemSetupRepairRequest>,
     IHotspotHandler<ItemSetupRepairNpcRequest>,
@@ -22,7 +23,8 @@ public sealed class ItemSetupService(
     IHotspotHandler<ItemSetupUnsealRequest>,
     IHotspotHandler<ItemSetupUseEffectRequest>,
     IHotspotHandler<ItemSetupSocketActiveRequest>,
-    IHotspotHandler<ItemSetupSocketEquipRequest>
+    IHotspotHandler<ItemSetupSocketEquipRequest>,
+    IHotspotHandler<ItemSetupUpgradeRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupMakeRequest request)
     {
@@ -88,6 +90,13 @@ public sealed class ItemSetupService(
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupSocketEquipRequest request)
     {
         sockets.Equip(context.Player, request.Target, request.Gems);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ItemSetupUpgradeRequest request)
+    {
+        upgrades.Upgrade(context.Player, request.Protect, request.Protection, request.Target);
 
         return ValueTask.CompletedTask;
     }

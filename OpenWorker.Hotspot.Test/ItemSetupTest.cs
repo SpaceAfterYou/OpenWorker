@@ -29,6 +29,66 @@ public sealed class ItemSetupTest
     }
 
     [TestMethod]
+    public async Task UpgradeWithAFixedRollGoesUpOrBreaksAsTheServerTableSays()
+    {
+        using var f = new ItemSetupFixture(withServerTables: true);
+
+        var costs = ItemSetupFixture.Load<ReinforceRow>("tb_Reinforce").GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
+        var chances = ItemSetupFixture.Load<ReinforceChanceRow>("tb_Reinforce", ItemSetupFixture.ServerTablesVariable)
+            .GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
+
+        // An item of the bag that both tables know how to upgrade.
+        var item = ItemSetupFixture.Load<ItemRow>("tb_Item").First(e =>
+            e.Reinforce != 0 && costs.ContainsKey(e.Reinforce) && chances.ContainsKey(e.Reinforce) &&
+            f.Catalog.HomeOf(e.Id) == StorageGroup.Common);
+        var target = f.Give(item.Id, 1);
+
+        // A level at which the item may go up or break.
+        var chance = chances[item.Reinforce];
+        var level = Enumerable.Range(ItemUpgradeService.ProtectedFrom, 5)
+            .First(e => e < costs[item.Reinforce].MaxLevel && chance.Up[e] > 0 && chance.Break[e] > 0);
+        var cost = costs[item.Reinforce].Cost(level)!.Value;
+
+        f.Gold = 100_000_000;
+        f.World.Get<CurrencyComponent>(f.Player)[ShopCurrency.Bp] = 1_000_000;
+        f.World.Get<CurrencyComponent>(f.Player)[ShopCurrency.Ether] = 1_000_000;
+
+        if (cost.Material != 0)
+        {
+            f.Give(cost.Material, cost.MaterialCount * 2);
+        }
+
+        if (cost.ExtraMaterial != 0)
+        {
+            f.Give(cost.ExtraMaterial, cost.ExtraMaterialCount * 2);
+        }
+
+        var request = new ItemSetupUpgradeRequest { Npc = 1, Target = ItemSetupFixture.SlotOf(target) };
+
+        // The highest roll that still goes up.
+        target.Upgrade = (byte)level;
+        f.Random.Roll = chance.Up[level];
+
+        await f.Handler.OnHandleAsync(f.Context, request);
+
+        Assert.AreEqual(level + 1, target.Upgrade);
+        Assert.AreEqual(0, target.Flag);
+        Assert.AreEqual(100_000_000 - cost.Gold, f.Gold, "The gold of the client's table is charged");
+        Assert.AreEqual(1_000_000 - cost.BattlePoint, f.World.Get<CurrencyComponent>(f.Player)[ShopCurrency.Bp]);
+
+        // The lowest roll past it breaks the item.
+        target.Upgrade = (byte)level;
+        f.Random.Roll = chance.Up[level] + 1;
+
+        await f.Handler.OnHandleAsync(f.Context, request);
+
+        Assert.AreEqual(level, target.Upgrade);
+        Assert.AreEqual(ItemRestoreService.BrokenFlag, target.Flag);
+        Assert.AreEqual(100_000_000 - 2 * cost.Gold, f.Gold);
+        Assert.IsTrue(f.Dirty.Sections.HasFlag(PersonSections.Inventory), "The upgraded item is written by the flush");
+    }
+
+    [TestMethod]
     public async Task SocketEquipPutsTheGemInAndTheEntryLoadShowsIt()
     {
         using var f = new ItemSetupFixture();

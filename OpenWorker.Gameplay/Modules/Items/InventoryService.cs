@@ -291,6 +291,11 @@ public sealed class InventoryService(World world, ItemCatalog catalog, IItemSeri
     public long Gold(Entity player) => world.Get<CurrencyComponent>(player).Gold;
 
     /// <summary>
+    /// How much of a currency the person has.
+    /// </summary>
+    public long Balance(Entity player, ShopCurrency currency) => world.Get<CurrencyComponent>(player)[currency];
+
+    /// <summary>
     /// Adds or takes away gold. Taking more than the person has fails.
     /// </summary>
     public bool TryAddGold(Entity player, long amount, MoneyEarnFlow flow = MoneyEarnFlow.Normal)
