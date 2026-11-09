@@ -145,7 +145,7 @@ public sealed class PlayerGauges(World world, CombatTables tables, ReadOnlyColle
         {
             soulClock -= Second;
 
-            var filled = Math.Min(stats.SoulGaugeMax, soul + SoulGauge.RegenerationPerSecond(hero, stats.Level, stats.SoulGaugeMax, soul, stats.SoulGaugeConstant));
+            var filled = Math.Min(stats.SoulGaugeMax, soul + stats.SoulGaugeRegenOf(hero, stats.SoulGaugeMax, soul));
 
             if (filled != soul)
             {
@@ -320,6 +320,37 @@ public sealed class PlayerGauges(World world, CombatTables tables, ReadOnlyColle
 
         Mirror(player, soul, maximum, gauges.Stamina, ability.Stamina.Max);
         Send(player, [new ST_STAT { wStatID = (short)STAT_TYPE.STAT_SG_CUR, fValue = soul }]);
+    }
+
+    /// <summary>
+    /// The sizes of the gauges have changed (gear, a title, a buff): what the player has stays, up to the new size. Returns the
+    /// current values that had to come down, for the player to be told with the new sizes.
+    /// </summary>
+    public IEnumerable<ST_STAT> Resize(Entity player, float soulMax, float staminaMax)
+    {
+        if (!world.TryGet<GaugeComponent>(player, out var gauges) || !gauges.Ready)
+        {
+            return [];
+        }
+
+        var soul = Math.Min(gauges.SoulGauge, soulMax);
+        var stamina = Math.Min(gauges.Stamina, staminaMax);
+        var lowered = new List<ST_STAT>(2);
+
+        if (soul != gauges.SoulGauge)
+        {
+            lowered.Add(new ST_STAT { wStatID = (short)STAT_TYPE.STAT_SG_CUR, fValue = soul });
+        }
+
+        if (stamina != gauges.Stamina)
+        {
+            lowered.Add(new ST_STAT { wStatID = (short)STAT_TYPE.STAT_ST_CUR, fValue = stamina });
+        }
+
+        world.Set(player, gauges with { SoulGauge = soul, Stamina = stamina });
+        Mirror(player, soul, soulMax, stamina, staminaMax);
+
+        return lowered;
     }
 
     /// <summary>

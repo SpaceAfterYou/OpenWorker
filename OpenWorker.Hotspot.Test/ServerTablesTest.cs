@@ -60,7 +60,10 @@ public sealed class ServerTablesTest
             ("tb_Character_Info", typeof(CharacterStartRow)),
             ("tb_Levelup_Point", typeof(LevelSkillPointRow)),
             ("tb_Status", typeof(StatusSoulGaugeRow)),
-            ("tb_Soul_Guage", typeof(SoulGaugeRuleRow))
+            ("tb_Soul_Guage", typeof(SoulGaugeRuleRow)),
+            ("tb_Random_Option", typeof(ItemOptionRollRow)),
+            ("tb_Socket", typeof(SocketChanceRow)),
+            ("tb_Item_Endurance", typeof(ItemEnduranceRow))
         ];
 
         foreach (var (table, row) in tables)

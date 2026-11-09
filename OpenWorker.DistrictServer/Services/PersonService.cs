@@ -183,7 +183,7 @@ public sealed partial class PersonService(
         var actor = ecs.Get<ActorComponent>(context.Player);
 
         session.Send(new GestureSlotLoadResponse { Gestures = ecs.Get<GestureComponent>(context.Player).Collection });
-        stats.Send(context.Player);
+        stats.SendAll(context.Player);
         await helpers.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await boosters.EnterAsync(context.Player, person.Id, BoosterConsumeArea.District, context.CancellationToken);
 

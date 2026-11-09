@@ -18,6 +18,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
+using OpenWorker.Lua.Managers;
 using OpenWorker.Navigation;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.Res.Extensions;
@@ -49,6 +50,7 @@ await Host
         services.AddSingleton<MonsterBehaviorTables>();
         services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<CreatureServices>();
+        services.AddSingleton<IPlayerHealthResize, MazeHealthResize>();
         services.AddSingleton(_ => new MazeScripts());
         services.AddSingleton<SimulationClock>();
         services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());

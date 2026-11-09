@@ -1039,6 +1039,7 @@ public sealed class LuaCreatureManager
         var skill = tables.GetSkill(skillId);
         var hits = new List<SkillDmgValue>();
         var fallen = new List<Entity>();
+        List<Entity>? hurt = null;
 
         foreach (var victim in victims)
         {
@@ -1067,6 +1068,10 @@ public sealed class LuaCreatureManager
             if (left == 0)
             {
                 fallen.Add(victim);
+            }
+            else if (result.Damage > 0)
+            {
+                (hurt ??= []).Add(victim);
             }
         }
 
@@ -1098,6 +1103,12 @@ public sealed class LuaCreatureManager
             }
         });
 
+        // A blow that lands may wear the armour of the player, a fall the weapon and the armour.
+        foreach (var victim in hurt ?? [])
+        {
+            Services?.Wear?.Hit(victim);
+        }
+
         foreach (var victim in fallen)
         {
             Broadcast(new PersonDieResponse
@@ -1108,6 +1119,7 @@ public sealed class LuaCreatureManager
             });
 
             Buffs?.OnDeath(victim);
+            Services?.Wear?.Died(victim);
         }
 
         Buffs?.GiveFromHit(attacker.Entity, trigger, victims);

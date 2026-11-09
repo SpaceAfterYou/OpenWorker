@@ -36,7 +36,8 @@ public sealed class InventoryService(
     IItemSerials serials,
     PlayerStatsService? stats = null,
     CostumeBroachPlaces? broaches = null,
-    ItemArrivals? arrivals = null)
+    ItemArrivals? arrivals = null,
+    ItemOptionRoller? options = null)
 {
     /// <summary>The client has nothing more specific for a refused item request.</summary>
     public const ushort Refused = 52011;
@@ -52,14 +53,14 @@ public sealed class InventoryService(
     }
 
     /// <summary>
-    /// A new item as it comes out of the table: bound the way its type says, with the places for broaches of its kind, not yet
-    /// in any slot.
+    /// A new item as it comes out of the table: bound the way its type says, with the places for broaches of its kind, its
+    /// options rolled and the sockets it opens with, not yet in any slot.
     /// </summary>
     public ItemInstance Create(int item, int count)
     {
         catalog.TryGet(item, out var row);
 
-        return new ItemInstance
+        var instance = new ItemInstance
         {
             Serial = serials.NextSerial(),
             Item = item,
@@ -68,6 +69,10 @@ public sealed class InventoryService(
             Endurance = row.Endurance,
             BroachState = broaches?.StateOf(item) ?? ItemInstance.NoBroaches
         };
+
+        options?.Roll(instance, row, catalog.Classify(item));
+
+        return instance;
     }
 
     #region Giving and taking

@@ -1,3 +1,4 @@
+using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 
@@ -66,12 +67,37 @@ public readonly record struct CombatStats
     /// </summary>
     public float SoulGaugeAbsorbRate { get; init; }
 
+    /// <summary>
+    /// What gear, titles and buffs add to what a second gives the soul gauge.
+    /// </summary>
+    public float SoulGaugeRegenAdded { get; init; }
+
+    /// <summary>
+    /// The share in percent of what the rule of the weapon gives that gear, titles and buffs add to it.
+    /// </summary>
+    public float SoulGaugeRegenShare { get; init; }
+
     public float StaminaMax { get; init; }
 
     /// <summary>
     /// What a second adds to the stamina.
     /// </summary>
     public float StaminaRegen { get; init; }
+
+    /// <summary>
+    /// What a second adds to the soul gauge of the hero at its fill: the rule of its weapon, with what is added to it.
+    /// </summary>
+    public float SoulGaugeRegenOf(Hero hero, float maximum, float current)
+    {
+        var regeneration = SoulGauge.RegenerationPerSecond(hero, Level, maximum, current, SoulGaugeConstant);
+
+        return regeneration + SoulGaugeRegenAdded + regeneration * SoulGaugeRegenShare * 0.01f;
+    }
+
+    /// <summary>
+    /// What a second adds to the soul gauge of the hero when it is full.
+    /// </summary>
+    public float SoulGaugeRegenOf(Hero hero, float maximum) => SoulGaugeRegenOf(hero, maximum, maximum);
 
     /// <summary>
     /// The stats as the client stores them. Zero values are left out, that is what the client expects them to be.

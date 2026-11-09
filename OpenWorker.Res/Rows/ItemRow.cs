@@ -51,7 +51,7 @@ public readonly partial struct ItemRow(BinaryReader reader)
     public int StatValue5 { get; } = reader.ReadInt32();
     public int Option { get; } = reader.ReadInt32();
     public int Socket { get; } = reader.ReadInt32();
-    public int Field42 { get; } = reader.ReadInt32();
+    public int SetItem { get; } = reader.ReadInt32();
     public short Reinforce { get; } = reader.ReadInt16();
     public int Evolution { get; } = reader.ReadInt32();
     public short Disassemble { get; } = reader.ReadInt16();

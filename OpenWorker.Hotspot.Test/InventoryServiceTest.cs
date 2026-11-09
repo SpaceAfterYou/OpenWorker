@@ -11,6 +11,7 @@ using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Requests;
+using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -371,12 +372,24 @@ public sealed class InventoryServiceTest
         Assert.IsTrue(f.Service.TryAddGold(f.Player, -100));
     }
 
+    /// <summary>
+    /// What the worn gear of the player of a fixture adds to its stats.
+    /// </summary>
+    private static StatSheet Gear(Fixture f)
+    {
+        var sheet = new StatSheet();
+
+        new GearStats(f.Catalog).Collect(f.Inventory, sheet);
+
+        return sheet;
+    }
+
     [TestMethod]
     public void WornGearAddsItsAttackToTheStats()
     {
         using var f = new Fixture();
 
-        var before = EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru);
+        var before = Gear(f);
 
         f.Service.TryGive(f.Player, SecondWeapon, 1);
 
@@ -387,10 +400,10 @@ public sealed class InventoryServiceTest
             new MoveItemValue { Storage = StorageGroup.Common, Item = SecondWeapon, Index = slot },
             new MoveItemValue { Storage = StorageGroup.AbilityEquip, Item = Weapon, Index = 0 });
 
-        var after = EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru);
+        var after = Gear(f);
 
-        Assert.AreEqual(1000f, after.PhysicalAttack - before.PhysicalAttack);
-        Assert.AreEqual(0f, after.MagicalAttack - before.MagicalAttack);
+        Assert.AreEqual(1000f, after.Added(STAT_TYPE.STAT_PATK_MAX) - before.Added(STAT_TYPE.STAT_PATK_MAX));
+        Assert.AreEqual(0f, after.Added(STAT_TYPE.STAT_MATK_MAX) - before.Added(STAT_TYPE.STAT_MATK_MAX));
     }
 
     [TestMethod]
@@ -398,11 +411,11 @@ public sealed class InventoryServiceTest
     {
         using var f = new Fixture();
 
-        var before = EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru);
+        var before = Gear(f);
 
         f.Service.TryGive(f.Player, SecondWeapon, 1);
 
-        Assert.AreEqual(before, EquipmentStats.Calculate(f.Inventory, f.Catalog, Hero.Haru));
+        Assert.AreEqual(before.Added(STAT_TYPE.STAT_PATK_MAX), Gear(f).Added(STAT_TYPE.STAT_PATK_MAX));
     }
 
     [TestMethod]

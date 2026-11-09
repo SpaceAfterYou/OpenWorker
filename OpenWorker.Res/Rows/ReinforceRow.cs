@@ -82,14 +82,14 @@ public readonly partial struct ReinforceRow(BinaryReader reader)
     public short ExtraMaterialCount08 { get; } = reader.ReadInt16();
     public short ExtraMaterialCount09 { get; } = reader.ReadInt16();
     public short ExtraMaterialCount10 { get; } = reader.ReadInt16();
-    public float Field74 { get; } = reader.ReadSingle();
-    public float Field75 { get; } = reader.ReadSingle();
-    public float Field76 { get; } = reader.ReadSingle();
-    public float Field77 { get; } = reader.ReadSingle();
-    public float Field78 { get; } = reader.ReadSingle();
-    public float Field79 { get; } = reader.ReadSingle();
-    public float Field80 { get; } = reader.ReadSingle();
-    public float Field81 { get; } = reader.ReadSingle();
-    public float Field82 { get; } = reader.ReadSingle();
-    public float Field83 { get; } = reader.ReadSingle();
+    public float StatRate01 { get; } = reader.ReadSingle();
+    public float StatRate02 { get; } = reader.ReadSingle();
+    public float StatRate03 { get; } = reader.ReadSingle();
+    public float StatRate04 { get; } = reader.ReadSingle();
+    public float StatRate05 { get; } = reader.ReadSingle();
+    public float StatRate06 { get; } = reader.ReadSingle();
+    public float StatRate07 { get; } = reader.ReadSingle();
+    public float StatRate08 { get; } = reader.ReadSingle();
+    public float StatRate09 { get; } = reader.ReadSingle();
+    public float StatRate10 { get; } = reader.ReadSingle();
 }

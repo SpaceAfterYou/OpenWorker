@@ -30,4 +30,26 @@ public readonly partial struct ReinforceRow
             _ => null
         };
     }
+
+    /// <summary>
+    /// The share in percent of the attack and the defence of an item that its upgrade <paramref name="level"/>, from 1 to 10,
+    /// adds; 0 past the levels of the row.
+    /// </summary>
+    public float StatRate(int level)
+    {
+        return level switch
+        {
+            1 => StatRate01,
+            2 => StatRate02,
+            3 => StatRate03,
+            4 => StatRate04,
+            5 => StatRate05,
+            6 => StatRate06,
+            7 => StatRate07,
+            8 => StatRate08,
+            9 => StatRate09,
+            10 => StatRate10,
+            _ => 0f
+        };
+    }
 }

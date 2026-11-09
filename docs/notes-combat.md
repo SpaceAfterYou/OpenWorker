@@ -116,10 +116,10 @@ Server tables read from `res-server/` (optional; a missing one turns its feature
 - Buffs and debuffs of skills (`tb_Buff`): the buff named by the reaction of an attack trigger is not parsed from the action
   files, so no skill applies one; the tutorial's buff 10000 is not in the client's table.
 - Charging, key press, sub input and target change are answered as before (no checks of their own); continuous skill costs.
-- The stats of an item do not change with its upgrade or gems (`docs/notes-item-setup-handlers.md`); stamina and soul gauge of
-  gear, titles and akashic cards are not added.
+- ~~The stats of an item do not change with its upgrade or gems; stamina and soul gauge of gear, titles and akashic cards are
+  not added.~~ Done: `docs/notes-stats.md` (feature/equipment-stats). Akashic cards give no stats in the original either.
 - The positions of 06/45, 06/47 and 06/05 (skills that move the player) are taken as sent, as before.
-- Endurance is not worn.
+- ~~Endurance is not worn.~~ Done: gear wears on blows given, blows taken and falls (`docs/notes-stats.md`, "Endurance").
 
 ## Tests
 
