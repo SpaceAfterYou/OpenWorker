@@ -8,10 +8,10 @@ using OpenWorker.Hotspot.Modules.Helpers.Requests;
 namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
-/// The window of the helpers, in a district and in a maze: the list, its order, the automatic call, and the refusals of
-/// what is not done yet (calling a helper into a maze, items, the orbs of friends).
+/// The window of the helpers, in a district and in a maze: the list, its order, the automatic call, the items helpers wear,
+/// and the refusals of what is not done yet (calling a helper into a maze, the orbs of friends).
 /// </summary>
-public sealed class HelperService(HelperManager manager) :
+public sealed class HelperService(HelperManager manager, HelperGear gear) :
     IHotspotHandler<HelperSummonRequest>,
     IHotspotHandler<HelperSupportInfoRequest>,
     IHotspotHandler<HelperSupportRegisterRequest>,
@@ -65,7 +65,7 @@ public sealed class HelperService(HelperManager manager) :
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, HelperEquipRequest request)
     {
-        manager.RefuseEquip(context.Player, HelperOpcode.Equip);
+        gear.Equip(context.Player, request);
 
         return ValueTask.CompletedTask;
     }

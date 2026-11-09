@@ -24,7 +24,8 @@ public sealed class HelperManager(
     PersonStateStore store,
     HelperCatalog catalog,
     AchievementManager? achievements = null,
-    HelperStats? stats = null)
+    HelperStats? stats = null,
+    HelperGear? gear = null)
 {
     /// <summary>
     /// Helpers are not called, nor sent away, outside a maze: "supporters cannot be summoned in town".
@@ -214,9 +215,14 @@ public sealed class HelperManager(
 
     private HelperValue ToValue(Entity player, HelperEntry entry)
     {
+        if (gear is not null)
+        {
+            return gear.Record(player, entry);
+        }
+
         var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
 
-        // Helpers wear nothing and no orb of a friend yet.
+        // Without the tables of items nothing is worn.
         return new HelperValue
         {
             Helper = entry.Helper,

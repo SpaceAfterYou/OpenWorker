@@ -25,6 +25,14 @@ public sealed class InventoryFactory(
         foreach (var row in rows.OrderBy(e => e.Id))
         {
             var group = (StorageGroup)row.Storage;
+
+            // What a helper wears lies in a storage of its own, and a place that is taken keeps the older item.
+            if (row.Storage == ItemPersistent.HelperStorage)
+            {
+                inventory.LoadOnHelper(row.Slot, ItemInstance.From(row));
+                continue;
+            }
+
             var storage = inventory.Find(group);
 
             if (storage is null || row.Slot < 0 || row.Slot >= storage.Size || storage.Slots[row.Slot] is not null)

@@ -24,6 +24,11 @@ public sealed class HelperCatalog
     public IEnumerable<int> All => _numbers.Keys;
 
     public bool Contains(int helper) => _numbers.ContainsKey(helper);
+
+    /// <summary>
+    /// The number of a helper, which the items it may wear name as their class.
+    /// </summary>
+    public bool TryGetNumber(int helper, out int number) => _numbers.TryGetValue(helper, out number);
 }
 
 /// <summary>
@@ -34,6 +39,25 @@ public sealed class HelperEntry
     public int Helper { get; set; }
 
     public byte Order { get; set; }
+
+    /// <summary>
+    /// The orb of a friend the helper wears, if any.
+    /// </summary>
+    public HelperOrb? Orb { get; set; }
+}
+
+/// <summary>
+/// The orb of a friend on a helper: the friend, the kind of orb, what it adds to the helper and until when it counts.
+/// </summary>
+public sealed class HelperOrb
+{
+    public int Friend { get; set; }
+
+    public byte SupportType { get; set; }
+
+    public float Value { get; set; }
+
+    public DateTimeOffset Until { get; set; }
 }
 
 /// <summary>

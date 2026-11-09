@@ -55,6 +55,8 @@ public static class MiscGameplayExtensions
         services.AddSingleton<HelperCatalog>();
         services.AddSingleton<HelperStats>();
         services.AddSingleton<HelperManager>();
+        services.AddSingleton<HelperGear>();
+        services.TryAddSingleton<ISummonedHelpers, NoSummonedHelpers>();
 
         services.AddSingleton<AttendanceCatalog>();
         services.AddSingleton<AttendanceManager>();

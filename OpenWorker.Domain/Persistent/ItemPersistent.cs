@@ -7,6 +7,12 @@ public sealed class ItemPersistent : BasicPersistent
 {
     public const int OptionCount = 5;
 
+    /// <summary>
+    /// The storage of the items the helpers of the person wear. The slot names the helper and its place: one slot holds one
+    /// item, which the database holds to.
+    /// </summary>
+    public const byte HelperStorage = 105;
+
     public long Id { get; init; }
 
     public int PersonId { get; init; }

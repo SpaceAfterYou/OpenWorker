@@ -146,6 +146,18 @@ public static class ItemStore
                 End();
             }
 
+            // One helper place holds one item (a unique index). The items written here may trade places, so those already
+            // in the storage of helper items step aside to a place of their own first: their old places, turned negative,
+            // are as unique as they were.
+            if (changes.Added.Concat(changes.Changed).Any(e => e.Storage == ItemPersistent.HelperStorage))
+            {
+                sql.Append("UPDATE \"Items\" SET \"Slot\" = -1 - \"Slot\" WHERE \"PersonId\" = ").Append(Add(changes.Person))
+                    .Append(" AND \"Storage\" = ").Append(Add((short)ItemPersistent.HelperStorage))
+                    .Append(" AND \"Slot\" >= 0 AND \"Id\" = ANY(")
+                    .Append(Add(changes.Added.Concat(changes.Changed).Select(e => e.Id).ToArray())).Append(')');
+                End();
+            }
+
             foreach (var item in changes.Added.Concat(changes.Changed))
             {
                 AppendItem(sql, item, Add(changes.Person), Add(now), Add);

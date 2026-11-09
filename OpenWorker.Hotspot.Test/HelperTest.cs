@@ -351,7 +351,7 @@ public sealed class HelperTest
         }
 
         using var world = World.Create();
-        var service = new HelperService(new HelperManager(world, null!, HelperCatalog.From([10105166])));
+        var service = new HelperService(new HelperManager(world, null!, HelperCatalog.From([10105166])), null!);
 
         async Task<ushort> Refusal(bool inMaze, byte summon)
         {
