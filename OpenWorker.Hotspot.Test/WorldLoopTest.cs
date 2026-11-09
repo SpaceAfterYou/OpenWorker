@@ -117,7 +117,8 @@ public sealed class WorldLoopTest
             "OpenWorker.GateServer.Gameplay",
             "OpenWorker.Hotspot",
             "OpenWorker.Lua",
-            "OpenWorker.MazeServer"
+            "OpenWorker.MazeServer",
+            "OpenWorker.Protocol"
         ];
 
         var found = projects

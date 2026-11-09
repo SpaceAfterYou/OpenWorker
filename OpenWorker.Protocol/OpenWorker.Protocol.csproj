@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The protocol of the client: the opcodes, the messages of every group (Modules/<Group>), their attribute and
+      interfaces, the header, the encryption, the frame and its encoder. It knows nothing of the database, Redis or the
+      batch files (the dependency test of OpenWorker.Hotspot.Test holds it to that). The namespaces are those the code had
+      in OpenWorker.Hotspot: only the assembly changed.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <RootNamespace>OpenWorker.Hotspot</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OpenWorker.Domain\OpenWorker.Domain.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Wire\OpenWorker.Wire.csproj"/>
+        <!-- Read and Write of the [WireMessage] structs, from their fields. -->
+        <ProjectReference Include="..\OpenWorker.Wire.SourceGenerators\OpenWorker.Wire.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The world loop builds the encoder it keeps; the tests and the benchmarks build frames and encoders directly. -->
+        <InternalsVisibleTo Include="OpenWorker.Hotspot" />
+        <InternalsVisibleTo Include="OpenWorker.Hotspot.Test" />
+        <InternalsVisibleTo Include="OpenWorker.Benchmarks" />
+    </ItemGroup>
+
+</Project>

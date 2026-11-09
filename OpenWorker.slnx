@@ -50,6 +50,7 @@
   <Project Path="OpenWorker.Lua/OpenWorker.Lua.csproj" />
   <Project Path="OpenWorker.Navigation/OpenWorker.Navigation.csproj" />
   <Project Path="OpenWorker.Persistence/OpenWorker.Persistence.csproj" />
+  <Project Path="OpenWorker.Protocol/OpenWorker.Protocol.csproj" />
   <Project Path="OpenWorker.Res/OpenWorker.Res.csproj" />
   <Project Path="OpenWorker.SourceGenerator.ResourceStructures/OpenWorker.SourceGenerator.ResourceStructures.csproj" />
   <Project Path="OpenWorker.UpdateContent/OpenWorker.UpdateContent.csproj" />
