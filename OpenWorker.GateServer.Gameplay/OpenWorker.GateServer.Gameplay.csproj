@@ -10,7 +10,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\OpenWorker.DependencyInjection\OpenWorker.DependencyInjection.csproj" />
+      <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
       <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj" />
       <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
       <ProjectReference Include="..\OpenWorker.Infrastructure.Redis\OpenWorker.Infrastructure.Redis.csproj" />
