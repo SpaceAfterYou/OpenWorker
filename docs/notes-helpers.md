@@ -347,7 +347,7 @@ for a person without stored helpers comes from a stored procedure that was not r
 | Stats (origin / additional) | done | `HelperStats`: origin at the owner's level; additional from worn items and the orb, empty until they exist |
 | 27/10 equipment | done (district and maze) | — (step 4) |
 | 27/11 update info | done | sent by `HelperGear.ReleaseOrb`: at the release of a helper by any way, and at a maze clear for the called helpers |
-| AI of a follower | done (step 6) | the buffs its skills put on its owner: the call site is ready (`HelperSquad.OwnerSkillUsed`), applying them is `feature/skill-buffs` |
+| AI of a follower | done (step 6) | — |
 | Kills credited to the owner | done (step 6) | — |
 | Release on death / exit / portal / change of server, others' helpers on join and leave | done (step 5) | — |
 | 27/05..09 support | done | the total friend points of the reward row 1 (0 in both tables; no wallet for them) |
@@ -520,14 +520,17 @@ Order matters: 1–3 need no maze work and give the window its real content; 4�
      | Enemies | the enemy rule of origins, the hit bits of a summoned monster row and factions | factions only | approximately: no summoned monster uses the bits here |
      | Rank | rank ≥ 3 does not search followers | same | same |
      | Kills | owner's: drops, experience, quests, title, killer of the death message | owner's: drops, experience, quests, missions, achievements | same |
-     | Buffs of its skills on the owner | applied | call site `OwnerSkillUsed`, not applied | depends on `feature/skill-buffs` |
+     | Buffs of its skills | applied | through the buffs of the maze (`MazeBuffs`): a trigger for its own side gives its buff to the helper, or to the players and helpers its area reaches; a buff-only trigger to the monsters it reaches; a hit's buff to the monsters it hit; the blows it takes carry their buffs to it; a held helper stands still; stats and defence of both sides read with their buffs | same |
    - **Tests**: `HelperAiTest`: follows its owner and is put next to it when too far; beaten down it gets up instead of dying.
    - **Cost on the maze step** (`MazeStepBenchmark`, new parameter `Helpers`: none or three called beside the player;
      BenchmarkDotNet short job): 10 monsters 1.695 → 1.991 µs (24 → 72 B), 10 monsters and 100 timers 8.650 → 8.682 µs,
      100 monsters 13.970 → 14.005 µs, 100 monsters and 100 timers 19.126 → 22.609 µs (the last with an error of ±70 µs of the
      short job). The heaviest case stays near 23 µs a maze, 4.5 ms for 200 mazes, inside the 5 ms of a pass.
-   - **Other scripts on the stand**: `e2e_maze.py` 64 PASS, 0 FAIL (a run while the benchmark loaded the machine gave 60/4 on
-     timing checks; unloaded it passes all); `e2e_party_maze.py` 24 PASS, 0 FAIL.
+   - **Other scripts on the stand** (after the rebase on the merge of the buffs): `e2e_helper.py` 88 PASS, 0 FAIL;
+     `e2e_maze.py` 62 PASS, 2 FAIL, the two projectile checks that fail on `dev` too; `e2e_party_maze.py` 24 PASS, 0 FAIL;
+     `e2e_prologue_fight.py` 20 PASS, 0 FAIL; `e2e_buffs.py` 12 PASS, 0 FAIL in one run, 11/1 in two: its last check compares
+     the mean damage of a few combo hits on two monsters, which hit parts land varies (18 against 38 on one target); on a stand
+     of `dev` it passed twice with the same spread. No helper is in the tutorial.
 7. **Support** (M–L) — **done** (`feature/helpers-gear`).
    - **Where it is kept: the database.** An orb must be seen by every server and outlast a restart for its day, one orb per
      person and one use per user are limits, and the reward is given once: all of that is what `ARCHITECTURE.md` gives the
