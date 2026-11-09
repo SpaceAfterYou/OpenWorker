@@ -4,6 +4,8 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Helpers.Requests;
 using OpenWorker.Hotspot.Modules.Helpers.Responses;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
+using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -102,6 +104,84 @@ public sealed class HelperTest
     }
 
     [TestMethod]
+    public void WornItemIsWrittenInItsSlotAsTheInventoryWritesIt()
+    {
+        var gear = new ItemValue
+        {
+            Item = 360010202,
+            Serial = new SerialValue(1234567890123),
+            Count = 1,
+            BindType = (ItemBindType)1,
+            OptionList = [new ItemOption(3, 86), new ItemOption(0, 0), new ItemOption(0, 0), new ItemOption(0, 0), new ItemOption(0, 0)],
+            Upgrade = 2,
+            Endurance = 100,
+            DueTo = DateTimeOffset.UnixEpoch,
+            BroachState = "000000000000000"
+        };
+
+        var bytes = Written(new HelperValue
+        {
+            Helper = 10105166,
+            Items = [HelperValue.NoItem, gear],
+            Origin = [new HelperStatValue(21, 300f)],
+            Additional = [],
+            Order = 1
+        });
+
+        using var stream = new MemoryStream();
+        using var expected = new BinaryWriter(stream);
+
+        void Empty()
+        {
+            expected.Write(-1);
+            expected.Write(-1L);
+            expected.Write(new byte[2 + 1 + 5 * 6 + 3 + 8 + 3 + 4]);
+            expected.Write((short)15);
+            expected.Write(Encoding.ASCII.GetBytes("000000000000000"));
+            expected.Write(new byte[2]);
+        }
+
+        expected.Write(10105166);
+        Empty();
+
+        // The gear: item, serial, count, binding, five options, upgrade, endurance, sockets, date, upgrade count and
+        // limit, flag, experience, the broaches, restores and seals.
+        expected.Write(360010202);
+        expected.Write(1234567890123L);
+        expected.Write((short)1);
+        expected.Write((byte)1);
+        expected.Write((short)3);
+        expected.Write(86);
+        expected.Write(new byte[4 * 6]);
+        expected.Write((byte)2);
+        expected.Write((byte)100);
+        expected.Write((byte)0);
+        expected.Write(0L);
+        expected.Write(new byte[3]);
+        expected.Write(0);
+        expected.Write((short)15);
+        expected.Write(Encoding.ASCII.GetBytes("000000000000000"));
+        expected.Write(new byte[2]);
+
+        Empty();
+
+        // No orb, not called, one stat of its own and none added, the second place.
+        expected.Write(new byte[4 + 1 + 4 + 8 + 1]);
+        expected.Write((short)1);
+        expected.Write((byte)21);
+        expected.Write(300f);
+        expected.Write((short)0);
+        expected.Write((byte)1);
+        expected.Flush();
+
+        CollectionAssert.AreEqual(stream.ToArray(), bytes);
+
+        using var reader = new BinaryReader(new MemoryStream(bytes));
+        Assert.AreEqual(1, ReadAsClient(reader).Items);
+        Assert.AreEqual(bytes.Length, reader.BaseStream.Position);
+    }
+
+    [TestMethod]
     public void StatsAndOrderComeAfterTheItems()
     {
         var bytes = Written(Helper(10105166, 3, true, new HelperStatValue(2, 1.5f), new HelperStatValue(7, 40f)));
@@ -141,8 +221,8 @@ public sealed class HelperTest
         Assert.HasCount(4 + 4 + 1 + BareHelper, Written(new HelperSummonResponse { Person = 1, Actor = 2, Summon = 1, Helper = Helper(3) }));
         Assert.HasCount(BareHelper, Written(new HelperAddResponse { Helper = Helper(3) }));
         Assert.HasCount(BareHelper, Written(new HelperUpdateInfoResponse { Helper = Helper(3) }));
-        Assert.HasCount(4 + BareHelper, Written(new HelperEquipResponse { Person = 1, Helper = Helper(3) }));
-        Assert.HasCount(4 + 4 + BareHelper, Written(new HelperSupportEquipResponse { Person = 1, Friend = 2, Helper = Helper(3) }));
+        Assert.HasCount(4 + BareHelper, Written(new HelperEquipResponse { Result = 0, Helper = Helper(3) }));
+        Assert.HasCount(4 + 4 + BareHelper, Written(new HelperSupportEquipResponse { Result = 0, Helper = 3, Record = Helper(3) }));
     }
 
     [TestMethod]

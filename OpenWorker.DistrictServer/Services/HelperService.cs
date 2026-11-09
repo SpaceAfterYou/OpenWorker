@@ -19,7 +19,7 @@ public sealed class HelperService(HelperManager manager) :
     IHotspotHandler<HelperSupportEquipRequest>,
     IHotspotHandler<HelperEquipRequest>,
     IHotspotHandler<HelperChangeOrderRequest>,
-    IHotspotHandler<HelperAllReleaseRequest>,
+    IHotspotHandler<HelperRecallRequest>,
     IHotspotHandler<HelperAutoSummonRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, HelperSummonRequest request)
@@ -74,7 +74,7 @@ public sealed class HelperService(HelperManager manager) :
         await manager.ChangeOrderAsync(context.Player, request.First, request.Second, context.CancellationToken);
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperAllReleaseRequest request)
+    public ValueTask OnHandleAsync(ServiceHandleContext context, HelperRecallRequest request)
     {
         // Nothing is called outside a maze.
         return ValueTask.CompletedTask;

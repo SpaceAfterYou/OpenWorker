@@ -6,6 +6,10 @@ using OpenWorker.Hotspot.Modules.Helpers.Types;
 
 namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 
+/// <summary>
+/// A helper was given the orb of a friend: the result (0 when it was done), the helper, and the helper as it is now. The
+/// client refreshes the window when the helper is the one it shows.
+/// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct HelperSupportEquipResponse : IResponseHotspotMessage
 {
@@ -20,11 +24,11 @@ public readonly struct HelperSupportEquipResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    public int Person { get; init; }
+    public int Result { get; init; }
 
-    public int Friend { get; init; }
+    public int Helper { get; init; }
 
-    public required HelperValue Helper { get; init; }
+    public required HelperValue Record { get; init; }
 
 #endregion Message: Body
 
@@ -32,9 +36,9 @@ public readonly struct HelperSupportEquipResponse : IResponseHotspotMessage
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Person);
-        writer.Write(Friend);
-        Helper.Write(writer);
+        writer.Write(Result);
+        writer.Write(Helper);
+        Record.Write(writer);
     }
 
 #endregion Interface: IWritableData

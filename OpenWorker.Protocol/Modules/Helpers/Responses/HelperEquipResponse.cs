@@ -6,6 +6,9 @@ using OpenWorker.Hotspot.Modules.Helpers.Types;
 
 namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 
+/// <summary>
+/// An item was put on a helper or taken off it: the result (0 when it was done) and the helper as it is now.
+/// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct HelperEquipResponse : IResponseHotspotMessage
 {
@@ -20,7 +23,7 @@ public readonly struct HelperEquipResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-    public int Person { get; init; }
+    public int Result { get; init; }
 
     public required HelperValue Helper { get; init; }
 
@@ -30,7 +33,7 @@ public readonly struct HelperEquipResponse : IResponseHotspotMessage
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Person);
+        writer.Write(Result);
         Helper.Write(writer);
     }
 

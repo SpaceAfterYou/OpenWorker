@@ -73,9 +73,9 @@ public enum HelperOpcode : byte
     SyncPos = 0x13,
 
     /// <summary>
-    /// Request
+    /// Request: every called helper of the person comes back to it. Nothing answers it but the positions of the helpers.
     /// </summary>
-    AllRelease = 0x14,
+    Recall = 0x14,
 
     /// <summary>
     /// Request, Response
