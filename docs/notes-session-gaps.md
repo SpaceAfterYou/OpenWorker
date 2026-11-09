@@ -61,5 +61,16 @@ person record, the trade password across servers.
 
 Tests (one per gap): `ChannelChangeTest`, `AccountStateTest` (options, trade password, levels; Postgres), `WornGearTest`,
 `CommandAccessTest`, `MegaphoneTest`, `MazeRequestGuardTest.ABoxNamedFromAfarDoesNothing`; `KeepAliveTest` follows the move.
-Stand (`OW_STAND=6`): see the report of the branch for the counts of `e2e_move`, `e2e_chat`, `e2e_friends` and `e2e_maze`
-before and after; the extended scripts are in `docs/agents/fix-session-gaps/e2e/` until the branch is merged.
+Stand (`OW_STAND=6`), the extended scripts on `dev` (before) and on this branch (after), PASS / FAIL:
+
+| Script | Before | After | What the new checks cover |
+|---|---|---|---|
+| `e2e_move` | 21 / 16 | 27 / 11 | the channel change: refusals, the answer and its map, who is told, the people around after it; the 11 left fail on `dev` too (the script's moves jump farther than the pace check allows, and the saved place follows) |
+| `e2e_chat` | 32 / 5 | 37 / 0 | the megaphone refused without the item, given by `/item`, taken by a use, gone after the last one (run alone; run next to another script, "redis is empty of people" fails on both) |
+| `e2e_friends` | 62 / 2 | 64 / 0 | a friend away at the level of its row (the two old checks of level 25 now read the row) |
+| `e2e_maze` (M04_RSQUARE_EP_01) | 63 / 8 | 70 / 1 | ping, options, skill window, gesture and daily mission in the maze; a script box named from afar; the triggers, the event box and the interaction are sent where the boxes are. Left: "warp through a closed portal is refused" fails on `dev` too; the projectile checks are the two known to be flaky |
+
+The extended scripts are in `docs/agents/fix-session-gaps/e2e/` until the branch is merged (then they replace those of
+`docs/tools/`). Two things there matter beyond this branch: a scripted client must answer the keep-alive (01/05) now that the
+maze sends it, or a fight of more than five minutes ends in a disconnect, and it must walk to a box before naming it. The stand
+sets `Commands__OpenToEveryone=true` (`docs/tools/stand_up.sh`).
