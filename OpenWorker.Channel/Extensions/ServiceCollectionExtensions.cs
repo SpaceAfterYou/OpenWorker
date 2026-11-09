@@ -93,6 +93,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<LeagueNotifier>();
         services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<LeagueNotifier>());
         services.AddSingleton<ICommunityModule>(e => e.GetRequiredService<LeagueNotifier>());
+        services.AddSingleton<LeagueLevels>();
         services.AddSingleton<IMegaphoneSource, FreeMegaphone>();
 
         services.AddSingleton<FriendBook>();

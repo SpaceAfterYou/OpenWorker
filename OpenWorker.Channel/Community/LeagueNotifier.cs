@@ -33,7 +33,7 @@ public sealed class LeagueSnapshots(IDbContextFactory<PersistenceContext> factor
         var members = await factory.MembersAsync(league.Id);
         var online = await network.FindManyAsync(members.Select(e => e.Person).ToArray());
 
-        var applicants = league.Allows(member.Position, LeagueRight.Applicants)
+        var applicants = league.Allows(member.Position, LeagueRight.Join)
             ? await factory.ApplicantsAsync(league.Id)
             : [];
 
@@ -56,7 +56,7 @@ public sealed class LeagueSnapshots(IDbContextFactory<PersistenceContext> factor
             League = member.League,
             Actor = member.Person,
             Login = (byte)(online is null ? 0 : 1),
-            Level = online?.Level ?? OpenWorker.Hotspot.Modules.Persons.Types.PersonModuleDefines.DefaultLevel,
+            Level = online?.Level ?? member.Level,
             World = online?.Location ?? 0,
             PlayDate = online is null ? LeagueMapper.ToUnix(DateTime.UtcNow) : 0,
             Name = member.Name,

@@ -593,10 +593,10 @@
   ],
   "tb_League_Info": [
     "Int32",
-    "Int32",
-    "Int32",
-    "Int32",
+    "Int32 Level",
+    "Int32 Exp",
     "Int32 MemberLimit",
+    "Int32",
     "Int32"
   ],
   "tb_NameFilter": [
