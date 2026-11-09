@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenWorker.Channel.Community;
+using OpenWorker.DistrictServer.Server;
 using OpenWorker.DistrictServer.Services;
 using OpenWorker.DistrictServer.Trade;
 using OpenWorker.Domain.Enums;
@@ -9,16 +10,20 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Shop.Components;
+using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Hotspot.Modules.Trade.Extensions;
 using OpenWorker.Hotspot.Modules.Trade.Requests;
+using OpenWorker.Hotspot.Modules.Trade.Types;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// Trades through the handlers of the district, between players of one channel whose connections record
+/// Trades and private shops through the handlers of the district, between players of one channel whose connections record
 /// what they get. The bags are checked before and after.
 /// </summary>
 [TestClass]
@@ -54,7 +59,9 @@ public sealed class TradeTest
             var goods = new TradeGoods(District.Ecs, Inventory);
 
             Trades = new Trades(District.Ecs, District.Channels, goods, NoPersonFlush.Instance, District.Time, NullLogger<Trades>.Instance);
-            Service = new TradeService(District.Ecs, District.Channels, Trades, new NobodyBlocked(), District.Errors);
+            Shops = new PrivateShops(District.Ecs, Trades, goods, new ChannelAudience(District.Ecs, District.Channels), NoPersonFlush.Instance,
+                NullLogger<PrivateShops>.Instance);
+            Service = new TradeService(District.Ecs, District.Channels, Trades, Shops, new NobodyBlocked(), District.Errors);
         }
 
         public DistrictHarness District { get; } = new();
@@ -62,6 +69,8 @@ public sealed class TradeTest
         public InventoryService Inventory { get; }
 
         public Trades Trades { get; }
+
+        public PrivateShops Shops { get; }
 
         public TradeService Service { get; }
 
@@ -107,6 +116,9 @@ public sealed class TradeTest
                 TradeUpdateMoneyRequest e => Service.OnHandleAsync(context, e),
                 TradeCheckRequest e => Service.OnHandleAsync(context, e),
                 TradeConfirmRequest e => Service.OnHandleAsync(context, e),
+                TradePrivateShopStartRequest e => Service.OnHandleAsync(context, e),
+                TradePrivateShopSelectRequest e => Service.OnHandleAsync(context, e),
+                TradePrivateShopItemRequest e => Service.OnHandleAsync(context, e),
                 _ => throw new ArgumentException("Not a request of the trade.", nameof(request))
             };
         }
@@ -235,5 +247,47 @@ public sealed class TradeTest
         Assert.AreEqual(0, market.GoldOf(seller));
         Assert.AreEqual(500, market.GoldOf(buyer));
         Assert.IsFalse(market.Trades.IsTrading(seller.Entity) || market.Trades.IsTrading(buyer.Entity));
+    }
+
+    /// <summary>
+    /// A player opens a shop with one item; another opens the shop and buys it at the price it was shown: the item and
+    /// the gold move, the owner is told of the sale, and the empty shop closes.
+    /// </summary>
+    [TestMethod]
+    public async Task APrivateShopSellsItsItem()
+    {
+        using var market = new Market();
+
+        var owner = market.Join(gold: 10);
+        var customer = market.Join(gold: 1_000);
+        var cloth = market.Put(owner, 5, Cloth, 3);
+
+        await market.Send(owner, Read(w =>
+        {
+            w.Write((byte)StorageGroup.Common);
+            w.Write((short)0);
+            w.WriteUtf16UnicodeString("Cloth for sale");
+            w.Write(new[] { new PrivateShopItemValue { Item = cloth.ToValue(), Money = 400 } });
+        }, r => new TradePrivateShopStartRequest(r)));
+
+        Assert.AreEqual(PrivateShops.Selling, market.District.Ecs.Get<ShopPrivateComponent>(owner.Entity).Type);
+
+        await market.Send(customer, Read(w => w.Write(Raw(owner)), r => new TradePrivateShopSelectRequest(r)));
+        await WaitForAsync(customer, TradeOpcode.PrivateShopSelect);
+
+        // The first line, at the price the customer was shown.
+        await market.Send(customer, Read(w => { w.Write((byte)StorageGroup.Common); w.Write((short)0); w.Write(400L); },
+            r => new TradePrivateShopItemRequest(r)));
+
+        await WaitForAsync(customer, TradeOpcode.PrivateShopBuy);
+        await WaitForAsync(owner, TradeOpcode.PrivateShopSell);
+
+        Assert.IsNull(market.BagsOf(owner).At(StorageGroup.Common, 5));
+        Assert.AreEqual((Cloth, (short)3), (market.BagsOf(customer).Items.Single().Item, market.BagsOf(customer).Items.Single().Count));
+        Assert.AreEqual(410, market.GoldOf(owner));
+        Assert.AreEqual(600, market.GoldOf(customer));
+
+        Assert.AreEqual(PrivateShops.Closed, market.District.Ecs.Get<ShopPrivateComponent>(owner.Entity).Type, "A shop with nothing left closes.");
+        Assert.IsNull(market.Shops.ShopOf(owner.Entity));
     }
 }

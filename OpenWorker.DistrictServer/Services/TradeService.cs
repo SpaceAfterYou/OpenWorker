@@ -17,13 +17,15 @@ using OpenWorker.Hotspot.Modules.Trade.Responses;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The requests of the trade group: a trade between two players of a channel (<see cref="Trades"/>). A trade is a matter of a district: in a maze every player is alone for now, so the maze
+/// The requests of the trade group: a trade between two players of a channel (<see cref="Trades"/>) and the private shops
+/// (<see cref="PrivateShops"/>). A trade is a matter of a district: in a maze every player is alone for now, so the maze
 /// has no handler and the requests do nothing there.
 /// </summary>
 public sealed class TradeService(
     World world,
     ServiceChannels channels,
     Trades trades,
+    PrivateShops shops,
     IPersonRelations relations,
     HandlerExecutor errors) :
     IHotspotHandler<TradeRequest>,
@@ -32,7 +34,11 @@ public sealed class TradeService(
     IHotspotHandler<TradeUpdateItemRequest>,
     IHotspotHandler<TradeUpdateMoneyRequest>,
     IHotspotHandler<TradeCheckRequest>,
-    IHotspotHandler<TradeConfirmRequest>
+    IHotspotHandler<TradeConfirmRequest>,
+    IHotspotHandler<TradePrivateShopStartRequest>,
+    IHotspotHandler<TradePrivateShopStateRequest>,
+    IHotspotHandler<TradePrivateShopSelectRequest>,
+    IHotspotHandler<TradePrivateShopItemRequest>
 {
     /// <summary>
     /// The player asks the player of the name to trade. The other player has to stand in the same channel of this district.
@@ -130,6 +136,38 @@ public sealed class TradeService(
     public ValueTask OnHandleAsync(ServiceHandleContext context, TradeConfirmRequest request)
     {
         return trades.Confirm(context.Player);
+    }
+
+    /// <summary>
+    /// The slot of the request is left alone: what the client puts there, and whether the shop should use an item up, is
+    /// not known (see <c>docs/notes-trade.md</c>).
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, TradePrivateShopStartRequest request)
+    {
+        shops.Start(context.Player, request.Title, request.Items);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, TradePrivateShopStateRequest request)
+    {
+        if (request.State > PrivateShops.Selling)
+        {
+            errors.Charge(context.Player, request.Opcode, HandlerErrorReason.Violation);
+        }
+
+        shops.ChangeState(context.Player, request.State);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, TradePrivateShopSelectRequest request)
+    {
+        shops.Select(context.Player, request.Target);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask OnHandleAsync(ServiceHandleContext context, TradePrivateShopItemRequest request)
+    {
+        return shops.Item(context.Player, request.Slot, request.Money);
     }
 
     /// <summary>

@@ -45,14 +45,15 @@ public sealed partial class TradeExpiryService(
 }
 
 /// <summary>
-/// The connection of a player closes: its trade is cancelled before anything of the player is written, so no exchange can
-/// touch the player after its last snapshot.
+/// The connection of a player closes: its trade is cancelled and its shop closed before anything of the player is written,
+/// so no exchange can touch the player after its last snapshot.
 /// </summary>
-public sealed class TradeCloseHandler(Trades trades) : ISessionCloseHandler
+public sealed class TradeCloseHandler(Trades trades, PrivateShops shops) : ISessionCloseHandler
 {
     public ValueTask OnSessionClosedAsync(Entity player)
     {
         trades.Leave(player);
+        shops.Leave(player);
 
         return ValueTask.CompletedTask;
     }
