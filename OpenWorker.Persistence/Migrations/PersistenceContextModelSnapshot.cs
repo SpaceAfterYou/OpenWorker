@@ -589,6 +589,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<short>("FatiguePointCommon")
                         .HasColumnType("smallint");
 
+                    b.Property<DateTime?>("FatigueRefilledAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<short>("GateId")
                         .HasColumnType("smallint");
 

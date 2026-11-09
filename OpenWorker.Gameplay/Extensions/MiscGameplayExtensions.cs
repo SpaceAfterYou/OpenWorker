@@ -12,7 +12,9 @@ using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.SoulMetry.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.DailyMissions;
+using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Gameplay.Modules.State;
@@ -63,6 +65,12 @@ public static class MiscGameplayExtensions
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<AttendanceManager>());
 
         services.AddProgressGameplay();
+
+        // What entering a maze asks and spends, and the score of a run.
+        services.AddSingleton<FatigueService>();
+        services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<FatigueService>());
+        services.AddSingleton<MazeScoring>();
+        services.AddSingleton<MazeAdmission>();
 
         // What the flush of the person writes when the managers mark their part.
         services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<SoulMetryComponent>(PersonStateKind.SoulMetry, PersonSections.MiscState, e => e.State));

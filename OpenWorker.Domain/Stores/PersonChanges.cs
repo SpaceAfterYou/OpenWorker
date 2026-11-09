@@ -29,8 +29,8 @@ public sealed class PersonChanges
 }
 
 /// <summary>
-/// The numbers of a person kept in its row: level, experience, the wallet, how far its storages are extended
-/// and its quick slots.
+/// The numbers of a person kept in its row: level, experience, the wallet, how far its storages are extended,
+/// its quick slots and, when the server knows it, its fatigue.
 /// </summary>
 public sealed record PersonStateChanges(
     byte Level,
@@ -41,7 +41,13 @@ public sealed record PersonStateChanges(
     long[] Currencies,
     byte[] StorageGrades,
     int[] QuickSlotCards,
-    int[] QuickSlotItems);
+    int[] QuickSlotItems,
+    PersonFatigue? Fatigue = null);
+
+/// <summary>
+/// The fatigue of a person: the points of the day, the points saved up, and when they were last filled up.
+/// </summary>
+public readonly record struct PersonFatigue(short Common, short Bonus, DateTime? RefilledAt);
 
 /// <summary>
 /// Where a person stands in a district, kept so that the next entry from the gate starts there.

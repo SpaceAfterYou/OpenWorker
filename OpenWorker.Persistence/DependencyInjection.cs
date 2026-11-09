@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.TryAddSingleton<IPersonStore, PersonStore>();
         services.TryAddSingleton<IPostStore, PostStore>();
         services.TryAddSingleton<IPrologueStore, PrologueStore>();
+        services.TryAddSingleton<IRankingStore, RankingBook>();
 
         return services;
     }

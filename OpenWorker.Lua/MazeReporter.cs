@@ -1,6 +1,11 @@
 using Arch.Core;
+using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
+using OpenWorker.Domain.Components;
+using OpenWorker.Domain.Persistent;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.DailyMissions;
+using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests;
@@ -14,7 +19,9 @@ namespace OpenWorker.Lua;
 /// <summary>
 /// What the maze tells the rest of the game: who was killed, which sector and maze were cleared, which object was
 /// used, and which of its objects belong to soul metries and cubes. Missions, quests, soul metries, achievements, share
-/// points and the orbs helpers wear hear it here. A failure on the other side never reaches the fight.
+/// points and the orbs helpers wear hear it here. A failure on the other side never reaches the fight. A clear carries the
+/// rank of the run (<see cref="MazeResults"/>): the missions and achievements that count clears by rank hear it, the record
+/// of the maze in the progress of the person keeps it, and the time attack ranking of the mazes the client ranks gets it.
 /// </summary>
 public sealed partial class MazeReporter(
     DailyMissionManager missions,
@@ -25,8 +32,14 @@ public sealed partial class MazeReporter(
     ILogger<MazeReporter> logger,
     AchievementManager? achievements = null,
     SharePointManager? sharePoints = null,
-    HelperGear? helperGear = null)
+    HelperGear? helperGear = null,
+    MazeResults? results = null,
+    IRankingStore? ranking = null)
 {
+    // The kinds of maze whose clears the ranking window of the client shows: the casual ones and the raids of a district.
+    private const byte CasualMaze = 2;
+    private const byte DistrictRaid = 8;
+
     // The kinds of attack the table calls plain, from the ground, thrown and skills proper.
     private const byte PlainAttack = 1;
     private const byte ThrownWeapon = 3;
@@ -73,21 +86,30 @@ public sealed partial class MazeReporter(
     }
 
     /// <summary>
-    /// The person has won a maze. Nothing ranks a run yet, so a run has no rank.
+    /// The person has won a maze, with the rank its run was given.
     /// </summary>
     public async ValueTask MazeClearedAsync(Entity player, MazeInfoRow info, int seconds, int hero, byte level)
     {
         try
         {
-            var clear = new DailyMissionMazeClear(info.Id, 0, seconds, info.Type, level, hero, []);
+            var result = results?.LastClear(player);
+            var clear = new DailyMissionMazeClear(info.Id, result?.Rank ?? 0, seconds, info.Type, level, hero, []);
 
-            achievements?.OnMazeCleared(player, info.Id, seconds, info.Type);
+            achievements?.OnMazeCleared(player, info.Id, seconds, info.Type, result?.Rank);
             sharePoints?.OnMazeCleared(player, info.Id, info.Group, info.Episode);
+            sharePoints?.RecordClear(player, info.Id, result?.Rank ?? 0, seconds);
             helperGear?.OnMazeCleared(player);
+
+            var person = player.Has<ActorComponent>() ? player.Get<ActorComponent>().Identifier : 0;
 
             await missions.OnMazeClearedAsync(player, clear, false, CancellationToken.None);
             await soulMetries.OnMazeClearedAsync(player, info.Group, CancellationToken.None);
             await quests.OnMazeClearedAsync(player, info.Id, CancellationToken.None);
+
+            if (ranking is not null && result is { } ranked && person != 0 && info.Type is CasualMaze or DistrictRaid)
+            {
+                await ranking.SubmitAsync(RankingKind.TimeAttack, info.Id, person, seconds, ranked.PlayPoint);
+            }
         }
 
         catch (Exception e)

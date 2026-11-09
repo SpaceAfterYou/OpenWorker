@@ -48,8 +48,9 @@ What the server does:
   (`MazeResults.OnSessionClosedAsync` forgets it). A second request after the reward was taken gets 52011 and nothing.
 - **The answer** on success is the empty 08/47.
 
-Left: the reward by rank (the base item of the window) is not given; the window still shows none. The rank itself has no
-scoring behind it (`MazeResults.BestRank`).
+The reward by rank (the item of the window) is given since, with the score and the rank of a run behind it, and the window
+now carries the key reward where the client reads it (it did not before, so the client never offered it):
+`docs/notes-maze-results.md`.
 
 **Data.** The stand has the client tables only, so it offers nothing. With the server tables in `res-server/` (or `res/`, see `ARCHITECTURE.md`, "Table folders"), the
 rows name boxes that the client copy of `tb_Item_RandomBox` lacks; the server copy of that table has them, in the same

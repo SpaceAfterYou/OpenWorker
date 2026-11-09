@@ -13,6 +13,8 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Maze.Components;
+using OpenWorker.Gameplay.Modules.Maze.Extensions;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Npcs.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
@@ -161,9 +163,11 @@ public sealed class PersistenceTest
                 Component.GetComponentType(typeof(SkillPointComponent)),
                 Component.GetComponentType(typeof(SkillLearnedComponent)),
                 Component.GetComponentType(typeof(SkillDeckComponent)),
-                Component.GetComponentType(typeof(SkillDeckBonusComponent)));
+                Component.GetComponentType(typeof(SkillDeckBonusComponent)),
+                Component.GetComponentType(typeof(FatiguePointsComponent)));
 
             World.Set(player, new ActorComponent(person, ActorType.User));
+            World.Set(player, entry.Person.ToFatiguePointsComponent());
             World.Set(player, new WorldComponent
             {
                 Location = entry.Person.Location,
@@ -249,6 +253,9 @@ public sealed class PersistenceTest
         return await database.Persons.FirstAsync(e => e.Id == person);
     }
 
+    // When the fatigue was filled: today, to the microsecond the database keeps.
+    private static readonly DateTime Refilled = new(DateTime.UtcNow.Ticks / 10 * 10, DateTimeKind.Utc);
+
     [TestMethod]
     public async Task ALogoutAndANewLoginKeepWhatThePlayerHad()
     {
@@ -271,6 +278,7 @@ public sealed class PersistenceTest
 
                 wallet[ShopCurrency.Gold] = 1_500;
                 wallet[ShopCurrency.Cash] = 25;
+                first.World.Set(player, new FatiguePointsComponent { Common = 120, Bonus = 30, RefilledAt = Refilled });
                 first.World.MarkDirty(player, PersonSections.Currencies);
             });
 
@@ -305,6 +313,7 @@ public sealed class PersistenceTest
                 var sharePoints = first.World.Get<SharePointComponent>(player).Book!;
                 sharePoints.Districts.Add(new DistrictProgress { District = District, Point = 16 });
                 sharePoints.Groups.Add(new MazeGroupProgress { Group = 32, Maze = 21211, District = District, Clears = 1, Point = 16, Step = 1 });
+                sharePoints.Record(21211, 4, 300);
                 first.World.MarkDirty(player, PersonSections.Progress);
 
                 first.World.Set(player, first.World.Get<WorldComponent>(player) with { Position = new Vector3(50, 60, 70), Rotation = 90 });
@@ -354,6 +363,9 @@ public sealed class PersistenceTest
 
             Assert.AreEqual(16, sharePoints.FindDistrict(District)!.Point, "the points of the district");
             Assert.AreEqual((byte)1, sharePoints.FindGroup(32)!.Step, "the step of the group");
+            Assert.AreEqual((1, (byte)4, 300), (sharePoints.FindMaze(21211)!.Clears, sharePoints.FindMaze(21211)!.BestRank, sharePoints.FindMaze(21211)!.BestSeconds), "the record of the maze");
+
+            Assert.AreEqual(new FatiguePointsComponent { Common = 120, Bonus = 30, RefilledAt = Refilled }, world.Get<FatiguePointsComponent>(back), "the fatigue, with the row");
 
             Assert.AreEqual(new Vector3(50, 60, 70), world.Get<WorldComponent>(back).Position, "the place in the district");
         });

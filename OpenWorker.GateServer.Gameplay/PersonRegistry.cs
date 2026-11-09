@@ -16,6 +16,7 @@ using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Login.Extensions;
 using OpenWorker.Hotspot.Modules.Login.Types;
 using OpenWorker.Gameplay.Modules.Maze.Components;
+using OpenWorker.Gameplay.Modules.Maze.Extensions;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
@@ -210,11 +211,8 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
             }
         });
         
-        world.Set(entity, new FatiguePointsComponent
-        {
-            Common = 100,
-            Bonus = 100
-        });
+        // The list of characters shows the fatigue each has, as the row keeps it.
+        world.Set(entity, persistent.ToFatiguePointsComponent());
         
         world.Set(entity, new LeagueComponent
         {

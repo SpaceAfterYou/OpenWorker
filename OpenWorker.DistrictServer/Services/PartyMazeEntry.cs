@@ -4,6 +4,7 @@ using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Gameplay.Modules.Channels.Components;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
@@ -95,7 +96,8 @@ public sealed partial class PartyMazeEntry(
     IPartyRoster roster,
     CommunityNetwork community,
     IPartyMazeRoutes routes,
-    ILogger<PartyMazeEntry> logger
+    ILogger<PartyMazeEntry> logger,
+    MazeAdmission? admission = null
 ) : ISessionCloseHandler, IPartyMatchListener, ICommunityModule
 {
     /// <summary>
@@ -229,6 +231,14 @@ public sealed partial class PartyMazeEntry(
             {
                 Refuse(player, request, presence is null ? MemberOffline : MemberAway);
             }
+
+            return true;
+        }
+
+        // The maze must take a party, and every member must be able to enter it, before anybody is asked.
+        if (admission?.CheckParty(question.Members.Select(e => e.Player).ToArray(), location) is { } refused)
+        {
+            Refuse(player, request, refused);
 
             return true;
         }

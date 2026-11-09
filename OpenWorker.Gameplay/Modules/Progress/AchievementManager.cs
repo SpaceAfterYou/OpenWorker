@@ -144,16 +144,22 @@ public sealed partial class AchievementManager(
     }
 
     /// <summary>
-    /// A maze is cleared: counted for the maze and for any maze, as a fast clear when it took three minutes at most, and for
-    /// its kind when it is not a plain maze. Nothing ranks a run yet, so the achievements of a rank do not count.
+    /// A maze is cleared: counted for the maze and for any maze, as a fast clear when it took three minutes at most, for
+    /// its kind when it is not a plain maze, and for the rank of the run when it has one.
     /// </summary>
-    public void OnMazeCleared(Entity player, int maze, int seconds, int kind)
+    public void OnMazeCleared(Entity player, int maze, int seconds, int kind, byte? rank = null)
     {
-        var events = new List<(AchievementType, int)>(4)
+        var events = new List<(AchievementType, int)>(5)
         {
             (AchievementType.MazeCleared, maze),
             (AchievementType.MazeCleared, 0)
         };
+
+        // A clear by rank counts for the type of its rank, from SS (rank 5) down to F (rank 0).
+        if (rank is { } cleared && cleared <= AchievementType.MazeClearedRankF - AchievementType.MazeClearedRankSS)
+        {
+            events.Insert(0, ((AchievementType)((int)AchievementType.MazeClearedRankF - cleared), 0));
+        }
 
         if (seconds <= FastClearSeconds)
         {

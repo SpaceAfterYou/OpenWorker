@@ -46,6 +46,22 @@ public sealed class MazeGroupProgress
 }
 
 /// <summary>
+/// The clears of one maze by the person: how many, the best rank and the fastest time.
+/// </summary>
+public sealed class MazeRecord
+{
+    public int Maze { get; set; }
+
+    public int Clears { get; set; }
+
+    /// <summary>From 0 (F) to 5 (SS).</summary>
+    public byte BestRank { get; set; }
+
+    /// <summary>The fastest clear, in seconds.</summary>
+    public int BestSeconds { get; set; }
+}
+
+/// <summary>
 /// The answer to the reward of a district or a group of mazes, as the client reads it: 0 given, 1 not reached (or no
 /// state, or every step taken), 2 cannot be given, 3 no such row.
 /// </summary>
@@ -69,6 +85,11 @@ public sealed class SharePointBook
     public List<MazeGroupProgress> Groups { get; set; } = [];
 
     /// <summary>
+    /// Every maze the person has cleared, with its best rank and time: what entering a later episode asks for.
+    /// </summary>
+    public List<MazeRecord> Mazes { get; set; } = [];
+
+    /// <summary>
     /// Drops what the tables no longer know: the client looks every district and group up in its table.
     /// </summary>
     public void Normalize(SharePointCatalog catalog)
@@ -86,6 +107,32 @@ public sealed class SharePointBook
 
         // A group is shown under its district, which the client must know first.
         Groups.RemoveAll(e => !districts.Contains(e.District));
+
+        var mazes = new HashSet<int>();
+
+        Mazes.RemoveAll(e => e.Maze <= 0 || !mazes.Add(e.Maze));
+    }
+
+    public MazeRecord? FindMaze(int maze) => Mazes.Find(e => e.Maze == maze);
+
+    /// <summary>
+    /// A clear of the maze: one more, and the rank and the time when they are the best yet.
+    /// </summary>
+    public MazeRecord Record(int maze, byte rank, int seconds)
+    {
+        var record = FindMaze(maze);
+
+        if (record is null)
+        {
+            record = new MazeRecord { Maze = maze, BestRank = rank, BestSeconds = seconds };
+            Mazes.Add(record);
+        }
+
+        record.Clears++;
+        record.BestRank = Math.Max(record.BestRank, rank);
+        record.BestSeconds = record.Clears == 1 ? seconds : Math.Min(record.BestSeconds, seconds);
+
+        return record;
     }
 
     public DistrictProgress? FindDistrict(int district) => Districts.Find(e => e.District == district);

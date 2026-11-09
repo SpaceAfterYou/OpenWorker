@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Domain.Stores;
 
 namespace OpenWorker.Persistence;
 
@@ -98,5 +99,16 @@ public static class RankingStore
         }
 
         return (top, mine);
+    }
+}
+
+/// <summary>
+/// The rankings as the game sees them (<see cref="IRankingStore"/>), over <see cref="RankingStore"/>.
+/// </summary>
+public sealed class RankingBook(IDbContextFactory<PersistenceContext> factory) : IRankingStore
+{
+    public Task SubmitAsync(RankingKind kind, int scope, int person, int time, int score, CancellationToken cancellationToken = default)
+    {
+        return factory.SubmitRankingAsync(kind, scope, person, time, score);
     }
 }

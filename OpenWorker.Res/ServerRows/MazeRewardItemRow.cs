@@ -6,8 +6,9 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 /// The items a maze rewards at its end, by maze. Not in the client files, the server tables have it.
 /// </summary>
 /// <remarks>
-/// Only the key reward is used: a random box rolled once when the maze is finished, opened with keys from the window of
-/// the maze. The reward by rank and the second key reward are read to reach the end of the row.
+/// Two rewards are used: the item of the rank, rolled from the box of one of the six buckets by their rates when the maze is
+/// finished, and the key reward, a random box rolled once then and opened with keys from the window of the maze. The counts
+/// of the buckets and the second key reward are read to reach the end of the row.
 /// </remarks>
 [BinaryResourceTable("tb_MazeReward_Item", Optional = true)]
 public readonly struct MazeRewardItemRow(BinaryReader reader)
@@ -18,8 +19,16 @@ public readonly struct MazeRewardItemRow(BinaryReader reader)
 
     private readonly ushort _monsterRate = reader.ReadUInt16();
     private readonly uint _box = reader.ReadUInt32();
-    private readonly uint[] _boxByRank = Enumerable.Range(0, RankCount).Select(_ => reader.ReadUInt32()).ToArray();
-    private readonly ushort[] _rateByRank = Enumerable.Range(0, RankCount).Select(_ => reader.ReadUInt16()).ToArray();
+    /// <summary>
+    /// The random box of each bucket of the item of the rank, from F to SS.
+    /// </summary>
+    public uint[] RankBoxes { get; } = Enumerable.Range(0, RankCount).Select(_ => reader.ReadUInt32()).ToArray();
+
+    /// <summary>
+    /// The rate of each bucket, from F to SS.
+    /// </summary>
+    public ushort[] RankRates { get; } = Enumerable.Range(0, RankCount).Select(_ => reader.ReadUInt16()).ToArray();
+
     private readonly uint[] _minByRank = Enumerable.Range(0, RankCount).Select(_ => reader.ReadUInt32()).ToArray();
     private readonly uint[] _maxByRank = Enumerable.Range(0, RankCount).Select(_ => reader.ReadUInt32()).ToArray();
 

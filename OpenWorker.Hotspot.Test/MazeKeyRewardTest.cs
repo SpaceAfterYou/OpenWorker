@@ -33,9 +33,9 @@ public sealed class MazeKeyRewardTest
     private const int Box = 900001;
     private const short RewardCount = 3;
 
-    // Where the window carries the item of the key reward: after the rank, the points, the difficulty, nine numbers and the
-    // base item with its count, then the count and the item.
-    private const int KeyRewardCountOffset = 1 + 4 + 4 + 2 + 9 * 4 + 2 + 4;
+    // Where the window carries the item of the key reward: after the rank, the points, the time, eight numbers and the item of
+    // the rank with its count, then the item and its count.
+    private const int KeyRewardOffset = 1 + 4 + 4 + 2 + 8 * 4 + 4 + 2;
 
     private static ReadOnlyCollection<T> Rows<T>(Action<BinaryWriter> write) where T : struct
     {
@@ -208,8 +208,8 @@ public sealed class MazeKeyRewardTest
 
         var window = await f.FirstAsync(GroupOpcode.Maze, (byte)MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO);
 
-        Assert.AreEqual(RewardCount, BinaryPrimitives.ReadInt16LittleEndian(window.Body.AsSpan(KeyRewardCountOffset)));
-        Assert.AreEqual(f.Item, BinaryPrimitives.ReadInt32LittleEndian(window.Body.AsSpan(KeyRewardCountOffset + 2)));
+        Assert.AreEqual(f.Item, BinaryPrimitives.ReadInt32LittleEndian(window.Body.AsSpan(KeyRewardOffset)));
+        Assert.AreEqual(RewardCount, BinaryPrimitives.ReadInt16LittleEndian(window.Body.AsSpan(KeyRewardOffset + 4)));
 
         await f.TakeAsync();
 
