@@ -105,6 +105,10 @@ public sealed class TestHealthChecks
 
         await stuck;
 
+        // The empty probe of the first check was queued behind the stuck callback and runs right after it, on the
+        // loop thread; this test resumes on another thread, so it waits for the loop to get there.
+        await loop.InvokeAsync(static () => { });
+
         var recovered = await check.CheckHealthAsync(Context(), TestContext.CancellationToken);
 
         Assert.AreEqual(HealthStatus.Healthy, recovered.Status);
