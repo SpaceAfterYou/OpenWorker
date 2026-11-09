@@ -9,6 +9,8 @@ public sealed class PersistenceContext(DbContextOptions<PersistenceContext> opti
     public DbSet<AccountPersistent> Accounts { get; init; }
     public DbSet<FriendPersistent> Friends { get; init; }
     public DbSet<GatePersistent> Gates { get; init; }
+    public DbSet<HelperSupportPersistent> HelperSupports { get; init; }
+    public DbSet<HelperSupportUsePersistent> HelperSupportUses { get; init; }
     public DbSet<LeagueApplicantPersistent> LeagueApplicants { get; init; }
     public DbSet<LeagueBoardPersistent> LeagueBoards { get; init; }
     public DbSet<LeagueMemberPersistent> LeagueMembers { get; init; }

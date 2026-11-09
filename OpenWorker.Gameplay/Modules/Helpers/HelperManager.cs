@@ -38,16 +38,6 @@ public sealed class HelperManager(
     public const ushort CannotSummon = 58007;
 
     /// <summary>
-    /// The item cannot be put on the helper.
-    /// </summary>
-    public const ushort CannotEquip = 58004;
-
-    /// <summary>
-    /// There is no reward for the support to take.
-    /// </summary>
-    public const ushort NoSupportReward = 52004;
-
-    /// <summary>
     /// Reads the helpers of a person entering a district and tells the client.
     /// </summary>
     public ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
@@ -154,48 +144,6 @@ public sealed class HelperManager(
         await SaveAsync(player, book, cancellationToken);
     }
 
-    public void SendSupportInfo(Entity player)
-    {
-        if (!TryGet(player, out var book))
-        {
-            return;
-        }
-
-        world.Get<ServerSessionComponent>(player)
-            .Send(new HelperSupportInfoResponse { Info = ToSupport(book) });
-    }
-
-    public async ValueTask RegisterSupportAsync(Entity player, byte supportType, CancellationToken cancellationToken)
-    {
-        if (!TryGet(player, out var book))
-        {
-            return;
-        }
-
-        book.SupportType = supportType;
-
-        world.Get<ServerSessionComponent>(player)
-            .Send(new HelperSupportRegisterResponse { Result = 0, Info = ToSupport(book) });
-
-        await SaveAsync(player, book, cancellationToken);
-    }
-
-    /// <summary>
-    /// The friends of the person that offer support. There are none until friends are kept by the server.
-    /// </summary>
-    public void SendSupportList(Entity player)
-    {
-        if (TryGet(player, out _))
-        {
-            world.Get<ServerSessionComponent>(player)
-                .Send(new HelperSupportListResponse { Friends = [] });
-        }
-    }
-
-    public void RefuseSupportReward(Entity player) => SendError(player, HelperOpcode.SupportReward, NoSupportReward);
-
-    public void RefuseEquip(Entity player, HelperOpcode command) => SendError(player, command, CannotEquip);
-
     /// <summary>
     /// The person has reached a level: what its helpers have by themselves follows it. Only the owner is told.
     /// </summary>
@@ -230,11 +178,6 @@ public sealed class HelperManager(
             Origin = stats?.Origin(entry.Helper, level) ?? [],
             Additional = stats?.Additional([], default) ?? []
         };
-    }
-
-    private static HelperSupportInfoValue ToSupport(HelperBook book)
-    {
-        return new HelperSupportInfoValue(0, book.SupportType, 0, DateTimeOffset.UnixEpoch, 0, book.SupportType != 0);
     }
 
     private void SendError(Entity player, HelperOpcode command, ushort code)

@@ -9,12 +9,12 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct HelperRewardRow(BinaryReader reader)
 {
     public byte Id { get; } = reader.ReadByte();
-    public byte Field1 { get; } = reader.ReadByte();
-    public short Field2 { get; } = reader.ReadInt16();
-    public int Field3 { get; } = reader.ReadInt32();
-    public int Field4 { get; } = reader.ReadInt32();
-    public int Field5 { get; } = reader.ReadInt32();
-    public byte Field6 { get; } = reader.ReadByte();
-    public byte Field7 { get; } = reader.ReadByte();
-    public byte Field8 { get; } = reader.ReadByte();
+    public byte RewardType { get; } = reader.ReadByte();
+    public short FriendPoints { get; } = reader.ReadInt16();
+    public int Item1 { get; } = reader.ReadInt32();
+    public int Item2 { get; } = reader.ReadInt32();
+    public int Item3 { get; } = reader.ReadInt32();
+    public byte Count1 { get; } = reader.ReadByte();
+    public byte Count2 { get; } = reader.ReadByte();
+    public byte Count3 { get; } = reader.ReadByte();
 }

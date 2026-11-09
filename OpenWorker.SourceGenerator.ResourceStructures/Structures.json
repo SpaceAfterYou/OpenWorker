@@ -2493,14 +2493,14 @@
   ],
   "tb_Helper_Reward": [
     "Byte",
-    "Byte",
-    "Int16",
-    "Int32",
-    "Int32",
-    "Int32",
-    "Byte",
-    "Byte",
-    "Byte"
+    "Byte RewardType",
+    "Int16 FriendPoints",
+    "Int32 Item1",
+    "Int32 Item2",
+    "Int32 Item3",
+    "Byte Count1",
+    "Byte Count2",
+    "Byte Count3"
   ],
   "tb_Item_SubModel": [
     "Int32",

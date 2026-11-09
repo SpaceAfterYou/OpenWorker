@@ -72,11 +72,6 @@ public sealed class HelperBook
     /// </summary>
     public bool AutoSummon { get; set; } = true;
 
-    /// <summary>
-    /// What the person offers its friends as support, or 0 if it does not.
-    /// </summary>
-    public byte SupportType { get; set; }
-
     public HelperEntry? Find(int helper) => Helpers.Find(e => e.Helper == helper);
 
     /// <summary>

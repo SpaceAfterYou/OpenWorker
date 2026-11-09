@@ -1,3 +1,4 @@
+using OpenWorker.Channel.Community;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Gameplay.Modules.Quests;
@@ -19,6 +20,7 @@ public static class ServiceCollectionExtensions
 
         return services
             .AddSingleton<PersonRegistry>()
+            .AddSingleton<HelperSupports>()
             .AddSingleton<IPlayerAudience, TAudience>();
     }
 }
