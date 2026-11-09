@@ -5,6 +5,8 @@ the original game server. The client 1.4.2.3 decides every wire layout; the orig
 notes: `docs/notes-stage2.md` (health, damage, sectors), `docs/notes-ai.md` (monsters), `docs/notes-prologue.md` (the
 flow of the prologue).
 
+Buffs and debuffs: `docs/notes-buffs.md` (feature/skill-buffs). Closed from the list below: the buffs of skills (the reaction buff is read and given), the tutorial's buff 10000 (it is in the client's table and is given), the skill state of a player held by a buff (56009), cooldown and cost reductions of buffs and the deck bonus, the three position messages; continuous costs need nothing (no skill of the client's table has one above zero).
+
 ## What the tutorial asks of the player
 
 | Mechanic | Where in the prologue | The server now |
