@@ -31,6 +31,8 @@ namespace OpenWorker.Hotspot.Test;
 public sealed class MazeAdmissionTest
 {
     private const int Maze = 21311;
+    private const int Tutorial = 20001;
+    private const int District = 10021;
     private const int Material = 710105001;
     private const int Weapon = 111000001;
 
@@ -60,7 +62,7 @@ public sealed class MazeAdmissionTest
         public MazeAdmission Admission { get; }
         private int _next = 1;
 
-        public Fixture(ReadOnlyCollection<MazeRuleRow> rules, byte level = 6)
+        public Fixture(ReadOnlyCollection<MazeRuleRow> rules, byte level = 6, IMazePortals? portals = null)
         {
             var catalog = new ItemCatalog(
                 Load<ItemRow>("tb_Item"),
@@ -69,7 +71,7 @@ public sealed class MazeAdmissionTest
                 Load<BankSlotExtendRow>("tb_Bank_Slot_Extend"));
 
             var serials = new LocalItemSerials();
-            var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Maze, level, fatigue: 4)]);
+            var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Maze, level, fatigue: 4), MazeResultsTest.MazeRow(Tutorial, 0, fatigue: 0, type: 1)]);
 
             Inventory = new InventoryService(World, catalog, serials);
             Factory = new InventoryFactory(catalog, Load<CreateClothRow>("tb_Create_Cloth"), serials);
@@ -88,7 +90,7 @@ public sealed class MazeAdmissionTest
                 NullLogger<MazeEntryLimits>.Instance,
                 Inventory);
 
-            Admission = new MazeAdmission(World, mazes, fatigue, MazeResultsTest.Scoring(MazeResultsTest.None<MazePlayScoreRow>(), rules), progress, Limits, Inventory);
+            Admission = new MazeAdmission(World, mazes, fatigue, MazeResultsTest.Scoring(MazeResultsTest.None<MazePlayScoreRow>(), rules), progress, Limits, Inventory, portals: portals);
         }
 
         /// <summary>
@@ -136,6 +138,49 @@ public sealed class MazeAdmissionTest
         {
             World.Dispose();
         }
+    }
+
+    /// <summary>
+    /// The portals of a map, as the test says: whether the player stands at one, and whether the map has one.
+    /// </summary>
+    private sealed class Portals : IMazePortals
+    {
+        public bool At { get; set; }
+
+        public bool InMap { get; set; }
+
+        public bool IsAt(Entity player, int portal) => At;
+
+        public bool Exists(Entity player, int portal) => InMap;
+    }
+
+    [TestMethod]
+    public void APortalIsTakenFromWhereThePlayerStandsAndAMemberNeedsItInItsMap()
+    {
+        var portals = new Portals();
+
+        using var f = new Fixture(Rules(Rule(Maze)), portals: portals);
+
+        var player = f.Player();
+
+        // A maze and a district are entered from a portal of the map; the tutorial from wherever the story puts the player.
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.Check(player, Maze, 21511), "a maze, away from the portal");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.Check(player, District, 21511), "a district, away from the portal");
+        Assert.IsNull(f.Admission.Check(player, Tutorial, 21511), "the tutorial maze");
+
+        portals.At = true;
+
+        Assert.IsNull(f.Admission.Check(player, Maze, 21511));
+        Assert.IsNull(f.Admission.Check(player, District, 21511));
+
+        // The master of a party is not asked where it stands; each member needs the portal in its map.
+        portals.At = false;
+
+        Assert.AreEqual(MazeAdmission.MemberNoPortal, f.Admission.CheckParty(player, [player], Maze, 21511));
+
+        portals.InMap = true;
+
+        Assert.IsNull(f.Admission.CheckParty(player, [player], Maze, 21511));
     }
 
     [TestMethod]

@@ -111,6 +111,9 @@ public sealed class MazeAdmission(
     /// <summary>The kind of the tutorial mazes.</summary>
     private const byte TutorialKind = 1;
 
+    /// <summary>The map of the raid of the event, which is entered from wherever the event puts the player.</summary>
+    private const short EventRaid = 30031;
+
     private readonly RowIndex<short, MazeInfoRow> _mazes = mazes.IndexBy(e => e.Id);
 
     /// <summary>
@@ -134,7 +137,8 @@ public sealed class MazeAdmission(
 
         if (!_mazes.TryGet(location, out var row))
         {
-            return null;
+            // A district or a map of an event is entered through a portal of the map the player stands in, too.
+            return portals is not null && !IsMazeLocation(location) && location != EventRaid && !portals.IsAt(player, portal) ? NotOpened : null;
         }
 
         // The portal the player takes is in the map it stands in, and it stands at it. The tutorial mazes are entered from

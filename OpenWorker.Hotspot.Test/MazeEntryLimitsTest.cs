@@ -101,8 +101,10 @@ public sealed class MazeEntryLimitsTest
 
         Assert.IsNull(f.Limits.Check(f.Player, 21061), "nothing entered yet");
         Assert.IsTrue(f.Limits.Entered(f.Player, 21061));
+        f.Limits.TellCount(f.Player, 21061);
         Assert.IsNull(f.Limits.Check(f.Player, 21061), "one of two");
         Assert.IsTrue(f.Limits.Entered(f.Player, 21061));
+        f.Limits.TellCount(f.Player, 21061);
 
         Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21061), "two of two");
         Assert.IsNull(f.Limits.Check(f.Player, 21311), "a maze the table does not limit");
@@ -123,7 +125,9 @@ public sealed class MazeEntryLimitsTest
         using var f = new Fixture(Rules(Rule(21071, entryGroup: 100, limit: 2), Rule(21072, entryGroup: 100, limit: 2)));
 
         f.Limits.Entered(f.Player, 21071);
+        f.Limits.TellCount(f.Player, 21071);
         f.Limits.Entered(f.Player, 21072);
+        f.Limits.TellCount(f.Player, 21072);
 
         Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21071), "the second maze used the count of the first");
         Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21072));

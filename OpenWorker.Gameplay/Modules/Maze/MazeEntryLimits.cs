@@ -245,8 +245,8 @@ public sealed partial class MazeEntryLimits : IMiscTick
     }
 
     /// <summary>
-    /// The person has come into the maze: the item the maze asks for is taken, a maze that limits entering counts it, and the
-    /// client is told the new count. False when the item is not there any more (it was there at the portal), which the
+    /// The person has come into the maze: the item the maze asks for is taken and a maze that limits entering counts it
+    /// (<see cref="TellCount"/> tells the client the new count). False when the item is not there any more (it was there at the portal), which the
     /// caller answers by sending the person away.
     /// </summary>
     public bool Entered(Entity player, int maze)
@@ -291,9 +291,29 @@ public sealed partial class MazeEntryLimits : IMiscTick
         }
 
         _world.MarkDirty(player, PersonSections.MiscState);
-        Update(player, counted);
 
         return true;
+    }
+
+    /// <summary>
+    /// Tells the client the count of the maze the player has come into (and of every maze that shares it). Apart from
+    /// <see cref="Entered"/> so that it goes when the client has the maze, not while it is still loading it.
+    /// </summary>
+    public void TellCount(Entity player, int maze)
+    {
+        if (!_rules.TryGet(ToKey(maze), out var rule) || rule.EntryLimit == 0)
+        {
+            return;
+        }
+
+        var counted = rule;
+
+        if (rule.Type == CasualRaid && (!OpensToday(rule, out var first) || !_rules.TryGet(ToKey(first), out counted)))
+        {
+            return;
+        }
+
+        Update(player, counted);
     }
 
     /// <summary>

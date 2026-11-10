@@ -266,6 +266,12 @@ public sealed partial class PersonService(
         await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await sharePoints.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
         await community.EnterAsync(context.Player);
+
+        // The client has the maze now: the count of the entries is told last.
+        if (world.IsAlive(context.Player))
+        {
+            entryLimits.TellCount(context.Player, mazeInfo.Id);
+        }
     }
 
     /// <summary>

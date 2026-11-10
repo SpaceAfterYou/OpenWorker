@@ -887,6 +887,37 @@ public sealed class LuaCreatureManager
     }
 
     /// <summary>
+    /// Brings a player who stands down at once, as a blow that took the last of their life would (the test command of the
+    /// chat). Somebody who has fallen already is left as they are.
+    /// </summary>
+    public void Fell(Entity player)
+    {
+        if (!ecs.IsAlive(player) || !Vitals.IsAlive(player))
+        {
+            return;
+        }
+
+        Vitals.Hurt(player, int.MaxValue);
+        Announce(player);
+    }
+
+    /// <summary>
+    /// A player has fallen: the maze is told, their buffs go and their gear wears.
+    /// </summary>
+    private void Announce(Entity victim)
+    {
+        Broadcast(new PersonDieResponse
+        {
+            Victim = ecs.Get<ActorComponent>(victim),
+            Attacker = default,
+            PvpKillCount = 0
+        });
+
+        Buffs?.OnDeath(victim);
+        Services?.Wear?.Died(victim);
+    }
+
+    /// <summary>
     /// Tells every player of the maze, written once for all of them.
     /// </summary>
     public void Broadcast(IResponseHotspotMessage message)
@@ -1110,15 +1141,7 @@ public sealed class LuaCreatureManager
 
         foreach (var victim in fallen)
         {
-            Broadcast(new PersonDieResponse
-            {
-                Victim = ecs.Get<ActorComponent>(victim),
-                Attacker = default,
-                PvpKillCount = 0
-            });
-
-            Buffs?.OnDeath(victim);
-            Services?.Wear?.Died(victim);
+            Announce(victim);
         }
 
         Buffs?.GiveFromHit(attacker.Entity, trigger, victims);
