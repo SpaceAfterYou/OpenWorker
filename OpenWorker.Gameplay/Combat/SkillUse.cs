@@ -110,9 +110,18 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
     /// <summary>
     /// The divergence the player has chosen for the skill (or for the learned level of its group), zero for a skill without
     /// one and for the skills nobody learns. The answer to a skill carries it: the client looks the skill it plays up by
-    /// it, and the number in the request is not to be trusted (the client leaves it unset for a plain attack).
+    /// it, and the number in the request is not to be trusted (the client leaves it unset for a plain attack). A skill
+    /// without one of its own takes the one of its parent, as the original does.
     /// </summary>
-    public int DivergenceOf(Entity player, int skill)
+    public int DivergenceOf(Entity player, int skill, int parent = 0)
+    {
+        // The skill itself first, then the skill it continues (a combo step names its first skill as its parent).
+        var own = DivergenceOfSkill(player, skill);
+
+        return own != 0 || parent == 0 ? own : DivergenceOfSkill(player, parent);
+    }
+
+    private int DivergenceOfSkill(Entity player, int skill)
     {
         if (!world.TryGet<SkillLearnedComponent>(player, out var learned) || learned.Values is not { } values)
         {

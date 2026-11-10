@@ -246,14 +246,14 @@ public sealed partial class MazeService(
         {
             LogSkillRefused(skill.Skill, refusal);
 
-            session.Send(new SkillActiveResponse { ErrorCode = unchecked((short)refusal), Divergence = skillUse.DivergenceOf(context.Player, skill.Skill) });
+            session.Send(new SkillActiveResponse { ErrorCode = unchecked((short)refusal), Divergence = skillUse.DivergenceOf(context.Player, skill.Skill, skill.ParentSkill) });
 
             return ValueTask.CompletedTask;
         }
 
         skillUse.Use(context.Player, skill.Skill, now);
 
-        session.Send(new SkillActiveResponse { Divergence = skillUse.DivergenceOf(context.Player, skill.Skill) });
+        session.Send(new SkillActiveResponse { Divergence = skillUse.DivergenceOf(context.Player, skill.Skill, skill.ParentSkill) });
 
         if (ecs.Has<LuaMaze>(context.Player))
         {
