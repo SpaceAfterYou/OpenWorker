@@ -22,6 +22,13 @@ public interface INavigation
     /// Whether something at one place can notice something at another: nothing that stands behind a wall is noticed.
     /// </summary>
     bool CanSee(Vector3 from, Vector3 target);
+
+    /// <summary>
+    /// Where a creature of a radius that is pushed in a straight line from one place towards another ends up: at the other
+    /// place, or a radius before the wall, the pit or the closed gate that stops it, at the height of the floor.
+    /// </summary>
+    /// <param name="reached">The creature gets all the way.</param>
+    Vector3 Clamp(Vector3 from, Vector3 target, float radius, out bool reached);
 }
 
 /// <summary>
@@ -48,4 +55,11 @@ public sealed class OpenNavigation : INavigation
     }
 
     public bool CanSee(Vector3 from, Vector3 target) => true;
+
+    public Vector3 Clamp(Vector3 from, Vector3 target, float radius, out bool reached)
+    {
+        reached = true;
+
+        return target;
+    }
 }
