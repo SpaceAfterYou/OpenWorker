@@ -15,6 +15,7 @@ public static class PartyMazeServiceCollectionExtensions
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<PartyMazeEntry>());
         services.AddSingleton<IPartyMatchListener>(provider => provider.GetRequiredService<PartyMazeEntry>());
         services.AddSingleton<ICommunityModule>(provider => provider.GetRequiredService<PartyMazeEntry>());
+        services.AddHostedService<PartyMazeQuestionService>();
 
         return services;
     }

@@ -174,7 +174,7 @@ public sealed partial class WorldManager(
     /// Sends the player into an instance of a maze on the given maze server: the instance a party shares, which the maze
     /// server opens for the first member to come and the others join. False when the location has no start to enter by.
     /// </summary>
-    public async ValueTask<bool> SendToMazeAsync(Entity player, short location, int jump, (string Host, short Port) maze, Guid instance, int party)
+    public async ValueTask<bool> SendToMazeAsync(Entity player, short location, int jump, (string Host, short Port) maze, Guid instance, int party, int members = 0)
     {
         if (!provider.TryGetAndCache(location, out var batch, out var type) ||
             type != BatchType.Maze ||
@@ -183,7 +183,7 @@ public sealed partial class WorldManager(
             return false;
         }
 
-        await SendToMazeAsync(player, location, start, maze, instance, party);
+        await SendToMazeAsync(player, location, start, maze, instance, party, members);
 
         return true;
     }
@@ -198,10 +198,10 @@ public sealed partial class WorldManager(
             return;
         }
 
-        await SendToMazeAsync(player, location, start, maze, Guid.Empty, 0);
+        await SendToMazeAsync(player, location, start, maze, Guid.Empty, 0, 0);
     }
 
-    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party)
+    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party, int members)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
@@ -247,7 +247,8 @@ public sealed partial class WorldManager(
             R = world.Rotation,
             Jump = start.Id,
             Instance = instance,
-            Party = party
+            Party = party,
+            Members = (byte)Math.Clamp(members, 0, byte.MaxValue)
         };
 
         // The maze loads the person from the database: what this server has must be there first.

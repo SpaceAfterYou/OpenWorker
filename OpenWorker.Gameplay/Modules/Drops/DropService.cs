@@ -46,7 +46,9 @@ public sealed partial class DropService(
     DailyMissionManager? missions = null,
     ILogger<DropService>? logger = null,
     MazeResults? results = null,
-    AchievementManager? achievements = null)
+    AchievementManager? achievements = null,
+    ReadOnlyCollection<DropRateLevelRow>? levelRates = null,
+    ReadOnlyCollection<DropRateMemberRow>? memberRates = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -55,6 +57,9 @@ public sealed partial class DropService(
 
     private const int Chances = 10000;
     private const int BossRank = 4;
+
+    // The tables of a party's drop go up to four members.
+    private const int MostMembers = 4;
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(1);
 
     // A player takes what is within this reach of its feet. The client decides when to ask, so this only holds back requests from afar.
@@ -66,6 +71,10 @@ public sealed partial class DropService(
     private readonly Dictionary<int, MonsterRow> _monsters = monsters.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
     private readonly Dictionary<Entity, PlayerDrops> _field = [];
 
+    // What a party's drop is multiplied by: the gap of the levels of its members, and how many members share the kill.
+    private readonly Dictionary<int, float> _levelRates = (levelRates ?? new ReadOnlyCollection<DropRateLevelRow>([])).GroupBy(e => (int)e.Interval).ToDictionary(e => e.Key, e => e.First().Rate);
+    private readonly Dictionary<int, float> _memberRates = (memberRates ?? new ReadOnlyCollection<DropRateMemberRow>([])).GroupBy(e => (int)e.Members).ToDictionary(e => e.Key, e => e.First().Rate);
+
     // How much more or less than the tables say falls, as a server setting.
     private readonly float _rate = options?.Value.DropRate ?? 1f;
 
@@ -76,6 +85,16 @@ public sealed partial class DropService(
     /// </summary>
     public void DropForKill(Entity player, int monster, Vector3 position, Random? random = null)
     {
+        DropForKill([player], monster, position, random);
+    }
+
+    /// <summary>
+    /// What a monster lets fall for the players of its maze. Each of them gets a drop of their own, rolled by itself, that
+    /// nobody else sees or can take; a party's drop is multiplied by how much the levels of its members differ and by how
+    /// many of them share the kill. Nothing happens when the tables do not know the monster.
+    /// </summary>
+    public void DropForKill(IReadOnlyList<Entity> players, int monster, Vector3 position, Random? random = null)
+    {
         if (!_monsters.TryGetValue(monster, out var row) || row.DropId == 0 || !_drops.TryGetValue(row.DropId, out var drop))
         {
             return;
@@ -83,17 +102,44 @@ public sealed partial class DropService(
 
         random ??= Random.Shared;
 
-        var level = world.Get<LevelComponent>(player).Level;
-        var rate = (drop.RateClear != 0 ? 1f : _rates.TryGetValue(Math.Max(0, level - row.Level), out var found) ? found : 1f) * _rate;
+        var members = players.Where(world.IsAlive).ToArray();
 
-        var things = Roll(drop, rate, random);
-
-        if (things.Count == 0)
+        if (members.Length == 0)
         {
             return;
         }
 
-        Place(player, things, position, row.Rank == BossRank);
+        var rate = PartyRate(members, row, drop) * _rate;
+
+        foreach (var member in members)
+        {
+            var things = Roll(drop, rate, random);
+
+            if (things.Count > 0)
+            {
+                Place(member, things, position, row.Rank == BossRank);
+            }
+        }
+    }
+
+    /// <summary>
+    /// How much of the drop each of the players gets: for a party, the rate of the gap between its highest and lowest level
+    /// and of its size; then, unless the drop is exempt, the rate of how far its highest level is above the monster. The
+    /// original multiplies the last rate again for every member after the first, which looks like a mistake and is not
+    /// copied.
+    /// </summary>
+    private float PartyRate(Entity[] members, in MonsterRow monster, in DropRow drop)
+    {
+        var levels = members.Select(e => (int)world.Get<LevelComponent>(e).Level).ToArray();
+        var highest = levels.Max();
+        var rate = 1f;
+
+        if (members.Length > 1)
+        {
+            rate *= _levelRates.GetValueOrDefault(highest - levels.Min(), 1f) * _memberRates.GetValueOrDefault(Math.Min(members.Length, MostMembers), 1f);
+        }
+
+        return drop.RateClear != 0 ? rate : rate * _rates.GetValueOrDefault(Math.Max(0, highest - monster.Level), 1f);
     }
 
     /// <summary>

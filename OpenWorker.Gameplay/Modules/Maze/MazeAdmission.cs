@@ -148,6 +148,16 @@ public sealed class MazeAdmission(
             return NotOpened;
         }
 
+        return CheckRules(player, row, out item);
+    }
+
+    /// <summary>
+    /// What a maze asks of the player besides where they stand: the quest, the daily limit, the fatigue and the item.
+    /// </summary>
+    private ushort? CheckRules(Entity player, in MazeInfoRow row, out int item)
+    {
+        item = 0;
+
         scoring.TryGetRule(row.Id, out var rule);
 
         // The quest, taken or finished.
@@ -171,6 +181,23 @@ public sealed class MazeAdmission(
     }
 
     public ushort? Check(Entity player, short location, int portal = 0) => Check(player, location, portal, out _);
+
+    /// <summary>
+    /// A player waits for a party into a maze. The wait asks of the player what the portal of the maze asks of a member of
+    /// a party, wherever the player stands: the weapon, the hours, the level, the maze before it, the quest, the daily limit,
+    /// the fatigue and the item. Null when the player may wait, else the code of the refusal.
+    /// </summary>
+    public ushort? CheckMatching(Entity player, short location, out int item)
+    {
+        item = 0;
+
+        if (CheckEntrant(player, location, inParty: true) is { } refused)
+        {
+            return refused;
+        }
+
+        return _mazes.TryGet(location, out var row) ? CheckRules(player, row, out item) : null;
+    }
 
     /// <summary>
     /// What stands before everything else at the portal of a maze, for whoever takes it: the weapon, a row of the table, the

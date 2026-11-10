@@ -44,6 +44,11 @@ public readonly record struct MonsterCombatComponent
     public long SuperArmorBrokenUntil { get; init; }
 
     /// <summary>
+    /// How long a broken super armor takes to come back, in milliseconds; zero for the time every monster has by default.
+    /// </summary>
+    public long SuperArmorRecovery { get; init; }
+
+    /// <summary>
     /// Has to die for its sector to be finished.
     /// </summary>
     public bool HoldsSector { get; init; }

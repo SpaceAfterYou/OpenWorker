@@ -39,6 +39,13 @@ public sealed partial class PartyNotifier(
 ) :
     ICommunityListener
 {
+    /// <summary>
+    /// The event that tells the servers of the members who stay that the party has fewer members now: a maze they play
+    /// makes its monsters as strong as that many members make them. Its body is the number of the party and the number of
+    /// members left.
+    /// </summary>
+    public const string ResizedEvent = "party.resized";
+
     private IEnumerable<IPartyJoinListener> JoinListeners => services.GetServices<IPartyJoinListener>();
 
     #region For other parts of the game
@@ -254,6 +261,14 @@ public sealed partial class PartyNotifier(
             await network.SendAsync(everybody, new PartyDeleteResponse { Member = PartyMemberInfoValue.Empty });
         }
 
+        // A party of one is no party: the maze counts the member alone.
+        var body = new byte[2 * sizeof(int)];
+
+        BitConverter.TryWriteBytes(body, before.Id);
+        BitConverter.TryWriteBytes(body.AsSpan(sizeof(int)), leave.Deleted ? 1 : rest.Length);
+
+        await network.PublishAsync(rest, ResizedEvent, body);
+
         return true;
     }
 
@@ -323,6 +338,32 @@ public sealed partial class PartyNotifier(
         }
 
         await network.SendAsync(person.Person, await ListAsync(now, PartyUpdateType.None));
+
+        await network.SendAsync(now.Persons.Where(e => e != person.Person), new PartyUpdateMemberInfoResponse
+        {
+            Party = now.Id,
+            Member = Info(card, person)
+        });
+    }
+
+    /// <summary>
+    /// A member's level or channel changed: the party list of the others shows the new one.
+    /// </summary>
+    public async ValueTask OnChangedAsync(Entity player, PresenceRecord person)
+    {
+        if (await book.OfAsync(person.Person) is not { } party || !world.IsAlive(player))
+        {
+            return;
+        }
+
+        var card = CardOf(player);
+
+        await book.MarkOnlineAsync(party.Id, card);
+
+        if (await book.GetAsync(party.Id) is not { } now || !now.Has(person.Person))
+        {
+            return;
+        }
 
         await network.SendAsync(now.Persons.Where(e => e != person.Person), new PartyUpdateMemberInfoResponse
         {

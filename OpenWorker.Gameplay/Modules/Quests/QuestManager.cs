@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Enums;
@@ -21,6 +22,7 @@ using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.Quests.Responses;
 using OpenWorker.Hotspot.Modules.Quests.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.UpdateContent.Res.Rows;
 using OpenWorker.Gameplay.Modules.Persistence;
 
 namespace OpenWorker.Gameplay.Modules.Quests;
@@ -48,8 +50,17 @@ public sealed partial class QuestManager(
     ExperienceService? experience = null,
     IQuestNpcs? npcs = null,
     IQuestTitles? titles = null,
-    TimeProvider? time = null)
+    TimeProvider? time = null,
+    ReadOnlyCollection<QuestConditionRuleRow>? rules = null)
 {
+    /// <summary>
+    /// The conditions that count what one person does for everyone in the maze: the items one gets count for the others.
+    /// </summary>
+    private readonly HashSet<int> _countedForGroup = (rules ?? new ReadOnlyCollection<QuestConditionRuleRow>([]))
+        .Where(e => e.CountsForGroup)
+        .Select(e => (int)e.Id)
+        .ToHashSet();
+
     /// <summary>
     /// The conditions the client tells the server about (<c>15/08</c>): talking to a character, and handing something in to
     /// one, which the tables write as a talk that takes items. Everything else is counted from what the server sees.
@@ -692,6 +703,27 @@ public sealed partial class QuestManager(
         var added = (short)Math.Min(count, short.MaxValue);
 
         Run(nameof(OnItemsArrived), () => OnItemCollectedAsync(player, item, added, CancellationToken.None).AsTask());
+    }
+
+    /// <summary>
+    /// Whether what one person does for the condition counts for everyone in the maze.
+    /// </summary>
+    public bool CountsForGroup(int conditionId) => _countedForGroup.Contains(conditionId);
+
+    /// <summary>
+    /// A person in the maze of the person got items, and the conditions that count for everyone in the maze take them too:
+    /// whoever is in the maze with them counts the items, though they are not in their bags.
+    /// </summary>
+    public void OnItemsArrivedForGroup(Entity player, int item, int count)
+    {
+        if (count <= 0 || _countedForGroup.Count == 0 || !TryGet(player, out _, out _))
+        {
+            return;
+        }
+
+        var added = (short)Math.Min(count, short.MaxValue);
+
+        Run(nameof(OnItemsArrivedForGroup), () => CountAsync(player, e => _countedForGroup.Contains(e.Id) && QuestRules.Matches(e, QuestConditionType.Collect, QuestConditionTarget.Item, item), added).AsTask());
     }
 
     /// <summary>

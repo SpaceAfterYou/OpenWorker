@@ -241,6 +241,11 @@ public sealed class ExperienceService
         }
     }
 
+    /// <summary>
+    /// A player has reached another level.
+    /// </summary>
+    public event Action<Entity>? LevelReached;
+
     private void LevelChanged(Entity player, byte from, byte level)
     {
         if (_world.Has<ServerSessionComponent>(player))
@@ -257,5 +262,7 @@ public sealed class ExperienceService
 
         // Every level passed gives its skill points.
         _skills?.OnLevelReached(player, from, level);
+
+        LevelReached?.Invoke(player);
     }
 }

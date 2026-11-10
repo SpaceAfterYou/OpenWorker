@@ -1,6 +1,8 @@
 ﻿using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Channel;
+using OpenWorker.Channel.Community;
+using OpenWorker.Hotspot.Modules.Channels.Enums;
 using OpenWorker.DistrictServer.Server;
 using OpenWorker.DistrictServer.Trade;
 using OpenWorker.Domain.Components;
@@ -22,7 +24,8 @@ public sealed class ChannelService(
     NpcManager npcManager,
     ServiceChannels serviceChannels,
     ServerChannels serverChannels,
-    Trades trades
+    Trades trades,
+    CommunityNetwork community
 ) :
     IHotspotHandler<WorldObjectRequest>,
     IHotspotHandler<ChannelInfoRequest>,
@@ -33,19 +36,21 @@ public sealed class ChannelService(
     /// </summary>
     private const ushort TradingCode = 55003;
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, ChannelChangeRequest request)
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelChangeRequest request)
     {
         // A trade runs between two players of one channel.
         if (trades.IsTrading(context.Player))
         {
             serverChannels.Refuse(context.Player, TradingCode);
 
-            return ValueTask.CompletedTask;
+            return;
         }
 
-        serverChannels.Switch(context.Player, request.Channel);
-
-        return ValueTask.CompletedTask;
+        // A party shows the channel of its members: the others are told of the new one.
+        if (serverChannels.Switch(context.Player, request.Channel) is ChannelSwitchResult.Ok && world.IsAlive(context.Player))
+        {
+            await community.ChangedAsync(context.Player);
+        }
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChannelInfoRequest request)

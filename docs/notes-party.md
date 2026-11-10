@@ -103,6 +103,14 @@ party of type 1 with the leader as master (12/09 with update 3). A no, a missing
 - The recruitment number is the party's; a master alone gets a number ahead, which the party made on the first accepted
   application keeps. Check that the client shows a recruitment of somebody alone and accepts the number in 12/38 and 12/43.
 - A recruitment whose master goes offline stays until it expires; the applicants of an offline master wait.
-- Matching does not look at blocks between people (the reference does) and does not check what the maze needs to enter
-  (level, items): the entry of the maze does that. The party it makes is not sent into the maze: that is the maze's work.
-- 12/44 sends the window of the person with the titles they show; 12/47 is still unknown.
+- Matching keeps apart people who have blocked each other, in either direction (a person does not join a group that has one of
+  them, and starts or joins another), and asks of a player who waits what the portal of the maze asks of a member of a party
+  (weapon, hours, level, the maze before it, quest, daily limit, item, fatigue: `MazeAdmission.CheckMatching`, the codes of
+  the portal, on 12/30). The party it makes is sent into the maze by the maze's work (`notes-party-maze.md`). The block check
+  reads the members of the groups before the join, so a member who joins in the same moment is not checked.
+- A member's level or channel that changes while the member stays on a server is sent to the others at once as 12/06
+  (`CommunityNetwork.ChangedAsync`; the channel change of the district and the level of `ExperienceService`). The class, the
+  photo and the name are not sent when they change.
+- 12/44 sends the window of the person with the titles they show; 12/47 is the question of the maze (`notes-party-maze.md`).
+- A leave, a kick or the end of a party tells the servers of the members who remain by the event `party.resized`, for the
+  maze they play (`notes-party-maze.md`).

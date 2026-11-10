@@ -42,4 +42,10 @@ public sealed class MazeReserveCache
     /// </summary>
     [RedisField]
     public int Party { get; set; }
+
+    /// <summary>
+    /// How many members of the party the maze was opened for, which decides how strong its monsters are; zero for a person alone.
+    /// </summary>
+    [RedisField]
+    public byte Members { get; set; }
 }

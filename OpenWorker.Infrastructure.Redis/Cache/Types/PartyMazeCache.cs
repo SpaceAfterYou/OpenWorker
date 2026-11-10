@@ -43,4 +43,10 @@ public sealed class PartyMazeCache
 
     [RedisField]
     public required short Port { get; init; }
+
+    /// <summary>
+    /// How many members the maze was opened for.
+    /// </summary>
+    [RedisField]
+    public byte Members { get; init; }
 }

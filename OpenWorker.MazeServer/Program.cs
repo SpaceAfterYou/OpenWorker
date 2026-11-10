@@ -1,4 +1,5 @@
 ﻿using OpenWorker.Batch;
+using OpenWorker.Channel.Community;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
@@ -51,6 +52,7 @@ await Host
         services.AddSingleton(provider => new AiScriptLoader(provider.GetRequiredService<ILogger<AiScriptLoader>>()));
         services.AddSingleton<MonsterBehaviorTables>();
         services.AddSingleton<NavMeshProvider>();
+        services.AddSingleton<PartyRevision>();
         services.AddSingleton<CreatureServices>();
         services.AddSingleton<IPlayerHealthResize, MazeHealthResize>();
         services.AddSingleton(_ => new MazeScripts());
@@ -64,6 +66,7 @@ await Host
         services.AddServerCommon<MazeAudience>();
         services.AddSingleton<MazeInstances>();
         services.AddSingleton<PartyMazeEvents>();
+        services.AddSingleton<ICommunityModule>(provider => provider.GetRequiredService<PartyMazeEvents>());
         services.AddSingleton<MazeHelperField>();
         services.AddSingleton<OpenWorker.Gameplay.Modules.Helpers.ISummonedHelpers, MazeSummonedHelpers>();
         services.AddSingleton<OpenWorker.Gameplay.Modules.Helpers.IHelperField>(provider => provider.GetRequiredService<MazeHelperField>());

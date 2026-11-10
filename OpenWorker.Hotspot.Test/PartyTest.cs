@@ -7,6 +7,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot.Modules.Party.Enums;
 using StackExchange.Redis;
 
@@ -142,6 +143,40 @@ public sealed class PartyTest
         CollectionAssert.AreEquivalent(new[] { people[0], people[2] }, (await book.OfAsync(people[2]))!.Persons.ToArray());
     }
 
+    /// <summary>
+    /// A member who stays on the server and changes what the party shows of them, the level or the channel, is shown to the
+    /// others anew, and the party keeps the new card.
+    /// </summary>
+    [TestMethod]
+    public async Task AMemberWhoChangesLevelIsShownToTheOthersAnew()
+    {
+        var redis = await RedisAsync();
+        var people = People(2);
+        var community = new MemoryCommunity();
+
+        using var first = new TestServer(community);
+        using var second = new TestServer(community);
+
+        var book = new PartyBook(redis, TimeProvider.System);
+        var notifier = Notifier(first, book);
+
+        using var changed = first.Join(people[0], "Changed");
+        using var other = second.Join(people[1], "Other");
+
+        await book.JoinAsync(Card(people[0]), Card(people[1]));
+        first.World.Add(changed.Entity, new LevelComponent(30, 0));
+        changed.Read();
+        other.Read();
+
+        var record = (await first.Network.FindAsync(people[0]))!;
+
+        first.Run(() => notifier.OnChangedAsync(changed.Entity, record).AsTask());
+
+        Assert.IsTrue(other.Read().Any(e => e.Group == (byte)GroupOpcode.Party && e.Command == (byte)PartyOpcode.UpdateMemberInfo), "The others are told");
+        Assert.IsFalse(changed.Read().Any(e => e.Group == (byte)GroupOpcode.Party && e.Command == (byte)PartyOpcode.UpdateMemberInfo), "The member is not told of themself");
+        Assert.AreEqual(30, (await book.OfAsync(people[1]))!.Members.Single(e => e.Person == people[0]).Card.Level);
+    }
+
     [TestMethod]
     public async Task AnAcceptedApplicationPutsTheApplicantIntoThePartyOfTheRecruitment()
     {
@@ -202,6 +237,62 @@ public sealed class PartyTest
 
         Assert.HasCount(1, taken);
         Assert.AreEqual(master, taken[0].Master);
+    }
+
+    /// <summary>
+    /// Who has blocked a person, or been blocked by them, is not put in the same group with them; the person goes to another
+    /// group, or starts one.
+    /// </summary>
+    [TestMethod]
+    public async Task TheAutoMatchingKeepsApartPeopleWhoHaveBlockedEachOther()
+    {
+        var redis = await RedisAsync();
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var people = People(3);
+        var maze = (short)Random.Shared.Next(20_000, 30_000);
+
+        using var server = new TestServer(new MemoryCommunity());
+
+        var matching = new PartyMatching(server.Network, Notifier(server, new PartyBook(redis, time)), redis, time, relations: new Blocks(people[0], people[1]));
+        var players = people.Select(e => server.Join(e, "P" + e)).ToArray();
+
+        try
+        {
+            foreach (var player in players)
+            {
+                server.Run(() => matching.EnterAsync(player.Entity, maze, PartyRules.MatchingLimit(2)));
+            }
+
+            var groups = new List<int>();
+
+            foreach (var person in people)
+            {
+                groups.Add((await matching.OfAsync(person))!.Id);
+            }
+
+            Assert.AreNotEqual(groups[0], groups[1], "The one who blocked and the one blocked wait in different groups");
+            Assert.AreEqual(groups[0], groups[2], "Whoever blocked nobody joins the first group there is");
+        }
+
+        finally
+        {
+            foreach (var person in people)
+            {
+                await matching.ExitAsync(person, OpenWorker.Hotspot.Modules.Party.Enums.PartyMatchingExit.None);
+            }
+
+            foreach (var player in players)
+            {
+                player.Dispose();
+            }
+        }
+    }
+
+    private sealed class Blocks(int blocker, int blocked) : IPersonRelations
+    {
+        public ValueTask<bool> IsFriendAsync(int person, int other) => ValueTask.FromResult(false);
+
+        public ValueTask<bool> IsBlockedAsync(int person, int other) => ValueTask.FromResult(person == blocker && other == blocked);
     }
 
     [TestMethod]

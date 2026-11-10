@@ -23,7 +23,7 @@ namespace OpenWorker.Lua;
 /// rank of the run (<see cref="MazeResults"/>): the missions and achievements that count clears by rank hear it, the record
 /// of the maze in the progress of the person keeps it, and the time attack ranking of the mazes the client ranks gets it.
 /// </summary>
-public sealed partial class MazeReporter(
+public partial class MazeReporter(
     DailyMissionManager missions,
     SoulMetryManager soulMetries,
     SoulMetryCatalog soulCatalog,
@@ -69,7 +69,7 @@ public sealed partial class MazeReporter(
     /// <summary>
     /// The person has killed a monster.
     /// </summary>
-    public async ValueTask MonsterKilledAsync(Entity player, int monster, uint conditions)
+    public virtual async ValueTask MonsterKilledAsync(Entity player, int monster, uint conditions)
     {
         try
         {

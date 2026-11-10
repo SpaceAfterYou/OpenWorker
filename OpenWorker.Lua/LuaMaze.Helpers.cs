@@ -152,7 +152,7 @@ public partial class LuaMaze
 
             if (Ecs.IsAlive(owner) && Find(owner) is not null)
             {
-                await reports.MonsterKilledAsync(owner, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)Gameplay.Combat.HitResults.Critical) != 0));
+                await ReportKillAsync(owner, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)Gameplay.Combat.HitResults.Critical) != 0));
             }
 
             await State.OnDie(identifier, place.SpawnBox, this);

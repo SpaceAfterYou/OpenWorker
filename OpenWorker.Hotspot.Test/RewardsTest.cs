@@ -146,7 +146,8 @@ public sealed class RewardsTest
         public ReadOnlyCollection<MonsterRow> Monsters { get; } = Load<MonsterRow>("tb_Monster");
 
         public Fixture(byte level = 1, ReadOnlyCollection<MonsterExpRow>? monsterExp = null, ReadOnlyCollection<PartyExpMobRow>? intervals = null,
-            ReadOnlyCollection<DropRow>? drops = null, ReadOnlyCollection<DropGroupRow>? groups = null)
+            ReadOnlyCollection<DropRow>? drops = null, ReadOnlyCollection<DropGroupRow>? groups = null,
+            ReadOnlyCollection<DropRateLevelRow>? levelRates = null, ReadOnlyCollection<DropRateMemberRow>? memberRates = null)
         {
             var catalog = new ItemCatalog(
                 Load<ItemRow>("tb_Item"),
@@ -174,7 +175,9 @@ public sealed class RewardsTest
                 drops ?? Rows<DropRow>(),
                 groups ?? Rows<DropGroupRow>(),
                 Rows<DropRateMobRow>(),
-                Monsters);
+                Monsters,
+                levelRates: levelRates,
+                memberRates: memberRates);
 
             Player = World.Create(
                 Component.GetComponentType(typeof(ActorComponent)),
@@ -316,6 +319,66 @@ public sealed class RewardsTest
         Assert.AreEqual(30, f.Inventory.Gold(f.Player));
         Assert.AreEqual(4, f.Inventory.CountOf(f.Player, Material));
         Assert.AreEqual(0, f.Drops.On(f.Player).Count);
+    }
+
+    /// <summary>
+    /// Every player in the maze gets a drop of their own, rolled for them; a party's drop is multiplied by how much the levels
+    /// of its members differ and by how many of them there are, and a player alone by neither.
+    /// </summary>
+    [TestMethod]
+    public void EveryMemberOfAPartyGetsADropOfTheirOwnAtTheRateOfTheParty()
+    {
+        var monster = FindMonster();
+
+        using var f = new Fixture(
+            level: 10,
+            drops: Rows<DropRow>(Drop(monster.DropId, 6000, 30, 30, 0, 0)),
+            levelRates: Rows<DropRateLevelRow>(Rate(0, 1f), Rate(5, 0.5f)),
+            memberRates: Rows<DropRateMemberRow>(Rate(1, 1f), Rate(2, 1f)));
+
+        var other = f.World.Create(new LevelComponent(5, 0));
+        var roll = new FixedRandom(4000);
+
+        // A gap of five levels halves the chance of 6000 to 3000, below the roll of 4000: nothing falls for either of them.
+        f.Drops.DropForKill([f.Player, other], monster.Id, Vector3.Zero, roll);
+
+        Assert.AreEqual(0, f.Drops.On(f.Player).Count + f.Drops.On(other).Count);
+
+        // Two members of one level fall in with the chance whole, and each has their own, with their own serial.
+        f.World.Set(other, new LevelComponent(10, 0));
+        f.Drops.DropForKill([f.Player, other], monster.Id, Vector3.Zero, roll);
+
+        var mine = f.Drops.On(f.Player).Single();
+        var theirs = f.Drops.On(other).Single();
+
+        Assert.AreEqual(DropService.GoldObject, mine.ObjectId);
+        Assert.AreEqual(DropService.GoldObject, theirs.ObjectId);
+        Assert.AreNotEqual(mine.Serial, theirs.Serial);
+        Assert.IsFalse(f.Drops.PickUp(other, mine.Serial), "Nobody takes what lies for another");
+
+        // The same gap means nothing to a player alone.
+        f.World.Set(other, new LevelComponent(5, 0));
+        f.Drops.Forget(f.Player);
+        f.Drops.DropForKill([f.Player], monster.Id, Vector3.Zero, roll);
+
+        Assert.AreEqual(1, f.Drops.On(f.Player).Count);
+    }
+
+    private static Action<BinaryWriter> Rate(byte key, float rate)
+    {
+        return writer =>
+        {
+            writer.Write(key);
+            writer.Write(rate);
+        };
+    }
+
+    /// <summary>
+    /// A random that gives the same roll to every chance, so that a drop falls or does not by its rate alone.
+    /// </summary>
+    private sealed class FixedRandom(int roll) : Random
+    {
+        public override int Next(int minValue, int maxValue) => maxValue == 10001 ? roll : minValue;
     }
 
     [TestMethod]

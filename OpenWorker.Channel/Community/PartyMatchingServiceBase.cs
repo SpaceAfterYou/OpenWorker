@@ -3,6 +3,7 @@ using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -23,7 +24,8 @@ public abstract class PartyMatchingServiceBase(
     CommunityNetwork network,
     PartyBook book,
     PartyMatching matching,
-    ReadOnlyCollection<MazeInfoRow> mazes
+    ReadOnlyCollection<MazeInfoRow> mazes,
+    MazeAdmission? admission = null
 ) :
     IHotspotHandler<PartyMatchingEnterRequest>,
     IHotspotHandler<PartyMatchingExitRequest>,
@@ -55,6 +57,15 @@ public abstract class PartyMatchingServiceBase(
 
         if (!world.IsAlive(context.Player))
         {
+            return;
+        }
+
+        // The maze asks of whoever waits for it what its portal asks of a member of a party.
+        if (admission?.CheckMatching(context.Player, maze.Id, out var item) is { } refused)
+        {
+            world.Get<ServerSessionComponent>(context.Player)
+                .Send(new ErrorMessageResponse(new MessageOpcode((byte)GroupOpcode.Party, (byte)PartyOpcode.MatchingEnter), refused, item > 0 ? (uint)item : null));
+
             return;
         }
 

@@ -15,11 +15,13 @@ using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
@@ -327,14 +329,7 @@ public sealed class LuaCreatureManager
 
         Create(creature, identifier, spawn);
 
-        var combat = tables.GetMonster(identifier);
-
-        if (combat.Defense == DefenseType.SuperArmor)
-        {
-            var gauge = combat.Stats.MaxHealth * SuperArmorShare;
-
-            combat = combat with { SuperArmor = gauge, MaxSuperArmor = gauge };
-        }
+        var combat = Strength(identifier, PartyCount);
 
         ecs.Set(creature, combat);
         ecs.Set(creature, ecs.Get<CreatureComponent>(creature) with { Level = combat.Stats.Level, Health = (int)combat.Stats.MaxHealth });
@@ -349,6 +344,110 @@ public sealed class LuaCreatureManager
         GiveMind(creature, identifier, ecs.Get<WorldComponent>(creature).Position);
 
         return creature;
+    }
+
+    /// <summary>
+    /// How many members the party of the maze has, which decides how strong its monsters are. A maze of one player counts one.
+    /// </summary>
+    public int PartyCount { get; private set; } = 1;
+
+    /// <summary>
+    /// The maze is opened for a party of <paramref name="members"/>: the monsters that appear are made for that many.
+    /// </summary>
+    public void StartParty(int members)
+    {
+        PartyCount = Math.Max(1, members);
+    }
+
+    /// <summary>
+    /// The monster as strong as it is for the number of members: what its group says when the tables have a row for it, else
+    /// what its own table gives and a guessed gauge for its super armor.
+    /// </summary>
+    private MonsterCombatComponent Strength(int identifier, int members)
+    {
+        var combat = tables.GetMonster(identifier);
+
+        if (Services?.Revision is { } revision && revision.TryGet(identifier, members, out _))
+        {
+            return revision.Apply(combat, identifier, members);
+        }
+
+        if (combat.Defense == DefenseType.SuperArmor)
+        {
+            var gauge = combat.Stats.MaxHealth * SuperArmorShare;
+
+            combat = combat with { SuperArmor = gauge, MaxSuperArmor = gauge };
+        }
+
+        return combat;
+    }
+
+    /// <summary>
+    /// The party of the maze has <paramref name="members"/> members now, which it has when a member leaves it. The monsters
+    /// that are alive become as strong as that many members make them, each with the same share of its life and of its super
+    /// armor as before; a monster of a kind other than the plain one is left as it is. The members are told of the change.
+    /// </summary>
+    public void ResizeParty(int members)
+    {
+        PartyCount = Math.Max(1, members);
+
+        if (Services?.Revision is not { } revision)
+        {
+            return;
+        }
+
+        foreach (var creature in Creatures.ToArray())
+        {
+            if (!ecs.IsAlive(creature) || ecs.Get<ActorComponent>(creature).Type != ActorType.Monster)
+            {
+                continue;
+            }
+
+            var state = ecs.Get<CreatureComponent>(creature);
+
+            if (!revision.IsRevised(state.Identifier))
+            {
+                continue;
+            }
+
+            Restrengthen(creature, state, revision);
+        }
+
+        Broadcast(new MazeNoticeResponse { Type = PartyStrengthNotice });
+    }
+
+    /// <summary>
+    /// The notice the clients show when the monsters change their strength because the party has changed.
+    /// </summary>
+    private const int PartyStrengthNotice = 80;
+
+    private void Restrengthen(Entity creature, CreatureComponent state, PartyRevision revision)
+    {
+        var before = ecs.Get<MonsterCombatComponent>(creature);
+        var after = revision.Apply(tables.GetMonster(state.Identifier), state.Identifier, PartyCount);
+
+        // The share of life the monster has left stays, and a super armor that was broken is whole again.
+        var share = state.Health > 0 && before.Stats.MaxHealth > 0f ? state.Health / before.Stats.MaxHealth : 1f;
+        var armorShare = before.SuperArmor > 0f && before.MaxSuperArmor > 0f ? before.SuperArmor / before.MaxSuperArmor : 1f;
+        var health = state.Health > 0 ? Math.Max(1, (int)(after.Stats.MaxHealth * share)) : 0;
+
+        after = after with { SuperArmor = (int)(after.MaxSuperArmor * armorShare) };
+
+        ecs.Set(creature, after);
+        ecs.Set(creature, state with { Health = health });
+
+        var changes = CombatStats.Differences(before.Stats, after.Stats)
+            .Select(e => new StatKeyValuePair { byIndex = e.Type, statValue = e.Value })
+            .Append(new StatKeyValuePair { byIndex = STAT_TYPE.STAT_HP_CUR, statValue = health })
+            .ToArray();
+        var actor = ecs.Get<ActorComponent>(creature);
+
+        Broadcast(new MonsterUpdateStatListResponse { Actor = actor, Stats = changes });
+
+        if (after.MaxSuperArmor > 0f)
+        {
+            Broadcast(new MonsterSuperArmorGageResponse { Actor = actor, Current = after.SuperArmor, Max = after.MaxSuperArmor });
+        }
     }
 
     /// <summary>
@@ -788,7 +887,7 @@ public sealed class LuaCreatureManager
             return new HitEffect(0, (byte)DefenseType.SuperArmor, gauge);
         }
 
-        ecs.Set(monster, combat with { SuperArmor = 0f, SuperArmorBrokenUntil = now + SuperArmorRecovery });
+        ecs.Set(monster, combat with { SuperArmor = 0f, SuperArmorBrokenUntil = now + (combat.SuperArmorRecovery > 0 ? combat.SuperArmorRecovery : SuperArmorRecovery) });
         Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(monster), Current = 0f, Max = combat.MaxSuperArmor });
 
         return new HitEffect(Flinch(monster, reaction, survives), (byte)DefenseType.Normal, 0f);

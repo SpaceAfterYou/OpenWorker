@@ -453,6 +453,9 @@ public partial class LuaMaze(
         creatureManager.Detach(player);
         _buffs.Detach(player);
 
+        // The others do not wait for a player who is gone.
+        _portalWait?.Remove(player);
+
         if (_members.Count == 0)
         {
             Close();
@@ -498,6 +501,7 @@ public partial class LuaMaze(
 
         StepTimers((float)elapsed.TotalSeconds);
         StepQuests();
+        _portalWait?.Advance((float)elapsed.TotalSeconds);
 
         // A player who leaves during the step is taken out of the list, so the list is walked by index.
         for (var index = 0; index < _members.Count && !Closed; index++)
@@ -1315,10 +1319,7 @@ public partial class LuaMaze(
             }
 
             // The killer may have left while a script ran; the death still counts for the maze.
-            if (Ecs.IsAlive(player))
-            {
-                await reports.MonsterKilledAsync(player, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)HitResults.Critical) != 0));
-            }
+            await ReportKillAsync(player, identifier, MazeReporter.GetKillConditions(kind, (hit.DamageFlags & (byte)HitResults.Critical) != 0));
 
             await State.OnDie(identifier, place.SpawnBox, this);
         }
@@ -1658,12 +1659,28 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// The person clicked an object of the maze: it counts for the quests, and if it is one of a soul metry, the soul
-    /// metry finds it.
+    /// The person clicked an object of the maze: it counts for the quests, for everyone in the maze when the object says so,
+    /// and if it is one of a soul metry, the soul metry finds it.
     /// </summary>
     public async ValueTask CollectSoulObjectAsync(Entity player, int box)
     {
-        await reports.ObjectUsedAsync(player, box);
+        if (Progress.CountsForEveryone(box))
+        {
+            foreach (var member in _members.Select(e => e.Player).Where(Ecs.IsAlive).ToArray())
+            {
+                await reports.ObjectUsedAsync(member, box);
+
+                if (Closed)
+                {
+                    return;
+                }
+            }
+        }
+
+        else
+        {
+            await reports.ObjectUsedAsync(player, box);
+        }
 
         if (Closed)
         {

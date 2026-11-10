@@ -230,7 +230,7 @@ public sealed partial class PersonService(
 
         // A party shares the instance its reservation names; a player alone gets one of their own.
         var instance = mazeReserve.Instance == Guid.Empty ? Guid.NewGuid() : mazeReserve.Instance;
-        var maze = await EnterInstanceAsync(context.Player, instance, mazeReserve.Party, mazeInfo, batch, context.CancellationToken);
+        var maze = await EnterInstanceAsync(context.Player, instance, mazeReserve.Party, mazeReserve.Members, mazeInfo, batch, context.CancellationToken);
 
         if (!world.IsAlive(context.Player))
         {
@@ -288,11 +288,11 @@ public sealed partial class PersonService(
     /// Joins the instance where it stands, or opens it when the player is the first to come. A maze whose instance is over
     /// by the time the player gets in, or that plays another maze, is opened anew.
     /// </summary>
-    private async ValueTask<LuaMaze?> EnterInstanceAsync(Entity player, Guid instance, int party, MazeInfoRow mazeInfo, VBatchFile batch, CancellationToken cancellationToken)
+    private async ValueTask<LuaMaze?> EnterInstanceAsync(Entity player, Guid instance, int party, int members, MazeInfoRow mazeInfo, VBatchFile batch, CancellationToken cancellationToken)
     {
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var maze = await instances.GetOrOpenAsync(instance, () => OpenAsync(player, instance, party, mazeInfo, batch, cancellationToken));
+            var maze = await instances.GetOrOpenAsync(instance, () => OpenAsync(player, instance, party, members, mazeInfo, batch, cancellationToken));
 
             // The player may have left while the maze was opened.
             if (!world.IsAlive(player))
@@ -321,7 +321,7 @@ public sealed partial class PersonService(
         return null;
     }
 
-    private async ValueTask<LuaMaze?> OpenAsync(Entity player, Guid instance, int party, MazeInfoRow mazeInfo, VBatchFile batch, CancellationToken cancellationToken)
+    private async ValueTask<LuaMaze?> OpenAsync(Entity player, Guid instance, int party, int members, MazeInfoRow mazeInfo, VBatchFile batch, CancellationToken cancellationToken)
     {
         var state = LuaState.Create();
         state.OpenStandardLibraries();
@@ -370,6 +370,10 @@ public sealed partial class PersonService(
         }
 
         var creatures = new LuaCreatureManager(world, batch, combatTables, creatureServices, creatureLogger, mesh);
+
+        // The monsters are as strong as the party the maze was opened for makes them.
+        creatures.StartParty(members);
+
         var maze = new LuaMaze(state, world, player, creatures, buffManager, questManager, batch, _interactions, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger)
         {
             Instance = instance,
@@ -377,8 +381,9 @@ public sealed partial class PersonService(
         };
 
         // What happens in the instance is wired once, for every player who is in it then.
-        maze.MonsterKilled += (killer, monster, position) => rewards.OnKilled(killer, PresentOf(maze), monster, position);
+        maze.MonsterKilled += (killer, monster, position) => rewards.OnKilled(killer, PresentOf(maze), maze.Members, monster, position);
         maze.Completed += () => partyEvents.Completed(maze);
+        partyEvents.ShareItems();
         maze.MonstersHit += results.OnMonstersHit;
         creatures.Vitals.HealthChanged += partyEvents.HealthChanged;
         creatures.Vitals.HealthChanged += results.OnHealthChanged;

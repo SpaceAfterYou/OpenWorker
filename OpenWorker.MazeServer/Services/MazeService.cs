@@ -222,14 +222,7 @@ public sealed partial class MazeService(
         session.Send(new MazeInteractionInfosResponse { Interactions = progress.InteractionList });
     }
 
-    private static SectorBox? FindSector(LuaMaze maze, Vector3 position)
-    {
-        return maze.Batch.EventBox.Sectors.FirstOrDefault(e =>
-            position.X >= Math.Min(e.PosTopLeft.X, e.PosBottomRight.X) &&
-            position.X <= Math.Max(e.PosTopLeft.X, e.PosBottomRight.X) &&
-            position.Y >= Math.Min(e.PosTopLeft.Y, e.PosBottomRight.Y) &&
-            position.Y <= Math.Max(e.PosTopLeft.Y, e.PosBottomRight.Y));
-    }
+    private static SectorBox? FindSector(LuaMaze maze, Vector3 position) => maze.SectorAt(position);
 
     /// <summary>
     /// The player starts a skill. It must be the player's own and in its deck, its cooldown over and its cost payable; a
@@ -458,54 +451,26 @@ public sealed partial class MazeService(
             return ValueTask.CompletedTask;
         }
 
-        var maze = ecs.Get<LuaMaze>(context.Player);
-        var world = ecs.Get<WorldComponent>(context.Player);
-        var events = maze.Batch.EventBox;
-
-        BasicEntity? destination = events.PortalExits.Find(request.Jump);
-        destination ??= events.SectorStarts.Find(request.Jump);
-        destination ??= events.StartEvents.Find(request.Jump);
-
-        // The portal of a boss sector is never shut: whoever fights the boss must be able to leave.
-        var inBossSector = FindSector(maze, world.Position)?.Type == SectorType.Boss;
-
-        if (request.Location != world.Location || !(inBossSector || maze.Progress.IsPortalOpen(request.Portal)) || destination is null)
+        // Everyone in the maze goes through a portal together: it opens at once when all stand at it, and the others are waited
+        // for otherwise (04/0F counts the seconds, 04/0E takes everybody through).
+        if (!ecs.Get<LuaMaze>(context.Player).EnterPortal(context.Player, request.Location, request.Portal, request.Jump))
         {
             SendError(context.Player, WorldOpcode.WarpReq, WarpFailed);
-
-            return ValueTask.CompletedTask;
-        }
-
-        var position = destination.GetRandomPosition();
-
-        ecs.Set(context.Player, world with { Position = position, Rotation = destination.Rotation });
-
-        ecs.Get<ServerSessionComponent>(context.Player).Send(new WorldWarpMazeResponse
-        {
-            BoxIndex = request.Portal,
-            Warp = new WarpValue { HasError = false, Position = position, Rotation = destination.Rotation },
-            // The map says which sector the portal leads to, and sectors may lie inside one another.
-            Sector = events.Portals.Find(request.Portal) is { NextSector: > 0 } portal ? portal.NextSector : FindSector(maze, position)?.Id ?? 0
-        });
-
-        maze.SetPotalFlag(request.Portal, false);
-
-        // A portal that names no sector woke nothing when it opened: the sector the player comes to wakes now, as the
-        // first sector does when the maze has loaded. A sector already awake spawns nothing twice.
-        if (events.Portals.Find(request.Portal) is not { NextSector: > 0 } && FindSector(maze, position) is { } arrived)
-        {
-            maze.SpawnSector(arrived.Id);
         }
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// Stepping out of a portal that waits for the whole party. Nothing waits here: each member of a party takes a portal
-    /// alone.
+    /// The player stepped out of a portal they stood at: the others do not wait for them any more.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, WorldWarpOutRequest request)
     {
+        if (ecs.Has<LuaMaze>(context.Player))
+        {
+            ecs.Get<LuaMaze>(context.Player).LeavePortal(context.Player);
+        }
+
         return ValueTask.CompletedTask;
     }
 
@@ -635,7 +600,16 @@ public sealed partial class MazeService(
         {
             questManager.TryApplyConditionProgress(context.Player, box.EpisodeCondition, 1);
 
-            ecs.Get<ServerSessionComponent>(context.Player).Send(new MazeQuestMoveCheckResponse { Box = box.Id });
+            // A condition that counts for the group counts for everyone in the maze, and the box is told to all of them.
+            if (questManager.CountsForGroup(box.EpisodeCondition))
+            {
+                foreach (var other in maze.Members.Where(e => e != context.Player && ecs.IsAlive(e)))
+                {
+                    questManager.TryApplyConditionProgress(other, box.EpisodeCondition, 1);
+                }
+            }
+
+            maze.Creatures.Broadcast(new MazeQuestMoveCheckResponse { Box = box.Id });
         }
 
         return ValueTask.CompletedTask;
@@ -698,11 +672,22 @@ public sealed partial class MazeService(
             return;
         }
 
-        ecs.Get<ServerSessionComponent>(context.Player).Send(new MazeInteractionRunResponse
+        var run = new MazeInteractionRunResponse
         {
             Result = 0,
             Interaction = maze.Progress.UseInteraction(interaction)
-        });
+        };
+
+        // An object that is private to whoever uses it changes for that player alone; any other changes for everybody in the maze.
+        if (maze.Progress.IsPrivate(request.Box))
+        {
+            ecs.Get<ServerSessionComponent>(context.Player).Send(run);
+        }
+
+        else
+        {
+            maze.Creatures.Broadcast(run);
+        }
 
         await maze.CollectSoulObjectAsync(context.Player, request.Box);
 

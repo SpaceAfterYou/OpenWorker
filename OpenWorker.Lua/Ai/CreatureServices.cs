@@ -2,6 +2,7 @@ using OpenWorker.Batch.Actions;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot;
 using OpenWorker.Navigation;
 
@@ -11,7 +12,7 @@ namespace OpenWorker.Lua.Ai;
 /// What every maze needs to give its monsters a mind. Everything in it is shared and does not change.
 /// </summary>
 public sealed class CreatureServices(AiScriptLoader scripts, MonsterBehaviorTables behaviors, SkillActionProvider actions, SimulationClock clock, NavMeshProvider meshes,
-    PlayerGauges? gauges = null, PlayerStatsService? stats = null, EnduranceWear? wear = null)
+    PlayerGauges? gauges = null, PlayerStatsService? stats = null, EnduranceWear? wear = null, PartyRevision? revision = null)
 {
     /// <summary>
     /// Steps every maze of the server, its monsters with it, and runs what the mazes wait for.
@@ -39,4 +40,9 @@ public sealed class CreatureServices(AiScriptLoader scripts, MonsterBehaviorTabl
     /// Wears the gear of the players as they hit, are hit and fall. A maze without it wears nothing.
     /// </summary>
     public EnduranceWear? Wear { get; } = wear;
+
+    /// <summary>
+    /// How much stronger the monsters are for a party. A maze without it leaves them as their own tables make them.
+    /// </summary>
+    public PartyRevision? Revision { get; } = revision;
 }
