@@ -57,7 +57,7 @@ public sealed class MazeResultsTest
         return new ReadOnlyCollection<T>(rows);
     }
 
-    private static ReadOnlyCollection<T> None<T>() => new([]);
+    internal static ReadOnlyCollection<T> None<T>() => new([]);
 
     /// <summary>The points of 21311 as the server's table has them, with points for a party of two.</summary>
     private static ReadOnlyCollection<MazeRewardStandardRow> Standard() => Rows<MazeRewardStandardRow>(w =>
@@ -136,11 +136,12 @@ public sealed class MazeResultsTest
         }).ToArray());
 
     /// <summary>The client's row of a maze: its id, the level it asks for, who may enter and its fatigue.</summary>
-    private static MazeInfoRow MazeRow(short id, byte level, short fatigue, byte admission = 0)
+    internal static MazeInfoRow MazeRow(short id, byte level, short fatigue, byte admission = 0, byte type = 0)
     {
         var bytes = new byte[4096];
 
         BitConverter.TryWriteBytes(bytes, id);
+        bytes[2] = type;
         bytes[5] = level;
         bytes[6] = admission;
         BitConverter.TryWriteBytes(bytes.AsSpan(7), fatigue);
@@ -148,7 +149,7 @@ public sealed class MazeResultsTest
         return new MazeInfoRow(new BinaryReader(new MemoryStream(bytes)));
     }
 
-    private static MazeScoring Scoring(ReadOnlyCollection<MazePlayScoreRow> plays, ReadOnlyCollection<MazeRuleRow> rules, ReadOnlyCollection<MazePartyShareRow>? parties = null) => new(
+    internal static MazeScoring Scoring(ReadOnlyCollection<MazePlayScoreRow> plays, ReadOnlyCollection<MazeRuleRow> rules, ReadOnlyCollection<MazePartyShareRow>? parties = null) => new(
         Standard(),
         RankShares(),
         Rows<MazeTimeScoreRow>(w =>

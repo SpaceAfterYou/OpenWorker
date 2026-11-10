@@ -50,6 +50,8 @@ public sealed class ServerTablesTest
             ("tb_Drop_Group", typeof(DropGroupRow)),
             ("tb_MazeReward_Item", typeof(MazeRewardItemRow)),
             ("tb_Maze_Info", typeof(MazeRuleRow)),
+            ("tb_Maze_OpenControl", typeof(MazeOpenControlRow)),
+            ("tb_DailyMaze_Portal", typeof(MazeDailyPortalRow)),
             ("tb_MazeReward_Standard", typeof(MazeRewardStandardRow)),
             ("tb_MazeReward_Rank", typeof(MazeRankShareRow)),
             ("tb_MazeReward_Time", typeof(MazeTimeScoreRow)),

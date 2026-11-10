@@ -128,7 +128,7 @@ public sealed partial class PartyMazeEntry(
     /// <summary>
     /// The maze cannot be entered.
     /// </summary>
-    public const ushort CannotEnter = 55001;
+    public const ushort CannotEnter = MazeAdmission.CannotEnter;
 
     /// <summary>
     /// A question that is open: who was asked, and who has not said yes yet.
@@ -155,7 +155,7 @@ public sealed partial class PartyMazeEntry(
     /// The player takes a way into a location. True when the party takes care of it: the player is in a party of more than
     /// one and the location is a maze. False otherwise, and the caller enters as for a player alone.
     /// </summary>
-    public async ValueTask<bool> TryEnterAsync(Entity player, short location, int jump, MessageOpcode request)
+    public async ValueTask<bool> TryEnterAsync(Entity player, short location, int jump, MessageOpcode request, int portal = 0)
     {
         if (!routes.IsMaze(location) || !world.Has<ActorComponent>(player))
         {
@@ -172,6 +172,14 @@ public sealed partial class PartyMazeEntry(
 
         if (!world.IsAlive(player))
         {
+            return true;
+        }
+
+        // Whoever takes the portal, the master or a member, passes what a maze asks of everybody before the party is looked at.
+        if (admission?.CheckEntrant(player, location, inParty: true) is { } unfit)
+        {
+            Refuse(player, request, unfit);
+
             return true;
         }
 
@@ -236,9 +244,9 @@ public sealed partial class PartyMazeEntry(
         }
 
         // The maze must take a party, and every member must be able to enter it, before anybody is asked.
-        if (admission?.CheckParty(question.Members.Select(e => e.Player).ToArray(), location) is { } refused)
+        if (admission?.CheckParty(player, question.Members.Select(e => e.Player).ToArray(), location, portal, out var item) is { } refused)
         {
-            Refuse(player, request, refused);
+            Refuse(player, request, refused, item);
 
             return true;
         }
@@ -421,9 +429,9 @@ public sealed partial class PartyMazeEntry(
         }
     }
 
-    private void Refuse(Entity player, MessageOpcode request, ushort code)
+    private void Refuse(Entity player, MessageOpcode request, ushort code, int item = 0)
     {
-        Send(player, new ErrorMessageResponse(request, code));
+        Send(player, new ErrorMessageResponse(request, code, item > 0 ? (uint)item : null));
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Party {Party} is asked to enter maze {Maze}, {Members} members")]

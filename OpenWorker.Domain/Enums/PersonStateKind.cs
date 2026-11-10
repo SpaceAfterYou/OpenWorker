@@ -40,5 +40,10 @@ public enum PersonStateKind : byte
     /// <summary>
     /// The cooldowns of item groups that outlast a server and how often the kinds of item limited for a day were used.
     /// </summary>
-    ItemUse = 12
+    ItemUse = 12,
+
+    /// <summary>
+    /// How often the person has entered each maze today, and how many free revives it has used.
+    /// </summary>
+    MazeEntry = 13
 }

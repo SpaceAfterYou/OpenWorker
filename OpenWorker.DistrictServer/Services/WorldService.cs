@@ -20,9 +20,11 @@ public sealed class WorldService(World world, WorldManager manager, PartyMazeEnt
 {
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeCreateRequest request)
     {
+        var opcode = MessageOpcode.From(GroupOpcode.World, WorldOpcode.MazeCreateReq);
+
         // A member of a party enters the maze with the party.
-        if (await party.TryEnterAsync(context.Player, request.Location, 0, MessageOpcode.From(GroupOpcode.World, WorldOpcode.MazeCreateReq)) ||
-            Refused(context, request.Location, MessageOpcode.From(GroupOpcode.World, WorldOpcode.MazeCreateReq)))
+        if (await party.TryEnterAsync(context.Player, request.Location, 0, opcode, request.Portal) ||
+            Refused(context, request.Location, request.Portal, opcode))
         {
             return;
         }
@@ -33,8 +35,10 @@ public sealed class WorldService(World world, WorldManager manager, PartyMazeEnt
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
     {
-        if (await party.TryEnterAsync(context.Player, request.Location, request.Jump, MessageOpcode.From(GroupOpcode.World, WorldOpcode.EnterReq)) ||
-            Refused(context, request.Location, MessageOpcode.From(GroupOpcode.World, WorldOpcode.EnterReq)))
+        var opcode = MessageOpcode.From(GroupOpcode.World, WorldOpcode.EnterReq);
+
+        if (await party.TryEnterAsync(context.Player, request.Location, request.Jump, opcode, request.Portal) ||
+            Refused(context, request.Location, request.Portal, opcode))
         {
             return;
         }
@@ -46,14 +50,14 @@ public sealed class WorldService(World world, WorldManager manager, PartyMazeEnt
     /// <summary>
     /// A player alone who may not enter the maze it takes the way into is told why (<see cref="MazeAdmission"/>).
     /// </summary>
-    private bool Refused(ServiceHandleContext context, short location, MessageOpcode request)
+    private bool Refused(ServiceHandleContext context, short location, int portal, MessageOpcode request)
     {
-        if (!world.IsAlive(context.Player) || admission.Check(context.Player, location) is not { } code)
+        if (!world.IsAlive(context.Player) || admission.Check(context.Player, location, portal, out var item) is not { } code)
         {
             return false;
         }
 
-        world.Get<ServerSessionComponent>(context.Player).Send(new ErrorMessageResponse(request, code));
+        world.Get<ServerSessionComponent>(context.Player).Send(new ErrorMessageResponse(request, code, item > 0 ? (uint)item : null));
 
         return true;
     }
