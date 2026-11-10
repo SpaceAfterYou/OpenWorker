@@ -9,6 +9,9 @@ public sealed class ActionFileTest
 {
     private const string RealFilesVariable = "OPENWORKER_TEST_ACTION";
 
+    /// <summary>The first version of the file that has the aura of an attack.</summary>
+    private const short AuraSinceVersion = 242;
+
     private static byte[] Chunk(string tag, Action<BinaryWriter> body)
     {
         using var content = new MemoryStream();
@@ -80,6 +83,8 @@ public sealed class ActionFileTest
         }
     }
 
+    private const int AuraWritten = 325;
+
     private static void WriteProjectile(BinaryWriter e, short version)
     {
         WriteFloats(e, 10f, 20f, 30f, 500f, 2f);
@@ -129,8 +134,18 @@ public sealed class ActionFileTest
         e.Write(new byte[2 + 2 + 1 + 4 + 4]);
         e.Write(false);
         e.Write(true);
-        // The rest of an attack is skipped.
-        e.Write(new byte[32]);
+        // What later versions added at the end of an attack: a string, a flag, two strings, a flag, two numbers, two flags, two numbers
+        // and a string, a short, the aura (from 242, so the attacks of version 236 end earlier), a flag and two numbers.
+        if (version >= 242)
+        {
+            e.Write(new byte[4 + 1 + 4 + 4 + 1 + 8 + 2 + 8 + 4 + 2]);
+            e.Write(AuraWritten);
+            e.Write(new byte[1 + 8 + 1]);
+        }
+        else
+        {
+            e.Write(new byte[32]);
+        }
     }
 
     private static void WriteAnimation(BinaryWriter writer, short version, string name)
@@ -203,7 +218,7 @@ public sealed class ActionFileTest
             var attack = animation.Attacks[0];
 
             Assert.AreEqual(
-                new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty),
+                new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty, version >= AuraSinceVersion ? AuraWritten : 0),
                 attack);
             Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
             Assert.AreEqual(0.75f, animation.Attacks[1].Start);

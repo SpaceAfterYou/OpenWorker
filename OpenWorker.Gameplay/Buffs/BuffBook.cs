@@ -96,6 +96,54 @@ public enum BuffControl : byte
 }
 
 /// <summary>
+/// What the buffs of a carrier do to the damage it deals and takes, added up. A rate is a share (0.1 is ten percent).
+/// </summary>
+public readonly record struct BuffRates
+{
+    /// <summary>The share of the damage it takes that the carrier loses again.</summary>
+    public float Reflect { get; init; }
+
+    /// <summary>The share of the damage it deals that the carrier takes back as life.</summary>
+    public float Blood { get; init; }
+
+    /// <summary>How many targets of one hit give the carrier its life back (zero for all of them).</summary>
+    public int BloodTargets { get; init; }
+
+    /// <summary>The share of the damage it takes that the one who gave the buff, and its friends, take back as life.</summary>
+    public float BloodDebuff { get; init; }
+
+    /// <summary>The actor that gave the buff of <see cref="BloodDebuff"/>.</summary>
+    public int BloodDebuffOwner { get; init; }
+
+    /// <summary>The damage rolls of the carrier are always the greatest.</summary>
+    public bool FixedMaxDamage { get; init; }
+
+    /// <summary>What the damage of a summon of the carrier is multiplied by, once; zero for no such buff.</summary>
+    public float MultipleDamageOnce { get; init; }
+
+    /// <summary>The share of the size of its soul gauge that a hit of the carrier gives it.</summary>
+    public float SoulAbsorb { get; init; }
+
+    /// <summary>How many targets of one hit give the carrier its soul gauge (zero for all of them).</summary>
+    public int SoulAbsorbTargets { get; init; }
+
+    public float BossAttackAdd { get; init; }
+
+    public float BossAttackedDown { get; init; }
+
+    public float AllAttackAdd { get; init; }
+
+    /// <summary>More of the super armor of a target taken by the attacks of the carrier.</summary>
+    public float SuperArmorRate { get; init; }
+
+    /// <summary>More gold for the carrier.</summary>
+    public float GoldRate { get; init; }
+
+    /// <summary>The actor the carrier is turned on (a taunt), zero for none.</summary>
+    public int Taunt { get; init; }
+}
+
+/// <summary>
 /// The buffs on a player or a monster and what they add up to. It belongs to the one who carries it, for the time it is in a
 /// maze; <see cref="BuffRules"/> changes it.
 /// </summary>
@@ -162,6 +210,11 @@ public sealed class BuffBook
     public bool DoubleSoulAbsorb { get; private set; }
 
     /// <summary>
+    /// What the buffs do to the damage dealt and taken.
+    /// </summary>
+    public BuffRates Rates { get; private set; }
+
+    /// <summary>
     /// Changes with every change of what the buffs add up to.
     /// </summary>
     public int Version { get; private set; }
@@ -173,6 +226,11 @@ public sealed class BuffBook
     {
         return _effects.Count == 0 ? stats : Combat.StatEffects.Apply(stats, StatEffects);
     }
+
+    /// <summary>
+    /// Where a buff is in the list of the active ones, -1 when the carrier does not have it.
+    /// </summary>
+    public int IndexOf(ushort buff) => Find(buff);
 
     internal int Find(ushort buff)
     {
@@ -219,6 +277,7 @@ public sealed class BuffBook
         var stamina = 0f;
         var soul = 0f;
         var absorb = false;
+        var rates = new BuffRates();
 
         foreach (var buff in Active)
         {
@@ -268,6 +327,54 @@ public sealed class BuffBook
                 case BuffEffect.DoubleSoulAbsorb:
                     absorb = true;
                     break;
+
+                case BuffEffect.Reflection:
+                    rates = rates with { Reflect = Math.Max(rates.Reflect, buff.Values[0] * Percent) };
+                    break;
+
+                case BuffEffect.Blood:
+                    rates = rates with { Blood = Math.Max(rates.Blood, buff.Values[0] * Percent), BloodTargets = definition.Stat1.Type };
+                    break;
+
+                case BuffEffect.BloodDebuff:
+                    rates = rates with { BloodDebuff = Math.Max(rates.BloodDebuff, buff.Values[0] * Percent), BloodDebuffOwner = buff.Owner };
+                    break;
+
+                case BuffEffect.FixedMaxDamage:
+                    rates = rates with { FixedMaxDamage = true };
+                    break;
+
+                case BuffEffect.MultipleDamageOnce:
+                    rates = rates with { MultipleDamageOnce = buff.Values[0] * Percent };
+                    break;
+
+                case BuffEffect.SoulAbsorb:
+                    rates = rates with { SoulAbsorb = Math.Max(rates.SoulAbsorb, buff.Values[0] * 0.0001f), SoulAbsorbTargets = definition.Stat1.Type };
+                    break;
+
+                case BuffEffect.BossAttackAdd:
+                    rates = rates with { BossAttackAdd = rates.BossAttackAdd + buff.Values[0] * Percent };
+                    break;
+
+                case BuffEffect.BossAttackedDown:
+                    rates = rates with { BossAttackedDown = rates.BossAttackedDown + buff.Values[0] * Percent };
+                    break;
+
+                case BuffEffect.AllAttackAdd:
+                    rates = rates with { AllAttackAdd = rates.AllAttackAdd + buff.Values[0] * Percent };
+                    break;
+
+                case BuffEffect.BuffSuperArmor:
+                    rates = rates with { SuperArmorRate = buff.Values[0] * Percent };
+                    break;
+
+                case BuffEffect.GoldRate:
+                    rates = rates with { GoldRate = buff.Values[0] * Percent };
+                    break;
+
+                case BuffEffect.Taunt:
+                    rates = rates with { Taunt = buff.Owner };
+                    break;
             }
 
             control |= definition.Effect switch
@@ -291,6 +398,7 @@ public sealed class BuffBook
         StaminaCostDown = stamina;
         SoulCostDown = soul;
         DoubleSoulAbsorb = absorb;
+        Rates = rates;
         Version++;
     }
 

@@ -1,3 +1,5 @@
+using OpenWorker.Gameplay.Combat;
+
 namespace OpenWorker.Gameplay.Buffs;
 
 /// <summary>
@@ -44,7 +46,10 @@ public readonly record struct BuffChange(
 /// What the carrier of a book is now, as the rules need it.
 /// </summary>
 /// <param name="Invincible">Nothing hurts it now: debuffs do not stick and buffs that hurt do nothing.</param>
-public readonly record struct BuffCarrier(int Actor, int Health, int MaxHealth, bool Invincible);
+/// <param name="Place">Where it is: <see cref="BuffDefinition.Maze"/> or <see cref="BuffDefinition.District"/>. A buff stays only where its row allows.</param>
+/// <param name="Resist">What it resists of the states buffs put on it.</param>
+/// <param name="Boss">A boss, which some buffs are not given to.</param>
+public readonly record struct BuffCarrier(int Actor, int Health, int MaxHealth, bool Invincible, byte Place = BuffDefinition.Maze, Resistances Resist = default, bool Boss = false);
 
 /// <summary>
 /// The rules of buffs as the original server keeps them: how a buff is given, how a second one of its group stacks or
@@ -74,7 +79,7 @@ public static class BuffRules
     /// </summary>
     public static bool Give(BuffBook book, BuffCatalog catalog, int buff, int owner, in BuffCarrier carrier, Random random, List<BuffChange> changes, bool roll = true)
     {
-        if (!catalog.TryGet(buff, out var definition))
+        if (!catalog.TryGet(buff, out var definition) || !definition.AllowedIn(carrier.Place))
         {
             return false;
         }
@@ -94,7 +99,9 @@ public static class BuffRules
             return given;
         }
 
-        if (roll && definition.SuccessRate > 0 && random.Next(Certain) >= definition.SuccessRate)
+        // The chance of a buff is held back by what its carrier resists of the state; some buffs are not rolled at all.
+        if (roll && definition.SuccessRate > 0 && !definition.IgnoresResistance
+            && random.Next(Certain) >= (int)(definition.SuccessRate - definition.ResistanceOf(carrier.Resist)))
         {
             return false;
         }
@@ -122,13 +129,18 @@ public static class BuffRules
     /// </summary>
     public static bool Apply(BuffBook book, BuffCatalog catalog, in BuffDefinition buff, int owner, in BuffCarrier carrier, List<BuffChange> changes)
     {
-        if (book.Active.Count >= BuffBook.Capacity)
+        if (book.Active.Count >= BuffBook.Capacity || !buff.AllowedIn(carrier.Place))
         {
             return false;
         }
 
-        // What cannot be hurt takes no debuff.
-        if (buff.Kind == BuffKind.Debuff && (carrier.Invincible || book.Defense == Combat.DefenseType.Invincible))
+        // What cannot be hurt takes no debuff, except one that gets through that; some buffs are not given to a boss.
+        if (buff.Kind == BuffKind.Debuff && buff.SystemType != 3 && (carrier.Invincible || book.Defense == Combat.DefenseType.Invincible))
+        {
+            return false;
+        }
+
+        if (buff.SystemType == 1 && carrier.Boss)
         {
             return false;
         }
@@ -487,6 +499,28 @@ public static class BuffRules
         for (var index = book.Active.Count - 1; index >= 0; index--)
         {
             if ((book.Active[index].Definition.KeepOn & BuffDefinition.KeptOnDeath) == 0)
+            {
+                Remove(book, catalog, index, false, carrier, changes);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A carrier comes to a place: the buffs that may not be there are taken away.
+    /// </summary>
+    public static void ClearForPlace(BuffBook book, BuffCatalog catalog, in BuffCarrier carrier, List<BuffChange> changes)
+    {
+        for (var index = book.Pending.Count - 1; index >= 0; index--)
+        {
+            if (!book.Pending[index].Definition.AllowedIn(carrier.Place))
+            {
+                book.Pending.RemoveAt(index);
+            }
+        }
+
+        for (var index = book.Active.Count - 1; index >= 0; index--)
+        {
+            if (!book.Active[index].Definition.AllowedIn(carrier.Place))
             {
                 Remove(book, catalog, index, false, carrier, changes);
             }

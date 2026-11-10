@@ -8,6 +8,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Id">How the client names this attack in packets.</param>
 /// <param name="Buff">The buff the attack gives every target it reaches, zero for none.</param>
 /// <param name="TargetType">Whom the attack is for: the enemies of the attacker, the attacker itself, its friends or its party.</param>
+/// <param name="Aura">The aura the attack puts on the targets it reaches (they give its buff to those around them), zero for none.</param>
 public readonly record struct AttackTrigger(
     int Id,
     short RangeType,
@@ -26,7 +27,8 @@ public readonly record struct AttackTrigger(
     ProjectileInfo? Projectile = null,
     ChainInfo? Chain = null,
     int Buff = 0,
-    int TargetType = AttackTrigger.Enemies)
+    int TargetType = AttackTrigger.Enemies,
+    int Aura = 0)
 {
     /// <summary>
     /// The attacker itself, wherever it stands.
@@ -83,7 +85,7 @@ public readonly record struct AttackTrigger(
     /// <summary>
     /// Some attacks only show something and affect nobody.
     /// </summary>
-    public bool AffectsTargets => DamageRate > 0f || ReactionType != 0 || Buff > 0;
+    public bool AffectsTargets => DamageRate > 0f || ReactionType != 0 || Buff > 0 || Aura > 0;
 
     /// <summary>
     /// Whether the attack is for the side of the attacker (itself, its friends, its party) rather than its enemies.

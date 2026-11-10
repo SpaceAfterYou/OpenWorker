@@ -16,7 +16,7 @@ public partial class LuaMaze
 {
     private static MazeBuffs CreateBuffs(World ecs, LuaCreatureManager creatures, BuffManager manager, CombatTables combat, Entity first)
     {
-        var buffs = new MazeBuffs(ecs, creatures, manager.Catalog, combat, creatures.Services?.Gauges);
+        var buffs = new MazeBuffs(ecs, creatures, manager.Catalog, combat, creatures.Services?.Gauges, manager);
 
         buffs.Attach(first);
 
@@ -35,7 +35,7 @@ public partial class LuaMaze
     /// </summary>
     private bool GivesBuffOnly(Fighter member, in AttackTrigger trigger, Entity[] targets)
     {
-        if (!trigger.ForAllies && !(trigger.Buff > 0 && trigger.DamageRate <= 0f))
+        if (!trigger.ForAllies && !((trigger.Buff > 0 || trigger.Aura > 0) && trigger.DamageRate <= 0f))
         {
             return false;
         }

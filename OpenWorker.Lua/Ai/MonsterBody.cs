@@ -419,6 +419,11 @@ internal class MonsterBody : IAiHost
         _manager.SetInvincible(Entity, invincible);
     }
 
+    public void ClearBuffs()
+    {
+        _manager.Buffs?.ClearAll(Entity);
+    }
+
     public void RestoreHealth()
     {
         _ecs.Set(Entity, _ecs.Get<CreatureComponent>(Entity) with { Health = MaxHealth });

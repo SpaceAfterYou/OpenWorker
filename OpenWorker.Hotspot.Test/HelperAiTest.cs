@@ -69,6 +69,10 @@ public sealed class HelperAiTest
 
         public float PlayAction(string name) => 0f;
         public void SetInvincible(bool invincible) => Invincible = invincible;
+
+        public int BuffsCleared { get; private set; }
+
+        public void ClearBuffs() => BuffsCleared++;
         public void RestoreHealth() => Health = MaxHealth;
         public void Teleport(Vector3 position) => Position = position;
         public void Die() { }
@@ -166,7 +170,8 @@ public sealed class HelperAiTest
 
     /// <summary>
     /// A helper beaten down does not die: it gets up with its recovery skill, cannot be hurt, heals a twentieth of its life
-    /// every second until it is whole, and then fights again.
+    /// every second until it is whole, and then fights again. Whatever buffs and debuffs it had are taken away from the moment
+    /// it starts to get up and at every step of the recovery.
     /// </summary>
     [TestMethod]
     public void AHelperBeatenDownGetsUpInsteadOfDying()
@@ -180,8 +185,11 @@ public sealed class HelperAiTest
         Assert.AreEqual(AiState.Recovery, machine.State);
         Assert.IsTrue(helper.Invincible, "Nothing hurts a helper that is getting up.");
         Assert.Contains(RecoverySkill, helper.Used);
+        Assert.AreEqual(1, helper.BuffsCleared, "Its buffs go when it starts to get up.");
 
         Run(machine, helper, 1.2f);
+
+        Assert.IsGreaterThan(1, helper.BuffsCleared, "And again at every step of the recovery.");
 
         Assert.AreEqual(1 + 50, helper.Health, "A twentieth of its life after a second.");
 

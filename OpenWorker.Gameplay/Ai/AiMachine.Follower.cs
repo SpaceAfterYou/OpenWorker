@@ -263,6 +263,7 @@ public sealed partial class AiMachine
         }
 
         ClearTarget();
+        _host.ClearBuffs();
 
         _host.StopMoving(true);
         _host.SetInvincible(true);
@@ -284,6 +285,7 @@ public sealed partial class AiMachine
 
         _recoveryTime = 0f;
 
+        _host.ClearBuffs();
         _host.Heal(Math.Max(1, _host.MaxHealth / RecoveryParts));
 
         if (_host.Health >= _host.MaxHealth)
@@ -294,6 +296,7 @@ public sealed partial class AiMachine
 
     private void EndRecovery()
     {
+        _host.ClearBuffs();
         _host.RestoreHealth();
         _host.SetInvincible(false);
     }

@@ -1053,7 +1053,7 @@ public sealed class LuaCreatureManager
     internal void HitPlayers(MonsterBody attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims)
     {
         // An attack for the side of the monster, or one that only gives a buff, hurts nobody.
-        if (trigger.ForAllies || (trigger.Buff > 0 && trigger.DamageRate <= 0f))
+        if (trigger.ForAllies || ((trigger.Buff > 0 || trigger.Aura > 0) && trigger.DamageRate <= 0f))
         {
             Buffs?.GiveFromAttack(attacker.Entity, trigger, victims);
 
@@ -1083,7 +1083,20 @@ public sealed class LuaCreatureManager
             var result = shielded
                 ? new DamageResult(0, HitResults.None)
                 : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random);
+
+            if (Buffs is not null && !shielded)
+            {
+                result = result with { Damage = Buffs.Adjust(attacker.Entity, victim, result.Damage) };
+            }
+
             var left = Vitals.Hurt(victim, result.Damage);
+
+            Buffs?.AfterHit(attacker.Entity, victim, hits.Count, result.Damage, default);
+
+            if (Buffs is not null && !shielded)
+            {
+                Buffs.OnCondition(victim, result.Flags.HasFlag(HitResults.Critical) ? MazeBuffs.OnCriticallyDamaged : result.Flags.HasFlag(HitResults.Miss) ? MazeBuffs.OnDamagedMissed : MazeBuffs.OnDamaged);
+            }
 
             hits.Add(default(SkillDmgValue) with
             {

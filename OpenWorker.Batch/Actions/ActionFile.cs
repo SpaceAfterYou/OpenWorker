@@ -32,6 +32,15 @@ public sealed class ActionFile
     private const short ThirdFilterSinceVersion = 254;
     private const short AnimationFieldSinceVersion = 235;
     private const short RotationFramesSinceVersion = 241;
+    private const short ConnectionEffectSinceVersion = 223;
+    private const short PartyBreakSinceVersion = 225;
+    private const short ConnectionBonesSinceVersion = 226;
+    private const short InvisibleWithoutTargetSinceVersion = 227;
+    private const short TargetPrioritySinceVersion = 230;
+    private const short OrientationSinceVersion = 236;
+    private const short ContinuousMeleeSinceVersion = 239;
+    private const short GroupSinceVersion = 240;
+    private const short AuraSinceVersion = 242;
 
     private ActionFile(Dictionary<string, ActionAnimation> animations, Dictionary<string, int> indexes)
     {
@@ -187,14 +196,51 @@ public sealed class ActionFile
         var (projectile, chain, reaction) = ReadProjectile(reader, version);
 
         return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition,
-            reaction.DamageRate, reaction.ReactionType, projectile, chain, reaction.Buff, reaction.TargetType);
+            reaction.DamageRate, reaction.ReactionType, projectile, chain, reaction.Buff, reaction.TargetType, reaction.Aura);
     }
 
     /// <summary>
     /// Whom an attack is for and what it does to them: the kind of target, the share of the damage, the buff it gives each
     /// target and how the target reacts.
     /// </summary>
-    private readonly record struct Reaction(int TargetType, float DamageRate, int Buff, int ReactionType);
+    private readonly record struct Reaction(int TargetType, float DamageRate, int Buff, int ReactionType, int Aura);
+
+    /// <summary>
+    /// The aura an attack puts on its targets sits at the end of the attack, after the fields that later versions added to it.
+    /// </summary>
+    private static int ReadAura(BinaryReader reader, short version)
+    {
+        if (version < AuraSinceVersion)
+        {
+            return 0;
+        }
+
+        if (version >= ConnectionEffectSinceVersion)
+        {
+            SkipStrings(reader, 1);
+        }
+
+        SkipSince(reader, version, PartyBreakSinceVersion, 1);
+
+        if (version >= ConnectionBonesSinceVersion)
+        {
+            SkipStrings(reader, 2);
+        }
+
+        SkipSince(reader, version, InvisibleWithoutTargetSinceVersion, 1);
+        SkipSince(reader, version, TargetPrioritySinceVersion, 2 * sizeof(int));
+        SkipSince(reader, version, OrientationSinceVersion, 2);
+
+        if (version >= ContinuousMeleeSinceVersion)
+        {
+            Skip(reader, 2 * sizeof(int));
+            SkipStrings(reader, 1);
+        }
+
+        SkipSince(reader, version, GroupSinceVersion, sizeof(short));
+
+        return reader.ReadInt32();
+    }
 
     private static (ProjectileInfo Projectile, ChainInfo Chain, Reaction Reaction) ReadProjectile(BinaryReader reader, short version)
     {
@@ -316,7 +362,7 @@ public sealed class ActionFile
         var projectile = new ProjectileInfo(start, speed, lifeTime, hasGravity, directionType, radius, isContinuous, continuousTime, isGuided, targetOnly, explodeDecision, direction, penetrates, penetrateCount);
         var chain = new ChainInfo(connectionType, chainLifeTime, chainMaxCount, damageMultiple, chainCenter, chainRadius, chainStartPosition, recalculates);
 
-        return (projectile, chain, new Reaction(targetType, damageRate, buff, reactionType));
+        return (projectile, chain, new Reaction(targetType, damageRate, buff, reactionType, ReadAura(reader, version)));
     }
 
     private static Vector3 ReadVector3(BinaryReader reader)

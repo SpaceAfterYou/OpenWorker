@@ -23,7 +23,7 @@ namespace OpenWorker.Lua.Buffs;
 /// clock. What a buff shows (06/14 to 06/17, the stats it changes, the life and gauges it gives or takes) goes to every
 /// member of the instance.
 /// </summary>
-public sealed class MazeBuffs
+public sealed partial class MazeBuffs
 {
     private const byte FlatHealth = 13;
     private const byte HealthShare = 14;
@@ -50,8 +50,9 @@ public sealed class MazeBuffs
     private readonly List<BuffChange> _changes = [];
     private readonly List<(Entity Monster, int Owner)> _fallen = [];
 
-    public MazeBuffs(World ecs, LuaCreatureManager creatures, BuffCatalog catalog, CombatTables tables, PlayerGauges? gauges = null)
+    public MazeBuffs(World ecs, LuaCreatureManager creatures, BuffCatalog catalog, CombatTables tables, PlayerGauges? gauges = null, BuffManager? manager = null)
     {
+        _manager = manager;
         _ecs = ecs;
         _creatures = creatures;
         _catalog = catalog;
@@ -101,6 +102,8 @@ public sealed class MazeBuffs
         {
             _shown[player] = _tables.GetPlayer(_ecs, player);
         }
+
+        StartSources(player);
     }
 
     /// <summary>
@@ -108,6 +111,7 @@ public sealed class MazeBuffs
     /// </summary>
     public void Detach(Entity player)
     {
+        StopSources(player);
         _books.Remove(player);
         _shown.Remove(player);
 
@@ -118,10 +122,188 @@ public sealed class MazeBuffs
     }
 
     /// <summary>
+    /// Takes every buff away from someone: a monster that goes home starts over.
+    /// </summary>
+    public void ClearAll(Entity carrier)
+    {
+        if (!_books.TryGetValue(carrier, out var book) || book.IsEmpty || !_ecs.IsAlive(carrier))
+        {
+            return;
+        }
+
+        BuffRules.Clear(book, _catalog, null, Carrier(carrier), _changes);
+        Process(carrier, book);
+    }
+
+    /// <summary>
+    /// What the buffs of someone do to the damage it deals and takes.
+    /// </summary>
+    public BuffRates RatesOf(Entity carrier)
+    {
+        return _books.TryGetValue(carrier, out var book) ? book.Rates : default;
+    }
+
+    /// <summary>
+    /// The damage of a hit once the buffs of both sides have had their say: a boss is hurt more by whoever has a buff against
+    /// bosses, a player is hurt less by a boss when it has a buff against that, and all the damage of someone with a buff of
+    /// all attacks grows (a monster hitting a player is the one pair that this does not touch).
+    /// </summary>
+    public int Adjust(Entity attacker, Entity target, int damage)
+    {
+        if (damage <= 0 || !_ecs.IsAlive(attacker) || !_ecs.IsAlive(target))
+        {
+            return damage;
+        }
+
+        var own = RatesOf(attacker);
+        var other = RatesOf(target);
+        var total = (float)damage;
+
+        if (IsBoss(target))
+        {
+            total += total * own.BossAttackAdd;
+        }
+        else if (IsBoss(attacker) && IsPlayer(target))
+        {
+            total -= total * other.BossAttackedDown;
+        }
+
+        if (IsPlayer(attacker) || !IsPlayer(target))
+        {
+            total += total * own.AllAttackAdd;
+        }
+
+        return Math.Max(1, (int)total);
+    }
+
+    /// <summary>
+    /// A hit landed for <paramref name="damage"/>: the target with a buff of reflection loses the share of it once more, the
+    /// attacker with a buff of blood takes a share of it back as life (and so does the one who gave the target a blood debuff,
+    /// or a friend of it), and an attacker with a buff of soul absorption fills its soul gauge. A hit that reaches several targets
+    /// counts them by <paramref name="index"/>: the buffs name how many of them count.
+    /// </summary>
+    public void AfterHit(Entity attacker, Entity target, int index, int damage, in CombatStats targetStats)
+    {
+        if (damage <= 0 || !_ecs.IsAlive(attacker) || !_ecs.IsAlive(target))
+        {
+            return;
+        }
+
+        var own = RatesOf(attacker);
+        var other = RatesOf(target);
+
+        if (other.Reflect > 0f)
+        {
+            Lose(target, (int)(damage * other.Reflect));
+        }
+
+        var blood = own.Blood > 0f && (own.BloodTargets == 0 || index < own.BloodTargets) ? own.Blood : 0f;
+
+        if (other.BloodDebuff > 0f && Friendly(other.BloodDebuffOwner, attacker))
+        {
+            blood += other.BloodDebuff;
+        }
+
+        if (blood > 0f)
+        {
+            Gain(attacker, (int)(damage * blood));
+        }
+
+        if (own.SoulAbsorb > 0f && (own.SoulAbsorbTargets == 0 || index < own.SoulAbsorbTargets) && IsPlayer(attacker) && _gauges is not null)
+        {
+            var maximum = _tables.GetPlayer(_ecs, attacker).SoulGaugeMax;
+
+            _gauges.Absorb(attacker, maximum * targetStats.SoulGaugeAbsorbRate * own.SoulAbsorb, maximum);
+        }
+    }
+
+    private bool IsBoss(Entity e) => _ecs.IsAlive(e) && _ecs.Get<ActorComponent>(e).Type == ActorType.Monster && _ecs.TryGet<MonsterCombatComponent>(e, out var combat) && combat.IsBoss;
+
+    /// <summary>
+    /// Whether the actor that gave a buff is on the side of someone: the players of a maze are friends, as the monsters are.
+    /// </summary>
+    private bool Friendly(int owner, Entity other)
+    {
+        if (owner == 0)
+        {
+            return false;
+        }
+
+        if (_ecs.Get<ActorComponent>(other) == owner)
+        {
+            return true;
+        }
+
+        foreach (var (carrier, _) in _books)
+        {
+            if (_ecs.IsAlive(carrier) && _ecs.Get<ActorComponent>(carrier) == owner)
+            {
+                return IsPlayer(carrier) == IsPlayer(other);
+            }
+        }
+
+        foreach (var member in _creatures.Members)
+        {
+            if (_ecs.IsAlive(member) && _ecs.Get<ActorComponent>(member) == owner)
+            {
+                return IsPlayer(other);
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Takes life from someone without ever bringing it down to nothing: what the buff of reflection does.
+    /// </summary>
+    private void Lose(Entity carrier, int amount)
+    {
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        var actor = _ecs.Get<ActorComponent>(carrier);
+
+        if (IsPlayer(carrier))
+        {
+            if (_creatures.Vitals.Health(carrier) <= amount)
+            {
+                return;
+            }
+
+            var left = _creatures.Vitals.Hurt(carrier, amount);
+
+            _creatures.Broadcast(new PersonUpdateStatListResponse { Actor = actor, Stats = [new ST_STAT { wStatID = (short)STAT_TYPE.STAT_HP_CUR, fValue = left }] });
+
+            return;
+        }
+
+        var creature = _ecs.Get<CreatureComponent>(carrier);
+
+        if (creature.Health <= amount)
+        {
+            return;
+        }
+
+        _ecs.Set(carrier, creature with { Health = creature.Health - amount });
+        _creatures.Broadcast(new MonsterUpdateStatListResponse { Actor = actor, Stats = [new StatKeyValuePair { byIndex = STAT_TYPE.STAT_HP_CUR, statValue = creature.Health - amount }] });
+    }
+
+    private void Gain(Entity carrier, int amount)
+    {
+        if (amount > 0 && _ecs.IsAlive(carrier))
+        {
+            Restore(carrier, _ecs.Get<ActorComponent>(carrier), IsPlayer(carrier), new BuffChange(BuffChangeKind.Restored, 0, Amount: amount, Stat: FlatHealth));
+        }
+    }
+
+    /// <summary>
     /// A monster is gone from the maze.
     /// </summary>
     public void Forget(Entity creature)
     {
+        _auras.Remove(creature);
         _books.Remove(creature);
         _shown.Remove(creature);
         _held.Remove(creature);
@@ -148,7 +330,7 @@ public sealed class MazeBuffs
         }
 
         var given = roll
-            ? BuffRules.Give(book, _catalog, buff, owner, Carrier(target), Random, _changes)
+            ? BuffRules.Give(book, _catalog, buff, owner, Carrier(target, withResistances: true), Random, _changes)
             : _catalog.TryGet(buff, out var definition) && BuffRules.Apply(book, _catalog, definition, owner, Carrier(target), _changes);
 
         Process(target, book);
@@ -178,7 +360,7 @@ public sealed class MazeBuffs
     /// </summary>
     public void GiveFromHit(Entity attacker, in AttackTrigger trigger, IReadOnlyList<Entity> targets)
     {
-        if (trigger.Buff <= 0 || !_ecs.IsAlive(attacker))
+        if ((trigger.Buff <= 0 && trigger.Aura <= 0) || !_ecs.IsAlive(attacker))
         {
             return;
         }
@@ -187,7 +369,15 @@ public sealed class MazeBuffs
 
         foreach (var target in targets)
         {
-            Give(target, trigger.Buff, owner);
+            if (trigger.Buff > 0)
+            {
+                Give(target, trigger.Buff, owner);
+            }
+
+            if (trigger.Aura > 0)
+            {
+                SetAura(target, trigger.Aura);
+            }
         }
     }
 
@@ -197,7 +387,7 @@ public sealed class MazeBuffs
     /// </summary>
     public void GiveToAllies(Entity attacker, in AttackTrigger trigger)
     {
-        if (trigger.Buff <= 0 || !_ecs.IsAlive(attacker))
+        if ((trigger.Buff <= 0 && trigger.Aura <= 0) || !_ecs.IsAlive(attacker))
         {
             return;
         }
@@ -206,7 +396,7 @@ public sealed class MazeBuffs
 
         if (trigger.TargetType == AttackTrigger.Self)
         {
-            Give(attacker, trigger.Buff, owner);
+            GiveOne(attacker, trigger, owner);
 
             return;
         }
@@ -224,8 +414,24 @@ public sealed class MazeBuffs
         {
             if (target != attacker || includesAttacker)
             {
-                Give(target, trigger.Buff, owner);
+                GiveOne(target, trigger, owner);
             }
+        }
+    }
+
+    /// <summary>
+    /// What an attack gives one target it reached: its buff, and the aura it names.
+    /// </summary>
+    private void GiveOne(Entity target, in AttackTrigger trigger, int owner)
+    {
+        if (trigger.Buff > 0)
+        {
+            Give(target, trigger.Buff, owner);
+        }
+
+        if (trigger.Aura > 0)
+        {
+            SetAura(target, trigger.Aura);
         }
     }
 
@@ -238,6 +444,8 @@ public sealed class MazeBuffs
         {
             return;
         }
+
+        StepSources(seconds);
 
         foreach (var (carrier, book) in _books)
         {
@@ -335,7 +543,7 @@ public sealed class MazeBuffs
         return book;
     }
 
-    private bool IsPlayer(Entity carrier) => _ecs.Get<ActorComponent>(carrier).Type == ActorType.User;
+    private bool IsPlayer(Entity carrier) => _ecs.TryGet<ActorComponent>(carrier, out var actor) && actor.Type == ActorType.User;
 
     /// <summary>
     /// The dead take no buff.
@@ -355,7 +563,8 @@ public sealed class MazeBuffs
         return _ecs.Get<CreatureComponent>(carrier).Health > 0;
     }
 
-    private BuffCarrier Carrier(Entity carrier)
+    /// <param name="withResistances">What the carrier resists is looked up too, which only the buffs that are given need.</param>
+    private BuffCarrier Carrier(Entity carrier, bool withResistances = false)
     {
         var actor = (int)_ecs.Get<ActorComponent>(carrier);
 
@@ -368,12 +577,17 @@ public sealed class MazeBuffs
                 return new BuffCarrier(actor, 1, 1, false);
             }
 
-            return new BuffCarrier(actor, vitals.Health(carrier), vitals.MaxHealth(carrier), vitals.IsProtected(carrier));
+            // What the player resists is in the stats it was last told, which the buffs it carries are part of.
+            var resist = withResistances && _ecs.TryGet<ShownStatsComponent>(carrier, out var shown) ? shown.Final.Resist : default;
+
+            return new BuffCarrier(actor, vitals.Health(carrier), vitals.MaxHealth(carrier), vitals.IsProtected(carrier), Resist: resist);
         }
 
         var combat = _ecs.Get<MonsterCombatComponent>(carrier);
+        var monsterResist = withResistances && _books.TryGetValue(carrier, out var book) ? book.Apply(combat.Stats).Resist : combat.Stats.Resist;
 
-        return new BuffCarrier(actor, _ecs.Get<CreatureComponent>(carrier).Health, (int)combat.Stats.MaxHealth, combat.Defense == DefenseType.Invincible);
+        return new BuffCarrier(actor, _ecs.Get<CreatureComponent>(carrier).Health, (int)combat.Stats.MaxHealth, combat.Defense == DefenseType.Invincible,
+            Resist: monsterResist, Boss: combat.IsBoss);
     }
 
     private static float Time(ActiveBuff buff) => buff.Definition.Lasts ? 0f : Math.Max(0f, buff.Remaining);

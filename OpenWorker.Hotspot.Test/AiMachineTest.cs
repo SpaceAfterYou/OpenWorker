@@ -109,6 +109,8 @@ public sealed class AiMachineTest
 
         public void SetInvincible(bool invincible) => Invincible = invincible;
 
+        public void ClearBuffs() { }
+
         public void RestoreHealth()
         {
             Restored = true;
