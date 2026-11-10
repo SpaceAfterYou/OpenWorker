@@ -12,7 +12,7 @@ namespace OpenWorker.Hotspot.Test;
 [TestClass]
 public sealed class PartyRevisionTest
 {
-    private const uint Group = 5;
+    internal const uint Group = 5;
     private const int Plain = 100;
     private const int Boss = 101;
     private const int Ungrouped = 102;
@@ -22,7 +22,7 @@ public sealed class PartyRevisionTest
     /// <summary>
     /// A row of the monster table of the server in the layout of the file, with only what the strength needs.
     /// </summary>
-    private static Action<BinaryWriter> Monster(uint id, byte type, uint group)
+    internal static Action<BinaryWriter> Monster(uint id, byte type, uint group)
     {
         return writer =>
         {
@@ -58,7 +58,7 @@ public sealed class PartyRevisionTest
         };
     }
 
-    private static Action<BinaryWriter> Rates(uint id, byte members, float health, float attack, float defense, float armor, uint recover)
+    internal static Action<BinaryWriter> Rates(uint id, byte members, float health, float attack, float defense, float armor, uint recover)
     {
         return writer =>
         {
@@ -76,7 +76,7 @@ public sealed class PartyRevisionTest
         };
     }
 
-    private static ReadOnlyCollection<T> Rows<T>(params Action<BinaryWriter>[] rows)
+    internal static ReadOnlyCollection<T> Rows<T>(params Action<BinaryWriter>[] rows)
     {
         return new ReadOnlyCollection<T>(rows.Select(write =>
         {

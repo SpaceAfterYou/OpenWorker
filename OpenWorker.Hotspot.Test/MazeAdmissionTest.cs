@@ -216,6 +216,34 @@ public sealed class MazeAdmissionTest
         Assert.IsFalse(f.Limits.Entered(cheat, Maze));
     }
 
+    /// <summary>
+    /// A player who waits for a maze with the auto matching is asked what the portal asks of a member of a party, wherever the
+    /// player stands: the weapon, the level, the item.
+    /// </summary>
+    [TestMethod]
+    public void APlayerWhoWaitsForAMazeIsAskedWhatItsPortalAsks()
+    {
+        using var f = new Fixture(Rules(Rule(Maze, item: Material, itemCount: 1)));
+
+        var player = f.Player();
+        var weak = f.Player(level: 2);
+
+        f.Inventory.TryGive(player, Material, 1);
+        f.Inventory.TryGive(weak, Material, 1);
+
+        Assert.IsNull(f.Admission.CheckMatching(player, Maze, out _), "a player who has all the maze asks for may wait");
+        Assert.AreEqual(MazeAdmission.LevelTooLow, f.Admission.CheckMatching(weak, Maze, out _), "the level");
+
+        f.Inventory.TryTake(player, Material, 1);
+
+        Assert.AreEqual(MazeAdmission.NoItem, f.Admission.CheckMatching(player, Maze, out var item), "the item");
+        Assert.AreEqual(Material, item, "the answer names it");
+
+        f.DisarmPlayer(player);
+
+        Assert.AreEqual(MazeAdmission.NoWeapon, f.Admission.CheckMatching(player, Maze, out _), "the weapon stands first");
+    }
+
     [TestMethod]
     public void EachMemberOfAPartyIsCheckedWithTheCodesOfAMember()
     {

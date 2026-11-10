@@ -12,7 +12,9 @@ using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Hotspot.Cache.Types;
+using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.Maze.Requests;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Lua;
@@ -246,6 +248,70 @@ public sealed class PartyMazeTest
             Assert.IsTrue(later.Progress.IsSectorCleared(Sector));
             Assert.AreEqual(1, opened, "The maze is opened once");
             Assert.AreEqual(3, maze.MemberCount);
+
+            maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A maze opened for four makes its monsters as strong as four members make them; when the party has two members left
+    /// they become as strong as two make them, each with the share of life it had, and the members are told.
+    /// </summary>
+    [TestMethod]
+    public async Task WhenTheMembersOfThePartyAreFewerTheMonstersBecomeWeakerAndKeepTheirShareOfLife()
+    {
+        var monsters = TestTables.Load<MonsterRow>("tb_Monster");
+        var statuses = TestTables.Load<StatusRow>("tb_Status");
+        var tables = new Gameplay.Combat.CombatTables(monsters, statuses, TestMazes.None<SkillRow>(), TestMazes.None<CharacterInfoRow>());
+        var monster = monsters.First(e => e.Level is > 1 and < 20 && e.Type == 0 && e.Rank <= 6 && tables.GetMonster(e.Id).Stats.MaxHealth >= 100f);
+        var origin = (int)tables.GetMonster(monster.Id).Stats.MaxHealth;
+        var revision = new Gameplay.Modules.Maze.PartyRevision(
+            PartyRevisionTest.Rows<MonsterReviseGroupRow>(PartyRevisionTest.Monster((uint)monster.Id, 0, PartyRevisionTest.Group)),
+            PartyRevisionTest.Rows<PartyReviseRatesRow>(
+                PartyRevisionTest.Rates(1, 1, 1f, 1f, 1f, 20f, 3000),
+                PartyRevisionTest.Rates(2, 2, 2f, 1f, 1f, 20f, 3000),
+                PartyRevisionTest.Rates(3, 4, 4f, 1f, 1f, 20f, 3000)));
+        var world = World.Create();
+
+        try
+        {
+            RecordingConnection first = new(), second = new();
+            var master = Player(world, 1, 20, first);
+            var member = Player(world, 2, 20, second);
+            var services = new Lua.Ai.CreatureServices(null!, new Gameplay.Ai.MonsterBehaviorTables(TestMazes.None<MonsterRow>(), TestMazes.None<SkillRow>()), null!, TestMazes.Clock(), new Navigation.NavMeshProvider(), revision: revision);
+            var batch = TestMazes.Map(MapWithMonster(monster.Id));
+            var creatures = new Lua.Managers.LuaCreatureManager(world, batch, tables, services);
+
+            creatures.StartParty(4);
+
+            var maze = TestMazes.Create(world, master, batch: batch, creatures: creatures);
+
+            Assert.IsTrue(maze.Join(member));
+            maze.SpawnSector(Sector);
+
+            var body = creatures.FindMonsters((_, _) => true).Single();
+
+            Assert.AreEqual(4 * origin, world.Get<MonsterCombatComponent>(body).Stats.MaxHealth, "Four members make it four times as strong");
+
+            world.Set(body, world.Get<CreatureComponent>(body) with { Health = 2 * origin });
+
+            creatures.ResizeParty(2);
+
+            Assert.AreEqual(2 * origin, world.Get<MonsterCombatComponent>(body).Stats.MaxHealth, "Two members make it twice as strong");
+            Assert.AreEqual(origin, world.Get<CreatureComponent>(body).Health, "It keeps the half of its life it had");
+
+            var notice = new Modules.Maze.Responses.MazeNoticeResponse().Opcode;
+            var changed = new MonsterUpdateStatListResponse { Stats = [] }.Opcode;
+
+            foreach (var connection in new[] { first, second })
+            {
+                await UntilAsync(() => Received(connection).Any(e => e.Opcode.Value == notice.Value) && Received(connection).Any(e => e.Opcode.Value == changed.Value), "Every member is told.");
+            }
 
             maze.Close();
         }
