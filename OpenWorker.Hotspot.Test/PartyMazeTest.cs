@@ -323,6 +323,54 @@ public sealed class PartyMazeTest
     }
 
     /// <summary>
+    /// A monster that dies in a maze counts for every player in it, and for the killer who has left meanwhile, once each.
+    /// </summary>
+    [TestMethod]
+    public async Task AKillCountsForEveryPlayerInTheMazeOnceEach()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var killer = Player(world, 1, 20, new RecordingConnection());
+            var member = Player(world, 2, 20, new RecordingConnection());
+            var gone = Player(world, 3, 20, new RecordingConnection());
+            var reports = new RecordingReporter();
+            var maze = TestMazes.Create(world, killer, reports: reports);
+
+            Assert.IsTrue(maze.Join(member));
+
+            await maze.ReportKillAsync(gone, 4242, 7);
+
+            CollectionAssert.AreEquivalent(new[] { killer, member, gone }, reports.Told.Select(e => e.Player).ToArray(), "Everybody in the maze, and the killer who left");
+            Assert.IsTrue(reports.Told.All(e => e.Monster == 4242 && e.Conditions == 7));
+
+            maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    private sealed class RecordingReporter : MazeReporter
+    {
+        public RecordingReporter() : base(null!, null!, null!, null!, null!, null!)
+        {
+        }
+
+        public List<(Entity Player, int Monster, uint Conditions)> Told { get; } = [];
+
+        public override ValueTask MonsterKilledAsync(Entity player, int monster, uint conditions)
+        {
+            Told.Add((player, monster, conditions));
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>
     /// A maze with one player in it tells that player alone what happens in it, and ends when the player leaves, as before.
     /// </summary>
     [TestMethod]

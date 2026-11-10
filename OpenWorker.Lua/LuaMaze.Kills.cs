@@ -1,4 +1,5 @@
 using Arch.Core;
+using Lua;
 
 namespace OpenWorker.Lua;
 
@@ -12,7 +13,8 @@ public partial class LuaMaze
     /// Tells the rest of the game that a monster died, for each player who is in the maze and for the killer, who may have left
     /// while a script ran.
     /// </summary>
-    private async ValueTask ReportKillAsync(Entity killer, int monster, uint conditions)
+    [LuaIgnoreMember]
+    public async ValueTask ReportKillAsync(Entity killer, int monster, uint conditions)
     {
         var heard = _members.Select(e => e.Player).ToList();
 

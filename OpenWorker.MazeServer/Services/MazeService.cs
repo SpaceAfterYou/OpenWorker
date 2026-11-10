@@ -600,7 +600,16 @@ public sealed partial class MazeService(
         {
             questManager.TryApplyConditionProgress(context.Player, box.EpisodeCondition, 1);
 
-            ecs.Get<ServerSessionComponent>(context.Player).Send(new MazeQuestMoveCheckResponse { Box = box.Id });
+            // A condition that counts for the group counts for everyone in the maze, and the box is told to all of them.
+            if (questManager.CountsForGroup(box.EpisodeCondition))
+            {
+                foreach (var other in maze.Members.Where(e => e != context.Player && ecs.IsAlive(e)))
+                {
+                    questManager.TryApplyConditionProgress(other, box.EpisodeCondition, 1);
+                }
+            }
+
+            maze.Creatures.Broadcast(new MazeQuestMoveCheckResponse { Box = box.Id });
         }
 
         return ValueTask.CompletedTask;

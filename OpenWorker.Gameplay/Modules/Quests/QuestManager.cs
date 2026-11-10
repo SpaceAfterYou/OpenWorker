@@ -706,6 +706,11 @@ public sealed partial class QuestManager(
     }
 
     /// <summary>
+    /// Whether what one person does for the condition counts for everyone in the maze.
+    /// </summary>
+    public bool CountsForGroup(int conditionId) => _countedForGroup.Contains(conditionId);
+
+    /// <summary>
     /// A person in the maze of the person got items, and the conditions that count for everyone in the maze take them too:
     /// whoever is in the maze with them counts the items, though they are not in their bags.
     /// </summary>

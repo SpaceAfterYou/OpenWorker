@@ -14,8 +14,9 @@ namespace OpenWorker.MazeServer.Services;
 /// <summary>
 /// What the members of a party hear of each other while some of them play a maze: the life of a member in the maze for
 /// the others in it (12/12, once a pass), the window at the end of the maze with every member in it, and the clear of the
-/// maze for the party (12/46), and the monsters of the maze that become as strong as the members left make them when a member
-/// leaves the party. Where a member is (12/06) the party tells by itself when the member comes into a server.
+/// maze for the party (12/46), the monsters of the maze that become as strong as the members left make them when a member
+/// leaves the party, and the items one member gets that the quests of the others in the maze count too. Where a member is
+/// (12/06) the party tells by itself when the member comes into a server.
 /// </summary>
 public sealed partial class PartyMazeEvents(
     World world,
