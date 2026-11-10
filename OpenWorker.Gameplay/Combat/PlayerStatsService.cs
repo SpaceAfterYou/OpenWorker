@@ -98,8 +98,16 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
 
         var actor = world.Get<ActorComponent>(player);
 
+        // The person record went out before the stats were worked out, with the life the person had then; the life it
+        // has now goes with the greatest, or the client keeps showing the old one under the new greatest.
+        ST_STAT[] stats =
+        [
+            .. List(final.Values()),
+            new ST_STAT { wStatID = (short)STAT_TYPE.STAT_HP_CUR, fValue = world.Get<AbilityComponent>(player).Health.Current }
+        ];
+
         session.Send(new PersonUpdateOriginStatListResponse { Actor = actor, Stats = OriginList(origin) });
-        session.Send(new PersonUpdateStatListResponse { Type = Everything, Actor = actor, Stats = List(final.Values()) });
+        session.Send(new PersonUpdateStatListResponse { Type = Everything, Actor = actor, Stats = stats });
     }
 
     /// <summary>
