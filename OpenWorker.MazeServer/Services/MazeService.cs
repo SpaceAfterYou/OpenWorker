@@ -38,6 +38,8 @@ using OpenWorker.Hotspot.Modules.World.Types;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Lua;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Server.Common;
+using OpenWorker.Server.Common.Services;
 using OpenWorker.Hotspot.Handler;
 using Redis.OM.Searching;
 using OpenWorker.Gameplay.Modules.Persistence;
@@ -58,6 +60,7 @@ public sealed partial class MazeService(
     MovementPace pace,
     HandlerExecutor errors,
     SimulationClock clock,
+    IPlayerAudience audience,
     ILogger<MazeService> logger,
     MazeHelperField? helpers = null
 ) :
@@ -253,7 +256,12 @@ public sealed partial class MazeService(
 
         skillUse.Use(context.Player, skill.Skill, now);
 
-        session.Send(new SkillActiveResponse { Divergence = skillUse.DivergenceOf(context.Player, skill.Skill, skill.ParentSkill) });
+        var divergence = skillUse.DivergenceOf(context.Player, skill.Skill, skill.ParentSkill);
+
+        session.Send(new SkillActiveResponse { Divergence = divergence });
+
+        // The other members of the party play the skill from the place the server took for it.
+        audience.NearbyToOthers(context.Player, PlayerSkillBroadcast.Started(ecs, context.Player, skill, position, divergence));
 
         if (ecs.Has<LuaMaze>(context.Player))
         {

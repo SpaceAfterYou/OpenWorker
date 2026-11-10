@@ -8,7 +8,9 @@ using OpenWorker.Hotspot.Messages.Response.Person;
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
-///     Gate has same packet with different structure
+/// The answer of a district or a maze to a client that came from another server of the game: the play scene puts the player
+/// at the place, loads the map and asks for the objects around it. A client that came from the character selection reads the
+/// character record (03/32) instead. The gate has the same packet with a different structure.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct PersonEnterGameServerResponse2 : IResponseHotspotMessage
@@ -26,6 +28,10 @@ public readonly struct PersonEnterGameServerResponse2 : IResponseHotspotMessage
 
     public WorldValue World { get; init; }
 
+    public byte EchelonLevel { get; init; }
+
+    public int EchelonExperience { get; init; }
+
 #endregion Message: Body
 
 #region Interface: IWritableData
@@ -35,8 +41,8 @@ public readonly struct PersonEnterGameServerResponse2 : IResponseHotspotMessage
         writer.Write(0); // error code
         writer.Write((byte)0); // unknown
         writer.Write(World);
-        writer.Write((byte)0); // unknown (unused in client)
-        writer.Write(0); // unknown (unused in client)
+        writer.Write(EchelonLevel);
+        writer.Write(EchelonExperience);
     }
 
 #endregion Interface: IWritableData

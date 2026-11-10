@@ -70,6 +70,7 @@ public sealed class MazeRequestGuardTest
             null!,
             errors!,
             null!,
+            null!,
             NullLogger<MazeService>.Instance);
     }
 

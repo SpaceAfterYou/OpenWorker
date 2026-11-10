@@ -165,7 +165,8 @@ public sealed partial class PersonService(
 
         await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
 
-        session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(ecs, context.Player));
+        // A client that was already playing reads the answer of the play scene; one from the character selection, the record.
+        session.Send(PersonSnapshotMapper.CreateEntryResponse(ecs, context.Player, request.FirstConnect));
 
         // The date of the server: the game scene counts the times left on items, boosters and windows from it.
         session.Send(new WorldCurDateResponse { Date = time.GetUtcNow() });
