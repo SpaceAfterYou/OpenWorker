@@ -9,12 +9,12 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct AuraRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public byte Field1 { get; } = reader.ReadByte();
-    public int Field2 { get; } = reader.ReadInt32();
-    public byte Field3 { get; } = reader.ReadByte();
-    public int Field4 { get; } = reader.ReadInt32();
-    public int Field5 { get; } = reader.ReadInt32();
-    public short Field6 { get; } = reader.ReadInt16();
+    public byte Target { get; } = reader.ReadByte();
+    public int Distance { get; } = reader.ReadInt32();
+    public byte CheckType { get; } = reader.ReadByte();
+    public int CheckMilliseconds { get; } = reader.ReadInt32();
+    public int DurationMilliseconds { get; } = reader.ReadInt32();
+    public short Buff { get; } = reader.ReadInt16();
     public short Field7 { get; } = reader.ReadInt16();
     public short Field8 { get; } = reader.ReadInt16();
 }

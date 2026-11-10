@@ -163,6 +163,15 @@ public static class StatEffects
     public const int MagicalDamageReductionNumber = 56;
     public const int PhysicalEvasionNumber = 60;
     public const int MagicalEvasionNumber = 61;
+    public const int MoveSpeedShare = 31;
+    public const int AttackSpeedShare = 32;
+
+    // The resistance to a state, in the order of the Resistances: burn, poison, shock, bleed, stun, paralysis, sleep, freeze,
+    // charm, confusion, silence, weakness.
+    private static readonly int[] ResistanceNumbers = [57, 58, 59, 69, 70, 71, 72, 73, 67, 68, 74, 75];
+
+    private const int AttributeAttackFirst = 80;
+    private const int AttributeResistFirst = 86;
 
     /// <summary>
     /// The characteristics with the effects on them. A characteristic is first given the numbers and then the shares, and
@@ -177,6 +186,25 @@ public static class StatEffects
 
         return stats with
         {
+            MoveSpeed = Sum(stats.MoveSpeed, effects, MoveSpeedShare),
+            AttackSpeed = Sum(stats.AttackSpeed, effects, AttackSpeedShare),
+            Resist = new Resistances
+            {
+                Burn = Sum(stats.Resist.Burn, effects, ResistanceNumbers[0]),
+                Poison = Sum(stats.Resist.Poison, effects, ResistanceNumbers[1]),
+                Shock = Sum(stats.Resist.Shock, effects, ResistanceNumbers[2]),
+                Bleed = Sum(stats.Resist.Bleed, effects, ResistanceNumbers[3]),
+                Stun = Sum(stats.Resist.Stun, effects, ResistanceNumbers[4]),
+                Paralysis = Sum(stats.Resist.Paralysis, effects, ResistanceNumbers[5]),
+                Sleep = Sum(stats.Resist.Sleep, effects, ResistanceNumbers[6]),
+                Freeze = Sum(stats.Resist.Freeze, effects, ResistanceNumbers[7]),
+                Charm = Sum(stats.Resist.Charm, effects, ResistanceNumbers[8]),
+                Confusion = Sum(stats.Resist.Confusion, effects, ResistanceNumbers[9]),
+                Silence = Sum(stats.Resist.Silence, effects, ResistanceNumbers[10]),
+                Weakness = Sum(stats.Resist.Weakness, effects, ResistanceNumbers[11])
+            },
+            AttributeAttack = Attributes(stats.AttributeAttack, effects, AttributeAttackFirst),
+            AttributeResist = Attributes(stats.AttributeResist, effects, AttributeResistFirst),
             Strength = Change(stats.Strength, effects, StrengthNumber, StrengthShare),
             Agility = Change(stats.Agility, effects, AgilityNumber, AgilityShare),
             Intelligence = Change(stats.Intelligence, effects, IntelligenceNumber, IntelligenceShare),
@@ -208,6 +236,35 @@ public static class StatEffects
                 DamageReduction = Change(stats.Magical.DamageReduction, effects, MagicalDamageReductionNumber)
             }
         };
+    }
+
+    private static AttributeStats Attributes(in AttributeStats value, ReadOnlySpan<StatEffect> effects, int first)
+    {
+        return new AttributeStats
+        {
+            Light = Sum(value.Light, effects, first),
+            Darkness = Sum(value.Darkness, effects, first + 1),
+            Cool = Sum(value.Cool, effects, first + 2),
+            Abhor = Sum(value.Abhor, effects, first + 3),
+            Heal = Sum(value.Heal, effects, first + 4),
+            Pain = Sum(value.Pain, effects, first + 5)
+        };
+    }
+
+    /// <summary>
+    /// A stat that only takes numbers added to it (a speed, a resistance, an attack of an attribute).
+    /// </summary>
+    private static float Sum(float value, ReadOnlySpan<StatEffect> effects, int effect)
+    {
+        foreach (var candidate in effects)
+        {
+            if (candidate.Type == effect)
+            {
+                value += candidate.Value;
+            }
+        }
+
+        return value;
     }
 
     private static float Change(float value, ReadOnlySpan<StatEffect> effects, int number, int share = 0)
