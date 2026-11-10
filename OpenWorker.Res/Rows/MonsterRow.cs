@@ -38,9 +38,9 @@ public readonly partial struct MonsterRow(BinaryReader reader)
     public byte Field26 { get; } = reader.ReadByte();
     public byte Field27 { get; } = reader.ReadByte();
     public int Field28 { get; } = reader.ReadInt32();
-    public byte Field29 { get; } = reader.ReadByte();
+    public byte WeightRank { get; } = reader.ReadByte();
     public byte DefenseType { get; } = reader.ReadByte();
-    public byte Field31 { get; } = reader.ReadByte();
+    public byte ReactionLimit { get; } = reader.ReadByte();
     public byte Field32 { get; } = reader.ReadByte();
     public byte Field33 { get; } = reader.ReadByte();
     public byte Field34 { get; } = reader.ReadByte();
@@ -118,7 +118,7 @@ public readonly partial struct MonsterRow(BinaryReader reader)
     public short Field106 { get; } = reader.ReadInt16();
     public short Field107 { get; } = reader.ReadInt16();
     public short Field108 { get; } = reader.ReadInt16();
-    public byte Field109 { get; } = reader.ReadByte();
+    public byte SuperArmorBreakMotion { get; } = reader.ReadByte();
     public int AddHealth { get; } = reader.ReadInt32();
     public int AddSoulGauge { get; } = reader.ReadInt32();
     public int AddPhysicalAttack { get; } = reader.ReadInt32();
