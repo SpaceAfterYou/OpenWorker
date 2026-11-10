@@ -13,7 +13,7 @@ public sealed class SkillActionProviderTest
     private const string ActionsVariable = "OPENWORKER_TEST_ACTION";
 
     private const int ChainSkill = 52000711;
-    private const int ChainAttack = 105;
+    private const int ChainAttack = 1201;
     private const int MouseTrapSkill = 24000111;
     private const int SwordSkill = 12011011;
 
@@ -58,7 +58,7 @@ public sealed class SkillActionProviderTest
 
         Assert.IsFalse(provider.TryGetChain(ChainSkill, Hero.Stella, 99, out _), "an attack the skill does not have");
         Assert.IsFalse(provider.TryGetChain(ChainSkill, Hero.Haru, ChainAttack, out _), "the file of another hero");
-        Assert.IsFalse(provider.TryGetChain(SwordSkill, Hero.Haru, 3, out _), "a melee attack is no chain");
+        Assert.IsFalse(provider.TryGetChain(SwordSkill, Hero.Haru, 1, out _), "a melee attack is no chain");
         Assert.IsFalse(provider.TryGetProjectile(ChainSkill, Hero.Stella, ChainAttack, out _), "a chain is no projectile");
     }
 

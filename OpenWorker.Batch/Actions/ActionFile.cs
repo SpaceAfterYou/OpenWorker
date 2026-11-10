@@ -91,9 +91,28 @@ public sealed class ActionFile
         var animations = new Dictionary<string, ActionAnimation>(count, StringComparer.OrdinalIgnoreCase);
         var indexes = new Dictionary<string, int>(count, StringComparer.OrdinalIgnoreCase);
 
+        // The client numbers the attacks of a file itself as it loads it, and names an attack by that number in the
+        // messages of a hit: one after the other through the animations in the order of the file, starting at 1, and
+        // after an animation that has attacks, on from the next block of fifty (51, 101, ...). The number written in the
+        // event is not the one.
+        var next = 1;
+
         for (var i = 0; i < count; i++)
         {
             var animation = ReadAnimation(reader, version);
+
+            if (animation.Attacks.Count > 0)
+            {
+                var numbered = new List<AttackTrigger>(animation.Attacks.Count);
+
+                foreach (var attack in animation.Attacks)
+                {
+                    numbered.Add(attack with { Id = (short)next++ });
+                }
+
+                next += 51 - (short)next % 50;
+                animation = animation with { Attacks = numbered };
+            }
 
             if (animations.TryAdd(animation.Name, animation))
             {

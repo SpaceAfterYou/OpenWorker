@@ -218,10 +218,12 @@ public sealed class ActionFileTest
             var attack = animation.Attacks[0];
 
             Assert.AreEqual(
-                new AttackTrigger(7, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty, version >= AuraSinceVersion ? AuraWritten : 0),
+                new AttackTrigger(51, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty, version >= AuraSinceVersion ? AuraWritten : 0),
                 attack);
             Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
             Assert.AreEqual(0.75f, animation.Attacks[1].Start);
+            // The client numbers the attacks itself: the first animation took 1, so the second goes on from the next block.
+            Assert.AreEqual(52, animation.Attacks[1].Id);
             Assert.AreEqual(
                 new ProjectileInfo(new Vector3(10, 20, 30), 500f, 2f, true, 1, 75f, true, 0.2f, true, version >= 218, 6, new Vector3(-7, 40, 0), true, 4),
                 attack.Projectile);
@@ -265,17 +267,17 @@ public sealed class ActionFileTest
         Assert.AreEqual(0.25f, attack.Start);
         Assert.AreEqual(450f, attack.Radius);
         Assert.AreEqual(new Vector3(0, 250, 0), attack.Center);
-        Assert.AreEqual(3, attack.Id);
+        Assert.AreEqual(1, attack.Id, "the first attack of the file");
 
         var thrown = ActionFile.Load(Path.Join(folder, "PC_A.adf")).Animations["B_Skill_Flash_Step"].Attacks[0];
 
         Assert.IsTrue(thrown.IsProjectile);
-        Assert.AreEqual(14, thrown.Id);
+        Assert.AreEqual(1701, thrown.Id, "numbered by the client, block after block");
         Assert.AreEqual(5000f, thrown.Projectile!.Speed);
         Assert.AreEqual(100f, thrown.Projectile.Radius);
         Assert.IsTrue(thrown.Projectile.Penetrates);
 
-        var chain = ActionFile.Load(Path.Join(folder, "PC_E.adf")).Animations["B_Skill_07_Attack"].Attacks.Single(e => e.Id == 105);
+        var chain = ActionFile.Load(Path.Join(folder, "PC_E.adf")).Animations["B_Skill_07_Attack"].Attacks.Single(e => e.Id == 1201);
 
         Assert.IsTrue(chain.IsChain);
         Assert.AreEqual(new ChainInfo(ChainInfo.FromFirst, 3f, 5, 1f, new Vector3(0, -10, 0), 100f, 1f, true), chain.Chain);
