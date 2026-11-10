@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -22,8 +24,11 @@ public sealed class PassiveBuffs
     private readonly RowIndex<int, DivergenceRow> _divergences;
     private readonly RowIndex<int, AkashicRecordsRow> _cards;
 
-    public PassiveBuffs(ReadOnlyCollection<SkillRow> skills, ReadOnlyCollection<DivergenceRow> divergences, ReadOnlyCollection<AkashicRecordsRow> cards)
+    private readonly GearStats? _gear;
+
+    public PassiveBuffs(ReadOnlyCollection<SkillRow> skills, ReadOnlyCollection<DivergenceRow> divergences, ReadOnlyCollection<AkashicRecordsRow> cards, GearStats? gear = null)
     {
+        _gear = gear;
         _skills = skills.IndexBy(e => e.Id);
         _divergences = divergences.IndexBy(e => e.Id);
         _cards = cards.IndexBy(e => e.Id);
@@ -64,6 +69,11 @@ public sealed class PassiveBuffs
             }
         }
     }
+
+    /// <summary>
+    /// The buffs the clothing of a person gives by its broaches. They are only shown: the clothing counts their stats.
+    /// </summary>
+    public void Clothing(Inventory? inventory, List<ushort> buffs) => _gear?.BroachSetBuffs(inventory, buffs);
 
     /// <summary>
     /// The cards in the quick slots of a person that do something by themselves: the ones whose card names a condition.

@@ -45,6 +45,7 @@ await Host
         services.AddRewardsOptions();
         services.AddCommandOptions();
         services.AddSingleton<CombatTables>();
+        services.AddDistrictBuffs();
         services.AddGameplay();
         services.AddMiscGameplay();
         services.AddQuestGameplay();

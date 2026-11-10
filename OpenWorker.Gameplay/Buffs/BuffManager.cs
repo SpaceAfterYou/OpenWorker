@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -19,10 +20,11 @@ public sealed class BuffManager
         ReadOnlyCollection<AkashicRecordsRow>? cards = null,
         ReadOnlyCollection<AuraRow>? auras = null,
         ReadOnlyCollection<ComboBuffRow>? combos = null,
-        ReadOnlyCollection<BuffSystemRow>? server = null)
+        ReadOnlyCollection<BuffSystemRow>? server = null,
+        GearStats? gear = null)
     {
         Catalog = new BuffCatalog(buffs, server);
-        Passives = new PassiveBuffs(skills ?? new ReadOnlyCollection<SkillRow>([]), divergences ?? new ReadOnlyCollection<DivergenceRow>([]), cards ?? new ReadOnlyCollection<AkashicRecordsRow>([]));
+        Passives = new PassiveBuffs(skills ?? new ReadOnlyCollection<SkillRow>([]), divergences ?? new ReadOnlyCollection<DivergenceRow>([]), cards ?? new ReadOnlyCollection<AkashicRecordsRow>([]), gear);
         _auras = (auras ?? new ReadOnlyCollection<AuraRow>([])).IndexBy(e => e.Id);
         Combos = (combos ?? new ReadOnlyCollection<ComboBuffRow>([])).OrderBy(e => e.Id).ToArray();
     }

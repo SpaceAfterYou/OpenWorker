@@ -1,4 +1,5 @@
 ﻿using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Server.Common;
 using OpenWorker.Server.Common.Services;
@@ -80,6 +81,8 @@ public sealed partial class PersonService(
     NpcCreditManager npcCredit,
     ItemUseLimits itemUse,
     MazeEntryLimits entryLimits,
+    BuffMemory buffMemory,
+    DistrictBuffs districtBuffs,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -197,6 +200,10 @@ public sealed partial class PersonService(
         // How often the person entered the mazes today: the board shows what is left of the limits.
         await entryLimits.EnterAsync(context.Player, person.Id, context.CancellationToken);
         entryLimits.SendCounts(context.Player);
+
+        // The buffs the person left the last server with, and the ones its clothes give.
+        await buffMemory.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        districtBuffs.Enter(context.Player);
 
         // Get skill components
         ref readonly var skillPoint = ref ecs.Get<SkillPointComponent>(context.Player);

@@ -73,6 +73,7 @@ public sealed partial class PersonService(
     SkillActionProvider skillActions,
     CombatTables combatTables,
     MiscStateLoader miscState,
+    BuffMemory buffMemory,
     MazeReporter reports,
     CreatureServices creatureServices,
     MazeScripts mazeScripts,
@@ -213,6 +214,14 @@ public sealed partial class PersonService(
 
         // How often the person entered the mazes today: this one counts the entry as the person comes in.
         await entryLimits.EnterAsync(context.Player, person.Id, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
+
+        // The buffs the person left the last server with come with it into the instance.
+        await buffMemory.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         if (!world.IsAlive(context.Player))
         {

@@ -36,6 +36,12 @@ public sealed class ActiveBuff
     public byte Count { get; internal set; }
 
     /// <summary>
+    /// Whether the stats the buff names go into the stats of its carrier. A buff that only shows (the buff of a broach set, whose
+    /// stats the worn clothing counts) leaves them out.
+    /// </summary>
+    public bool StatsCounted { get; internal set; } = true;
+
+    /// <summary>
     /// Seconds since its last tick.
     /// </summary>
     internal float TickClock { get; set; }
@@ -285,6 +291,9 @@ public sealed class BuffBook
 
             switch (definition.Effect)
             {
+                case BuffEffect.Stats or BuffEffect.Weakness when !buff.StatsCounted:
+                    break;
+
                 case BuffEffect.Stats:
                 case BuffEffect.Weakness:
                     for (var index = 0; index < 3; index++)

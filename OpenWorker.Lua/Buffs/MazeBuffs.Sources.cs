@@ -65,10 +65,8 @@ public sealed partial class MazeBuffs
 
         public List<AkashicRecordsRow> Cards { get; } = [];
 
-        public List<ushort> Wanted { get; } = [];
-
-        /// <summary>The buffs of the passive skills that are on the person.</summary>
-        public List<ushort> Given { get; } = [];
+        /// <summary>The buffs the passive skills and the clothing of the person give.</summary>
+        public SourceBuffs Sources { get; } = new();
 
         public float Clock { get; set; }
 
@@ -275,8 +273,8 @@ public sealed partial class MazeBuffs
     private SkillInfoValue[]? SkillsOf(Entity player) => _ecs.TryGet<SkillLearnedComponent>(player, out var learned) ? learned.Values : null;
 
     /// <summary>
-    /// Makes the buffs of the passive skills of a person what its skills say: the ones it no longer has are taken away, the ones
-    /// it has and does not carry (a death took them) are given again.
+    /// Makes the buffs the sources of a person give what its skills and its clothing say: the ones it has are on it, the ones it
+    /// no longer has are taken away, and a buff a death took is given again.
     /// </summary>
     private void Reconcile(Entity player, PersonSources state)
     {
@@ -286,35 +284,14 @@ public sealed partial class MazeBuffs
         }
 
         state.Learned = SkillsOf(player);
-        state.Wanted.Clear();
 
-        if (state.Learned is not null)
+        var inventory = _ecs.TryGet<InventoryComponent>(player, out var bag) ? bag.Value : null;
+
+        BuffSources.Reconcile(book, _catalog, _manager.Passives, state.Learned, inventory, state.Sources, Carrier(player), _changes);
+
+        if (_changes.Count > 0)
         {
-            _manager.Passives.Of(state.Learned, state.Wanted);
-        }
-
-        for (var index = state.Given.Count - 1; index >= 0; index--)
-        {
-            if (!state.Wanted.Contains(state.Given[index]))
-            {
-                var at = book.IndexOf(state.Given[index]);
-
-                if (at >= 0)
-                {
-                    BuffRules.Remove(book, _catalog, at, false, Carrier(player), _changes);
-                    Process(player, book);
-                }
-
-                state.Given.RemoveAt(index);
-            }
-        }
-
-        foreach (var buff in state.Wanted)
-        {
-            if ((book.IndexOf(buff) >= 0 || Give(player, buff, owner: 0, roll: false)) && !state.Given.Contains(buff))
-            {
-                state.Given.Add(buff);
-            }
+            Process(player, book);
         }
 
         RefreshCards(player, state);

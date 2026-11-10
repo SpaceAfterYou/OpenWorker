@@ -201,6 +201,76 @@ public static class BuffRules
     }
 
     /// <summary>
+    /// Puts a buff on someone only to show it: the stats it names are counted by something else (the clothing that gives it).
+    /// </summary>
+    public static bool Show(BuffBook book, BuffCatalog catalog, ushort buff, in BuffCarrier carrier, List<BuffChange> changes)
+    {
+        if (!catalog.TryGet(buff, out var definition) || !Apply(book, catalog, definition, carrier.Actor, carrier, changes))
+        {
+            return false;
+        }
+
+        MarkShown(book, buff, changes);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Takes the stats of a buff the carrier has out of its stats, because something else counts them.
+    /// </summary>
+    public static void MarkShown(BuffBook book, ushort buff, List<BuffChange> changes)
+    {
+        var index = book.IndexOf(buff);
+
+        if (index >= 0 && book.Active[index].StatsCounted)
+        {
+            book.Active[index].StatsCounted = false;
+            book.Recount();
+            changes.Add(new BuffChange(BuffChangeKind.Recounted, buff));
+        }
+    }
+
+    /// <summary>
+    /// Puts a buff back on someone who carried it before (from one server to the next, or through a relog) with the time it had
+    /// left and the stacks it had. What a buff gives when it begins (life back, a hurt) is not given again.
+    /// </summary>
+    public static bool Restore(BuffBook book, BuffCatalog catalog, ushort buff, float time, byte count, in BuffCarrier carrier, List<BuffChange> changes)
+    {
+        if (!catalog.TryGet(buff, out var definition))
+        {
+            return false;
+        }
+
+        var begun = new List<BuffChange>();
+
+        if (!Apply(book, catalog, definition, carrier.Actor, carrier, begun))
+        {
+            return false;
+        }
+
+        changes.AddRange(begun.Where(e => e.Kind is not (BuffChangeKind.Restored or BuffChangeKind.Hurt)));
+
+        var index = book.IndexOf(buff);
+
+        if (index < 0)
+        {
+            return true;
+        }
+
+        var active = book.Active[index];
+
+        if (!definition.Lasts && time > 0f)
+        {
+            active.Remaining = Math.Min(definition.Duration, time);
+        }
+
+        active.Count = Math.Clamp(count, (byte)1, MostStacks);
+        changes.Add(new BuffChange(BuffChangeKind.Updated, active.Buff, Time: active.Remaining, Count: active.Count, Owner: active.Owner));
+
+        return true;
+    }
+
+    /// <summary>
     /// A second buff of a group meets the first. The grade must not be lower; a group that does not stack is only renewed;
     /// one that stacks to the top turns into its change buff; one buff of the group replaces another.
     /// </summary>

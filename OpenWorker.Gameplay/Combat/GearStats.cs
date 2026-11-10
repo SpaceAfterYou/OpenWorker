@@ -134,6 +134,32 @@ public sealed class GearStats
     }
 
     /// <summary>
+    /// The buffs the clothing of a person gives by its broaches: one for each group of three broaches of one theme, as the table
+    /// of the sets names it.
+    /// </summary>
+    public void BroachSetBuffs(Inventory? inventory, List<ushort> buffs)
+    {
+        if (inventory?.Find(StorageGroup.ShapeEquip) is not { } clothing)
+        {
+            return;
+        }
+
+        foreach (var item in clothing.Slots)
+        {
+            if (item is not null && item.Broaches.Length > 0)
+            {
+                for (var group = 0; group < BroachGroups && (group + 1) * BroachesPerGroup <= item.Broaches.Length; group++)
+                {
+                    if (BroachSetOf(item.Broaches, group) is { } buff && !buffs.Contains((ushort)buff.Id))
+                    {
+                        buffs.Add((ushort)buff.Id);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// The share of its stats a piece of equipment keeps at its endurance: all of it while it is whole, less the penalty of the
     /// repair table for the endurance it has fallen to, nothing at zero.
     /// </summary>
@@ -299,32 +325,7 @@ public sealed class GearStats
 
         for (var group = 0; group < BroachGroups && (group + 1) * BroachesPerGroup <= broaches.Length; group++)
         {
-            var theme = 0;
-            var code = 0;
-            var full = true;
-
-            for (var place = 0; place < BroachesPerGroup; place++)
-            {
-                var broach = broaches[group * BroachesPerGroup + place];
-
-                if (broach < 1 || !_items.TryGet(broach, out var row) || row.EffectType != BroachOfASet || (theme != 0 && theme != row.EffectValue))
-                {
-                    full = false;
-                    break;
-                }
-
-                theme = row.EffectValue;
-                code = code * 10 + row.Rank;
-            }
-
-            if (!full || theme == 0)
-            {
-                continue;
-            }
-
-            code += 10000 * theme + 1000 * (group + 1);
-
-            if (code <= short.MaxValue && _broachSets.TryGet((short)code, out var set) && _buffs.TryGet((ushort)set.Buff, out var buff))
+            if (BroachSetOf(broaches, group) is { } buff)
             {
                 (byte Type, int Value)[] stats = [(buff.Stat1, buff.Value1), (buff.Stat2, buff.Value2), (buff.Stat3, buff.Value3)];
 
@@ -337,6 +338,38 @@ public sealed class GearStats
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// The buff of a group of three broaches, when they are all broaches of a set and of one theme and the table names the set
+    /// they make: the set is named by the theme, the place of the group and the ranks of the three broaches.
+    /// </summary>
+    private BuffRow? BroachSetOf(int[] broaches, int group)
+    {
+        var theme = 0;
+        var code = 0;
+
+        for (var place = 0; place < BroachesPerGroup; place++)
+        {
+            var broach = broaches[group * BroachesPerGroup + place];
+
+            if (broach < 1 || !_items.TryGet(broach, out var row) || row.EffectType != BroachOfASet || (theme != 0 && theme != row.EffectValue))
+            {
+                return null;
+            }
+
+            theme = row.EffectValue;
+            code = code * 10 + row.Rank;
+        }
+
+        if (theme == 0)
+        {
+            return null;
+        }
+
+        code += 10000 * theme + 1000 * (group + 1);
+
+        return code <= short.MaxValue && _broachSets.TryGet((short)code, out var set) && _buffs.TryGet((ushort)set.Buff, out var buff) ? buff : null;
     }
 
     private static ReadOnlyCollection<T> Empty<T>() => new([]);

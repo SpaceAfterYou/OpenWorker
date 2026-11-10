@@ -102,6 +102,9 @@ public sealed class BuffSourcesTest
                 case InventoryComponent inventory:
                     world.Add(entity, inventory);
                     break;
+                case BuffMemoryComponent memory:
+                    world.Add(entity, memory);
+                    break;
             }
         }
 
@@ -207,6 +210,48 @@ public sealed class BuffSourcesTest
             world.Set(player, new SkillLearnedComponent { Values = [] });
             maze.Buffs.Step(0.05f);
             Assert.IsFalse(Has(world, player, PassiveMight));
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// The buffs a player carries go with it to the next server with the time they had left, but for the ones its skills give
+    /// again wherever it is.
+    /// </summary>
+    [TestMethod]
+    public void ABuffGoesWithThePlayerToTheNextServerWithTheTimeItHadLeft()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var skills = Rows(TestRows.Build<SkillRow>(("Id", PassiveSkill), ("SkillType", (byte)1), ("PassiveType", (byte)13), ("PassiveValue", (short)PassiveMight)));
+            var learned = new SkillLearnedComponent { Values = [new SkillInfoValue { Skill = PassiveSkill }] };
+            var player = Player(world, 100, Vector3.Zero, extra: [learned, new BuffMemoryComponent { Book = new BuffMemoryBook() }]);
+            var first = Maze(world, player, Manager(skills));
+
+            Assert.IsTrue(first.Buffs.Give(player, CardMight, player));
+            first.Buffs.Step(4f);
+            first.Buffs.Detach(player);
+
+            var saved = BuffMemory.Saved(world, player).Single();
+
+            Assert.AreEqual(CardMight, saved.Buff, "The buff of the skill is not carried: the skill gives it again.");
+            Assert.AreEqual(6f, saved.Time, 0.1f);
+
+            var second = Maze(world, player, Manager(skills));
+            var book = BuffBook.Of(world, player)!;
+
+            Assert.IsTrue(Has(world, player, CardMight));
+            Assert.AreEqual(6f, book.Buffs.Single(e => e.Buff == CardMight).Remaining, 0.1f);
+            Assert.IsTrue(Has(world, player, PassiveMight));
+
+            second.Buffs.Step(7f);
+            Assert.IsFalse(Has(world, player, CardMight), "It runs out when its time is over.");
         }
 
         finally

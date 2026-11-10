@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Buffs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Extensions;
@@ -37,6 +38,8 @@ public static class MiscGameplayExtensions
         services.TryAddSingleton(TimeProvider.System);
 
         services.AddSingleton<PersonStateStore>();
+        services.AddSingleton<BuffMemory>();
+        services.AddSingleton(BuffMemoryDocument.Source);
         services.AddSingleton<MiscStateLoader>();
         services.AddHostedService<MiscTickService>();
 

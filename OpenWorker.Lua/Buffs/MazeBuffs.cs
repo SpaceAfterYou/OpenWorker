@@ -47,6 +47,7 @@ public sealed partial class MazeBuffs
     private readonly Dictionary<Entity, CombatStats> _shown = [];
 
     private readonly HashSet<Entity> _held = [];
+    private readonly Dictionary<Entity, int> _taunted = [];
     private readonly List<BuffChange> _changes = [];
     private readonly List<(Entity Monster, int Owner)> _fallen = [];
 
@@ -103,6 +104,20 @@ public sealed partial class MazeBuffs
             _shown[player] = _tables.GetPlayer(_ecs, player);
         }
 
+        // The buffs the person carried from the server it came from, or through a relog, with the time they had left.
+        if (_ecs.Has<ActorComponent>(player))
+        {
+            foreach (var saved in BuffMemory.Saved(_ecs, player))
+            {
+                BuffRules.Restore(book, _catalog, saved.Buff, saved.Time, saved.Count, Carrier(player), _changes);
+            }
+
+            if (_changes.Count > 0)
+            {
+                Process(player, book);
+            }
+        }
+
         StartSources(player);
     }
 
@@ -111,6 +126,12 @@ public sealed partial class MazeBuffs
     /// </summary>
     public void Detach(Entity player)
     {
+        // What the person carries goes with it to the next server, but for what its skills give wherever it is.
+        if (_books.TryGetValue(player, out var carried))
+        {
+            BuffMemory.Remember(_ecs, player, carried, _sources.TryGetValue(player, out var sources) ? sources.Sources.Given : []);
+        }
+
         StopSources(player);
         _books.Remove(player);
         _shown.Remove(player);
@@ -304,6 +325,7 @@ public sealed partial class MazeBuffs
     public void Forget(Entity creature)
     {
         _auras.Remove(creature);
+        _taunted.Remove(creature);
         _books.Remove(creature);
         _shown.Remove(creature);
         _held.Remove(creature);
@@ -794,6 +816,19 @@ public sealed partial class MazeBuffs
         if (player)
         {
             return;
+        }
+
+        // A monster with a taunt on it turns on the one who gave it.
+        var taunt = book.Rates.Taunt;
+
+        if (taunt != 0 && (!_taunted.TryGetValue(carrier, out var turned) || turned != taunt))
+        {
+            _taunted[carrier] = taunt;
+            _creatures.Provoke(carrier, taunt);
+        }
+        else if (taunt == 0)
+        {
+            _taunted.Remove(carrier);
         }
 
         if (book.IsHeld)
