@@ -246,11 +246,14 @@ public abstract class PartyServiceBase(
         }
     }
 
+    /// <summary>
+    /// The client asks for its party every time it enters a district or a maze. Somebody alone gets no answer: the
+    /// client shows every error answer in a window, so an error here would pop up at each entry.
+    /// </summary>
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PartyUpdateInfoRequest request)
     {
         if (await book.OfAsync(Me(context)) is not { } party)
         {
-            Fail(context, PartyOpcode.UpdateUserInfo, PartyRules.Text.NotInParty);
             return;
         }
 
