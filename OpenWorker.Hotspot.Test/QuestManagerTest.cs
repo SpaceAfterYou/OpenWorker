@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
@@ -15,6 +16,7 @@ using OpenWorker.Gameplay.Modules.Quests.Components;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -263,7 +265,8 @@ public sealed class QuestManagerTest
         private readonly TcpClient _server;
 
         public Harness(
-            MemoryStore? store = null, Granter? granter = null, Inventory? inventory = null, Hero hero = Hero.Haru, TimeProvider? time = null)
+            MemoryStore? store = null, Granter? granter = null, Inventory? inventory = null, Hero hero = Hero.Haru, TimeProvider? time = null,
+            ReadOnlyCollection<QuestConditionRuleRow>? rules = null)
         {
             _listener.Start();
 
@@ -295,7 +298,8 @@ public sealed class QuestManagerTest
                 NullLogger<QuestManager>.Instance,
                 npcs: Npcs,
                 titles: Titles,
-                time: time);
+                time: time,
+                rules: rules);
 
             Player = World.Create(
                 Component.GetComponentType(typeof(ServerSessionComponent)),
@@ -746,6 +750,57 @@ public sealed class QuestManagerTest
         Assert.AreEqual(1020, Int(item.Body, 2));
         Assert.AreEqual((byte)2, item.Body[6]);
         Assert.IsTrue(test.Quiet());
+    }
+
+    /// <summary>
+    /// Items that come to another person in the maze count for a condition that counts for everyone in it, though the person
+    /// has none of them, and for no other condition.
+    /// </summary>
+    [TestMethod]
+    public async Task ItemsAnotherPersonInTheMazeGetsCountForTheConditionsThatCountForEveryone()
+    {
+        static QuestConditionRuleRow Rule(uint id, bool group)
+        {
+            using var stream = new MemoryStream();
+            using var writer = new BinaryWriter(stream);
+
+            writer.Write(id);
+            writer.Write(new byte[1 + 4 + 4 + 1 + 1 + 4 + 4 + 4 + 24 * 4]);
+            writer.Write(group ? (byte)1 : (byte)0);
+            writer.Write(new byte[1 + 8 + 2 + 8 + 2 + 12]);
+            writer.Write((ushort)0);
+            writer.Flush();
+            stream.Position = 0;
+
+            return new QuestConditionRuleRow(new BinaryReader(stream));
+        }
+
+        // The condition that asks for the tusks is counted for the group, the one that asks for a maze is not.
+        using var shared = new Harness(rules: new ReadOnlyCollection<QuestConditionRuleRow>([Rule(1020, true)]));
+        using var alone = new Harness(rules: new ReadOnlyCollection<QuestConditionRuleRow>([Rule(1020, false)]));
+
+        foreach (var test in new[] { shared, alone })
+        {
+            await test.Enter();
+            test.Next();
+            test.Next();
+
+            await test.Run(() =>
+            {
+                test.World.Get<QuestComponent>(test.Player).Book!.Episodes.Add(QuestRules.Start(Gathering, false));
+                test.Manager.OnItemsArrivedForGroup(test.Player, 880001, 2);
+
+                return ValueTask.CompletedTask;
+            });
+
+            await test.Settle();
+        }
+
+        var update = shared.Next();
+
+        Assert.AreEqual(1020, Int(update.Body, 2));
+        Assert.AreEqual((byte)2, update.Body[6], "The items count, though the person has none");
+        Assert.IsTrue(alone.Quiet(), "A condition that does not count for the group counts nothing");
     }
 
     #endregion Progress

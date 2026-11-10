@@ -49,6 +49,7 @@ public sealed class ServerTablesTest
             ("tb_DropRate_Level", typeof(DropRateLevelRow)),
             ("tb_DropRate_Member", typeof(DropRateMemberRow)),
             ("tb_Monster", typeof(MonsterReviseGroupRow)),
+            ("tb_Quest_Condition", typeof(QuestConditionRuleRow)),
             ("tb_PartyRevise", typeof(PartyReviseRatesRow)),
             ("tb_Drop", typeof(DropRow)),
             ("tb_Drop_Group", typeof(DropGroupRow)),

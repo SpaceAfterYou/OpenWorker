@@ -2,6 +2,8 @@ using Arch.Core;
 using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Modules.Drops;
+using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Party.Responses;
@@ -19,9 +21,45 @@ public sealed partial class PartyMazeEvents(
     World world,
     MazeResults results,
     PartyNotifier parties,
+    ItemArrivals arrivals,
+    QuestManager quests,
     ILogger<PartyMazeEvents> logger
 ) : IEndOfPass, ICommunityModule
 {
+    private bool _listening;
+
+    /// <summary>
+    /// Items that come into the bags of a player in a maze with others count for the conditions of the others that count for
+    /// everyone in the maze.
+    /// </summary>
+    public void ShareItems()
+    {
+        if (_listening)
+        {
+            return;
+        }
+
+        _listening = true;
+
+        arrivals.Listen(OnItemsArrived);
+    }
+
+    private void OnItemsArrived(Entity player, int item, int count)
+    {
+        if (!world.IsAlive(player) || !world.TryGet(player, out LuaMaze? maze) || maze is not { MemberCount: > 1, IsClosed: false })
+        {
+            return;
+        }
+
+        foreach (var other in maze.Members)
+        {
+            if (other != player && world.IsAlive(other))
+            {
+                quests.OnItemsArrivedForGroup(other, item, count);
+            }
+        }
+    }
+
     private readonly List<Entity> _hurt = [];
     private bool _waiting;
     private CommunityNetwork? _network;

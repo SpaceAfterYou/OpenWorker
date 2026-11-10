@@ -85,6 +85,32 @@ public readonly struct PartyReviseRatesRow(BinaryReader reader)
 }
 
 /// <summary>
+/// The server's own <c>tb_Quest_Condition</c>, of which only the one thing the client's copy leaves out is kept: whether what
+/// one person does for a condition counts for the others in the maze too. The rest of the row is read to reach its end.
+/// </summary>
+[BinaryResourceTable("tb_Quest_Condition", Server = true)]
+public readonly struct QuestConditionRuleRow
+{
+    public QuestConditionRuleRow(BinaryReader reader)
+    {
+        Id = reader.ReadUInt32();
+
+        // The kind, the conditions before and after, the target, the field and the mazes and sectors it names.
+        reader.ReadBytes(1 + 4 + 4 + 1 + 1 + 4 + 4 + 4 + 24 * sizeof(uint));
+        CountsForGroup = reader.ReadByte() != 0;
+
+        // The count, the rewards of the condition, what fails it and the script.
+        reader.ReadBytes(1 + 8 + 2 + 8 + 2 + 12);
+        reader.ReadBytes(reader.ReadUInt16() * sizeof(char));
+    }
+
+    public uint Id { get; }
+
+    /// <summary>Whether it counts for everyone in the maze: an item one of them gets counts for the others too.</summary>
+    public bool CountsForGroup { get; }
+}
+
+/// <summary>
 /// How much of the drop of a monster a party gets, by how far apart the levels of its members are: the highest level less
 /// the lowest.
 /// </summary>

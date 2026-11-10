@@ -383,6 +383,7 @@ public sealed partial class PersonService(
         // What happens in the instance is wired once, for every player who is in it then.
         maze.MonsterKilled += (killer, monster, position) => rewards.OnKilled(killer, PresentOf(maze), maze.Members, monster, position);
         maze.Completed += () => partyEvents.Completed(maze);
+        partyEvents.ShareItems();
         maze.MonstersHit += results.OnMonstersHit;
         creatures.Vitals.HealthChanged += partyEvents.HealthChanged;
         creatures.Vitals.HealthChanged += results.OnHealthChanged;
