@@ -92,7 +92,8 @@ public sealed class ItemUseService(
     IItemTitles? titles = null,
     BoosterManager? boosters = null,
     AkashicService? akashic = null,
-    FatigueService? fatigue = null)
+    FatigueService? fatigue = null,
+    IReviveItems? revive = null)
 {
     private readonly RowIndex<int, ItemPackageRow> _packages = packages.IndexBy(e => e.Id);
     private readonly RowIndex<int, ItemRandomBoxRow> _randomBoxes = randomBoxes.IndexBy(e => e.Id);
@@ -118,6 +119,10 @@ public sealed class ItemUseService(
 
     // The most a client lists in a reward: it counts the items in a byte.
     private const int MostGained = byte.MaxValue;
+
+    // The calls that get a fallen player up are items of the sub type 2 whose effect is 1 (the player itself).
+    private const int ReviveSubType = 2;
+    private const int SelfReviveEffect = 1;
 
     private static readonly StorageGroup[] Usable = [StorageGroup.Common, StorageGroup.Costume, StorageGroup.Cash, StorageGroup.Cube];
 
@@ -385,8 +390,8 @@ public sealed class ItemUseService(
     }
 
     /// <summary>
-    /// A potion or the like: in a maze it gives its buff to the person. A place the kind of item is not for, the infinite tower,
-    /// and the items that bring a person back are refused.
+    /// A potion or the like: in a maze it gives its buff to the person. A place the kind of item is not for and the infinite
+    /// tower are refused; so are the items that bring a person back, but for the call that gets the person itself up.
     /// </summary>
     private ItemUseResult UseEffect(Entity player, ItemInstance item, ItemRow row, ItemClassifyRow classify, ItemPlace place)
     {
@@ -408,7 +413,13 @@ public sealed class ItemUseService(
             return ItemUseResult.Refused(ItemUseCodes.InfiniteTower);
         }
 
-        // An item that gets a person up is used from the window of the fallen, which is not this request.
+        // A call that gets a person up is used from the window of the fallen: the maze says whether it does.
+        if (row.SubType == ReviveSubType && row.EffectType == SelfReviveEffect && revive is not null)
+        {
+            return revive.Use(player, item);
+        }
+
+        // The other items that get a person up are not for this request.
         if (row.SubType != 0)
         {
             return ItemUseResult.Refused(ItemUseCodes.NoRevive);
