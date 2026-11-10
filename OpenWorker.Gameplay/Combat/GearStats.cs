@@ -57,6 +57,8 @@ public sealed class GearStats
     private readonly RowIndex<int, ItemRepairRow> _repairs;
     private readonly RowIndex<short, BroachSetRow> _broachSets;
     private readonly RowIndex<ushort, BuffRow> _buffs;
+    private readonly RowIndex<int, ItemRollRow> _rolls;
+    private readonly RowIndex<int, ReinforceOptionRow> _reinforceOptions;
 
     public GearStats(
         ItemCatalog items,
@@ -64,8 +66,12 @@ public sealed class GearStats
         ReadOnlyCollection<ItemSetItemRow>? sets = null,
         ReadOnlyCollection<ItemRepairRow>? repairs = null,
         ReadOnlyCollection<BroachSetRow>? broachSets = null,
-        ReadOnlyCollection<BuffRow>? buffs = null)
+        ReadOnlyCollection<BuffRow>? buffs = null,
+        ReadOnlyCollection<ItemRollRow>? rolls = null,
+        ReadOnlyCollection<ReinforceOptionRow>? reinforceOptions = null)
     {
+        _rolls = (rolls ?? Empty<ItemRollRow>()).IndexBy(e => e.Id);
+        _reinforceOptions = (reinforceOptions ?? Empty<ReinforceOptionRow>()).IndexBy(e => e.Id);
         _items = items;
         _reinforce = (reinforce ?? Empty<ReinforceRow>()).IndexBy(e => e.Id);
         _sets = (sets ?? Empty<ItemSetItemRow>()).IndexBy(e => e.Id);
@@ -177,9 +183,22 @@ public sealed class GearStats
     {
         var share = EnduranceShare(row, item);
 
-        sheet.Add(STAT_TYPE.STAT_PATK_MAX, row.PhysicalAttack * share);
+        // The attack and the defence of an item are rolled when it is made, between the least the table says and the most the
+        // server's table says; the roll of an item is the same every time it is looked at.
+        var attack = row.PhysicalAttack;
+        var defense = row.PhysicalDefense;
+
+        if (_rolls.TryGet(item.Item, out var roll))
+        {
+            attack = Rolled(item.Serial, attack, roll.Attack, 1);
+            defense = Rolled(item.Serial, defense, roll.Defense, 2);
+
+            CollectUpgradeOptions(item, roll, share, sheet);
+        }
+
+        sheet.Add(STAT_TYPE.STAT_PATK_MAX, attack * share);
         sheet.Add(STAT_TYPE.STAT_MATK_MAX, row.MagicalAttack * share);
-        sheet.Add(STAT_TYPE.STAT_PDEF, row.PhysicalDefense * share);
+        sheet.Add(STAT_TYPE.STAT_PDEF, defense * share);
         sheet.Add(STAT_TYPE.STAT_MDEF, row.MagicalDefense * share);
 
         CollectStaticOptions(row, share, sheet);
@@ -197,8 +216,8 @@ public sealed class GearStats
         {
             var rate = reinforce.StatRate(item.Upgrade) * Percent * share;
 
-            sheet.Add(STAT_TYPE.STAT_PATK_MAX, row.PhysicalAttack * rate);
-            sheet.Add(STAT_TYPE.STAT_PDEF, row.PhysicalDefense * rate);
+            sheet.Add(STAT_TYPE.STAT_PATK_MAX, attack * rate);
+            sheet.Add(STAT_TYPE.STAT_PDEF, defense * rate);
         }
 
         var open = Math.Min(item.SocketActive, item.Sockets.Length);
@@ -220,6 +239,48 @@ public sealed class GearStats
                 {
                     sheet.Apply(option.Type, option.Option * share);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// A value between the least and the most of an item, picked by its serial: the same item always rolls the same, and items
+    /// are spread over the range as the original's roll at creation spreads them.
+    /// </summary>
+    internal static int Rolled(long serial, int least, int most, int salt)
+    {
+        if (most <= least)
+        {
+            return least;
+        }
+
+        var mixed = unchecked((ulong)serial + (ulong)salt * 0x9E3779B97F4A7C15UL);
+
+        mixed = (mixed ^ (mixed >> 30)) * 0xBF58476D1CE4E5B9UL;
+        mixed = (mixed ^ (mixed >> 27)) * 0x94D049BB133111EBUL;
+        mixed ^= mixed >> 31;
+
+        return least + (int)(mixed % (ulong)(most - least + 1));
+    }
+
+    /// <summary>
+    /// The options the upgrade of an item gives: each begins at a level, and the options whose level the item has reached count.
+    /// Only the options that are stat effects count here.
+    /// </summary>
+    private void CollectUpgradeOptions(ItemInstance item, in ItemRollRow roll, float share, StatSheet sheet)
+    {
+        if (item.Upgrade == 0 || roll.ReinforceOption == 0 || !_reinforceOptions.TryGet(roll.ReinforceOption, out var options))
+        {
+            return;
+        }
+
+        for (var place = 0; place < ReinforceOptionRow.Options; place++)
+        {
+            var (phase, kind, effect, value) = options.Option(place);
+
+            if (phase != 0 && item.Upgrade >= phase && kind == 1)
+            {
+                sheet.Apply(effect, value * share);
             }
         }
     }
