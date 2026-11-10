@@ -133,8 +133,8 @@ where the group is, and its `tb_PartyRevise` has only the group, the number and 
 - **What it scales.** The life, the physical and magical attack (the minimum and the maximum) and the defence of the monster
   are multiplied by the rates, the whole number of the stat times the rate. A monster with a super armor gets a gauge of
   the row's percent of its (scaled) life and the row's time to recover; before, the gauge was a guess of a fifth of the
-  life and three seconds. The rates of attack speed and speed of movement are not applied (the stat calculator has no such
-  stat; a few dozen rows have them above one).
+  life and three seconds. The rates of attack speed and speed of movement multiply the speed stats of the monster (shown to
+  the client in its stat list); the monsters' own movement and attacks are set by their scripts and do not read them.
 - **The count.** The maze counts the members it was opened for: the members of the question (or of the matched group),
   carried by the reservation (`MazeReserveCache.Members`, `PartyMazeCache.Members`). A player alone counts one. More than four
   count four. A monster that is not of the plain kind (bosses and the like, `Type` other than 0) always counts one.
@@ -222,7 +222,7 @@ step of the maze, and a refusal (a portal that is shut, on another map or leadin
 | What | Original | Here | |
 |---|---|---|---|
 | Strength of monsters | rates of the group of the monster by the members of the maze, one to four, one for a monster of another kind | the same | same |
-| Rates applied | life, attack, defence, attack speed, speed of movement, super armor gauge and times | all but the two speeds (no such stat) | kept different |
+| Rates applied | life, attack, defence, attack speed, speed of movement, super armor gauge and times | the same; the speeds only change the stats shown, the scripts of the monsters set their pace | same (the speeds do not drive the monsters) |
 | Members counted | the members the maze was made for; the party's members when one leaves; one when the party ends | the same | same |
 | A monster already alive | recalculated with the share of life kept on a leave | the same, and a broken super armor comes back whole | same |
 | Notice of the change | the notice 80 to the maze | the same | same |

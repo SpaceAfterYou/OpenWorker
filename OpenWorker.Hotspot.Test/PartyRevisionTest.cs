@@ -58,7 +58,7 @@ public sealed class PartyRevisionTest
         };
     }
 
-    internal static Action<BinaryWriter> Rates(uint id, byte members, float health, float attack, float defense, float armor, uint recover)
+    internal static Action<BinaryWriter> Rates(uint id, byte members, float health, float attack, float defense, float armor, uint recover, float speed = 1f)
     {
         return writer =>
         {
@@ -68,8 +68,8 @@ public sealed class PartyRevisionTest
             writer.Write(health);
             writer.Write(attack);
             writer.Write(defense);
-            writer.Write(1f);
-            writer.Write(1f);
+            writer.Write(speed);
+            writer.Write(speed);
             writer.Write(armor);
             writer.Write(999999u);
             writer.Write(recover);
@@ -99,7 +99,7 @@ public sealed class PartyRevisionTest
                 Rates(1, 1, 0.5f, 1f, 1f, 20f, 2000),
                 Rates(2, 2, 1f, 1.5f, 2f, 20f, 2000),
                 Rates(3, 3, 1.5f, 1.5f, 2f, 20f, 2000),
-                Rates(4, 4, 2f, 2f, 3f, 30f, 4000)));
+                Rates(4, 4, 2f, 2f, 3f, 30f, 4000, speed: 1.5f)));
     }
 
     private static MonsterCombatComponent Base()
@@ -108,7 +108,7 @@ public sealed class PartyRevisionTest
 
         return new MonsterCombatComponent
         {
-            Stats = new CombatStats { Level = 10, MaxHealth = 1000.9f, Physical = damage, Magical = damage },
+            Stats = new CombatStats { Level = 10, MaxHealth = 1000.9f, MoveSpeed = 100f, AttackSpeed = 100f, Physical = damage, Magical = damage },
             Defense = DefenseType.SuperArmor
         };
     }
@@ -126,6 +126,8 @@ public sealed class PartyRevisionTest
         Assert.AreEqual(200f, four.Stats.Physical.AttackMax);
         Assert.AreEqual(160f, four.Stats.Magical.AttackMin);
         Assert.AreEqual(150f, four.Stats.Physical.Defense);
+        Assert.AreEqual(150f, four.Stats.MoveSpeed);
+        Assert.AreEqual(150f, four.Stats.AttackSpeed);
 
         // The super armor is a share of the life, and takes the time the row gives to come back.
         Assert.AreEqual(100f, alone.MaxSuperArmor);

@@ -65,7 +65,7 @@ public sealed class PartyRevision(ReadOnlyCollection<MonsterReviseGroupRow> mons
     }
 
     /// <summary>
-    /// The monster as strong as it is for the number of members: its life, attacks and defences multiplied by the rates of
+    /// The monster as strong as it is for the number of members: its life, attacks, defences and speeds multiplied by the rates of
     /// its group, and the super armor sized to its life when it has one. The rates apply to the whole number the stat
     /// holds, not to its fraction.
     /// </summary>
@@ -81,6 +81,8 @@ public sealed class PartyRevision(ReadOnlyCollection<MonsterReviseGroupRow> mons
         stats = stats with
         {
             MaxHealth = Multiply(stats.MaxHealth, row.HealthRate),
+            MoveSpeed = Multiply(stats.MoveSpeed, row.MoveSpeedRate),
+            AttackSpeed = Multiply(stats.AttackSpeed, row.AttackSpeedRate),
             Physical = Scale(stats.Physical, row),
             Magical = Scale(stats.Magical, row)
         };
