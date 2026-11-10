@@ -26,4 +26,13 @@ public static class ServiceNpcCodes
 
     /// <summary>Taking items apart away from an NPC: the failure of the list.</summary>
     public const ushort Disassemble = 52270;
+
+    /// <summary>A ride asked at an NPC that carries no one, that is not there or stands too far; also a ride asked while on one.</summary>
+    public const ushort Transport = 58000;
+
+    /// <summary>A ride that costs more gold than the player has.</summary>
+    public const ushort TransportGold = 58001;
+
+    /// <summary>A ride the NPC does not offer, or one that ends nowhere on this map.</summary>
+    public const ushort TransportRide = 58002;
 }

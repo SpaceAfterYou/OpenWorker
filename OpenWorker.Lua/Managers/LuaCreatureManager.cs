@@ -582,6 +582,24 @@ public sealed class LuaCreatureManager
     }
 
     /// <summary>
+    /// The townsman of the maze that the actor names, as a client names it in a request: by the number the maze gave it.
+    /// </summary>
+    public bool TryFindNpc(int actor, out Entity found)
+    {
+        foreach (var creature in Creatures)
+        {
+            if (ecs.IsAlive(creature) && ecs.Get<ActorComponent>(creature) is { Type: ActorType.Npc } place && place.Identifier == actor)
+            {
+                found = creature;
+                return true;
+            }
+        }
+
+        found = Entity.Null;
+        return false;
+    }
+
+    /// <summary>
     /// A townsman sets off towards a place: the client sees it walk there. The time the walk takes comes back, in seconds.
     /// </summary>
     public float Walk(Entity npc, Vector3 target)

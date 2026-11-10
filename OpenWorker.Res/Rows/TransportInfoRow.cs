@@ -11,8 +11,8 @@ public readonly partial struct TransportInfoRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
     public byte Field1 { get; } = reader.ReadByte();
-    public int Field2 { get; } = reader.ReadInt32();
-    public string Field3 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public int NeedGold { get; } = reader.ReadInt32();
+    public string PathFile { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public byte Field4 { get; } = reader.ReadByte();
     public int Field5 { get; } = reader.ReadInt32();
     public byte Field6 { get; } = reader.ReadByte();
@@ -23,7 +23,7 @@ public readonly partial struct TransportInfoRow(BinaryReader reader)
     public short Field11 { get; } = reader.ReadInt16();
     public short Field12 { get; } = reader.ReadInt16();
     public byte Field13 { get; } = reader.ReadByte();
-    public short Field14 { get; } = reader.ReadInt16();
-    public short Field15 { get; } = reader.ReadInt16();
+    public short PositionBox { get; } = reader.ReadInt16();
+    public short RideSeconds { get; } = reader.ReadInt16();
     public string Field16 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
 }

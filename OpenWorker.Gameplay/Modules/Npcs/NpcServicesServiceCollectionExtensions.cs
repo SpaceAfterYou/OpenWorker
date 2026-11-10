@@ -19,6 +19,7 @@ public static class NpcServicesServiceCollectionExtensions
         services.AddSingleton<NpcCreditManager>();
         services.AddSingleton(NpcCreditManager.Document);
         services.AddSingleton<NpcShopService>();
+        services.AddSingleton<TransportTables>();
 
         return services;
     }

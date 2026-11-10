@@ -4,6 +4,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Npcs.Components;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -26,7 +27,9 @@ namespace OpenWorker.Channel;
 /// own movement too: the client skips what it has already done and starts looped motions only from here.<br/>
 /// A move faster than the player can run (<see cref="MovementPace"/>) is refused: the place stays, nobody else hears of
 /// it, and the player is warped back to the place the server keeps. The first refusal in a second counts against the
-/// error budget of the session.
+/// error budget of the session.<br/>
+/// A player on a ride of an NPC of transports (<see cref="TransportRideComponent"/>) is carried by the ride: what its client
+/// reports meanwhile is not a move.
 /// </summary>
 public abstract partial class MovementServiceBase(World world, MovementPace pace, HandlerExecutor errors, ILogger logger) :
     IHotspotHandler<MovementMoveRequest>,
@@ -35,7 +38,6 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
     IHotspotHandler<MovementBattleRequest>,
     IHotspotHandler<MovementMotionRequest>,
     IHotspotHandler<MovementIgnoreMotionDeltaRequest>,
-    IHotspotHandler<MovementTransportTakeRequest>,
     IHotspotHandler<MovementTransportOffRequest>,
     IHotspotHandler<MovementRotationRequest>,
     IHotspotHandler<MovementPositionRequest>,
@@ -267,11 +269,6 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, MovementTransportTakeRequest request)
-    {
-        return ValueTask.CompletedTask;
-    }
-
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementTransportOffRequest request)
     {
         return ValueTask.CompletedTask;
@@ -298,8 +295,10 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
 
     private bool TryUpdatePlace(Entity player, MessageOpcode opcode, ActorValue actor, Vector3 position, float rotation)
     {
+        // A rider is carried by the ride, not by its client: what the client reports along the path is not a move.
         if (!IsOwnActor(player, actor) ||
-            !Place.IsValid(position, rotation))
+            !Place.IsValid(position, rotation) ||
+            world.Has<TransportRideComponent>(player))
         {
             return false;
         }
