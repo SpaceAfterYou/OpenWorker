@@ -21,4 +21,10 @@ public readonly partial struct ItemRow
             _ => default
         };
     }
+
+    /// <summary>
+    /// The item id whose <c>tb_item_script</c> row supplies the name and icons: <see cref="ScriptItem"/> when set, otherwise
+    /// <see cref="Id"/>. Most rows point at themselves; a few hundred share another item's script.
+    /// </summary>
+    public int ScriptOf => ScriptItem != 0 ? ScriptItem : Id;
 }
