@@ -77,6 +77,9 @@ await Host
         services.AddSingleton<ITransportMap, MazeTransportMap>();
         services.AddQuestGameplay();
         services.AddSingleton<MazeReporter>();
+
+        // Items act in the maze: the field is registered before the items, which keep a district's for a server without one.
+        services.AddSingleton<OpenWorker.Gameplay.Modules.Items.IItemField, MazeItemField>();
         services.AddItems();
         services.AddRewardsOptions();
         services.AddCommandOptions();

@@ -5,6 +5,7 @@ using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons;
+using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
@@ -30,6 +31,14 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<PlayerStatsService>();
         services.AddSingleton<EnduranceWear>();
         services.AddSingleton<InventoryService>();
+        services.AddSingleton<ItemUseLimits>();
+        services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<ItemUseLimits>());
+        services.AddSingleton(ItemUseDocument.Source);
+
+        // Where an item acts and who gives its title: the maze and the layer above the titles say, a server with neither
+        // answers as a city with no titles does.
+        services.TryAddSingleton<IItemField, DistrictItemField>();
+        services.TryAddSingleton<IItemTitles, NoItemTitles>();
         services.AddSingleton<ItemUseService>();
         services.AddSingleton<ItemRepairService>();
         services.AddSingleton<ItemSetupAnswers>();

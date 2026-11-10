@@ -16,4 +16,9 @@ public sealed class ItemService(World world, InventoryService inventory, ItemUse
     {
         audience.NearbyToOthers(player, notice);
     }
+
+    protected override void ItemUsed(Entity player, ItemUseBtResponse notice)
+    {
+        audience.Nearby(player, in notice);
+    }
 }

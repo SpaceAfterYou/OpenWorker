@@ -33,6 +33,10 @@ public sealed class SkillLearning(
 
     private readonly RowIndex<int, SkillRow> _skills = skills.IndexBy(e => e.Id);
     private readonly RowIndex<int, DivergenceRow> _divergences = divergences.IndexBy(e => e.Id);
+
+    // The level or the divergence before one: the row that names it as its next.
+    private readonly RowIndex<int, SkillRow> _earlierSkills = skills.IndexBy(e => e.NextLevel);
+    private readonly RowIndex<int, DivergenceRow> _earlierDivergences = divergences.IndexBy(e => e.Next);
     private readonly short[] _pointsByLevel = Accumulate(levels);
 
     /// <summary>
@@ -253,6 +257,79 @@ public sealed class SkillLearning(
         }
 
         world.MarkDirty(player, PersonSections.Skills);
+    }
+
+    /// <summary>
+    /// Takes one step back for one skill: its divergence goes to the one before (or to none), or, without a divergence, its level
+    /// goes back one. The points of the step come back and the decks hold the earlier level. The refusal is
+    /// <see cref="SkillRefusal.CannotLearn"/> for a skill that is not learned, for a divergence the skill does not have, for a
+    /// skill with a divergence asked for as a level, and for a skill on its first level.
+    /// </summary>
+    public (ushort Refusal, SkillInfoValue Before, SkillInfoValue After, short FreePoints) ResetStep(Entity player, int group, int divergence)
+    {
+        var none = (SkillRefusal.CannotLearn, default(SkillInfoValue), default(SkillInfoValue), (short)0);
+
+        if (!world.TryGet<SkillLearnedComponent>(player, out var learned) || learned.Values is null ||
+            !world.TryGet<SkillPointComponent>(player, out var points))
+        {
+            return none;
+        }
+
+        var index = IndexOfGroup(learned.Values, group);
+
+        if (index < 0 || !_skills.TryGet(learned.Values[index].Skill, out var row))
+        {
+            return none;
+        }
+
+        var entry = learned.Values[index];
+        var values = (SkillInfoValue[])learned.Values.Clone();
+        short gives;
+        SkillInfoValue before, after;
+
+        if (divergence != 0)
+        {
+            if (entry.Divergence != divergence || !_divergences.TryGet(divergence, out var had))
+            {
+                return none;
+            }
+
+            var earlier = _earlierDivergences.GetOrDefault(had.Id);
+
+            if (earlier.Group != had.Group)
+            {
+                earlier = default;
+            }
+
+            gives = had.NeedPointCount;
+            before = new SkillInfoValue { Skill = entry.Skill, Divergence = divergence };
+            after = new SkillInfoValue { Skill = entry.Skill, Divergence = earlier.Id };
+            values[index] = entry with { Divergence = earlier.Id };
+        }
+        else
+        {
+            var earlier = _earlierSkills.GetOrDefault(row.Id);
+
+            if (entry.Divergence != 0 || earlier.Id == 0 || earlier.Group != row.Group)
+            {
+                return none;
+            }
+
+            gives = row.RequiredPoints;
+            before = new SkillInfoValue { Skill = entry.Skill };
+            after = new SkillInfoValue { Skill = earlier.Id };
+            values[index] = entry with { Skill = earlier.Id };
+
+            ReplaceInDecks(player, entry.Skill, earlier.Id);
+        }
+
+        var free = (short)Math.Min(points.TotalSkillPoint, points.FreeSkillPoint + gives);
+
+        world.Set(player, learned with { Values = values });
+        world.Set(player, points with { FreeSkillPoint = free });
+        world.MarkDirty(player, PersonSections.Skills);
+
+        return (SkillRefusal.None, before, after, free);
     }
 
     /// <summary>

@@ -45,6 +45,12 @@ public sealed class InventoryService(
     /// <summary>The item may not be put into the bank, or not straight from the equipment.</summary>
     public const ushort CannotStore = 52044;
 
+    /// <summary>The storage has no step to open, the person is below its level, or the game takes no such payment for it.</summary>
+    public const ushort NoStep = 52023;
+
+    /// <summary>The person has not the gold a step of a storage costs.</summary>
+    public const ushort NotEnoughGold = 52301;
+
     public ItemCatalog Catalog => catalog;
 
     public Inventory? InventoryOf(Entity player)
@@ -648,7 +654,9 @@ public sealed class InventoryService(
     }
 
     /// <summary>
-    /// Opens the next step of a storage if the person can pay for it.
+    /// Opens the next step of a storage if the person can pay for it: with gold, or with the item its table names (a bag or a
+    /// bank step). A step the storage has not, a level that is too low and a payment the game does not take are refused with
+    /// <see cref="NoStep"/>, too little gold with <see cref="NotEnoughGold"/>.
     /// </summary>
     public void GradeUp(Entity player, StorageGroup group)
     {
@@ -659,7 +667,7 @@ public sealed class InventoryService(
         if (inventory is null || storage is null || step is not { } info ||
             world.Get<LevelComponent>(player).Level < info.NeedLevel)
         {
-            Refuse(player, ItemOpcode.AddSlot);
+            Refuse(player, ItemOpcode.AddSlot, NoStep);
             return;
         }
 
@@ -667,6 +675,19 @@ public sealed class InventoryService(
         {
             case SlotExtendPaymentType.None:
             {
+                break;
+            }
+
+            case SlotExtendPaymentType.Gold:
+            {
+                if (world.Get<CurrencyComponent>(player).Gold < info.Value)
+                {
+                    Refuse(player, ItemOpcode.AddSlot, NotEnoughGold);
+                    return;
+                }
+
+                TryAddGold(player, -info.Value);
+
                 break;
             }
 
@@ -683,7 +704,7 @@ public sealed class InventoryService(
 
             default:
             {
-                Refuse(player, ItemOpcode.AddSlot);
+                Refuse(player, ItemOpcode.AddSlot, NoStep);
                 return;
             }
         }

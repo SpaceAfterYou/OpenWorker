@@ -77,6 +77,7 @@ public sealed partial class PersonService(
     AchievementManager achievements,
     SharePointManager sharePoints,
     NpcCreditManager npcCredit,
+    ItemUseLimits itemUse,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -188,6 +189,7 @@ public sealed partial class PersonService(
         await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await sharePoints.EnterDistrictAsync(context.Player, person.Id, Location, context.CancellationToken);
         await npcCredit.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await itemUse.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         // Get skill components
         ref readonly var skillPoint = ref ecs.Get<SkillPointComponent>(context.Player);

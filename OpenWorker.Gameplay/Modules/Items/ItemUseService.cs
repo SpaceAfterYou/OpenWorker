@@ -1,108 +1,457 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
+using OpenWorker.Domain.Components;
+using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Responses;
+using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
-using OpenWorker.Res.Types;
 using OpenWorker.Res;
+using OpenWorker.Res.Types;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Modules.Items;
 
 /// <summary>
-/// What happens when an item is used: boxes and packages open into items and money, an akashic record card goes into the book,
-/// an item of fatigue fills the fatigue of the day.
+/// The answer to the use of an item: it was used, or the code of the error the client is told. A used item that has a motion
+/// (a potion) is shown to everybody who sees the person.
+/// </summary>
+/// <param name="Error">Zero when the item was used.</param>
+/// <param name="Item">The item that was used.</param>
+/// <param name="Slot">The slot of the bag it was in.</param>
+/// <param name="Motion">The use plays a motion and starts the cooldown in the bag of the client.</param>
+public readonly record struct ItemUseResult(ushort Error, int Item = 0, short Slot = 0, bool Motion = false)
+{
+    public bool Ok => Error == 0;
+
+    public static ItemUseResult Used(int item = 0, short slot = 0, bool motion = false) => new(0, item, slot, motion);
+
+    public static ItemUseResult Refused(ushort code = ItemUseCodes.NotUsable) => new(code);
+}
+
+/// <summary>
+/// The codes the client is told when the use of an item is refused, as the original server gives them.
+/// </summary>
+public static class ItemUseCodes
+{
+    /// <summary>The item is not there, not usable, or not usable now: the code for everything that has no other.</summary>
+    public const ushort NotUsable = InventoryService.Refused;
+
+    /// <summary>The item is for another class.</summary>
+    public const ushort OtherClass = 52009;
+
+    /// <summary>The bags have no room for what an opened box gives.</summary>
+    public const ushort BagFull = 52010;
+
+    /// <summary>A fallen person cannot use an item.</summary>
+    public const ushort Fallen = 52026;
+
+    /// <summary>The person has not the level the item asks for.</summary>
+    public const ushort LevelTooLow = 52601;
+
+    /// <summary>The item (its group) is still cooling down.</summary>
+    public const ushort Cooling = 52602;
+
+    /// <summary>An item that only gets a person up is used where nobody can get up.</summary>
+    public const ushort NoRevive = 52607;
+
+    /// <summary>The kind of item has been used as often as a day allows.</summary>
+    public const ushort DailyLimit = 52610;
+
+    /// <summary>The infinite tower takes no item.</summary>
+    public const ushort InfiniteTower = 52612;
+
+    /// <summary>The item of a tower's ticket is not usable.</summary>
+    public const ushort NoTowerTicket = 52613;
+
+    /// <summary>The item cannot be used in this kind of place.</summary>
+    public const ushort WrongPlace = 52616;
+}
+
+/// <summary>
+/// What happens when an item is used (08/11): the checks every item goes through, in the order of the original server, then
+/// what its kind does. Boxes and packages open into items and money, an akashic record card goes into the book, an item of
+/// fatigue fills the fatigue of the day, an item of a title gives the title, a potion gives its buff in a maze, a booster its
+/// booster. Every kind that is used starts the cooldown of the item's group.
 /// </summary>
 public sealed class ItemUseService(
+    World world,
     InventoryService inventory,
     ItemCatalog catalog,
+    ItemUseLimits limits,
     ReadOnlyCollection<ItemPackageRow> packages,
     ReadOnlyCollection<ItemRandomBoxRow> randomBoxes,
+    ReadOnlyCollection<ItemClassrewardLinkRow> classRewards,
+    IItemField? field = null,
+    IItemTitles? titles = null,
     BoosterManager? boosters = null,
     AkashicService? akashic = null,
     FatigueService? fatigue = null)
 {
     private readonly RowIndex<int, ItemPackageRow> _packages = packages.IndexBy(e => e.Id);
     private readonly RowIndex<int, ItemRandomBoxRow> _randomBoxes = randomBoxes.IndexBy(e => e.Id);
+    private readonly RowIndex<int, ItemClassrewardLinkRow> _classRewards = classRewards.IndexBy(e => (int)e.Id);
 
-    // The kind of effect in the item row that names a booster.
+    // The kind of effect in the item row that names a booster, a buff, an aura and a title.
     private const int BoosterEffect = 3;
+    private const int BuffEffect = 1;
+    private const int TitleEffect = 4;
+    private const int ClassBoxEffect = 7;
+
+    // The group of the classify table that holds the items taken at a meal: potions and fatigue items.
+    private const int ConsumableGroup = 17;
+
+    // What a kind of item may do where, in the bits of the use state of its classify row.
+    private const int UsableInDistrict = 1;
+    private const int UsableInMaze = 2;
+    private const int UsableWhenFallen = 8;
+
+    // The slot types of the items that open a memory place of the equipment: the first memory place, then the ten places.
+    private const int FirstMemorySlotType = 101;
+    private const int MemorySlots = 10;
+
+    // The most a client lists in a reward: it counts the items in a byte.
+    private const int MostGained = byte.MaxValue;
 
     private static readonly StorageGroup[] Usable = [StorageGroup.Common, StorageGroup.Costume, StorageGroup.Cash, StorageGroup.Cube];
+
+    // Boxes are opened from the common bag and the cash bag only.
+    private static readonly StorageGroup[] BoxStorages = [StorageGroup.Common, StorageGroup.Cash];
+
+    private readonly IItemField _field = field ?? new DistrictItemField();
 
     /// <summary>
     /// What an item gives when it is opened: money and items with their counts.
     /// </summary>
     public readonly record struct Reward(long Gold, long BattlePoint, long Ether, List<(int Item, int Count)> Items);
 
-    public async ValueTask<bool> UseAsync(Entity player, StorageGroup group, short slot, long serial, CancellationToken cancellationToken)
+    /// <summary>
+    /// Uses the item in a slot of a bag. The client names the slot and the serial of the item it believes is there.
+    /// </summary>
+    public async ValueTask<ItemUseResult> UseAsync(Entity player, StorageGroup group, short slot, long serial, CancellationToken cancellationToken)
     {
         var bag = inventory.InventoryOf(player);
         var item = bag?.At(group, slot);
 
-        if (bag is null || item is null || item.Serial != serial || !Usable.Contains(group) || catalog.Classify(item.Item) is not { } classify)
+        if (bag is null || item is null || item.Serial != serial || !Usable.Contains(group) ||
+            !catalog.TryGet(item.Item, out var row) || catalog.Classify(item.Item) is not { } classify)
         {
-            return false;
+            return ItemUseResult.Refused();
         }
 
-        // A booster item gives its booster, which the item row names; the item is used up when the person gets it.
-        if (classify.ItemUseType == ItemUseType.BOOSTER)
+        var place = _field.PlaceOf(player);
+
+        // What every item asks, in this order.
+        if (row.LevelLimit > world.Get<LevelComponent>(player).Level)
         {
-            if (boosters is null || !catalog.TryGet(item.Item, out var boosterRow) || boosterRow.EffectType != BoosterEffect ||
-                !await boosters.AddAsync(player, (short)boosterRow.EffectValue, null, cancellationToken))
+            return ItemUseResult.Refused(ItemUseCodes.LevelTooLow);
+        }
+
+        if (row.ClassLimit != 0 && row.ClassLimit != (byte)world.Get<PersonInfoComponent>(player).Hero)
+        {
+            return ItemUseResult.Refused(ItemUseCodes.OtherClass);
+        }
+
+        if (place.Down && (classify.UseState & UsableWhenFallen) == 0)
+        {
+            return ItemUseResult.Refused(ItemUseCodes.Fallen);
+        }
+
+        if (limits.IsCooling(player, row))
+        {
+            return ItemUseResult.Refused(ItemUseCodes.Cooling);
+        }
+
+        if (item.Count < 1 || !place.ModeAllowsItems)
+        {
+            return ItemUseResult.Refused();
+        }
+
+        var result = classify.ItemUseType switch
+        {
+            ItemUseType.BOOSTER => await UseBoosterAsync(player, bag, item, row, cancellationToken),
+            ItemUseType.TITLE => await UseTitleAsync(player, item, row),
+            ItemUseType.AKASHIC_RECORD => UseAkashic(player, item, classify),
+            ItemUseType.FP or ItemUseType.FP_FREE => UseFatigue(player, item, row, classify),
+            ItemUseType.PACKAGE or ItemUseType.PACKAGE_COSTUME or ItemUseType.RANDOM_BOX or ItemUseType.BOX_CLASS =>
+                UseBox(player, item, row, classify),
+            ItemUseType.EFFECT => UseEffect(player, item, row, classify, place),
+            ItemUseType.EQUIP_SLOT_OPEN => OpenEquipSlot(player, item, classify),
+            ItemUseType.INFINITE_TOWER => ItemUseResult.Refused(ItemUseCodes.NoTowerTicket),
+            _ => ItemUseResult.Refused()
+        };
+
+        if (result.Ok)
+        {
+            limits.StartCooldown(player, row);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// The item in a slot that a service of its own takes: the person's request names the slot, not the use of an item (a
+    /// skill reset, a new place in the deck). Null when there is no item of that use type in the slot.
+    /// </summary>
+    public ItemInstance? ItemOfService(Entity player, StorageGroup group, short slot, ItemUseType type)
+    {
+        var item = inventory.InventoryOf(player)?.At(group, slot);
+
+        return item is { Count: >= 1 } && Usable.Contains(group) && catalog.Classify(item.Item) is { } classify && classify.ItemUseType == type
+            ? item
+            : null;
+    }
+
+    /// <summary>
+    /// A booster item gives its booster, which the item row names; the item is used up when the person gets it.
+    /// </summary>
+    private async ValueTask<ItemUseResult> UseBoosterAsync(Entity player, Inventory bag, ItemInstance item, ItemRow row, CancellationToken cancellationToken)
+    {
+        if (boosters is null || row.EffectType != BoosterEffect || !await boosters.AddAsync(player, (short)row.EffectValue, null, cancellationToken))
+        {
+            return ItemUseResult.Refused();
+        }
+
+        // The booster took a while to give: the item must still be the one that was used.
+        if (!world.IsAlive(player) || bag.At(item.Storage, item.Slot) != item)
+        {
+            return ItemUseResult.Refused();
+        }
+
+        inventory.Spend(player, item, 1);
+
+        return ItemUseResult.Used();
+    }
+
+    /// <summary>
+    /// An item of a title gives the title, unless the person has it or cannot have it.
+    /// </summary>
+    private async ValueTask<ItemUseResult> UseTitleAsync(Entity player, ItemInstance item, ItemRow row)
+    {
+        var granter = titles ?? new NoItemTitles();
+
+        if (row.EffectType != TitleEffect || granter.CannotGrant(player, row.EffectValue))
+        {
+            return ItemUseResult.Refused();
+        }
+
+        var bag = inventory.InventoryOf(player);
+
+        if (!await granter.GrantAsync(player, row.EffectValue) || !world.IsAlive(player) || bag?.At(item.Storage, item.Slot) != item)
+        {
+            return ItemUseResult.Refused();
+        }
+
+        inventory.Spend(player, item, 1);
+        Tell(player, new ItemUseResponse { Item = item.Item, Gain = new ItemUseGainValue { Items = [] } });
+
+        return ItemUseResult.Used();
+    }
+
+    /// <summary>
+    /// An item of a place of the equipment opens that place, if it is not open yet. The item comes from the common bag.
+    /// </summary>
+    private ItemUseResult OpenEquipSlot(Entity player, ItemInstance item, ItemClassifyRow classify)
+    {
+        var bit = classify.SlotType - FirstMemorySlotType;
+
+        if (item.Storage != StorageGroup.Common || bit is < 0 or >= MemorySlots || limits.IsEquipSlotOpen(player, bit))
+        {
+            return ItemUseResult.Refused();
+        }
+
+        inventory.Spend(player, item, 1);
+        limits.OpenEquipSlot(player, bit);
+
+        return ItemUseResult.Used();
+    }
+
+    /// <summary>
+    /// An akashic record card goes into the book of the person.
+    /// </summary>
+    private ItemUseResult UseAkashic(Entity player, ItemInstance item, ItemClassifyRow classify)
+    {
+        if (akashic is null || !akashic.Register(player, item))
+        {
+            return ItemUseResult.Refused();
+        }
+
+        limits.CountUse(player, (int)classify.ItemUseType);
+
+        return ItemUseResult.Used();
+    }
+
+    /// <summary>
+    /// An item of fatigue adds its value to the fatigue of the day, unless the person has saved fatigue or a full day. The
+    /// ones that are not free may be used three times a game day.
+    /// </summary>
+    private ItemUseResult UseFatigue(Entity player, ItemInstance item, ItemRow row, ItemClassifyRow classify)
+    {
+        var type = (int)classify.ItemUseType;
+
+        if (classify.Group != ConsumableGroup || fatigue is null)
+        {
+            return ItemUseResult.Refused();
+        }
+
+        if (classify.ItemUseType == ItemUseType.FP && !limits.CanUseKind(player, type))
+        {
+            return ItemUseResult.Refused(ItemUseCodes.DailyLimit);
+        }
+
+        if (row.UseValue == 0)
+        {
+            return ItemUseResult.Refused();
+        }
+
+        if (fatigue.Restore(player, row.UseValue) is { } refusal)
+        {
+            return ItemUseResult.Refused(refusal);
+        }
+
+        inventory.Spend(player, item, 1);
+        limits.CountUse(player, type);
+
+        return ItemUseResult.Used();
+    }
+
+    /// <summary>
+    /// A box or a package opens into what its table holds; it goes only when everything that comes out of it fits, and the
+    /// client is shown what came.
+    /// </summary>
+    private ItemUseResult UseBox(Entity player, ItemInstance item, ItemRow row, ItemClassifyRow classify)
+    {
+        if (!BoxStorages.Contains(item.Storage))
+        {
+            return ItemUseResult.Refused();
+        }
+
+        var kind = classify.ItemUseType;
+        var box = item.Item;
+
+        // A box of a class opens the box its table names for the class of the person.
+        if (kind == ItemUseType.BOX_CLASS)
+        {
+            if (row.EffectType != ClassBoxEffect || !_classRewards.TryGet(row.EffectValue, out var link) ||
+                ClassBox(link, world.Get<PersonInfoComponent>(player).Hero) is not { } inner || catalog.Classify(inner) is not { } innerClassify)
             {
-                return false;
+                return ItemUseResult.Refused();
             }
 
-            inventory.Spend(player, item, 1);
-
-            return true;
+            box = inner;
+            kind = innerClassify.ItemUseType;
         }
 
-        // An item of fatigue adds its value to the fatigue of the day, unless the person has saved fatigue or a full day.
-        if (classify.ItemUseType == ItemUseType.FP)
+        var reward = kind switch
         {
-            if (fatigue is null || !catalog.TryGet(item.Item, out var fatigueRow) || fatigue.Restore(player, fatigueRow.UseValue) is not null)
-            {
-                return false;
-            }
-
-            inventory.Spend(player, item, 1);
-
-            return true;
-        }
-
-        // An akashic record card goes into the book of the person.
-        if (classify.ItemUseType == ItemUseType.AKASHIC_RECORD)
-        {
-            return akashic is not null && akashic.Register(player, item);
-        }
-
-        var reward = classify.ItemUseType switch
-        {
-            ItemUseType.PACKAGE or ItemUseType.PACKAGE_COSTUME => OpenPackage(item.Item),
-            ItemUseType.RANDOM_BOX => OpenRandomBox(item.Item),
+            ItemUseType.PACKAGE or ItemUseType.PACKAGE_COSTUME => OpenPackage(box),
+            ItemUseType.RANDOM_BOX => OpenRandomBox(box),
             _ => null
         };
 
         if (reward is not { } opened)
         {
-            return false;
+            return ItemUseResult.Refused();
         }
 
-        // The box goes only when everything that comes out of it fits.
         if (!inventory.CanGiveAll(player, opened.Items, ignoring: item))
         {
-            return false;
+            return ItemUseResult.Refused(ItemUseCodes.BagFull);
         }
 
         inventory.Spend(player, item, 1);
 
         Grant(player, opened);
 
-        return true;
+        Tell(player, new ItemUseResponse
+        {
+            Item = item.Item,
+            Gain = new ItemUseGainValue
+            {
+                Gold = (int)Math.Clamp(opened.Gold, 0, int.MaxValue),
+                BattlePoint = (int)Math.Clamp(opened.BattlePoint, 0, int.MaxValue),
+                Ether = (int)Math.Clamp(opened.Ether, 0, int.MaxValue),
+                Items = opened.Items.Take(MostGained).Select(e => new ItemUseGainItem { Item = e.Item, Count = (short)Math.Clamp(e.Count, 0, short.MaxValue) }).ToArray()
+            }
+        });
+
+        return ItemUseResult.Used();
+    }
+
+    /// <summary>
+    /// A potion or the like: in a maze it gives its buff to the person. A place the kind of item is not for, the infinite tower,
+    /// and the items that bring a person back are refused.
+    /// </summary>
+    private ItemUseResult UseEffect(Entity player, ItemInstance item, ItemRow row, ItemClassifyRow classify, ItemPlace place)
+    {
+        if (classify.Group != ConsumableGroup)
+        {
+            return ItemUseResult.Refused();
+        }
+
+        // Where the kind may be used: the place has to take items, and the use state of the kind has to name the place.
+        var bit = place.InMaze ? UsableInMaze : UsableInDistrict;
+
+        if (!place.ItemsAllowed || (classify.UseState & bit) == 0)
+        {
+            return ItemUseResult.Refused(ItemUseCodes.WrongPlace);
+        }
+
+        if (place.Infinite)
+        {
+            return ItemUseResult.Refused(ItemUseCodes.InfiniteTower);
+        }
+
+        // An item that gets a person up is used from the window of the fallen, which is not this request.
+        if (row.SubType != 0)
+        {
+            return ItemUseResult.Refused(ItemUseCodes.NoRevive);
+        }
+
+        if (row.EffectType != BuffEffect || !_field.GiveBuff(player, row.EffectValue))
+        {
+            return ItemUseResult.Refused();
+        }
+
+        // The stack may go with its last item: the motion names the slot it was in.
+        var slot = item.Slot;
+
+        inventory.Spend(player, item, 1);
+
+        return ItemUseResult.Used(item.Item, slot, motion: true);
+    }
+
+    /// <summary>
+    /// The box the table names for a hero class, if any.
+    /// </summary>
+    private static int? ClassBox(ItemClassrewardLinkRow link, Hero hero)
+    {
+        var box = (int)hero switch
+        {
+            1 => link.Field1,
+            2 => link.Field2,
+            3 => link.Field3,
+            4 => link.Field4,
+            5 => link.Field5,
+            6 => link.Field6,
+            _ => 0
+        };
+
+        return box > 0 ? box : null;
+    }
+
+    private void Tell(Entity player, ItemUseResponse answer)
+    {
+        if (world.IsAlive(player) && world.Has<ServerSessionComponent>(player))
+        {
+            world.Get<ServerSessionComponent>(player).Send(answer);
+        }
     }
 
     /// <summary>

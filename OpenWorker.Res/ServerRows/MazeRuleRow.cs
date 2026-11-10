@@ -63,10 +63,17 @@ public readonly struct MazeRuleRow
         reader.ReadUInt32();
         reader.ReadSingle();
         reader.ReadUtf16UnicodeStringWithoutTerminator();
-        reader.ReadBytes(sizeof(ushort) + 4 * sizeof(int) + sizeof(short) + sizeof(uint) + 5 * sizeof(uint) + 2 + sizeof(uint) + 1);
+        reader.ReadBytes(sizeof(ushort) + 4 * sizeof(int) + sizeof(short) + sizeof(uint) + 5 * sizeof(uint) + 1);
+        PotionLimit = reader.ReadByte();
+        reader.ReadBytes(sizeof(uint) + 1);
     }
 
     public ushort Id { get; }
+
+    /// <summary>
+    /// 1 when the maze does not let its players use items (potions and the like); 0 for any other.
+    /// </summary>
+    public byte PotionLimit { get; }
 
     /// <summary>
     /// The kind of the maze, as in the client's table (0 a plain maze, 1 a tutorial, 7 the infinite tower, ...).

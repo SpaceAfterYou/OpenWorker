@@ -146,13 +146,38 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// Tells the players who see the player which item it used and from which slot: they play its motion, and the player's
+    /// own client starts the cooldown of the slot.
+    /// </summary>
+    protected abstract void ItemUsed(Entity player, ItemUseBtResponse notice);
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ItemUseRequest request)
     {
-        if (!await use.UseAsync(context.Player, request.Storage, request.Slot, request.Serial.Number, context.CancellationToken))
+        var result = await use.UseAsync(context.Player, request.Storage, request.Slot, request.Serial.Number, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
+
+        if (!result.Ok)
         {
             world.Get<ServerSessionComponent>(context.Player).Send(new ErrorMessageResponse(
                 MessageOpcode.From(GroupOpcode.Item, ItemOpcode.Use),
-                InventoryService.Refused));
+                result.Error));
+
+            return;
+        }
+
+        if (result.Motion)
+        {
+            ItemUsed(context.Player, new ItemUseBtResponse
+            {
+                Actor = world.Get<ActorComponent>(context.Player).Identifier,
+                Item = result.Item,
+                Slot = result.Slot
+            });
         }
     }
 
