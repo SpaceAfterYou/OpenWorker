@@ -2,6 +2,7 @@
 using OpenWorker.Hotspot.Cache;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Extensions;
 using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Hotspot.Cache.Types;
@@ -36,6 +37,7 @@ public static class Cache
     public static IServiceCollection AddSessionCache(this IServiceCollection services)
     {
         services.AddSingleton<SessionLeaseManager>();
+        services.AddSingleton<ITradePasswordStates, RedisTradePasswordStates>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<SessionLeaseManager>());
         services.AddRegistrationService<SessionLeaseRenewalService>();
 

@@ -1,5 +1,6 @@
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.Login;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot;
@@ -17,11 +18,13 @@ namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
 /// The password the client asks before a trade, a private shop or breaking an item, in a district and in a maze. It belongs
-/// to the account, kept hashed as the password of the account; on each server the player gives it once, and five wrong
-/// ones lock it until the next entry. The answer is the code (zero for success) and the state, from which the client picks
+/// to the account, kept hashed as the password of the account. The player gives it once a login: the district and the maze
+/// share the answer through <see cref="ITradePasswordStates"/>, which every entry reads (<see cref="EnterAsync"/>), so a
+/// password given in one holds in the other, and five wrong ones lock it for the rest of the login wherever the player goes
+/// (<c>docs/notes-district-gaps.md</c>). The answer is the code (zero for success) and the state, from which the client picks
 /// its message and goes on.
 /// </summary>
-public sealed class TradePasswordService(World world, IDbContextFactory<PersistenceContext> factory) :
+public sealed class TradePasswordService(World world, IDbContextFactory<PersistenceContext> factory, ITradePasswordStates states) :
     IHotspotHandler<PersonTradePasswordRequest>
 {
     public const int MaxFailedAttempts = 5;
@@ -30,6 +33,38 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
     /// A request the state does not allow: a second password, or a check without one.
     /// </summary>
     public const ushort Refused = 1;
+
+    /// <summary>
+    /// The password is wrong: the state goes back to "not given". The code the account database answers with.
+    /// </summary>
+    public const ushort WrongPassword = 50105;
+
+    /// <summary>
+    /// Too many wrong passwords: the state is "locked". The code the account database answers with, for the answer that
+    /// locks and for every answer after it.
+    /// </summary>
+    public const ushort Locked = 52003;
+
+    /// <summary>
+    /// Takes up what the login has done with the password on another server: the player who gave it there has given it
+    /// here, and the one who was locked is locked. Called once the entry has set the person.
+    /// </summary>
+    public async ValueTask EnterAsync(Entity player, CancellationToken cancellationToken)
+    {
+        if (!world.TryGet(player, out TradePasswordComponent component) || !component.Has)
+        {
+            return;
+        }
+
+        var record = await states.LoadAsync(world.Get<ClaimsComponent>(player).Key, cancellationToken);
+
+        if (record is not { } known || !world.IsAlive(player))
+        {
+            return;
+        }
+
+        world.Set(player, world.Get<TradePasswordComponent>(player) with { State = StateOf(known), FailedAttempts = known.Failed });
+    }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)
     {
@@ -95,6 +130,14 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
             return;
         }
 
+        // The password just made is the password given: the other servers of this login find it so.
+        await states.AuthenticateAsync(world.Get<ClaimsComponent>(player).Key, context.CancellationToken);
+
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
         world.Set(player, world.Get<TradePasswordComponent>(player) with
         {
             Password = encoded,
@@ -107,36 +150,65 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
 
     private async ValueTask CheckAsync(Entity player, TradePasswordComponent component, string password)
     {
-        if (component.State is PasswordProtectionState.None or PasswordProtectionState.Lock)
+        if (component.State is PasswordProtectionState.None)
         {
             Send(player, component.State, Refused);
             return;
         }
 
+        // A password that is not four of the digits of the pad is no attempt: it is refused with its own code and counts for nothing.
+        if (LoginRules.ValidateTradePassword(password) is var error and not 0)
+        {
+            Send(player, component.State, error);
+            return;
+        }
+
+        // The lock is not lifted by the right password: the answer to every attempt is the lock.
+        if (component.State is PasswordProtectionState.Lock)
+        {
+            Send(player, component.State, Locked);
+            return;
+        }
+
         var stored = component.Password;
-        var right = LoginRules.ValidateTradePassword(password) == 0 && await Task.Run(() => PasswordHash.VerifyEncoded(password, stored));
+        var right = await Task.Run(() => PasswordHash.VerifyEncoded(password, stored));
+        var session = world.Get<ClaimsComponent>(player).Key;
 
         if (!world.IsAlive(player))
         {
             return;
         }
 
-        component = world.Get<TradePasswordComponent>(player);
+        var record = right
+            ? await states.AuthenticateAsync(session)
+            : await states.FailAsync(session, MaxFailedAttempts);
 
-        if (right)
+        if (!world.IsAlive(player))
         {
-            world.Set(player, component with { State = PasswordProtectionState.Authenticated, FailedAttempts = 0 });
-            Send(player, PasswordProtectionState.Authenticated, 0);
-
             return;
         }
 
-        var attempts = component.FailedAttempts + 1;
-        var state = attempts >= MaxFailedAttempts ? PasswordProtectionState.Lock : component.State;
+        var state = StateOf(record);
 
-        world.Set(player, component with { State = state, FailedAttempts = attempts });
+        world.Set(player, world.Get<TradePasswordComponent>(player) with { State = state, FailedAttempts = record.Failed });
 
-        Send(player, state, LoginRules.TradePasswordInvalid);
+        Send(player, state, state switch
+        {
+            PasswordProtectionState.Authenticated => (ushort)0,
+            PasswordProtectionState.Lock => Locked,
+            _ => WrongPassword
+        });
+    }
+
+    /// <summary>
+    /// Where the player stands for a record of its login: locked, given, or not given (a record that is neither is a
+    /// player who has missed).
+    /// </summary>
+    private static PasswordProtectionState StateOf(TradePasswordRecord record)
+    {
+        return record.Locked
+            ? PasswordProtectionState.Lock
+            : record.Authenticated ? PasswordProtectionState.Authenticated : PasswordProtectionState.UnAuthenticated;
     }
 
     private void Send(Entity player, PasswordProtectionState state, ushort error)

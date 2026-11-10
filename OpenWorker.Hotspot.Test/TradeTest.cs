@@ -8,10 +8,12 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
@@ -75,12 +77,14 @@ public sealed class TradeTest
         public TradeService Service { get; }
 
         /// <summary>
-        /// A player in the channel, near the others, with empty bags and the gold.
+        /// A player in the channel, near the others, with empty bags and the gold, and the trade password of its account given.
         /// </summary>
-        public Player Join(long gold)
+        public Player Join(long gold, PasswordProtectionState password = PasswordProtectionState.Authenticated)
         {
             var player = District.Join(100f, 100f);
             var bags = new Inventory(player.Actor);
+
+            District.Ecs.Set(player.Entity, new TradePasswordComponent { Password = "hash", State = password });
 
             bags.Add(StorageGroup.Common, 24);
             bags.Add(StorageGroup.Costume, 24);
@@ -153,6 +157,16 @@ public sealed class TradeTest
     private static TradeUpdateMoneyRequest Gold(long money) => Read(w => w.Write(money), r => new TradeUpdateMoneyRequest(r));
 
     private static TradeCheckRequest Lock() => Read(w => w.Write((byte)1), r => new TradeCheckRequest(r));
+
+    /// <summary>
+    /// The answer with a code the player got to a request of the trade.
+    /// </summary>
+    private static async Task<PlayerFrame> RefusalAsync(Player player, TradeOpcode request)
+    {
+        await MetricAssertions.UntilAsync(() => player.Received().Any(e => e.Is(GroupOpcode.Trade, (byte)((byte)request | 0x80))), $"The player gets the refusal of {request}.");
+
+        return player.Received().Single(e => e.Is(GroupOpcode.Trade, (byte)((byte)request | 0x80)));
+    }
 
     private static async Task<PlayerFrame> WaitForAsync(Player player, TradeOpcode command)
     {
@@ -289,5 +303,54 @@ public sealed class TradeTest
 
         Assert.AreEqual(PrivateShops.Closed, market.District.Ecs.Get<ShopPrivateComponent>(owner.Entity).Type, "A shop with nothing left closes.");
         Assert.IsNull(market.Shops.ShopOf(owner.Entity));
+    }
+
+    /// <summary>
+    /// The server asks for the trade password itself, not only the client: a player who has not given it (or is locked, or
+    /// has none) cannot ask to trade, cannot take an invitation, and cannot open a shop. The refusals are the codes of the
+    /// original, and nothing is left open on either side.
+    /// </summary>
+    [TestMethod]
+    public async Task ATradeAndAShopNeedThePasswordGivenOnThisLogin()
+    {
+        using var market = new Market();
+
+        var trusted = market.Join(gold: 100);
+        var locked = market.Join(gold: 100, PasswordProtectionState.Lock);
+        var forgetful = market.Join(gold: 100, PasswordProtectionState.UnAuthenticated);
+        var cloth = market.Put(locked, 5, Cloth, 3);
+
+        // Asking to trade: refused with the code of a request the state does not allow, whoever is asked.
+        await market.Send(locked, Invite(trusted));
+
+        Assert.AreEqual(TradeCodes.Refused, BitConverter.ToUInt16((await RefusalAsync(locked, TradeOpcode.Request)).Body, 0));
+        Assert.IsFalse(market.Trades.IsTrading(locked.Entity) || market.Trades.IsTrading(trusted.Entity), "Nothing was opened.");
+        Assert.IsFalse(trusted.Received().Any(e => e.Is(GroupOpcode.Trade, (byte)TradeOpcode.Request)), "The other player heard nothing.");
+
+        // Taking an invitation: the answer goes to both as a refusal and the trade is closed.
+        await market.Send(trusted, Invite(forgetful));
+        await market.Send(forgetful, Accept(trusted));
+
+        foreach (var player in new[] { trusted, forgetful })
+        {
+            var answer = await WaitForAsync(player, TradeOpcode.Accept);
+
+            Assert.AreEqual((byte)0, answer.Body[0], "Both are told that the invitation was refused.");
+        }
+
+        Assert.IsFalse(market.Trades.IsTrading(trusted.Entity) || market.Trades.IsTrading(forgetful.Entity), "The refused invitation is over.");
+
+        // Opening a shop: the code of a shop that cannot be made, and no sign over the head.
+        await market.Send(locked, Read(w =>
+        {
+            w.Write((byte)StorageGroup.Common);
+            w.Write((short)0);
+            w.WriteUtf16UnicodeString("Cloth for sale");
+            w.Write(new[] { new PrivateShopItemValue { Item = cloth.ToValue(), Money = 400 } });
+        }, r => new TradePrivateShopStartRequest(r)));
+
+        Assert.AreEqual(TradeCodes.ShopItemRefused, BitConverter.ToUInt16((await RefusalAsync(locked, TradeOpcode.PrivateShopStart)).Body, 0));
+        Assert.IsNull(market.Shops.ShopOf(locked.Entity));
+        Assert.AreEqual(PrivateShops.Closed, market.District.Ecs.Get<ShopPrivateComponent>(locked.Entity).Type);
     }
 }

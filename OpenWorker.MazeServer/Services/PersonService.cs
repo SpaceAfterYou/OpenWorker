@@ -1,6 +1,7 @@
 ﻿using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Batch;
 using OpenWorker.Server.Common;
+using OpenWorker.Server.Common.Services;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
@@ -61,6 +62,7 @@ public sealed partial class PersonService(
     IRedisCollection<MazeReserveCache> mazeReserves,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
+    TradePasswordService passwords,
     InventoryPersistence inventories,
     KillRewards rewards,
     MazeResults results,
@@ -193,6 +195,9 @@ public sealed partial class PersonService(
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
         registry.PullPerson(context.Player, entry);
+
+        // What the login did with the trade password on the server it came from holds here.
+        await passwords.EnterAsync(context.Player, context.CancellationToken);
 
         // The skills are checked in the maze, and a character that starts in the prologue has seen no district to learn them.
         await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);

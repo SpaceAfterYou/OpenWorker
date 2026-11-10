@@ -103,6 +103,13 @@ public sealed partial class PrivateShops(
             return;
         }
 
+        // The password of the account must be given on this login, or the shop is refused with the code the original gives.
+        if (!trades.MayTrade(player))
+        {
+            Refuse(player, TradeOpcode.PrivateShopStart, TradeCodes.ShopItemRefused);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(title) || title.Length > MaxTitleLength || items.Count is 0 or > MaxLines)
         {
             Refuse(player, TradeOpcode.PrivateShopStart, TradeCodes.ShopItemRefused);

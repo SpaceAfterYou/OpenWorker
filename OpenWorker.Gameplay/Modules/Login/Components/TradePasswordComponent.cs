@@ -23,4 +23,10 @@ public readonly record struct TradePasswordComponent
     public int FailedAttempts { get; init; }
 
     public bool Has => string.IsNullOrEmpty(Password) is false;
+
+    /// <summary>
+    /// The player has given the password of its account on this login: the only state in which a trade or a private shop is
+    /// allowed. A player with no password is not allowed either; it makes one first.
+    /// </summary>
+    public bool Allows => State == PasswordProtectionState.Authenticated;
 }

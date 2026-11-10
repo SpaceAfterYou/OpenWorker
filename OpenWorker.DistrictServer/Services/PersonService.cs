@@ -1,5 +1,6 @@
 ﻿using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Server.Common;
+using OpenWorker.Server.Common.Services;
 using OpenWorker.Hotspot.Cache;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -65,6 +66,7 @@ public sealed partial class PersonService(
     IDbContextFactory<PersistenceContext> factory,
     IOptions<InstanceOptions> instance,
     PersonRegistry registry,
+    TradePasswordService passwords,
     InventoryPersistence inventories,
     PersonSkills skills,
     PlayerStatsService stats,
@@ -154,6 +156,9 @@ public sealed partial class PersonService(
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 
         registry.PullPerson(context.Player, entry);
+
+        // What the login did with the trade password on the server it came from holds here.
+        await passwords.EnterAsync(context.Player, context.CancellationToken);
 
         await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
 
