@@ -100,7 +100,7 @@ What a member does in a maze counts for the quests of the others as the original
 | A kill | for every player in the maze: the monster, each of its quest groups, the maze; also the daily missions and the achievements | the same (`LuaMaze.ReportKillAsync`; the maze hunt is not in the client's tables) | fixed (the killer only) |
 | A cleared sector | for every player in the maze | the same | same |
 | A cleared maze | for every member in the maze then | the same | same |
-| The use of an object (11/77) | for everyone in the maze when the object says so (`Public_Quest_Check`), the one who clicked otherwise | the same (`PublicQuestCheck` is a named column of the client's `tb_Interaction_Object`) | fixed |
+| The use of an object (11/77) | for everyone in the maze when the object says so (a public-quest flag of its row), the one who clicked otherwise | the same (`PublicQuestCheck` is a named column of the client's `tb_Interaction_Object`) | fixed |
 | A move box (11/65) | the one who stood in it; the others too when the condition counts for the group; 11/66 to all | the same | fixed (alone, 11/66 to the one) |
 | An item that comes into the bags | the one who got it; the others in the maze too, on the conditions that count for the group, without holding the items | the same (`QuestManager.OnItemsArrivedForGroup`, from `ItemArrivals` through `PartyMazeEvents`) | fixed (none) |
 | Which conditions count for the group | the column of the server's `tb_Quest_Condition` (942 of its 1915 conditions: 230 of 250 collects of an item, 320 of 383 clears of a sector, 320 of 383 hunts, 28 of 117 objects, 15 of 56 moves) | the same column, read as `QuestConditionRuleRow` (the client's table has none) | same |
