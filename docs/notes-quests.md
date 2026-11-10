@@ -59,8 +59,8 @@ the messages and their order, the tables read. "Fixed" names the commit of this 
 | Collect | every item added to the bags counts its number | the same, through `ItemArrivals` (before: pickups only) | fixed (bc1173a) |
 | Sector clear | counts for the sector and the maze of the condition | the same | same |
 | Maze clear | counts for a clear that names the maze | the same | same |
-| Object used (11/77) | counts the box, for the party when the object says so | counts the box for the person | kept different: party counting is the maze's (other branch) |
-| Move (11/65) | once per box, +1, for the party when the condition counts by group, 11/66 to all | once per box, +1, 11/66 to the person, only where the person stands | kept different: the place is checked because the server can; party counting is the maze's |
+| Object used (11/77) | counts the box, for the party when the object says so | counts the box, for everyone in the maze when the object says so | fixed (round 8, see "Quests in a party maze") |
+| Move (11/65) | once per box, +1, for the party when the condition counts by group, 11/66 to all | once per box, +1, for the group when the condition counts for it, 11/66 to all, only where the person stands | kept different: the place is checked because the server can |
 | Make | once per request, for each product of the recipe | once per item made | kept different: a request makes several items and a condition counts items |
 | Upgrade | every try, whatever came of it | the same | fixed (bc1173a) |
 | Disassemble | every item taken apart | the same | fixed (bc1173a) |
@@ -90,6 +90,30 @@ the messages and their order, the tables read. "Fixed" names the commit of this 
 | Resets (game master) | 15/12 for one, 15/10 for all | the same | same |
 | Maze sector behind a portal | the sector comes to life when the player enters it | a portal naming no sector woke nothing; now the arrival wakes it | fixed (54d4448) |
 
+
+## Quests in a party maze (round 8)
+
+What a member does in a maze counts for the quests of the others as the original counts it. Compared, rule by rule:
+
+| What | Original | Here | |
+|---|---|---|---|
+| A kill | for every player in the maze: the monster, each of its quest groups, the maze; also the daily missions and the achievements | the same (`LuaMaze.ReportKillAsync`; the maze hunt is not in the client's tables) | fixed (the killer only) |
+| A cleared sector | for every player in the maze | the same | same |
+| A cleared maze | for every member in the maze then | the same | same |
+| The use of an object (11/77) | for everyone in the maze when the object says so (`Public_Quest_Check`), the one who clicked otherwise | the same (`PublicQuestCheck` is a named column of the client's `tb_Interaction_Object`) | fixed |
+| A move box (11/65) | the one who stood in it; the others too when the condition counts for the group; 11/66 to all | the same | fixed (alone, 11/66 to the one) |
+| An item that comes into the bags | the one who got it; the others in the maze too, on the conditions that count for the group, without holding the items | the same (`QuestManager.OnItemsArrivedForGroup`, from `ItemArrivals` through `PartyMazeEvents`) | fixed (none) |
+| Which conditions count for the group | the column of the server's `tb_Quest_Condition` (942 of its 1915 conditions: 230 of 250 collects of an item, 320 of 383 clears of a sector, 320 of 383 hunts, 28 of 117 objects, 15 of 56 moves) | the same column, read as `QuestConditionRuleRow` (the client's table has none) | same |
+| Survival, defence (protect) | the mode of the maze ends in a win: every player of the maze on their feet completes the condition of the kind for that maze | not counted: the modes are not built (the two mazes that start them call a stub) | left, see below |
+| Guard | no server code counts it; the client tells it with 15/08 | not counted | left, see below |
+| Escort | no condition of the client's tables, none in the server's | none | same |
+| Fail when a target dies or is left (`Fail_Death_ID`, `Fail_Range_ID`, `Fail_Range`) | columns of the server's table | all zero in the server's table | same |
+
+Not built, and what it needs: the survival and the defence modes are game modes of a maze (`StartSurvivalMode` and
+`StartDefenceMode` in the scripts of two mazes) with tables of their own on the reference disk
+(`tb_Mode_Survival`, `tb_Mode_Defence`): waves of monsters, a target to protect, a result. When a mode ends in a win, the
+quests of the kinds protect (6) and survival (7) of the maze are counted for every player of the maze on their feet. That counting
+is one call to the quest manager once the modes exist.
 
 ## What each message carries
 

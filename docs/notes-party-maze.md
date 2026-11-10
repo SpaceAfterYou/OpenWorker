@@ -79,8 +79,11 @@ a way into a maze location (04/01, and 04/41, the request to create a maze, whic
    identifier; the record `PartyMazeCache` (party, location, instance, server identifier, host, port; six hours at most)
    is written; then every member of the question who is still connected is flushed and gets a maze reservation that names
    the instance and the party, and its 04/02 with the address. They all land in the one instance.
-7. **A new question of the master** replaces an open one. There is no timeout: none was found in the rules, and an open
-   question holds nothing but itself until a member answers, leaves, or the master asks again.
+7. **A new question of the master** replaces an open one. **A question nobody answers ends after 45 seconds**: the members
+   are told by 11/49 naming a member who did not answer, as if that member had said no. The original server holds a
+   question until someone ends it; the client counts a time down in the question of a member and answers when it is over,
+   so the 45 seconds only catch a client that never answers (`PartyMazeEntry.ExpireQuestions`, run every second by
+   `PartyMazeQuestionService`).
 8. **A party of the auto matching** (`PartyMatching`) is sent in without a question: its members said they go when the
    group asked them. When the group becomes a party, the district that moves the group on opens one instance for it
    (`IPartyMatchListener`, `PartyMazeEntry.OnMatchedAsync`) and publishes an event to the members; the server each member
@@ -103,13 +106,8 @@ messages because it is about the maze, and nothing of the party protocol changed
   the level reached still reaches the achievements and the league of that member. A player alone is counted as before (own level less the level
   of the monster against `tb_PartyExp_Mob`). The killer's tally counts the kill; the others' tallies count the
   experience. What drops is the killer's.
-- **The member count** does not enter the experience in the reference: it chooses the strength of the monsters
-  (`tb_PartyRevise`, by a revision group of the monster and the number of members) and a party booster
-  (`tb_PartyExp_Member`). The client copy of `tb_PartyRevise` keeps only the group, the member count and the time a
-  broken super armor takes to come back (3000 ms in every row, the value the server already uses); its columns are named
-  in `Structures.json` (`Id`, `Group`, `MemberCount`, `SuperArmorRecovery`). The health and attack ratios by member count
-  are only in the server copy, and the column of the monster table that names its group is not identified in the client
-  table, so monsters are not made stronger for a party yet. `tb_MazeReward_PartyValue` of the client keeps only its key.
+- **The member count** does not enter the experience in the reference: it chooses the strength of the monsters (below)
+  and a party booster (`tb_PartyExp_Member`, not built). `tb_MazeReward_PartyValue` of the client keeps only its key.
 - **`tb_PartyExp_Level`** is a new server table (`OpenWorker.Res/ServerRows/PartyExpLevelRow.cs`, optional): a byte of
   level gap and a float rate.
 - **The end of the maze** (`PartyMazeEvents.Completed`): every member in the maze gets its own window (11/75 with its own
@@ -124,6 +122,71 @@ messages because it is about the maze, and nothing of the party protocol changed
   party already tells the others when a member comes into a server (`PartyNotifier.OnEnteredAsync`), so the maze sends
   nothing of its own.
 
+## Monsters made stronger by the party
+
+`PartyRevision` (`OpenWorker.Gameplay/Modules/Maze`) reads two tables of the server: `tb_PartyRevise` (a row per group of
+monsters and per number of members, one to four: the rates of life, attack, defence, attack speed and speed of movement, the
+gauge of the super armor as a percent of the life, and the milliseconds it takes to come back) and the server's own
+`tb_Monster`, which names the group of each monster. The client's copies have neither (its monster table has another column
+where the group is, and its `tb_PartyRevise` has only the group, the number and one time).
+
+- **What it scales.** The life, the physical and magical attack (the minimum and the maximum) and the defence of the monster
+  are multiplied by the rates, the whole number of the stat times the rate. A monster with a super armor gets a gauge of
+  the row's percent of its (scaled) life and the row's time to recover; before, the gauge was a guess of a fifth of the
+  life and three seconds. The rates of attack speed and speed of movement are not applied (the stat calculator has no such
+  stat; a few dozen rows have them above one).
+- **The count.** The maze counts the members it was opened for: the members of the question (or of the matched group),
+  carried by the reservation (`MazeReserveCache.Members`, `PartyMazeCache.Members`). A player alone counts one. More than four
+  count four. A monster that is not of the plain kind (bosses and the like, `Type` other than 0) always counts one.
+  The rates apply to a player alone as well: the rows of one member are not all 1, and for most of the early monsters they
+  are below 1.
+- **When it is fixed.** A monster is made as it appears, with the count of the maze at that moment. The count changes only
+  when a member leaves the party (leaving, a kick, a member offline too long) or the party ends: the community event
+  `party.resized` carries the party and the members left to the servers of those who remain, and a maze that has one of
+  them in it makes its living plain monsters as strong as the new count makes them, each keeping the share of its life it
+  had (a broken super armor comes back whole), and tells its members: the changed stats of each monster (17/12) and the
+  notice 80 (11/51, `MazeNoticeResponse`), which the client has a text for. A member who joins the party or the instance
+  later changes nothing, as in the original.
+
+## Portals that wait for the party
+
+A portal that leads to another place on the map (04/07) takes everyone in the maze through, so it waits (`PortalWait`,
+`LuaMaze.EnterPortal`):
+
+- when all the players of the maze stand at it, it opens at once (a player alone is all);
+- when half of them or more do, a countdown starts and is told to everybody by 04/0F (the seconds, 5 down to 1, then 0): after
+  five seconds the portal opens for all, whoever is not there;
+- a player who steps out of the portal (04/0D) or leaves the maze is not waited for; if too few stand there then, the
+  countdown stops (04/0F with 0);
+- opening is 04/0E for everybody, which puts them all at the same place, closes the portal and wakes the sector beyond.
+
+Kept different from the original: a player stands at one portal (the original lists a player in each portal they stepped into
+and removes them only from the portal that counts down), the check runs when a player steps in or out and not at the next
+step of the maze, and a refusal (a portal that is shut, on another map or leading nowhere) is still answered with an error.
+
+## Drops, interactions and what a kill counts for
+
+- **Drops.** A kill drops for every player in the maze (on their feet or not), not for the killer alone: each rolls the drop
+  of the monster by themself, sees it alone and is the only one who can take it. For a party the chance of every roll is
+  multiplied by the rate of how far apart the levels of its members are (`tb_DropRate_Level`) and by the rate of how many
+  there are (`tb_DropRate_Member`), and, unless the drop is exempt, by the rate of how far the highest level is above the
+  monster (`tb_DropRate_Mob`); a player alone is not multiplied by the first two. (The original multiplies the last rate
+  again for every member after the first; that looks like a mistake and is not copied.) The earlier note that a party's
+  drops are the killer's was wrong.
+- **Interactions.** A click on an object answers 11/78 to everybody in the maze, unless the table says the object is private
+  to whoever uses it (`PrivateActivate`, a column of the client's `tb_Interaction_Object` now named), when it answers the one
+  who clicked.
+- **Kills.** A kill counts for every player in the maze, not only for the killer: the quests that hunt the monster or its
+  group, the daily missions and the achievements of each (`LuaMaze.ReportKillAsync`). A cleared sector counted for every
+  member before.
+- **Objects.** The use of an object counts for the quests of everyone in the maze when the object says so
+  (`PublicQuestCheck`, also a named column), for the one who used it otherwise.
+- **Items.** Items that come into the bags of a player in a maze with others count for the others too, on the conditions
+  that count for the group (the server's `tb_Quest_Condition`; nearly every condition that collects an item does). The others
+  need not hold the items. See `docs/notes-quests.md`.
+- **The window at the end** carries the play points of each member, the score the rank was worked out from; that was
+  already so.
+
 ## Assumptions
 
 - Every member must be on the master's district server and channel to be asked, as the reference demands; members on
@@ -132,9 +195,6 @@ messages because it is about the maze, and nothing of the party protocol changed
   instance until leaving it. The level gap is counted over the members in the maze, not over the whole party.
 - A member who is down when a monster dies gets nothing of it; when nobody is up (the killer's projectile landed after it
   fell) the killer gets it.
-- Portals that wait for the whole party (04/0D) do not wait: each member takes a portal alone, and the portal shuts behind
-  the first as before.
-- The question has no timeout (none found).
 - Only the master opens a maze for a party: a member who takes a portal alone while the party plays no maze gets 55004, as
   in the reference. (`docs/tools/e2e_party.py` sends a member of a party into a maze alone and has to let the master do it.)
 - A matched party is sent in by an unasked 04/02; the reference sends its own entry, the client is expected to follow any
@@ -142,12 +202,42 @@ messages because it is about the maze, and nothing of the party protocol changed
 
 ## To check with the real client
 
+- Round 8: the countdown of a waiting portal (04/0F shows string 661 with the seconds) and that the client sends 04/0D when
+  a member steps out of the portal box of a portal that waits; that a member standing at a portal sees nothing happen while
+  the others are away; the notice 80 text when a member leaves the party in a maze; the life of the monsters in the window
+  of the target (the client takes the maximum from the monster list and the stat updates); that a drop is seen by its owner
+  alone and a click on a public object changes it for all; the 12/06 of a party member after a change of channel and level.
+- The question box of a member counts down by itself in the client (the popup table says 30 seconds for the question and 15
+  for the wait of the master); what the client sends when the count ends.
+
 - The question window of 12/47 for master and members, the answer 11/48 and the close on 11/49 with the right name.
 - That 04/11 of a member arriving while the other is in the maze shows the character, and that 04/12 removes it.
 - That the monsters shown to a member who comes later stand where they stand and fight the newcomer.
 - That 12/12 updates the party window in the maze, and 12/46 in the district.
 - That 11/76 lists the members in the window of each.
 - The error codes 55004, 55040, 55041, 55047 on the 04/01 of the master.
+
+## The original and this server (round 8)
+
+| What | Original | Here | |
+|---|---|---|---|
+| Strength of monsters | rates of the group of the monster by the members of the maze, one to four, one for a monster of another kind | the same | same |
+| Rates applied | life, attack, defence, attack speed, speed of movement, super armor gauge and times | all but the two speeds (no such stat) | kept different |
+| Members counted | the members the maze was made for; the party's members when one leaves; one when the party ends | the same | same |
+| A monster already alive | recalculated with the share of life kept on a leave | the same, and a broken super armor comes back whole | same |
+| Notice of the change | the notice 80 to the maze | the same | same |
+| Group not in the table | nothing applied | nothing applied | same |
+| Portal that waits | all stand: at once; half or more: 6 seconds with the seconds told; checked when somebody steps in or out | the same; a player stands at one portal | kept different (fixes a stale list) |
+| Question to enter | no time on the server | 45 seconds | kept different (a client that never answers) |
+| Drop in a party | each member, in the instance, rolls their own with the rates of level gap and size (and the mob rate, repeated per member) | the same without the repeat | same, one mistake not copied |
+| 11/78 | to everybody unless the object is private | the same | fixed (it went to the one who clicked) |
+| Kill in a maze | counted for every player in the maze | the same | fixed (killer only) |
+| Use of an object | for everyone when the object says so | the same | fixed (clicker only) |
+| Items in a maze | the others count them on the conditions that count for the group | the same | fixed (none) |
+| Play points in 11/76 | the score the rank came from, sorted for the order | the same | same |
+| 12/06 | on entering a server, a new level, channel, class, photo or name | entering, level, channel | kept different (class, photo and name are not sent) |
+| Matching: blocks | a person does not join a group of someone who blocked them or whom they blocked | the same, checked before the join | same |
+| Matching: the maze | the checks of the portal (weapon, hours, level, maze before, quest, daily limit, item, fatigue) | the same, wherever the player stands | same |
 
 ## Tests and scripts
 
@@ -157,6 +247,13 @@ dies once for both members and both get the party experience of the tables; a me
 and the last one out ends it; a later member joins the instance where it stands (opened once); a party reservation sends
 every agreeing member to one instance, and a later member into it; a no ends the question for everybody; a player alone
 has a maze of their own and a player without a party enters, both as before.
+
+Round 8 added `PartyRevisionTest` (the rates by members, the count of a monster of another kind), `PortalWaitTest` (at once,
+countdown, stepping out, leaving the maze), `PartyMazeTest` (a maze that weakens its monsters when a member leaves the party,
+needs the client tables), `RewardsTest` (a drop of each member's own at the rates of the party), `PartyMazeEntryTest` (the
+question ends after its time), `PartyTest` (a changed member is shown to the others; the matching keeps apart people who
+blocked each other), `MazeAdmissionTest` (the rules asked of a player who waits), `QuestManagerTest` (items for the group)
+and the new server tables in `ServerTablesTest`.
 
 The end-to-end script `docs/tools/e2e_party_maze.py` (accounts tester4, tester5, tester8) forms a party of three in the
 district, has a member try to open the maze, asks, says no, asks again, sends everybody in, checks that the two in the
