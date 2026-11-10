@@ -34,7 +34,6 @@ public sealed class SkillService(World world) :
     IHotspotHandler<SkillPassiveRequest>,
     IHotspotHandler<SkillPreTargetListRequest>,
     IHotspotHandler<SkillProjectileRequest>,
-    IHotspotHandler<SkillResetTagetRequest>,
     IHotspotHandler<SkillSubInputRequest>,
     IHotspotHandler<SkillSyncPositionRequest>,
     IHotspotHandler<SkillTargetChangeRequest>,
@@ -84,9 +83,6 @@ public sealed class SkillService(World world) :
         ValueTask.CompletedTask;
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillProjectileRequest request) =>
-        ValueTask.CompletedTask;
-
-    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillResetTagetRequest request) =>
         ValueTask.CompletedTask;
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillSubInputRequest request) =>

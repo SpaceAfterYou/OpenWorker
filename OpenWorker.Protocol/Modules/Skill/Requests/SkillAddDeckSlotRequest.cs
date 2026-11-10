@@ -21,7 +21,10 @@ public readonly partial struct SkillAddDeckSlotRequest : IRequestHotspotMessage
 
 #region Message: Body
 
-    public short SlotCount { get; }
+    /// <summary>
+    /// The slot of the cash bag that holds the item of the new place in the deck.
+    /// </summary>
+    public short ItemSlot { get; }
 
 #endregion Message: Body
 }

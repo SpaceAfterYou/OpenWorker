@@ -2,6 +2,7 @@ using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Skill.Components;
@@ -11,24 +12,28 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Res.Types;
 
 namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
 /// The skill window, in a district and in a maze: learning a skill and its divergence, the deck, its slots and bonus, and
 /// forgetting what was learned. The client sends these from the window wherever it is open; the person keeps one book of
-/// skills, which the flush writes from either server.
+/// skills, which the flush writes from either server. Forgetting all, forgetting one step of one skill and a new place in the
+/// deck each use up an item of their kind, which the request names by its slot.
 /// </summary>
-public sealed class SkillWindowService(World world, SkillLearning learning, PersonSkills book) :
+public sealed class SkillWindowService(World world, SkillLearning learning, PersonSkills book, ItemUseService use, InventoryService inventory) :
     IHotspotHandler<SkillDeckBonusRequest>,
     IHotspotHandler<SkillAddDeckSlotRequest>,
     IHotspotHandler<SkillDivergenceLearnRequest>,
     IHotspotHandler<SkillLearnRequest>,
     IHotspotHandler<SkillResetRequest>,
+    IHotspotHandler<SkillResetTagetRequest>,
     IHotspotHandler<SkillUpdateDeckRequest>
 {
     /// <summary>
@@ -37,11 +42,18 @@ public sealed class SkillWindowService(World world, SkillLearning learning, Pers
     private const ushort DeckSlotsFull = 56013;
 
     /// <summary>
-    /// One more skill in each position of the deck, up to four. The count the client asks for is not taken: it can only grow
-    /// by one.
+    /// One more skill in each position of the deck, up to four, for an item of the cash bag that gives a place. The deck can
+    /// only grow by one, and the item is kept when it is full.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillAddDeckSlotRequest request)
     {
+        if (use.ItemOfService(context.Player, StorageGroup.Cash, request.ItemSlot, ItemUseType.SKILL_DECK_ADD) is not { } item)
+        {
+            SendError(context.Player, SkillOpcode.SkillAddDeckSlot, ItemUseCodes.NotUsable);
+
+            return ValueTask.CompletedTask;
+        }
+
         var count = learning.AddDeckSlot(context.Player);
 
         if (count == 0)
@@ -51,6 +63,7 @@ public sealed class SkillWindowService(World world, SkillLearning learning, Pers
             return ValueTask.CompletedTask;
         }
 
+        inventory.Spend(context.Player, item, 1);
         world.Get<ServerSessionComponent>(context.Player).Send(new SkillAddDeckSlotResponse { SlotCount = count });
 
         return ValueTask.CompletedTask;
@@ -128,13 +141,22 @@ public sealed class SkillWindowService(World world, SkillLearning learning, Pers
     }
 
     /// <summary>
-    /// Forgets the skills learned: the default skills of the hero stay, every point comes back and the decks empty.
+    /// Forgets the skills learned: the default skills of the hero stay, every point comes back and the decks empty. It takes
+    /// an item that resets all skills, from the slot the request names.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillResetRequest request)
     {
+        if (use.ItemOfService(context.Player, request.StorageSlot.Storage, request.StorageSlot.Slot, ItemUseType.SKILL_RESET_ALL) is not { } item)
+        {
+            SendError(context.Player, SkillOpcode.SkillReset, ItemUseCodes.NotUsable);
+
+            return ValueTask.CompletedTask;
+        }
+
         var person = world.Get<PersonInfoComponent>(context.Player);
 
         learning.Reset(context.Player, book.DefaultSkills(person.Hero));
+        inventory.Spend(context.Player, item, 1);
 
         var points = world.Get<SkillPointComponent>(context.Player);
         var deck = world.Get<SkillDeckComponent>(context.Player);
@@ -155,6 +177,34 @@ public sealed class SkillWindowService(World world, SkillLearning learning, Pers
                 DeckSlotList = []
             }
         });
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Takes one step back for one skill (a level, or a divergence) and gives its points back, for an item that resets one
+    /// skill, from the slot the request names.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillResetTagetRequest request)
+    {
+        if (use.ItemOfService(context.Player, request.StorageSlot.Storage, request.StorageSlot.Slot, ItemUseType.SKILL_RESET_SINGLE) is not { } item)
+        {
+            SendError(context.Player, SkillOpcode.SkillResetTaget, ItemUseCodes.NotUsable);
+
+            return ValueTask.CompletedTask;
+        }
+
+        var (refusal, before, after, free) = learning.ResetStep(context.Player, request.SkillGroup, request.Divergence);
+
+        if (refusal != SkillRefusal.None)
+        {
+            SendError(context.Player, SkillOpcode.SkillResetTaget, refusal);
+
+            return ValueTask.CompletedTask;
+        }
+
+        inventory.Spend(context.Player, item, 1);
+        world.Get<ServerSessionComponent>(context.Player).Send(new SkillResetTagetResponse { Before = before, After = after, SkillPoints = (ushort)free });
 
         return ValueTask.CompletedTask;
     }
