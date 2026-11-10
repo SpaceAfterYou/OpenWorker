@@ -10,11 +10,11 @@ public readonly partial struct MakeRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
     public int Group { get; } = reader.ReadInt32();
-    public int Field2 { get; } = reader.ReadInt32();
-    public int Field3 { get; } = reader.ReadInt32();
+    public int Category { get; } = reader.ReadInt32();
+    public int SubCategory { get; } = reader.ReadInt32();
     public int Product { get; } = reader.ReadInt32();
-    public int Field5 { get; } = reader.ReadInt32();
-    public int Field6 { get; } = reader.ReadInt32();
+    public int Product2 { get; } = reader.ReadInt32();
+    public int Product3 { get; } = reader.ReadInt32();
     public int Material1 { get; } = reader.ReadInt32();
     public int Material2 { get; } = reader.ReadInt32();
     public int Material3 { get; } = reader.ReadInt32();
@@ -25,5 +25,5 @@ public readonly partial struct MakeRow(BinaryReader reader)
     public short MaterialCount4 { get; } = reader.ReadInt16();
     public short BattlePoint { get; } = reader.ReadInt16();
     public int Gold { get; } = reader.ReadInt32();
-    public short Field17 { get; } = reader.ReadInt16();
+    public short Priority { get; } = reader.ReadInt16();
 }

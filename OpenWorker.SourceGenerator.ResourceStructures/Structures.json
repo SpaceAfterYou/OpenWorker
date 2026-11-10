@@ -58,19 +58,19 @@
   ],
   "tb_item_script": [
     "Int32",
-    "String",
-    "String",
-    "String",
-    "String",
-    "String",
-    "String",
-    "Byte",
-    "Byte",
-    "Byte",
-    "Byte",
-    "Byte",
-    "String",
-    "String"
+    "String Icon",
+    "String Icon2",
+    "String Icon3",
+    "String Icon4",
+    "String Icon5",
+    "String Icon6",
+    "Byte Part",
+    "Byte Param1",
+    "Byte Param2",
+    "Byte Param3",
+    "Byte Param4",
+    "String Name",
+    "String Description"
   ],
   "tb_Myroom_Furniture": [
     "Int32",
@@ -2983,13 +2983,13 @@
     "Byte ItemCount5"
   ],
   "tb_Make": [
-    "Int32",
+    "Int32 Id",
     "Int32 Group",
-    "Int32",
-    "Int32",
+    "Int32 Category",
+    "Int32 SubCategory",
     "Int32 Product",
-    "Int32",
-    "Int32",
+    "Int32 Product2",
+    "Int32 Product3",
     "Int32 Material1",
     "Int32 Material2",
     "Int32 Material3",
@@ -3000,7 +3000,7 @@
     "Int16 MaterialCount4",
     "Int16 BattlePoint",
     "Int32 Gold",
-    "Int16"
+    "Int16 Priority"
   ],
   "tb_Quest_Chapter": [
     "Int32",

@@ -15,4 +15,10 @@ public readonly partial struct MakeRow
         (Material3, MaterialCount3),
         (Material4, MaterialCount4)
     ];
+
+    /// <summary>
+    /// Up to three product item ids. The client 1.4.2.3 and the make handler only create <see cref="Product"/>;
+    /// <see cref="Product2"/> and <see cref="Product3"/> are zero on every client row.
+    /// </summary>
+    public int[] Products => [Product, Product2, Product3];
 }

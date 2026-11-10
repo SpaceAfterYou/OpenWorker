@@ -10,17 +10,17 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct ItemScriptRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public string Field1 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field2 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field3 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field4 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field5 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field6 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public byte Field7 { get; } = reader.ReadByte();
-    public byte Field8 { get; } = reader.ReadByte();
-    public byte Field9 { get; } = reader.ReadByte();
-    public byte Field10 { get; } = reader.ReadByte();
-    public byte Field11 { get; } = reader.ReadByte();
-    public string Field12 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field13 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Icon { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Icon2 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Icon3 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Icon4 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Icon5 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Icon6 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public byte Part { get; } = reader.ReadByte();
+    public byte Param1 { get; } = reader.ReadByte();
+    public byte Param2 { get; } = reader.ReadByte();
+    public byte Param3 { get; } = reader.ReadByte();
+    public byte Param4 { get; } = reader.ReadByte();
+    public string Name { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Description { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
 }
