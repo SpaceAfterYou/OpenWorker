@@ -15,6 +15,7 @@ using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
@@ -69,6 +70,11 @@ await Host
 
         services.AddPersistence();
         services.AddMiscGameplay();
+
+        // The townsfolk of a maze (District 6 has the NPCs of transports) serve the player the way those of a city do.
+        services.AddSingleton<INpcPlaces, MazeNpcPlaces>();
+        services.AddNpcServices();
+        services.AddSingleton<ITransportMap, MazeTransportMap>();
         services.AddQuestGameplay();
         services.AddSingleton<MazeReporter>();
         services.AddItems();

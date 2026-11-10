@@ -29,7 +29,7 @@ What the client sends and reads, per message, before and after this branch.
 | `03/67` NpcCreditInit | answer | declared, never sent | not sent (the reference sends it from a game-master command) |
 | `18/09`, `18/10`, `18/11` repairs at an NPC, `18/02` upgrade, `18/01` make, `18/03` exchange, `18/13` evolution, `18/17` akashic compose, `18/14`, `18/25`, `18/15` akashic make and take out, `18/18` disassembly at an NPC | requests | the NPC of the request read and not checked | checked (see "The NPC behind a service") |
 | `08/10` BankInfo, `08/02` Move (bag ↔ bank), `08/0F` AddSlot | requests | real | real; a worn item and an item barred from storage stay out of the bank |
-| `05/16` TransportTake: `int actor, short row, int npc` | request | handler that answers nothing | unchanged (see "Transport") |
+| `05/16` TransportTake: `int actor, short row, int npc` | request | handler that answers nothing | real, in the maze of District 6 (see "Transport"); `05/16` and `05/17` are sent to those around |
 | `04/40` DistrictTransportReq | request | no handler | none needed: this client never sends it |
 
 ## The NPC behind a service
@@ -143,13 +143,13 @@ account storages (16..18) and money in the bank are not reached by this client.
 
 ## Transport
 
-The client asks for a ride at the NPC of transports (`05/16`: the actor, the row of `tb_Transport_Info`, the NPC) and waits
-for `05/17` to give the player back; it has no request to end a ride, so the server ends it. The handler still answers
-nothing, which leaves the client standing where it was. What it needs, from the reference: the NPC with the transport
-function (8) near the player (58000), the row among the five of `tb_District_Transport` its function names (58002), the gold
-of the row less the credit and the boosters (58001), `05/16` to those around, the ride along the path of the row for its
-time, the player put at the common position box of the row (`Position_Box_ID`), and `05/17` to those around; credit 9. The
-end of the ride needs the time and the final place of the map, which the server does not read yet.
+Built on `feature/district-gaps` (round 7): `docs/notes-district-gaps.md`. The client asks for a ride at the NPC of transports
+(`05/16`: the actor, the row of `tb_Transport_Info`, the NPC) and waits for `05/17` to give the player back; it has no request to end
+a ride, so the server ends it. The NPCs with the transport function stand only in District 6, the map `D01_DISTRICT6`, which is a maze
+(30021), so the ride is the maze server's (`TransportService`, the townsfolk of a maze by `MazeNpcPlaces`): the NPC near the player
+(58000), the row among the five of `tb_District_Transport` its function names (58002), the gold of the row less the credit and the
+boosters (58001), `05/16` to those around, the end after one second and the seconds of the row on the simulation clock, the player put
+in the middle of the common position box of the row, `05/17` to those around; credit 9.
 
 ## Compared with the reference
 
@@ -180,11 +180,11 @@ end of the ride needs the time and the final place of the map, which the server 
 | Credit: per group, grades, day limit, rewards | as described | the same | same |
 | Credit: grade rewards | by system post | into the bags, kept until there is room | kept different: the post of this server has no letters of the game to a person |
 | Credit: league skill 5 (day limit) and 6 (repair) | read | not read | kept different: leagues have no skills here |
-| Credit: benefits read | repair, make gold, make materials, upgrade gold, upgrade chance, transport | all but transport | kept different: transport is not built |
-| Credit: raises | buy, repair, make, upgrade, exchange, evolution, transport, renovate, refine | all but transport, renovate, refine | kept different: renovate and refine are not sent by this client; transport is not built |
+| Credit: benefits read | repair, make gold, make materials, upgrade gold, upgrade chance, transport | all | same (transport since round 7) |
+| Credit: raises | buy, repair, make, upgrade, exchange, evolution, transport, renovate, refine | all but renovate, refine | kept different: renovate and refine are not sent by this client |
 | Bank: worn items, items barred from storage | 52044 | the same | fixed |
 | Bank: fee, NPC | none | none | same |
-| Transport | charged, ridden, ended by the server | no answer | kept different: not built (see Transport) |
+| Transport | charged, ridden, ended by the server | the same, in the maze of District 6 | same (the differences are in `notes-district-gaps.md`) |
 
 ## Assumptions
 

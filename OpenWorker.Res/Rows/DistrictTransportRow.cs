@@ -9,12 +9,12 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct DistrictTransportRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public short Field1 { get; } = reader.ReadInt16();
-    public short Field2 { get; } = reader.ReadInt16();
-    public short Field3 { get; } = reader.ReadInt16();
-    public short Field4 { get; } = reader.ReadInt16();
-    public short Field5 { get; } = reader.ReadInt16();
-    public short Field6 { get; } = reader.ReadInt16();
+    public short District { get; } = reader.ReadInt16();
+    public short Transport1 { get; } = reader.ReadInt16();
+    public short Transport2 { get; } = reader.ReadInt16();
+    public short Transport3 { get; } = reader.ReadInt16();
+    public short Transport4 { get; } = reader.ReadInt16();
+    public short Transport5 { get; } = reader.ReadInt16();
     public byte Field7 { get; } = reader.ReadByte();
     public byte Field8 { get; } = reader.ReadByte();
     public byte Field9 { get; } = reader.ReadByte();

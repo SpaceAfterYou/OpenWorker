@@ -100,7 +100,7 @@ the gold move in one block; `TradePrivateShopSellResponse` (owner, serial) goes 
   reservation waits for the database; an exchange in that moment may not reach the next server. A "leaving" mark set by
   `WorldManager` and `LeaveManager` before that flush, which `Trades` would check, closes it.
 - The two flushes after an exchange are queued together but are not one transaction when the writer splits a failed batch.
-- The trade password (group 0x03), the block type of an account and the matching state are not checked.
+- The block type of an account and the matching state are not checked. (The trade password is: `notes-district-gaps.md`.)
 - Shops do not show their sign to players who arrive after the start beyond `ShopPrivateComponent` in `WorldInInfoPc`; the
   title change request (0F) does not exist in this client.
 - No e2e run on the stand: the behaviour was checked by `TradeTest` (handlers, fake district) only.

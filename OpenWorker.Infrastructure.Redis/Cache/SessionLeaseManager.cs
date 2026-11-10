@@ -33,13 +33,15 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
     /// <summary>
     /// Renews every lease whose record still names this connection as its owner; another server that took the session
     /// over, or a new login that replaced it, keeps its own. The record holds the rest already (written by
-    /// <see cref="AttachAsync"/>), so the renewal only moves the expiry.
+    /// <see cref="AttachAsync"/>), so the renewal only moves the expiry. Each lease comes with the key of the trade password
+    /// state of its session, which lives exactly as long as the lease does (<see cref="RedisTradePasswordStates"/>).
     /// </summary>
     private static RedisScript RenewIfOwner { get; } = new("""
         local renewed = 0
-        for index, key in ipairs(KEYS) do
-            if redis.call('HGET', key, 'Owner') == ARGV[index + 1] then
-                redis.call('PEXPIRE', key, ARGV[1])
+        for index = 1, #KEYS, 2 do
+            if redis.call('HGET', KEYS[index], 'Owner') == ARGV[(index + 1) / 2 + 1] then
+                redis.call('PEXPIRE', KEYS[index], ARGV[1])
+                redis.call('PEXPIRE', KEYS[index + 1], ARGV[1])
                 renewed = renewed + 1
             end
         end
@@ -85,7 +87,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
         for (var start = 0; start < leases.Length; start += RenewBatch)
         {
             var count = Math.Min(RenewBatch, leases.Length - start);
-            var keys = new RedisKey[count];
+            var keys = new RedisKey[count * 2];
             var values = new RedisValue[count + 1];
 
             values[0] = (long)ConnectedLease.TotalMilliseconds;
@@ -94,7 +96,8 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
             {
                 var lease = leases[start + index];
 
-                keys[index] = KeyPrefix + lease.Session.ToString(CultureInfo.InvariantCulture);
+                keys[index * 2] = KeyPrefix + lease.Session.ToString(CultureInfo.InvariantCulture);
+                keys[(index * 2) + 1] = RedisTradePasswordStates.Key(lease.Session);
                 values[index + 1] = lease.Owner;
             }
 
@@ -132,6 +135,10 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
                 Owner = lease.Owner,
                 ReturnToAuth = lease.ReturnToAuth
             }, duration);
+
+        // What the servers of this login share about the trade password lasts as long as the lease; nothing happens when
+        // the login has given no answer yet.
+        await redis.GetDatabase().KeyExpireAsync(RedisTradePasswordStates.Key(lease.Session), duration);
     }
 
     private sealed record Lease(long Session, int Account, string Owner, bool ReturnToAuth);

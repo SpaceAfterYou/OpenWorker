@@ -64,7 +64,15 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
 
     public void Protect(Entity player)
     {
-        Protected[player] = Environment.TickCount64 + (long)ReviveProtection.TotalMilliseconds;
+        Protect(player, ReviveProtection);
+    }
+
+    /// <summary>
+    /// Nothing hurts the player for the given time (a ride that carries it over the map).
+    /// </summary>
+    public void Protect(Entity player, TimeSpan length)
+    {
+        Protected[player] = Environment.TickCount64 + (long)length.TotalMilliseconds;
     }
 
     public void Forget(Entity player)

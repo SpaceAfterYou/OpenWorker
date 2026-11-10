@@ -124,8 +124,9 @@ public sealed class AccountStateTest
     }
 
     /// <summary>
-    /// The trade password is kept hashed on the account and checked: a wrong one is refused with the client's code and the
-    /// state stays, the right one is accepted; at the next entry the account has a password the player has not given yet.
+    /// The trade password is kept hashed on the account and checked: a wrong one is refused with the code of the account
+    /// database and the state goes back to "not given", the right one is accepted; at the next entry the account has a
+    /// password the player has not given yet.
     /// </summary>
     [TestMethod]
     public async Task AWrongTradePasswordIsRefusedAndTheRightOneAccepted()
@@ -138,7 +139,7 @@ public sealed class AccountStateTest
         server.World.Add(player.Entity, new ClaimsComponent(account, 1));
         server.World.Add(player.Entity, new TradePasswordComponent { Password = string.Empty, State = PasswordProtectionState.None });
 
-        var handler = new TradePasswordService(server.World, Factory);
+        var handler = new TradePasswordService(server.World, Factory, new MemoryTradePasswordStates());
 
         (int Error, PasswordProtectionState State) Ask(PasswordCheckType type, string password)
         {
@@ -167,7 +168,9 @@ public sealed class AccountStateTest
             server.World.Set(player.Entity, new TradePasswordComponent { Password = entry!.TradePassword, State = PasswordProtectionState.UnAuthenticated });
         }
 
-        Assert.AreEqual((LoginRules.TradePasswordInvalid, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1235"));
+        // A password that is not on the pad is no attempt; a wrong one takes the password back and is told as the account database does.
+        Assert.AreEqual((LoginRules.TradePasswordInvalid, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1289"));
+        Assert.AreEqual((TradePasswordService.WrongPassword, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1235"));
         Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(PasswordCheckType.Check, "1234"));
     }
 

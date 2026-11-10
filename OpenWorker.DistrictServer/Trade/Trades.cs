@@ -7,6 +7,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot;
@@ -74,6 +75,12 @@ public sealed partial class Trades(
             return TradeCodes.TargetBusy;
         }
 
+        // The client asks for the password before it asks to trade; a server does not take its word for it.
+        if (!MayTrade(player))
+        {
+            return TradeCodes.Refused;
+        }
+
         if (!InSameChannel(player, target))
         {
             return TradeCodes.TargetAway;
@@ -113,6 +120,9 @@ public sealed partial class Trades(
             Cancel(session, session.Inviter.Actor, TradeCodes.TargetAway);
             return;
         }
+
+        // A player who has not given its trade password cannot take an invitation: the answer goes out as a refusal.
+        accept = accept && MayTrade(player);
 
         var answer = new TradeAcceptResponse { IsAccept = (byte)(accept ? 1 : 0), Actor = session.Invitee.Actor };
 
@@ -479,6 +489,16 @@ public sealed partial class Trades(
         side.Locked = false;
 
         SendBoth(session, new TradeCheckResponse { Actor = side.Actor, IsChecked = 0 });
+    }
+
+    /// <summary>
+    /// Whether the player has given the trade password of its account on this login: the one state in which it may start a
+    /// trade, take an invitation or open a private shop. A player with no password, one who has not given it and one locked
+    /// by wrong ones may not.
+    /// </summary>
+    public bool MayTrade(Entity player)
+    {
+        return world.TryGet(player, out TradePasswordComponent password) && password.Allows;
     }
 
     /// <summary>

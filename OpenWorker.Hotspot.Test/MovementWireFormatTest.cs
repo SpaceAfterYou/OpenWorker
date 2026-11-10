@@ -13,6 +13,11 @@ public sealed class MovementWireFormatTest
     private const int Actor = 0x123456;
     private const long Map = 0x0102030405060708;
 
+    /// <summary>
+    /// The actor 9 of the kind NPC, which the client keeps in the three high bits.
+    /// </summary>
+    private const int NpcWithKind = (1 << 29) | 9;
+
     private static BinaryReader Request(Action<BinaryWriter> write)
     {
         var stream = new MemoryStream();
@@ -204,6 +209,32 @@ public sealed class MovementWireFormatTest
 
         Assert.HasCount(4 + 4 * 4 + 4 * 4, bytes);
         Assert.AreEqual(8, BitConverter.ToInt32(bytes, 32));
+    }
+
+    [TestMethod]
+    public void TheMessagesOfARideHaveTheLayoutTheClientReads()
+    {
+        // The client asks with its actor, the row of the ride and the NPC, and reads the same three back.
+        using var reader = Request(w =>
+        {
+            w.Write(Actor);
+            w.Write((short)101);
+            w.Write(NpcWithKind);
+        });
+
+        var request = new MovementTransportTakeRequest(reader);
+
+        Assert.AreEqual((Actor, (short)101, 9), (request.Actor.Identifier, request.Row, request.Npc.Identifier));
+        Assert.AreEqual(reader.BaseStream.Length, reader.BaseStream.Position);
+
+        var taken = Written(new MovementTransportTakeResponse { Actor = Actor, Row = 101, Npc = NpcWithKind });
+
+        CollectionAssert.AreEqual(
+            new byte[] { 0x56, 0x34, 0x12, 0x00, 101, 0, 0x09, 0x00, 0x00, 0x20 },
+            taken,
+            "The actor, the row (two bytes) and the NPC with the kind of actor in its high bits.");
+
+        CollectionAssert.AreEqual(new byte[] { 0x56, 0x34, 0x12, 0x00 }, Written(new MovementTransportOffResponse { Actor = Actor }));
     }
 
     [TestMethod]
