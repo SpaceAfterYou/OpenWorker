@@ -163,6 +163,27 @@ public sealed class SkillRulesTest
     }
 
     [TestMethod]
+    public void TheAnswerToASkillCarriesTheDivergenceThePlayerChoseNotOneOfTheRequest()
+    {
+        var (world, player) = Create();
+
+        try
+        {
+            world.Set(player, new SkillLearnedComponent { Values = [new SkillInfoValue { Skill = Strike, Divergence = 7 }] });
+            var use = new SkillUse(world, Skills, new PlayerGauges(world, EmptyTables()));
+
+            Assert.AreEqual(7, use.DivergenceOf(player, Strike), "the learned skill");
+            Assert.AreEqual(7, use.DivergenceOf(player, StrikeTwo), "another level of its group");
+            Assert.AreEqual(0, use.DivergenceOf(player, Evade), "a move nobody learns");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    [TestMethod]
     public void ACooldownRefusesTheSkillUntilItIsOver()
     {
         var (world, player) = Create();

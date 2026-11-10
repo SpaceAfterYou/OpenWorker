@@ -108,6 +108,42 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
     }
 
     /// <summary>
+    /// The divergence the player has chosen for the skill (or for the learned level of its group), zero for a skill without
+    /// one and for the skills nobody learns. The answer to a skill carries it: the client looks the skill it plays up by
+    /// it, and the number in the request is not to be trusted (the client leaves it unset for a plain attack).
+    /// </summary>
+    public int DivergenceOf(Entity player, int skill)
+    {
+        if (!world.TryGet<SkillLearnedComponent>(player, out var learned) || learned.Values is not { } values)
+        {
+            return 0;
+        }
+
+        foreach (var own in values)
+        {
+            if (own.Skill == skill)
+            {
+                return own.Divergence;
+            }
+        }
+
+        if (!_skills.TryGet(skill, out var row))
+        {
+            return 0;
+        }
+
+        foreach (var own in values)
+        {
+            if (own.Skill != 0 && _skills.TryGet(own.Skill, out var ownRow) && ownRow.Group == row.Group)
+            {
+                return own.Divergence;
+            }
+        }
+
+        return 0;
+    }
+
+    /// <summary>
     /// Whether the player may start the skill now; <see cref="SkillRefusal.None"/> when it may.
     /// </summary>
     public ushort Check(Entity player, int skill, TimeSpan now)
