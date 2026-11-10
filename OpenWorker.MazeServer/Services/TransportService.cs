@@ -69,9 +69,13 @@ public sealed partial class TransportService(
     {
         var player = context.Player;
 
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
         // A player asks for itself, and only after it has entered the game through this connection.
-        if (!world.IsAlive(player) || world.Get<ClaimsComponent>(player).Account == 0 ||
-            world.Get<ActorComponent>(player).Identifier != request.Actor.Identifier)
+        if (world.Get<ClaimsComponent>(player).Account == 0 || world.Get<ActorComponent>(player).Identifier != request.Actor.Identifier)
         {
             errors.Charge(player, request.Opcode, HandlerErrorReason.Violation);
             return;
