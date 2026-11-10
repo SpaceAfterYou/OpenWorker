@@ -13,9 +13,9 @@ namespace OpenWorker.Gameplay.Modules.Items;
 public readonly record struct ItemPlace(bool InMaze, bool ItemsAllowed, bool ModeAllowsItems, bool Down, bool Infinite)
 {
     /// <summary>
-    /// A city: items of a maze's kind are not used there, and nobody is down.
+    /// A city: it takes items, and nobody is down. What a kind of item may do there is told by its use state.
     /// </summary>
-    public static ItemPlace District { get; } = new(false, false, true, false, false);
+    public static ItemPlace District { get; } = new(false, true, true, false, false);
 }
 
 /// <summary>

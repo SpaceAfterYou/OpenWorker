@@ -85,7 +85,7 @@ public sealed class ItemUseTest
         var potion = rig.Potion();
         var item = rig.Fixture.Give(potion.Id, 5);
 
-        Assert.AreEqual(ItemUseCodes.WrongPlace, (await rig.UseAsync(item)).Error, "A potion is not used in a city");
+        Assert.AreEqual(ItemUseCodes.WrongPlace, (await rig.UseAsync(item)).Error, "The use state of a potion names mazes only, so a city refuses it");
 
         rig.Field.Place = Maze with { ItemsAllowed = false };
 

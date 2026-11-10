@@ -249,7 +249,7 @@ public sealed class ItemUseService(
         }
 
         inventory.Spend(player, item, 1);
-        Tell(player, new ItemUseResponse { Item = item.Item, Gain = new ItemUseGainValue { Title = row.EffectValue, Items = [] } });
+        Tell(player, new ItemUseResponse { Item = item.Item, Gain = new ItemUseGainValue { Items = [] } });
 
         return ItemUseResult.Used();
     }
@@ -419,9 +419,12 @@ public sealed class ItemUseService(
             return ItemUseResult.Refused();
         }
 
+        // The stack may go with its last item: the motion names the slot it was in.
+        var slot = item.Slot;
+
         inventory.Spend(player, item, 1);
 
-        return ItemUseResult.Used(item.Item, item.Slot, motion: true);
+        return ItemUseResult.Used(item.Item, slot, motion: true);
     }
 
     /// <summary>
