@@ -194,9 +194,7 @@ public sealed class ActionFile
 
         var rangeType = reader.ReadInt16();
         var attackType = reader.ReadInt16();
-
-        reader.ReadInt16();
-
+        var hardness = reader.ReadInt16();
         var spawnObject = reader.ReadInt32();
 
         if (version < FiltersSinceVersion)
@@ -215,31 +213,33 @@ public sealed class ActionFile
         var (projectile, chain, reaction) = ReadProjectile(reader, version);
 
         return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition,
-            reaction.DamageRate, reaction.ReactionType, projectile, chain, reaction.Buff, reaction.TargetType, reaction.Aura);
+            reaction.DamageRate, reaction.ReactionType, projectile, chain, reaction.Buff, reaction.TargetType, reaction.Aura,
+            reaction.Push with { Hardness = hardness });
     }
 
     /// <summary>
     /// Whom an attack is for and what it does to them: the kind of target, the share of the damage, the buff it gives each
     /// target and how the target reacts.
     /// </summary>
-    private readonly record struct Reaction(int TargetType, float DamageRate, int Buff, int ReactionType, int Aura);
+    private readonly record struct Effects(int TargetType, float DamageRate, int Buff, int ReactionType, int Aura, AttackReaction Push);
 
     /// <summary>
     /// The aura an attack puts on its targets sits at the end of the attack, after the fields that later versions added to it.
+    /// A blow that breaks the super armor of a player is told on the way.
     /// </summary>
-    private static int ReadAura(BinaryReader reader, short version)
+    private static (int Aura, bool BreaksPlayerArmor) ReadAura(BinaryReader reader, short version)
     {
-        if (version < AuraSinceVersion)
-        {
-            return 0;
-        }
+        var breaksPlayerArmor = false;
 
         if (version >= ConnectionEffectSinceVersion)
         {
             SkipStrings(reader, 1);
         }
 
-        SkipSince(reader, version, PartyBreakSinceVersion, 1);
+        if (version >= PartyBreakSinceVersion)
+        {
+            breaksPlayerArmor = reader.ReadBoolean();
+        }
 
         if (version >= ConnectionBonesSinceVersion)
         {
@@ -258,10 +258,10 @@ public sealed class ActionFile
 
         SkipSince(reader, version, GroupSinceVersion, sizeof(short));
 
-        return reader.ReadInt32();
+        return (version >= AuraSinceVersion ? reader.ReadInt32() : 0, breaksPlayerArmor);
     }
 
-    private static (ProjectileInfo Projectile, ChainInfo Chain, Reaction Reaction) ReadProjectile(BinaryReader reader, short version)
+    private static (ProjectileInfo Projectile, ChainInfo Chain, Effects Effects) ReadProjectile(BinaryReader reader, short version)
     {
         var start = ReadVector3(reader);
         var speed = reader.ReadSingle();
@@ -314,8 +314,17 @@ public sealed class ActionFile
         var buff = reader.ReadInt32();
         var reactionType = reader.ReadInt32();
 
-        // How a target reacts.
-        Skip(reader, 3 * sizeof(float) + sizeof(int) + 5 * sizeof(float) + sizeof(short));
+        // How a target reacts: how far, how high and how fast the blow throws it, which way, and how a weak blow slows it.
+        var distance = reader.ReadSingle();
+        var pushHeight = reader.ReadSingle();
+        var pushSpeed = reader.ReadSingle();
+        var arrow = reader.ReadInt32();
+        var heightInAir = reader.ReadSingle();
+        var slowRate = reader.ReadSingle();
+        var slowTime = reader.ReadSingle();
+        var slowDelay = reader.ReadSingle();
+        var hitFreeze = reader.ReadSingle();
+        var weakSlowChance = reader.ReadInt16();
 
         var connectionType = reader.ReadInt32();
         var chainLifeTime = reader.ReadSingle();
@@ -335,7 +344,11 @@ public sealed class ActionFile
         var chainStartPosition = reader.ReadSingle();
 
         SkipStrings(reader, 1);
-        Skip(reader, sizeof(int) + 1 + sizeof(float));
+
+        var grade = reader.ReadInt32();
+        var usesTargetWeight = reader.ReadBoolean();
+
+        Skip(reader, sizeof(float));
         Skip(reader, 1 + 3 * sizeof(int) + 2 * sizeof(float));
 
         if (version < FiltersSinceVersion)
@@ -366,7 +379,7 @@ public sealed class ActionFile
         SkipSince(reader, version, ExplodeFactionSinceVersion, sizeof(short));
         SkipSince(reader, version, ExplodeTrapSinceVersion, sizeof(short));
         SkipSince(reader, version, PenetrationEffectSinceVersion, 1);
-        SkipSince(reader, version, ReactionAngleSinceVersion, sizeof(float));
+        var angle = version >= ReactionAngleSinceVersion ? reader.ReadSingle() : 0f;
         SkipSince(reader, version, RandomShootSinceVersion, 2 * sizeof(short));
 
         var recalculates = false;
@@ -381,7 +394,10 @@ public sealed class ActionFile
         var projectile = new ProjectileInfo(start, speed, lifeTime, hasGravity, directionType, radius, isContinuous, continuousTime, isGuided, targetOnly, explodeDecision, direction, penetrates, penetrateCount);
         var chain = new ChainInfo(connectionType, chainLifeTime, chainMaxCount, damageMultiple, chainCenter, chainRadius, chainStartPosition, recalculates);
 
-        return (projectile, chain, new Reaction(targetType, damageRate, buff, reactionType, ReadAura(reader, version)));
+        var (aura, breaksPlayerArmor) = ReadAura(reader, version);
+        var push = new AttackReaction(distance, pushHeight, heightInAir, pushSpeed, arrow, angle, slowRate, slowTime, slowDelay, hitFreeze, weakSlowChance, grade, usesTargetWeight, 0, breaksPlayerArmor);
+
+        return (projectile, chain, new Effects(targetType, damageRate, buff, reactionType, aura, push));
     }
 
     private static Vector3 ReadVector3(BinaryReader reader)
