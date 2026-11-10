@@ -232,9 +232,9 @@ public sealed class TransportTest
 
         // The rider moves by its own requests again.
         await ferry.District.MoveAsync(rider, Station.X + 50f, Station.Y);
-        await ferry.District.SettleAsync(rider, watcher);
 
-        Assert.IsNotEmpty(rider.Moves(), "A move after the ride is shown.");
+        // Moves are folded and sent at the end of a pass of the loop, so a marker can arrive first: wait for the move.
+        await MetricAssertions.UntilAsync(() => rider.Moves().Length > 0, "A move after the ride is shown.");
     }
 
     /// <summary>
