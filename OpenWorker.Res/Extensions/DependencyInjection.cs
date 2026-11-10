@@ -27,35 +27,14 @@ public static class DependencyInjection
 
             if (path is null)
             {
-                var empty = typeof(ReadOnlyCollection<>).MakeGenericType(type);
-
-                services.AddSingleton(empty, Activator.CreateInstance(empty, Array.CreateInstance(type, 0))!);
-
+                services.AddSingleton(typeof(ReadOnlyCollection<>).MakeGenericType(type), BinaryResourceTables.EmptyCollection(type));
                 continue;
             }
 
-            var buffer = File.ReadAllBytes(path);
+            var array = BinaryResourceTables.ReadArray(type, path);
+            var values = BinaryResourceTables.WrapCollection(type, array);
 
-            using var stream = new MemoryStream(buffer);
-            using var reader = new BinaryReader(stream);
-
-            var count = reader.ReadInt32();
-            var array = Array.CreateInstance(type, count);
-
-            foreach (var index in Enumerable.Range(0, count))
-            {
-                var value = Activator.CreateInstance(type, reader);
-                Debug.Assert(value is not null);
-
-                array.SetValue(value, index);
-            }
-
-            var collectionType = typeof(ReadOnlyCollection<>).MakeGenericType(type);
-
-            var values = Activator.CreateInstance(collectionType, array);
-            Debug.Assert(values is not null);
-
-            services.AddSingleton(collectionType, values);
+            services.AddSingleton(typeof(ReadOnlyCollection<>).MakeGenericType(type), values);
         }
 
         stopWatch.Stop();
