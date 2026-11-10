@@ -29,8 +29,10 @@ structure of the original over the 764 rows both have (`BuffRow`):
 | 18..23 | `Stat1..3`, `Value1..3` | up to three stats, by the numbers of the stat effects of items and titles, and their values |
 | 24..34 | (unnamed) | the client's own: icons, effect files, strings |
 
-The client has no column for the original's "system type" (which exempts some buffs from resistances and from the
-invincibility check); every buff is taken as the ordinary kind.
+The client has no column for the original's "system type" (0 ordinary, 1 not given to a boss, 2 and 3 not held back by resistances
+and not rolled, 3 also gets through invincibility). The server's own `tb_Buff` has it; `BuffSystemRow` (optional, read from
+`res-server/` only) gives it to the buffs of the client's table that the two tables agree on (same kind, effect and group: 893 of the
+1184, 22 of them with a type of 2 or 3); the others are ordinary buffs.
 
 The tutorial's buff 10000 is in this table (the earlier note that it was missing was wrong): it lasts, ticks every half
 second and gives back 5 % of the life, all of the soul gauge and 3 stamina at each tick.
@@ -56,7 +58,19 @@ second and gives back 5 % of the life, all of the soul gauge and 3 stamina at ea
 | 121..124 | stun, paralysis, sleep, freeze: the carrier neither moves nor attacks |
 | 125, 126, 131, 132 | charm, confusion, silence, weakness: kept as states (weakness also changes stats) |
 
-Anything else is kept on the carrier and shown, and does nothing more.
+| 8 | reflection: the carrier loses the value in percent of the damage it takes once more (never to nothing), as the original has it |
+| 9 | blood: the carrier takes back the value in percent of the damage it deals as life, for as many targets of one hit as its first stat says (0: all) |
+| 12 | a blood mark: whoever gave it, and its friends, take back that share of the damage they deal to the carrier |
+| 13, 14, 16, 19 | kept (the greatest damage roll, a once-only multiple of a summon's damage, more super armor taken, more gold) and counted in `BuffBook.Rates`; nothing reads them yet |
+| 21 | taunt: the monster that carries it is turned on whoever gave it (its care for the giver grows by 5 and its target is the giver) |
+| 25 | soul absorption: a hit gives the attacker's soul gauge the value in ten-thousandths of the gauge, for the first targets the first stat names |
+| 28, 29, 31 | more damage to bosses (rank 3 to 5), less from bosses, more of all damage; added up over the buffs of a carrier |
+| 2, 20, 23, 27, 32 and above | kept and shown; no row of the client's table needs them (20, a buff of the district that gives fatigue back, and 2 are in it) |
+
+Anything else is kept on the carrier and shown, and does nothing more. A buff is held back by the place: a row allows a maze (bit 2),
+a district (bit 4), a battle zone (bit 8) or anywhere (bit 1); `BuffRules` refuses a buff where its row does not allow it and takes the
+buffs a carrier may not have away when it comes to a place (`ClearForPlace`). 1136 rows of the client's table are for a maze and a battle
+zone (10), 41 are for anywhere (the broach sets and a few more), 6 are for a battle zone only and 1 is for a district.
 
 ## Where buffs come from
 
@@ -73,8 +87,51 @@ Anything else is kept on the carrier and shown, and does nothing more.
   `LuaMaze.Buffs`, gives it as a hit does; `Give(target, buff, owner, roll: false)` as a script does.
 - `/buff-give <buff> [monster actor]` gives one for testing.
 
-Not given yet: passive skills, items that give a buff when used, boosters (their stat effects), the combo buffs, auras,
-the conditional buffs of a hit, buffs of a district.
+- **Passive skills** (`PassiveBuffs`, `BuffSources`): a skill of type 1 whose passive type is 13 gives the buff its passive value
+  names for as long as the player has it, and so does the divergence chosen for it when that is of the passive kind (the client's table
+  has none). 32 skills of the client are such (three or five levels each, buffs 5001 to 5503). They are matched against the book once a
+  second and at once when the learned list is replaced, so a skill learned or reset in the maze shows within a moment, and a death
+  that took the buff is made good. They work in a maze only (their rows are for a maze).
+- **Passive cards**: a card in the quick slots of the book whose row names an invoke condition (`InvokeCondition`, its chance
+  `InvokeRate`, the buff `Buff`, the `Cooldown` of its group) gives its buff when the condition happens and the chance and the cooldown
+  allow, and the player is told with 06/21. The conditions the maze reports: a hit (1), a critical hit (6), a missed hit (11), being
+  hit (16), a critical hit taken (21), a skill used (26), being equipped (46: every second while the card is in the slot), the life
+  under a fifth (50) and under half (54), a combo of a hundred (48) and of twenty (49). The cards of the client's table with other
+  conditions (jump, dash, evade, items picked up) are not fired: the maze has no such events. 223 of its 298 cards name a condition.
+- **Combos** (`tb_Combo_Buff`): the hits of one player, none more than three seconds after the one before, count; when they reach a
+  row's number the row gives its fixed buff and a few random ones picked one after another by their weights. Past the last row the
+  last row repeats every hundred hits. The soul vapor a row gives is not given: the server has no soul vapor of a player.
+- **Auras** (`tb_Aura`): `SetAura` puts an aura on a person or a monster: its buff goes to the ones it is for (the carrier alone, or
+  the carrier and its friends, its friends, its enemies, everyone else, by the target type) within its distance, now and at every
+  check, until the aura runs out or is replaced; 06/18 tells the maze. An aura comes from an item (`EFFECT` items of effect type 2:
+  two in the client's table), from the chat command `/aura-give`, or from the reaction of an attack whose action file names one. The
+  action files of the client are of versions up to 237 and the aura sits in versions from 242, so no attack of the client names one;
+  the reader reads it for the files of newer versions (a test writes one).
+- **Boosters**: a booster's status effect (effect 9) names a stat effect and a value; the stats go into the stat sheet as long as the
+  person has the booster, and the stats service is told at every change of the boosters.
+- **Broach sets**: the clothing gives the buff of a set (27001 to 27045) to its wearer, in a district too, and shows it. Its stats are
+  counted by the gear as before, so the buff is marked as shown only (`StatsCounted = false`); no choice of the one that is shown.
+- **Resistances**: the chance of a buff is the table's less what the carrier resists of its state (the stats 49 to 60, which gear,
+  titles and buffs raise); a buff of a system type of 2 or 3 is not rolled at all.
+- **A monster that gets up** (the recovery state of the AI) loses every buff at its start, at every step and at its end.
+
+Not given: the conditional buffs of a hit that the client's tables name for items and titles (their skill options), the buffs of an
+interaction object (an aura link), and the cards that wait for jumps, dashes and evades.
+
+## Carried from one server to the next
+
+A person writes its buffs down when it leaves a server (person state kind 14, `BuffMemory`) with the time each has left, and gets
+them back when it comes to the next one (the maze or the district), in a relog too. The time away does not count. A buff the place
+does not allow is not put back, as the original takes such buffs away on entering an area. The buffs that the person's passive skills
+and clothing give are not written down: they are given again on entering. What a buff gave when it began (life back) is not given
+again when it is put back.
+
+## A district
+
+`DistrictBuffs` keeps a book for each person of a district, ticks it on a simulation clock of the district, tells the person and
+those who see it (06/14 to 06/16), runs the sources (the clothing's broach set) once a second, restores what the person carried in
+and writes it down when the person leaves (a close handler before the one that writes the person). Only buffs whose rows allow a
+district or anywhere can be there.
 
 ## The rules
 
@@ -132,8 +189,8 @@ for the player who gave the buff, or the first player).
 | Buff of an attack's reaction | to every target reached, after the damage | same | same |
 | Attacks for the attacker's side | targets by type: self, friends, party | same, in the maze | same |
 | Attacks with no damage rate | no damage, buff only | same | fixed (they dealt damage) |
-| Chance of a buff | success rate less the resistance stat of the effect | success rate, no resistance | kept different: no resistance stats yet |
-| System type of a buff | exempts from resistance, invincibility, boss ranks | not in the client table | kept different: every buff is the ordinary kind |
+| Chance of a buff | success rate less the resistance stat of the effect | same | fixed (the stats exist now) |
+| System type of a buff | exempts from resistance, invincibility, boss ranks | from the server's table where it agrees with the client's | approximately: 893 of 1184 rows |
 | Stand-by time | waits, checks the group | same | same |
 | Bundle buffs | gives the three it names | same | same |
 | Capacity | 50 | 50 | same |
@@ -143,12 +200,20 @@ for the player who gave the buff, or the first player).
 | Ticks | on the update of the object | on the maze clock (50 ms) | same, on the grid of the ticks |
 | A ticking buff of non-current stats | adds the stat again at each tick | adds it once | kept different: no such row in the client's table was found to matter |
 | Death | clears all but those kept on death | same, for players | same |
-| Leaving a maze | clears the debuffs, keeps the rest | clears everything | kept different: buffs do not follow the player to another server |
-| Monster going home (recovery) | clears every buff | not done | not done: the AI's recovery is another area |
+| Leaving a maze | clears the debuffs, keeps the rest | writes the buffs down for the next server; the next place takes what it does not allow | approximately: the debuffs stay too, and the places decide |
+| Monster going home (recovery) | clears every buff, at the start, every second and at the end | same | same |
+| Buffs through a relog | every buff is written with its time and put back | same, without the time away and without what gave them at the beginning | same |
 | Held states | the mover cannot move or attack | the monster's mind does not run; the player's skills are refused | same in effect |
-| Resistances, immunity flags | from stats | not done | not done |
-| Taunt, reflection, blood, absorption, boss rates, attack rates, skill unlock, jump counts | as their effects | kept, shown, no effect | not done |
-| Buffs of passive skills, items, boosters, combos, auras | applied | not done | not done |
+| Resistances | from stats | same | same |
+| Taunt, reflection, blood, absorption, boss rates, attack rates | as their effects | same (several of one kind: the strongest, or the sum for the rates) | approximately: the original keeps the last one set |
+| Skill unlock, jump counts, the percent of a stat | as their effects | kept, shown, no effect | not done: no row of the client's table needs them |
+| Buffs of passive skills | applied when the skill is learned, reset or loaded, and on a condition | applied and kept matched with the skills | same |
+| Buffs of cards | by condition, chance and cooldown, and the player is told | same, for the conditions the maze has | approximately |
+| Buffs of combos | the row passed by the combo count | same | same, without the soul vapor |
+| Auras | applied to those around at every check | same | same |
+| Buffs of boosters | the stat effects of the booster | same | same |
+| Buffs of the broach set of the clothing | given on wearing, in a district too, shown if it is the chosen effect | given and shown, the stats counted by the gear | kept different: no chosen effect |
+| Buffs of a district | the same book | `DistrictBuffs` | same |
 | Cooldown reduction | buff rate + item effect + skill option + deck bonus × 100, clamped, none for passive | buff rate + deck bonus × 100, clamped, none for passive | approximately: no item effects or skill options yet |
 | Soul gauge cost | − deck bonus − item effect − soul cost buff | − deck bonus − soul cost buff | approximately |
 | Stamina cost | − stamina buff | same | same |
@@ -168,6 +233,23 @@ for the player who gave the buff, or the first player).
   second and the player stays. The warp is shown to everyone in the maze (06/46), with the place the server keeps.
 
 ## Tests
+
+`BuffSourcesTest` (the second round of this note): a resistance holds back the chance of its state, and a system type that
+resistances do not hold back sticks all the same; a buff stays only where its row allows; a passive skill gives its buff and the buff
+goes when the skill does, and a death does not keep it; a passive card gives its buff by its condition and cools down; an aura gives
+its buff to the friends within its reach, now and at the next check, and runs out; a combo gives its buff when the hits reach its
+number; blood, reflection and a buff against bosses change what a hit does; a buff goes with the player to the next server with the
+time it had left. `HelperAiTest`: a monster that gets up has its buffs cleared. `ActionFileTest`: the aura at the end of an attack
+of a newer file is read. `ServerTablesTest` reads the server's buff table to its end.
+
+`docs/agents/feature-buffs-stats/e2e_buffs_stats.py` (stand with `OW_PROLOGUE=true`, a new character in the first tutorial maze):
+the speeds and resistances in the whole list at entry; a passive skill learned in the maze gives its buff (06/14) and raises the
+attack the player is told; a buff of speed changes the speed (03/34); an aura is shown (06/18) and gives its buff; after a relog
+through the gate the buff of the skill, the buff for anywhere, the lasting buff of the aura and the buff of speed with the time it
+had left are on the player again. `e2e_district_buffs.py` (a stand without the prologue): a buff for anywhere written by the last
+server is on the person at the district (06/14), one for the maze only is not, and the person leaves with the first in its document.
+
+The earlier tests, kept:
 
 `BuffTest`: a hit whose reaction names a buff gives it to the target once and everyone sees it; a buff changes the stat it
 names and the change is undone when it ends; a second buff of a group follows its stacking rule (renew, refuse a lower
@@ -195,6 +277,11 @@ and not missed, in the order of the combo); the defence of a monster of level 1 
 difference is small.
 
 ## To check with the real client
+
+- The icons and the times of the new buffs: a passive skill's buff, a card's buff with its message (06/21), an aura's buff, the broach
+  set's buff in a district, the buffs after a relog and after a change of server (the time they have left).
+- That the aura effect (06/18) shows on the carrier, and goes with the end of the aura.
+- That the speed felt is the speed the stats say: a buff of speed (the stats 31 and 32) and the pace check of the server.
 
 - That 06/14 shows the icon and the time of a buff on the player and on a monster, and 06/15 takes it away.
 - That a stunned monster plays its stun animation (the client plays the animation of the buff by itself).

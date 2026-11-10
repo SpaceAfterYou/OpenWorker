@@ -214,7 +214,8 @@ public static class DistrictBuffsServiceCollectionExtensions
         services.AddSingleton<SimulationClock>();
         services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());
         services.AddSingleton<DistrictBuffs>();
-        services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<DistrictBuffs>());
+        // Before the handler that writes the person: what the person carries is written down first.
+        services.Insert(0, ServiceDescriptor.Singleton<ISessionCloseHandler>(provider => provider.GetRequiredService<DistrictBuffs>()));
 
         return services;
     }
