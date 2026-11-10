@@ -33,6 +33,7 @@ using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Gameplay.Modules.Attendance;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Hotspot.Modules.Boosters.Enums;
@@ -157,6 +158,9 @@ public sealed partial class PersonService(
         await skills.LoadAsync(context.Player, person.Id, person.Hero, context.CancellationToken);
 
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(ecs, context.Player));
+
+        // The date of the server: the game scene counts the times left on items, boosters and windows from it.
+        session.Send(new WorldCurDateResponse { Date = time.GetUtcNow() });
 
         session.Send(PersonProfileServiceBase.CreateCommunityResponse(ecs.Get<CommunityComponent>(context.Player)));
 
