@@ -8,10 +8,13 @@ public partial class MainViewModel : ViewModelBase
     public MainViewModel()
     {
         Craftables = new CraftablesViewModel();
+        Items = new ItemsViewModel();
         ShowViewport();
     }
 
     public CraftablesViewModel Craftables { get; }
+
+    public ItemsViewModel Items { get; }
 
     [ObservableProperty]
     public partial string StatusText { get; set; } = "Ready";
@@ -25,12 +28,16 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsCraftablesVisible { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsItemsVisible { get; set; }
+
     [RelayCommand]
     public void ShowViewport()
     {
         SelectedPanel = "Viewport";
         IsViewportVisible = true;
         IsCraftablesVisible = false;
+        IsItemsVisible = false;
         StatusText = "Viewport — grid and RGB axes (Silk.NET smoke).";
     }
 
@@ -40,8 +47,21 @@ public partial class MainViewModel : ViewModelBase
         SelectedPanel = "Craftables";
         IsViewportVisible = false;
         IsCraftablesVisible = true;
+        IsItemsVisible = false;
         StatusText = "Loading craftables…";
         await Craftables.LoadAsync();
         StatusText = Craftables.Status;
+    }
+
+    [RelayCommand]
+    public async Task ShowItemsAsync()
+    {
+        SelectedPanel = "Items";
+        IsViewportVisible = false;
+        IsCraftablesVisible = false;
+        IsItemsVisible = true;
+        StatusText = "Loading items…";
+        await Items.LoadAsync();
+        StatusText = Items.Status;
     }
 }

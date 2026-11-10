@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
-using Avalonia.Media.Imaging;
 using OpenWorker.Content.Tool.Models;
+using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Content.Tool.Data;
@@ -13,26 +13,23 @@ internal static class CraftableCatalog
 {
     public static IReadOnlyList<CraftableItemEntry> Load(string resFolder, string? guiFolder, out string status)
     {
-        var makes = ResTableLoader.Load<MakeRow>(resFolder, "tb_Make");
-        var scripts = ResTableLoader
-            .Load<ItemScriptRow>(resFolder, "tb_item_script")
-            .GroupBy(row => row.Id)
-            .ToDictionary(group => group.Key, group => group.First());
+        var makes = BinaryResourceTables.LoadFromDirectory<MakeRow>(resFolder);
+        var scripts = BinaryResourceTables.LoadFromDirectory<ItemScriptRow>(resFolder).IndexBy(row => row.Id);
+        var items = BinaryResourceTables.LoadFromDirectory<ItemRow>(resFolder).IndexBy(row => row.Id);
+        var icons = new GuiIconCache(guiFolder);
 
-        var iconCache = new Dictionary<string, Bitmap?>(StringComparer.Ordinal);
         var products = makes
             .Where(row => row.Product != 0)
             .GroupBy(row => row.Product)
             .OrderBy(group => group.Key)
             .ToArray();
 
-        var missingIcons = 0;
         var entries = new List<CraftableItemEntry>(products.Length);
 
         foreach (var group in products)
         {
-            ResolveItem(scripts, group.Key, out var name, out var iconPath);
-            var icon = LoadIcon(guiFolder, iconPath, iconCache, ref missingIcons);
+            ResolveItem(scripts, items, group.Key, out var name, out var iconPath);
+            var icon = icons.Get(iconPath);
 
             var recipes = new List<CraftableRecipe>(group.Count());
             foreach (var make in group.OrderBy(row => row.Id))
@@ -46,8 +43,8 @@ internal static class CraftableCatalog
                         continue;
                     }
 
-                    ResolveItem(scripts, item, out var materialName, out var materialIconPath);
-                    var materialIcon = LoadIcon(guiFolder, materialIconPath, iconCache, ref missingIcons);
+                    ResolveItem(scripts, items, item, out var materialName, out var materialIconPath);
+                    var materialIcon = icons.Get(materialIconPath);
                     materials.Add(new CraftableMaterialRef
                     {
                         ItemId = item,
@@ -73,7 +70,7 @@ internal static class CraftableCatalog
                         ItemId = 0,
                         Name = "Gold",
                         Count = make.Gold,
-                        Icon = LoadIcon(guiFolder, "Icon/Item/Goods/Goods_Gold", iconCache, ref missingIcons)
+                        Icon = icons.Get("Icon/Item/Goods/Goods_Gold")
                     });
                 }
 
@@ -85,7 +82,7 @@ internal static class CraftableCatalog
                         ItemId = 0,
                         Name = "BP",
                         Count = make.BattlePoint,
-                        Icon = LoadIcon(guiFolder, "Icon/Item/Goods/Goods_BP", iconCache, ref missingIcons)
+                        Icon = icons.Get("Icon/Item/Goods/Goods_BP")
                     });
                 }
 
@@ -119,15 +116,16 @@ internal static class CraftableCatalog
             "Craftables: {0} products from {1} recipes{2}",
             entries.Count,
             makes.Count,
-            missingIcons == 0
+            icons.Missing == 0
                 ? string.Empty
-                : string.Format(CultureInfo.InvariantCulture, ", {0} icons missing", missingIcons));
+                : string.Format(CultureInfo.InvariantCulture, ", {0} icons missing", icons.Missing));
 
         return entries;
     }
 
     private static void ResolveItem(
-        Dictionary<int, ItemScriptRow> scripts,
+        RowIndex<int, ItemScriptRow> scripts,
+        RowIndex<int, ItemRow> items,
         int itemId,
         out string name,
         out string iconPath)
@@ -135,55 +133,18 @@ internal static class CraftableCatalog
         iconPath = string.Empty;
         name = string.Format(CultureInfo.InvariantCulture, "Item {0}", itemId);
 
-        if (!scripts.TryGetValue(itemId, out var script))
+        var scriptId = items.TryGet(itemId, out var item) ? item.ScriptOf : itemId;
+        if (!scripts.TryGet(scriptId, out var script) &&
+            (scriptId == itemId || !scripts.TryGet(itemId, out script)))
         {
             return;
         }
 
-        iconPath = script.Icon ?? string.Empty;
+        iconPath = script.Icon;
         if (!string.IsNullOrWhiteSpace(script.Name))
         {
             name = script.Name;
         }
-    }
-
-    private static Bitmap? LoadIcon(
-        string? guiFolder,
-        string iconPath,
-        Dictionary<string, Bitmap?> cache,
-        ref int missingIcons)
-    {
-        if (string.IsNullOrWhiteSpace(iconPath))
-        {
-            return null;
-        }
-
-        if (cache.TryGetValue(iconPath, out var cached))
-        {
-            return cached;
-        }
-
-        if (string.IsNullOrWhiteSpace(guiFolder))
-        {
-            missingIcons++;
-            cache[iconPath] = null;
-            return null;
-        }
-
-        var file = Path.Combine(
-            guiFolder,
-            iconPath.Replace('/', Path.DirectorySeparatorChar) + ".png");
-
-        if (!File.Exists(file))
-        {
-            missingIcons++;
-            cache[iconPath] = null;
-            return null;
-        }
-
-        var bitmap = new Bitmap(file);
-        cache[iconPath] = bitmap;
-        return bitmap;
     }
 
     private static string FormatPath(

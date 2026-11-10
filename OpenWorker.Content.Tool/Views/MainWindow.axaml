@@ -24,6 +24,7 @@
             </MenuItem>
             <MenuItem Header="_View">
                 <MenuItem Header="Viewport" Command="{Binding ShowViewportCommand}" />
+                <MenuItem Header="Items" Command="{Binding ShowItemsCommand}" />
                 <MenuItem Header="Craftables" Command="{Binding ShowCraftablesCommand}" />
             </MenuItem>
         </Menu>
@@ -47,6 +48,9 @@
                         <Button Content="Viewport"
                                 HorizontalAlignment="Stretch"
                                 Command="{Binding ShowViewportCommand}" />
+                        <Button Content="Items"
+                                HorizontalAlignment="Stretch"
+                                Command="{Binding ShowItemsCommand}" />
                         <Button Content="Craftables"
                                 HorizontalAlignment="Stretch"
                                 Command="{Binding ShowCraftablesCommand}" />
@@ -63,6 +67,9 @@
             <Panel Grid.Column="1">
                 <Border Background="#FF1E1F24" IsVisible="{Binding IsViewportVisible}">
                     <rendering:DebugViewport />
+                </Border>
+                <Border IsVisible="{Binding IsItemsVisible}">
+                    <views:ItemsView DataContext="{Binding Items}" />
                 </Border>
                 <Border IsVisible="{Binding IsCraftablesVisible}">
                     <views:CraftablesView DataContext="{Binding Craftables}" />

@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenWorker.Content.Tool.ViewModels"
+             xmlns:models="using:OpenWorker.Content.Tool.Models"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="OpenWorker.Content.Tool.Views.ItemsView"
+             x:DataType="vm:ItemsViewModel">
+
+    <DockPanel Margin="12">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock DockPanel.Dock="Left"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       FontSize="18"
+                       Text="Items" />
+            <TextBox PlaceholderText="Filter by name, id, classify or icon…"
+                     Text="{Binding Filter}"
+                     Width="320"
+                     HorizontalAlignment="Right"
+                     IsEnabled="{Binding IsIdle}" />
+        </DockPanel>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                <Button Content="Previous"
+                        Command="{Binding PreviousPageCommand}"
+                        IsEnabled="{Binding CanGoPrevious}" />
+                <TextBlock VerticalAlignment="Center" Text="{Binding PageLabel}" Opacity="0.85" />
+                <Button Content="Next"
+                        Command="{Binding NextPageCommand}"
+                        IsEnabled="{Binding CanGoNext}" />
+            </StackPanel>
+            <TextBlock VerticalAlignment="Center" Opacity="0.75" Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+
+        <Grid ColumnDefinitions="*,12,1.2*">
+            <ListBox Grid.Column="0"
+                     ItemsSource="{Binding Items}"
+                     SelectedItem="{Binding SelectedItem}"
+                     IsEnabled="{Binding IsIdle}"
+                     Background="Transparent">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:ItemEntry">
+                        <Grid ColumnDefinitions="48,*" Margin="4" MinHeight="48">
+                            <Border Grid.Column="0"
+                                    Width="40"
+                                    Height="40"
+                                    Background="#FF2A2B32"
+                                    CornerRadius="4">
+                                <Image Source="{Binding Icon}"
+                                       Width="40"
+                                       Height="40"
+                                       Stretch="Uniform" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Subtitle}" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border Grid.Column="2"
+                    Padding="12"
+                    Background="#FF23242A"
+                    CornerRadius="6">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="4">
+                        <TextBlock FontWeight="SemiBold" FontSize="16" Text="Properties" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="40" Height="40" Background="#FF2A2B32" CornerRadius="4">
+                                <Image Source="{Binding SelectedItem.Icon}" Width="40" Height="40" Stretch="Uniform" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedItem.Name}" FontWeight="SemiBold" FontSize="15" />
+                                <TextBlock Text="{Binding SelectedItem.Subtitle}" Opacity="0.7" FontSize="12" />
+                                <TextBlock Text="{Binding SelectedItem.IconPath}" Opacity="0.55" FontSize="11" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <ScrollViewer>
+                        <StackPanel>
+                            <Grid ColumnDefinitions="180,*" Margin="0,4,0,0">
+                                <TextBlock Grid.Column="0" FontWeight="SemiBold" Opacity="0.8" Text="Field" />
+                                <TextBlock Grid.Column="1" FontWeight="SemiBold" Opacity="0.8" Text="Value" />
+                            </Grid>
+                            <Border Height="1" Background="#33FFFFFF" Margin="0,4" />
+                            <ItemsControl ItemsSource="{Binding SelectedItem.Properties}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ItemPropertyRow">
+                                        <Grid ColumnDefinitions="180,*" Margin="0,2">
+                                            <TextBlock Grid.Column="0" VerticalAlignment="Center" Opacity="0.75" Text="{Binding Name}" />
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Value}" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>
