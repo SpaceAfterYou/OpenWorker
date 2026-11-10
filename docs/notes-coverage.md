@@ -157,9 +157,9 @@ boosters (a buff) are not applied; account boosters are kept per character.
 
 **B7. Gestures need no unlock (23/01). S.** Showing a gesture works in a district and a maze for any gesture of the table.
 
-**B8. Transports of the district (05/16) and the costume look (08/50, 08/52). M each, original.** The ride a dialog
-offers is ignored (`tb_District_Transport`, `tb_Transport_Info`); appearance items are not kept, so the look of a costume
-over gear is never loaded or changed.
+**B8. Transports of the district (05/16) and the costume look (08/50, 08/52). M each, original.** ~~The ride a dialog
+offers is ignored~~ Done in round 7 (`notes-district-gaps.md`: the rides are in District 6, a maze). Appearance items are not
+kept, so the look of a costume over gear is never loaded or changed.
 
 **B9. Titles and echelon. S to M.** Titles granted by achievements are not given (the original does); the title clear,
 delete and open notices (03/27-29) are never sent; the echelon of a person (03/52, 03/53) is never sent and not stored.
@@ -213,7 +213,7 @@ means nothing on the server.
 | Prologue and tutorial | tutorial pop-ups, `T01`, `T02` mazes | 03/15, 03/19, 03/20, 11/23 | done | checks on the real client |
 | District, channels, objects around | channel list, minimap, total map | F1/01, F1/02, 04/06, 04/21-23 | done | checks on the real client |
 | Movement | (all) | 05/xx | done | transports (B8), ground state |
-| Transport between areas | regional movement; `tb_District_Transport`, `tb_Transport_Info` | 05/16 | missing | B8 |
+| Transport between areas | regional movement; `tb_District_Transport`, `tb_Transport_Info` | 05/16 | done | rides in District 6 (round 7, `notes-district-gaps.md`) |
 | Portals between districts and mazes | maze board, special maze entrance; `tb_Maze_Info`, `tb_SpecialMaze_Open` | 04/01, 04/41, 04/44-45 | partial | entry rules and limits (A6) |
 | Chat, whisper, trade chat | chatting, chat log | 07/01-03 | done | |
 | Megaphone | chatting | 07/06 | done | item links in the text |
@@ -239,7 +239,7 @@ means nothing on the server.
 | Shops | shop | 09/01-04, 09/10-12 | partial | in progress |
 | Cash shop and gacha | cash shop, gacha pop-up and result | 09/20-27 | invented | B4 |
 | Trade and private shops | personal trade, personal shop | 0A/xx | done | the shop permit and zone; the visitor's purchase is a guess (notes-trade) |
-| Trade password | (a pop-up before trading) | 03/18 | done | given again on each server; trades do not ask the server for the state |
+| Trade password | (a pop-up before trading) | 03/18 | done | shared by the district and the maze for the login; trades, taking an invitation and opening a shop ask the server (round 7); the letter with items does not |
 | Mail | mail, mail read, mail write | 20/xx | done | letters of the game, expiry (C7) |
 | Quests | quest, NPC talk, quest alarm | 15/xx | done | checks on the real client (notes-quests) |
 | Daily missions | (quest window part) | 24/xx | done | friends and my room conditions |
@@ -512,7 +512,7 @@ Answers and notices (server to client): 477. real 321, partial 7, invented 2, no
 | 03/11 | PersonListRequest | Gate | PersonService | real |  |
 | 03/13 | PersonSelectRequest | Gate | PersonService | real |  |
 | 03/17 | PersonSecondPasswordRequest | Gate | PersonService | real |  |
-| 03/18 | PersonTradePasswordRequest | District,Maze | TradePasswordService | real | kept hashed on the account and checked; five wrong ones lock it on that server; given again on each server |
+| 03/18 | PersonTradePasswordRequest | District,Maze | TradePasswordService | real | kept hashed on the account and checked; five wrong ones lock it for the login on both servers (50105, 52003) |
 | 03/19 | PersonUpdateCutsceneRequest | Maze | MazeService | real | maze only; the district has no handler |
 | 03/21 | PersonEnterGameServerRequest | District,Maze | PersonService | real |  |
 | 03/23 | PersonLoadTitleRequest | District,Maze | PersonProfileService | real |  |
@@ -618,7 +618,7 @@ Answers and notices (server to client): 477. real 321, partial 7, invented 2, no
 | 05/07 | MovementBattleRequest | District,Maze | MovementService | real |  |
 | 05/10 | MovementMotionRequest | District,Maze | MovementService | real |  |
 | 05/13 | MovementIgnoreMotionDeltaRequest | District,Maze | MovementService | real |  |
-| 05/16 | MovementTransportTakeRequest | District,Maze | MovementService | ignored | transports of the district are not run |
+| 05/16 | MovementTransportTakeRequest | Maze | TransportService | real | District 6, the maze 30021 (round 7); the district has no transport NPC |
 | 05/22 | MovementPositionRequest | District,Maze | MovementService | real |  |
 | 05/30 | MovementLoopMotionStartRequest | District,Maze | MovementService | real |  |
 | 05/32 | MovementLoopMotionEndRequest | District,Maze | MovementService | real |  |
@@ -641,8 +641,8 @@ Answers and notices (server to client): 477. real 321, partial 7, invented 2, no
 | 05/13 | MovementIgnoreMotionDeltaResponse | MovementServiceBase | real |  |
 | 05/14 | MovementUpdateDirResponse | LuaCreatureManager, MonsterBody | real |  |
 | 05/15 | MovementDropResponse | - | not sent |  |
-| 05/16 | MovementTransportTakeResponse | - | not sent |  |
-| 05/17 | MovementTransportOffResponse | - | not sent |  |
+| 05/16 | MovementTransportTakeResponse | TransportService | real | to those around, the rider too |
+| 05/17 | MovementTransportOffResponse | TransportService | real | when the ride is over, on the simulation clock |
 | 05/20 | MovementGrapResponse | - | not sent |  |
 | 05/21 | MovementRotationResponse | - | not sent |  |
 | 05/31 | MovementLoopMotionStartBtResponse | MovementServiceBase | real |  |
