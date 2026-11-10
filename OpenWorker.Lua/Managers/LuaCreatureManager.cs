@@ -849,33 +849,14 @@ public sealed class LuaCreatureManager
 
     // ---- Players ------------------------------------------------------------------------------
 
-    private const ushort ReviveNotFallen = 52608;
-    private const ushort ReviveNotAllowed = 51009;
-
     /// <summary>
-    /// A fallen player gets up where they fell, with all their life and a few seconds in which nothing can hurt them.
-    /// The only ways to get up in a maze are free: the others need a buff, a safe place of a district or cash.
+    /// A fallen player gets up where they fell, with all their life and a few seconds in which nothing can hurt them. Whether
+    /// they may is for the caller to decide (<c>MazeRevival</c>); a player who has not fallen is left as they are.
     /// </summary>
-    public void Revive(Entity player, ReviveType type)
+    public void Revive(Entity player, ReviveType type, int owner = 0)
     {
-        if (!ecs.IsAlive(player) || !ecs.Has<ServerSessionComponent>(player))
+        if (!ecs.IsAlive(player) || !ecs.Has<ServerSessionComponent>(player) || Vitals.IsAlive(player))
         {
-            return;
-        }
-
-        var session = ecs.Get<ServerSessionComponent>(player);
-
-        if (Vitals.IsAlive(player))
-        {
-            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotFallen));
-
-            return;
-        }
-
-        if (type is not (ReviveType.Auto or ReviveType.MazeFree or ReviveType.ModeMazeAuto or ReviveType.Cash))
-        {
-            session.Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), ReviveNotAllowed));
-
             return;
         }
 
@@ -898,11 +879,42 @@ public sealed class LuaCreatureManager
         Broadcast(new PersonReviveResponse
         {
             Actor = actor,
-            Owner = 0,
+            Owner = owner,
             Type = (byte)type,
             Position = place.Position,
             Rotation = place.Rotation
         });
+    }
+
+    /// <summary>
+    /// Brings a player who stands down at once, as a blow that took the last of their life would (the test command of the
+    /// chat). Somebody who has fallen already is left as they are.
+    /// </summary>
+    public void Fell(Entity player)
+    {
+        if (!ecs.IsAlive(player) || !Vitals.IsAlive(player))
+        {
+            return;
+        }
+
+        Vitals.Hurt(player, int.MaxValue);
+        Announce(player);
+    }
+
+    /// <summary>
+    /// A player has fallen: the maze is told, their buffs go and their gear wears.
+    /// </summary>
+    private void Announce(Entity victim)
+    {
+        Broadcast(new PersonDieResponse
+        {
+            Victim = ecs.Get<ActorComponent>(victim),
+            Attacker = default,
+            PvpKillCount = 0
+        });
+
+        Buffs?.OnDeath(victim);
+        Services?.Wear?.Died(victim);
     }
 
     /// <summary>
@@ -1129,15 +1141,7 @@ public sealed class LuaCreatureManager
 
         foreach (var victim in fallen)
         {
-            Broadcast(new PersonDieResponse
-            {
-                Victim = ecs.Get<ActorComponent>(victim),
-                Attacker = default,
-                PvpKillCount = 0
-            });
-
-            Buffs?.OnDeath(victim);
-            Services?.Wear?.Died(victim);
+            Announce(victim);
         }
 
         Buffs?.GiveFromHit(attacker.Entity, trigger, victims);

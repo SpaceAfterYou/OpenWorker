@@ -48,6 +48,7 @@ using Redis.OM.Searching;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Maze;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -89,6 +90,7 @@ public sealed partial class PersonService(
     PersonSkills skills,
     PlayerGauges gauges,
     HelperGear helperGear,
+    MazeEntryLimits entryLimits,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -209,6 +211,14 @@ public sealed partial class PersonService(
 
         prologue.Enter(context.Player, person);
 
+        // How often the person entered the mazes today: this one counts the entry as the person comes in.
+        await entryLimits.EnterAsync(context.Player, person.Id, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
+
         // A party shares the instance its reservation names; a player alone gets one of their own.
         var instance = mazeReserve.Instance == Guid.Empty ? Guid.NewGuid() : mazeReserve.Instance;
         var maze = await EnterInstanceAsync(context.Player, instance, mazeReserve.Party, mazeInfo, batch, context.CancellationToken);
@@ -237,6 +247,13 @@ public sealed partial class PersonService(
         gauges.Fill(context.Player);
         results.Start(context.Player, mazeInfo.Id);
 
+        // The entry is counted and the item the maze asks for is taken; a player whose item is gone from the bag is sent away.
+        if (!entryLimits.Entered(context.Player, mazeInfo.Id))
+        {
+            session.Disconnect();
+            return;
+        }
+
         session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
         skills.Send(context.Player);
         creatureServices.Stats?.SendAll(context.Player);
@@ -249,6 +266,12 @@ public sealed partial class PersonService(
         await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await sharePoints.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
         await community.EnterAsync(context.Player);
+
+        // The client has the maze now: the count of the entries is told last.
+        if (world.IsAlive(context.Player))
+        {
+            entryLimits.TellCount(context.Player, mazeInfo.Id);
+        }
     }
 
     /// <summary>

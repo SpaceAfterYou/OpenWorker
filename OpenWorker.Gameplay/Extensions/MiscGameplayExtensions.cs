@@ -70,6 +70,10 @@ public static class MiscGameplayExtensions
         services.AddSingleton<FatigueService>();
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<FatigueService>());
         services.AddSingleton<MazeScoring>();
+        services.AddSingleton<MazeEntryLimits>();
+        services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<MazeEntryLimits>());
+        services.AddSingleton(MazeEntryLimits.Document);
+        services.AddSingleton<IMazePortals, BatchMazePortals>();
         services.AddSingleton<MazeAdmission>();
 
         // What the flush of the person writes when the managers mark their part.

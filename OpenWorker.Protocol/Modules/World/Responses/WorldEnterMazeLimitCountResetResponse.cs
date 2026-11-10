@@ -9,6 +9,9 @@ using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
+/// <summary>
+/// A new day has begun: the client sets the count of every maze to nothing, when the actor is its own.
+/// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct WorldEnterMazeLimitCountResetResponse : IResponseHotspotMessage

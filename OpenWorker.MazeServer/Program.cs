@@ -1,4 +1,5 @@
 ﻿using OpenWorker.Batch;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Channel;
 using OpenWorker.Channel.Extensions;
 using OpenWorker.Commands;
@@ -89,6 +90,11 @@ await Host
         services.AddSingleton<MazeResults>();
         services.AddSingleton<PrologueService>();
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<MazeResults>());
+
+        // When a fallen player may get up, and the revive items it gets up with.
+        services.AddSingleton<MazeRevival>();
+        services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<MazeRevival>());
+        services.AddSingleton<IReviveItems, MazeReviveItems>();
         services.AddSingleton<ISessionCloseHandler, DropCleaner>();
         services.AddHostedService<DropExpiryService>();
 

@@ -6,7 +6,8 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 /// <summary>
 /// The server's own <c>tb_Maze_Info</c>: what the client's copy of a maze leaves out. The time a run is measured against,
 /// the experience and gold a clear is worth before its rank, the maze that must be cleared first, the quest and the item a
-/// maze asks for, and how hard it is. The rest of the row is read to reach its end.
+/// maze asks for, how many times a day it may be entered, whether and how often a fallen player may get up in it, and how
+/// hard it is. The rest of the row is read to reach its end.
 /// </summary>
 [BinaryResourceTable("tb_Maze_Info", Server = true)]
 public readonly struct MazeRuleRow
@@ -20,9 +21,11 @@ public readonly struct MazeRuleRow
         Admission = reader.ReadByte();
         Fatigue = reader.ReadUInt16();
 
-        // The daily limits of entering: the group and the kind, the count, then the count in a net cafe, the days that add
-        // more, how many they add and the count of helpers. Only the infinite tower of the client's mazes has them.
-        reader.ReadBytes(sizeof(ushort) + 1);
+        // The daily limit of entering: the group of mazes that share it, whether it is counted for the account or for the
+        // character, and the count; then the count in a net cafe, the days that add more, how many they add and the count of
+        // helpers, which a server without a net cafe has no use for.
+        EntryLimitGroup = reader.ReadUInt16();
+        reader.ReadByte();
         EntryLimit = reader.ReadByte();
         reader.ReadBytes(4);
 
@@ -30,8 +33,9 @@ public readonly struct MazeRuleRow
         RequiredItem = reader.ReadUInt32();
         RequiredItemCount = reader.ReadByte();
 
-        // How a player comes back and with how many items.
-        reader.ReadBytes(2);
+        // Whether a player may get up in the maze, and how many revive items it may use there.
+        RevivalType = reader.ReadByte();
+        RevivalItemCount = reader.ReadByte();
 
         Difficulty = reader.ReadByte();
 
@@ -57,14 +61,18 @@ public readonly struct MazeRuleRow
         reader.ReadUtf16UnicodeStringWithoutTerminator();
         reader.ReadUtf16UnicodeStringWithoutTerminator();
 
-        // The monster of the attacks of the scene, the share of the points, the name, the portal, the place and the size,
-        // the way out, the quests that run in it, the akashic records, the potions, the warp orb and whether it can be
-        // entered again.
+        // The monster of the attacks of the scene, the share of the points and the name.
         reader.ReadUInt32();
         reader.ReadSingle();
         reader.ReadUtf16UnicodeStringWithoutTerminator();
-        reader.ReadBytes(sizeof(ushort) + 4 * sizeof(int) + sizeof(short) + sizeof(uint) + 5 * sizeof(uint) + 1);
+
+        // The portal the maze is entered by, then the place and the size, the way out, the quests that run in it and the
+        // akashic records.
+        PortalId = reader.ReadUInt16();
+        reader.ReadBytes(4 * sizeof(int) + sizeof(short) + sizeof(uint) + 5 * sizeof(uint) + 1);
         PotionLimit = reader.ReadByte();
+
+        // The warp orb and whether the maze can be entered again.
         reader.ReadBytes(sizeof(uint) + 1);
     }
 
@@ -98,9 +106,29 @@ public readonly struct MazeRuleRow
     public ushort Fatigue { get; }
 
     /// <summary>
-    /// How many times a day a person may enter; 0 for no limit.
+    /// How many times a day a person may enter; 0 for no limit. Mazes of one <see cref="EntryLimitGroup"/> share the count.
     /// </summary>
     public byte EntryLimit { get; }
+
+    /// <summary>
+    /// The group of mazes that share the daily count of entering, 0 for a maze that counts alone.
+    /// </summary>
+    public ushort EntryLimitGroup { get; }
+
+    /// <summary>
+    /// What a fallen player may do in the maze: 0 get up, 1 not get up at all, 2 get up as often as it likes, by itself.
+    /// </summary>
+    public byte RevivalType { get; }
+
+    /// <summary>
+    /// How many revive items a player may use in the maze; 0 for as many as it has.
+    /// </summary>
+    public byte RevivalItemCount { get; }
+
+    /// <summary>
+    /// The portal the maze is entered by; the casual raids of a portal take turns by the day of the week.
+    /// </summary>
+    public ushort PortalId { get; }
 
     /// <summary>
     /// The quest (an episode) the person must have or have finished; 0 for none.

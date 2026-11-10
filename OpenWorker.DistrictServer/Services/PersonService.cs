@@ -1,4 +1,5 @@
 ﻿using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Server.Common;
 using OpenWorker.Server.Common.Services;
 using OpenWorker.Hotspot.Cache;
@@ -78,6 +79,7 @@ public sealed partial class PersonService(
     SharePointManager sharePoints,
     NpcCreditManager npcCredit,
     ItemUseLimits itemUse,
+    MazeEntryLimits entryLimits,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -190,6 +192,10 @@ public sealed partial class PersonService(
         await sharePoints.EnterDistrictAsync(context.Player, person.Id, Location, context.CancellationToken);
         await npcCredit.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await itemUse.EnterAsync(context.Player, person.Id, context.CancellationToken);
+
+        // How often the person entered the mazes today: the board shows what is left of the limits.
+        await entryLimits.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        entryLimits.SendCounts(context.Player);
 
         // Get skill components
         ref readonly var skillPoint = ref ecs.Get<SkillPointComponent>(context.Player);

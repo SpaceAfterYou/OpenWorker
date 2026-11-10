@@ -13,6 +13,8 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.Maze.Components;
 using OpenWorker.Gameplay.Modules.Maze.Components;
 using OpenWorker.Gameplay.Modules.Maze.Extensions;
 using OpenWorker.Gameplay.Modules.Npcs;
@@ -130,7 +132,7 @@ public sealed class PersistenceTest
                 World,
                 [
                     new SkillDocumentSource(), QuestManager.Document, AkashicRecordBook.Document, AchievementManager.Document,
-                    SharePointManager.Document, NpcCreditManager.Document
+                    SharePointManager.Document, NpcCreditManager.Document, MazeEntryLimits.Document
                 ],
                 [new PersonPlaceStore(Options.Create(new InstanceOptions { Location = District }))]);
 
@@ -160,6 +162,7 @@ public sealed class PersistenceTest
                 Component.GetComponentType(typeof(AchievementComponent)),
                 Component.GetComponentType(typeof(SharePointComponent)),
                 Component.GetComponentType(typeof(NpcCreditComponent)),
+                Component.GetComponentType(typeof(MazeEntryComponent)),
                 Component.GetComponentType(typeof(SkillPointComponent)),
                 Component.GetComponentType(typeof(SkillLearnedComponent)),
                 Component.GetComponentType(typeof(SkillDeckComponent)),
@@ -197,6 +200,12 @@ public sealed class PersistenceTest
             {
                 Person = person,
                 Book = await States.LoadAsync<NpcCreditBook>(person, PersonStateKind.NpcCredit, CancellationToken.None) ?? new NpcCreditBook()
+            });
+
+            World.Set(player, new MazeEntryComponent
+            {
+                Person = person,
+                Book = await States.LoadAsync<MazeEntryBook>(person, PersonStateKind.MazeEntry, CancellationToken.None) ?? new MazeEntryBook()
             });
 
             return player;
@@ -399,6 +408,14 @@ public sealed class PersistenceTest
                 Assert.AreEqual(900_202, inventory.At(StorageGroup.AbilityEquip, 0)?.Serial, "a worn item stays out of the bank");
 
                 first.World.Get<NpcCreditComponent>(player).Book!.Groups.Add(new NpcCreditEntry { Group = 1001, Grade = 2, Point = 7, DayPoint = 3 });
+
+                var entries = first.World.Get<MazeEntryComponent>(player).Book!;
+
+                entries.Day = new DateTime(2026, 11, 9, 11, 0, 0, DateTimeKind.Utc);
+                entries.Mazes[21061] = 2;
+                entries.Groups[100] = 1;
+                entries.FreeRevives = 2;
+
                 first.World.MarkDirty(player, PersonSections.MiscState);
             });
 
@@ -423,6 +440,10 @@ public sealed class PersistenceTest
 
                 Assert.AreEqual((byte)2, credit?.Grade, "the credit with the group");
                 Assert.AreEqual(7, credit?.Point);
+
+                var entries = second.World.Get<MazeEntryComponent>(player).Book!;
+
+                Assert.AreEqual((2, 1, 2), (entries.Mazes[21061], entries.Groups[100], entries.FreeRevives), "the entries into the mazes today");
 
                 second.Items.Move(player, Slot(StorageGroup.CommonStorage, 5), Slot(StorageGroup.Common, 0));
             });
