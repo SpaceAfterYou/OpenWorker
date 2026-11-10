@@ -12,8 +12,9 @@ internal static class ItemCatalog
 {
     public static IReadOnlyList<ItemEntry> Load(string resFolder, string? guiFolder, out string status)
     {
-        var items = BinaryResourceTables.LoadFromDirectory<ItemRow>(resFolder);
-        var scripts = BinaryResourceTables.LoadFromDirectory<ItemScriptRow>(resFolder).IndexBy(row => row.Id);
+        var cache = ResTableCache.Shared;
+        var items = cache.Items(resFolder);
+        var scripts = cache.ScriptsById(resFolder);
         var icons = new GuiIconCache(guiFolder);
         var entries = new List<ItemEntry>(items.Count);
 

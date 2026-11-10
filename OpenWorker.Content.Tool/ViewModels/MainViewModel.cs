@@ -48,8 +48,8 @@ public partial class MainViewModel : ViewModelBase
         IsViewportVisible = false;
         IsCraftablesVisible = true;
         IsItemsVisible = false;
-        StatusText = "Loading craftables…";
-        await Craftables.LoadAsync();
+        StatusText = string.IsNullOrEmpty(Craftables.Status) ? "Loading craftables…" : Craftables.Status;
+        await Craftables.EnsureLoadedAsync();
         StatusText = Craftables.Status;
     }
 
@@ -60,8 +60,8 @@ public partial class MainViewModel : ViewModelBase
         IsViewportVisible = false;
         IsCraftablesVisible = false;
         IsItemsVisible = true;
-        StatusText = "Loading items…";
-        await Items.LoadAsync();
+        StatusText = string.IsNullOrEmpty(Items.Status) ? "Loading items…" : Items.Status;
+        await Items.EnsureLoadedAsync();
         StatusText = Items.Status;
     }
 }

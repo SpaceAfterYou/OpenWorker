@@ -13,9 +13,10 @@ internal static class CraftableCatalog
 {
     public static IReadOnlyList<CraftableItemEntry> Load(string resFolder, string? guiFolder, out string status)
     {
-        var makes = BinaryResourceTables.LoadFromDirectory<MakeRow>(resFolder);
-        var scripts = BinaryResourceTables.LoadFromDirectory<ItemScriptRow>(resFolder).IndexBy(row => row.Id);
-        var items = BinaryResourceTables.LoadFromDirectory<ItemRow>(resFolder).IndexBy(row => row.Id);
+        var cache = ResTableCache.Shared;
+        var makes = cache.Makes(resFolder);
+        var scripts = cache.ScriptsById(resFolder);
+        var items = cache.ItemsById(resFolder);
         var icons = new GuiIconCache(guiFolder);
 
         var products = makes

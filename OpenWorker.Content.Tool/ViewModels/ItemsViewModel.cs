@@ -47,6 +47,20 @@ public partial class ItemsViewModel : ViewModelBase, IDisposable
     private IReadOnlyList<ItemEntry> _filtered = [];
     private CancellationTokenSource? _loadCts;
     private int _loadVersion;
+    private bool _loaded;
+
+    /// <summary>
+    /// Loads the items once; later calls keep what is already in memory.
+    /// </summary>
+    public async Task EnsureLoadedAsync()
+    {
+        if (_loaded || IsLoading)
+        {
+            return;
+        }
+
+        await LoadAsync();
+    }
 
     public async Task LoadAsync()
     {
@@ -60,6 +74,7 @@ public partial class ItemsViewModel : ViewModelBase, IDisposable
         SelectedItem = null;
         _all = [];
         _filtered = [];
+        _loaded = false;
         CurrentPage = 1;
         RefreshPageState();
 
@@ -93,6 +108,7 @@ public partial class ItemsViewModel : ViewModelBase, IDisposable
             }
 
             _all = loaded.Entries;
+            _loaded = true;
             Status = gui is null
                 ? $"{loaded.Status}. Set {ContentPaths.GuiVariable} to the GUI root (folder with Icon/Item)."
                 : loaded.Status;
