@@ -12,6 +12,7 @@ namespace OpenWorker.Hotspot.Test;
 public sealed class PortalWaitTest
 {
     private static readonly PortalWait.Door Door = new(Portal: 10, Jump: 20);
+    private static readonly int[] Countdown = [5, 4, 3, 2, 1, 0];
 
     private sealed class Maze : IDisposable
     {
@@ -78,7 +79,7 @@ public sealed class PortalWaitTest
             maze.Wait.Advance(0.05f);
         }
 
-        CollectionAssert.AreEqual(new[] { 5, 4, 3, 2, 1, 0 }, maze.Told, "The seconds are told, and the end");
+        CollectionAssert.AreEqual(Countdown, maze.Told, "The seconds are told, and the end");
         CollectionAssert.AreEqual(new[] { Door }, maze.Opened);
         Assert.IsFalse(maze.Wait.IsCounting);
     }
