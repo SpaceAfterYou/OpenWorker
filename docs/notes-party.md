@@ -61,7 +61,7 @@ average, at most 4) and moving a group on.
 | 12/03 change master | master only, a member, not self | 12/03 to all; 53006, 53002, 53003, 53011, 53007 |
 | 12/04 kick | master only, a member, not self | 12/05 with the kick flag to all, the kicked too; a party left with one ends (12/07); 53006, 53003, 53002, 53011 |
 | 12/05 leave | a master hands over to the member with the lowest number (12/03 to the rest) | 12/05 to all; with one left, 12/07 to both; 53006 |
-| 12/09 list | | 12/09 (update 0); 53006 alone |
+| 12/09 list | asked by the client at every entry | 12/09 (update 0); nothing for somebody alone (the reference only marks the person for its next sync; fixed 2026-11-10, an error popped up a window at each entry) |
 | 12/36 list | recruitments that last | 12/36 |
 | 12/37 add | the master of a party that is not full, or somebody alone; message up to 20, levels 1..100; renews one's own | 12/37 success with 1800 s; the penalty: 12/37 with success 0 and the seconds left; 12/3E to the other members; 53002, 53010, 53012 |
 | 12/38 apply | in no party; outcome as `PartyApplyError`: 1 no recruitment, 2 applied already, 5 five applications, 6 ten applicants, 7 level | 12/38 (outcome, applications now); 12/45 to the master; 53004 in a party |
