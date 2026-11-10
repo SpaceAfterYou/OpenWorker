@@ -346,6 +346,32 @@ public sealed partial class PartyNotifier(
         });
     }
 
+    /// <summary>
+    /// A member's level or channel changed: the party list of the others shows the new one.
+    /// </summary>
+    public async ValueTask OnChangedAsync(Entity player, PresenceRecord person)
+    {
+        if (await book.OfAsync(person.Person) is not { } party || !world.IsAlive(player))
+        {
+            return;
+        }
+
+        var card = CardOf(player);
+
+        await book.MarkOnlineAsync(party.Id, card);
+
+        if (await book.GetAsync(party.Id) is not { } now || !now.Has(person.Person))
+        {
+            return;
+        }
+
+        await network.SendAsync(now.Persons.Where(e => e != person.Person), new PartyUpdateMemberInfoResponse
+        {
+            Party = now.Id,
+            Member = Info(card, person)
+        });
+    }
+
     public async ValueTask OnLeftAsync(Entity player, PresenceRecord person)
     {
         if (await book.OfAsync(person.Person) is not { } party)

@@ -78,6 +78,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPartyRoster>(e => e.GetRequiredService<PartyBook>());
         services.AddSingleton<PartyNotifier>();
         services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<PartyNotifier>());
+        services.AddSingleton<ICommunityModule, PartyMemberSync>();
         services.AddHostedService<PartyUpkeepService>();
         services.AddSingleton<PartyRecruitBoard>();
         services.AddSingleton<PartyAwaiterBoard>();

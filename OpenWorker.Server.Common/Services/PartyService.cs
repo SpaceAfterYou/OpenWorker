@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Channel.Community;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Server.Common.Services;
@@ -32,6 +33,7 @@ public sealed class PartyMatchingService(
     CommunityNetwork network,
     PartyBook book,
     PartyMatching matching,
-    ReadOnlyCollection<MazeInfoRow> mazes
+    ReadOnlyCollection<MazeInfoRow> mazes,
+    MazeAdmission? admission = null
 ) :
-    PartyMatchingServiceBase(world, network, book, matching, mazes);
+    PartyMatchingServiceBase(world, network, book, matching, mazes, admission);

@@ -17,6 +17,11 @@ public interface ICommunityListener
     ValueTask OnEnteredAsync(Entity player, PresenceRecord person);
 
     ValueTask OnLeftAsync(Entity player, PresenceRecord person);
+
+    /// <summary>
+    /// What the others know about the person has changed while the person stays on the server: the level, the channel.
+    /// </summary>
+    ValueTask OnChangedAsync(Entity player, PresenceRecord person) => ValueTask.CompletedTask;
 }
 
 /// <summary>
@@ -129,6 +134,30 @@ public sealed partial class CommunityNetwork(
         Records[person] = record;
 
         await TryAsync(() => presence.SetAsync(record, PresenceLifetime).AsTask(), "renew a person");
+    }
+
+    /// <summary>
+    /// The person stays here, and something the others show of them has changed: what the others know is brought up to date
+    /// and the parts of the game that show it are told.
+    /// </summary>
+    public async ValueTask ChangedAsync(Entity player)
+    {
+        if (!world.Has<ActorComponent>(player) || !Players.TryGetValue(world.Get<ActorComponent>(player).Identifier, out var known) || known != player)
+        {
+            return;
+        }
+
+        await RefreshAsync(player);
+
+        if (!world.IsAlive(player) || !Records.TryGetValue(world.Get<ActorComponent>(player).Identifier, out var record))
+        {
+            return;
+        }
+
+        foreach (var listener in Listeners)
+        {
+            await TryAsync(() => listener.OnChangedAsync(player, record).AsTask(), "tell about a person changing");
+        }
     }
 
     public async ValueTask OnSessionClosedAsync(Entity player)

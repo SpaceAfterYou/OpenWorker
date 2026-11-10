@@ -53,7 +53,8 @@ public sealed class PartyMatching(
     PartyNotifier parties,
     IConnectionMultiplexer redis,
     TimeProvider time,
-    IEnumerable<IPartyMatchListener>? matched = null
+    IEnumerable<IPartyMatchListener>? matched = null,
+    IPersonRelations? relations = null
 ) :
     IPartyClock,
     ICommunityListener
@@ -69,8 +70,8 @@ public sealed class PartyMatching(
     private static TimeSpan Lifetime { get; } = TimeSpan.FromMinutes(5);
 
     // KEYS: the pointer of the person, the groups of the maze, the sequence. ARGV: the person, the card, the level, the prefix
-    // of groups, the most members, the level gap, the deadline of a new group, its limit, the lifetime in ms, the maze.
-    // Returns 1 and the group when the person joined one, 2 when they started one, -1 when they wait in one already.
+    // of groups, the most members, the level gap, the deadline of a new group, its limit, the lifetime in ms, the maze, the groups
+    // the person may not join (their numbers between commas, such as ",3,7,"). Returns 1 and the group when the person joined one, 2 when they started one, -1 when they wait in one already.
     private static RedisScript Enter { get; } = new("""
         if redis.call('EXISTS', KEYS[1]) == 1 then
             return {-1}
@@ -87,7 +88,8 @@ public sealed class PartyMatching(
                         count = count + 1
                     end
                 end
-                if count > 0 and count < tonumber(ARGV[5]) and math.abs(level - sum / count) <= tonumber(ARGV[6]) then
+                if count > 0 and count < tonumber(ARGV[5]) and math.abs(level - sum / count) <= tonumber(ARGV[6])
+                    and not string.find(ARGV[11], ',' .. id .. ',', 1, true) then
                     redis.call('HSET', key, 'p:' .. ARGV[1], ARGV[2], 'l:' .. ARGV[1], ARGV[3])
                     redis.call('SET', KEYS[1], id, 'PX', ttl)
                     return {1, tonumber(id)}
@@ -142,13 +144,14 @@ public sealed class PartyMatching(
     {
         var card = parties.CardOf(player);
         var deadline = Now + (long)PartyRules.MatchingCollect.TotalMilliseconds;
+        var blocked = await BlockedGroupsAsync(card.Person, maze);
 
         var result = (int[])(await Enter.EvaluateAsync(
             redis,
             [OfKey(card.Person), MazePrefix + maze.ToString(CultureInfo.InvariantCulture), Sequence],
             [
                 card.Person, card.Encode(), (int)card.Level, GroupPrefix, PartyRules.MaxMembers, PartyRules.MatchingLevelGap,
-                deadline, limit, (long)Lifetime.TotalMilliseconds, (int)maze
+                deadline, limit, (long)Lifetime.TotalMilliseconds, (int)maze, blocked
             ]))!;
 
         if (result[0] < 0)
@@ -167,6 +170,42 @@ public sealed class PartyMatching(
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// The groups of the maze the person cannot join because one of their members has blocked them or been blocked by them,
+    /// as the numbers of the groups between commas.
+    /// </summary>
+    private async Task<string> BlockedGroupsAsync(int person, short maze)
+    {
+        var blocked = new System.Text.StringBuilder(",");
+
+        if (relations is null)
+        {
+            return blocked.ToString();
+        }
+
+        foreach (var id in await Database.SetMembersAsync(MazePrefix + maze.ToString(CultureInfo.InvariantCulture)))
+        {
+            foreach (var field in await Database.HashKeysAsync(GroupPrefix + id))
+            {
+                var name = field.ToString();
+
+                if (!name.StartsWith("p:", StringComparison.Ordinal) || !int.TryParse(name.AsSpan(2), CultureInfo.InvariantCulture, out var other))
+                {
+                    continue;
+                }
+
+                if (await relations.IsBlockedAsync(person, other) || await relations.IsBlockedAsync(other, person))
+                {
+                    blocked.Append(CultureInfo.InvariantCulture, $"{id},");
+
+                    break;
+                }
+            }
+        }
+
+        return blocked.ToString();
     }
 
     /// <summary>
