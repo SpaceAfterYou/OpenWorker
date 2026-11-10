@@ -53,16 +53,6 @@ public sealed partial class MazeResults(
     ILogger<MazeResults>? logger = null) : ISessionCloseHandler
 {
     /// <summary>
-    /// The combo goes on while the next hit lands within this time of the last one.
-    /// </summary>
-    public const long ComboWindowMilliseconds = 3000;
-
-    /// <summary>
-    /// The most targets one attack counts for the combo.
-    /// </summary>
-    public const int MaxComboHits = 5;
-
-    /// <summary>
     /// The most gold a person holds; gold of a clear past it goes by post.
     /// </summary>
     public const long WalletLimit = 99_999_999_999_999;
@@ -155,10 +145,9 @@ public sealed partial class MazeResults(
             return;
         }
 
-        var hits = Math.Min(targets, MaxComboHits);
         var now = Environment.TickCount64;
 
-        tally.Combo = now - tally.LastHit <= ComboWindowMilliseconds ? tally.Combo + hits : hits - 1;
+        tally.Combo = Combat.Combo.Next(tally.Combo, tally.LastHit, targets, now);
         tally.MaxCombo = Math.Max(tally.MaxCombo, tally.Combo);
         tally.LastHit = now;
         tally.Damage += Math.Max(0, damage);

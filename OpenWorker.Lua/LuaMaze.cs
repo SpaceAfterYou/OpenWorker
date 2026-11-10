@@ -243,6 +243,13 @@ public partial class LuaMaze(
         public List<ChainRun> Chains { get; } = [];
 
         /// <summary>
+        /// The combo of the player and when its last attack hit, in milliseconds of the clock of the maze.
+        /// </summary>
+        public int Combo { get; set; }
+
+        public long LastHit { get; set; } = long.MinValue;
+
+        /// <summary>
         /// What the script hears of the quests of the player, when it listens.
         /// </summary>
         public QuestWatch? Quests { get; set; }
@@ -1206,6 +1213,11 @@ public partial class LuaMaze(
         var skillDamage = combat.GetSkill(skill);
         var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
 
+        // The combo of the player goes into the message of the hit: the client shows it.
+        var now = (long)Clock.Time.TotalMilliseconds;
+        member.Combo = Gameplay.Combat.Combo.Next(member.Combo, member.LastHit, hits.Length, now);
+        member.LastHit = now;
+
         MonstersHit?.Invoke(player, hits.Length, hits.Sum(e => (long)e.Damage));
 
         // The buffs of the player and of the monsters it hit that answer to a hit: blood, reflection, soul absorption, the cards
@@ -1261,7 +1273,7 @@ public partial class LuaMaze(
                 },
                 Skill = skill,
                 TriggerIndex = (short)trigger.Id,
-                ContinuousHit = 1
+                ContinuousHit = (ushort)Math.Min(member.Combo, ushort.MaxValue)
             }
         });
 
