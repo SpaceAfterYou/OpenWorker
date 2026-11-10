@@ -1,6 +1,7 @@
 using OpenWorker.Channel.Community;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
 
 namespace OpenWorker.Server.Common.Extensions;
@@ -17,6 +18,7 @@ public static class ServiceCollectionExtensions
         where TAudience : class, IPlayerAudience
     {
         services.Replace(ServiceDescriptor.Singleton<IQuestTitles, QuestTitles>());
+        services.Replace(ServiceDescriptor.Singleton<IItemTitles, ItemTitles>());
 
         return services
             .AddSingleton<PersonRegistry>()

@@ -24,7 +24,7 @@ public readonly partial struct ItemRow(BinaryReader reader)
     public short LevelLimit { get; } = reader.ReadInt16();
     public byte ClassLimit { get; } = reader.ReadByte();
     public byte SellLimit { get; } = reader.ReadByte();
-    public byte Field15 { get; } = reader.ReadByte();
+    public byte SubType { get; } = reader.ReadByte();
     public byte Field16 { get; } = reader.ReadByte();
     public int Field17 { get; } = reader.ReadInt32();
     public string Field18 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
@@ -56,9 +56,9 @@ public readonly partial struct ItemRow(BinaryReader reader)
     public int Evolution { get; } = reader.ReadInt32();
     public short Disassemble { get; } = reader.ReadInt16();
     public int Field46 { get; } = reader.ReadInt32();
-    public byte Field47 { get; } = reader.ReadByte();
-    public int Field48 { get; } = reader.ReadInt32();
-    public byte Field49 { get; } = reader.ReadByte();
+    public byte CooldownGroup { get; } = reader.ReadByte();
+    public int CooldownMilliseconds { get; } = reader.ReadInt32();
+    public byte CooldownSaved { get; } = reader.ReadByte();
     public short EffectType { get; } = reader.ReadInt16();
     public int EffectValue { get; } = reader.ReadInt32();
     public short Field52 { get; } = reader.ReadInt16();

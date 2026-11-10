@@ -2,6 +2,7 @@ using Arch.Core;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Hotspot.Modules.Boosters.Enums;
 
@@ -15,10 +16,12 @@ public sealed class MiscStateLoader(
     SoulMetryManager soulMetry,
     DailyMissionManager dailyMissions,
     BoosterManager boosters,
-    HelperManager helpers)
+    HelperManager helpers,
+    ItemUseLimits itemUse)
 {
     public async ValueTask EnterMazeAsync(Entity player, int person, CancellationToken cancellationToken)
     {
+        await itemUse.EnterAsync(player, person, cancellationToken);
         await soulMetry.EnterAsync(player, person, cancellationToken);
         await dailyMissions.EnterAsync(player, person, cancellationToken);
         await helpers.EnterMazeAsync(player, person, cancellationToken);

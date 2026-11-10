@@ -28,6 +28,50 @@ public sealed class ItemWireFormatTest
     }
 
     [TestMethod]
+    public void TheAnswerToTheUseOfAnItemIsTheItemAndWhatItGaveAsTheClientReadsIt()
+    {
+        var answer = new ItemUseResponse
+        {
+            Item = 16909060,
+            Gain = new ItemUseGainValue
+            {
+                Experience = 1, Gold = 2, BattlePoint = 3, Ether = 4, Title = 5, SecondTitle = 6, Helper = 7,
+                Items = [new ItemUseGainItem { Item = 168496141, Count = 258 }]
+            }
+        };
+
+        var bytes = ToBytes(writer => answer.Write(writer));
+
+        // The item, seven numbers of four bytes, then the count of items as one byte and each item as four bytes and two.
+        Assert.HasCount(4 + 7 * 4 + 1 + 4 + 2, bytes);
+        CollectionAssert.AreEqual(new byte[] { 4, 3, 2, 1 }, bytes[..4]);
+        CollectionAssert.AreEqual(new byte[] { 1, 0, 0, 0, 2, 0, 0, 0 }, bytes[4..12], "Experience, then gold");
+        CollectionAssert.AreEqual(new byte[] { 7, 0, 0, 0, 1, 0x0D, 0x0C, 0x0B, 0x0A, 0x02, 0x01 }, bytes[28..]);
+    }
+
+    [TestMethod]
+    public void TheMotionOfAnItemIsTheActorTheItemAndTheSlotAndTheLimitsOfADayAreTheirCountedList()
+    {
+        var motion = ToBytes(writer => new ItemUseBtResponse { Actor = 1, Item = 2, Slot = 3 }.Write(writer));
+
+        CollectionAssert.AreEqual(new byte[] { 1, 0, 0, 0, 2, 0, 0, 0, 3, 0 }, motion);
+
+        var list = ToBytes(writer => new ItemUseInfoListResponse
+        {
+            UpdatedAt = 5,
+            List = [new ItemUseInfoValue { Type = 12, Count = 2, UsedAt = 9 }]
+        }.Write(writer));
+
+        // When it was updated, the count of entries as one byte, then the kind, how often and when each was used.
+        Assert.HasCount(8 + 1 + 4 + 1 + 8, list);
+        Assert.AreEqual(5, list[0]);
+        Assert.AreEqual(1, list[8]);
+        Assert.AreEqual(12, list[9]);
+        Assert.AreEqual(2, list[13]);
+        Assert.AreEqual(9, list[14]);
+    }
+
+    [TestMethod]
     public void SocketListHasOneByteCountAndTheSerialOfTheGear()
     {
         var socket = new ST_SOCKET_DATA

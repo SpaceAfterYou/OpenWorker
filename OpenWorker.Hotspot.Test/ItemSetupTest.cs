@@ -1,4 +1,7 @@
+using Microsoft.Extensions.Options;
+using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Npcs;
+using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Items;
@@ -280,9 +283,10 @@ public sealed class ItemSetupTest
 
         card.Exp = 17;
 
-        var use = new ItemUseService(f.Inventory, f.Catalog, new([]), new([]), null, f.Akashic);
+        var limits = new ItemUseLimits(f.World, new PersonStateStore(null!), TimeProvider.System, Options.Create(new DailyMissionOptions()));
+        var use = new ItemUseService(f.World, f.Inventory, f.Catalog, limits, new([]), new([]), new([]), akashic: f.Akashic);
 
-        Assert.IsTrue(await use.UseAsync(f.Player, card.Storage, card.Slot, card.Serial, CancellationToken.None));
+        Assert.IsTrue((await use.UseAsync(f.Player, card.Storage, card.Slot, card.Serial, CancellationToken.None)).Ok);
 
         var record = f.Bag.AkashicRecords.Records.Single();
 

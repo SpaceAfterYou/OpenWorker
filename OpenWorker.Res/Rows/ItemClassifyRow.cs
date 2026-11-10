@@ -11,7 +11,7 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct ItemClassifyRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public byte Field1 { get; } = reader.ReadByte();
+    public byte Group { get; } = reader.ReadByte();
     public short Field2 { get; } = reader.ReadInt16();
     public byte Field3 { get; } = reader.ReadByte();
     public short Field4 { get; } = reader.ReadInt16();
@@ -23,7 +23,7 @@ public readonly partial struct ItemClassifyRow(BinaryReader reader)
     public byte StorageKind { get; } = reader.ReadByte();
     public byte SlotType { get; } = reader.ReadByte();
     public byte RepairType { get; } = reader.ReadByte();
-    public byte Field13 { get; } = reader.ReadByte();
+    public byte UseState { get; } = reader.ReadByte();
     public ItemUseType ItemUseType { get; } = (ItemUseType)reader.ReadByte();
     public short Field15 { get; } = reader.ReadInt16();
     public short Field16 { get; } = reader.ReadInt16();

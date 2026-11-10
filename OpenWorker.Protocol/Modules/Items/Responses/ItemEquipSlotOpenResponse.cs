@@ -6,6 +6,9 @@ using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Responses;
 
+/// <summary>
+/// Which places of the equipment the person has opened, one bit for each.
+/// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly partial struct ItemEquipSlotOpenResponse : IResponseHotspotMessage
@@ -14,4 +17,6 @@ public readonly partial struct ItemEquipSlotOpenResponse : IResponseHotspotMessa
     private const ItemOpcode Command = ItemOpcode.EquipSlotOpen;
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
+
+    public int OpenMask { get; init; }
 }

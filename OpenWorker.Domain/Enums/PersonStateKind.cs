@@ -35,5 +35,10 @@ public enum PersonStateKind : byte
     /// <summary>
     /// The credit of the person with each group of NPCs of the cities.
     /// </summary>
-    NpcCredit = 11
+    NpcCredit = 11,
+
+    /// <summary>
+    /// The cooldowns of item groups that outlast a server and how often the kinds of item limited for a day were used.
+    /// </summary>
+    ItemUse = 12
 }
