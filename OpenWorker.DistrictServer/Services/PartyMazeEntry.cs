@@ -31,7 +31,7 @@ public interface IPartyMazeRoutes
     /// <summary>
     /// Picks the maze server and a new instance for the party, and records them.
     /// </summary>
-    ValueTask<PartyMazeCache> OpenAsync(int party, short location);
+    ValueTask<PartyMazeCache> OpenAsync(int party, short location, int members);
 
     /// <summary>
     /// Writes the reservation of the member for the instance and answers the client with the address. False when the
@@ -59,7 +59,7 @@ public sealed class PartyMazeRoutes(
         return record.Server != Guid.Empty && await servers.FindByIdAsync(record.Server.ToString()) is not null ? record : null;
     }
 
-    public async ValueTask<PartyMazeCache> OpenAsync(int party, short location)
+    public async ValueTask<PartyMazeCache> OpenAsync(int party, short location, int members)
     {
         var (server, host, port) = await manager.PickMazeServerAsync();
 
@@ -70,7 +70,8 @@ public sealed class PartyMazeRoutes(
             Instance = Guid.NewGuid(),
             Server = server,
             Host = host,
-            Port = port
+            Port = port,
+            Members = (byte)Math.Clamp(members, 0, byte.MaxValue)
         };
 
         await parties.InsertAsync(record, PartyMazeCache.Lifetime);
@@ -80,7 +81,7 @@ public sealed class PartyMazeRoutes(
 
     public ValueTask<bool> SendAsync(Entity player, short location, int jump, PartyMazeCache maze)
     {
-        return manager.SendToMazeAsync(player, location, jump, (maze.Host, maze.Port), maze.Instance, maze.Party);
+        return manager.SendToMazeAsync(player, location, jump, (maze.Host, maze.Port), maze.Instance, maze.Party, maze.Members);
     }
 }
 
@@ -97,9 +98,19 @@ public sealed partial class PartyMazeEntry(
     CommunityNetwork community,
     IPartyMazeRoutes routes,
     ILogger<PartyMazeEntry> logger,
-    MazeAdmission? admission = null
+    MazeAdmission? admission = null,
+    TimeProvider? time = null
 ) : ISessionCloseHandler, IPartyMatchListener, ICommunityModule
 {
+    /// <summary>
+    /// How long a question stays open. The client of a member counts a time down in its question and answers when it is over,
+    /// so a question that is still open after this much is one the client never answered; the original server holds it until
+    /// somebody ends it.
+    /// </summary>
+    public static TimeSpan QuestionLifetime { get; } = TimeSpan.FromSeconds(45);
+
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
     /// <summary>
     /// The event that has the servers of the members of a party the auto matching made send them into its maze.
     /// </summary>
@@ -133,8 +144,9 @@ public sealed partial class PartyMazeEntry(
     /// <summary>
     /// A question that is open: who was asked, and who has not said yes yet.
     /// </summary>
-    private sealed class Question(int party, int master, short location, int jump, MessageOpcode request)
+    private sealed class Question(int party, int master, short location, int jump, MessageOpcode request, long asked)
     {
+        public long Asked { get; } = asked;
         public int Party { get; } = party;
         public int Master { get; } = master;
         public short Location { get; } = location;
@@ -208,7 +220,7 @@ public sealed partial class PartyMazeEntry(
             return true;
         }
 
-        var question = new Question(party.Id, person, location, jump, request);
+        var question = new Question(party.Id, person, location, jump, request, _time.GetTimestamp());
 
         foreach (var member in party.Members)
         {
@@ -321,7 +333,7 @@ public sealed partial class PartyMazeEntry(
     /// </summary>
     private async ValueTask LaunchAsync(Question question)
     {
-        var maze = await routes.OpenAsync(question.Party, question.Location);
+        var maze = await routes.OpenAsync(question.Party, question.Location, question.Members.Count);
 
         LogLaunched(question.Party, question.Location, maze.Instance);
 
@@ -345,7 +357,7 @@ public sealed partial class PartyMazeEntry(
             return;
         }
 
-        var record = await routes.OpenAsync(party, maze);
+        var record = await routes.OpenAsync(party, maze, persons.Count);
 
         LogLaunched(party, maze, record.Instance);
 
@@ -386,6 +398,25 @@ public sealed partial class PartyMazeEntry(
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Ends the questions that have been open for too long. The member who has not answered is the one the others are told
+    /// ended it, as if they had said no.
+    /// </summary>
+    public void ExpireQuestions()
+    {
+        foreach (var question in _byPerson.Values.Distinct().ToArray())
+        {
+            if (_time.GetElapsedTime(question.Asked) < QuestionLifetime)
+            {
+                continue;
+            }
+
+            var silent = question.Members.Select(e => e.Person).FirstOrDefault(question.Waiting.Contains);
+
+            Cancel(question, silent != 0 ? silent : question.Master);
+        }
     }
 
     /// <summary>

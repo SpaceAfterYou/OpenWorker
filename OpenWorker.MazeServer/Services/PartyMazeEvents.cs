@@ -12,17 +12,51 @@ namespace OpenWorker.MazeServer.Services;
 /// <summary>
 /// What the members of a party hear of each other while some of them play a maze: the life of a member in the maze for
 /// the others in it (12/12, once a pass), the window at the end of the maze with every member in it, and the clear of the
-/// maze for the party (12/46). Where a member is (12/06) the party tells by itself when the member comes into a server.
+/// maze for the party (12/46), and the monsters of the maze that become as strong as the members left make them when a member
+/// leaves the party. Where a member is (12/06) the party tells by itself when the member comes into a server.
 /// </summary>
 public sealed partial class PartyMazeEvents(
     World world,
     MazeResults results,
     PartyNotifier parties,
     ILogger<PartyMazeEvents> logger
-) : IEndOfPass
+) : IEndOfPass, ICommunityModule
 {
     private readonly List<Entity> _hurt = [];
     private bool _waiting;
+    private CommunityNetwork? _network;
+
+    void ICommunityModule.Attach(CommunityNetwork network)
+    {
+        _network = network;
+
+        network.On(PartyNotifier.ResizedEvent, OnResizedAsync);
+    }
+
+    /// <summary>
+    /// A member left the party. The maze a remaining member plays makes its monsters as strong as the party is now, once.
+    /// </summary>
+    private ValueTask OnResizedAsync(CommunityEvent resized)
+    {
+        if (resized.Body.Length < 2 * sizeof(int) || _network is null)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var party = BitConverter.ToInt32(resized.Body.Span);
+        var members = BitConverter.ToInt32(resized.Body.Span[sizeof(int)..]);
+        var done = new HashSet<LuaMaze>();
+
+        foreach (var person in resized.Persons)
+        {
+            if (_network.TryGet(person, out var player) && world.TryGet(player, out LuaMaze? maze) && maze is { IsClosed: false } && maze.Party == party && done.Add(maze))
+            {
+                maze.Creatures.ResizeParty(members);
+            }
+        }
+
+        return ValueTask.CompletedTask;
+    }
 
     /// <summary>
     /// The life of a player in a maze has changed. The others of the party in it are told at the end of the pass, once

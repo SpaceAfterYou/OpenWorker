@@ -12,7 +12,7 @@ public readonly partial struct InteractionObjectRow(BinaryReader reader)
     public int Id { get; } = reader.ReadInt32();
     public byte Field1 { get; } = reader.ReadByte();
     public string Field2 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public byte Field3 { get; } = reader.ReadByte();
+    public byte PrivateActivate { get; } = reader.ReadByte();
     public int ActionDelay { get; } = reader.ReadInt32();
     public byte Field5 { get; } = reader.ReadByte();
     public byte Field6 { get; } = reader.ReadByte();
@@ -38,7 +38,7 @@ public readonly partial struct InteractionObjectRow(BinaryReader reader)
     public int Field26 { get; } = reader.ReadInt32();
     public int Field27 { get; } = reader.ReadInt32();
     public int Field28 { get; } = reader.ReadInt32();
-    public byte Field29 { get; } = reader.ReadByte();
+    public byte PublicQuestCheck { get; } = reader.ReadByte();
     public string Field30 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public string Field31 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public string Field32 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();

@@ -96,7 +96,7 @@ public partial class LuaMaze
 
         if (Ecs.IsAlive(killer))
         {
-            await reports.MonsterKilledAsync(killer, identifier, MazeReporter.GetKillConditions(0, false));
+            await ReportKillAsync(killer, identifier, MazeReporter.GetKillConditions(0, false));
         }
 
         if (Closed)

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Channel.Community;
 using OpenWorker.DistrictServer.Services;
 using OpenWorker.Domain.Components;
@@ -50,11 +51,11 @@ public sealed class PartyMazeEntryTest
 
         public ValueTask<PartyMazeCache?> FindAsync(int party) => ValueTask.FromResult(Running);
 
-        public ValueTask<PartyMazeCache> OpenAsync(int party, short location)
+        public ValueTask<PartyMazeCache> OpenAsync(int party, short location, int members)
         {
             Opened++;
 
-            Running = new PartyMazeCache { Party = party, Location = location, Instance = Guid.NewGuid(), Server = Guid.NewGuid(), Host = "maze", Port = 1 };
+            Running = new PartyMazeCache { Party = party, Location = location, Instance = Guid.NewGuid(), Server = Guid.NewGuid(), Host = "maze", Port = 1, Members = (byte)members };
 
             return ValueTask.FromResult(Running);
         }
@@ -165,6 +166,49 @@ public sealed class PartyMazeEntryTest
         Assert.IsEmpty(routes.Sent);
         Assert.IsFalse(entry.IsAsked(1));
         Assert.IsFalse(entry.IsAsked(2));
+    }
+
+    /// <summary>
+    /// A question nobody answers is ended after its time, and the member who did not answer is the one the others are told
+    /// ended it.
+    /// </summary>
+    [TestMethod]
+    public void AQuestionNobodyAnswersEndsAfterItsTime()
+    {
+        const short maze = 21311;
+
+        var community = new MemoryCommunity();
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        using var server = new TestServer(community);
+        using var master = server.Join(1, "Master");
+        using var member = server.Join(2, "Member");
+
+        foreach (var player in new[] { master, member })
+        {
+            server.World.Add(player.Entity, new ChannelMemberComponent(1));
+        }
+
+        var routes = new Routes();
+        var entry = new PartyMazeEntry(server.World, new Party(10, 1, 2), server.Network, routes, NullLogger<PartyMazeEntry>.Instance, time: time);
+
+        server.Run(() => entry.TryEnterAsync(master.Entity, maze, 0, Enter).AsTask());
+
+        time.Advance(PartyMazeEntry.QuestionLifetime - TimeSpan.FromSeconds(1));
+        entry.ExpireQuestions();
+
+        Assert.IsTrue(entry.IsAsked(2), "The question is open until its time is up");
+
+        time.Advance(TimeSpan.FromSeconds(2));
+        entry.ExpireQuestions();
+
+        Assert.IsFalse(entry.IsAsked(1));
+        Assert.IsFalse(entry.IsAsked(2));
+        Assert.AreEqual(0, routes.Opened);
+
+        foreach (var player in new[] { master, member })
+        {
+            Assert.IsTrue(player.Read().Any(e => e.Group == (byte)GroupOpcode.Maze && e.Command == (byte)MazeOpcode.eSUB_CMD_MAZE_CANCEL_ENTER_PARTY), "Everybody hears that it is off");
+        }
     }
 
     /// <summary>

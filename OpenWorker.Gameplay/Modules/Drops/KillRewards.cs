@@ -19,11 +19,21 @@ public sealed partial class KillRewards(ExperienceService experience, DropServic
     }
 
     /// <summary>
-    /// A monster of a maze died by the hand of <paramref name="killer"/>. The experience goes to <paramref name="present"/>,
-    /// the members of the party in the maze who are on their feet (<see cref="ExperienceService.GiveForParty"/>), and the
-    /// killer alone when nobody is; what falls on the ground is the killer's.
+    /// As <see cref="OnKilled(Entity, IReadOnlyList{Entity}, IReadOnlyList{Entity}, int, Vector3)"/> for a maze whose players
+    /// who stand to share the experience are all there are.
     /// </summary>
     public void OnKilled(Entity killer, IReadOnlyList<Entity> present, int monster, Vector3 position)
+    {
+        OnKilled(killer, present, present, monster, position);
+    }
+
+    /// <summary>
+    /// A monster of a maze died by the hand of <paramref name="killer"/>. The experience goes to <paramref name="present"/>,
+    /// the members of the party in the maze who are on their feet (<see cref="ExperienceService.GiveForParty"/>), and the
+    /// killer alone when nobody is. What falls on the ground falls for each of <paramref name="everyone"/> in the maze, on
+    /// their feet or not, a drop of their own.
+    /// </summary>
+    public void OnKilled(Entity killer, IReadOnlyList<Entity> present, IReadOnlyList<Entity> everyone, int monster, Vector3 position)
     {
         IReadOnlyList<Entity> members = present.Count == 0 ? [killer] : present;
         var given = experience.GiveForParty(members, monster);
@@ -44,7 +54,7 @@ public sealed partial class KillRewards(ExperienceService experience, DropServic
         LogKilled(logger, monster, killerGot);
 
         results.AddKill(killer, killerGot);
-        drops.DropForKill(killer, monster, position);
+        drops.DropForKill(everyone.Count == 0 ? [killer] : everyone, monster, position);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} killed, {Experience} experience given")]

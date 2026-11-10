@@ -22,6 +22,34 @@ public sealed class MazeProgress(VBatchFile batch, RowIndex<int, InteractionObje
     private Dictionary<int, MazeInteractionValue> Interactions { get; } = InteractionsOf(batch, interactions);
 
     /// <summary>
+    /// The interaction objects only the player who uses them sees change; the others are shown to everyone.
+    /// </summary>
+    private HashSet<int> PrivateInteractions { get; } = batch.EventBox.InterActions
+        .DistinctBy(e => e.Id)
+        .Where(e => interactions.TryGet(e.Interaction, out var row) && row.PrivateActivate == 1)
+        .Select(e => e.Id)
+        .ToHashSet();
+
+    /// <summary>
+    /// The interaction objects whose use counts for the quests of everyone in the maze, not only of the player who uses them.
+    /// </summary>
+    private HashSet<int> PublicQuestInteractions { get; } = batch.EventBox.InterActions
+        .DistinctBy(e => e.Id)
+        .Where(e => interactions.TryGet(e.Interaction, out var row) && row.PublicQuestCheck == 1)
+        .Select(e => e.Id)
+        .ToHashSet();
+
+    /// <summary>
+    /// Whether the use of the interaction object counts for everyone in the maze.
+    /// </summary>
+    public bool CountsForEveryone(int box) => PublicQuestInteractions.Contains(box);
+
+    /// <summary>
+    /// Whether using the interaction object changes it for the player who uses it alone.
+    /// </summary>
+    public bool IsPrivate(int box) => PrivateInteractions.Contains(box);
+
+    /// <summary>
     /// Some sectors are cleared from the start, they have nothing to clear.
     /// </summary>
     private HashSet<int> ClearedSectors { get; } = batch.EventBox.Sectors
