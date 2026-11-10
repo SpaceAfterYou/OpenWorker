@@ -62,6 +62,7 @@ internal static class ItemCatalog
                 SealLimit = item.SealLimit,
                 RestoreLimit = item.RestoreLimit,
                 Properties = BuildProperties(item),
+                UnknownFields = UnknownFields.Of(item),
                 Icon = icons.Get(iconPath)
             });
         }

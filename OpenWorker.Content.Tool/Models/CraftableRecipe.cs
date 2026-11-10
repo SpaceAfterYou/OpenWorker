@@ -31,6 +31,13 @@ public sealed class CraftableRecipe
     /// </summary>
     public required string PathText { get; init; }
 
+    /// <summary>
+    /// Columns still named <c>FieldN</c> on this <c>tb_Make</c> row, if any.
+    /// </summary>
+    public required IReadOnlyList<ItemPropertyRow> UnknownFields { get; init; }
+
+    public bool HasUnknownFields => UnknownFields.Count > 0;
+
     public string MetaText =>
         $"Recipe {RecipeId} · group {Group} · tab {Category}/{SubCategory} · priority {Priority}";
 }

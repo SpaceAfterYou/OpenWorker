@@ -86,6 +86,13 @@ public sealed class ItemEntry
 
     public required IReadOnlyList<ItemPropertyRow> Properties { get; init; }
 
+    /// <summary>
+    /// Columns still named <c>FieldN</c> on <c>tb_Item</c>.
+    /// </summary>
+    public required IReadOnlyList<ItemPropertyRow> UnknownFields { get; init; }
+
+    public bool HasUnknownFields => UnknownFields.Count > 0;
+
     public Bitmap? Icon { get; init; }
 
     public string Subtitle =>

@@ -15,6 +15,13 @@ public sealed class CraftableItemEntry
 
     public required IReadOnlyList<CraftableRecipe> Recipes { get; init; }
 
+    /// <summary>
+    /// Columns still named <c>FieldN</c> on the product's <c>tb_Item</c> row, if any.
+    /// </summary>
+    public required IReadOnlyList<ItemPropertyRow> UnknownFields { get; init; }
+
+    public bool HasUnknownFields => UnknownFields.Count > 0;
+
     public Bitmap? Icon { get; init; }
 
     public int RecipeCount => Recipes.Count;

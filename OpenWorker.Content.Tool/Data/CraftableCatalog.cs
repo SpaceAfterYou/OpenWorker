@@ -97,9 +97,14 @@ internal static class CraftableCatalog
                     BattlePoint = make.BattlePoint,
                     Materials = materials,
                     Requirements = requirements,
-                    PathText = FormatPath(materials, make.Gold, make.BattlePoint, name)
+                    PathText = FormatPath(materials, make.Gold, make.BattlePoint, name),
+                    UnknownFields = UnknownFields.Of(make)
                 });
             }
+
+            var unknown = items.TryGet(group.Key, out var product)
+                ? UnknownFields.Of(product)
+                : [];
 
             entries.Add(new CraftableItemEntry
             {
@@ -107,6 +112,7 @@ internal static class CraftableCatalog
                 Name = name,
                 IconPath = iconPath,
                 Recipes = recipes,
+                UnknownFields = unknown,
                 Icon = icon
             });
         }
