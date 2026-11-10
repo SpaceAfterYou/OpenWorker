@@ -160,6 +160,7 @@ services:
       - eva-01
     volumes:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
 
   openworker.authserver:
     <<: *openworker-server
@@ -222,6 +223,7 @@ services:
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
 
   openworker.districtserver-roccotown:
     <<: *openworker-server
@@ -256,6 +258,7 @@ services:
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.mazeserver:
@@ -287,6 +290,7 @@ services:
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
@@ -325,6 +329,7 @@ services:
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-gracecity:
@@ -360,6 +365,7 @@ services:
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-ruinfortress:
@@ -395,6 +401,7 @@ services:
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.updatecontent:
@@ -416,6 +423,7 @@ services:
       - eva-01
     volumes:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
 networks:
@@ -428,6 +436,11 @@ volumes:
 # Volumes with the data of the client come from SOULWORKER_DATAS, the `datas` folder of an
 # installed client: set it in the shell or in `.env` next to this file, e.g.
 # SOULWORKER_DATAS=/mnt/games/soulworker/datas
+# The tables only the original server has (tb_Status with the size of the soul gauge, the reward tables of a maze,
+# ...) come from SOULWORKER_SERVER_RES, mounted at /app/res-server. Without it the folder of the client tables stands
+# in, and every server-only table is missing: the soul gauge is not counted (the client shows 0 and refuses the skills
+# that cost it), maze ranks give nothing. Set it to the `res` folder of the server build, e.g.
+# SOULWORKER_SERVER_RES=/mnt/reference/wemade_swjp/res
 # Every server ships its defaults in appsettings.json, and they match the services above: the Postgres and
 # Redis containers (ConnectionStrings__Postgres, ConnectionStrings__Redis), the port inside the container
 # (Server__Port) and the addresses clients are sent to (Auth__Host, Gate__Host, Maze__Host, Instance__PublicHost,
