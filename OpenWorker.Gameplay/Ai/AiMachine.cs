@@ -224,6 +224,20 @@ public sealed partial class AiMachine
     }
 
     /// <summary>
+    /// The monster is turned on somebody (a taunt): it cares about the target a great deal, and takes it for its own now.
+    /// </summary>
+    public void Provoke(int target, float aggro)
+    {
+        AddAggro(target, aggro);
+
+        if (_targetId != target && _host.GetTarget(target) is not null)
+        {
+            ChangeTarget(target);
+            ChangeState(AiState.SelectAction);
+        }
+    }
+
+    /// <summary>
     /// The monster is made to take a state, as a script does it.
     /// </summary>
     public void Force(AiState state)

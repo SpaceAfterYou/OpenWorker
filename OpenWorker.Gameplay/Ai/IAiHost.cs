@@ -142,6 +142,11 @@ public interface IAiHost
     void RestoreHealth();
 
     /// <summary>
+    /// Takes every buff and debuff away from the monster: one that is getting back on its feet starts over.
+    /// </summary>
+    void ClearBuffs();
+
+    /// <summary>
     /// Puts the monster on a place and tells everybody.
     /// </summary>
     void Teleport(Vector3 position);

@@ -26,6 +26,51 @@ public readonly record struct DamageStats
 }
 
 /// <summary>
+/// How much of a state a character shrugs off: the share taken from the chance that a buff of that state sticks, out of 10000.
+/// </summary>
+public readonly record struct Resistances
+{
+    public float Burn { get; init; }
+    public float Poison { get; init; }
+    public float Shock { get; init; }
+    public float Bleed { get; init; }
+    public float Stun { get; init; }
+    public float Paralysis { get; init; }
+    public float Sleep { get; init; }
+    public float Freeze { get; init; }
+    public float Charm { get; init; }
+    public float Confusion { get; init; }
+    public float Silence { get; init; }
+    public float Weakness { get; init; }
+}
+
+/// <summary>
+/// The six attributes of damage (light, darkness, cool, abhor, heal, pain): an attack of one of them is held back by the
+/// resistance of the target to it.
+/// </summary>
+public readonly record struct AttributeStats
+{
+    public float Light { get; init; }
+    public float Darkness { get; init; }
+    public float Cool { get; init; }
+    public float Abhor { get; init; }
+    public float Heal { get; init; }
+    public float Pain { get; init; }
+
+    public const int Count = 6;
+
+    public float this[int index] => index switch
+    {
+        0 => Light,
+        1 => Darkness,
+        2 => Cool,
+        3 => Abhor,
+        4 => Heal,
+        _ => Pain
+    };
+}
+
+/// <summary>
 /// What a character is capable of at its level.
 /// </summary>
 public readonly record struct CombatStats
@@ -85,6 +130,31 @@ public readonly record struct CombatStats
     public float StaminaRegen { get; init; }
 
     /// <summary>
+    /// How fast the character moves, in percent of the speed its hero has in the table: 100 is the speed of the table.
+    /// </summary>
+    public float MoveSpeed { get; init; }
+
+    /// <summary>
+    /// How fast the character attacks, in percent of the speed of its animations: 100 is the speed of the table.
+    /// </summary>
+    public float AttackSpeed { get; init; }
+
+    /// <summary>
+    /// What the character resists of the states that buffs put on it.
+    /// </summary>
+    public Resistances Resist { get; init; }
+
+    /// <summary>
+    /// The attack of the character in each attribute of damage.
+    /// </summary>
+    public AttributeStats AttributeAttack { get; init; }
+
+    /// <summary>
+    /// The resistance of the character to each attribute of damage.
+    /// </summary>
+    public AttributeStats AttributeResist { get; init; }
+
+    /// <summary>
     /// What a second adds to the soul gauge of the hero at its fill: the rule of its weapon, with what is added to it.
     /// </summary>
     public float SoulGaugeRegenOf(Hero hero, float maximum, float current)
@@ -128,6 +198,8 @@ public readonly record struct CombatStats
             (STAT_TYPE.STAT_SG_REG, SoulGaugeRegen),
             (STAT_TYPE.STAT_ST_MAX, StaminaMax),
             (STAT_TYPE.STAT_ST_REG, StaminaRegen),
+            (STAT_TYPE.STAT_MSR, MoveSpeed),
+            (STAT_TYPE.STAT_ASR, AttackSpeed),
             (STAT_TYPE.STAT_PATK_MIN, Physical.AttackMin),
             (STAT_TYPE.STAT_PATK_MAX, Physical.AttackMax),
             (STAT_TYPE.STAT_MATK_MIN, Magical.AttackMin),
@@ -146,7 +218,19 @@ public readonly record struct CombatStats
             (STAT_TYPE.STAT_PDSR, Physical.DamageReduction),
             (STAT_TYPE.STAT_MDSR, Magical.DamageReduction),
             (STAT_TYPE.STAT_PARP, Physical.Evasion),
-            (STAT_TYPE.STAT_MARP, Magical.Evasion)
+            (STAT_TYPE.STAT_MARP, Magical.Evasion),
+            (STAT_TYPE.STAT_RES_BURN, Resist.Burn),
+            (STAT_TYPE.STAT_RES_POISON, Resist.Poison),
+            (STAT_TYPE.STAT_RES_SHOCK, Resist.Shock),
+            (STAT_TYPE.STAT_RES_BLEED, Resist.Bleed),
+            (STAT_TYPE.STAT_RES_STUN, Resist.Stun),
+            (STAT_TYPE.STAT_RES_PARALYSIS, Resist.Paralysis),
+            (STAT_TYPE.STAT_RES_SLEEP, Resist.Sleep),
+            (STAT_TYPE.STAT_RES_FREEZE, Resist.Freeze),
+            (STAT_TYPE.STAT_RES_CHARM, Resist.Charm),
+            (STAT_TYPE.STAT_RES_CONFUSION, Resist.Confusion),
+            (STAT_TYPE.STAT_RES_SILENCE, Resist.Silence),
+            (STAT_TYPE.STAT_RES_WEAKNESS, Resist.Weakness)
         ];
     }
 

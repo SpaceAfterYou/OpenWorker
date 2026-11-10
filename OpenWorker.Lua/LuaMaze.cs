@@ -775,6 +775,8 @@ public partial class LuaMaze(
         // The script hears of every skill the player uses.
         Run(State.OnActionSkill(skill, this));
 
+        _buffs.OnCondition(player, MazeBuffs.OnSkill);
+
         var generation = ++member.SkillGeneration;
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
@@ -1206,6 +1208,27 @@ public partial class LuaMaze(
 
         MonstersHit?.Invoke(player, hits.Length, hits.Sum(e => (long)e.Damage));
 
+        // The buffs of the player and of the monsters it hit that answer to a hit: blood, reflection, soul absorption, the cards
+        // that wait for a hit, a critical hit or a miss, and the combo.
+        for (var i = 0; i < targets.Length; i++)
+        {
+            if (hits[i].Damage > 0 && Ecs.IsAlive(targets[i]))
+            {
+                _buffs.AfterHit(player, targets[i], i, hits[i].Damage, Ecs.Get<MonsterCombatComponent>(targets[i]).Stats);
+            }
+
+            var flags = (HitResults)hits[i].DamageFlags;
+
+            _buffs.OnCondition(player, flags.HasFlag(HitResults.Miss) ? MazeBuffs.OnMissedAttack : MazeBuffs.OnAttack);
+
+            if (flags.HasFlag(HitResults.Critical))
+            {
+                _buffs.OnCondition(player, MazeBuffs.OnCriticalAttack);
+            }
+        }
+
+        _buffs.OnHits(player, hits.Count(e => (e.DamageFlags & (byte)HitResults.Miss) == 0));
+
         // Every target hit gives the soul gauge of the attacker a share of what the skill absorbs; the player is told once.
         if (creatureManager.Services?.Gauges is { } gauges && skillDamage.SoulGaugeAbsorb > 0f)
         {
@@ -1306,6 +1329,9 @@ public partial class LuaMaze(
         // A super armor that was broken before this hit lets half as much again through.
         var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
         var result = DamageCalculator.Calculate(attacker, _buffs.StatsOf(target, body.Stats), skill, _buffs.DefenseOf(target, body.Defense), attackRate, Random.Shared, broken);
+
+        result = result with { Damage = _buffs.Adjust(player, target, result.Damage) };
+
         var lost = result.Damage;
 
         if (body.CountsHits)

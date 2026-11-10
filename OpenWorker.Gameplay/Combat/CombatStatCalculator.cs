@@ -63,8 +63,28 @@ public static class CombatStatCalculator
     private const float AttackPerStat = 10f;
     private const float AttackMinShare = 0.8f;
     private const float Percent = 0.01f;
+    private const float SpeedBase = 100f;
 
     private static readonly StatSheet Nothing = new();
+
+    private static Resistances ResistancesOf(StatSheet sheet)
+    {
+        return new Resistances
+        {
+            Burn = sheet.Added(STAT_TYPE.STAT_RES_BURN),
+            Poison = sheet.Added(STAT_TYPE.STAT_RES_POISON),
+            Shock = sheet.Added(STAT_TYPE.STAT_RES_SHOCK),
+            Bleed = sheet.Added(STAT_TYPE.STAT_RES_BLEED),
+            Stun = sheet.Added(STAT_TYPE.STAT_RES_STUN),
+            Paralysis = sheet.Added(STAT_TYPE.STAT_RES_PARALYSIS),
+            Sleep = sheet.Added(STAT_TYPE.STAT_RES_SLEEP),
+            Freeze = sheet.Added(STAT_TYPE.STAT_RES_FREEZE),
+            Charm = sheet.Added(STAT_TYPE.STAT_RES_CHARM),
+            Confusion = sheet.Added(STAT_TYPE.STAT_RES_CONFUSION),
+            Silence = sheet.Added(STAT_TYPE.STAT_RES_SILENCE),
+            Weakness = sheet.Added(STAT_TYPE.STAT_RES_WEAKNESS)
+        };
+    }
 
     public static CombatStats Calculate(in StatusRow status, byte level, byte statusType, in StatBonuses bonuses = default)
     {
@@ -106,6 +126,29 @@ public static class CombatStatCalculator
             SoulGaugeRegenShare = sheet.Share(STAT_TYPE.STAT_SG_REG),
             StaminaMax = status.StaminaFirst + sheet.Added(STAT_TYPE.STAT_ST_MAX),
             StaminaRegen = Final(status.StaminaRegen, sheet, STAT_TYPE.STAT_ST_REG),
+
+            // The speeds are 100 times the constant of the class, and what is added to them counts in percent.
+            MoveSpeed = SpeedBase * status.MoveSpeedRate + sheet.Share(STAT_TYPE.STAT_MSR),
+            AttackSpeed = SpeedBase * status.AttackSpeedRate + sheet.Share(STAT_TYPE.STAT_ASR),
+            Resist = ResistancesOf(sheet),
+            AttributeAttack = new AttributeStats
+            {
+                Light = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_LIGHT),
+                Darkness = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_DARKNESS),
+                Cool = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_COOL),
+                Abhor = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_ABHOR),
+                Heal = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_HEAL),
+                Pain = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_PAIN)
+            },
+            AttributeResist = new AttributeStats
+            {
+                Light = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_RES_LIGHT),
+                Darkness = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_RES_DARKNESS),
+                Cool = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_RES_COOL),
+                Abhor = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_RES_ABHOR),
+                Heal = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_RES_HEAL),
+                Pain = sheet.Added(STAT_TYPE.STAT_ATTRIBUTE_RES_PAIN)
+            },
             Physical = new DamageStats
             {
                 AttackMax = physicalAttack,

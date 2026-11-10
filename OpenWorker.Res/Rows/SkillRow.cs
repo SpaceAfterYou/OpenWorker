@@ -27,7 +27,7 @@ public readonly partial struct SkillRow(BinaryReader reader)
     public byte SkipPriorityGroup { get; } = reader.ReadByte();
     public byte SkillType { get; } = reader.ReadByte();
     public byte PassiveType { get; } = reader.ReadByte();
-    public byte Field18 { get; } = reader.ReadByte();
+    public byte BehaviorCondition { get; } = reader.ReadByte();
     public short PassiveValue { get; } = reader.ReadInt16();
     public float BasicDamage { get; } = reader.ReadSingle();
     public float AddDamage { get; } = reader.ReadSingle();

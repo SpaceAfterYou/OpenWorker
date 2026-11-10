@@ -102,6 +102,7 @@ public sealed class ItemUseService(
     // The kind of effect in the item row that names a booster, a buff, an aura and a title.
     private const int BoosterEffect = 3;
     private const int BuffEffect = 1;
+    private const int AuraEffect = 2;
     private const int TitleEffect = 4;
     private const int ClassBoxEffect = 7;
 
@@ -425,7 +426,14 @@ public sealed class ItemUseService(
             return ItemUseResult.Refused(ItemUseCodes.NoRevive);
         }
 
-        if (row.EffectType != BuffEffect || !_field.GiveBuff(player, row.EffectValue))
+        var given = row.EffectType switch
+        {
+            BuffEffect => _field.GiveBuff(player, row.EffectValue),
+            AuraEffect => _field.GiveAura(player, row.EffectValue),
+            _ => false
+        };
+
+        if (!given)
         {
             return ItemUseResult.Refused();
         }

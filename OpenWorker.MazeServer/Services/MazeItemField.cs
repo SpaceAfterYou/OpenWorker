@@ -42,6 +42,11 @@ public sealed class MazeItemField(
         return MazeOf(player) is { } maze && maze.Buffs.Give(player, buff, owner: 0, roll: false);
     }
 
+    public bool GiveAura(Entity player, int aura)
+    {
+        return MazeOf(player) is { } maze && maze.Buffs.SetAura(player, aura);
+    }
+
     private LuaMaze? MazeOf(Entity player)
     {
         return world.IsAlive(player) && world.TryGet(player, out LuaMaze? maze) && maze is { IsClosed: false } && maze.Members.Contains(player) ? maze : null;

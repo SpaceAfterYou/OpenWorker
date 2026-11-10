@@ -84,6 +84,7 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
         var final = Of(player);
 
         Remember(player, origin, final);
+        KeepSpeeds(player, final);
 
         // The life the player enters with is kept to the greatest its stats give.
         if (world.TryGet<AbilityComponent>(player, out var ability) && ability.Health.Max != (int)Math.Max(1f, final.MaxHealth))
@@ -117,6 +118,18 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
     }
 
     /// <summary>
+    /// Something the stats depend on changed (a booster began or ended): the player is told what changed in its stats if it has
+    /// been told them already. A player who is still entering is told everything when it has entered.
+    /// </summary>
+    public void Refresh(Entity player)
+    {
+        if (world.IsAlive(player) && world.TryGet<ShownStatsComponent>(player, out var shown) && shown.Known)
+        {
+            Send(player);
+        }
+    }
+
+    /// <summary>
     /// Works the stats of the player out again and tells it what changed: its origin stats when its level changed them (03/51),
     /// and the stats that differ from what it was told (03/34). The greatest life and the sizes of the gauges follow the new
     /// stats. Nothing is sent when nothing changed.
@@ -138,6 +151,7 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
         var final = Of(player);
 
         Remember(player, origin, final);
+        KeepSpeeds(player, final);
 
         var changed = CombatStats.Differences(shown.Final, final);
         var stats = new List<ST_STAT>(changed.Count + 3);
@@ -175,6 +189,23 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
         if (stats.Count > 0)
         {
             session.Send(new PersonUpdateStatListResponse { Type = Changed, Actor = actor, Stats = stats });
+        }
+    }
+
+    /// <summary>
+    /// The speeds in the stats are the ones the player moves and attacks with: the move that the pace of the server allows
+    /// follows them. A hero with no speed in its stats keeps the speed of the table.
+    /// </summary>
+    private void KeepSpeeds(Entity player, in CombatStats stats)
+    {
+        if (stats.MoveSpeed <= 0f || !world.TryGet<AbilityComponent>(player, out var ability))
+        {
+            return;
+        }
+
+        if (ability.Speed.Move != stats.MoveSpeed || ability.Speed.Attack != stats.AttackSpeed)
+        {
+            world.Set(player, ability with { Speed = new SpeedComponentEntry { Move = stats.MoveSpeed, Attack = stats.AttackSpeed } });
         }
     }
 

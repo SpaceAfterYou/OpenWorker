@@ -57,6 +57,8 @@ public sealed class GearStats
     private readonly RowIndex<int, ItemRepairRow> _repairs;
     private readonly RowIndex<short, BroachSetRow> _broachSets;
     private readonly RowIndex<ushort, BuffRow> _buffs;
+    private readonly RowIndex<int, ItemRollRow> _rolls;
+    private readonly RowIndex<int, ReinforceOptionRow> _reinforceOptions;
 
     public GearStats(
         ItemCatalog items,
@@ -64,8 +66,12 @@ public sealed class GearStats
         ReadOnlyCollection<ItemSetItemRow>? sets = null,
         ReadOnlyCollection<ItemRepairRow>? repairs = null,
         ReadOnlyCollection<BroachSetRow>? broachSets = null,
-        ReadOnlyCollection<BuffRow>? buffs = null)
+        ReadOnlyCollection<BuffRow>? buffs = null,
+        ReadOnlyCollection<ItemRollRow>? rolls = null,
+        ReadOnlyCollection<ReinforceOptionRow>? reinforceOptions = null)
     {
+        _rolls = (rolls ?? Empty<ItemRollRow>()).IndexBy(e => e.Id);
+        _reinforceOptions = (reinforceOptions ?? Empty<ReinforceOptionRow>()).IndexBy(e => e.Id);
         _items = items;
         _reinforce = (reinforce ?? Empty<ReinforceRow>()).IndexBy(e => e.Id);
         _sets = (sets ?? Empty<ItemSetItemRow>()).IndexBy(e => e.Id);
@@ -134,6 +140,32 @@ public sealed class GearStats
     }
 
     /// <summary>
+    /// The buffs the clothing of a person gives by its broaches: one for each group of three broaches of one theme, as the table
+    /// of the sets names it.
+    /// </summary>
+    public void BroachSetBuffs(Inventory? inventory, List<ushort> buffs)
+    {
+        if (inventory?.Find(StorageGroup.ShapeEquip) is not { } clothing)
+        {
+            return;
+        }
+
+        foreach (var item in clothing.Slots)
+        {
+            if (item is not null && item.Broaches.Length > 0)
+            {
+                for (var group = 0; group < BroachGroups && (group + 1) * BroachesPerGroup <= item.Broaches.Length; group++)
+                {
+                    if (BroachSetOf(item.Broaches, group) is { } buff && !buffs.Contains((ushort)buff.Id))
+                    {
+                        buffs.Add((ushort)buff.Id);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// The share of its stats a piece of equipment keeps at its endurance: all of it while it is whole, less the penalty of the
     /// repair table for the endurance it has fallen to, nothing at zero.
     /// </summary>
@@ -151,9 +183,22 @@ public sealed class GearStats
     {
         var share = EnduranceShare(row, item);
 
-        sheet.Add(STAT_TYPE.STAT_PATK_MAX, row.PhysicalAttack * share);
+        // The attack and the defence of an item are rolled when it is made, between the least the table says and the most the
+        // server's table says; the roll of an item is the same every time it is looked at.
+        var attack = row.PhysicalAttack;
+        var defense = row.PhysicalDefense;
+
+        if (_rolls.TryGet(item.Item, out var roll))
+        {
+            attack = Rolled(item.Serial, attack, roll.Attack, 1);
+            defense = Rolled(item.Serial, defense, roll.Defense, 2);
+
+            CollectUpgradeOptions(item, roll, share, sheet);
+        }
+
+        sheet.Add(STAT_TYPE.STAT_PATK_MAX, attack * share);
         sheet.Add(STAT_TYPE.STAT_MATK_MAX, row.MagicalAttack * share);
-        sheet.Add(STAT_TYPE.STAT_PDEF, row.PhysicalDefense * share);
+        sheet.Add(STAT_TYPE.STAT_PDEF, defense * share);
         sheet.Add(STAT_TYPE.STAT_MDEF, row.MagicalDefense * share);
 
         CollectStaticOptions(row, share, sheet);
@@ -171,8 +216,8 @@ public sealed class GearStats
         {
             var rate = reinforce.StatRate(item.Upgrade) * Percent * share;
 
-            sheet.Add(STAT_TYPE.STAT_PATK_MAX, row.PhysicalAttack * rate);
-            sheet.Add(STAT_TYPE.STAT_PDEF, row.PhysicalDefense * rate);
+            sheet.Add(STAT_TYPE.STAT_PATK_MAX, attack * rate);
+            sheet.Add(STAT_TYPE.STAT_PDEF, defense * rate);
         }
 
         var open = Math.Min(item.SocketActive, item.Sockets.Length);
@@ -194,6 +239,48 @@ public sealed class GearStats
                 {
                     sheet.Apply(option.Type, option.Option * share);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// A value between the least and the most of an item, picked by its serial: the same item always rolls the same, and items
+    /// are spread over the range as the original's roll at creation spreads them.
+    /// </summary>
+    internal static int Rolled(long serial, int least, int most, int salt)
+    {
+        if (most <= least)
+        {
+            return least;
+        }
+
+        var mixed = unchecked((ulong)serial + (ulong)salt * 0x9E3779B97F4A7C15UL);
+
+        mixed = (mixed ^ (mixed >> 30)) * 0xBF58476D1CE4E5B9UL;
+        mixed = (mixed ^ (mixed >> 27)) * 0x94D049BB133111EBUL;
+        mixed ^= mixed >> 31;
+
+        return least + (int)(mixed % (ulong)(most - least + 1));
+    }
+
+    /// <summary>
+    /// The options the upgrade of an item gives: each begins at a level, and the options whose level the item has reached count.
+    /// Only the options that are stat effects count here.
+    /// </summary>
+    private void CollectUpgradeOptions(ItemInstance item, in ItemRollRow roll, float share, StatSheet sheet)
+    {
+        if (item.Upgrade == 0 || roll.ReinforceOption == 0 || !_reinforceOptions.TryGet(roll.ReinforceOption, out var options))
+        {
+            return;
+        }
+
+        for (var place = 0; place < ReinforceOptionRow.Options; place++)
+        {
+            var (phase, kind, effect, value) = options.Option(place);
+
+            if (phase != 0 && item.Upgrade >= phase && kind == 1)
+            {
+                sheet.Apply(effect, value * share);
             }
         }
     }
@@ -299,32 +386,7 @@ public sealed class GearStats
 
         for (var group = 0; group < BroachGroups && (group + 1) * BroachesPerGroup <= broaches.Length; group++)
         {
-            var theme = 0;
-            var code = 0;
-            var full = true;
-
-            for (var place = 0; place < BroachesPerGroup; place++)
-            {
-                var broach = broaches[group * BroachesPerGroup + place];
-
-                if (broach < 1 || !_items.TryGet(broach, out var row) || row.EffectType != BroachOfASet || (theme != 0 && theme != row.EffectValue))
-                {
-                    full = false;
-                    break;
-                }
-
-                theme = row.EffectValue;
-                code = code * 10 + row.Rank;
-            }
-
-            if (!full || theme == 0)
-            {
-                continue;
-            }
-
-            code += 10000 * theme + 1000 * (group + 1);
-
-            if (code <= short.MaxValue && _broachSets.TryGet((short)code, out var set) && _buffs.TryGet((ushort)set.Buff, out var buff))
+            if (BroachSetOf(broaches, group) is { } buff)
             {
                 (byte Type, int Value)[] stats = [(buff.Stat1, buff.Value1), (buff.Stat2, buff.Value2), (buff.Stat3, buff.Value3)];
 
@@ -337,6 +399,38 @@ public sealed class GearStats
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// The buff of a group of three broaches, when they are all broaches of a set and of one theme and the table names the set
+    /// they make: the set is named by the theme, the place of the group and the ranks of the three broaches.
+    /// </summary>
+    private BuffRow? BroachSetOf(int[] broaches, int group)
+    {
+        var theme = 0;
+        var code = 0;
+
+        for (var place = 0; place < BroachesPerGroup; place++)
+        {
+            var broach = broaches[group * BroachesPerGroup + place];
+
+            if (broach < 1 || !_items.TryGet(broach, out var row) || row.EffectType != BroachOfASet || (theme != 0 && theme != row.EffectValue))
+            {
+                return null;
+            }
+
+            theme = row.EffectValue;
+            code = code * 10 + row.Rank;
+        }
+
+        if (theme == 0)
+        {
+            return null;
+        }
+
+        code += 10000 * theme + 1000 * (group + 1);
+
+        return code <= short.MaxValue && _broachSets.TryGet((short)code, out var set) && _buffs.TryGet((ushort)set.Buff, out var buff) ? buff : null;
     }
 
     private static ReadOnlyCollection<T> Empty<T>() => new([]);

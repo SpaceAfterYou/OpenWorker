@@ -45,5 +45,10 @@ public enum PersonStateKind : byte
     /// <summary>
     /// How often the person has entered each maze today, and how many free revives it has used.
     /// </summary>
-    MazeEntry = 13
+    MazeEntry = 13,
+
+    /// <summary>
+    /// The buffs the person carries from one server to the next and through a relog, with the time they have left.
+    /// </summary>
+    Buffs = 14
 }

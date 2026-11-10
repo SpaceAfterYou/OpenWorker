@@ -3,6 +3,8 @@ using Arch.Core;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.Boosters.Components;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
@@ -45,6 +47,13 @@ public readonly record struct MonsterCombatComponent
     /// Has to die for its sector to be finished.
     /// </summary>
     public bool HoldsSector { get; init; }
+
+    /// <summary>
+    /// The rank of the monster in its table: 3, 4 and 5 are bosses.
+    /// </summary>
+    public byte Rank { get; init; }
+
+    public bool IsBoss => Rank is 3 or 4 or 5;
 }
 
 public sealed class CombatTables(
@@ -55,7 +64,8 @@ public sealed class CombatTables(
     TitleCatalog? titles = null,
     ItemCatalog? items = null,
     ReadOnlyCollection<StatusSoulGaugeRow>? soulGauges = null,
-    GearStats? gear = null)
+    GearStats? gear = null,
+    BoosterCatalog? boosters = null)
 {
     private static readonly StatSheet Nothing = new();
 
@@ -185,12 +195,40 @@ public sealed class CombatTables(
             AddTitles(sheet, title, hero);
         }
 
+        // A booster of the status kind raises stats for as long as the person has it.
+        if (boosters is not null && world.TryGet<BoosterComponent>(player, out var booster) && booster.Book is { } boosterBook)
+        {
+            foreach (var entry in boosterBook.Boosters)
+            {
+                AddBooster(sheet, entry.Booster);
+            }
+        }
+
         if (world.TryGet<BuffBookComponent>(player, out var buffs) && buffs.Book is { } book)
         {
             sheet.Apply(book.StatEffects);
         }
 
         return sheet;
+    }
+
+    /// <summary>
+    /// The stats a booster gives: each of its status effects names a stat effect (as the effects of items and buffs do) and its value.
+    /// </summary>
+    private void AddBooster(StatSheet sheet, short booster)
+    {
+        if (boosters is null || !boosters.TryGet(booster, out var definition))
+        {
+            return;
+        }
+
+        foreach (var effect in definition.Effects)
+        {
+            if (effect.Effect == BoosterEffect.Status)
+            {
+                sheet.Apply((int)effect.Apply, effect.Value);
+            }
+        }
     }
 
     /// <summary>
@@ -242,7 +280,8 @@ public sealed class CombatTables(
             BodyRadius = row.CollisionRadius > 0 ? row.CollisionRadius : DefaultBodyRadius,
             BodyHeight = row.CollisionHeight > 0 ? row.CollisionHeight : DefaultBodyHeight,
             CountsHits = row.Type == HitCountingMonster,
-            HoldsSector = HoldsSector(row)
+            HoldsSector = HoldsSector(row),
+            Rank = row.Rank
         };
     }
 

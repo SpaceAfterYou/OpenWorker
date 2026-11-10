@@ -727,6 +727,22 @@ public sealed class LuaCreatureManager
     private const float AggroPerDamage = 0.0004f;
 
     /// <summary>
+    /// What a taunt adds to the care of a monster for whoever gave it: more than a fight adds in any one hit.
+    /// </summary>
+    private const float TauntAggro = 5f;
+
+    /// <summary>
+    /// A buff turns the monster on the actor that gave it.
+    /// </summary>
+    internal void Provoke(Entity monster, int actor)
+    {
+        if (Bodies.TryGetValue(monster, out var body))
+        {
+            body.Machine.Provoke(actor, TauntAggro);
+        }
+    }
+
+    /// <summary>
     /// How much a monster with super armor can take before it breaks, as a share of its health. The tables of this client
     /// do not say, so this is a guess.
     /// </summary>
@@ -1053,7 +1069,7 @@ public sealed class LuaCreatureManager
     internal void HitPlayers(MonsterBody attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims)
     {
         // An attack for the side of the monster, or one that only gives a buff, hurts nobody.
-        if (trigger.ForAllies || (trigger.Buff > 0 && trigger.DamageRate <= 0f))
+        if (trigger.ForAllies || ((trigger.Buff > 0 || trigger.Aura > 0) && trigger.DamageRate <= 0f))
         {
             Buffs?.GiveFromAttack(attacker.Entity, trigger, victims);
 
@@ -1083,7 +1099,20 @@ public sealed class LuaCreatureManager
             var result = shielded
                 ? new DamageResult(0, HitResults.None)
                 : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random);
+
+            if (Buffs is not null && !shielded)
+            {
+                result = result with { Damage = Buffs.Adjust(attacker.Entity, victim, result.Damage) };
+            }
+
             var left = Vitals.Hurt(victim, result.Damage);
+
+            Buffs?.AfterHit(attacker.Entity, victim, hits.Count, result.Damage, default);
+
+            if (Buffs is not null && !shielded)
+            {
+                Buffs.OnCondition(victim, result.Flags.HasFlag(HitResults.Critical) ? MazeBuffs.OnCriticallyDamaged : result.Flags.HasFlag(HitResults.Miss) ? MazeBuffs.OnDamagedMissed : MazeBuffs.OnDamaged);
+            }
 
             hits.Add(default(SkillDmgValue) with
             {

@@ -32,6 +32,12 @@ public interface IItemField
     /// Gives the person a buff for sure, as an item does; false when the person cannot carry it now.
     /// </summary>
     bool GiveBuff(Entity player, int buff);
+
+    /// <summary>
+    /// Puts an aura on the person, as an item does (it gives its buff to those around the person for a while); false where
+    /// there are no auras.
+    /// </summary>
+    bool GiveAura(Entity player, int aura) => false;
 }
 
 /// <summary>

@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Buffs;
@@ -25,12 +26,37 @@ public enum BuffEffect : ushort
     /// <summary>With the stat 66 the skills of the carrier cost no soul gauge and cool down by the value, in percent.</summary>
     FreeSkills = 7,
 
+    /// <summary>The carrier is not shown or is shown differently; the server only keeps it.</summary>
+    Hidden = 2,
+
+    /// <summary>The damage the carrier takes is also taken from its life again, by the value in percent.</summary>
+    Reflection = 8,
+
+    /// <summary>The carrier takes back life from the damage it deals, by the value in percent, for as many targets of a hit as its first stat says.</summary>
+    Blood = 9,
+
     /// <summary>Only one of these per owner: buffs of this effect from different owners stand side by side.</summary>
     PerOwner = 10,
 
     /// <summary>Takes away the buffs of the effect named by its first value.</summary>
     Cleanse = 11,
+
+    /// <summary>The one who gave it, and its friends, take back life from the damage they deal to the carrier.</summary>
+    BloodDebuff = 12,
+
+    /// <summary>The damage rolls of the carrier are always the greatest.</summary>
+    FixedMaxDamage = 13,
+
+    /// <summary>The damage the summons of the carrier deal once is the value, in percent, of what it would be.</summary>
+    MultipleDamageOnce = 14,
+
     DoubleSoulAbsorb = 15,
+
+    /// <summary>The super armor the attacks of the carrier take from a target is more by the value.</summary>
+    BuffSuperArmor = 16,
+
+    /// <summary>The gold the carrier gets is more by the value, in percent.</summary>
+    GoldRate = 19,
 
     /// <summary>The cooldowns of the carrier are shorter by its first value, in hundredths of a percent.</summary>
     Cooldown = 17,
@@ -44,11 +70,23 @@ public enum BuffEffect : ushort
     /// <summary>Gives the buffs its three values name instead of itself.</summary>
     Bundle = 24,
 
+    /// <summary>A hit of the carrier gives its soul gauge a share of the size of the gauge, by the value in ten-thousandths.</summary>
+    SoulAbsorb = 25,
+
     /// <summary>Takes its first value, in percent, of the greatest life of the carrier once, when it is given.</summary>
     LifeCut = 26,
 
+    /// <summary>The damage the carrier does to a boss is more by the value, in percent.</summary>
+    BossAttackAdd = 28,
+
+    /// <summary>The damage a boss does to the carrier is less by the value, in percent.</summary>
+    BossAttackedDown = 29,
+
     /// <summary>What a skill costs in soul gauge is less by its first value, in percent.</summary>
     SoulCost = 30,
+
+    /// <summary>All the damage the carrier does is more by the value, in percent.</summary>
+    AllAttackAdd = 31,
 
     Burn = 111,
     Poison = 112,
@@ -79,6 +117,7 @@ public enum BuffEffect : ushort
 /// <param name="KeepOn">What does not take the buff away: 1 death, 2 leaving the game.</param>
 /// <param name="CallOutBuff">The buff that follows when this one runs out.</param>
 /// <param name="ChangeBuff">The buff the group turns into when it has stacked to the top.</param>
+/// <param name="SystemType">0 an ordinary buff; 1 one that a boss is not given; 2 and 3 are not held back by resistances and do not roll their chance, 3 also gets through immunity. Only the server's own table has it.</param>
 public readonly record struct BuffDefinition(
     ushort Id,
     byte AllowedPlaces,
@@ -97,7 +136,8 @@ public readonly record struct BuffDefinition(
     ushort ChangeBuff,
     BuffStat Stat1,
     BuffStat Stat2,
-    BuffStat Stat3)
+    BuffStat Stat3,
+    byte SystemType = 0)
 {
     public const byte KeptOnDeath = 1;
 
@@ -110,6 +150,21 @@ public readonly record struct BuffDefinition(
 
     public const byte Maze = 2;
 
+    public const byte District = 4;
+
+    public const byte BattleZone = 8;
+
+    /// <summary>
+    /// Whether the buff may be on someone in a place: the places the table names, or anywhere.
+    /// </summary>
+    /// <param name="place">One of <see cref="Maze"/>, <see cref="District"/> and <see cref="BattleZone"/>.</param>
+    public bool AllowedIn(byte place) => (AllowedPlaces & (Anywhere | place)) != 0;
+
+    /// <summary>
+    /// Resistances do not hold the buff back and its chance is not rolled.
+    /// </summary>
+    public bool IgnoresResistance => SystemType is 2 or 3;
+
     public bool Lasts => Duration <= 0f;
 
     /// <summary>
@@ -121,6 +176,26 @@ public readonly record struct BuffDefinition(
     /// Stuns, paralyses, sleeps, freezes, charms and confusions: one of them replaces another.
     /// </summary>
     public bool Controls => Effect is >= BuffEffect.Stun and <= BuffEffect.Confusion;
+
+    /// <summary>
+    /// What the carrier resists of this buff: the states a buff puts on someone are held back by a resistance.
+    /// </summary>
+    public float ResistanceOf(in Resistances resist) => Effect switch
+    {
+        BuffEffect.Burn => resist.Burn,
+        BuffEffect.Poison => resist.Poison,
+        BuffEffect.Shock => resist.Shock,
+        BuffEffect.Bleed => resist.Bleed,
+        BuffEffect.Stun => resist.Stun,
+        BuffEffect.Paralysis => resist.Paralysis,
+        BuffEffect.Sleep => resist.Sleep,
+        BuffEffect.Freeze => resist.Freeze,
+        BuffEffect.Charm => resist.Charm,
+        BuffEffect.Confusion => resist.Confusion,
+        BuffEffect.Silence => resist.Silence,
+        BuffEffect.Weakness => resist.Weakness,
+        _ => 0f
+    };
 
     public static BuffDefinition From(in BuffRow row)
     {

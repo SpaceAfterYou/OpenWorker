@@ -47,8 +47,14 @@ main stat does nothing. Every other stat is worked out from the main stats with 
 | Stamina | first + number; its regeneration × (1 + share) + number |
 | Soul gauge | first (server table) × (1 + share) + number; a second adds the rule of the weapon + number + rule × share |
 
-The stats the calculator holds are the ones the client's stat window and the fight use (30 of them). Move and attack speed,
-resistances to states and attributes, PvP and the rest are collected in the sheet but not held: nothing reads them yet.
+| Move speed, attack speed | 100 times the speed constant of the class (`tb_Status`, 1 for every hero) plus the shares added (effects 31 and 32): 100 is the speed of the table |
+| Resistance to a state (burn, poison, shock, bleed, stun, paralysis, sleep, freeze, charm, confusion, silence, weakness) | the numbers added (effects 57 to 59 and 67 to 75) |
+| Attack and resistance of an attribute (light, darkness, cool, abhor, heal, pain) | the numbers added (effects 80 to 91); held for the damage of attributes, which is not built; the client does not take stats past 60 |
+
+The stats the calculator holds are the ones the client's stat window and the fight use (the old 30, the two speeds and the twelve
+resistances). PvP and the rest are collected in the sheet but not held: nothing reads them yet. The move speed of the stats is what
+the pace check of the server reads (`AbilityComponent.Speed`, kept in step by the stats service), so a buff of speed lets the player
+run that much faster without being refused, and a debuff of speed slows the limit down.
 
 ## Gear
 
@@ -79,10 +85,10 @@ Costume sets (`tb_Item_CostumeSet`) give gestures, not stats.
 ## Titles, cards, the deck, passives, the league, buffs
 
 - The two titles chosen for the abilities add their effects of group 0; the titles owned and those shown add nothing.
-- The cards of the akashic record book add nothing: in the original the passive cards of the card deck give buffs by chance,
-  which are not built.
+- The cards of the akashic record book add nothing to the stats; the passive cards of the quick slots give buffs by chance
+  (`docs/notes-buffs.md`).
 - The deck bonus is a bonus of a skill (damage, cooldown, cost), not a stat (`docs/notes-buffs.md`).
-- Passive skills give buffs in the original: not built.
+- Passive skills give buffs (`docs/notes-buffs.md`); boosters of the status kind add stats through the sheet while the person has them.
 - The league gives nothing to the stats in this client (its skills work on experience, prices and credit).
 - Buffs are added last, through the same map; a buff of a current value is not a stat (`docs/notes-buffs.md`).
 
@@ -116,6 +122,19 @@ does not carry option 118 (fixed endurance), in the item table or rolled. What w
 u8 endurance)`, the client sets the endurance of the item and warns at 50 and below), written by the flush, and its stats fall
 as the repair table says. A repair gives the endurance back and the stats with it.
 
+## The attack of an item, and the options of an upgrade
+
+The client's item table has one number for the attack and one for the defence; the server's own `tb_Item` has two. For 917 of the
+5544 items the two tables share, the client's number is the **least** (900 equal it, 442 equal the most, and in 17 neither), and the
+most is the server's. The original rolls the attack and the defence of an item between the two when the item is made, and keeps the roll
+with the item; the client 1.4.2.3 never receives it. Here (`ItemRollRow`, an optional server table, and `GearStats.Rolled`) the roll is
+picked by the serial of the item, so it needs no column and an item rolls the same every time; the range is the original's, the
+distribution is even. Without the server's table the least is used, as before.
+
+The server's `tb_Item` also names, for each item, a row of `tb_Reinforce_Option`: up to five options, each from the level of upgrade it
+begins at, with a class (1 a stat effect, 2 a skill option, which is not built), an effect and a value. The stat options count once the
+item has reached their level (`ReinforceOptionRow`).
+
 ## Item creation
 
 `InventoryService.Create` now gives a new item (`ItemOptionRoller`):
@@ -134,19 +153,21 @@ as the repair table says. A repair gives the endurance back and the stats with i
 | Effects onto stats | a fixed map, number or share | the same map | same |
 | Order of number and share | per stat: most grow by the share then take the number; magical attack, magical defence and magical evasion take the number first | same | same |
 | Recalculation | only the stats that changed and those listed under them; the physical defence is not listed under agility | everything at every change | fixed: an agility change alone did not move the physical defence |
-| Attack and defence of an item | rolled per item between a least and a most | the value of the table | kept different: the client 1.4.2.3 has neither the least nor the attack in the item it is sent |
+| Attack and defence of an item | rolled per item between a least and a most, kept with the item | rolled between the client's least and the server's most, picked by the serial | kept different: not stored; the client 1.4.2.3 does not receive the roll |
 | Stat options of an item | class 0 a stat, others a function option | same | fixed (read as a hero restriction before) |
 | Rolled options | at creation from the server's option table | same | fixed (none before) |
 | Upgrade | share of the upgrade table × (attack and defence + title value) | share × attack and defence | same: no item titles in this client |
-| Options of the upgrade level | a table of options by level | not applied | kept different: the client's item table has no such column |
+| Options of the upgrade level | a table of options by level | the stat options, from the server's two tables | same for the stat options; skill options not built |
 | Item titles | rolled at creation, add attack and defence | not done | the client 1.4.2.3 has none |
 | Gems | as above | same | same |
 | Endurance on stats | penalty of the repair table | same | same |
 | Sets | levels 2 to the count worn | same | same |
-| Broaches and broach sets | options; the set gives a buff, shown when it is the chosen effect | options; the stats of the set's buff | kept different: no buff icon, no choice of the shown effect |
+| Broaches and broach sets | options; the set gives a buff, shown when it is the chosen effect | options; the stats of the set's buff, and the buff shown | kept different: no choice of the shown effect |
 | Titles | the ability pair | same | same |
 | Akashic book, deck bonus, league | no stats | no stats | same |
-| Passive skills, passive cards, boosters | buffs | not done | not done |
+| Passive skills, passive cards, boosters | buffs; a booster's status effects are stats | buffs (`docs/notes-buffs.md`); boosters through the sheet | same |
+| Move and attack speed, resistances | stats of the character | stats of the character, in 03/34 | same |
+| Buff of a broach set | a buff on the wearer, in a city too | a buff on the wearer shown only; the stats counted by the gear | kept different: no chosen effect |
 | Messages at entry | origin list and whole list | same, stats below 61 | same for the client |
 | Messages on a change | changed stats, life and gauges broadcast to the others | changed stats to the player; the party hears life through its own messages | kept different: the client's own stats are told |
 | Endurance table | per hero | same | same |
@@ -162,12 +183,21 @@ as the repair table says. A repair gives the endurance back and the stats with i
 
 ## To check with the real client
 
+- That the stat window shows the speeds and the resistances the client keeps (stats 18, 19 and 49 to 60 are below the 61 it keeps)
+  and the line it prints for a rising speed; that the speed felt is the speed told (a buff of speed in a maze).
+- That the icon of a broach set's buff shows in a city when the three broaches of a set are in the clothing worn.
+
 - That the stat window shows the hero's own stats and the bonus of gear after entry (03/51 and 03/34 type 1).
 - That putting a weapon on raises the attack in the stat window, and the chat line the client prints for a rising stat.
 - That 18/12 lowers the endurance shown on the item and warns at 50.
 - That a set's bonus and the buff of a broach set show in the stat window.
 
 ## Tests
+
+`PlayerSpeedsTest`: the speeds are 100 plus the shares of the buffs, the resistances the numbers added, the player is told both and the
+speed the pace allows follows; a booster of the status kind raises the stats while the person has it. `GearRollTest`: the attack of an
+item is rolled between its least and its most, the same every time, spread over the range; the options of the upgrade count from
+their level. `ServerTablesTest` reads the server's item table and the table of the upgrade options to their end.
 
 `PlayerStatsTest` (tables made by the test): gear put on adds its stats and the player is told, taken off removes them,
 nothing is sent when nothing changed; the stats sent are those the fight uses; an upgrade, a gem in an open socket and three

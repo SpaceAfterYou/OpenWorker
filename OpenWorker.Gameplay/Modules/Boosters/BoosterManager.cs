@@ -1,6 +1,7 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Boosters.Components;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot;
@@ -20,7 +21,8 @@ public sealed partial class BoosterManager(
     PersonStateStore store,
     BoosterCatalog catalog,
     TimeProvider time,
-    ILogger<BoosterManager> logger) : IMiscTick
+    ILogger<BoosterManager> logger,
+    PlayerStatsService? stats = null) : IMiscTick
 {
     private static readonly QueryDescription Everyone = new QueryDescription().WithAll<BoosterComponent>();
 
@@ -44,6 +46,7 @@ public sealed partial class BoosterManager(
         world.Set(player, new BoosterComponent { Person = person, Book = book, Area = area, LastTick = now });
 
         SendList(player, book, area, now);
+        stats?.Refresh(player);
 
         if (book.Boosters.Count != before)
         {
@@ -90,6 +93,7 @@ public sealed partial class BoosterManager(
         }
 
         BoosterRules.Charge(definition, entry, milliseconds, now.ToUnixTimeSeconds());
+        stats?.Refresh(player);
 
         session.Send(new BoosterAddResponse
         {
@@ -114,6 +118,7 @@ public sealed partial class BoosterManager(
 
         world.Get<ServerSessionComponent>(player)
             .Send(new BoosterRemoveResponse { Id = booster });
+        stats?.Refresh(player);
 
         await SaveAsync(player, component.Book, cancellationToken);
 
@@ -134,6 +139,7 @@ public sealed partial class BoosterManager(
 
         world.Get<ServerSessionComponent>(player)
             .Send(new BoosterClearResponse());
+        stats?.Refresh(player);
 
         await SaveAsync(player, component.Book, cancellationToken);
     }
@@ -241,6 +247,8 @@ public sealed partial class BoosterManager(
 
         if (changed)
         {
+            stats?.Refresh(player);
+
             await SaveAsync(player, book, cancellationToken);
         }
     }

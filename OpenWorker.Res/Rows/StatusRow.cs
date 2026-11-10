@@ -24,8 +24,8 @@ public readonly partial struct StatusRow(BinaryReader reader)
     public float HealthPerVitality { get; } = reader.ReadSingle();
     public float StaminaRegen { get; } = reader.ReadSingle();
     public float SoulGaugeRegen { get; } = reader.ReadSingle();
-    public float Field16 { get; } = reader.ReadSingle();
-    public float Field17 { get; } = reader.ReadSingle();
+    public float MoveSpeedRate { get; } = reader.ReadSingle();
+    public float AttackSpeedRate { get; } = reader.ReadSingle();
     public float PhysicalAttackRate { get; } = reader.ReadSingle();
     public float MagicalAttackRate { get; } = reader.ReadSingle();
     public float PhysicalDefenseRate { get; } = reader.ReadSingle();
