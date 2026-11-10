@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+  </Configurations>
+  <Folder Name="/Content Tool/">
+    <Project Path="OpenWorker.Content.Tool/OpenWorker.Content.Tool.csproj" />
+    <Project Path="OpenWorker.Res/OpenWorker.Res.csproj" />
+    <Project Path="OpenWorker.Extensions/OpenWorker.Extensions.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenWorker.Content.Tool.ViewModels"
+             xmlns:models="using:OpenWorker.Content.Tool.Models"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="OpenWorker.Content.Tool.Views.CraftablesView"
+             x:DataType="vm:CraftablesViewModel">
+
+    <DockPanel Margin="12">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock DockPanel.Dock="Left"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       FontSize="18"
+                       Text="Craftable items" />
+            <TextBox PlaceholderText="Filter by name, id or path…"
+                     Text="{Binding Filter}"
+                     Width="300"
+                     HorizontalAlignment="Right"
+                     IsEnabled="{Binding IsIdle}" />
+        </DockPanel>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                <Button Content="Previous"
+                        Command="{Binding PreviousPageCommand}"
+                        IsEnabled="{Binding CanGoPrevious}" />
+                <TextBlock VerticalAlignment="Center" Text="{Binding PageLabel}" Opacity="0.85" />
+                <Button Content="Next"
+                        Command="{Binding NextPageCommand}"
+                        IsEnabled="{Binding CanGoNext}" />
+            </StackPanel>
+            <TextBlock VerticalAlignment="Center" Opacity="0.75" Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+
+        <Grid ColumnDefinitions="*,12,1.2*">
+            <ListBox Grid.Column="0"
+                     ItemsSource="{Binding Items}"
+                     SelectedItem="{Binding SelectedItem}"
+                     IsEnabled="{Binding IsIdle}"
+                     Background="Transparent">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:CraftableItemEntry">
+                        <Grid ColumnDefinitions="48,*" Margin="4" MinHeight="48">
+                            <Border Grid.Column="0"
+                                    Width="40"
+                                    Height="40"
+                                    Background="#FF2A2B32"
+                                    CornerRadius="4">
+                                <Image Source="{Binding Icon}"
+                                       Width="40"
+                                       Height="40"
+                                       Stretch="Uniform" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Subtitle}" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border Grid.Column="2"
+                    Padding="12"
+                    Background="#FF23242A"
+                    CornerRadius="6">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="4">
+                        <TextBlock FontWeight="SemiBold" FontSize="16" Text="Requirements" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Width="40" Height="40" Background="#FF2A2B32" CornerRadius="4">
+                                <Image Source="{Binding SelectedItem.Icon}" Width="40" Height="40" Stretch="Uniform" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedItem.Name}" FontWeight="SemiBold" FontSize="15" />
+                                <TextBlock Text="{Binding SelectedItem.Subtitle}" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding SelectedItem.Recipes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:CraftableRecipe">
+                                    <Border Margin="0,0,0,12"
+                                            Padding="10"
+                                            Background="#FF2C2D34"
+                                            CornerRadius="4">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="{Binding PathText}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding MetaText}" Opacity="0.65" FontSize="11" />
+
+                                            <Grid ColumnDefinitions="40,90,90,*,70" Margin="0,4,0,0">
+                                                <TextBlock Grid.Column="1" FontWeight="SemiBold" Opacity="0.8" Text="Kind" />
+                                                <TextBlock Grid.Column="2" FontWeight="SemiBold" Opacity="0.8" Text="Id" />
+                                                <TextBlock Grid.Column="3" FontWeight="SemiBold" Opacity="0.8" Text="Name" />
+                                                <TextBlock Grid.Column="4" FontWeight="SemiBold" Opacity="0.8" Text="Count" />
+                                            </Grid>
+                                            <Border Height="1" Background="#33FFFFFF" />
+
+                                            <ItemsControl ItemsSource="{Binding Requirements}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:CraftableRequirementRow">
+                                                        <Grid ColumnDefinitions="40,90,90,*,70" Margin="0,2">
+                                                            <Border Grid.Column="0" Width="28" Height="28" Background="#FF2A2B32" CornerRadius="3">
+                                                                <Image Source="{Binding Icon}" Width="28" Height="28" Stretch="Uniform" />
+                                                            </Border>
+                                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Kind}" />
+                                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding ItemId}" />
+                                                            <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="{Binding Count}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

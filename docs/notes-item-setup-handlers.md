@@ -119,9 +119,9 @@ The evolution request carries the whole item as the client sees it after the slo
 - `tb_Item`: `Evolution` (the `Int32` after `Reinforce`, the row of `tb_Item_Evolution`; only one item of the client has one)
   and `Disassemble` (the `Int16` after it, the row of `tb_Disassemble`; 179 of its 182 values are ids of the client's
   `tb_Disassemble`).
-- `tb_Make`: `Product`, `Material1..4`, `MaterialCount1..4`, `BattlePoint`, `Gold`. The two columns after the group (values
-  2100..4150 and 1406..4156) look like the tabs of the production dialog and stay unnamed; `Field5` and `Field6` (two more
-  products) are 0 on every row.
+- `tb_Make`: `Product`, `Material1..4`, `MaterialCount1..4`, `BattlePoint` (`Need_Fate`), `Gold`, `Priority`
+  (`M_priority`). `Category` / `SubCategory` (values 2100..4150 and 1406..4156) are the production dialog tabs;
+  `Product2` / `Product3` are 0 on every client row. Details: `docs/notes-make-item-script-fields.md`.
 - `tb_Reinforce_Exchange`: `Material`, `MaterialCount`, `Product`, `ProductCount`; `Field1` is the kind of NPC that offers it.
 - `tb_Item_Evolution`: `SuccessRate`, `Material`, `MaterialCount`, `Ether`, `Gold`, `BattlePoint`, `Result1..6`,
   `ResultRate1..6`; `Field1` is not read.
