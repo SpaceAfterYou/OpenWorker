@@ -27,12 +27,6 @@ public partial class ItemsViewModel : ViewModelBase, IDisposable
     public partial string PageLabel { get; set; } = "Page 1 / 1";
 
     [ObservableProperty]
-    public partial bool CanGoPrevious { get; set; }
-
-    [ObservableProperty]
-    public partial bool CanGoNext { get; set; }
-
-    [ObservableProperty]
     public partial bool IsLoading { get; set; }
 
     [ObservableProperty]
@@ -152,36 +146,29 @@ public partial class ItemsViewModel : ViewModelBase, IDisposable
         ApplyFilter();
     }
 
-    [RelayCommand(CanExecute = nameof(IsIdle))]
+    [RelayCommand(CanExecute = nameof(CanPreviousPage))]
     private void PreviousPage()
     {
-        if (CurrentPage <= 1)
-        {
-            return;
-        }
-
         CurrentPage--;
         FillPage();
     }
 
-    [RelayCommand(CanExecute = nameof(IsIdle))]
+    private bool CanPreviousPage() => IsIdle && CurrentPage > 1;
+
+    [RelayCommand(CanExecute = nameof(CanNextPage))]
     private void NextPage()
     {
-        if (CurrentPage >= TotalPages)
-        {
-            return;
-        }
-
         CurrentPage++;
         FillPage();
     }
+
+    private bool CanNextPage() => IsIdle && CurrentPage < TotalPages;
 
     private void SetLoading(bool loading)
     {
         IsLoading = loading;
         IsIdle = !loading;
-        PreviousPageCommand.NotifyCanExecuteChanged();
-        NextPageCommand.NotifyCanExecuteChanged();
+        NotifyPageCommands();
     }
 
     private void ApplyFilter()
@@ -242,8 +229,13 @@ public partial class ItemsViewModel : ViewModelBase, IDisposable
             TotalPages,
             Items.Count,
             _filtered.Count);
-        CanGoPrevious = !IsLoading && CurrentPage > 1;
-        CanGoNext = !IsLoading && CurrentPage < TotalPages;
+        NotifyPageCommands();
+    }
+
+    private void NotifyPageCommands()
+    {
+        PreviousPageCommand.NotifyCanExecuteChanged();
+        NextPageCommand.NotifyCanExecuteChanged();
     }
 
     public void Dispose()
