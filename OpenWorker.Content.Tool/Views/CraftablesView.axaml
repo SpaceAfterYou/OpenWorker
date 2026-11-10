@@ -88,25 +88,6 @@
 
                     <ScrollViewer>
                         <StackPanel>
-                            <StackPanel IsVisible="{Binding SelectedItem.HasUnknownFields}" Margin="0,0,0,12" Spacing="4">
-                                <TextBlock FontWeight="SemiBold" Text="Unknown fields (item)" />
-                                <Grid ColumnDefinitions="180,*" Margin="0,4,0,0">
-                                    <TextBlock Grid.Column="0" FontWeight="SemiBold" Opacity="0.8" Text="Field" />
-                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Opacity="0.8" Text="Value" />
-                                </Grid>
-                                <Border Height="1" Background="#33FFFFFF" />
-                                <ItemsControl ItemsSource="{Binding SelectedItem.UnknownFields}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="models:ItemPropertyRow">
-                                            <Grid ColumnDefinitions="180,*" Margin="0,2">
-                                                <TextBlock Grid.Column="0" VerticalAlignment="Center" Opacity="0.75" Text="{Binding Name}" />
-                                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Value}" TextWrapping="Wrap" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-
                             <ItemsControl ItemsSource="{Binding SelectedItem.Recipes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:CraftableRecipe">
@@ -142,8 +123,13 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
 
-                                                <StackPanel IsVisible="{Binding HasUnknownFields}" Spacing="4">
-                                                    <TextBlock FontWeight="SemiBold" Opacity="0.85" Text="Unknown fields (recipe)" />
+                                                <StackPanel IsVisible="{Binding HasUnknownFields}" Margin="0,8,0,0" Spacing="4">
+                                                    <TextBlock FontWeight="SemiBold" FontSize="14" Text="Unknown fields" />
+                                                    <Grid ColumnDefinitions="180,*" Margin="0,4,0,0">
+                                                        <TextBlock Grid.Column="0" FontWeight="SemiBold" Opacity="0.8" Text="Field" />
+                                                        <TextBlock Grid.Column="1" FontWeight="SemiBold" Opacity="0.8" Text="Value" />
+                                                    </Grid>
+                                                    <Border Height="1" Background="#33FFFFFF" Margin="0,4" />
                                                     <ItemsControl ItemsSource="{Binding UnknownFields}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate x:DataType="models:ItemPropertyRow">
@@ -160,6 +146,25 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+
+                            <StackPanel IsVisible="{Binding SelectedItem.HasUnknownFields}" Margin="0,16,0,0" Spacing="4">
+                                <TextBlock FontWeight="SemiBold" FontSize="14" Text="Unknown fields" />
+                                <Grid ColumnDefinitions="180,*" Margin="0,4,0,0">
+                                    <TextBlock Grid.Column="0" FontWeight="SemiBold" Opacity="0.8" Text="Field" />
+                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Opacity="0.8" Text="Value" />
+                                </Grid>
+                                <Border Height="1" Background="#33FFFFFF" Margin="0,4" />
+                                <ItemsControl ItemsSource="{Binding SelectedItem.UnknownFields}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:ItemPropertyRow">
+                                            <Grid ColumnDefinitions="180,*" Margin="0,2">
+                                                <TextBlock Grid.Column="0" VerticalAlignment="Center" Opacity="0.75" Text="{Binding Name}" />
+                                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Value}" TextWrapping="Wrap" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
