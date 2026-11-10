@@ -120,9 +120,8 @@ master takes the portal (`PartyMazeEntry`, before anybody is asked):
 | The fatigue | 55044 | 55044 |
 
 The clears are the records of the person (below), so the maze before is checked against what the person has cleared on this
-server. Not checked, with why: the daily limits of entering (only the infinite tower of the client's mazes has them, and the
-infinite tower is not played here), the quest and the item a maze asks for (no maze of the client's table names one), the
-opening hours of a maze, and a weapon in the hand.
+server. The rest of what a maze asks at its portal (the weapon in hand, the hours, the quest, the daily limit, the item, the place
+of the portal) and getting up after a fall are in `notes-maze-entry.md`.
 
 ## Records, achievements, ranking
 
@@ -150,7 +149,7 @@ opening hours of a maze, and a weapon in the hand.
 | Fatigue of a day | filled at the daily start, part of what was left saved | the same | same |
 | Fatigue item | refused with saved points or a full day | the same, refused with the generic code of the item use | kept different: the item use answers one code |
 | Message of fatigue | sent at the daily fill | sent at every change | kept different: the client keeps the last values, more of them only shows the true ones sooner |
-| Admission | weapon, open hours, who may enter, level, maze before, quest, daily limits, fatigue, item | who may enter, level, maze before, fatigue | kept different (see above) |
+| Admission | weapon, open hours, who may enter, level, maze before, quest, daily limits, fatigue, item | the same (`notes-maze-entry.md`) | same |
 | Records and clears | a list of cleared mazes by group, sent as 11/64 | a record by maze (clears, best rank, fastest time) | kept: the window of the clear info is sent as before |
 | Ranking | written for the mazes its ranking table names | written for casual mazes and district raids | kept different: the client's ranking list reads only those kinds |
 | Party drops | the killer's | the killer's | same |
