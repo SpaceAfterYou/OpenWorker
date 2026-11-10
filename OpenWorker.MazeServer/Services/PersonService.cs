@@ -254,7 +254,8 @@ public sealed partial class PersonService(
             return;
         }
 
-        session.Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
+        // A client that was already playing reads the answer of the play scene; one from the character selection, the record.
+        session.Send(PersonSnapshotMapper.CreateEntryResponse(world, context.Player, request.FirstConnect));
         skills.Send(context.Player);
         creatureServices.Stats?.SendAll(context.Player);
 

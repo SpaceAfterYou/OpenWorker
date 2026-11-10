@@ -21,7 +21,9 @@ using OpenWorker.Hotspot.Messages.Response.Person.Values;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Hotspot.Modules.Persons.Responses;
 
 namespace OpenWorker.Gameplay.Mapping;
 
@@ -34,6 +36,30 @@ public static class PersonSnapshotMapper
             Person = CreatePersonValue(world, player, player),
             World = CreateWorldValue(world, player),
             Gate = CreateCharacterInfoGatePayload(world, player)
+        };
+    }
+
+    /// <summary>
+    /// What a district or a maze answers to a client that has entered it. A client that came from the character selection
+    /// reads the character record; one that was playing and moves from one server to another (a portal, a maze, another
+    /// channel) is in the play scene, which reads the answer to the entry instead: it puts the player at the place, loads
+    /// the map and keeps what it has of the character. A record sent to the play scene makes the client take the scene of
+    /// the login for the new place, and it keeps the animations of the map it came from.
+    /// </summary>
+    public static IResponseHotspotMessage CreateEntryResponse(World world, Entity player, bool firstConnect)
+    {
+        if (firstConnect)
+        {
+            return CreateCharacterInfoResponse(world, player);
+        }
+
+        var rank = world.Get<RankComponent>(player);
+
+        return new PersonEnterGameServerResponse2
+        {
+            World = CreateWorldValue(world, player),
+            EchelonLevel = rank.Level,
+            EchelonExperience = rank.Experience
         };
     }
 

@@ -63,6 +63,14 @@ default spawn point: the place of the player is the place the reservation carrie
 client that takes longer than `ReservationLifetime` to connect is turned away and has to start again
 from the gate.
 
+What the client is answered when it has entered depends on where it comes from, and the client sets the flag itself
+(`FirstConnect` of the request): from the character selection it gets the record of the character (03/32); a client that was
+already playing and moves to another server (a portal, a maze and the way back, another channel) is in the play scene, which
+reads the answer 03/22 (the place of the player and its echelon) and keeps what it has of the character. A record sent to the
+play scene would set the kind of the map before the scene starts and keep the animations of the map the player came from
+(`PersonSnapshotMapper.CreateEntryResponse`, `docs/notes-actor-ids.md`). A player has one actor number, its person id, on every
+server, as in the original.
+
 Maze servers register themselves in `MazeCache` with their player count (`MazeRegistrationService`), and in a sorted
 set of the gate by players (`MazeDirectory`, `ow:mazes:<gate>`); a player entering a maze goes to the server of the gate
 with the fewest players, picked by one script that skips (and drops) a server whose record has expired. With none registered,
