@@ -6,9 +6,11 @@ namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
 /// A portal that leads to another place on the map takes everyone in the maze along, so it waits for them: at once when all
-/// stand at it, after a countdown when half of them do, and not at all when too few do.
+/// stand at it, after a countdown when half of them do, and not at all when too few do. It does not run beside other tests: the
+/// components of a world are numbered by the first test that uses them, and two tests that do it at once can get one number.
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public sealed class PortalWaitTest
 {
     private static readonly PortalWait.Door Door = new(Portal: 10, Jump: 20);
