@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Diagnostics.Metrics;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Options;
@@ -42,16 +41,15 @@ public sealed class MovementPace
     private readonly float _maxStep;
     private readonly TimeSpan _grace;
     private readonly TimeProvider _time;
-    private readonly Counter<long>? _tooFast;
-    private readonly Counter<long>? _refused;
+    private readonly MovementMetrics? _metrics;
 
-    public MovementPace(ReadOnlyCollection<CharacterInfoRow> characters, IOptions<WorldOptions> options, TimeProvider time, IMeterFactory? meters = null)
-        : this(RunSpeeds(characters), options.Value, time, meters)
+    public MovementPace(ReadOnlyCollection<CharacterInfoRow> characters, IOptions<WorldOptions> options, TimeProvider time, MovementMetrics? metrics = null)
+        : this(RunSpeeds(characters), options.Value, time, metrics)
     {
     }
 
     /// <param name="speeds">The run speed of each hero, in game units per second. With none, no move is counted as too fast.</param>
-    internal MovementPace(IReadOnlyDictionary<Hero, float> speeds, WorldOptions options, TimeProvider time, IMeterFactory? meters = null)
+    internal MovementPace(IReadOnlyDictionary<Hero, float> speeds, WorldOptions options, TimeProvider time, MovementMetrics? metrics = null)
     {
         _speeds = new Dictionary<Hero, float>(speeds);
         _fallback = _speeds.Count == 0 ? 0f : _speeds.Values.Max();
@@ -60,21 +58,7 @@ public sealed class MovementPace
         _maxStep = options.MaxMoveStep;
         _grace = options.PlaceGrace;
         _time = time;
-
-        if (meters is not null)
-        {
-            var meter = OpenWorkerMeter.Create(meters);
-
-            _tooFast = meter.CreateCounter<long>(
-                "movement.too_fast",
-                unit: "{move}",
-                description: "Moves that covered more ground than the player could have run in the time it had. They are let through, as the original server does.");
-
-            _refused = meter.CreateCounter<long>(
-                "movement.refused",
-                unit: "{move}",
-                description: "Moves refused because they took the player too far from its place in one message. Tag reason: far, stale.");
-        }
+        _metrics = metrics;
     }
 
     /// <summary>
@@ -117,12 +101,12 @@ public sealed class MovementPace
         {
             if (pace.Told && _time.GetElapsedTime(pace.ToldAt, now) <= _grace)
             {
-                _refused?.Add(1, new KeyValuePair<string, object?>("reason", "stale"));
+                _metrics?.Refused(MovementMetrics.Stale);
 
                 return MoveVerdict.Stale;
             }
 
-            _refused?.Add(1, new KeyValuePair<string, object?>("reason", "far"));
+            _metrics?.Refused(MovementMetrics.Far);
 
             if (!pace.Charged || _time.GetElapsedTime(pace.ChargedAt, now) >= ChargeInterval)
             {
@@ -164,7 +148,7 @@ public sealed class MovementPace
 
         pace.Credit = 0f;
 
-        _tooFast?.Add(1);
+        _metrics?.TooFast();
     }
 
     private static void EnsureComponent(World world, Entity player)

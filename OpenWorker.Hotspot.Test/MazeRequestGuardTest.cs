@@ -19,11 +19,13 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Maze.Requests;
+using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Managers;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.UpdateContent.Res.Rows;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -100,6 +102,46 @@ public sealed class MazeRequestGuardTest
         {
             World.Destroy(world);
         }
+    }
+
+    /// <summary>
+    /// The input of a skill, the place a skill reports and the warp of a skill are the business of a player who is in a maze and on
+    /// its feet. The service of this test has no relay to tell the others with: a player that is not in a maze is ignored before
+    /// anything is sent, or the test fails.
+    /// </summary>
+    [TestMethod]
+    public async Task SkillInputOfAPlayerWhoIsNotInAMazeIsIgnored()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var service = Service(world);
+            var player = world.Create();
+
+            await service.OnHandleAsync(Context(player), new SkillChargingRequest(new BinaryReader(new MemoryStream())));
+            await service.OnHandleAsync(Context(player), new SkillChargingRequest(new BinaryReader(new MemoryStream(BitConverter.GetBytes(1f)))));
+            await service.OnHandleAsync(Context(player), Read<SkillTargetChangeRequest>(BitConverter.GetBytes(5), (ref PacketReader r) => SkillTargetChangeRequest.Read(ref r)));
+            await service.OnHandleAsync(Context(player), Read<SkillSubInputRequest>(BitConverter.GetBytes(2), (ref PacketReader r) => SkillSubInputRequest.Read(ref r)));
+            await service.OnHandleAsync(Context(player), Read<SkillPreTargetListRequest>([0], (ref PacketReader r) => SkillPreTargetListRequest.Read(ref r)));
+            await service.OnHandleAsync(Context(player), Read<SkillKeypressRequest>([1, 0, 0, 0, 1, 0, 0, 0, 0], (ref PacketReader r) => SkillKeypressRequest.Read(ref r)));
+            await service.OnHandleAsync(Context(player), Read<SkillSyncPositionRequest>(new byte[28], (ref PacketReader r) => SkillSyncPositionRequest.Read(ref r)));
+            await service.OnHandleAsync(Context(player), Read<SkillWarpPositionRequest>(new byte[12], (ref PacketReader r) => SkillWarpPositionRequest.Read(ref r)));
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    private delegate T Reading<out T>(ref PacketReader reader);
+
+    private static T Read<T>(byte[] bytes, Reading<T> read)
+    {
+        var reader = new PacketReader(bytes);
+
+        return read(ref reader);
     }
 
     [TestMethod]

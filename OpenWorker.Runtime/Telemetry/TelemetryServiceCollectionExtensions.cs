@@ -6,7 +6,7 @@ namespace OpenWorker.Hotspot.Telemetry;
 public static class TelemetryServiceCollectionExtensions
 {
     /// <summary>
-    /// The classes that record the metrics of the runtime (world loop, handlers, simulation, sessions), all on the
+    /// The classes that record the metrics of the runtime (world loop, handlers, simulation, sessions, movement), all on the
     /// <see cref="OpenWorkerMeter.Name"/> meter of the container's <see cref="System.Diagnostics.Metrics.IMeterFactory"/>. Recording
     /// costs next to nothing while no one listens. Every part of a server that measures asks for the ones it uses, so this may be
     /// called any number of times. Redis and Postgres add theirs on the same meter: <c>AddRedisMetrics</c> of
@@ -21,6 +21,7 @@ public static class TelemetryServiceCollectionExtensions
         services.TryAddSingleton<HandlerMetrics>();
         services.TryAddSingleton<SimulationMetrics>();
         services.TryAddSingleton<SessionMetrics>();
+        services.TryAddSingleton<MovementMetrics>();
 
         return services;
     }

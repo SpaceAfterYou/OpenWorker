@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
+using OpenWorker.Hotspot.Telemetry;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
@@ -33,7 +34,7 @@ public sealed class MovementRuleTest
     {
         using var metrics = new MetricsHost();
         using var collector = metrics.Listen<long>("movement.too_fast");
-        using var district = new DistrictHarness(Speeds, meters: metrics.Factory);
+        using var district = new DistrictHarness(Speeds, metrics: metrics.Get<MovementMetrics>());
 
         var mover = district.Join(100f, 100f);
 

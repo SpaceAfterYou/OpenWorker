@@ -228,8 +228,8 @@ for the player who gave the buff, or the first player).
 - **Cooldown and cost reductions**: buffs and the deck bonus done; item special effects and skill options still not.
 - **Continuous costs** (cost type 1): no skill of the client's table has one above zero (10 rows of type 1, all cost 0), so
   there is nothing to drain; not built.
-- **The three position messages** (06/45 warp, 06/47 sync, 06/05 end of a passive move): the place is taken only when the
-  player could have run there since the last place, as for a move; a refused place counts against the error budget once a
+- **The three position messages** (06/45 warp, 06/47 sync, 06/05 end of a passive move): the place is taken only when it is
+  within the reach of one move (`docs/notes-fight-movement.md`); a refused place counts against the error budget once a
   second and the player stays. The warp is shown to everyone in the maze (06/46), with the place the server keeps.
 
 ## Tests

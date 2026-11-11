@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Diagnostics.Metrics;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +21,7 @@ using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
 using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.Hotspot.Telemetry;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
@@ -40,15 +40,15 @@ internal sealed class DistrictHarness : IDisposable
 
     /// <param name="speeds">The run speed of the heroes; with none, no move is too fast.</param>
     /// <param name="maxErrors">The error budget of a session in a minute.</param>
-    /// <param name="meters">Where the pace check counts the moves it lets through too fast and the ones it refuses.</param>
+    /// <param name="metrics">Where the pace check counts the moves it lets through too fast and the ones it refuses.</param>
     /// <param name="world">The options of the world; with none, the defaults.</param>
-    public DistrictHarness(IReadOnlyDictionary<Hero, float>? speeds = null, int maxErrors = 10, IMeterFactory? meters = null, WorldOptions? world = null)
+    public DistrictHarness(IReadOnlyDictionary<Hero, float>? speeds = null, int maxErrors = 10, MovementMetrics? metrics = null, WorldOptions? world = null)
     {
         Channels = ChannelMembers.Channels(Ecs);
 
         var budget = new HandlerErrorBudget(Time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = maxErrors, Window = TimeSpan.FromMinutes(1) }));
         Errors = new HandlerExecutor(Table, new ServiceCollection().BuildServiceProvider(), Ecs, budget, NullLogger<HandlerExecutor>.Instance);
-        Pace = new MovementPace(speeds ?? new Dictionary<Hero, float>(), world ?? new WorldOptions(), Time, meters);
+        Pace = new MovementPace(speeds ?? new Dictionary<Hero, float>(), world ?? new WorldOptions(), Time, metrics);
 
         Movement = new MovementService(Ecs, new ChannelAudience(Ecs, Channels), Pace, Errors, NullLogger<MovementService>.Instance);
     }
