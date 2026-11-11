@@ -68,6 +68,12 @@ namespace OpenWorker.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<short>("TradePasswordFailed")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime?>("TradePasswordFailedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnUpdate()
                         .HasColumnType("timestamp with time zone");
