@@ -319,11 +319,21 @@ public sealed class OrbitMeshViewport : UserControl
         /// </summary>
         public void Pan(float dx, float dy)
         {
-            var forward = new Vector3(-MathF.Cos(_yaw), 0f, -MathF.Sin(_yaw));
-            var right = new Vector3(MathF.Sin(_yaw), 0f, -MathF.Cos(_yaw));
-            // Grab-the-world: drag right moves the scene right (camera left); the orbit pivot comes along.
+            var look = LookDirection();
+            var right = Vector3.Cross(look, Vector3.UnitY);
+            if (right.LengthSquared() < 1e-8f)
+            {
+                right = new Vector3(MathF.Sin(_yaw), 0f, -MathF.Cos(_yaw));
+            }
+            else
+            {
+                right = Vector3.Normalize(right);
+            }
+
+            var up = Vector3.Normalize(Vector3.Cross(right, look));
+            // Grab-the-world in the view plane; the orbit pivot comes along.
             var scale = _distance * 0.0015f;
-            var move = right * (-dx) * scale + forward * dy * scale;
+            var move = right * (-dx) * scale + up * dy * scale;
             _eye += move;
             _target += move;
         }
