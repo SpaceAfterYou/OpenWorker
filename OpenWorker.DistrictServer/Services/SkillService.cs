@@ -29,7 +29,7 @@ namespace OpenWorker.DistrictServer.Services;
 public sealed class SkillService(World world, SkillUse skillUse, IPlayerAudience audience) :
     IHotspotHandler<SkillAkashicRecordRequest>,
     IHotspotHandler<SkillChainRequest>,
-    IHotspotHandler<SkillChargingStartRequest>,
+    IHotspotHandler<SkillChargingRequest>,
     IHotspotHandler<SkillActiveSkillRequest>,
     IHotspotHandler<SkillKeypressRequest>,
     IHotspotHandler<SkillPassiveEndRequest>,
@@ -73,7 +73,7 @@ public sealed class SkillService(World world, SkillUse skillUse, IPlayerAudience
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillChainRequest request) =>
         ValueTask.CompletedTask;
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillChargingStartRequest request) =>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillChargingRequest request) =>
         ValueTask.CompletedTask;
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillKeypressRequest request) =>

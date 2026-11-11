@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Server.Common.Services;
 
 namespace OpenWorker.Server.Common.Extensions;
 
@@ -24,6 +25,7 @@ public static class ServiceCollectionExtensions
             .AddSingleton<PersonRegistry>()
             .AddSingleton<HelperSupports>()
             .AddSingleton<CommandAccess>()
+            .AddSingleton<SkillInputRelay>()
             .AddHostedService<KeepAliveService>()
             .AddSingleton<IPlayerAudience, TAudience>();
     }

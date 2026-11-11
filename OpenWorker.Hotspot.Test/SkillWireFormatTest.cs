@@ -119,4 +119,41 @@ public sealed class SkillWireFormatTest
         Assert.AreEqual((short)68, back.Position.TriggerIndex);
         Assert.AreEqual(new Vector3(4, 5, 6), back.Position.Position);
     }
+
+    /// <summary>
+    /// The client sends 06/4C without a body to start charging and with the time the key was held to end it.
+    /// </summary>
+    [TestMethod]
+    public void ChargingStartsWithNoBodyAndEndsWithTheTimeTheKeyWasHeld()
+    {
+        var start = Read([], e => new SkillChargingRequest(e));
+
+        Assert.IsFalse(start.Released);
+
+        var end = Read(BitConverter.GetBytes(1.25f), e => new SkillChargingRequest(e));
+
+        Assert.IsTrue(end.Released);
+        Assert.AreEqual(1.25f, end.PressTime);
+    }
+
+    /// <summary>
+    /// The list of targets of a player starts with the player: the client reads its actor before the count.
+    /// </summary>
+    [TestMethod]
+    public void PreTargetListIsThePlayerThenACountedListOfActors()
+    {
+        var data = Written(new SkillPreTargetListResponse
+        {
+            Actor = new ActorValue(5, ActorType.User),
+            ActorList = [new ActorValue(7, ActorType.Monster), new ActorValue(8, ActorType.Monster)]
+        });
+
+        Assert.HasCount(4 + 1 + (2 * 4), data);
+        Assert.AreEqual(2, data[4]);
+
+        var back = Read(data, e => new SkillPreTargetListResponse(e));
+
+        Assert.AreEqual(5, back.Actor.Identifier);
+        Assert.AreEqual(8, back.ActorList[1].Identifier);
+    }
 }

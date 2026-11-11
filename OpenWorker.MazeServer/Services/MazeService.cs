@@ -61,6 +61,7 @@ public sealed partial class MazeService(
     HandlerExecutor errors,
     SimulationClock clock,
     IPlayerAudience audience,
+    SkillInputRelay relay,
     ILogger<MazeService> logger,
     MazeHelperField? helpers = null
 ) :
@@ -72,6 +73,10 @@ public sealed partial class MazeService(
     IHotspotHandler<SkillProjectileRequest>,
     IHotspotHandler<SkillChainRequest>,
     IHotspotHandler<SkillKeypressRequest>,
+    IHotspotHandler<SkillTargetChangeRequest>,
+    IHotspotHandler<SkillSubInputRequest>,
+    IHotspotHandler<SkillChargingRequest>,
+    IHotspotHandler<SkillPreTargetListRequest>,
     IHotspotHandler<SkillTrapPosUpdateRequest>,
     IHotspotHandler<SkillWarpPositionRequest>,
     IHotspotHandler<WorldWarpRequest>,
@@ -396,11 +401,11 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// The player holds the key of the skill or lets it go.
+    /// The player holds the key of the skill or lets it go. The others see it hold.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillKeypressRequest request)
     {
-        if (!ecs.Has<LuaMaze>(context.Player))
+        if (!IsFighting(context.Player))
         {
             return ValueTask.CompletedTask;
         }
@@ -411,8 +416,70 @@ public sealed partial class MazeService(
         }
 
         ecs.Get<LuaMaze>(context.Player).PressKey(context.Player, request.IsKeyPressed);
+        relay.KeyPressed(context.Player, request.IsKeyPressed);
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player picks another target for its skills. The others see whom it aims at.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTargetChangeRequest request)
+    {
+        if (IsFighting(context.Player))
+        {
+            relay.TargetChanged(context.Player, request.Actor);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player asks for a sub animation of its skill. The others play it too.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillSubInputRequest request)
+    {
+        if (IsFighting(context.Player))
+        {
+            relay.SubInput(context.Player, request.SubAnimIndex);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player starts charging a skill, or ends it after holding the key for a time. The others see both.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillChargingRequest request)
+    {
+        if (IsFighting(context.Player))
+        {
+            relay.Charging(context.Player, request.Released, request.PressTime);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The monsters a skill of the player aims at before it is played. The others see them marked.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPreTargetListRequest request)
+    {
+        if (IsFighting(context.Player))
+        {
+            relay.PreTargets(context.Player, request.ActorList);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player is in a maze and on its feet: the skill input of a player that is down or that has not loaded is nobody's
+    /// business.
+    /// </summary>
+    private bool IsFighting(Entity player)
+    {
+        return ecs.Has<LuaMaze>(player) && ecs.Get<LuaMaze>(player).Creatures.Vitals.IsAlive(player);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillChainRequest request)
@@ -432,9 +499,10 @@ public sealed partial class MazeService(
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTrapPosUpdateRequest request)
     {
-        if (Place.IsValid(request.Position) && ecs.Has<LuaMaze>(context.Player))
+        if (Place.IsValid(request.Position) && IsFighting(context.Player))
         {
             ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position);
+            relay.TrapMoved(context.Player, request.Skill, request.TriggerIndex, request.Position);
         }
 
         return ValueTask.CompletedTask;

@@ -20,8 +20,15 @@ public readonly struct SkillTargetChangeBroadcastResponse(BinaryReader reader) :
 
 #region Message: Body
 
-    public ActorValue Target { get; init; } = new(reader);
-    public int Location { get; init; } = reader.ReadInt32();
+    /// <summary>
+    /// The player who changed its target.
+    /// </summary>
+    public ActorValue Actor { get; init; } = new(reader);
+
+    /// <summary>
+    /// The actor it aims at now.
+    /// </summary>
+    public int TargetActor { get; init; } = reader.ReadInt32();
 
 #endregion Message: Body
 
@@ -29,8 +36,8 @@ public readonly struct SkillTargetChangeBroadcastResponse(BinaryReader reader) :
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Target);
-        writer.Write(Location);
+        writer.Write(Actor);
+        writer.Write(TargetActor);
     }
 
 #endregion Interface: IWritableData
