@@ -103,7 +103,12 @@ ground or flies). The clients are told with 17/34. Points start again after the 
 that have an escape use kind 2. A helper that is getting up does not escape.
 
 **Super armor skill.** `SetSuperArmorSkill` names a skill the monster plays each time its super armor is whole again; no script of this
-client has it. The re-arm is knockback's: it calls `AiMachine.OnSuperArmorRestored`.
+client has it. The maze calls `MonsterBody.OnSuperArmorRestored` when an armor that broke is whole again, and that calls
+`AiMachine.OnSuperArmorRestored`.
+
+**The reaction gate.** A monster that flinches, is thrown, lies or gets up neither walks nor starts a skill (`MonsterReaction`,
+`notes-combat.md`); the machine reads that through the host's `CanMove` and `CanAttack`. An escape that gives a defense also ends a
+flinch at once.
 
 ## 5. The shot of a monster
 
