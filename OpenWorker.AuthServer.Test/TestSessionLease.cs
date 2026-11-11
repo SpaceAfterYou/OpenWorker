@@ -224,6 +224,34 @@ public sealed class TestSessionLease
         Assert.IsFalse(SessionLeaseManager.MayReturn(record, null), "An address that is not known");
     }
 
+    /// <summary>
+    /// A name is not tried any more after its wrong passwords, and a right one before that forgets them.
+    /// </summary>
+    [TestMethod]
+    public async Task ANameIsClosedAfterItsWrongPasswordsAndARightOneForgetsThem()
+    {
+        var attempts = new LoginAttempts(Redis);
+        var name = "Guess" + Guid.NewGuid().ToString("N");
+
+        for (var index = 0; index < LoginAttempts.Limit - 1; index++)
+        {
+            await attempts.FailedAsync(name);
+        }
+
+        Assert.IsFalse(await attempts.IsClosedAsync(name), "One try is left");
+
+        await attempts.SucceededAsync(name);
+
+        for (var index = 0; index < LoginAttempts.Limit; index++)
+        {
+            await attempts.FailedAsync(name.ToUpperInvariant());
+        }
+
+        Assert.IsTrue(await attempts.IsClosedAsync(name), "The name is one, however it is written");
+
+        await attempts.SucceededAsync(name);
+    }
+
     [TestMethod]
     public async Task SecondLoginIsRejectedWhileConnectedAndReplacesAfterDisconnect()
     {

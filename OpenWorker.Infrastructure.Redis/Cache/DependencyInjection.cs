@@ -36,6 +36,7 @@ public static class DependencyInjection
         });
 
         services.TryAddSingleton<Reservations>();
+        services.TryAddSingleton<LoginAttempts>();
 
         services.AddHostedService<RedisMetricsService>();
 

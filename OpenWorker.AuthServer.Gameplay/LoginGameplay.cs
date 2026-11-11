@@ -27,8 +27,19 @@ public sealed partial class LoginGameplay(
     World world,
     IOptions<AuthOptions> auth,
     ILogger<LoginGameplay> logger,
-    SessionLeaseManager leases)
+    SessionLeaseManager leases,
+    LoginAttempts? attempts = null)
 {
+    // What a name nobody has is checked against, so that the answer for it takes as long as the answer for a wrong password.
+    private static readonly (byte[] Hash, byte[] Salt) Nobody = CreateNobody();
+
+    private static (byte[] Hash, byte[] Salt) CreateNobody()
+    {
+        PasswordHash.Create(Guid.NewGuid().ToString("N"), out var hash, out var salt);
+
+        return (hash, salt);
+    }
+
     /// <summary>
     /// This login does not verify the ticket: it signs in as the first account in the database.
     /// Enable it only for local development.
@@ -39,15 +50,41 @@ public sealed partial class LoginGameplay(
     {
         var session = world.Get<ServerSessionComponent>(context.Player);
 
+        // A name that has had its wrong passwords is not tried, whatever the password.
+        if (attempts is not null && await attempts.IsClosedAsync(message.Username))
+        {
+            session.Send(new LoginResponse(LoginErrorMessageCode.WrongUsernameOrPassword));
+            return;
+        }
+
         var account = await factory
             .FindAccountAsync(message.Username, context.CancellationToken);
 
         var password = message.Password;
+        var (hash, salt) = account is null ? Nobody : (account.PasswordHash, account.SaltHash);
 
-        // Checking a password takes long enough to delay everybody else on the world loop.
-        if (account is null || !await Task.Run(() => PasswordHash.Verify(password, account.PasswordHash, account.SaltHash)))
+        // Checking a password takes long enough to delay everybody else on the world loop. A name nobody has is checked
+        // too, against a password nobody knows.
+        var right = await Task.Run(() => PasswordHash.Verify(password, hash, salt));
+
+        if (account is null || !right)
         {
+            if (attempts is not null)
+            {
+                await attempts.FailedAsync(message.Username);
+            }
+
             session.Send(new LoginResponse(LoginErrorMessageCode.WrongUsernameOrPassword));
+            return;
+        }
+
+        if (attempts is not null)
+        {
+            await attempts.SucceededAsync(message.Username);
+        }
+
+        if (!world.IsAlive(context.Player))
+        {
             return;
         }
 
