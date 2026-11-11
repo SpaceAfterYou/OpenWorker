@@ -77,6 +77,15 @@ public sealed partial class LoginGameplay(
             return;
         }
 
+        // A district or a maze the person still plays on lets them go first: the gate shows the person from the database.
+        if (!await leases.TakeOverAsync(context.Player, request.Session.Key, request.Session.Account) || !world.IsAlive(context.Player))
+        {
+            LogRefused(logger, "the session is held by another server");
+
+            session.Send(LoginEnterGateResponse.Error);
+            return;
+        }
+
         var account = await factory
             .LoadAccountAtGateAsync(request.Account, Gate, (byte)StorageGroup.AbilityEquip, context.CancellationToken);
 
@@ -92,8 +101,6 @@ public sealed partial class LoginGameplay(
 
         world.SetLogAccount(context.Player, request.Session.Account);
 
-        await leases
-            .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
         secondPassword.Load(context.Player, account);
 

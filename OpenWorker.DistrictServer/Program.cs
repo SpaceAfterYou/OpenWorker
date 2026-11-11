@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 ﻿using OpenWorker.Channel;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Channel.Extensions;
@@ -30,6 +31,9 @@ await Host
 
         services.AddCache();
         services.AddSessionCache();
+
+        // A person plays here: the next server waits until this one has let them go.
+        services.Configure<SessionLeaseOptions>(options => options.Play = true);
         services.AddGateCache();
         services.AddChannelCache();
         services.AddDistrictCache();

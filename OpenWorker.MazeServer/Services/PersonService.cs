@@ -163,6 +163,14 @@ public sealed partial class PersonService(
             return;
         }
 
+        // The server the person came from lets them go first, and writes what they changed there: a person is
+        // in one world at a time, and is read from the database only after that.
+        if (!await leases.TakeOverAsync(context.Player, request.Session.Key, request.Session.Account) || !world.IsAlive(context.Player))
+        {
+            session.Disconnect();
+            return;
+        }
+
         var entry = await factory
             .LoadPersonAtEntryAsync(request.Account, request.Actor.Identifier, context.CancellationToken);
 
@@ -187,8 +195,6 @@ public sealed partial class PersonService(
 
         world.SetLogAccount(context.Player, request.Session.Account);
 
-        await leases
-            .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
         world.Set(context.Player, new WorldComponent
         {

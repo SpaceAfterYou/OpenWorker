@@ -21,6 +21,10 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
+# Local research notes, agent worktrees and their builds: gigabytes that no image needs.
+docs
+.claude
+Reverse
 LICENSE
 README.md
 !**/.gitignore

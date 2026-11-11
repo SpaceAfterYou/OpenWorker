@@ -34,6 +34,18 @@ public sealed class SessionCache
     public bool Connected { get; init; }
 
     /// <summary>
+    /// One while a connection holds the session, zero after it has closed; what <see cref="Connected"/> says, in the form
+    /// a script reads.
+    /// </summary>
+    public int Held { get; init; }
+
+    /// <summary>
+    /// One while the holder is a server the person plays on (a district or a maze). Such a holder has the person in its
+    /// world, so the next server waits until it has let the person go; a login or a gate server is simply followed.
+    /// </summary>
+    public int Play { get; init; }
+
+    /// <summary>
     /// The connection that may renew or release this session.
     /// </summary>
     public string? Owner { get; init; }

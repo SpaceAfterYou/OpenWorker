@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 using System.Buffers;
 using System.Diagnostics;
 using System.IO.Pipelines;
@@ -422,7 +423,9 @@ internal sealed partial class ServerService(
             NotifyShuttingDown(entity);
         }
 
-        foreach (var handler in closeHandlers)
+        // The session is given up last: the server the person goes to waits for it, and reads the person from the database
+        // then, so what the person changed here has to be written before.
+        foreach (var handler in closeHandlers.OrderBy(e => e is SessionLeaseManager))
         {
             try
             {

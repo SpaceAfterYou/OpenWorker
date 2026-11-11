@@ -167,8 +167,10 @@ public sealed class GateGameplay(
             return default;
         }
 
-        await leases
-            .AttachAsync(context.Player, returning.Session, returning.Account);
+        if (!await leases.TakeOverAsync(context.Player, returning.Session, returning.Account) || !world.IsAlive(context.Player))
+        {
+            return default;
+        }
 
         var claims = new ClaimsComponent(returning.Session);
 
