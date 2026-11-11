@@ -271,11 +271,14 @@ public sealed partial class DropService(
             return false;
         }
 
+        // Money fills the purse up to its limit and the rest is lost; items that do not fit stay on the ground.
+        var added = 0L;
+
         var taken = drop.ObjectId switch
         {
-            GoldObject => inventory.TryAddCurrency(player, ShopCurrency.Gold, drop.Count + drop.Bonus, MoneyEarnFlow.PickUp),
-            BattlePointObject => inventory.TryAddCurrency(player, ShopCurrency.Bp, drop.Count),
-            EtherObject => inventory.TryAddCurrency(player, ShopCurrency.Ether, drop.Count),
+            GoldObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Gold, drop.Count + drop.Bonus, MoneyEarnFlow.PickUp)) >= 0,
+            BattlePointObject => inventory.AddUpToLimit(player, ShopCurrency.Bp, drop.Count) >= 0,
+            EtherObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Ether, drop.Count)) >= 0,
             SoulObject => true,
             _ => inventory.TryGive(player, drop.ObjectId, drop.Count)
         };
@@ -289,13 +292,13 @@ public sealed partial class DropService(
 
         if (drop.ObjectId == GoldObject)
         {
-            results?.AddGold(player, drop.Count + drop.Bonus);
-            achievements?.OnGoldPicked(player, drop.Count + drop.Bonus);
+            results?.AddGold(player, (int)added);
+            achievements?.OnGoldPicked(player, (int)added);
         }
         else if (drop.ObjectId == EtherObject)
         {
-            results?.AddEther(player, drop.Count);
-            achievements?.OnEtherPicked(player, drop.Count);
+            results?.AddEther(player, (int)added);
+            achievements?.OnEtherPicked(player, (int)added);
         }
 
         // The quests hear of the item from the inventory, as of every item that comes into the bags.

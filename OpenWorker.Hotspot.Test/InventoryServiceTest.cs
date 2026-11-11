@@ -12,6 +12,7 @@ using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
+using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -448,6 +449,30 @@ public sealed class InventoryServiceTest
         Assert.IsFalse(f.Service.TryAddGold(f.Player, -101));
         Assert.AreEqual(100, f.Service.Gold(f.Player));
         Assert.IsTrue(f.Service.TryAddGold(f.Player, -100));
+    }
+
+    /// <summary>
+    /// One limit for every purse: gold, battle points and ether stop at fourteen digits, cash at nine. A gift that would pass
+    /// it is refused as a whole; what is picked up from the ground fills the purse and leaves the rest.
+    /// </summary>
+    [TestMethod]
+    public void APurseHoldsNoMoreThanItsLimitAndAPickupFillsItUpToIt()
+    {
+        using var f = new Fixture();
+
+        Assert.IsTrue(f.Service.TryAddGold(f.Player, InventoryService.WalletLimit - 10));
+        Assert.IsTrue(f.Service.CanReceive(f.Player, ShopCurrency.Gold, 10));
+        Assert.IsFalse(f.Service.CanReceive(f.Player, ShopCurrency.Gold, 11));
+        Assert.IsFalse(f.Service.TryAddGold(f.Player, 11), "Not even one over");
+        Assert.AreEqual(InventoryService.WalletLimit - 10, f.Service.Gold(f.Player), "A refused gift changes nothing");
+
+        Assert.AreEqual(10, f.Service.AddUpToLimit(f.Player, ShopCurrency.Gold, 100), "A pickup takes what fits");
+        Assert.AreEqual(InventoryService.WalletLimit, f.Service.Gold(f.Player));
+        Assert.AreEqual(0, f.Service.AddUpToLimit(f.Player, ShopCurrency.Gold, 100));
+
+        Assert.IsTrue(f.Service.TryAddGold(f.Player, -InventoryService.WalletLimit), "Taking away always fits");
+        Assert.IsFalse(f.Service.CanReceive(f.Player, ShopCurrency.Cash, InventoryService.CashLimit + 1), "Cash has a limit of its own");
+        Assert.IsTrue(f.Service.CanReceive(f.Player, ShopCurrency.Cash, InventoryService.CashLimit));
     }
 
     /// <summary>

@@ -5,6 +5,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Hotspot.Modules.Shop.Enums;
 
 namespace OpenWorker.DistrictServer.Trade;
 
@@ -107,11 +108,11 @@ public sealed class TradeGoods(World world, InventoryService inventory)
     }
 
     /// <summary>
-    /// Whether the player can take the gold without its purse running over.
+    /// Whether the player can take the gold without its purse running over (the limit of the inventory).
     /// </summary>
     public bool CanReceive(Entity player, long amount)
     {
-        return amount <= long.MaxValue - inventory.Gold(player);
+        return inventory.CanReceive(player, ShopCurrency.Gold, amount);
     }
 
     /// <summary>

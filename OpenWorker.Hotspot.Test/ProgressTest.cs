@@ -237,7 +237,7 @@ public sealed class ProgressTest
 
         // Gold that would overflow the wallet is refused with the client's code, before anything is given.
         f.Achievements.OnMazeCleared(f.Player, Maze, seconds: 600, kind: 0);
-        f.World.Get<CurrencyComponent>(f.Player)[ShopCurrency.Gold] = AchievementManager.WalletLimit;
+        f.World.Get<CurrencyComponent>(f.Player)[ShopCurrency.Gold] = InventoryService.WalletLimit;
 
         Assert.AreEqual(AchievementManager.GoldOverflow, f.Achievements.TakeReward(f.Player, FirstAchievement + 1).Error);
         Assert.AreEqual(3, f.Count(), "nothing of the refused reward is given");

@@ -20,7 +20,10 @@ public sealed class InventoryRewardGranter(InventoryService inventory) : IReward
     /// </summary>
     public bool TryGrant(Entity player, Reward reward)
     {
-        if (inventory.InventoryOf(player) is null)
+        if (inventory.InventoryOf(player) is null ||
+            !inventory.CanReceive(player, ShopCurrency.Gold, reward.Gold) ||
+            !inventory.CanReceive(player, ShopCurrency.Ether, reward.Ether) ||
+            !inventory.CanReceive(player, ShopCurrency.Bp, reward.BattlePoints))
         {
             return false;
         }

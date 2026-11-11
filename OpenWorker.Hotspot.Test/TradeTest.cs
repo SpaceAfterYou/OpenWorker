@@ -355,6 +355,31 @@ public sealed class TradeTest
     }
 
     /// <summary>
+    /// Gold the partner could not hold is not put on the table: the offer is refused when the purse of the other player would
+    /// pass the limit of the inventory, and taken when it just fits.
+    /// </summary>
+    [TestMethod]
+    public async Task GoldThePartnerCannotHoldIsNotOffered()
+    {
+        using var market = new Market();
+
+        var seller = market.Join(gold: 1_000);
+        var buyer = market.Join(gold: InventoryService.WalletLimit - 500);
+
+        await market.Send(seller, Invite(buyer));
+        await WaitForAsync(buyer, TradeOpcode.Request);
+        await market.Send(buyer, Accept(seller));
+        await WaitForAsync(seller, TradeOpcode.Accept);
+
+        await market.Send(seller, Gold(501));
+
+        Assert.AreEqual(TradeCodes.TooMuchGold, BitConverter.ToUInt16((await RefusalAsync(seller, TradeOpcode.UpdateMoney)).Body, 0));
+
+        await market.Send(seller, Gold(500));
+        await WaitForAsync(seller, TradeOpcode.UpdateMoney);
+    }
+
+    /// <summary>
     /// An item that is bound to its owner, or broken, is never put on the table of a trade, nor into a shop of a player; a
     /// free one is. One rule (<c>ItemBinding.HeldBack</c>) decides for both, and a broken item is asked before a bound one.
     /// </summary>

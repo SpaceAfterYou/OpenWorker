@@ -39,6 +39,27 @@ public sealed class InventoryService(
     ItemArrivals? arrivals = null,
     ItemOptionRoller? options = null)
 {
+    /// <summary>
+    /// The most gold, battle points, ether and recycle points a person can hold: fourteen digits. A gift that would take a
+    /// purse past it is refused as a whole (a reward, a sale, a trade, a letter), except for what is picked up from the ground,
+    /// which fills the purse and leaves the rest.
+    /// </summary>
+    public const long WalletLimit = 99_999_999_999_999;
+
+    /// <summary>
+    /// The most cash and cash points a person can hold: nine digits.
+    /// </summary>
+    public const long CashLimit = 999_999_999;
+
+    /// <summary>The gold of the person would pass <see cref="WalletLimit"/>: the code of a reward or a sale that is refused for it.</summary>
+    public const ushort TooMuchGold = 52056;
+
+    /// <summary>The same for battle points.</summary>
+    public const ushort TooMuchBattlePoints = 52057;
+
+    /// <summary>The same for ether.</summary>
+    public const ushort TooMuchEther = 52058;
+
     /// <summary>The client has nothing more specific for a refused item request.</summary>
     public const ushort Refused = 52011;
 
@@ -408,19 +429,57 @@ public sealed class InventoryService(
     public long Balance(Entity player, ShopCurrency currency) => world.Get<CurrencyComponent>(player)[currency];
 
     /// <summary>
-    /// Adds or takes away gold. Taking more than the person has fails.
+    /// Adds or takes away gold. Taking more than the person has fails, and so does adding more than its purse holds.
     /// </summary>
     public bool TryAddGold(Entity player, long amount, MoneyEarnFlow flow = MoneyEarnFlow.Normal)
     {
         return TryAddCurrency(player, ShopCurrency.Gold, amount, flow);
     }
 
+    /// <summary>
+    /// The most of a currency a person can hold.
+    /// </summary>
+    public static long LimitOf(ShopCurrency currency)
+    {
+        return currency switch
+        {
+            ShopCurrency.Gold or ShopCurrency.Bp or ShopCurrency.Ether or ShopCurrency.Recycle => WalletLimit,
+            ShopCurrency.Cash or ShopCurrency.CashMileageAkashic or ShopCurrency.CashMileageBroach or ShopCurrency.CashMileageTag => CashLimit,
+            _ => long.MaxValue
+        };
+    }
+
+    /// <summary>
+    /// Whether the person can take the amount without its purse of the currency passing the limit. Taking something away
+    /// always fits.
+    /// </summary>
+    public bool CanReceive(Entity player, ShopCurrency currency, long amount)
+    {
+        return amount <= 0 || Balance(player, currency) <= LimitOf(currency) - amount;
+    }
+
+    /// <summary>
+    /// Adds what fits of the amount under the limit of the currency and tells how much that was: the way what lies on the ground
+    /// is picked up.
+    /// </summary>
+    public long AddUpToLimit(Entity player, ShopCurrency currency, long amount, MoneyEarnFlow flow = MoneyEarnFlow.Normal)
+    {
+        var room = Math.Max(0, LimitOf(currency) - Balance(player, currency));
+        var added = Math.Clamp(amount, 0, room);
+
+        return added == 0 || TryAddCurrency(player, currency, added, flow) ? added : 0;
+    }
+
+    /// <summary>
+    /// Adds or takes away an amount of a currency. Taking more than the person has fails, and so does adding what would take
+    /// the purse past its limit.
+    /// </summary>
     public bool TryAddCurrency(Entity player, ShopCurrency currency, long amount, MoneyEarnFlow flow = MoneyEarnFlow.Normal)
     {
         var wallet = world.Get<CurrencyComponent>(player);
         var total = wallet[currency] + amount;
 
-        if (total < 0)
+        if (total < 0 || amount > 0 && !CanReceive(player, currency, amount))
         {
             return false;
         }

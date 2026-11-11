@@ -17,6 +17,7 @@ using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Post.Responses;
+using OpenWorker.Hotspot.Modules.Shop.Enums;
 
 namespace OpenWorker.Gameplay.Modules.Drops;
 
@@ -52,11 +53,6 @@ public sealed partial class MazeResults(
     IPostStore? post = null,
     ILogger<MazeResults>? logger = null) : ISessionCloseHandler
 {
-    /// <summary>
-    /// The most gold a person holds; gold of a clear past it goes by post.
-    /// </summary>
-    public const long WalletLimit = 99_999_999_999_999;
-
     // What the reference names a letter of the rewards of a maze.
     private const byte RewardLetter = 5;
     private const byte MazeRewardLetter = 1;
@@ -288,7 +284,8 @@ public sealed partial class MazeResults(
 
         if (gold + specialGold > 0 && inventory is not null)
         {
-            if (inventory.Gold(player) + gold + specialGold > WalletLimit)
+            // Gold of a clear that the purse would not hold goes by post.
+            if (!inventory.CanReceive(player, ShopCurrency.Gold, gold + specialGold))
             {
                 mailGold = gold + specialGold;
             }

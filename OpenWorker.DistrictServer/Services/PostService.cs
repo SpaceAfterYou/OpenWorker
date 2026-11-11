@@ -22,6 +22,7 @@ using OpenWorker.Hotspot.Modules.Post.Requests;
 using OpenWorker.Hotspot.Modules.Post.Responses;
 using OpenWorker.Hotspot.Modules.Post.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Hotspot.Modules.Shop.Enums;
 
 namespace OpenWorker.DistrictServer.Services;
 
@@ -430,7 +431,7 @@ public sealed partial class PostService(
 
         // Read after the claim: the inventory and the wallet may have changed while it was made.
         var refusal = !world.IsAlive(player) ? 0
-            : inventory.Gold(player) > long.MaxValue - letter.Money ? PostMessages.TooMuchGold
+            : !inventory.CanReceive(player, ShopCurrency.Gold, letter.Money) ? PostMessages.TooMuchGold
             : !PostLetters.Fits(inventory, player, letter.Items) ? PostMessages.NoRoom
             : (int?)null;
 

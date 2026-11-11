@@ -142,6 +142,29 @@ public sealed class NpcServicesTest
     }
 
     [TestMethod]
+    public void ASaleThePurseCannotHoldIsRefusedWholeAndAFittingOneIsTaken()
+    {
+        using var s = new Shops();
+        var npc = s.F.NpcOffering(NpcFunction.Shop);
+
+        Assert.IsTrue(s.F.Catalog.TryGet(800004001, out var sold) && sold.SellPrice > 0);
+
+        var stack = s.F.Give(sold.Id, 3);
+        var price = 3L * sold.SellPrice;
+
+        s.F.Gold = InventoryService.WalletLimit - price + 1;
+        s.Shop.Sell(s.F.Player, Actor(npc), [new ShopSellEntry(stack.Storage, stack.Slot)]);
+
+        Assert.AreEqual(InventoryService.WalletLimit - price + 1, s.F.Gold, "nothing was paid");
+        Assert.AreEqual(3, s.F.Inventory.CountOf(s.F.Player, sold.Id), "and nothing was sold");
+
+        s.F.Gold = InventoryService.WalletLimit - price;
+        s.Shop.Sell(s.F.Player, Actor(npc), [new ShopSellEntry(stack.Storage, stack.Slot)]);
+
+        Assert.AreEqual(InventoryService.WalletLimit, s.F.Gold, "a sale that just fits is taken");
+    }
+
+    [TestMethod]
     public async Task AServiceFarFromItsNpcOrOfAnNpcWithoutItIsRefusedAndChangesNothing()
     {
         using var s = new Shops();
