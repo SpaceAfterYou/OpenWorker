@@ -97,7 +97,7 @@ public sealed partial class AiMachineTest
             Hit(machine, host, 1000, 1f);
         }
 
-        CollectionAssert.AreEqual(new[] { 77 }, host.Used.ToArray());
+        Assert.AreEqual(77, host.Used.Single());
         Assert.HasCount(1, host.Escapes);
     }
 
@@ -172,7 +172,7 @@ public sealed partial class AiMachineTest
         Hit(machine, host, 1000, 1f);
         Hit(machine, host, 1000, 1f);
 
-        CollectionAssert.AreEqual(new[] { 1000 }, host.Alerted.ToArray());
+        Assert.AreEqual(1000, host.Alerted.Single());
     }
 
     [TestMethod]
@@ -209,7 +209,7 @@ public sealed partial class AiMachineTest
         machine.Start();
         machine.OnSuperArmorRestored();
 
-        CollectionAssert.AreEqual(new[] { 88 }, host.Used.ToArray());
+        Assert.AreEqual(88, host.Used.Single());
     }
 
     [TestMethod]
