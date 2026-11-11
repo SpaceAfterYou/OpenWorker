@@ -103,6 +103,7 @@ internal partial class MonsterBody
     /// </summary>
     public virtual void OnSuperArmorRestored()
     {
+        Machine.OnSuperArmorRestored();
     }
 
     private void StepReaction(float elapsed)

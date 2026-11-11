@@ -561,7 +561,7 @@ internal partial class MonsterBody : IAiHost
     /// <summary>
     /// Whether the monster lies on the ground or flies after a blow.
     /// </summary>
-    public virtual bool IsDownOrFlying => false;
+    public virtual bool IsDownOrFlying => _reaction is { IsAirborne: true } or { IsDown: true };
 
     public void ForceDefense(AiDefense defense, float seconds)
     {
@@ -572,6 +572,7 @@ internal partial class MonsterBody : IAiHost
     public void EndFlinch()
     {
         _staggerEnd = 0;
+        _reaction?.EndFlinch();
     }
 
     public void NotifyEscape(float seconds)
