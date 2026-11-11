@@ -162,7 +162,15 @@ public abstract class LeagueServiceBase(
             return;
         }
 
+        // The gold is taken before the league is written, so it cannot be spent meanwhile, and given back when no league is made.
+        Charge(context.Player, -LeagueRules.CreateCost);
+
         var (outcome, remain, league) = await factory.CreateAsync(name, me, DefaultAuth);
+
+        if (outcome != LeagueCreateOutcome.Created && Alive(context))
+        {
+            Charge(context.Player, LeagueRules.CreateCost);
+        }
 
         if (!Alive(context))
         {
@@ -184,22 +192,19 @@ public abstract class LeagueServiceBase(
                 return;
         }
 
-        var currency = world.Get<CurrencyComponent>(context.Player);
-        currency.Gold -= LeagueRules.CreateCost;
-        world.MarkDirty(context.Player, PersonSections.Currencies);
-
         var session = Session(context);
-
-        session.Send(new ItemUpdateInvenMoneyResponse { Total = currency.Gold, Bonus = 0, Type = MoneyEarnFlow.Normal });
 
         var online = await network.FindAsync(me);
         var member = await factory.MemberAsync(me);
 
-        session.Send(new LeagueCreateResponse
+        if (member is not null)
         {
-            Info = LeagueMapper.ToInfo(league!),
-            Member = LeagueMapper.ToMember(member!, online)
-        });
+            session.Send(new LeagueCreateResponse
+            {
+                Info = LeagueMapper.ToInfo(league!),
+                Member = LeagueMapper.ToMember(member, online)
+            });
+        }
 
         await notifier.SyncAsync([me], league);
     }
@@ -324,7 +329,11 @@ public abstract class LeagueServiceBase(
 
         if (await relations.IsBlockedAsync(target.Person, me))
         {
-            Session(context).Send(invitation with { Result = Text.BlockedInviter });
+            if (Alive(context))
+            {
+                Session(context).Send(invitation with { Result = Text.BlockedInviter });
+            }
+
             return;
         }
 
@@ -354,6 +363,7 @@ public abstract class LeagueServiceBase(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LeagueInviteAcceptRequest request)
     {
         var me = Me(context);
+        var myName = world.Get<PersonInfoComponent>(context.Player).Name;
 
         // The invitation is what the server remembers, not what the client says it is.
         if (await book.TakeInviteAsync(me) is not { } invite)
@@ -386,7 +396,7 @@ public abstract class LeagueServiceBase(
                 {
                     Requester = invite.Inviter,
                     Target = me,
-                    TargetName = world.Get<PersonInfoComponent>(context.Player).Name,
+                    TargetName = myName,
                     League = league.Id,
                     Result = 0
                 });
@@ -413,6 +423,7 @@ public abstract class LeagueServiceBase(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, LeagueInviteRejectRequest request)
     {
         var me = Me(context);
+        var myName = world.Get<PersonInfoComponent>(context.Player).Name;
 
         if (await book.TakeInviteAsync(me) is not { } invite)
         {
@@ -421,7 +432,7 @@ public abstract class LeagueServiceBase(
 
         await network.SendAsync(invite.Inviter, new LeagueInviteRejectResponse
         {
-            TargetName = world.Get<PersonInfoComponent>(context.Player).Name,
+            TargetName = myName,
             Requester = invite.Inviter,
             Target = me,
             Result = Text.Refused
@@ -550,6 +561,11 @@ public abstract class LeagueServiceBase(
         };
 
         var remain = result == Text.JoinPenalty ? (long)(await factory.JoinCooldownAsync(me) ?? TimeSpan.Zero).TotalSeconds : 0;
+
+        if (!Alive(context))
+        {
+            return;
+        }
 
         Session(context).Send(new LeagueApplicantResResponse { Applicant = applicant with { Result = result }, Remain = remain });
 
@@ -933,6 +949,19 @@ public abstract class LeagueServiceBase(
         }
 
         return Alive(context) ? (member, league) : null;
+    }
+
+    /// <summary>
+    /// Adds gold to the purse of the player, or takes it when the amount is negative, and shows the new purse.
+    /// </summary>
+    private void Charge(Entity player, long amount)
+    {
+        var currency = world.Get<CurrencyComponent>(player);
+
+        currency.Gold += amount;
+        world.MarkDirty(player, PersonSections.Currencies);
+
+        world.Get<ServerSessionComponent>(player).Send(new ItemUpdateInvenMoneyResponse { Total = currency.Gold, Bonus = 0, Type = MoneyEarnFlow.Normal });
     }
 
     private int MaxMembers(LeagueRecord league) => levels.MemberLimit(league.Rating);
