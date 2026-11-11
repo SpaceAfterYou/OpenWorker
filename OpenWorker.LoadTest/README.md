@@ -24,6 +24,20 @@ The override makes the servers fit to be measured (Release builds, Warning logs,
 district), starts the other servers only once the relay is healthy (it migrates the database and makes the Redis
 indexes), and is used by the script only. `compose.yaml` is not changed.
 
+## Beside another stack
+
+```bash
+LOADTEST_STAND=21 SOULWORKER_DATAS=/mnt/games/soulworker/_datas eng/loadtest-stand.sh --bots 1000 --ramp-up 50 \
+  --duration 60s --warmup 10s --move-rate 5 --maze-share 0.2
+```
+
+`eng/loadtest-stand.sh` runs the same servers without compose and without images of its own: the Release output of each
+server in the ASP.NET image, as plain `docker run` containers named `owlt<n>-*` on a network of their own, every port
+moved up by `n * 1000`, and a Prometheus the servers push their metrics to. It is for a machine where the compose stack
+of development holds the default ports, or where `docker compose` cannot build (it also runs on Podman's `docker`). The
+containers are removed at the end (`LOADTEST_KEEP=1` keeps them). After the run it prints the handlers of each server
+by the time they took (`eng/loadtest/handlers.py`, also in `handlers.txt` beside the report).
+
 ## By hand
 
 ```bash
@@ -41,6 +55,7 @@ dotnet run -c Release --project OpenWorker.LoadTest -- run --bots 1000 --ramp-up
 | `--move-rate` | moves per second of every bot | 5 |
 | `--chat-rate` | lines per second of every bot (the server allows 5 per 3 s) | 0.05 |
 | `--maze-share`, `--maze-location`, `--maze-delay` | share of the bots that fight, the maze, how long they play in the district first | 0.1, 21311, 3s |
+| `--maze-portal`, `--no-maze-prepare` | the portal taken into the maze (the server takes a portal only where it stands); do not send `/exp` and `/maze-clear` first, which a new character needs to be admitted and which the district must open to everyone (`Commands__OpenToEveryone`) | 21511, off |
 | `--skill-rate`, `--skill` | skills per second in a maze, and the skill (0: the first the character has learned) | 1, 0 |
 | `--probe-every` | send a ping behind every n-th move (0: none) | 1 |
 | `--auth-host`, `--auth-port` | the auth server | 127.0.0.1:10000 |
