@@ -522,7 +522,9 @@ public sealed class InventoryService(
         var from = inventory?.At(src.Storage, src.Index);
         var to = inventory?.At(dest.Storage, dest.Index);
 
+        // Stacks pour into one another only when both are bound alike, or a bound stack would come out free.
         if (inventory is null || from is null || to is null || from == to || count <= 0 || count > from.Count || from.Item != to.Item ||
+            from.BindType != to.BindType ||
             ItemCatalog.IsEquipment(src.Storage) || ItemCatalog.IsEquipment(dest.Storage) ||
             ItemCatalog.KindOf(src.Storage) != ItemCatalog.KindOf(dest.Storage) ||
             to.Count + count > catalog.StackLimit(to.Item))
