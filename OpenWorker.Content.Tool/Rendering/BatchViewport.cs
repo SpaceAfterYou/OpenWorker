@@ -35,6 +35,9 @@ public sealed class BatchViewport : UserControl
     public static readonly StyledProperty<bool> ShowNavMeshProperty =
         AvaloniaProperty.Register<BatchViewport, bool>(nameof(ShowNavMesh), defaultValue: true);
 
+    public static readonly StyledProperty<SceneMeshDraw?> SceneMeshProperty =
+        AvaloniaProperty.Register<BatchViewport, SceneMeshDraw?>(nameof(SceneMesh));
+
     private readonly BatchGlSurface _surface = new() { IsHitTestVisible = false };
     private readonly Border _overlay;
     private TopLevel? _topLevel;
@@ -73,6 +76,12 @@ public sealed class BatchViewport : UserControl
         set => SetValue(ShowNavMeshProperty, value);
     }
 
+    public SceneMeshDraw? SceneMesh
+    {
+        get => GetValue(SceneMeshProperty);
+        set => SetValue(SceneMeshProperty, value);
+    }
+
     static BatchViewport()
     {
         BoxesProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
@@ -86,6 +95,10 @@ public sealed class BatchViewport : UserControl
         NavMeshProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
         {
             viewport._surface.NavMesh = args.NewValue as NavMesh;
+        });
+        SceneMeshProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
+        {
+            viewport._surface.SceneMesh = args.NewValue as SceneMeshDraw;
         });
         ShowBoxesProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
         {
@@ -377,6 +390,7 @@ public sealed class BatchViewport : UserControl
         private IReadOnlyList<BatchBoxDraw>? _boxes;
         private BatchBoxDraw? _selectedBox;
         private NavMesh? _navMesh;
+        private SceneMeshDraw? _sceneMesh;
         private bool _showBoxes = true;
         private bool _showNavMesh = true;
         private bool _moveForward;
@@ -422,6 +436,18 @@ public sealed class BatchViewport : UserControl
             set
             {
                 _navMesh = value;
+                _meshDirty = true;
+                FrameCamera();
+                RequestNextFrameRendering();
+            }
+        }
+
+        public SceneMeshDraw? SceneMesh
+        {
+            get => _sceneMesh;
+            set
+            {
+                _sceneMesh = value;
                 _meshDirty = true;
                 FrameCamera();
                 RequestNextFrameRendering();
@@ -760,6 +786,7 @@ public sealed class BatchViewport : UserControl
                 _showBoxes ? _boxes : null,
                 _selectedBox,
                 _showNavMesh ? _navMesh : null,
+                _sceneMesh,
                 _gridOrigin,
                 _gridHalfExtent,
                 _gridStep);
@@ -794,10 +821,12 @@ public sealed class BatchViewport : UserControl
         {
             var boxes = _boxes;
             var navMesh = _navMesh;
+            var sceneMesh = _sceneMesh;
             var hasBoxes = boxes is { Count: > 0 };
             var hasNav = navMesh is not null && navMesh.FaceCount > 0;
+            var hasScene = sceneMesh is { TriangleCount: > 0 };
 
-            if (!hasBoxes && !hasNav)
+            if (!hasBoxes && !hasNav && !hasScene)
             {
                 _target = Vector3.Zero;
                 _gridOrigin = Vector3.Zero;
@@ -832,6 +861,12 @@ public sealed class BatchViewport : UserControl
                 max = Vector3.Max(max, Vector3.Max(navA, navB));
             }
 
+            if (hasScene)
+            {
+                min = Vector3.Min(min, sceneMesh!.Minimum);
+                max = Vector3.Max(max, sceneMesh.Maximum);
+            }
+
             _target = (min + max) * 0.5f;
             _gridOrigin = _target;
 
@@ -863,12 +898,18 @@ public sealed class BatchViewport : UserControl
             IReadOnlyList<BatchBoxDraw>? boxes,
             BatchBoxDraw? selected,
             NavMesh? navMesh,
+            SceneMeshDraw? sceneMesh,
             Vector3 gridOrigin,
             float gridHalfExtent,
             float gridStep)
         {
             var faces = new List<float>(16384);
             var lines = new List<float>(8192);
+
+            if (sceneMesh is { Faces.Length: > 0 })
+            {
+                faces.AddRange(sceneMesh.Faces);
+            }
 
             void AddVertex(List<float> sink, Vector3 position, Vector4 color)
             {

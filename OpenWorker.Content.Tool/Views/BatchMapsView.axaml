@@ -60,6 +60,7 @@
                     <rendering:BatchViewport Boxes="{Binding Boxes}"
                                              SelectedBox="{Binding SelectedBox}"
                                              NavMesh="{Binding NavMesh}"
+                                             SceneMesh="{Binding SceneMesh}"
                                              ShowBoxes="{Binding ShowBoxesLayer}"
                                              ShowNavMesh="{Binding ShowNavMeshLayer}" />
                 </Border>

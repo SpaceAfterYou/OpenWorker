@@ -46,6 +46,9 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
     public partial NavMesh? NavMesh { get; set; }
 
     [ObservableProperty]
+    public partial SceneMeshDraw? SceneMesh { get; set; }
+
+    [ObservableProperty]
     public partial bool ShowBoxesLayer { get; set; } = true;
 
     [ObservableProperty]
@@ -100,6 +103,7 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         SelectedBoxNode = null;
         SelectedBox = null;
         NavMesh = null;
+        SceneMesh = null;
         HasNavMesh = false;
         NavMeshStatus = "No navigation mesh for this map.";
         SelectedLayerTab = 0;
@@ -141,11 +145,24 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             _all = loaded.Entries;
             _loaded = true;
             var nav = ContentPaths.NavMeshFolder;
-            Status = batch is null
-                ? $"{loaded.Status}. Set {ContentPaths.BatchVariable} to the folder with *.vbatch files."
-                : nav is null
-                    ? $"{loaded.Status}. Set {ContentPaths.NavMeshVariable} to the folder with *.hkt meshes."
-                    : loaded.Status;
+            var world = ContentPaths.WorldFolder;
+            var parts = new List<string> { loaded.Status };
+            if (batch is null)
+            {
+                parts.Add($"Set {ContentPaths.BatchVariable} to the folder with *.vbatch files.");
+            }
+
+            if (nav is null)
+            {
+                parts.Add($"Set {ContentPaths.NavMeshVariable} to the folder with *.hkt meshes.");
+            }
+
+            if (world is null)
+            {
+                parts.Add($"Set {ContentPaths.WorldVariable} to the unpacked client datas (World/Scenes).");
+            }
+
+            Status = string.Join(' ', parts);
             ApplyFilter();
         }
         catch (OperationCanceledException)
@@ -217,6 +234,7 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         SelectedBoxNode = null;
         SelectedBox = null;
         NavMesh = null;
+        SceneMesh = null;
         HasNavMesh = false;
         NavMeshStatus = "No navigation mesh for this map.";
 
@@ -232,11 +250,17 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             : Path.Combine(navFolder, entry.BatchName + ".hkt");
         var navExists = navPath is not null && File.Exists(navPath);
 
-        if (!entry.FileExists && !navExists)
+        var worldFolder = ContentPaths.WorldFolder;
+        var scenePath = worldFolder is null
+            ? null
+            : SceneCatalog.FindScenePath(worldFolder, entry.BatchName);
+        var sceneExists = scenePath is not null;
+
+        if (!entry.FileExists && !navExists && !sceneExists)
         {
             SelectionStatus = string.Format(
                 CultureInfo.InvariantCulture,
-                "Missing {0}.vbatch and {0}.hkt",
+                "Missing {0}.vbatch / {0}.hkt / {0}.vscene",
                 entry.BatchName);
             return;
         }
@@ -283,7 +307,23 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
                         }
                     }
 
-                    return (Boxes: boxes, BoxError: boxError, Mesh: mesh, NavError: navError);
+                    token.ThrowIfCancellationRequested();
+
+                    SceneMeshDraw? scene = null;
+                    string? sceneError = null;
+                    if (sceneExists && worldFolder is not null)
+                    {
+                        try
+                        {
+                            scene = SceneFileCache.Shared.Load(worldFolder, scenePath!);
+                        }
+                        catch (Exception exception)
+                        {
+                            sceneError = exception.Message;
+                        }
+                    }
+
+                    return (Boxes: boxes, BoxError: boxError, Mesh: mesh, NavError: navError, Scene: scene, SceneError: sceneError);
                 },
                 token);
 
@@ -295,10 +335,22 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             Boxes = loaded.Boxes;
             BoxGroups = BatchMapCatalog.GroupBoxes(loaded.Boxes);
             NavMesh = loaded.Mesh;
+            SceneMesh = loaded.Scene;
             HasNavMesh = loaded.Mesh is not null;
             NavMeshStatus = FormatNavMeshStatus(entry.BatchName, loaded.Mesh, loaded.NavError, navExists);
 
-            SelectionStatus = FormatSelectionStatus(entry.BatchName, loaded.Boxes.Count, loaded.Mesh, loaded.BoxError, loaded.NavError, entry.FileExists, navExists);
+            SelectionStatus = FormatSelectionStatus(
+                entry.BatchName,
+                loaded.Boxes.Count,
+                loaded.Mesh,
+                loaded.Scene,
+                loaded.BoxError,
+                loaded.NavError,
+                loaded.SceneError,
+                entry.FileExists,
+                navExists,
+                sceneExists,
+                worldFolder is not null);
             ApplyLayerTab(SelectedLayerTab);
         }
         catch (OperationCanceledException)
@@ -321,12 +373,16 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         string name,
         int boxCount,
         NavMesh? mesh,
+        SceneMeshDraw? scene,
         string? boxError,
         string? navError,
+        string? sceneError,
         bool batchExists,
-        bool navExists)
+        bool navExists,
+        bool sceneExists,
+        bool worldConfigured)
     {
-        var parts = new List<string>(4);
+        var parts = new List<string>(5);
 
         if (boxError is not null)
         {
@@ -355,6 +411,31 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         else if (!navExists)
         {
             parts.Add("navmesh missing");
+        }
+
+        if (sceneError is not null)
+        {
+            parts.Add("scene: " + sceneError);
+        }
+        else if (scene is { TriangleCount: > 0 })
+        {
+            parts.Add(string.Format(
+                CultureInfo.InvariantCulture,
+                "scene {0} tris ({1} meshes)",
+                scene.TriangleCount,
+                scene.MeshCount));
+        }
+        else if (!worldConfigured)
+        {
+            parts.Add("scene unset");
+        }
+        else if (!sceneExists)
+        {
+            parts.Add("scene missing");
+        }
+        else
+        {
+            parts.Add("scene empty");
         }
 
         return string.Format(
