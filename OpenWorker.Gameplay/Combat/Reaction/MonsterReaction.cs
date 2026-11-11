@@ -278,6 +278,11 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
                 React(motion);
             }
         }
+        else if (flyAction)
+        {
+            // The monster does not fly, but the clients are told the speed it would have.
+            _flySpeed = LaunchSpeed(push.Speed, vector);
+        }
 
         if (survives && !flyAction && defense == DefenseType.Normal && !IsFixed)
         {
@@ -469,7 +474,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
 
         _flyDistance = distance;
         _flyMoved = 0f;
-        _flySpeed = eventSpeed > 0f ? eventSpeed : distance;
+        _flySpeed = LaunchSpeed(eventSpeed, vector);
         _hang = HangTime;
         _groundDown = LeastLying + (LyingStep * random.Next(LyingSteps));
         _movingInFly = true;
@@ -492,6 +497,14 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         _phase = Phase.Air;
         _motion = motion;
         _left = lengthOf(Family(motion) + "_Start");
+    }
+
+    /// <summary>
+    /// How fast a monster flies: the speed of the blow, or the distance it has to cover in a second.
+    /// </summary>
+    private static float LaunchSpeed(float eventSpeed, Vector3 vector)
+    {
+        return eventSpeed > 0f ? eventSpeed : new Vector2(vector.X, vector.Y).Length();
     }
 
     /// <summary>

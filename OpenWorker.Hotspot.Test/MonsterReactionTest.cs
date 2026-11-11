@@ -213,6 +213,11 @@ public sealed class MonsterReactionTest
 
         Assert.IsFalse(reaction.IsBusy);
 
+        var killed = reaction.Hit(Strike(ReactionKind.LaunchUp, 400f, height: 100f, speed: 1000f), DefenseType.Normal, false, Vector3.Zero, new BlowRolls(0, 0));
+
+        Assert.IsFalse(reaction.IsBusy, "A monster that dies is not thrown.");
+        Assert.AreEqual(1000f, killed.FlySpeed, "The clients fly it all the same.");
+
         reaction.BreakArmor(1f);
 
         var refused = reaction.Hit(Strike(ReactionKind.LaunchUp, 400f, height: 100f), DefenseType.Normal, true, Vector3.Zero, new BlowRolls(0, 0));
