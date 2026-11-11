@@ -848,62 +848,115 @@ public sealed class LuaCreatureManager
     private const float SuperArmorShare = 0.2f;
 
     /// <summary>
-    /// How long a broken super armor stays broken, in milliseconds.
+    /// What a hit does to the monster that takes it, as the clients are told in the hit: the defense type and the gauge of the
+    /// armor after the blow, and the throw.
     /// </summary>
-    private const long SuperArmorRecovery = 3000;
+    public readonly record struct HitEffect(byte Defense, float SuperArmor, Vector3 ExtraMove, float FlySpeed);
 
     /// <summary>
-    /// What a hit does to the monster that takes it, as the clients are told in the hit.
+    /// A monster takes a blow. Its super armor takes the share of the hit that the skill gives it: while the armor holds the
+    /// monster shows no reaction and is not moved, unless the blow is hard; when it breaks the monster reacts like any other
+    /// and, if it has a motion for it, stands helpless through the break. The reaction then runs on the body of the monster.
     /// </summary>
-    public readonly record struct HitEffect(byte Reaction, byte Defense, float SuperArmor);
-
-    /// <summary>
-    /// A monster takes a hit on its super armor. As long as the armor holds it does not flinch; when it breaks it does,
-    /// and it is helpless until the armor comes back.
-    /// </summary>
-    public HitEffect AbsorbHit(Entity monster, float armorDamage, int reaction, bool survives)
+    /// <param name="defense">The defense type of the monster, buffs counted.</param>
+    /// <param name="damage">What the hit deals.</param>
+    /// <param name="armorShare">The share of the damage the skill gives to the armor, in percent.</param>
+    /// <param name="survives">The monster lives on.</param>
+    public HitEffect ReceiveBlow(Entity monster, in Blow blow, DefenseType defense, int damage, float armorShare, bool survives)
     {
         var combat = ecs.Get<MonsterCombatComponent>(monster);
+        var broken = combat.SuperArmorBrokenUntil != 0;
+        var seconds = 0f;
+        var gauge = combat.MaxSuperArmor > 0f ? combat.SuperArmor : 0f;
+        _ = Bodies.TryGetValue(monster, out var body);
 
-        if (combat.MaxSuperArmor <= 0f)
+        if (defense == DefenseType.SuperArmor && combat.MaxSuperArmor > 0f)
         {
-            return new HitEffect(Flinch(monster, reaction, survives), (byte)combat.Defense, 0f);
+            if (broken)
+            {
+                defense = DefenseType.Normal;
+            }
+            else
+            {
+                var taken = SuperArmorRules.Take(combat.SuperArmor, SuperArmorRules.Damage(damage, armorShare), blow.Reaction.Hardness);
+
+                gauge = taken.Gauge;
+
+                if (taken.Broken)
+                {
+                    defense = DefenseType.Normal;
+                    seconds = SuperArmorRules.BreakSeconds(Animation(body, "B_SABreak_Start"), Animation(body, "B_SABreak_End"), combat.SuperArmorRecovery);
+                    combat = combat with { SuperArmorBrokenUntil = Environment.TickCount64 + (long)(seconds * 1000f) };
+                }
+
+                ecs.Set(monster, combat with { SuperArmor = gauge });
+            }
         }
 
-        var now = Environment.TickCount64;
+        var rolls = BlowRolls.Roll(Random);
+        var outcome = new HitOutcome(Vector3.Zero, Vector3.Zero, 0f, false, MotionClass.None);
 
-        if (combat.SuperArmorBrokenUntil > now)
+        if (body is not null)
         {
-            return new HitEffect(Flinch(monster, reaction, survives), (byte)DefenseType.Normal, 0f);
+            if (seconds > 0f && combat.ArmorBreakMotion)
+            {
+                body.BreakArmor(seconds);
+            }
+
+            outcome = body.ReceiveBlow(blow, defense, survives, rolls);
+        }
+        else
+        {
+            // A monster with no mind cannot be moved by the server; the clients are told as if it could.
+            var profile = new ReactionProfile(combat.WeightRank, combat.ReactionLimit, combat.StandType, combat.Rank, combat.BodyRadius);
+
+            outcome = new MonsterReaction(profile, Navigation, static _ => 0f, Random).Hit(blow, defense, survives, ecs.Get<WorldComponent>(monster).Position, rolls);
         }
 
-        var gauge = Math.Max(0f, combat.SuperArmor - armorDamage);
-
-        if (gauge > 0f)
-        {
-            ecs.Set(monster, combat with { SuperArmor = gauge });
-            Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(monster), Current = gauge, Max = combat.MaxSuperArmor });
-
-            return new HitEffect(0, (byte)DefenseType.SuperArmor, gauge);
-        }
-
-        ecs.Set(monster, combat with { SuperArmor = 0f, SuperArmorBrokenUntil = now + (combat.SuperArmorRecovery > 0 ? combat.SuperArmorRecovery : SuperArmorRecovery) });
-        Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(monster), Current = 0f, Max = combat.MaxSuperArmor });
-
-        return new HitEffect(Flinch(monster, reaction, survives), (byte)DefenseType.Normal, 0f);
+        return new HitEffect((byte)defense, gauge, outcome.ExtraMove, outcome.FlySpeed);
     }
 
-    private byte Flinch(Entity monster, int reaction, bool survives)
+    /// <summary>
+    /// A weak blow that slows its targets by chance tells everyone it did, before it tells how hard the blow was.
+    /// </summary>
+    internal void TellHitSlow(SkillDmgValue[] hits, in AttackTrigger trigger)
     {
-        if (reaction != 0 && survives && Bodies.TryGetValue(monster, out var body))
+        if (trigger.Reaction.SlowTime <= 0f)
         {
-            body.Stagger(FlinchSeconds);
+            return;
         }
 
-        return (byte)reaction;
+        foreach (var hit in hits)
+        {
+            var time = HitSlow.TimeToTell(trigger.Reaction, (DefenseType)hit.DefenseType, HitSlow.Roll(Random));
+
+            if (time > 0f)
+            {
+                Broadcast(new MovementStiffenBtResponse { Actor = hit.UxActorId, Rate = trigger.Reaction.SlowRate, Time = time });
+            }
+        }
     }
 
-    private const float FlinchSeconds = 0.6f;
+    private float Animation(MonsterBody? body, string name)
+    {
+        return body is null ? 0f : Services?.Actions.GetAnimationLength(body.Behavior.ActionFile, name) ?? 0f;
+    }
+
+    /// <summary>
+    /// Whether a player stands within a distance of a place, bodies counted: a monster that slides there is stopped.
+    /// </summary>
+    internal bool IsPlayerNear(Vector3 place, float distance)
+    {
+        foreach (var player in Players)
+        {
+            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && AiMath.Distance2D(Vitals.PositionOf(player), place) <= distance + PlayerVitals.BodyRadius)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// A buff holds a monster: it stops where it stands and drops the attack it was making.
@@ -932,6 +985,12 @@ public sealed class LuaCreatureManager
 
         ecs.Set(monster, combat with { SuperArmor = combat.MaxSuperArmor, SuperArmorBrokenUntil = 0 });
         Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(monster), Current = combat.MaxSuperArmor, Max = combat.MaxSuperArmor });
+
+        // The mind may have a skill it casts when its armor is whole again.
+        if (Bodies.TryGetValue(monster, out var body))
+        {
+            body.OnSuperArmorRestored();
+        }
     }
 
     internal void SetInvincible(Entity monster, bool invincible)
@@ -1185,6 +1244,9 @@ public sealed class LuaCreatureManager
         var hits = new List<SkillDmgValue>();
         var fallen = new List<Entity>();
         List<Entity>? hurt = null;
+        var origin = ecs.Get<WorldComponent>(attacker.Entity);
+        var weight = ecs.Get<MonsterCombatComponent>(attacker.Entity).WeightRank;
+        var blow = new Blow(trigger.Reaction, (ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue), trigger.DamageRate, trigger.Angle, origin.Position, origin.Position, origin.Rotation, true, weight, IsMelee: trigger.HitsArea);
 
         foreach (var victim in victims)
         {
@@ -1213,6 +1275,11 @@ public sealed class LuaCreatureManager
                 Buffs.OnCondition(victim, result.Flags.HasFlag(HitResults.Critical) ? MazeBuffs.OnCriticallyDamaged : result.Flags.HasFlag(HitResults.Miss) ? MazeBuffs.OnDamagedMissed : MazeBuffs.OnDamaged);
             }
 
+            var shownDefense = shielded ? DefenseType.Invincible : defense;
+            var (extraMove, flySpeed) = shielded
+                ? (Vector3.Zero, 0f)
+                : PlayerThrow.Told(blow, new Struck(Vitals.PositionOf(victim), 0, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
+
             hits.Add(default(SkillDmgValue) with
             {
                 UxActorId = ecs.Get<ActorComponent>(victim),
@@ -1220,7 +1287,9 @@ public sealed class LuaCreatureManager
                 DamageFlags = (byte)result.Flags,
                 Damage = result.Damage,
                 Health = left,
-                DefenseType = (byte)(shielded ? DefenseType.Invincible : defense)
+                ExtraMove = extraMove,
+                FlySpeed = flySpeed,
+                DefenseType = (byte)shownDefense
             });
 
             if (left == 0)
@@ -1239,10 +1308,13 @@ public sealed class LuaCreatureManager
         }
 
         var place = ecs.Get<WorldComponent>(attacker.Entity);
+        var told = hits.ToArray();
+
+        TellHitSlow(told, trigger);
 
         Broadcast(new SkillActionBroadcastResponse
         {
-            SkillDmgValueList = hits.ToArray(),
+            SkillDmgValueList = told,
             SkillAction = default(SkillActionValue) with
             {
                 SkillActorInfo = default(SkillActorInfoValue) with

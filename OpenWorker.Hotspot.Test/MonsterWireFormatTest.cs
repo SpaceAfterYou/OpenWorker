@@ -7,6 +7,7 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Responses;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -52,6 +53,34 @@ public sealed class MonsterWireFormatTest
             w.Write(Raw);
             w.Write(77);
         }), bytes);
+    }
+
+    /// <summary>
+    /// A monster that landed is put at its place within a tenth of a second, and one whose flight a wall cut short falls where it
+    /// is: the actor, a place, then the time or the yaw.
+    /// </summary>
+    [TestMethod]
+    public void LandingAndFlightCutTellTheActorAndThePlace()
+    {
+        var place = new Vector3(1, 2, 3);
+
+        CollectionAssert.AreEqual(Expected(w =>
+        {
+            w.Write(Raw);
+            w.Write(place.X);
+            w.Write(place.Y);
+            w.Write(place.Z);
+            w.Write(0.1f);
+        }), Written(default(SkillMoveWithTimeBroadcastResponse) with { Actor = Monster, Position = place, Time = 0.1f }));
+
+        CollectionAssert.AreEqual(Expected(w =>
+        {
+            w.Write(Raw);
+            w.Write(place.X);
+            w.Write(place.Y);
+            w.Write(place.Z);
+            w.Write(45f);
+        }), Written(default(SkillSyncPositionBroadcastResponse) with { Actor = Monster, Position = place, Yaw = 45f }));
     }
 
     [TestMethod]

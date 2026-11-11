@@ -56,4 +56,9 @@ public sealed class NavMeshNavigation : INavigation
     {
         return _field.CanSee(from, target);
     }
+
+    public Vector3 Clamp(Vector3 from, Vector3 target, float radius, out bool reached)
+    {
+        return _field.Clamp(from, target, radius, out reached);
+    }
 }

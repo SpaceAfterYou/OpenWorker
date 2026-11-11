@@ -62,7 +62,7 @@ public sealed class ActionFileTest
             {
                 e.Write((short)1);
                 e.Write((short)6);
-                e.Write((short)0);
+                e.Write((short)Hardness);
                 e.Write(11);
 
                 foreach (var value in (ReadOnlySpan<float>)[40f, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f])
@@ -84,6 +84,10 @@ public sealed class ActionFileTest
     }
 
     private const int AuraWritten = 325;
+    private const int Hardness = 3;
+    private const int Grade = 3;
+    private const int AwayFromOrigin = 2;
+    private const float ReactionAngle = 15f;
 
     private static void WriteProjectile(BinaryWriter e, short version)
     {
@@ -117,11 +121,17 @@ public sealed class ActionFileTest
         e.Write(0.5f);
         e.Write(1406);
         e.Write(9);
-        e.Write(new byte[12 + 4 + 20 + 2]);
+        // How the target is thrown: distance, height, speed, the way, the height in the air, the slow of a weak blow, its chance.
+        WriteFloats(e, 120f, 75f, 900f);
+        e.Write(AwayFromOrigin);
+        WriteFloats(e, 30f, 0.4f, 0.5f, 0.1f, 0.05f);
+        e.Write((short)15);
         e.Write(1);
         WriteFloats(e, 3f, 5f, 0.3f, 360f, 0f, -10f, 0f, 100f, 100f, 120f, 200f, 1f);
         WriteString(e, "text");
-        e.Write(new byte[4 + 1 + 4]);
+        e.Write(Grade);
+        e.Write(true);
+        e.Write(new byte[4]);
         e.Write(new byte[1 + 12 + 8]);
         WriteString(e, "text");
         e.Write(new byte[12]);
@@ -131,14 +141,18 @@ public sealed class ActionFileTest
         e.Write(new byte[40]);
         e.Write(true);
         e.Write(4);
-        e.Write(new byte[2 + 2 + 1 + 4 + 4]);
+        e.Write(new byte[2 + 2 + 1]);
+        e.Write(ReactionAngle);
+        e.Write(new byte[4]);
         e.Write(false);
         e.Write(true);
         // What later versions added at the end of an attack: a string, a flag, two strings, a flag, two numbers, two flags, two numbers
         // and a string, a short, the aura (from 242, so the attacks of version 236 end earlier), a flag and two numbers.
         if (version >= 242)
         {
-            e.Write(new byte[4 + 1 + 4 + 4 + 1 + 8 + 2 + 8 + 4 + 2]);
+            e.Write(0);
+            e.Write(true);
+            e.Write(new byte[4 + 4 + 1 + 8 + 2 + 8 + 4 + 2]);
             e.Write(AuraWritten);
             e.Write(new byte[1 + 8 + 1]);
         }
@@ -218,7 +232,8 @@ public sealed class ActionFileTest
             var attack = animation.Attacks[0];
 
             Assert.AreEqual(
-                new AttackTrigger(51, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty, version >= AuraSinceVersion ? AuraWritten : 0),
+                new AttackTrigger(51, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty, version >= AuraSinceVersion ? AuraWritten : 0,
+                    new AttackReaction(120f, 75f, 30f, 900f, AwayFromOrigin, ReactionAngle, 0.4f, 0.5f, 0.1f, 0.05f, 15, Grade, true, Hardness, version >= AuraSinceVersion)),
                 attack);
             Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
             Assert.AreEqual(0.75f, animation.Attacks[1].Start);
@@ -268,6 +283,13 @@ public sealed class ActionFileTest
         Assert.AreEqual(450f, attack.Radius);
         Assert.AreEqual(new Vector3(0, 250, 0), attack.Center);
         Assert.AreEqual(1, attack.Id, "the first attack of the file");
+        Assert.AreEqual(120f, attack.Reaction.Distance, "the push of a plain blow");
+        Assert.AreEqual(AttackReaction.AlongAttacker, attack.Reaction.Arrow);
+        Assert.AreEqual(1, attack.Reaction.Hardness);
+
+        var launch = ActionFile.Load(Path.Join(folder, "PC_A.adf")).Animations["B_Skill_Power Slash"].Attacks[0];
+
+        Assert.AreEqual(new Vector3(750f, 95f, 1150f), new Vector3(launch.Reaction.Distance, launch.Reaction.Height, launch.Reaction.Speed), "the throw of a skill");
 
         var thrown = ActionFile.Load(Path.Join(folder, "PC_A.adf")).Animations["B_Skill_Flash_Step"].Attacks[0];
 
