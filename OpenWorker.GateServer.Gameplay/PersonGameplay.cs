@@ -159,6 +159,10 @@ public sealed partial class PersonGameplay(
                 .SaveChangesAsync(context.CancellationToken);
 
             await transaction.CommitAsync(context.CancellationToken);
+
+            // The connection the transaction held goes back to the pool now: the first items below are saved through another one,
+            // and many creations at once each holding one while waiting for a second would leave the pool empty.
+            await transaction.DisposeAsync();
         }
 
         // The check above passed, but another server created a character with this name in the meantime.
