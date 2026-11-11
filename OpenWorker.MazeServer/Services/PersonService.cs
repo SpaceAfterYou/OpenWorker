@@ -61,6 +61,7 @@ public sealed partial class PersonService(
     SessionLeaseManager leases,
     BatchManager batches,
     IRedisCollection<MazeReserveCache> mazeReserves,
+    Reservations reservations,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
     TradePasswordService passwords,
@@ -172,8 +173,14 @@ public sealed partial class PersonService(
 
         var person = entry.Person;
 
-        await mazeReserves
-            .DeleteAsync(mazeReserve);
+        // The reservation lets one connection in: of two that came with it together, the one that takes it away enters,
+        // so a person is never on a server twice.
+        if (!await reservations.TakeAsync<MazeReserveCache>(request.Actor.Identifier))
+        {
+            LogNoReservation(logger, request.Account, request.Actor.Identifier);
+            session.Disconnect();
+            return;
+        }
 
         world.Set(context.Player, new ClaimsComponent(request.Session));
 

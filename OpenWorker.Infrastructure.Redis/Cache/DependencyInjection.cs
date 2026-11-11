@@ -35,6 +35,8 @@ public static class DependencyInjection
             return multiplexer;
         });
 
+        services.TryAddSingleton<Reservations>();
+
         services.AddHostedService<RedisMetricsService>();
 
         return services;

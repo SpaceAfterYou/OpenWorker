@@ -63,6 +63,7 @@ public sealed partial class PersonService(
     HelperManager helpers,
     IRedisCollection<SessionCache> sessions,
     IRedisCollection<DistrictReserveCache> districtReserves,
+    Reservations reservations,
     SessionLeaseManager leases,
     ServiceChannels channels,
     IDbContextFactory<PersistenceContext> factory,
@@ -146,9 +147,14 @@ public sealed partial class PersonService(
 
         var person = entry.Person;
 
-        // A reservation is used up by the entry.
-        await districtReserves
-            .DeleteAsync(reserve);
+        // A reservation is used up by the entry, and lets one connection in: of two that came with it together, the one
+        // that takes it away enters, so a person is never on a server twice.
+        if (!await reservations.TakeAsync<DistrictReserveCache>(request.Account))
+        {
+            LogNoReservation(request.Account, request.Actor.Identifier, Location);
+            session.Disconnect();
+            return;
+        }
 
         ecs.Set(context.Player, new ClaimsComponent(request.Session));
 
