@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
@@ -93,7 +94,8 @@ public sealed class ItemUseService(
     BoosterManager? boosters = null,
     AkashicService? akashic = null,
     FatigueService? fatigue = null,
-    IReviveItems? revive = null)
+    IReviveItems? revive = null,
+    AchievementManager? achievements = null)
 {
     private readonly RowIndex<int, ItemPackageRow> _packages = packages.IndexBy(e => e.Id);
     private readonly RowIndex<int, ItemRandomBoxRow> _randomBoxes = randomBoxes.IndexBy(e => e.Id);
@@ -196,6 +198,7 @@ public sealed class ItemUseService(
         if (result.Ok)
         {
             limits.StartCooldown(player, row);
+            achievements?.Count(player, AchievementType.ItemUsed);
         }
 
         return result;

@@ -5,6 +5,7 @@ using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Npcs.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -27,7 +28,8 @@ public sealed partial class NpcCreditManager(
     TimeProvider time,
     ILogger<NpcCreditManager> logger,
     BoosterManager? boosters = null,
-    Random? random = null)
+    Random? random = null,
+    AchievementManager? achievements = null)
 {
     /// <summary>
     /// The benefits and the boosters are parts out of this.
@@ -143,7 +145,7 @@ public sealed partial class NpcCreditManager(
 
         book.StartDay(Today());
 
-        if (Add(book, npc.Group, points) is not { } entry)
+        if (Add(book, npc.Group, points, out var gained) is not { } entry)
         {
             return;
         }
@@ -154,13 +156,18 @@ public sealed partial class NpcCreditManager(
 
         LogRaised(logger, npc.Group, (byte)raise, entry.Grade, entry.Point);
         Send(player, new PersonNpcCreditUpdateResponse { Credit = entry.ToValue() });
+
+        // What counts is what the day allowed, not what was rolled.
+        achievements?.Count(player, AchievementType.NpcCredit, gained, npc.Group);
     }
 
     /// <summary>
     /// Adds credit to a group as far as the day of its grade allows, passing grades on the way; null when nothing was added.
     /// </summary>
-    private NpcCreditEntry? Add(NpcCreditBook book, int group, int points)
+    private NpcCreditEntry? Add(NpcCreditBook book, int group, int points, out int added)
     {
+        added = 0;
+
         var entry = book.Find(group);
         var created = entry is null;
 
@@ -180,6 +187,7 @@ public sealed partial class NpcCreditManager(
 
         var gained = Math.Min(points, room);
 
+        added = gained;
         entry.DayPoint += (short)gained;
 
         var credit = entry.Point + gained;

@@ -13,6 +13,7 @@ using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Post;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
@@ -51,6 +52,7 @@ public sealed partial class MazeResults(
     FatigueService? fatigue = null,
     BoosterManager? boosters = null,
     IPostStore? post = null,
+    AchievementManager? achievements = null,
     ILogger<MazeResults>? logger = null) : ISessionCloseHandler
 {
     // What the reference names a letter of the rewards of a maze.
@@ -147,6 +149,10 @@ public sealed partial class MazeResults(
         tally.MaxCombo = Math.Max(tally.MaxCombo, tally.Combo);
         tally.LastHit = now;
         tally.Damage += Math.Max(0, damage);
+
+        // Every monster hit counts as a skill used, and the combo counts toward the longest the person has made.
+        achievements?.Count(player, AchievementType.SkillUsed, targets);
+        achievements?.Count(player, AchievementType.Combo, tally.Combo);
     }
 
     /// <summary>
@@ -168,6 +174,7 @@ public sealed partial class MazeResults(
             if (health == 0)
             {
                 tally.Deaths++;
+                achievements?.Count(player, AchievementType.Death);
             }
         }
 

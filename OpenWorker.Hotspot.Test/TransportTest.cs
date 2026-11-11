@@ -13,6 +13,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Npcs.Components;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -87,6 +88,7 @@ public sealed class TransportTest
 
             Clock = TestMazes.Clock(Time);
             Map = new Map(boxOnTheMap);
+            Chains = new AchievementChains(District.Ecs, (AchievementType.TransportTaken, 0));
 
             var catalog = new ItemCatalog(Rows<ItemRow>(), Rows<ItemClassifyRow>(), Rows<InvenSlotExtendRow>(), Rows<BankSlotExtendRow>());
             var inventory = new InventoryService(District.Ecs, catalog, new LocalItemSerials());
@@ -109,7 +111,8 @@ public sealed class TransportTest
                 new ChannelAudience(District.Ecs, District.Channels),
                 Clock,
                 District.Errors,
-                NullLogger<TransportService>.Instance);
+                NullLogger<TransportService>.Instance,
+                Chains.Manager);
         }
 
         public DistrictHarness District { get; } = new();
@@ -119,6 +122,8 @@ public sealed class TransportTest
         public SimulationClock Clock { get; }
 
         public Map Map { get; }
+
+        public AchievementChains Chains { get; }
 
         public InventoryService Inventory { get; }
 
@@ -133,6 +138,7 @@ public sealed class TransportTest
 
             District.Ecs.Set(player.Entity, new CurrencyComponent { Gold = gold });
             District.Ecs.Set(player.Entity, new NpcCreditComponent { Person = player.Actor, Book = new NpcCreditBook() });
+            Chains.Enter(player.Entity);
 
             return player;
         }
@@ -235,6 +241,24 @@ public sealed class TransportTest
 
         // Moves are folded and sent at the end of a pass of the loop, so a marker can arrive first: wait for the move.
         await MetricAssertions.UntilAsync(() => rider.Moves().Length > 0, "A move after the ride is shown.");
+    }
+
+    /// <summary>
+    /// A ride that is taken counts for the achievements of rides, and one that is refused does not.
+    /// </summary>
+    [TestMethod]
+    public async Task ARideTakenCountsForTheAchievementsAndARefusedOneDoesNot()
+    {
+        using var ferry = new Ferry();
+
+        var poor = ferry.Join(gold: 0);
+        var rider = ferry.Join(gold: 5_000);
+
+        await ferry.Ask(poor, Ride);
+        await ferry.Ask(rider, Ride);
+
+        Assert.AreEqual(0, ferry.Chains.Counted(poor.Entity, AchievementType.TransportTaken), "without the fare there is no ride");
+        Assert.AreEqual(1, ferry.Chains.Counted(rider.Entity, AchievementType.TransportTaken));
     }
 
     /// <summary>

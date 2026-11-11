@@ -499,6 +499,12 @@ public sealed class InventoryService(
             case ShopCurrency.Bp:
             {
                 Send(player, new ItemUpdateBpResponse { Actor = world.Get<ActorComponent>(player).Identifier, Total = total, Type = (byte)flow });
+
+                if (amount > 0)
+                {
+                    arrivals?.BattlePointsArrived(player, amount);
+                }
+
                 break;
             }
 

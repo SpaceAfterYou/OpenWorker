@@ -33,8 +33,9 @@ public sealed record AchievementReward(bool Given, ushort Error, IReadOnlyList<i
 /// The achievements of a person: the counters of its chains, told to the client when the person enters and whenever they
 /// move, and the rewards of the achievements reached. The rest of the game tells the manager what the person does
 /// (<see cref="OnMonsterKilled"/>, <see cref="OnMazeCleared"/>, <see cref="OnLevelReached"/>, <see cref="OnQuestFinished"/>,
-/// <see cref="OnHelperGained"/>, <see cref="OnGoldPicked"/>, <see cref="OnEtherPicked"/>); a change marks
-/// <see cref="PersonSections.Progress"/> and the flush writes the book.
+/// <see cref="OnHelperGained"/>, <see cref="OnGoldPicked"/>, <see cref="OnEtherPicked"/>, and <see cref="Count"/> for the
+/// events that have no more to say than the kind); a change marks <see cref="PersonSections.Progress"/> and the flush writes
+/// the book. The minutes of play are counted on the tick of the misc work.
 /// </summary>
 public sealed partial class AchievementManager(
     World world,
@@ -43,7 +44,8 @@ public sealed partial class AchievementManager(
     ProgressItems items,
     InventoryService inventory,
     ReadOnlyCollection<MonsterRow> monsters,
-    ILogger<AchievementManager> logger)
+    ILogger<AchievementManager> logger,
+    TimeProvider? time = null) : IMiscTick
 {
     /// <summary>The gold of the reward would go past what a person can hold.</summary>
     public const ushort GoldOverflow = 52056;
@@ -67,7 +69,10 @@ public sealed partial class AchievementManager(
     /// </summary>
     private const int FastClearSeconds = 180;
 
+    private static readonly QueryDescription Everyone = new QueryDescription().WithAll<AchievementComponent>();
+
     private readonly RowIndex<int, MonsterRow> _monsters = monsters.IndexBy(e => e.Id);
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
 
     /// <summary>
     /// The book of the achievements as the flush writes it.
@@ -95,7 +100,7 @@ public sealed partial class AchievementManager(
         book.Open(catalog, level);
         book.CatchUp(catalog, level);
 
-        world.Set(player, new AchievementComponent { Person = person, Book = book });
+        world.Set(player, new AchievementComponent { Person = person, Book = book, PlayCountedAt = _time.GetTimestamp() });
 
         Send(player, new PersonAchieveSelectResponse
         {
@@ -223,6 +228,52 @@ public sealed partial class AchievementManager(
     public void OnEtherPicked(Entity player, int ether)
     {
         Raise(player, [(AchievementType.EtherPicked, 0)], ether);
+    }
+
+    /// <summary>
+    /// Battle points were added to the purse of the person, from wherever they came (<c>ItemArrivals</c>).
+    /// </summary>
+    public void OnBattlePointsGained(Entity player, long points)
+    {
+        Count(player, AchievementType.BattlePointsGained, points);
+    }
+
+    /// <summary>
+    /// The person did something the chains of one kind count: <paramref name="amount"/> of it, about a target (the group of
+    /// NPCs whose credit grew) or about nothing (0).
+    /// </summary>
+    public void Count(Entity player, AchievementType type, long amount = 1, int target = 0)
+    {
+        Raise(player, [(type, target)], amount);
+    }
+
+    /// <summary>
+    /// Counts the whole minutes every person has played since it was last counted.
+    /// </summary>
+    public ValueTask TickAsync(CancellationToken cancellationToken)
+    {
+        var players = new List<Entity>();
+
+        world.Query(in Everyone, (Entity entity, ref AchievementComponent component) =>
+        {
+            if (component.Book is not null)
+            {
+                players.Add(entity);
+            }
+        });
+
+        foreach (var player in players)
+        {
+            var component = world.Get<AchievementComponent>(player);
+            var played = component.Played + _time.GetElapsedTime(component.PlayCountedAt);
+            var minutes = (long)played.TotalMinutes;
+
+            world.Set(player, component with { Played = played - TimeSpan.FromMinutes(minutes), PlayCountedAt = _time.GetTimestamp() });
+
+            Count(player, AchievementType.PlayTime, minutes);
+        }
+
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>

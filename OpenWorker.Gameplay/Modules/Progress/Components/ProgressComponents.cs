@@ -12,6 +12,16 @@ public struct AchievementComponent
     public int Person;
 
     public AchievementBook? Book;
+
+    /// <summary>
+    /// When the play time of the person was last counted (a timestamp of the clock of the manager).
+    /// </summary>
+    public long PlayCountedAt;
+
+    /// <summary>
+    /// The play time already seen but short of a whole minute.
+    /// </summary>
+    public TimeSpan Played;
 }
 
 /// <summary>
