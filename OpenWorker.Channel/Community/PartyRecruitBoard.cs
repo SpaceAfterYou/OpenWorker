@@ -46,6 +46,7 @@ public sealed class PartyRecruitBoard(IConnectionMultiplexer redis, TimeProvider
 
     // KEYS: the recruitment, what the person applied to. ARGV: the person, the applicant, its level, now, the most applicants,
     // the most applications, the recruitment's number. Returns the outcome (see PartyApplyError) and the applications after.
+    // An application whose time is up is taken off first: it holds no place, and its person may apply again.
     private static RedisScript Apply { get; } = new("""
         local ends = tonumber(redis.call('HGET', KEYS[1], 'until') or '0')
         if ends <= tonumber(ARGV[4]) then
@@ -55,14 +56,19 @@ public sealed class PartyRecruitBoard(IConnectionMultiplexer redis, TimeProvider
         if level < tonumber(redis.call('HGET', KEYS[1], 'min')) or level > tonumber(redis.call('HGET', KEYS[1], 'max')) then
             return {7, redis.call('SCARD', KEYS[2])}
         end
+        local count = 0
+        local fields = redis.call('HGETALL', KEYS[1])
+        for i = 1, #fields, 2 do
+            if string.sub(fields[i], 1, 2) == 'a:' then
+                if (tonumber(string.match(fields[i + 1], '(%d+)$')) or 0) <= tonumber(ARGV[4]) then
+                    redis.call('HDEL', KEYS[1], fields[i])
+                else
+                    count = count + 1
+                end
+            end
+        end
         if redis.call('HEXISTS', KEYS[1], 'a:' .. ARGV[1]) == 1 then
             return {2, redis.call('SCARD', KEYS[2])}
-        end
-        local count = 0
-        for _, field in ipairs(redis.call('HKEYS', KEYS[1])) do
-            if string.sub(field, 1, 2) == 'a:' then
-                count = count + 1
-            end
         end
         if count >= tonumber(ARGV[5]) then
             return {6, redis.call('SCARD', KEYS[2])}

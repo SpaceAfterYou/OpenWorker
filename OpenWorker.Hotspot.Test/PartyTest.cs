@@ -239,6 +239,37 @@ public sealed class PartyTest
         Assert.AreEqual(master, taken[0].Master);
     }
 
+    [TestMethod]
+    public async Task AnApplicationWhoseTimeIsUpHoldsNoPlaceOnARenewedRecruitment()
+    {
+        var redis = await RedisAsync();
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var board = new PartyRecruitBoard(redis, time);
+        var people = People(PartyRules.MaxApplicants + 2);
+        var master = people[0];
+        var terms = new PartyRecruitTerms("Come", 1, 100, 0, 10003);
+        var id = await new PartyBook(redis, time).ReserveAsync();
+
+        await board.PutAsync(id, master, "P" + master, terms);
+
+        foreach (var person in people.Skip(1).Take(PartyRules.MaxApplicants))
+        {
+            Assert.AreEqual(PartyApplyError.Success, (await board.ApplyAsync(id, Card(person))).Outcome);
+        }
+
+        Assert.AreEqual(PartyApplyError.PartyCount, (await board.ApplyAsync(id, Card(people[^1]))).Outcome, "The recruitment is full.");
+
+        // The master renews the recruitment just before it ends; the applications run out after that.
+        time.Advance(PartyRules.RecruitLifetime - TimeSpan.FromSeconds(5));
+        await board.PutAsync(id, master, "P" + master, terms);
+        time.Advance(TimeSpan.FromSeconds(10));
+
+        Assert.AreEqual(PartyApplyError.Success, (await board.ApplyAsync(id, Card(people[^1]))).Outcome, "A new person takes a freed place.");
+        Assert.AreEqual(PartyApplyError.Success, (await board.ApplyAsync(id, Card(people[1]))).Outcome, "Who applied before applies again.");
+
+        await board.TakeAsync(id);
+    }
+
     /// <summary>
     /// Who has blocked a person, or been blocked by them, is not put in the same group with them; the person goes to another
     /// group, or starts one.
