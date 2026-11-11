@@ -79,12 +79,19 @@ public partial class LuaMaze
         // The portal of a boss sector is never shut: whoever fights the boss must be able to leave.
         var inBossSector = SectorAt(world.Position)?.Type == SectorType.Boss;
 
-        if (location != world.Location || !(inBossSector || Progress.IsPortalOpen(portal)) || ExitOf(jump) is null)
+        // Where a portal leads is what the map says of it, not what the client names: a client that could name the exit
+        // would go through one open portal to any place of the map.
+        if (Batch.EventBox.Portals.Find(portal) is not { JumpType: JumpType.JumpPos } box)
         {
             return false;
         }
 
-        Portals.Add(player, new PortalWait.Door(portal, jump));
+        if (location != world.Location || !(inBossSector || Progress.IsPortalOpen(portal)) || ExitOf(box.Jump) is null)
+        {
+            return false;
+        }
+
+        Portals.Add(player, new PortalWait.Door(portal, box.Jump));
 
         return true;
     }

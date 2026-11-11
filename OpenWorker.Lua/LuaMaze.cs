@@ -329,6 +329,11 @@ public partial class LuaMaze(
     private Dictionary<int, int> LuaValues { get; } = [];
 
     private List<string> LuaKeys { get; } = [];
+    /// <summary>
+    /// The most switches a maze keeps the state of.
+    /// </summary>
+    private const int MaxSwitchNpcs = 64;
+
     private Dictionary<int, bool> SwitchNpcs { get; } = [];
 
     /// <summary>
@@ -2445,6 +2450,12 @@ public partial class LuaMaze(
     [LuaIgnoreMember]
     public void ClickSwitchNpc(int npc)
     {
+        // The number comes from the client: a maze has a handful of switches, and no more states than that are kept.
+        if (!SwitchNpcs.ContainsKey(npc) && SwitchNpcs.Count >= MaxSwitchNpcs)
+        {
+            return;
+        }
+
         var status = !SwitchNpcs.GetValueOrDefault(npc);
 
         SwitchNpcs[npc] = status;

@@ -534,7 +534,20 @@ public sealed partial class MazeService(
 
         // Everyone in the maze goes through a portal together: it opens at once when all stand at it, and the others are waited
         // for otherwise (04/0F counts the seconds, 04/0E takes everybody through).
-        if (!ecs.Get<LuaMaze>(context.Player).EnterPortal(context.Player, request.Location, request.Portal, request.Jump))
+        var maze = ecs.Get<LuaMaze>(context.Player);
+
+        // A portal is stepped into: one named from afar is a claim the client cannot make, as for the other boxes.
+        if (maze.Batch.EventBox.Portals.Find(request.Portal) is { } portal && !IsAtBox(portal, ecs.Get<WorldComponent>(context.Player).Position))
+        {
+            LogFarFromBox(nameof(WorldWarpRequest), portal.Id);
+
+            errors.Charge(context.Player, MessageOpcode.From(GroupOpcode.World, WorldOpcode.WarpReq), HandlerErrorReason.Violation);
+            SendError(context.Player, WorldOpcode.WarpReq, WarpFailed);
+
+            return ValueTask.CompletedTask;
+        }
+
+        if (!maze.EnterPortal(context.Player, request.Location, request.Portal, request.Jump))
         {
             SendError(context.Player, WorldOpcode.WarpReq, WarpFailed);
         }
@@ -992,6 +1005,12 @@ public sealed partial class MazeService(
         }
 
         if (!StandsAt(context.Player, boxes, MazeOpcode.eSUB_CMD_EVENT_SPAWN_BOX_REQ, nameof(MazeEventSpawnBoxRequest)))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        // The box wakes its monsters once: a request that is repeated would make them again and again.
+        if (!maze.Progress.TryUseBox(boxes.Id))
         {
             return ValueTask.CompletedTask;
         }
