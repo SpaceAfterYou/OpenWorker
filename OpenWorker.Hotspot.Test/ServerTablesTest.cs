@@ -86,7 +86,9 @@ public sealed class ServerTablesTest
             ("tb_Item_Endurance", typeof(ItemEnduranceRow)),
             ("tb_Mode_Survival", typeof(SurvivalModeRow)),
             ("tb_Mode_Defence", typeof(DefenceModeRow)),
-            ("tb_Mode_Operation", typeof(OperationModeRow))
+            ("tb_Mode_Operation", typeof(OperationModeRow)),
+            ("tb_Interaction_Object", typeof(CubeObjectRow)),
+            ("tb_Interaction_Item", typeof(CubeRewardRow))
         ];
 
         foreach (var (table, row) in tables)

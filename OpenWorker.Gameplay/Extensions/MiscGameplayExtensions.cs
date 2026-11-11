@@ -65,7 +65,7 @@ public static class MiscGameplayExtensions
         services.AddSingleton<BoosterManager>();
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<BoosterManager>());
 
-        services.TryAddSingleton<IVaccumRewards, NoVaccumRewards>();
+        services.AddSingleton<IVaccumRewards, InteractionRewards>();
         services.AddSingleton<VaccumManager>();
 
         services.AddSingleton<HelperCatalog>();
