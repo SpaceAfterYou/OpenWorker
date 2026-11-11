@@ -75,7 +75,7 @@ dotnet test --solution OpenWorker.slnx
 ### Database migrations
 
 After changing the EF model, add a migration before starting any server: the relay migrates on start (the other
-servers wait for it, or migrate themselves when started with `Persistence__Migrate=true`), and EF Core refuses to
+servers start after it and refuse an older schema, or migrate themselves when started with `Persistence__Migrate=true`), and EF Core refuses to
 migrate while the model has unmigrated changes.
 
 ```bash

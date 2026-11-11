@@ -2,7 +2,8 @@
 # to stop. The health endpoint (Health__Port, 8080 inside the container) is not published: compose probes it from
 # inside, and from the host `docker compose exec <service> curl -s http://127.0.0.1:8080/readyz` shows which check fails.
 # /readyz is the probe: it fails while Redis or the database does not answer, and while the server drains for a stop,
-# so `docker compose ps` shows what a client would meet. The first minute is the migration and loading the tables.
+# so `docker compose ps` shows what a client would meet. The first minute is loading the tables; on the relay it is
+# also the migration of the database, and every other server starts when the relay is healthy.
 # stop_grace_period is longer than Shutdown__Timeout (30 s) so the server finishes its drain before docker kills it.
 x-openworker-server: &openworker-server
   healthcheck:
@@ -185,6 +186,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
+      openworker.relayserver:
+        condition: service_healthy
     ports:
       - "10000:10000"
     networks:
@@ -215,6 +219,9 @@ services:
       rabbitmq:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
+      openworker.relayserver:
         condition: service_healthy
     ports:
       - "10010:10000"
@@ -251,6 +258,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
+      openworker.relayserver:
+        condition: service_healthy
     ports:
       - "10011:10000"
     networks:
@@ -282,6 +292,9 @@ services:
       rabbitmq:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
+      openworker.relayserver:
         condition: service_healthy
     ports:
       - "10101:10000"
@@ -322,6 +335,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
+      openworker.relayserver:
+        condition: service_healthy
     ports:
       - "10012:10000"
     networks:
@@ -358,6 +374,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
+      openworker.relayserver:
+        condition: service_healthy
     ports:
       - "10013:10000"
     networks:
@@ -393,6 +412,9 @@ services:
       rabbitmq:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
+      openworker.relayserver:
         condition: service_healthy
     ports:
       - "10014:10000"

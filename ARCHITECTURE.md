@@ -400,9 +400,10 @@ projects `Domain`, `Extensions`, `Res`, `Batch`, `SourceGenerator.ResourceStruct
 ## Database
 
 One server migrates the database before its other services start: the relay (`Persistence:Migrate` is true in its
-settings only). Every other server waits in `PersistenceBootstrapService` until no migration is left to apply, and
-says so in its log; to run one server alone, start it with `Persistence__Migrate=true`. Servers that all migrate an
-empty Postgres make the database and its first tables at once, and all but one fail.
+settings only), and it is started first: in `compose.yaml` every other server depends on a healthy relay. Any other
+server looks once in `PersistenceBootstrapService` and refuses to start on a schema that is not up to date; to run one
+server alone, start it with `Persistence__Migrate=true`. Servers that all migrate an empty Postgres make the database
+and its first tables at once, and all but one fail.
 EF Core refuses to migrate while the model has changes with no migration: after changing the model,
 add the migration before starting the servers. Two branches that each add a migration from the same
 snapshot produce two migrations that repeat each other, and the second one fails on an empty database
