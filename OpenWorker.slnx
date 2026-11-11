@@ -55,7 +55,6 @@
   <Project Path="OpenWorker.Runtime/OpenWorker.Runtime.csproj" />
   <Project Path="OpenWorker.Server.Common/OpenWorker.Server.Common.csproj" />
   <Project Path="OpenWorker.SourceGenerator.ResourceStructures/OpenWorker.SourceGenerator.ResourceStructures.csproj" />
-  <Project Path="OpenWorker.UpdateContent/OpenWorker.UpdateContent.csproj" />
   <Project Path="OpenWorker.Wire.SourceGenerators/OpenWorker.Wire.SourceGenerators.csproj" />
   <Project Path="OpenWorker.Wire/OpenWorker.Wire.csproj" />
 </Solution>

@@ -404,28 +404,6 @@ services:
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
-  openworker.updatecontent:
-    container_name: "OpenWorker-UpdateContent"
-    build:
-      args:
-        - BUILD_CONFIGURATION=Debug
-      context: .
-      dockerfile: OpenWorker.UpdateContent/Dockerfile
-    environment:
-      - Logging__LogLevel__Default=Debug
-      - Logging__LogLevel__Microsoft=Warning
-      - Logging__LogLevel__System=Warning
-      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - eva-01
-    volumes:
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
-      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
-
 networks:
   eva-01:
     driver: bridge

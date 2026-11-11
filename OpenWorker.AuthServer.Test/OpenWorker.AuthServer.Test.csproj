@@ -36,7 +36,6 @@
         <Content Include="..\OpenWorker.DistrictServer\appsettings.json" Link="Settings\DistrictServer.json" CopyToOutputDirectory="PreserveNewest" />
         <Content Include="..\OpenWorker.MazeServer\appsettings.json" Link="Settings\MazeServer.json" CopyToOutputDirectory="PreserveNewest" />
         <Content Include="..\OpenWorker.RelayServer\appsettings.json" Link="Settings\RelayServer.json" CopyToOutputDirectory="PreserveNewest" />
-        <Content Include="..\OpenWorker.UpdateContent\appsettings.json" Link="Settings\UpdateContent.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

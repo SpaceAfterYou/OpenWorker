@@ -32,7 +32,7 @@ public sealed class ProjectLayersTest
         // commands of Commands: a peer of both, kept out of Channel because the gate loads Channel too.
         ["Channel", "GateServer.Gameplay", "Commands", "Server.Common"],
         ["DependencyInjection"],
-        ["AuthServer", "GateServer", "DistrictServer", "MazeServer", "RelayServer", "UpdateContent", "LoadTest"],
+        ["AuthServer", "GateServer", "DistrictServer", "MazeServer", "RelayServer", "LoadTest"],
         ["AuthServer.Test", "Hotspot.Test", "LoadTest.Test", "Benchmarks"]
     ];
 

@@ -23,9 +23,8 @@ public sealed class TestServerOptions
     private const string District = "DistrictServer";
     private const string Maze = "MazeServer";
     private const string Relay = "RelayServer";
-    private const string UpdateContent = "UpdateContent";
 
-    private static readonly string[] AllServers = [Auth, Gate, District, Maze, Relay, UpdateContent];
+    private static readonly string[] AllServers = [Auth, Gate, District, Maze, Relay];
 
     /// <summary>
     /// What a server does not carry in <c>appsettings.json</c>: the district's own address, which differs per
@@ -100,10 +99,6 @@ public sealed class TestServerOptions
                 services.AddPersistence();
                 services.AddTelemetryOptions();
                 services.AddCredentialsOptions();
-                break;
-
-            case UpdateContent:
-                services.AddPersistenceOptions();
                 break;
 
             default:
@@ -352,7 +347,7 @@ public sealed class TestServerOptions
     [TestMethod]
     public void TheConsolePrintsTheScopes()
     {
-        foreach (var server in AllServers.Where(server => server != UpdateContent))
+        foreach (var server in AllServers)
         {
             using var host = new HostBuilder()
                 .ConfigureAppConfiguration(configuration => configuration.AddJsonFile(AppSettings(server), optional: false))

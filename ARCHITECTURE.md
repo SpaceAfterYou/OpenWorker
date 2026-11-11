@@ -31,7 +31,6 @@ flowchart LR
 | DistrictServer | One city with its channels (`Channel__From`..`Channel__To`) |
 | MazeServer | Maze instances: monsters, combat, AI scripts |
 | RelayServer | Discord bot, Redis index setup (it makes the missing indexes and never deletes a record) |
-| UpdateContent | Loads the client tables into the database |
 
 Shared state between processes:
 
@@ -93,7 +92,7 @@ up or on a project that has no layer. From the bottom:
 | Game logic | `Gameplay`, `Lua`, `AuthServer.Gameplay`, `DistrictServer.Gameplay` | rules of the game, maze scripts, the handlers of auth and district |
 | Channel | `Channel`, `GateServer.Gameplay`, `Commands`, `Server.Common` | services shared by district and maze: channels, chat, community; the handlers both run (`Server.Common`) |
 | Hosting | `DependencyInjection` | the host of a server: `ServerService`, health, shutdown, telemetry |
-| Servers | `AuthServer`, `GateServer`, `DistrictServer`, `MazeServer`, `RelayServer`, `UpdateContent`, `LoadTest` | the processes |
+| Servers | `AuthServer`, `GateServer`, `DistrictServer`, `MazeServer`, `RelayServer`, `LoadTest` | the processes |
 
 Through every project it references, `Protocol` reaches neither EF Core, Redis nor `Batch`, `Runtime` neither EF Core nor Redis,
 and `Gameplay`, `Lua` and `DistrictServer.Gameplay` no EF Core: the game reads and writes a person through `IPersonStore`, which
