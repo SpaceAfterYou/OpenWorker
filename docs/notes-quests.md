@@ -52,11 +52,13 @@ the messages and their order, the tables read. "Fixed" names the commit of this 
 | Taking | no condition: 54004 | the same | same |
 | Taking | no check of the character that gives the episode | refused (54020) far from it in a district | kept different: the server knows where the characters of a city stand; an honest client asks at the character |
 | Taking | 15/03: episode, helper, repeat info | episode, helper | same for the client (it reads two fields) |
-| Taking | collecting conditions set to the items held (at most the count) | the same | fixed (bc1173a) |
+| Taking | collecting conditions set to the items held (at most the count), up or down | the same | fixed (bc1173a; down in round 10) |
+| A condition done | the collecting conditions of the person are set to the items held again, up or down; an item of which none is held is left as counted | the same (`RecountHeldAsync`) | fixed (round 10) |
 | Talk (15/08) | any condition whose target is the parameter, +1; nothing answered | a talk (or a hand-in) whose character is the parameter, only near it in a district, only with the items it takes; nothing answered | kept different: the client sends 15/08 for talks only; the place and the items are checked because the server can |
 | Kill | the monster, each of its quest groups | the same | same |
 | Kill | a kill in a maze also counts for a hunt that names the maze | not counted | kept different: no condition of the client's tables hunts by maze |
-| Collect | every item added to the bags counts its number | the same, through `ItemArrivals` (before: pickups only) | fixed (bc1173a) |
+| Collect | every item the game gives into the bags counts its number (drops, shops, rewards, boxes, crafting, letters), the classify group of quest items only; items that change hands in a trade, a shop of a player or the bank do not count; nothing is taken off the count when an item leaves | the same, through `ItemArrivals` (before: pickups only) for quests and daily missions alike; the class filter is not built (every collect target of the client table is a quest item) | fixed (bc1173a, round 10) |
+| Handing in | the episode needs its conditions done and takes what it takes if the person holds it, without asking | refuses to finish when the items taken at the end are no longer held (`CannotFinish`) | kept different: stricter than the original on purpose, so sold items do not finish an episode |
 | Sector clear | counts for the sector and the maze of the condition | the same | same |
 | Maze clear | counts for a clear that names the maze | the same | same |
 | Object used (11/77) | counts the box, for the party when the object says so | counts the box, for everyone in the maze when the object says so | fixed (round 8, see "Quests in a party maze") |

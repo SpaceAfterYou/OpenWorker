@@ -23,8 +23,9 @@ player of the same channel too; the client itself only lets a player click a sho
 - The items stay in the bags until the exchange. Nothing locks them in the inventory; the exchange checks that each offered
   item is still in its slot with the same serial, item and count (`TradeGoods.StillHolds`).
 - `TradeGoods` is the movement shared by trades and shops: what may be offered (only the bags `Common`, `Costume`, `Cash`;
-  not `OnPickUp`-bound items; not items with flag 2), whether the items fit (one free slot per item in the home bag of the
-  item, counting the slots the receiver frees in the same exchange), whether the gold fits (no overflow of `long`), the take
+  not broken items (flag 2) and not bound ones: `ItemBinding.HeldBack`, the one rule of the trade, the shops of players and
+  the post, see `notes-item-rules.md`), whether the items fit (one free slot per item in the home bag of the item, counting
+  the slots the receiver frees in the same exchange), whether the gold fits (the wallet limit of `InventoryService`), the take
   and the give.
 - **The exchange** (`Trades.Exchange`) is one synchronous block after the second confirmation: check both sides again (items,
   gold, room), then take the items of both sides, give them, move the net gold, send the result. No `await` inside.
@@ -82,12 +83,15 @@ the gold move in one block; `TradePrivateShopSellResponse` (owner, serial) goes 
 - **The slot of 09 (start) is ignored.** The reference uses up one of the item in that slot when the shop opens (a shop
   permit) and also checks that the player stands in a shop zone of the map. The permit item and the zones are not known
   here, so the server consumes nothing and checks no zone.
-- **Bound items:** refused when `BindType` is `OnPickUp` and when the item flag is 2, as the reference refuses "bound" and
-  flag 2. Whether an `OnEquip` item that was worn counts as bound is not tracked.
+- **Bound items:** a broken item (flag 2) is refused with 52407, then any bound item (a state other than free: bound for good,
+  or a bound broach set in) with 55602, as the reference does. An item is bound when it is made with the rule "on pick-up", when
+  an item with the rule "on equip" is worn, and when a gem is set in (`notes-item-rules.md`). The reference does **not** ask this
+  of a private shop; here a shop refuses the same items (kept different, stricter on purpose).
 - **The brooch of an offered item** is sent empty (serial 0, fifteen zeros) and no sockets: the server keeps neither.
 - **Result codes:** 0 done, 1 no room, 2 not enough gold (the client shows a message for 0 and 1 and closes the window for
   any). An item gone at the exchange cancels with 52406, as the reference cancels when it cannot gather the items.
-- **Gold limit:** only an overflow of the 64-bit purse is refused; the game's real limit is not known.
+- **Gold limit:** the purse of the other player may not pass 99 999 999 999 999 (`InventoryService.WalletLimit`): the offer is
+  refused with 52417 when it would, and the exchange asks again with the net gold of each side.
 - **Message codes** (524xx, 55602) are the codes the reference server answers with; their texts in the client were not
   checked one by one.
 - **Unlock on change:** the reference lets a side change its offer while the other is locked without unlocking it; here
