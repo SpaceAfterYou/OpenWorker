@@ -118,12 +118,12 @@ public sealed partial class NpcCreditManager(
     }
 
     /// <summary>
-    /// What the credit with the group of the NPC and the boosters of the person add to the chance of an upgrade, out of ten
-    /// thousand.
+    /// What the credit with the group of the NPC adds to the chance of an upgrade, out of ten thousand. The boosters of the
+    /// person work on the chance of the upgrade itself, where it is rolled.
     /// </summary>
     public int UpgradeBonus(Entity player, ServiceNpc npc)
     {
-        return Benefit(player, npc, CreditBenefit.UpgradeChance) + (int)(boosters?.GetRate(player, BoosterEffect.IncUpgradeItem) ?? 0);
+        return Benefit(player, npc, CreditBenefit.UpgradeChance);
     }
 
     /// <summary>
