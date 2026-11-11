@@ -12,6 +12,7 @@ using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Progress.Components;
 using OpenWorker.Gameplay.Modules.Rewards;
@@ -31,22 +32,35 @@ namespace OpenWorker.Hotspot.Test;
 /// </summary>
 internal sealed class AchievementChains
 {
-    private const int FirstAchievement = 5_000_000;
+    /// <summary>
+    /// The first achievement of the first chain; the next chain starts ten after it.
+    /// </summary>
+    public const int FirstAchievement = 5_000_000;
+
     private const long TooMany = 1_000_000;
 
     private readonly World _world;
 
     public AchievementChains(World world, params (AchievementType Type, int Target)[] chains)
+        : this(world, TooMany, null, chains)
+    {
+    }
+
+    /// <param name="world">The world of the person.</param>
+    /// <param name="count">How many events end each chain.</param>
+    /// <param name="openTitles">The titles the achievements reached open.</param>
+    /// <param name="chains">The kind and the target of each chain.</param>
+    public AchievementChains(World world, long count, OpenTitleManager? openTitles, params (AchievementType Type, int Target)[] chains)
     {
         _world = world;
 
         var rules = chains
-            .Select((e, i) => new AchievementRule(FirstAchievement + (i * 10), 1, i + 1, (ushort)e.Type, e.Target, TooMany, 0, 0, 0, [], []))
+            .Select((e, i) => new AchievementRule(FirstAchievement + (i * 10), 1, i + 1, (ushort)e.Type, e.Target, count, 0, 0, 0, [], []))
             .ToArray();
 
         Catalog = AchievementCatalog.Of(rules, rules.Select(e => new AchievementBegin(e.Id, 1)));
         Manager = new AchievementManager(
-            world, new PersonStateStore(null!), Catalog, null!, null!, new ReadOnlyCollection<MonsterRow>([]), NullLogger<AchievementManager>.Instance, Time);
+            world, new PersonStateStore(null!), Catalog, null!, null!, new ReadOnlyCollection<MonsterRow>([]), NullLogger<AchievementManager>.Instance, Time, openTitles);
     }
 
     public FakeTimeProvider Time { get; } = new();

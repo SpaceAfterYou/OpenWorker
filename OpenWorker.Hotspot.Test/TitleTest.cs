@@ -1,9 +1,17 @@
+using System.Buffers.Binary;
 using System.Collections.ObjectModel;
+using Arch.Core;
 using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Progress;
+using OpenWorker.Gameplay.Modules.Progress.Components;
+using OpenWorker.Gameplay.Modules.State;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -14,9 +22,15 @@ namespace OpenWorker.Hotspot.Test;
 /// Titles: what the table says of them, what they do to a character, and the lists the client is given.
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public sealed class TitleTest
 {
     private static TitleInfoRow Row(int id, TitleKind kind, byte hero, params (short Type, float Value)[] effects)
+    {
+        return Row(id, kind, hero, 2, 99, effects);
+    }
+
+    private static TitleInfoRow Row(int id, TitleKind kind, byte hero, byte condition, int value, params (short Type, float Value)[] effects)
     {
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
@@ -26,8 +40,8 @@ public sealed class TitleTest
         writer.Write((byte)kind);
         writer.Write(hero);
         writer.Write((byte)1);
-        writer.Write((byte)2);
-        writer.Write(99);
+        writer.Write(condition);
+        writer.Write(value);
         writer.Write(new byte[6]);
 
         for (var slot = 0; slot < 5; slot++)
@@ -213,6 +227,95 @@ public sealed class TitleTest
         var result = tables.GetPerson(Hero.Haru, 25, new TitleComponent { AbilityPrimary = 100, AbilitySecondary = 200, Primary = 0, Secondary = 0 });
 
         Assert.AreEqual(tables.GetPerson(Hero.Haru, 25), result);
+    }
+
+    [TestMethod]
+    public void ATitleOpensForTheAchievementOrTheLevelItsRowNamesAndOnlyTheFirstOfEachKindForAHeroThatCanUseIt()
+    {
+        const int achievement = 4000101;
+        var catalog = Catalog(
+            Row(10, TitleKind.Prefix, 0, OpenTitleManager.ByAchievement, achievement),
+            Row(11, TitleKind.Prefix, 0, OpenTitleManager.ByAchievement, achievement),
+            Row(20, TitleKind.Suffix, 0, OpenTitleManager.ByAchievement, achievement),
+            Row(30, TitleKind.Prefix, (byte)Hero.Haru, OpenTitleManager.ByLevel, 10),
+            Row(31, TitleKind.Prefix, (byte)Hero.Jin, OpenTitleManager.ByLevel, 10));
+
+        CollectionAssert.AreEqual(new[] { 10, 20 }, catalog.OpenedBy(OpenTitleManager.ByAchievement, achievement, Hero.Haru).ToArray(), "a prefix and a suffix, the first of each");
+        CollectionAssert.AreEqual(new[] { 30 }, catalog.OpenedBy(OpenTitleManager.ByLevel, 10, Hero.Haru).ToArray());
+        CollectionAssert.AreEqual(new[] { 31 }, catalog.OpenedBy(OpenTitleManager.ByLevel, 10, Hero.Jin).ToArray(), "the title of another hero");
+        Assert.IsEmpty(catalog.OpenedBy(OpenTitleManager.ByLevel, 11, Hero.Haru).ToArray());
+        Assert.IsEmpty(catalog.OpenedBy(OpenTitleManager.ByAchievement, 10, Hero.Haru).ToArray(), "the level is not an achievement");
+    }
+
+    [TestMethod]
+    public async Task AnAchievementReachedAndALevelReachedOpenTheirTitlesWhichAreToldOnceAndNotListedOnceEarned()
+    {
+        using var world = World.Create();
+
+        var catalog = Catalog(
+            Row(10, TitleKind.Prefix, 0, OpenTitleManager.ByAchievement, AchievementChains.FirstAchievement),
+            Row(20, TitleKind.Suffix, 0, OpenTitleManager.ByAchievement, AchievementChains.FirstAchievement),
+            Row(30, TitleKind.Prefix, 0, OpenTitleManager.ByLevel, 10));
+        var titles = new OpenTitleManager(world, new PersonStateStore(null!), catalog);
+        var chains = new AchievementChains(world, 2, titles, (AchievementType.Death, 0));
+        var connection = new RecordingConnection();
+        var dirty = new PersonDirty(7);
+
+        var player = world.Create(
+            Component.GetComponentType(typeof(AchievementComponent)),
+            Component.GetComponentType(typeof(OpenTitleComponent)),
+            Component.GetComponentType(typeof(PersonInfoComponent)),
+            Component.GetComponentType(typeof(TitleComponent)),
+            Component.GetComponentType(typeof(DirtyComponent)),
+            Component.GetComponentType(typeof(ServerSessionComponent)));
+
+        world.Set(player, new OpenTitleComponent { Person = 7, Book = new OpenTitleBook() });
+        world.Set(player, new PersonInfoComponent { Name = "Test", Hero = Hero.Haru });
+        world.Set(player, new TitleComponent { Primary = 0, Secondary = 0 });
+        world.Set(player, new DirtyComponent(dirty));
+        world.Set(player, new ServerSessionComponent(connection));
+        chains.Enter(player);
+
+        chains.Manager.Count(player, AchievementType.Death);
+
+        Assert.IsEmpty(titles.OpenOf(player), "one death of two reaches nothing");
+
+        chains.Manager.Count(player, AchievementType.Death);
+
+        CollectionAssert.AreEqual(new[] { 10, 20 }, titles.OpenOf(player).ToArray(), "the achievement reached opens its prefix and its suffix");
+        Assert.IsTrue(dirty.Sections.HasFlag(PersonSections.Progress), "the flush writes the open titles");
+
+        chains.Manager.OnLevelReached(player, 9);
+
+        Assert.HasCount(2, titles.OpenOf(player));
+
+        chains.Manager.OnLevelReached(player, 10);
+        chains.Manager.OnLevelReached(player, 10);
+
+        CollectionAssert.AreEqual(new[] { 10, 20, 30 }, titles.OpenOf(player).ToArray(), "the level opens its title, once");
+
+        // The client is told each title that opens, once.
+        await MetricAssertions.UntilAsync(
+            () => connection.Frames.Select(PlayerFrame.Open).Count(e => e.Is(GroupOpcode.Character, (byte)CharacterOpcode.UpdateOpenTitle)) >= 3,
+            "The player is told the three titles.");
+
+        var told = connection.Frames.Select(PlayerFrame.Open)
+            .Where(e => e.Is(GroupOpcode.Character, (byte)CharacterOpcode.UpdateOpenTitle))
+            .Select(e => BinaryPrimitives.ReadInt32LittleEndian(e.Body))
+            .ToArray();
+
+        CollectionAssert.AreEqual(new[] { 10, 20, 30 }, told);
+
+        // A title the person earns is no longer one that is open.
+        world.Set(player, new TitleComponent { Primary = 0, Secondary = 0, Owned = [20] });
+
+        CollectionAssert.AreEqual(new[] { 10, 30 }, titles.OpenOf(player).ToArray());
+
+        var messages = TitleBook.Messages([20], titles.OpenOf(player)).ToArray();
+
+        Assert.HasCount(1, messages);
+        CollectionAssert.AreEqual(new[] { 20 }, messages[0].TitleList.ToArray());
+        CollectionAssert.AreEqual(new[] { 10, 30 }, messages[0].OpenList.ToArray());
     }
 
     [TestMethod]

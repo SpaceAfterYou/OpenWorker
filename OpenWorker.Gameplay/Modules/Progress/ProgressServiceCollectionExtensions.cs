@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.State;
 
 namespace OpenWorker.Gameplay.Modules.Progress;
@@ -20,6 +21,7 @@ public static class ProgressServiceCollectionExtensions
         services.AddSingleton<ProgressItems>();
 
         services.AddSingleton<AchievementCatalog>();
+        services.AddSingleton<OpenTitleManager>();
 
         // The battle points a person gains from wherever count for the achievements, and the minutes it plays are counted on the tick.
         services.AddSingleton(provider =>
@@ -33,11 +35,11 @@ public static class ProgressServiceCollectionExtensions
 
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<AchievementManager>());
 
-
         services.AddSingleton<SharePointCatalog>();
         services.AddSingleton<SharePointManager>();
 
         services.AddSingleton(AchievementManager.Document);
+        services.AddSingleton(OpenTitleManager.Document);
         services.AddSingleton(SharePointManager.Document);
 
         return services;

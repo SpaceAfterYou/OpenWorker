@@ -139,9 +139,9 @@ public sealed class AchievementBook
 
     /// <summary>
     /// Counts an event for the chain of its type and target. Returns what the client is told, or null when the person has
-    /// no such chain or the chain is at its end.
+    /// no such chain or the chain is at its end. The achievements the count reached are added to <paramref name="reached"/>.
     /// </summary>
-    public AchieveUpdateValue? Raise(AchievementCatalog catalog, ushort type, int target, long amount)
+    public AchieveUpdateValue? Raise(AchievementCatalog catalog, ushort type, int target, long amount, List<int>? reached = null)
     {
         if (amount <= 0 || Find(type, target) is not { } counter || !catalog.TryGet(counter.Achievement, out var rule) ||
             counter.Count >= rule.Count)
@@ -172,6 +172,8 @@ public sealed class AchievementBook
         }
 
         // Reached: the counter moves on to the next achievement of the chain, past every one it has reached as well.
+        reached?.Add(rule.Id);
+
         var current = rule;
 
         while (catalog.Next(current) is { } next)
@@ -184,6 +186,8 @@ public sealed class AchievementBook
             {
                 return update with { CategoryCount = CategoryCount(catalog, next.Category) };
             }
+
+            reached?.Add(next.Id);
         }
 
         // The chain is done: the counter stays on its last achievement, at its count.

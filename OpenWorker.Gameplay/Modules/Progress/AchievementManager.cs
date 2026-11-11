@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress.Components;
 using OpenWorker.Gameplay.Modules.Quests;
@@ -45,7 +46,8 @@ public sealed partial class AchievementManager(
     InventoryService inventory,
     ReadOnlyCollection<MonsterRow> monsters,
     ILogger<AchievementManager> logger,
-    TimeProvider? time = null) : IMiscTick
+    TimeProvider? time = null,
+    OpenTitleManager? openTitles = null) : IMiscTick
 {
     /// <summary>The gold of the reward would go past what a person can hold.</summary>
     public const ushort GoldOverflow = 52056;
@@ -83,10 +85,16 @@ public sealed partial class AchievementManager(
     public AchievementCatalog Catalog => catalog;
 
     /// <summary>
-    /// Loads the achievements of the person, starts the chains its level opens and tells the client.
+    /// Loads the achievements of the person, starts the chains its level opens and tells the client. The titles the person has
+    /// opened with them are loaded as well.
     /// </summary>
     public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
     {
+        if (openTitles is not null)
+        {
+            await openTitles.EnterAsync(player, person, cancellationToken);
+        }
+
         var book = await store.LoadAsync<AchievementBook>(person, PersonStateKind.Achievements, cancellationToken) ?? new AchievementBook();
 
         if (!world.IsAlive(player))
@@ -183,6 +191,8 @@ public sealed partial class AchievementManager(
         {
             return;
         }
+
+        openTitles?.Update(player, OpenTitleManager.ByLevel, level);
 
         if (book.Open(catalog, level))
         {
@@ -287,10 +297,11 @@ public sealed partial class AchievementManager(
         }
 
         var updates = new List<AchieveUpdateValue>();
+        var reached = new List<int>();
 
         foreach (var (type, target) in events)
         {
-            if (book.Raise(catalog, (ushort)type, target, amount) is { } update)
+            if (book.Raise(catalog, (ushort)type, target, amount, reached) is { } update)
             {
                 updates.Add(update);
             }
@@ -309,6 +320,12 @@ public sealed partial class AchievementManager(
             RewardBits = book.Rewarded,
             Categories = book.Categories(catalog)
         });
+
+        // Every achievement reached opens the titles that ask for it.
+        foreach (var achievement in reached)
+        {
+            openTitles?.Update(player, OpenTitleManager.ByAchievement, achievement);
+        }
     }
 
     /// <summary>
