@@ -121,11 +121,90 @@ Server tables read from `res-server/` (optional; a missing one turns its feature
 - ~~The positions of 06/45, 06/47 and 06/05 (skills that move the player) are taken as sent.~~ Done as the original does it: `docs/notes-fight-movement.md`.
 - ~~Endurance is not worn.~~ Done: gear wears on blows given, blows taken and falls (`docs/notes-stats.md`, "Endurance").
 
+## What a blow does to the one it hits
+
+The server works out the push, the throw and the time a monster is lost to its reaction, and sends the result in the hit
+(06/13); no client reports anything about a monster, and the debug trace of the original (05/0B) is never sent. Every client
+plays the reaction from the same blow with the same rules, so the server keeps the place of the monster by the same rules too:
+the next blow and the next step of the mind judge the monster where the clients show it.
+
+**The numbers** come from the attack event of the attacker's action file (`AttackReaction`): the distance, the height (and the
+height in the air), the speed, the way (`Arrow`), the turn, the grade, the weight flag and the hardness of the blow (0 weak, 1
+plain, 3 and 4 strong), and from three columns of the monster table: the weight rank, what the monster cannot be thrown by
+and whether it has a motion for the break of its armor. `ExtraMove.Of` is the one rule for a blow of a player on a monster and
+of a monster on a player:
+
+- nothing moves a target that cannot be thrown, that the attacker holds, by an event that deals no damage, or by an event that
+  has no hardness, distance or height;
+- the push is `-(distance + roll)` forward (`roll` between -20 and 20, none for the straight way) and the height, or the height
+  meant for the air when the target is in it; a heavy attacker throws a light target 35 % farther (rank gap 2 or more), a light
+  one 35 % less far (gap -2 or -3) or not at all (gap -4 or less), only for the throws that lift, and only when the event or the
+  stand type of the target asks for weight; a guard halves it and a charge adds;
+- a throw that lifts (types 2, 3, 4) is told in the frame of the attacker, which every client turns by the yaw of the blow;
+  any other reaction is turned here by the yaw of the attacker (with a random turn of 7.5 degrees at most for the usual way,
+  away from the burst for the second way) and told as the place the monster will be at, a radius before a wall.
+
+**What the monster does** (`MonsterReaction`, one per monster body):
+
+| Reaction | The monster is lost to it for |
+|---|---|
+| Flinch (type 1) | the animation of the flinch, and a slide of the push in a tenth of a second (done in 0.3 s) |
+| Knock back (type 5) | the two animations of the push, and the slide |
+| Stun (type 6) | the animation of the stun (a stun buff holds the mind as before) |
+| Launch and knock down (types 2, 3, 4) | the air (the height and the gravity say how long, then a hang of 0.3 s; 0.2 s of delay first for type 3), the landing animation, lying for 1.0 to 3.0 s, the getting up |
+| Armor break | the animations of the break and the time the group gives the armor (3 s without one) |
+
+Flights go along the yaw of the blow with a speed that falls as the distance is covered, one step of the navigation mesh at a time;
+a wall stops them a radius before it. A monster whose file has no lying or getting up animation does not lie. A weak blow
+(hardness 0) shows no animation and costs no time; a blow on a monster whose armor holds, or that nothing can hurt, shows
+one only if it is hard enough. A monster fixed in its place (stand type 2 and 3) flinches without sliding and keeps attacking
+through a flinch. A reaction that shows ends the attack the monster was making (its later blows and shots never come) and its
+walk, and the mind of the monster does not start an attack or a walk until the reaction is over; the walk, stop and idle
+messages (05/02, 05/04, 05/0C) of a monster in a reaction are not sent.
+
+**What the clients are told**, in this order for a blow: the hit slow of a weak blow that rolled (05/12), then the hit with the
+throw, the fly speed, the defense type and the gauge of every target (06/13), then the buffs. Later: where a monster
+landed (06/49), where a wall cut its flight short (06/48), where a player in the way stopped a slide (05/13), and that it
+begins to get up (17/33). The gauge of a super armor (17/53) goes out when the armor is whole again, not with every hit.
+
+**Super armor.** The gauge is the share of the life of the monster that the group table gives (35 % for most rows; the share
+of the count of players of the maze, `PartyRevision`). A hit takes its damage by the share of the skill (`SuperArmorRules.Damage`);
+the armor breaks when nothing is left or at once for a hard blow, the monster takes half as much again and reacts like any other
+(or stands helpless through the break animations, if its table says it has them), and the armor is whole again after the
+animations of the break and the recovery time of the group. The mind is told when it is back
+(`MonsterBody.OnSuperArmorRestored`, empty for now: the skill a script keeps for this moment is cast from there).
+
+**Comparison with the original**
+
+| Piece | Original | Ours | |
+|---|---|---|---|
+| Who simulates the push of a monster | the server, every client replays it | same | same |
+| The rule for the vector, weights, guard, charge | as above | as above | same |
+| A throw with no height | plays the animation of the throw, does not fly, and pushes with the vector as it is | the same, with the vector turned by the yaw first | fixed |
+| Place told for a push that keeps the monster on its feet | the destination, or its own place if nothing moves it | same | same |
+| Fly speed in the hit | the speed the monster flies at, also when it does not fly | same | same |
+| Armor gauge and defense type in the hit | the values after the hit | same | same |
+| The gauge told with every hit (17/53) | only when the armor is whole again | same | fixed (we sent it with every hit) |
+| Armor break time | animations and recovery time | same | same |
+| A hit on a monster that lies or hangs in the air | animations for the hit (air hit, down hit) | the timeline is not changed by a flinch; a launch starts the throw again | simplified |
+| A slide stopped by a player | 05/13 on every step | the slide stops and 05/13 goes once | kept different |
+| A flight over a pit | allowed | stops at the edge | kept different |
+| Slow of a hit on the speed of a flight | scales it | not applied (05/12 is sent) | kept different |
+| A killed monster | reacts as it dies | removed at once; the hit still carries the throw | kept different |
+| The push of a player | the server moves the player and the report of the client overwrites it | only told; the report of the client is taken as before | kept different |
+| Armor frames of a skill (a defense type given by a motion event) | read from the action file | not read | not done |
+| Parts of a monster (17/54) | hit part from the bones | not done | not done |
+
+Not done: the charge of a skill is not read (no charge adds to the push), the weight rank of a player is taken as 0, the
+reaction rate of the hit slow, helpers (a helper hit by a monster is told no throw), the break of the armor of a player.
+
 ## Tests
 
 `SkillRulesTest`: a skill not learned or not in the deck is refused and takes nothing; a cooldown refuses until it is over;
 a cost that cannot be paid is refused and takes nothing; the soul gauge fills by hits and is spent by its skill; learning goes
 one level after the other and costs its points; a level gives its skill points (and a catch-up gives them once).
+`ExtraMoveTest`, `MonsterReactionTest` and `SuperArmorRulesTest` hold the rules of a throw, of the time a monster is lost to a reaction
+and of the armor, and `ActionFileTest` the reaction block of an event.
 `DamageCalculatorTest` has one worked example per term, the broken super armor among them. `ServerTablesTest` reads the three
 server tables to their trailer. `AttackAreaTest` holds the areas of the hit events.
 
@@ -149,6 +228,19 @@ they failed before this work: the target monster walks while the shot is aimed a
 - That the soul gauge bar follows 03/34 and empties by the cost of a skill.
 - That a refused skill (06/09 with a code) shows its message and the character stays usable.
 - That the evade spends stamina as the bar shows.
+
+## To check with the real client (blows)
+
+- A plain hit slides a monster 100 to 140 units away in a fraction of a second, and the next hit lands where the monster is.
+- A knock down (the fifth plain attack): the monster flies about 430 units and 49 up, hangs, lands where the server says
+  (06/49 puts it there), lies 1 to 3 s and gets up; it does not walk or attack before.
+- Power Slash on a small monster kills it; on a heavy one (a BlankPuppet) the blow is a vector of zero and, by the rules of the
+  original, the monster plays the animations of a knock down without flying: does it lie down, or only flinch?
+- A launch with no height (an air attack of height 0): what the client plays when the hit says type 2 and the vector is zero.
+- The Discus (super armor): the gauge falls with each hit and it does not flinch until the armor breaks; the break plays its
+  animations (about 4.5 s), then the armor is whole again.
+- A monster without lying and getting up animations (Bloodyball, Glouton) knocked down.
+- A heavy monster's blow lifts a player 35 % farther; the push of a player is smooth and the server does not pull the player back.
 
 ## Cost on the maze step
 
