@@ -32,7 +32,7 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.GateServer.Gameplay;
 
-public sealed class PersonGameplay(
+public sealed partial class PersonGameplay(
     World world,
     IDbContextFactory<PersistenceContext> factory,
     PersonRegistry registry,
@@ -55,7 +55,7 @@ public sealed class PersonGameplay(
 
         if (slotIndex == -1)
         {
-            logger.LogDebug("Slot not found.");
+            LogNoSlot(logger);
 
             SendListError(context.Player, PersonErrorCode.NoEmptySlot);
             return;
@@ -246,7 +246,7 @@ public sealed class PersonGameplay(
         }
         catch (DbUpdateException exception)
         {
-            logger.LogError(exception, "Failed to delete person {Person}.", person);
+            LogDeleteFailed(logger, exception, person);
 
             SendListError(context.Player, PersonErrorCode.Failed);
             return;
@@ -329,4 +329,10 @@ public sealed class PersonGameplay(
             MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ListRes),
             code));
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "A character is asked for and the account has no free slot.")]
+    private static partial void LogNoSlot(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete person {Person}.")]
+    private static partial void LogDeleteFailed(ILogger logger, Exception exception, int person);
 }

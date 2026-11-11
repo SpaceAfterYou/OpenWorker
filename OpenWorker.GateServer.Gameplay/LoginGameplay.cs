@@ -37,7 +37,7 @@ public sealed record SceneComponent(World World)
     }
 }
 
-public sealed class LoginGameplay(
+public sealed partial class LoginGameplay(
     World world,
     IRedisCollection<SessionCache> sessions,
     SessionLeaseManager leases,
@@ -55,7 +55,7 @@ public sealed class LoginGameplay(
 
         if (request.Session.Account != request.Account)
         {
-            logger.LogDebug("Session does not belong to the account.");
+            LogRefused(logger, "the session does not belong to the account");
 
             session.Send(LoginEnterGateResponse.Error);
             return;
@@ -63,7 +63,7 @@ public sealed class LoginGameplay(
 
         if (request.Gate != Gate)
         {
-            logger.LogDebug("Gate not found.");
+            LogRefused(logger, "the gate is another one");
 
             session.Send(LoginEnterGateResponse.Error);
             return;
@@ -71,7 +71,7 @@ public sealed class LoginGameplay(
 
         if (await sessions.AnyAsync(e => e.Session == request.Session.Key) is false)
         {
-            logger.LogDebug("Session not found.");
+            LogRefused(logger, "the session is not known");
 
             session.Send(LoginEnterGateResponse.Error);
             return;
@@ -82,7 +82,7 @@ public sealed class LoginGameplay(
 
         if (account is null)
         {
-            logger.LogDebug("Account not found.");
+            LogRefused(logger, "the account is not found");
 
             session.Send(LoginEnterGateResponse.Error);
             return;
@@ -110,4 +110,7 @@ public sealed class LoginGameplay(
         });
         session.Send(new WorldCurrentDateClientMessage());
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "A login at the gate is refused: {Reason}.")]
+    private static partial void LogRefused(ILogger logger, string reason);
 }

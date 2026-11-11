@@ -69,11 +69,11 @@ public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext
 
             if (index == -1)
             {
-                logger.LogWarning("Gate not found in list: {Gate}", persistent.Id);
+                LogNotInList(logger, persistent.Id);
 
                 registry.Add(gate);
 
-                logger.LogDebug("Gate added: {Gate}", persistent.Id);
+                LogAdded(logger, persistent.Id);
 
                 continue;
             }
@@ -99,7 +99,7 @@ public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext
             };
         }
 
-        logger.LogWarning("Gate not found in cache: {Gate}", persistent.Id);
+        LogNotInCache(logger, persistent.Id);
         
         return new GateInfo
         {
@@ -114,4 +114,13 @@ public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to synchronize the gates.")]
     private static partial void LogSyncFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Gate not found in list: {Gate}")]
+    private static partial void LogNotInList(ILogger logger, int gate);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Gate added: {Gate}")]
+    private static partial void LogAdded(ILogger logger, int gate);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Gate not found in cache: {Gate}")]
+    private static partial void LogNotInCache(ILogger logger, int gate);
 }

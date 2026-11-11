@@ -55,6 +55,11 @@ public sealed partial class DailyMissionManager(
     {
         var book = await store.LoadAsync<DailyMissionBook>(person, PersonStateKind.DailyMission, cancellationToken) ?? new DailyMissionBook();
 
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
         book.Normalize(catalog);
 
         world.Set(player, new DailyMissionComponent { Person = person, Book = book });

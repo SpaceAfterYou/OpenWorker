@@ -437,6 +437,10 @@ public abstract class FriendServiceBase(
         var myName = world.Get<PersonInfoComponent>(context.Player).Name;
 
         var session = Session(context);
+        var hero = (byte)world.Get<PersonInfoComponent>(context.Player).Hero;
+        var level = MyLevel(context);
+        var community = world.Get<CommunityComponent>(context.Player);
+
         var targetOnline = await network.FindAsync(target.Person);
         var myOnline = await network.FindAsync(me);
 
@@ -445,7 +449,7 @@ public abstract class FriendServiceBase(
 
         await network.SendAsync(target.Person, new FriendAddResponse
         {
-            Value = ValueOf(new PersonCard(me, myName, (byte)world.Get<PersonInfoComponent>(context.Player).Hero, MyLevel(context)), FriendKind.Wait, myOnline, world.Get<CommunityComponent>(context.Player))
+            Value = ValueOf(new PersonCard(me, myName, hero, level), FriendKind.Wait, myOnline, community)
         });
 
         await network.SendAsync(target.Person, new FriendInviteReqResponse { Name = myName });

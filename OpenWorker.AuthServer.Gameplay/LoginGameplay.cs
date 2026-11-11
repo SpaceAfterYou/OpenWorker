@@ -21,7 +21,7 @@ using Redis.OM.Searching;
 
 namespace OpenWorker.AuthServer.App;
 
-public sealed class LoginGameplay(
+public sealed partial class LoginGameplay(
     IRedisCollection<SessionCache> sessions,
     IDbContextFactory<PersistenceContext> factory,
     World world,
@@ -58,7 +58,7 @@ public sealed class LoginGameplay(
     {
         if (AllowNextHumanNetworkLogin is false)
         {
-            logger.LogWarning("Next Human Network login rejected: Auth:AllowNextHumanNetworkLogin is off.");
+            LogTicketLoginOff(logger);
 
             var rejected = world.Get<ServerSessionComponent>(context.Player);
 
@@ -132,4 +132,7 @@ public sealed class LoginGameplay(
 
         session.Send(new LoginResponse(claims, username, true, mac, LoginType.NewUser));
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Next Human Network login rejected: Auth:AllowNextHumanNetworkLogin is off.")]
+    private static partial void LogTicketLoginOff(ILogger logger);
 }

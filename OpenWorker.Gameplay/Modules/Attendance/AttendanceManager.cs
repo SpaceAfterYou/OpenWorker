@@ -39,6 +39,11 @@ public sealed partial class AttendanceManager(
     {
         var book = await store.LoadAsync<AttendanceBook>(person, PersonStateKind.Attendance, cancellationToken) ?? new AttendanceBook();
 
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
         world.Set(player, new AttendanceComponent { Person = person, Book = book, LastTick = time.GetLocalNow() });
 
         await RefreshAsync(player, cancellationToken);
