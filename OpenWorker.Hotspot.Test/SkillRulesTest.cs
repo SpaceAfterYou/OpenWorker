@@ -25,6 +25,7 @@ public sealed class SkillRulesTest
     private const int StrikeTwo = 12001212;
     private const int Unlearned = 12000411;
     private const int Evade = 12040011;
+    private const int AirMove = 12040012;
 
     private static SkillRow Active(int id, int group, byte level, int cost = 35, int cooldown = 5000, byte points = 0) =>
         TestRows.Build<SkillRow>(
@@ -39,7 +40,10 @@ public sealed class SkillRulesTest
         Active(Unlearned, Unlearned, 1),
         // A move every hero has: owned and used without a deck, paid with stamina.
         TestRows.Build<SkillRow>(("Id", Evade), ("Group", Evade), ("Level", 1), ("UsePosition", 1), ("UseClass", 1), ("SkillType", 1),
-            ("PassiveType", 4), ("CostAttribute", 3), ("Cost", 20), ("CooldownGroup", Evade), ("GlobalCooldown", 100))
+            ("PassiveType", 4), ("CostAttribute", 3), ("Cost", 20), ("CooldownGroup", Evade), ("GlobalCooldown", 100)),
+        // A move that can be made in any state.
+        TestRows.Build<SkillRow>(("Id", AirMove), ("Group", AirMove), ("Level", 1), ("UsePosition", 1), ("UseClass", 1), ("SkillType", 1),
+            ("PassiveType", 4), ("UseState", 1), ("CooldownGroup", AirMove))
     ]);
 
     private static CombatTables EmptyTables() =>
@@ -89,6 +93,44 @@ public sealed class SkillRulesTest
 
             // A move of the hero needs no deck.
             Assert.AreEqual(SkillRefusal.None, use.Check(player, Evade, TimeSpan.Zero));
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A player thrown into the air cannot start a skill that is not for the air: the answer is the one for a skill that does not
+    /// suit the state, or 56009 for a skill that asks for a motion or a buff. A skill for any state goes through, and so does
+    /// everything once the flight is over.
+    /// </summary>
+    [TestMethod]
+    public void APlayerInTheAirCannotStartASkillThatIsNotForTheAir()
+    {
+        var (world, player) = Create();
+
+        try
+        {
+            var use = new SkillUse(world, Skills, new PlayerGauges(world, EmptyTables()));
+
+            Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.Zero));
+
+            world.Add(player, new PlayerPostureComponent(Environment.TickCount64 + 5000));
+
+            Assert.AreEqual(SkillStates.NotForThisState, use.Check(player, Strike, TimeSpan.Zero), "a plain skill");
+            Assert.AreEqual(SkillStates.NotForThisState, use.Check(player, Evade, TimeSpan.Zero), "a move of the plain kind");
+            Assert.AreEqual(SkillRefusal.None, use.Check(player, AirMove, TimeSpan.Zero), "a move for any state");
+
+            world.Set(player, new PlayerPostureComponent(Environment.TickCount64 - 1));
+
+            Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.Zero), "the flight is over");
+            Assert.IsTrue(SkillStates.CanStartInTheAir(1, 0), "a skill for any state");
+            Assert.IsTrue(SkillStates.CanStartInTheAir(0, 4), "a skill whose normal state allows a hit");
+            Assert.AreEqual(SkillRefusal.CannotAttack, SkillStates.Refusal(4, 0));
+            Assert.AreEqual(SkillRefusal.CannotAttack, SkillStates.Refusal(0, 0x10));
+            Assert.IsGreaterThan(600L, SkillStates.FlightMilliseconds(108f), "up and down again takes more than half a second");
         }
 
         finally

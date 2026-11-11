@@ -1402,6 +1402,23 @@ public sealed class LuaCreatureManager
     internal Vector3 PositionOf(Entity player) => Vitals.PositionOf(player);
 
     /// <summary>
+    /// The server knows the player is in the air for at least this long.
+    /// </summary>
+    private void Posture(Entity player, long milliseconds)
+    {
+        var until = new PlayerPostureComponent(Environment.TickCount64 + milliseconds);
+
+        if (ecs.Has<PlayerPostureComponent>(player))
+        {
+            ecs.Set(player, until);
+        }
+        else
+        {
+            ecs.Add(player, until);
+        }
+    }
+
+    /// <summary>
     /// What the animation of its skill makes of the defense of a player at this moment; the maze, which plays the skills, says.
     /// </summary>
     public Func<Entity, DefenseType>? PlayerFrames { get; set; }
@@ -1536,6 +1553,12 @@ public sealed class LuaCreatureManager
             var (extraMove, flySpeed) = shielded
                 ? (Vector3.Zero, 0f)
                 : PlayerThrow.Told(blow, new Struck(Vitals.PositionOf(victim), PlayerVitals.WeightRank, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
+
+            // A player thrown into the air cannot start an ordinary skill until it lands.
+            if (!shielded && extraMove.Z > 0f && MonsterReaction.IsLaunch((ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue)) && left > 0)
+            {
+                Posture(victim, SkillStates.FlightMilliseconds(extraMove.Z));
+            }
 
             hits.Add(default(SkillDmgValue) with
             {

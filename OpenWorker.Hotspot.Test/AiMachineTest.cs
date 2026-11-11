@@ -76,6 +76,7 @@ public sealed partial class AiMachineTest
 
         public AiSkill? FindSkill(int id) => Known.GetValueOrDefault(id);
         public bool IsDownOrFlying => Down;
+        public bool IsArmorBroken { get; set; }
         public void ForceDefense(AiDefense defense, float seconds) => Forced.Add((defense, seconds));
         public void NotifyEscape(float seconds) => Escapes.Add(seconds);
         public void AlertGroup(int target) => Alerted.Add(target);

@@ -370,7 +370,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         return profile.Limit.HasFlag(ReactionLimit.NoLaunch) && IsLaunch(kind) ? ReactionKind.Flinch : kind;
     }
 
-    internal static bool IsLaunch(ReactionKind kind) => kind is ReactionKind.LaunchUp or ReactionKind.KnockDown or ReactionKind.KnockDownStraight;
+    public static bool IsLaunch(ReactionKind kind) => kind is ReactionKind.LaunchUp or ReactionKind.KnockDown or ReactionKind.KnockDownStraight;
 
     /// <summary>
     /// Whether the animation of a reaction plays at all: a weak blow shows none, and a monster whose armor holds or that

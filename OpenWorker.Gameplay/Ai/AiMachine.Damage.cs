@@ -315,7 +315,12 @@ public sealed partial class AiMachine
             case AiEscape.SuperArmorKind:
                 seconds = escape.Value * 0.001f;
 
-                _host.ForceDefense(AiDefense.SuperArmor, seconds);
+                // A monster whose armor is broken does not get it back by escaping: the armor mends in its own time.
+                if (!_host.IsArmorBroken)
+                {
+                    _host.ForceDefense(AiDefense.SuperArmor, seconds);
+                }
+
                 _host.EndFlinch();
                 break;
 

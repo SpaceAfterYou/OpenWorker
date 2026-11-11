@@ -190,6 +190,12 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
             return SkillRefusal.CannotAttack;
         }
 
+        // A player thrown into the air cannot start a skill that is not for the air.
+        if (world.TryGet<PlayerPostureComponent>(player, out var posture) && posture.DownUntil > Environment.TickCount64 && !SkillStates.CanStartInTheAir(row.UseState, row.NormalState))
+        {
+            return SkillStates.Refusal(row.UseState, row.NormalState);
+        }
+
         var kind = (SkillCostKind)row.CostAttribute;
 
         if (!gauges.CanPay(player, kind, Cost(player, row)))

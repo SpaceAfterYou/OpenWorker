@@ -590,6 +590,11 @@ internal partial class MonsterBody : IAiHost
     public bool IsLying => _reaction is { IsDown: true };
 
     /// <summary>
+    /// The super armor of the monster is broken and has not mended yet.
+    /// </summary>
+    public bool IsArmorBroken => _ecs.Get<MonsterCombatComponent>(Entity).SuperArmorBrokenUntil != 0;
+
+    /// <summary>
     /// Whether the monster is in the air after a throw.
     /// </summary>
     public bool IsAirborne => _reaction is { IsAirborne: true };
