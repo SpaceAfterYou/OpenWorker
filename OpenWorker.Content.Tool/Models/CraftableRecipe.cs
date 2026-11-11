@@ -34,9 +34,9 @@ public sealed class CraftableRecipe
     /// <summary>
     /// Columns still named <c>FieldN</c> on this <c>tb_Make</c> row, if any.
     /// </summary>
-    public required IReadOnlyList<ItemPropertyRow> UnknownFields { get; init; }
+    public required UnknownFieldTable UnknownFields { get; init; }
 
-    public bool HasUnknownFields => UnknownFields.Count > 0;
+    public bool HasUnknownFields => UnknownFields.HasFields;
 
     public string MetaText =>
         $"Recipe {RecipeId} · group {Group} · tab {Category}/{SubCategory} · priority {Priority}";

@@ -102,13 +102,13 @@
                             </ItemsControl>
 
                             <StackPanel IsVisible="{Binding SelectedItem.HasUnknownFields}" Margin="0,16,0,0" Spacing="4">
-                                <TextBlock FontWeight="SemiBold" FontSize="14" Text="Unknown fields" />
+                                <TextBlock FontWeight="SemiBold" FontSize="14" Text="{Binding SelectedItem.UnknownFields.Title}" />
                                 <Grid ColumnDefinitions="180,*" Margin="0,4,0,0">
                                     <TextBlock Grid.Column="0" FontWeight="SemiBold" Opacity="0.8" Text="Field" />
                                     <TextBlock Grid.Column="1" FontWeight="SemiBold" Opacity="0.8" Text="Value" />
                                 </Grid>
                                 <Border Height="1" Background="#33FFFFFF" Margin="0,4" />
-                                <ItemsControl ItemsSource="{Binding SelectedItem.UnknownFields}">
+                                <ItemsControl ItemsSource="{Binding SelectedItem.UnknownFields.Fields}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="models:ItemPropertyRow">
                                             <Grid ColumnDefinitions="180,*" Margin="0,2">

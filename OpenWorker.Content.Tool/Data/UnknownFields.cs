@@ -2,18 +2,20 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using OpenWorker.Content.Tool.Models;
+using OpenWorker.Res.Attributes;
 
 namespace OpenWorker.Content.Tool.Data;
 
 /// <summary>
-/// Columns still named <c>FieldN</c> on a generated row: their meaning is not settled, but the tool shows them.
+/// Columns still named <c>FieldN</c> on a generated row: their meaning is not settled, but the tool shows them under the
+/// name of the client table they come from.
 /// </summary>
 internal static partial class UnknownFields
 {
-    public static IReadOnlyList<ItemPropertyRow> Of<T>(in T row) where T : struct
+    public static UnknownFieldTable Of<T>(in T row) where T : struct
     {
         object boxed = row;
-        return typeof(T)
+        var fields = typeof(T)
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(property => FieldName().IsMatch(property.Name))
             .OrderBy(property => property.Name, StringComparer.Ordinal)
@@ -23,6 +25,18 @@ internal static partial class UnknownFields
                 Value = Format(property.GetValue(boxed))
             })
             .ToArray();
+
+        return new UnknownFieldTable
+        {
+            TableName = TableNameOf(typeof(T)),
+            Fields = fields
+        };
+    }
+
+    private static string TableNameOf(Type type)
+    {
+        var attribute = type.GetCustomAttribute<BinaryResourceTableAttribute>();
+        return attribute?.Table ?? type.Name;
     }
 
     private static string Format(object? value) =>

@@ -18,9 +18,9 @@ public sealed class CraftableItemEntry
     /// <summary>
     /// Columns still named <c>FieldN</c> on the product's <c>tb_Item</c> row, if any.
     /// </summary>
-    public required IReadOnlyList<ItemPropertyRow> UnknownFields { get; init; }
+    public required UnknownFieldTable UnknownFields { get; init; }
 
-    public bool HasUnknownFields => UnknownFields.Count > 0;
+    public bool HasUnknownFields => UnknownFields.HasFields;
 
     public Bitmap? Icon { get; init; }
 

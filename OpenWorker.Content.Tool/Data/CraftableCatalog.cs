@@ -105,7 +105,7 @@ internal static class CraftableCatalog
 
             var unknown = items.TryGet(group.Key, out var product)
                 ? UnknownFields.Of(product)
-                : [];
+                : new UnknownFieldTable { TableName = "tb_Item", Fields = [] };
 
             entries.Add(new CraftableItemEntry
             {
