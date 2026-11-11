@@ -58,6 +58,18 @@ public sealed class ActionFileTest
                 e.Write(0);
             }
 
+            if (type == 14)
+            {
+                // Keeps its movement and its mind while it is gone, for two and a half seconds.
+                e.Write(false);
+                e.Write(false);
+                e.Write(true);
+                e.Write(true);
+                e.Write(0);
+                e.Write(2500);
+                e.Write(new byte[12]);
+            }
+
             if (type == 3)
             {
                 e.Write((short)1);
@@ -175,9 +187,10 @@ public sealed class ActionFileTest
 
         writer.Write(1.5f);
         writer.Write(new byte[4]);
-        writer.Write(3);
+        writer.Write(4);
         WriteEvent(writer, version, 1, 0.1f);
         WriteEvent(writer, version, 3, 0.25f);
+        WriteEvent(writer, version, 14, 0.5f);
         WriteEvent(writer, version, 3, 0.75f);
         writer.Write(1);
         writer.Write(Chunk("FRMS", e => e.Write(new byte[8])));
@@ -242,6 +255,18 @@ public sealed class ActionFileTest
             Assert.AreEqual(
                 new ProjectileInfo(new Vector3(10, 20, 30), 500f, 2f, true, 1, 75f, true, 0.2f, true, version >= 218, 6, new Vector3(-7, 40, 0), true, 4),
                 attack.Projectile);
+        }
+    }
+
+    [TestMethod]
+    public void ReadsTheMomentsAtWhichAMonsterHidesAndKeepsThemApartFromItsAttacks()
+    {
+        foreach (var version in (short[])[236, 245])
+        {
+            var animation = ActionFile.Read(Build(version)).Animations["first"];
+
+            Assert.HasCount(2, animation.Attacks);
+            Assert.AreEqual(new InvisibleEvent(0.5f, 12, InvisibleEvent.ForTime, 2500), animation.Hides!.Single());
         }
     }
 

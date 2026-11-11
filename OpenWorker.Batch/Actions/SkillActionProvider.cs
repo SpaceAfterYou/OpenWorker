@@ -11,6 +11,11 @@ namespace OpenWorker.Batch.Actions;
 public readonly record struct SkillHit(float Time, AttackTrigger Trigger);
 
 /// <summary>
+/// A moment of a skill at which the monster that plays it hides.
+/// </summary>
+public readonly record struct SkillHiding(float Time, InvisibleEvent Event);
+
+/// <summary>
 /// Finds what a skill hits from the animations the table names for it.
 /// </summary>
 public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
@@ -86,6 +91,34 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         Shots.Add((skill, actionFile), shots);
 
         return shots;
+    }
+
+    /// <summary>
+    /// The moments at which a monster hides while it plays a skill, from the start of the skill.
+    /// </summary>
+    public IReadOnlyList<SkillHiding> GetHidings(int skill, string actionFile)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
+        {
+            return [];
+        }
+
+        var hidings = new List<SkillHiding>();
+        var offset = 0f;
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        {
+            if (Find(file, name) is not { } animation)
+            {
+                continue;
+            }
+
+            hidings.AddRange((animation.Hides ?? []).Select(hide => new SkillHiding(offset + hide.Start, hide)));
+
+            offset += animation.Length;
+        }
+
+        return hidings;
     }
 
     /// <summary>
