@@ -82,6 +82,19 @@ public sealed class PersonGameplay(
             .CreateDbContextAsync(context.CancellationToken);
 
         var claims = world.Get<ClaimsComponent>(context.Player);
+        var slots = world.Get<GatePersonComponent>(context.Player).SlotList.Length;
+
+        // The slots are counted in the database with the account held, so requests sent together cannot all find the same
+        // free slot: the second waits for the first and then counts its character.
+        await using var transaction = await database.Database.BeginTransactionAsync(context.CancellationToken);
+
+        await database.Database.ExecuteSqlAsync($"""SELECT 1 FROM "Accounts" WHERE "Id" = {claims.Account} FOR UPDATE""", context.CancellationToken);
+
+        if (await database.Persons.CountAsync(x => x.Account.Id == claims.Account && x.Gate.Id == Gate, context.CancellationToken) >= slots)
+        {
+            SendListError(context.Player, PersonErrorCode.NoEmptySlot);
+            return;
+        }
 
         var name = message.Person.InfoValue.Name;
 
@@ -144,6 +157,8 @@ public sealed class PersonGameplay(
         {
             await database
                 .SaveChangesAsync(context.CancellationToken);
+
+            await transaction.CommitAsync(context.CancellationToken);
         }
 
         // The check above passed, but another server created a character with this name in the meantime.
@@ -156,6 +171,15 @@ public sealed class PersonGameplay(
         // The player may have left while the character was saved.
         if (!world.IsAlive(context.Player))
         {
+            return;
+        }
+
+        // Another request of this connection may have filled the slot found at the start.
+        slotIndex = registry.FindFreeSlotIndex(context.Player);
+
+        if (slotIndex == -1)
+        {
+            SendListError(context.Player, PersonErrorCode.NoEmptySlot);
             return;
         }
 
