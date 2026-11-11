@@ -18,24 +18,29 @@ namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
 /// The password the client asks before a trade, a private shop or breaking an item, in a district and in a maze. It belongs
-/// to the account, kept hashed as the password of the account. The player gives it once a login: the district and the maze
-/// share the answer through <see cref="ITradePasswordStates"/>, which every entry reads (<see cref="EnterAsync"/>), so a
-/// password given in one holds in the other, and five wrong ones lock it for the rest of the login wherever the player goes
-/// (<c>docs/notes-district-gaps.md</c>). The answer is the code (zero for success) and the state, from which the client picks
-/// its message and goes on.
+/// to the account, kept hashed as the password of the account, and so do the wrong tries at it (<see cref="ITradePasswordTries"/>):
+/// the tenth wrong one locks it for good, whatever the login, until a game master resets it, and every third wrong one
+/// stops the tries for three minutes (<see cref="TradePasswordRules"/>). The player gives the password once a login: the
+/// district and the maze share the answer through <see cref="ITradePasswordStates"/>, which every entry reads
+/// (<see cref="EnterAsync"/>), so a password given in one holds in the other. The answer is the code (zero for success) and
+/// the state, from which the client picks its message and goes on.
 /// </summary>
-public sealed class TradePasswordService(World world, IDbContextFactory<PersistenceContext> factory, ITradePasswordStates states) :
+public sealed class TradePasswordService(
+    World world,
+    IDbContextFactory<PersistenceContext> factory,
+    ITradePasswordStates states,
+    ITradePasswordTries tries,
+    TimeProvider? time = null) :
     IHotspotHandler<PersonTradePasswordRequest>
 {
-    public const int MaxFailedAttempts = 5;
-
     /// <summary>
     /// A request the state does not allow: a second password, or a check without one.
     /// </summary>
     public const ushort Refused = 1;
 
     /// <summary>
-    /// The password is wrong: the state goes back to "not given". The code the account database answers with.
+    /// The password is wrong (or is not tried just now): the state goes back to "not given". The code the account database
+    /// answers with.
     /// </summary>
     public const ushort WrongPassword = 50105;
 
@@ -45,25 +50,27 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
     /// </summary>
     public const ushort Locked = 52003;
 
+    private TimeProvider Time => time ?? TimeProvider.System;
+
     /// <summary>
     /// Takes up what the login has done with the password on another server: the player who gave it there has given it
-    /// here, and the one who was locked is locked. Called once the entry has set the person.
+    /// here. A lock is the account's and is read with the person at the entry. Called once the entry has set the person.
     /// </summary>
     public async ValueTask EnterAsync(Entity player, CancellationToken cancellationToken)
     {
-        if (!world.TryGet(player, out TradePasswordComponent component) || !component.Has)
+        if (!world.TryGet(player, out TradePasswordComponent component) || !component.Has || component.State is PasswordProtectionState.Lock)
         {
             return;
         }
 
-        var record = await states.LoadAsync(world.Get<ClaimsComponent>(player).Key, cancellationToken);
+        var given = await states.IsGivenAsync(world.Get<ClaimsComponent>(player).Key, cancellationToken);
 
-        if (record is not { } known || !world.IsAlive(player))
+        if (!given || !world.IsAlive(player))
         {
             return;
         }
 
-        world.Set(player, world.Get<TradePasswordComponent>(player) with { State = StateOf(known), FailedAttempts = known.Failed });
+        world.Set(player, world.Get<TradePasswordComponent>(player) with { State = PasswordProtectionState.Authenticated });
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonTradePasswordRequest request)
@@ -78,7 +85,7 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
                 break;
 
             case PasswordCheckType.Check:
-                await CheckAsync(player, component, request.Password);
+                await CheckAsync(context, component, request.Password);
                 break;
 
             default:
@@ -109,10 +116,14 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
 
         await using (var database = await factory.CreateDbContextAsync(context.CancellationToken))
         {
-            // Only an account without a password takes one: two servers cannot both set it.
+            // Only an account without a password takes one: two servers cannot both set it. A new password starts without wrong tries.
             var set = await database.Accounts
                 .Where(e => e.Id == account && e.TradePassword == string.Empty)
-                .ExecuteUpdateAsync(e => e.SetProperty(x => x.TradePassword, encoded), context.CancellationToken);
+                .ExecuteUpdateAsync(
+                    e => e.SetProperty(x => x.TradePassword, encoded)
+                        .SetProperty(x => x.TradePasswordFailed, (short)0)
+                        .SetProperty(x => x.TradePasswordFailedAt, (DateTime?)null),
+                    context.CancellationToken);
 
             if (set == 0)
             {
@@ -131,7 +142,7 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
         }
 
         // The password just made is the password given: the other servers of this login find it so.
-        await states.AuthenticateAsync(world.Get<ClaimsComponent>(player).Key, context.CancellationToken);
+        await states.GiveAsync(world.Get<ClaimsComponent>(player).Key, context.CancellationToken);
 
         if (!world.IsAlive(player))
         {
@@ -148,8 +159,10 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
         Send(player, PasswordProtectionState.Authenticated, 0);
     }
 
-    private async ValueTask CheckAsync(Entity player, TradePasswordComponent component, string password)
+    private async ValueTask CheckAsync(ServiceHandleContext context, TradePasswordComponent component, string password)
     {
+        var player = context.Player;
+
         if (component.State is PasswordProtectionState.None)
         {
             Send(player, component.State, Refused);
@@ -170,45 +183,73 @@ public sealed class TradePasswordService(World world, IDbContextFactory<Persiste
             return;
         }
 
+        var account = world.Get<ClaimsComponent>(player).Account;
+        var session = world.Get<ClaimsComponent>(player).Key;
+        var now = Time.GetUtcNow().UtcDateTime;
+
+        // What other logins have done meanwhile counts: the account keeps the tries.
+        var before = await tries.LoadAsync(account, context.CancellationToken);
+
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
+        if (TradePasswordRules.IsLocked(before.Failed))
+        {
+            SetState(player, PasswordProtectionState.Lock, before.Failed);
+            Send(player, PasswordProtectionState.Lock, Locked);
+            return;
+        }
+
+        // After every third wrong password the tries stop for a while, and the ones made then count for nothing.
+        if (TradePasswordRules.IsPaused(before.Failed, before.LastFailedAt, now))
+        {
+            Send(player, component.State, WrongPassword);
+            return;
+        }
+
         var stored = component.Password;
         var right = await Task.Run(() => PasswordHash.VerifyEncoded(password, stored));
-        var session = world.Get<ClaimsComponent>(player).Key;
 
         if (!world.IsAlive(player))
         {
             return;
         }
 
-        var record = right
-            ? await states.AuthenticateAsync(session)
-            : await states.FailAsync(session, MaxFailedAttempts);
+        if (right)
+        {
+            await tries.ClearAsync(account, context.CancellationToken);
+            await states.GiveAsync(session, context.CancellationToken);
+
+            if (world.IsAlive(player))
+            {
+                SetState(player, PasswordProtectionState.Authenticated, 0);
+                Send(player, PasswordProtectionState.Authenticated, 0);
+            }
+
+            return;
+        }
+
+        var failed = await tries.FailAsync(account, now, context.CancellationToken);
+
+        await states.TakeBackAsync(session, context.CancellationToken);
 
         if (!world.IsAlive(player))
         {
             return;
         }
 
-        var state = StateOf(record);
+        var locked = TradePasswordRules.IsLocked(failed);
+        var state = locked ? PasswordProtectionState.Lock : PasswordProtectionState.UnAuthenticated;
 
-        world.Set(player, world.Get<TradePasswordComponent>(player) with { State = state, FailedAttempts = record.Failed });
-
-        Send(player, state, state switch
-        {
-            PasswordProtectionState.Authenticated => (ushort)0,
-            PasswordProtectionState.Lock => Locked,
-            _ => WrongPassword
-        });
+        SetState(player, state, failed);
+        Send(player, state, locked ? Locked : WrongPassword);
     }
 
-    /// <summary>
-    /// Where the player stands for a record of its login: locked, given, or not given (a record that is neither is a
-    /// player who has missed).
-    /// </summary>
-    private static PasswordProtectionState StateOf(TradePasswordRecord record)
+    private void SetState(Entity player, PasswordProtectionState state, int failed)
     {
-        return record.Locked
-            ? PasswordProtectionState.Lock
-            : record.Authenticated ? PasswordProtectionState.Authenticated : PasswordProtectionState.UnAuthenticated;
+        world.Set(player, world.Get<TradePasswordComponent>(player) with { State = state, FailedAttempts = failed });
     }
 
     private void Send(Entity player, PasswordProtectionState state, ushort error)

@@ -23,6 +23,18 @@ public sealed class AccountPersistent : BasicPersistent
     /// The password asked before a trade, hashed as the password of the account; empty while the account has none.
     /// </summary>
     public string TradePassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The wrong trade passwords given on the account since the last right one (or since the password was made). The account
+    /// keeps the count, not the login: a lock outlasts the session that earned it.
+    /// </summary>
+    public short TradePasswordFailed { get; set; }
+
+    /// <summary>
+    /// When the last wrong trade password was given; empty while the count is zero.
+    /// </summary>
+    public DateTime? TradePasswordFailedAt { get; set; }
+
     public string SecondPassword { get; set; } = string.Empty;
 
     /// <summary>
