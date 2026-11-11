@@ -419,7 +419,7 @@ public sealed class BatchViewport : UserControl
         }
 
         /// <summary>
-        /// Places the orbit pivot in front of the camera (ground hit when possible) before a right-drag orbit.
+        /// Places the orbit pivot on the look ray in front of the camera before a right-drag orbit.
         /// </summary>
         public void CaptureOrbitPivot() => PlaceOrbitPivotInFront();
 
@@ -431,7 +431,7 @@ public sealed class BatchViewport : UserControl
         }
 
         /// <summary>
-        /// Ground-plane pan of the camera; the orbit pivot is kept in front afterward.
+        /// Pan in the camera view plane; the orbit pivot comes along.
         /// </summary>
         public void Pan(float dx, float dy)
         {
@@ -662,27 +662,13 @@ public sealed class BatchViewport : UserControl
             _eye = _target - LookDirection() * _distance;
 
         /// <summary>
-        /// Keeps the orbit pivot in front of the camera: the ground under the view ray when it hits ahead,
-        /// otherwise a point along the look direction at the current distance.
+        /// Keeps the orbit pivot in front of the camera along the look ray at the current distance.
+        /// Does not snap to the ground, so the eye can move freely below Y = 0.
         /// </summary>
         private void PlaceOrbitPivotInFront()
         {
-            var look = LookDirection();
-            var groundY = _gridOrigin.Y;
-            if (MathF.Abs(look.Y) > 1e-4f)
-            {
-                var distanceToGround = (groundY - _eye.Y) / look.Y;
-                if (distanceToGround > 1f)
-                {
-                    var clamped = Math.Min(distanceToGround, Math.Max(_distance, 10f) * 20f);
-                    _distance = Math.Clamp(clamped, 10f, 400_000f);
-                    _target = _eye + look * _distance;
-                    return;
-                }
-            }
-
             _distance = Math.Clamp(_distance, 10f, 400_000f);
-            _target = _eye + look * _distance;
+            _target = _eye + LookDirection() * _distance;
         }
 
         private void UploadMesh(GL silk)
