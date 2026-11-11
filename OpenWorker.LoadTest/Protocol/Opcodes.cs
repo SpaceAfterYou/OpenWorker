@@ -44,6 +44,7 @@ internal static class Opcodes
     public const ushort PersonSelect = (ushort)((byte)GroupOpcode.Character | ((byte)CharacterOpcode.SelectRes << 8));
     public const ushort PersonEnterRequest = (ushort)((byte)GroupOpcode.Character | ((byte)CharacterOpcode.EnterGameServerReq << 8));
     public const ushort PersonInfo = (ushort)((byte)GroupOpcode.Character | ((byte)CharacterOpcode.InfoRes << 8));
+    public const ushort PersonEnterAnswer = (ushort)((byte)GroupOpcode.Character | ((byte)CharacterOpcode.EnterGameServerRes << 8));
 
     // World.
     public const ushort WorldEnterRequest = (ushort)((byte)GroupOpcode.World | ((byte)WorldOpcode.EnterReq << 8));
@@ -62,6 +63,7 @@ internal static class Opcodes
 
     // Chat.
     public const ushort ChatNormal = (ushort)((byte)GroupOpcode.Chat | ((byte)ChatOpcode.Normal << 8));
+    public const ushort ChatCommand = (ushort)((byte)GroupOpcode.Chat | ((byte)ChatOpcode.GmCommand << 8));
 
     // Maze.
     public const ushort MazeCompleteRequest = (ushort)((byte)GroupOpcode.Maze | ((byte)MazeOpcode.eSUB_CMD_COMPLETE_MAZE_REQ << 8));
