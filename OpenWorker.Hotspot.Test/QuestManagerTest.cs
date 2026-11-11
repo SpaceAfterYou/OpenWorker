@@ -1087,14 +1087,18 @@ public sealed class QuestManagerTest
         {
             await test.Manager.AcceptAsync(test.Player, 400, CancellationToken.None);
             await test.Manager.OnItemCollectedAsync(test.Player, 880001, 4, CancellationToken.None);
-            await test.Manager.CompleteAsync(test.Player, 400, 0, CancellationToken.None);
+
+            // The items were counted when they came and are gone since: the episode is not finished without them.
+            Assert.IsFalse(await test.Manager.CompleteAsync(test.Player, 400, 0, CancellationToken.None));
+            Assert.IsEmpty(inventory.Taken);
+
+            inventory.Have[880001] = 4;
+
+            Assert.IsTrue(await test.Manager.CompleteAsync(test.Player, 400, 0, CancellationToken.None));
         });
 
-        test.Next();
-        test.Next();
-
-        Assert.AreEqual(0x05, test.Next().Command);
         CollectionAssert.AreEqual(new[] { new QuestItem(880001, 4) }, inventory.Taken);
+        Assert.IsTrue(test.Manager.HasFinishedEpisode(test.Player, 400));
     }
 
     #endregion Finishing

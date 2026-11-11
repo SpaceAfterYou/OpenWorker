@@ -348,6 +348,25 @@ public sealed partial class QuestManager(
             return false;
         }
 
+        // What the episode takes at its end must still be there: items counted when they came and sold or given away since
+        // do not finish it. A script that ends an episode takes what is left.
+        if (!force)
+        {
+            foreach (var (item, count) in quest.TakenOnFinish)
+            {
+                if (await items.CountAsync(player, item, cancellationToken) < count)
+                {
+                    SendError(player, QuestOpcode.EpisodeComplete, QuestErrors.CannotFinish);
+                    return false;
+                }
+            }
+
+            if (!TryGet(player, out book, out _) || book.Find(episode) != state)
+            {
+                return false;
+            }
+        }
+
         var payout = QuestRules.GetPayout(quest, catalog, GetHero(player), selected);
 
         // What the boosters of the person add is paid and told too.
