@@ -14,11 +14,17 @@ public sealed class StatSheet
 
     private readonly float[] _added = new float[Count];
     private readonly float[] _shares = new float[Count];
+    private float[]? _special;
 
     /// <summary>
     /// Nothing has been written.
     /// </summary>
     public bool IsEmpty { get; private set; } = true;
+
+    /// <summary>
+    /// The special effects written: shares of damage, cooldown and cost that are not stats.
+    /// </summary>
+    public SpecialEffects Special => _special is null ? SpecialEffects.None : new SpecialEffects([.. _special]);
 
     /// <summary>
     /// The number added to a stat.
@@ -49,11 +55,22 @@ public sealed class StatSheet
     }
 
     /// <summary>
-    /// Writes a stat effect where the map of effects puts it. An effect that is not a stat (a special effect, a current value
-    /// such as the life left) writes nothing and answers <c>false</c>.
+    /// Writes a stat effect where the map of effects puts it. A special effect is kept as it is; an effect that is not a stat
+    /// (a current value such as the life left) writes nothing and answers <c>false</c>.
     /// </summary>
     public bool Apply(int effect, float value)
     {
+        if (SpecialEffects.IsSpecial(effect))
+        {
+            if (value != 0f)
+            {
+                (_special ??= new float[SpecialEffects.Count])[effect - SpecialEffects.First] += value;
+                IsEmpty = false;
+            }
+
+            return true;
+        }
+
         if (!StatEffects.TryMap(effect, out var stat, out var added) || StatEffects.IsCurrentValue(stat))
         {
             return false;

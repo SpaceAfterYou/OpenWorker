@@ -187,6 +187,11 @@ public interface IAiHost
     bool IsDownOrFlying => false;
 
     /// <summary>
+    /// The super armor of the monster is broken and has not mended yet.
+    /// </summary>
+    bool IsArmorBroken => false;
+
+    /// <summary>
     /// Gives the monster a defense for a while, then it has its own again.
     /// </summary>
     void ForceDefense(AiDefense defense, float seconds)

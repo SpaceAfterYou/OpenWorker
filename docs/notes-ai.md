@@ -51,9 +51,10 @@ All of these are checked against the receivers of the client (`MonsterWireFormat
 | 05/08 battle pose | the fight pose is switched on or off |
 | 05/0A gaze | it starts or stops circling its target |
 | 05/14 direction | it turns where it stands (towards its target) |
-| 05/0C animation | a common action of the script, with the number of the animation in the action file |
+| 05/0C animation | a common action of the script, with the number of the animation in the action file; an idle animation of a monster out of battle; the pause of 0.3 s before a walk (below) |
 | 05/0F animations | a spawn box names an animation for its monsters (`m_ChangeSpawnAction`, set on most boxes): sent with the monsters, one entry each, delay 0; a player who comes in later is sent the animations the monsters are still in the middle of |
 | 06/10, 06/13 | a skill starts, a blow of it lands |
+| 05/20, 05/15 | a skill that grabs has taken a player and says where it will be put down; the player is put down there, or freed where it stands (grabs, below) |
 | 17/22 target | the monster takes another enemy (-1: none) |
 | 17/32 invisible | an event of a skill animation hides the monster (flags, kind, value), and again, with nothing, when it shows itself |
 | 17/34 escape | the monster has escaped: its defense type now and for how long (zero for a skill) |
@@ -61,14 +62,35 @@ All of these are checked against the receivers of the client (`MonsterWireFormat
 | 17/53 super armor | knockback's (`notes-combat.md`) |
 
 Not sent: 05/0B (a debug dump of the AI that the original sends to a game master's client only), 05/0D (a few small switches of a mover
-that only game master commands and cutscenes use), 05/21 (the relay of a player's own turn), 05/20, 05/15, 05/34 and 05/35 (a monster
-that grabs a player: not done), 17/33 (the monster gets up from the ground: it goes with the reaction, `notes-combat.md`).
+that only game master commands and cutscenes use), 05/21 (the relay of a player's own turn), 17/33 (the monster gets up from the ground:
+it goes with the reaction, `notes-combat.md`). 05/34 and 05/35 are not the monster's: a skill of a player sends them (`notes-combat.md`,
+"Carrying").
+
+**Turning before a walk.** A monster that stands and sets off more than 45 degrees away from the way it looks does not set off at once. In
+battle, with the animations of a turn (`B_Turn_L`, `B_Turn_R`, and `B_Big_Turn_*` beyond a quarter of a turn), it turns on the spot: 05/0C
+with the animation, no walk until it is over, then 05/02. Without them, or out of battle, it turns at once and tells 05/0C with a delay of
+0.3 s, then 05/02 straight away; the server keeps it still for that time. A monster on its way that finds its path again is not stopped by it.
+
+**Idle animations.** A monster out of battle that has stood or done nothing else for 5 s plays its idle animation (`N_Idle_01`) with a chance
+of one in five at each look, and tells 05/0C with no delay. The original gives every monster these two numbers; a script may change them and
+none of this client does.
+
+**Grabs.** A skill of the kind the table calls type 8 plays its start, then the animation of holding if the start took a player, or the one of
+the miss if not. Its start has an attack event of the grabbing kind: it hurts like any blow, except that a player nothing can hurt (an
+invincible one) is not hit at all, and the nearest of the others that no other monster holds is taken, one at a time: 05/20 tells where it
+will be put down (the drop place of the event, from the monster, turned the way it looks, no farther than the ground goes), then the hit
+(06/13). The monster's other blows do not land while it holds. The animation of holding names the moment it lets go and for how long the
+player flies; at that time the blow named by the event lands on the player wherever the area is, and 05/15 puts it down at the place with
+the flag that makes the client move it; if the skill ends, or the monster is hurt or dies, with the player still held, 05/15 frees it where it
+stands. What the grabbed player may do is not checked by the server (as the original). The AI uses the skill only if its script has a group
+that names its slot.
 
 **Spawn animation.** A monster with a spawn animation that does not repeat does nothing until the animation is over. Animations that
 repeat (standing) are only shown.
 
-**Hiding.** An animation event can hide a monster for a time or until its life is down to a share. Hidden, it cannot be hit or hit by a
-projectile, and thinks only if the event keeps its mind on. The kinds of event that wait for other monsters to die are not followed.
+**Hiding.** An animation event can hide a monster for a time, until its life is down to a share, or until the monsters of some tables are dead
+(looked at once a second). Hidden, it cannot be hit or hit by a projectile, and thinks only if the event keeps its mind on. The kind that
+waits for the monsters it summoned is not followed: monsters do not summon yet.
 
 ## 4. When a monster is hurt
 
@@ -98,7 +120,7 @@ select-action), at most "count" of them, the caller included. A monster calls it
 **Escape.** `SetEscapeInfo(points, chance, ..., reset time, kind, value)`: a skill adds a point, a projectile half, a trap a fifth; from
 the first time two blows land within half a second of each other, every blow adds a fifth (the original never resets this). At the
 points, the next start is a random half and the monster escapes with `chance` in ten thousand: kind 0 gives it the super armor defense
-for `value` ms and ends its flinch, kind 1 invincibility for `value` ms, kind 2 plays the skill `value` (not while it lies on the
+for `value` ms (unless its armor is broken: then the armor mends in its own time) and ends its flinch, kind 1 invincibility for `value` ms, kind 2 plays the skill `value` (not while it lies on the
 ground or flies). The clients are told with 17/34. Points start again after the reset time without a blow. 104 of the 108 scripts
 that have an escape use kind 2. A helper that is getting up does not escape.
 
@@ -123,21 +145,23 @@ some events carry is not applied.
 | Order of the steps of a blow, the hate formula, the look, the taunt | as above | same | same |
 | Inclination of the monster in the hate | used | not used | kept different: not in the client's table |
 | Escape: points, latch, chance, three kinds, 17/34 | as above | same | same |
-| Escape kind 0 | only for a monster whose own defense is a broken super armor | for any monster | kept different: no script of this client uses kind 0 |
+| Escape kind 0 | super armor for the time unless the armor is broken, and the flinch ends | same | same (it was given to every monster before) |
 | Group call | caller and called monsters | same | same |
 | Spawn animation (05/0F) | one packet per monster | one packet per spawn | same in effect |
 | The animations of all monsters to a player who comes in | the current animation of every monster | those in the middle of a spawn or common action | kept different: the stand animation is shown by the monster's own messages |
-| Turn before walking | 05/0C with a 0.3 s delay before the move when the turn is over 45 degrees | not done | open |
-| Idle motions | random idle animation out of battle (script `SetIdleMotionInfo`) | not done | no script of this client sets it |
-| Grab (05/20, 05/15, 05/34, 05/35) | held target dropped at the end | not done | open |
-| Hiding (17/32) | four kinds of end | two kinds | the others wait for monsters that die |
+| Turn before walking | a turn animation in battle, else 05/0C with a 0.3 s delay before the move, when the turn is over 45 degrees | same (battle turns only with the animations of the fight) | same |
+| Idle motions | every monster, 5 s and one in five (a script may change it) | same | same: the first reading, that only a script asks for them, was wrong |
+| Grab (05/20, 05/15) | the first free player of the area, the hold, the let-go and the blow that follows, 05/15 | same, as above | same; the player is placed at the drop place when the time is up, not moved along the way; a hold broken by the monster's death is freed with 05/15 |
+| Hiding (17/32) | four kinds of end | three kinds | the kind that waits for summoned monsters needs monsters that summon |
 | Summoned monsters and who they fight | bits of the monster row | not used | only the bosses of the Akashic mode and field objects of a skill have them |
 | Projectile direction | as above | same | fixed |
 
 ## 7. Not done, and what needs the real client
 
-- The turn before walking, idle motions, grabs: see the table.
+- Grabs of the bosses and the carry of a skill (`notes-combat.md`): to see with the real client.
 - The number of the animation in 05/0C and 05/0F is the place of the animation in the action file of the monster (an assumption that
   the client reads it that way).
 - Play session: a spawn animation (a monster rising from the ground), a monster that escapes with its skill, a monster turning on the
-  one who hurt it most, a hidden monster, a projectile of a monster leaving at its side.
+  one who hurt it most, a hidden monster, a projectile of a monster leaving at its side, a boss that grabs (the player is held at the bone,
+  flies to the place, takes the blow and is put down; the grabbed one is not let to move), a monster that stands out of battle and plays its
+  idle animation, a monster that turns before it walks.

@@ -30,6 +30,28 @@ public sealed class SkillPlaybackTest
     }
 
     /// <summary>
+    /// The playback names the animation that plays now and the moment it began, so that what the animation says about armor can
+    /// be read at any time; once the skill is over it names none.
+    /// </summary>
+    [TestMethod]
+    public void ThePlaybackNamesTheAnimationThatPlaysNow()
+    {
+        var start = Clip("Start", 1f, false);
+        var end = Clip("End", 2f, false);
+        var playback = new SkillPlayback(Skill(start, null, null, end));
+
+        Assert.AreEqual(("Start", 0f), (playback.Playing!.Value.Clip.Name, playback.Playing.Value.Began));
+
+        playback.Advance(1.5f);
+
+        Assert.AreEqual(("End", 1f), (playback.Playing!.Value.Clip.Name, playback.Playing.Value.Began));
+
+        playback.Advance(3.5f);
+
+        Assert.IsNull(playback.Playing);
+    }
+
+    /// <summary>
     /// Runs the skill to the end, letting go and holding the key at the given moments. Returns the moments of the attacks.
     /// </summary>
     private static List<(float Time, int Id)> Play(SkillPlayback playback, params (float At, bool Pressed)[] keys)

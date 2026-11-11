@@ -183,6 +183,35 @@ public sealed partial class AiMachineTest
         Assert.HasCount(1, host.Escapes);
     }
 
+    /// <summary>
+    /// An escape that gives the super armor does so unless the armor of the monster is broken: then the monster only ends its
+    /// flinch, and the armor mends in its own time.
+    /// </summary>
+    [TestMethod]
+    public void AnEscapeThatGivesSuperArmorGivesNoneToAMonsterWhoseArmorIsBroken()
+    {
+        foreach (var broken in (bool[])[false, true])
+        {
+            var host = Crowd();
+            var builder = Fighter();
+
+            host.IsArmorBroken = broken;
+            builder.SetEscapeInfo(2f, 10000, 0f, 1000f, 5f, AiEscape.SuperArmorKind, 1500);
+
+            var machine = Create(builder, host);
+
+            machine.Start();
+
+            for (var blow = 0; blow < 3; blow++)
+            {
+                Hit(machine, host, 1000, 1f);
+            }
+
+            Assert.HasCount(broken ? 0 : 1, host.Forced);
+            Assert.HasCount(1, host.Escapes, "the clients are told either way");
+        }
+    }
+
     [TestMethod]
     public void AMonsterCallsItsGroupOnceWhenItHasAnEnemyAndIsHurt()
     {

@@ -244,6 +244,21 @@ public sealed class MovementWireFormatTest
         Assert.HasCount(4, Written(new MovementAttacedEndBtResponse { Actor = Actor }));
     }
 
+    /// <summary>
+    /// The client reads who carries, who is carried, the way the carried one stands from the carrier and how far.
+    /// </summary>
+    [TestMethod]
+    public void TheCarryOfAnActorIsToldAsCarrierCarriedDirectionAndDistance()
+    {
+        var bytes = Written(new MovementAttacedBtResponse { Owner = Actor, Actor = Actor + 1, Direction = new Vector3(1, 2, 3), Distance = 4 });
+
+        Assert.HasCount(4 + 4 + 12 + 4, bytes);
+        CollectionAssert.AreEqual(new byte[] { 0x56, 0x34, 0x12, 0x00 }, bytes[..4]);
+        CollectionAssert.AreEqual(new byte[] { 0x57, 0x34, 0x12, 0x00 }, bytes[4..8]);
+        Assert.AreEqual(3f, BitConverter.ToSingle(bytes, 16));
+        Assert.AreEqual(4f, BitConverter.ToSingle(bytes, 20));
+    }
+
     [TestMethod]
     public void MoveResponseHasTheLayoutTheClientReads()
     {

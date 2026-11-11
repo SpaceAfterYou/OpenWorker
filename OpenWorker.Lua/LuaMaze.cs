@@ -238,6 +238,7 @@ public partial class LuaMaze(
         public int CurrentSkill { get; set; }
         public TrapSite? MouseTrap { get; set; }
         public SkillRun? Playback { get; set; }
+        public CarryRun? Carry { get; set; }
         public ScheduledAction SkillWake { get; set; }
         public Queue<bool> PressedKeys { get; } = [];
         public uint ProjectileSession { get; set; }
@@ -516,6 +517,7 @@ public partial class LuaMaze(
         {
             StepFlights(_members[index]);
             StepChains(_members[index]);
+            StepCarry(_members[index]);
         }
 
         // The gauges of those who have loaded the maze fill with the time of the fight.
@@ -816,6 +818,7 @@ public partial class LuaMaze(
         member.Playback = run;
         member.PressedKeys.Clear();
 
+        PlanCarries(member, skill, hero, generation, run.Began);
         Play(member, run);
     }
 
@@ -1320,6 +1323,12 @@ public partial class LuaMaze(
             MonsterKilled?.Invoke(player, identifier, fell);
         }
 
+        // Gear that gives life and soul gauge back for a kill does so for every monster killed.
+        if (dead.Length > 0)
+        {
+            GiveBackOnKill(player, attackerStats, dead.Length);
+        }
+
         var kind = actions.GetPassiveType(skill);
 
         foreach (var ((identifier, place, _), hit) in dead)
@@ -1350,10 +1359,10 @@ public partial class LuaMaze(
     {
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
-        var defense = _buffs.DefenseOf(target, body.Defense);
+        var defense = _buffs.DefenseOf(target, creatureManager.FrameDefenseOf(target, body.Defense));
         // A super armor that was broken before this hit lets half as much again through.
         var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
-        var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken);
+        var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken, creatureManager.ContextOf(target));
 
         result = result with { Damage = _buffs.Adjust(attacker, target, result.Damage) };
 
@@ -1377,7 +1386,8 @@ public partial class LuaMaze(
 
         creatureManager.OnMonsterHit(target, attacker, result.Damage, skillId, kind);
 
-        var effect = creatureManager.ReceiveBlow(target, BlowOf(attacker, trigger, origin), defense, result.Damage, skill.SuperArmorAttack, health > 0);
+        var armorShare = skill.SuperArmorAttack * (1f + attackerStats.Special.Of(SpecialEffect.SuperArmorDamage) * 0.01f);
+        var effect = creatureManager.ReceiveBlow(target, BlowOf(attacker, trigger, origin), defense, result.Damage, armorShare, health > 0);
 
         return default(SkillDmgValue) with
         {
@@ -1391,6 +1401,26 @@ public partial class LuaMaze(
             DefenseType = effect.Defense,
             CurSuperArmorGauge = effect.SuperArmor
         };
+    }
+
+    /// <summary>
+    /// A kill gives a player life and soul gauge back by what its gear says.
+    /// </summary>
+    private void GiveBackOnKill(Entity player, in CombatStats stats, int kills)
+    {
+        var health = (int)(stats.Special.Of(SpecialEffect.HealthOnKill) * kills);
+
+        if (health > 0 && creatureManager.Vitals.IsAlive(player))
+        {
+            creatureManager.Vitals.Heal(player, health);
+        }
+
+        var soul = stats.Special.Of(SpecialEffect.SoulGaugeOnKill) * kills;
+
+        if (soul > 0f && creatureManager.Services?.Gauges is { } gauges)
+        {
+            gauges.Absorb(player, soul, stats.SoulGaugeMax);
+        }
     }
 
     /// <summary>
@@ -1410,7 +1440,7 @@ public partial class LuaMaze(
             place.Position,
             place.Rotation,
             helper,
-            helper ? combatant.WeightRank : 0,
+            helper ? combatant.WeightRank : PlayerVitals.WeightRank,
             IsMelee: trigger.HitsArea);
     }
 
@@ -1656,6 +1686,7 @@ public partial class LuaMaze(
         Started = true;
         StartedAt = Stopwatch.GetTimestamp();
         _buffs.MonsterKilled += OnBuffKill;
+        creatureManager.PlayerFrames = FrameDefenseOf;
 
         // The quests the player has when the maze starts are where the script begins to follow them.
         foreach (var member in _members)

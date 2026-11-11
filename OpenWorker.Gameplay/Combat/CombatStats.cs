@@ -124,6 +124,17 @@ public readonly record struct CombatStats
 
     public float StaminaMax { get; init; }
 
+    private readonly SpecialEffects? _special;
+
+    /// <summary>
+    /// The special effects of gear, titles and buffs: shares of damage to a kind of monster, of cooldown, of cost.
+    /// </summary>
+    public SpecialEffects Special
+    {
+        get => _special ?? SpecialEffects.None;
+        init => _special = value.IsNone ? null : value;
+    }
+
     /// <summary>
     /// What a second adds to the stamina.
     /// </summary>

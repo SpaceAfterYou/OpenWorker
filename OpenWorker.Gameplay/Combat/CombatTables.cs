@@ -58,6 +58,13 @@ public readonly record struct MonsterCombatComponent
     /// </summary>
     public byte Rank { get; init; }
 
+    /// <summary>
+    /// Which side of the world the monster belongs to and whether it shoots; the special effects of gear work on both.
+    /// </summary>
+    public byte Faction { get; init; }
+
+    public byte StatusType { get; init; }
+
     public bool IsBoss => Rank is 3 or 4 or 5;
 
     /// <summary>
@@ -308,6 +315,8 @@ public sealed class CombatTables(
             CountsHits = row.Type == HitCountingMonster,
             HoldsSector = HoldsSector(row),
             Rank = row.Rank,
+            Faction = row.Faction,
+            StatusType = (byte)row.StatusType,
             WeightRank = row.WeightRank,
             ReactionLimit = (ReactionLimit)(row.ReactionLimit & (byte)ReactionLimit.Immovable),
             ArmorBreakMotion = row.SuperArmorBreakMotion == ArmorBreakMotionType,

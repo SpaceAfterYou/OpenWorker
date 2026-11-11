@@ -137,6 +137,11 @@ public sealed class LuaCreatureManager
     private List<Entity> Players { get; } = [];
 
     /// <summary>
+    /// The players a monster holds in a grab: no other monster takes them.
+    /// </summary>
+    private HashSet<Entity> Grabbed { get; } = [];
+
+    /// <summary>
     /// Creatures that wait for their delay before the clients see them.
     /// </summary>
     private HashSet<Entity> Unseen { get; } = [];
@@ -176,6 +181,7 @@ public sealed class LuaCreatureManager
     public void Detach(Entity player)
     {
         Players.Remove(player);
+        Grabbed.Remove(player);
         Vitals.Forget(player);
     }
 
@@ -549,6 +555,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     private void Retire(MonsterBody body)
     {
+        body.Retired();
         Minds.Remove(body);
 
         if (!SpareBodies.TryGetValue(body.Machine.Profile, out var spare))
@@ -1392,6 +1399,94 @@ public sealed class LuaCreatureManager
         return Creatures.Count(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster && ecs.Get<NonPlayableCreatureComponent>(e).Sector == sector);
     }
 
+    internal Vector3 PositionOf(Entity player) => Vitals.PositionOf(player);
+
+    /// <summary>
+    /// The server knows the player is in the air for at least this long.
+    /// </summary>
+    private void Posture(Entity player, long milliseconds)
+    {
+        var until = new PlayerPostureComponent(Environment.TickCount64 + milliseconds);
+
+        if (ecs.Has<PlayerPostureComponent>(player))
+        {
+            ecs.Set(player, until);
+        }
+        else
+        {
+            ecs.Add(player, until);
+        }
+    }
+
+    /// <summary>
+    /// What the animation of its skill makes of the defense of a player at this moment; the maze, which plays the skills, says.
+    /// </summary>
+    public Func<Entity, DefenseType>? PlayerFrames { get; set; }
+
+    /// <summary>
+    /// How a player takes a hit now: by the animation of its skill, and a buff that makes it stronger.
+    /// </summary>
+    internal DefenseType DefenseOfPlayer(Entity player)
+    {
+        var frames = PlayerFrames?.Invoke(player) ?? DefenseType.Normal;
+
+        return Buffs?.DefenseOf(player, frames) ?? frames;
+    }
+
+    /// <summary>
+    /// How a monster takes a hit now: the defense of its table, unless the animation of the skill it plays says another.
+    /// </summary>
+    internal DefenseType FrameDefenseOf(Entity monster, DefenseType own)
+    {
+        return Bodies.TryGetValue(monster, out var body) ? body.FrameDefense(own, ecs.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil != 0) : own;
+    }
+
+    internal MonsterBody? BodyOf(Entity monster) => Bodies.GetValueOrDefault(monster);
+
+    /// <summary>
+    /// What a player's hit needs to know of the monster it hits: its kind, and whether it is in the air or on the ground.
+    /// </summary>
+    internal DamageContext ContextOf(Entity monster)
+    {
+        var combat = ecs.Get<MonsterCombatComponent>(monster);
+        var body = BodyOf(monster);
+
+        return DamageContext.PlayerHits(new Opponent(combat.Rank, combat.Faction, combat.StatusType), body?.IsAirborne ?? false, body?.IsLying ?? false);
+    }
+
+    /// <summary>
+    /// Whether a monster of a table lives in the maze.
+    /// </summary>
+    internal bool IsMonsterAlive(int table)
+    {
+        return Creatures.Any(e => ecs.IsAlive(e) && ecs.Get<ActorComponent>(e).Type == ActorType.Monster && ecs.Get<CreatureComponent>(e) is { Health: > 0 } creature && creature.Identifier == table);
+    }
+
+    /// <summary>
+    /// Nothing hurts the player now: it has just come back, or a buff makes it invincible.
+    /// </summary>
+    internal bool IsShielded(Entity player)
+    {
+        return Vitals.IsProtected(player) || DefenseOfPlayer(player) == DefenseType.Invincible;
+    }
+
+    /// <summary>
+    /// A monster may grab a player that lives and is not held by another.
+    /// </summary>
+    internal bool CanBeGrabbed(Entity player) => Vitals.IsAlive(player) && !Grabbed.Contains(player);
+
+    internal void Grab(Entity player) => Grabbed.Add(player);
+
+    internal void LetGo(Entity player) => Grabbed.Remove(player);
+
+    /// <summary>
+    /// The server puts a player at a place: it flew there held by a monster.
+    /// </summary>
+    internal void Place(Entity player, Vector3 position)
+    {
+        ecs.Set(player, ecs.Get<WorldComponent>(player) with { Position = position });
+    }
+
     internal IReadOnlyList<Entity> PlayersTouching(AttackArea area)
     {
         return Players
@@ -1424,6 +1519,7 @@ public sealed class LuaCreatureManager
         List<Entity>? hurt = null;
         var origin = ecs.Get<WorldComponent>(attacker.Entity);
         var weight = ecs.Get<MonsterCombatComponent>(attacker.Entity).WeightRank;
+        var kind = DamageContext.MonsterHits(new Opponent(ecs.Get<MonsterCombatComponent>(attacker.Entity).Rank, ecs.Get<MonsterCombatComponent>(attacker.Entity).Faction, ecs.Get<MonsterCombatComponent>(attacker.Entity).StatusType));
         var blow = new Blow(trigger.Reaction, (ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue), trigger.DamageRate, trigger.Angle, origin.Position, origin.Position, origin.Rotation, true, weight, IsMelee: trigger.HitsArea);
 
         foreach (var victim in victims)
@@ -1433,11 +1529,11 @@ public sealed class LuaCreatureManager
                 continue;
             }
 
-            var defense = Buffs?.DefenseOf(victim, DefenseType.Normal) ?? DefenseType.Normal;
+            var defense = DefenseOfPlayer(victim);
             var shielded = Vitals.IsProtected(victim) || defense == DefenseType.Invincible;
             var result = shielded
                 ? new DamageResult(0, HitResults.None)
-                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random);
+                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random, context: kind);
 
             if (Buffs is not null && !shielded)
             {
@@ -1456,7 +1552,13 @@ public sealed class LuaCreatureManager
             var shownDefense = shielded ? DefenseType.Invincible : defense;
             var (extraMove, flySpeed) = shielded
                 ? (Vector3.Zero, 0f)
-                : PlayerThrow.Told(blow, new Struck(Vitals.PositionOf(victim), 0, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
+                : PlayerThrow.Told(blow, new Struck(Vitals.PositionOf(victim), PlayerVitals.WeightRank, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
+
+            // A player thrown into the air cannot start an ordinary skill until it lands.
+            if (!shielded && extraMove.Z > 0f && MonsterReaction.IsLaunch((ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue)) && left > 0)
+            {
+                Posture(victim, SkillStates.FlightMilliseconds(extraMove.Z));
+            }
 
             hits.Add(default(SkillDmgValue) with
             {

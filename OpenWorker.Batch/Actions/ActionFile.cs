@@ -5,21 +5,86 @@ namespace OpenWorker.Batch.Actions;
 
 /// <param name="Repeats">Whether the animation starts over by itself until something stops it, like the waiting and the loop of a skill.</param>
 /// <param name="Hides">The moments of the animation at which the monster hides, if it does.</param>
-public sealed record ActionAnimation(string Name, float Length, IReadOnlyList<AttackTrigger> Attacks, bool Repeats = false, IReadOnlyList<InvisibleEvent>? Hides = null);
+/// <param name="Defense">The defense type the animation gives whoever plays it, see <see cref="ActionDefense"/>.</param>
+/// <param name="Defenses">The stretches of the animation in which the defense type changes.</param>
+/// <param name="Detaches">The moments at which the animation lets go of a grabbed target.</param>
+/// <param name="Attaches">The moments at which the animation starts to carry away what stands before it.</param>
+public sealed record ActionAnimation(
+    string Name,
+    float Length,
+    IReadOnlyList<AttackTrigger> Attacks,
+    bool Repeats = false,
+    IReadOnlyList<InvisibleEvent>? Hides = null,
+    byte Defense = ActionDefense.Unchanged,
+    IReadOnlyList<DefenseEvent>? Defenses = null,
+    IReadOnlyList<DetachEvent>? Detaches = null,
+    IReadOnlyList<AttachEvent>? Attaches = null);
+
+/// <summary>
+/// What an animation says about the defense type of whoever plays it. The numbers are the ones of the file.
+/// </summary>
+public static class ActionDefense
+{
+    /// <summary>
+    /// Whoever plays the animation is hit as a plain target would be, whatever its table says.
+    /// </summary>
+    public const byte Normal = 0;
+
+    public const byte SuperArmor = 2;
+    public const byte Invincible = 3;
+
+    /// <summary>
+    /// The animation says nothing: the defense type of whoever plays it stays what its table gives.
+    /// </summary>
+    public const byte Unchanged = 4;
+}
+
+/// <summary>
+/// A stretch of an animation in which the defense type is something else, as the event of the file says.
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="End">Seconds from the start of the animation.</param>
+/// <param name="Defense">The defense type, see <see cref="ActionDefense"/> and the defense types of a creature.</param>
+/// <param name="Immune">Nothing that harms by effect sticks while it lasts.</param>
+public sealed record DefenseEvent(float Start, float End, byte Defense, bool Immune);
+
+/// <summary>
+/// The moment a monster that holds a target lets it go: the target flies to the place the grab named in the time given, and
+/// the blow named by the event of the animation after it lands on the target there.
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="DropTime">How long the target takes to fly to the place.</param>
+/// <param name="Animation">The animation that holds the blow that follows.</param>
+/// <param name="Event">The place of the blow among the attacks of that animation, counted from zero.</param>
+public sealed record DetachEvent(float Start, float DropTime, string Animation, int Event);
+
+/// <summary>
+/// For a time the one who plays the animation carries along whatever stands before it and is not too heavy.
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="Duration">How long it looks for something to carry.</param>
+/// <param name="Distance">How far before it a target has to stand.</param>
+/// <param name="Angle">How wide before it, in degrees.</param>
+/// <param name="Offset">Where the carried targets are put, from the carrier, turned by its yaw.</param>
+/// <param name="WeightRank">A target of this rank or a higher one cannot be carried and stops the carrier.</param>
+public sealed record AttachEvent(float Start, float Duration, float Distance, float Angle, Vector3 Offset, int WeightRank);
 
 /// <summary>
 /// The monster disappears at a moment of an animation: for a time, or until its life is down to a share.
 /// </summary>
 /// <param name="Start">Seconds from the start of the animation.</param>
 /// <param name="Flags">What the monster keeps while it is gone: 1 its collision, 2 its effects, 4 its movement, 8 its mind.</param>
-/// <param name="ConditionType">What ends it: 0 a time, 1 a share of the life, other kinds wait for monsters that die.</param>
-/// <param name="Value">The time in milliseconds, or the share of the life in thousandths.</param>
-public sealed record InvisibleEvent(float Start, byte Flags, int ConditionType, int Value)
+/// <param name="ConditionType">What ends it: 0 a time, 1 a share of the life, 2 the death of a monster it summoned, 3 the death of every monster of the given tables.</param>
+/// <param name="Value">The time in milliseconds, the share of the life in thousandths, or the number of summoned monsters to wait for.</param>
+/// <param name="Waits">For the kind that waits for monsters of the maze: their tables.</param>
+public sealed record InvisibleEvent(float Start, byte Flags, int ConditionType, int Value, IReadOnlyList<int>? Waits = null)
 {
     public const byte KeepsMind = 8;
 
     public const int ForTime = 0;
     public const int UntilHurt = 1;
+    public const int UntilSummonsDie = 2;
+    public const int UntilMonstersDie = 3;
 }
 
 /// <summary>
@@ -33,6 +98,9 @@ public sealed class ActionFile
     private const string SequenceTag = "SEQU";
     private const short AttackTriggerType = 3;
     private const short InvisibleTriggerType = 14;
+    private const short AttachTriggerType = 22;
+    private const short DefenseTriggerType = 25;
+    private const short DetachTriggerType = 30;
 
     private const short FiltersSinceVersion = 204;
     private const short CollisionRangeSinceVersion = 205;
@@ -58,6 +126,8 @@ public sealed class ActionFile
     private const short ContinuousMeleeSinceVersion = 239;
     private const short GroupSinceVersion = 240;
     private const short AuraSinceVersion = 242;
+    private const short AttachRankSinceVersion = 231;
+    private const short ImmunitySinceVersion = 237;
 
     private ActionFile(Dictionary<string, ActionAnimation> animations, Dictionary<string, int> indexes)
     {
@@ -144,7 +214,12 @@ public sealed class ActionFile
     {
         var name = ReadString(reader);
 
-        reader.BaseStream.Seek(5 * sizeof(short) + sizeof(float), SeekOrigin.Current);
+        // What the character may do while it plays, the kind of motion, the group, how the buffer of inputs behaves.
+        reader.BaseStream.Seek(4 * sizeof(short), SeekOrigin.Current);
+
+        var defense = reader.ReadInt16();
+
+        reader.BaseStream.Seek(sizeof(float), SeekOrigin.Current);
 
         if (version >= AnimationFieldSinceVersion)
         {
@@ -160,25 +235,37 @@ public sealed class ActionFile
 
         var attacks = new List<AttackTrigger>();
         var hides = new List<InvisibleEvent>();
+        var defenses = new List<DefenseEvent>();
+        var detaches = new List<DetachEvent>();
+        var attaches = new List<AttachEvent>();
         var events = reader.ReadInt32();
 
         for (var i = 0; i < events; i++)
         {
             var chunk = Open(reader);
-            var begin = reader.BaseStream.Position;
+            var header = ReadHeader(reader, version);
 
-            if (ReadInvisible(reader, version) is { } hide)
+            switch (header.Type)
             {
-                hides.Add(hide);
-            }
-            else
-            {
-                reader.BaseStream.Position = begin;
+                case AttackTriggerType:
+                    attacks.Add(ReadAttack(reader, version, header));
+                    break;
 
-                if (ReadEvent(reader, version) is { } attack)
-                {
-                    attacks.Add(attack);
-                }
+                case InvisibleTriggerType:
+                    hides.Add(ReadInvisible(reader, header));
+                    break;
+
+                case DefenseTriggerType:
+                    defenses.Add(ReadDefense(reader, version, header));
+                    break;
+
+                case DetachTriggerType:
+                    detaches.Add(ReadDetach(reader, header));
+                    break;
+
+                case AttachTriggerType:
+                    attaches.Add(ReadAttach(reader, version, header));
+                    break;
             }
 
             Close(reader, chunk);
@@ -192,26 +279,24 @@ public sealed class ActionFile
             SkipFrames(reader);
         }
 
-        return new ActionAnimation(name, length, attacks, repeats, hides);
+        return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches);
     }
 
     /// <summary>
-    /// An event that hides the monster: four switches for what it keeps, then what ends it. Null for any other event.
+    /// What every event starts with: its kind, name, number, the moments it begins and ends, and the filters of the modes it
+    /// is for.
     /// </summary>
-    private static InvisibleEvent? ReadInvisible(BinaryReader reader, short version)
+    private readonly record struct EventHeader(short Type, int Id, float Start, float End);
+
+    private static EventHeader ReadHeader(BinaryReader reader, short version)
     {
-        if (reader.ReadInt16() != InvisibleTriggerType)
-        {
-            return null;
-        }
+        var type = reader.ReadInt16();
 
         ReadString(reader);
 
-        reader.ReadInt32();
-
+        var id = reader.ReadInt32();
         var start = reader.ReadSingle();
-
-        reader.ReadSingle();
+        var end = reader.ReadSingle();
 
         if (version >= ThirdFilterSinceVersion)
         {
@@ -222,6 +307,14 @@ public sealed class ActionFile
             Skip(reader, 2 * sizeof(int));
         }
 
+        return new EventHeader(type, id, start, end);
+    }
+
+    /// <summary>
+    /// An event that hides the monster: four switches for what it keeps, then what ends it.
+    /// </summary>
+    private static InvisibleEvent ReadInvisible(BinaryReader reader, in EventHeader header)
+    {
         var flags = 0;
 
         for (var bit = 0; bit < 4; bit++)
@@ -231,34 +324,53 @@ public sealed class ActionFile
 
         var type = reader.ReadInt32();
         var value = reader.ReadInt32();
+        var waits = new[] { value, reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32() };
 
-        return new InvisibleEvent(start, (byte)flags, type, value);
+        return new InvisibleEvent(header.Start, (byte)flags, type, value, type == InvisibleEvent.UntilMonstersDie ? waits.Where(e => e != 0).ToArray() : null);
     }
 
-    private static AttackTrigger? ReadEvent(BinaryReader reader, short version)
+    private static DefenseEvent ReadDefense(BinaryReader reader, short version, in EventHeader header)
     {
-        var type = reader.ReadInt16();
+        var defense = reader.ReadInt16();
+        var immune = false;
 
-        ReadString(reader);
-
-        var id = reader.ReadInt32();
-        var start = reader.ReadSingle();
-
-        reader.ReadSingle();
-
-        if (version >= ThirdFilterSinceVersion)
+        if (version >= ImmunitySinceVersion)
         {
-            reader.BaseStream.Seek(3 * sizeof(int), SeekOrigin.Current);
-        }
-        else if (version >= FiltersSinceVersion)
-        {
-            reader.BaseStream.Seek(2 * sizeof(int), SeekOrigin.Current);
+            immune = reader.ReadBoolean();
+
+            // The effect that shows when a blow is turned away.
+            reader.ReadInt32();
         }
 
-        if (type != AttackTriggerType)
-        {
-            return null;
-        }
+        return new DefenseEvent(header.Start, header.End, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), immune);
+    }
+
+    private static DetachEvent ReadDetach(BinaryReader reader, in EventHeader header)
+    {
+        var dropTime = reader.ReadSingle();
+        var animation = ReadString(reader);
+
+        // The skill it belongs to, which the animation of the monster does not need.
+        reader.ReadInt32();
+
+        return new DetachEvent(header.Start, dropTime, animation, reader.ReadInt32());
+    }
+
+    private static AttachEvent ReadAttach(BinaryReader reader, short version, in EventHeader header)
+    {
+        var duration = reader.ReadSingle();
+        var distance = reader.ReadSingle();
+        var angle = reader.ReadSingle();
+        var offset = ReadVector3(reader);
+        var rank = version >= AttachRankSinceVersion ? reader.ReadInt32() : 0;
+
+        return new AttachEvent(header.Start, duration, distance, angle, offset, rank);
+    }
+
+    private static AttackTrigger ReadAttack(BinaryReader reader, short version, in EventHeader header)
+    {
+        var id = header.Id;
+        var start = header.Start;
 
         var rangeType = reader.ReadInt16();
         var attackType = reader.ReadInt16();
@@ -282,14 +394,14 @@ public sealed class ActionFile
 
         return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition,
             reaction.DamageRate, reaction.ReactionType, projectile, chain, reaction.Buff, reaction.TargetType, reaction.Aura,
-            reaction.Push with { Hardness = hardness });
+            reaction.Push with { Hardness = hardness }, reaction.GrabDrop);
     }
 
     /// <summary>
     /// Whom an attack is for and what it does to them: the kind of target, the share of the damage, the buff it gives each
     /// target and how the target reacts.
     /// </summary>
-    private readonly record struct Effects(int TargetType, float DamageRate, int Buff, int ReactionType, int Aura, AttackReaction Push);
+    private readonly record struct Effects(int TargetType, float DamageRate, int Buff, int ReactionType, int Aura, AttackReaction Push, Vector3 GrabDrop);
 
     /// <summary>
     /// The aura an attack puts on its targets sits at the end of the attack, after the fields that later versions added to it.
@@ -424,11 +536,14 @@ public sealed class ActionFile
             SkipStrings(reader, 1);
         }
 
-        // What it does to a grabbed target and how it sounds.
+        // What it does to a grabbed target and how it sounds: the bone that holds the target, where on it, the sounds, the
+        // turn of the target, and the place it is let go at, from the grabber.
         SkipStrings(reader, 1);
         Skip(reader, 3 * sizeof(float));
         SkipStrings(reader, 2);
-        Skip(reader, 6 * sizeof(float));
+        Skip(reader, 3 * sizeof(float));
+
+        var grabDrop = ReadVector3(reader);
 
         if (version >= CollisionRangeSinceVersion)
         {
@@ -465,7 +580,7 @@ public sealed class ActionFile
         var (aura, breaksPlayerArmor) = ReadAura(reader, version);
         var push = new AttackReaction(distance, pushHeight, heightInAir, pushSpeed, arrow, angle, slowRate, slowTime, slowDelay, hitFreeze, weakSlowChance, grade, usesTargetWeight, 0, breaksPlayerArmor);
 
-        return (projectile, chain, new Effects(targetType, damageRate, buff, reactionType, aura, push));
+        return (projectile, chain, new Effects(targetType, damageRate, buff, reactionType, aura, push, grabDrop));
     }
 
     private static Vector3 ReadVector3(BinaryReader reader)

@@ -259,7 +259,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         var kind = Limited(blow.Kind, push.Grade);
         var motion = DamageMotion(kind);
         var displayed = Displayed(push.Hardness, defense);
-        var enabled = defense is not (DefenseType.SuperArmor or DefenseType.Invincible) || displayed;
+        var enabled = defense is not (DefenseType.SuperArmor or DefenseType.Invincible or DefenseType.NoReaction) || displayed;
 
         if (!enabled)
         {
@@ -370,7 +370,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         return profile.Limit.HasFlag(ReactionLimit.NoLaunch) && IsLaunch(kind) ? ReactionKind.Flinch : kind;
     }
 
-    internal static bool IsLaunch(ReactionKind kind) => kind is ReactionKind.LaunchUp or ReactionKind.KnockDown or ReactionKind.KnockDownStraight;
+    public static bool IsLaunch(ReactionKind kind) => kind is ReactionKind.LaunchUp or ReactionKind.KnockDown or ReactionKind.KnockDownStraight;
 
     /// <summary>
     /// Whether the animation of a reaction plays at all: a weak blow shows none, and a monster whose armor holds or that
@@ -387,7 +387,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         {
             DefenseType.Guard => hardness is 2 or 4,
             DefenseType.SuperArmor => hardness is 3 or 4,
-            DefenseType.Invincible => false,
+            DefenseType.Invincible or DefenseType.NoReaction => false,
             _ => true
         };
     }

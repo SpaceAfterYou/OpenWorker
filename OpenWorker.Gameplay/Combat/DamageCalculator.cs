@@ -18,7 +18,12 @@ public enum DefenseType : byte
     Normal = 0,
     Guard = 1,
     SuperArmor = 2,
-    Invincible = 3
+    Invincible = 3,
+
+    /// <summary>
+    /// Hurt as a plain target but shows no reaction to any blow: an animation of a monster can give it.
+    /// </summary>
+    NoReaction = 5
 }
 
 /// <param name="SoulGaugeAbsorb">What a hit of the skill gives to the soul gauge of the attacker, before the share of the target.</param>
@@ -49,7 +54,8 @@ public static class DamageCalculator
         DefenseType defense,
         float attackRate,
         Random random,
-        bool superArmorBroken = false)
+        bool superArmorBroken = false,
+        in DamageContext context = default)
     {
         if (defense == DefenseType.Invincible)
         {
@@ -113,6 +119,9 @@ public static class DamageCalculator
         {
             afterDefense = (int)(afterDefense * BrokenSuperArmorDamage);
         }
+
+        // What gear adds to the damage to a kind of monster, and takes off the damage of one.
+        afterDefense = SpecialDamage.Apply(afterDefense, attacker, target, context, (flags & HitResults.Miss) != 0);
 
         if (attackRate > 0)
         {

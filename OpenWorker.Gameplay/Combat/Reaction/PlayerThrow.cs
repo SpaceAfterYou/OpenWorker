@@ -19,7 +19,7 @@ public static class PlayerThrow
         var push = blow.Reaction;
         var vector = thrown.Vector;
 
-        if (player.Defense is DefenseType.SuperArmor or DefenseType.Invincible && !MonsterReaction.Displayed(push.Hardness, player.Defense))
+        if (player.Defense is DefenseType.SuperArmor or DefenseType.Invincible or DefenseType.NoReaction && !MonsterReaction.Displayed(push.Hardness, player.Defense))
         {
             vector = Vector3.Zero;
         }

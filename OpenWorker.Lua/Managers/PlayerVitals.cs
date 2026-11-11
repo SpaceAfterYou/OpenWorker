@@ -22,6 +22,12 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
     public const float BodyHeight = 170f;
 
     /// <summary>
+    /// How heavy a player is to a blow that throws by weight: every body weighs this much unless its table says otherwise, and
+    /// the table of a player says nothing.
+    /// </summary>
+    public const int WeightRank = 5;
+
+    /// <summary>
     /// Somebody who has just come back cannot be hurt for this long.
     /// </summary>
     public static readonly TimeSpan ReviveProtection = TimeSpan.FromSeconds(5);

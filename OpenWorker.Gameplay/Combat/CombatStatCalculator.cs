@@ -120,6 +120,7 @@ public static class CombatStatCalculator
             Luck = luck,
             MaxHealth = Final(status.HealthFirst + vitality * status.HealthPerVitality, sheet, STAT_TYPE.STAT_HP_MAX),
             GrazeDamage = status.GrazeDamage + sheet.Added(STAT_TYPE.STAT_ADR),
+            Special = sheet.Special,
             SoulGaugeConstant = status.SoulGaugeRegen,
             SoulGaugeAbsorbRate = status.SoulGaugeAbsorbRate,
             SoulGaugeRegenAdded = sheet.Added(STAT_TYPE.STAT_SG_REG),
