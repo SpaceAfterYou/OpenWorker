@@ -1,5 +1,6 @@
 using System.Numerics;
 using Avalonia;
+using Avalonia.Input;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
 using OpenWorker.Content.Tool.Models;
@@ -8,13 +9,16 @@ using Silk.NET.OpenGL;
 namespace OpenWorker.Content.Tool.Rendering;
 
 /// <summary>
-/// Draws the ground rectangles of a <c>*.vbatch</c>: each box from its top-left, bottom-right and yaw. Game Z is up;
-/// the viewport remaps that to OpenGL Y-up.
+/// Draws the ground rectangles of a <c>*.vbatch</c> with a grid and RGB axes. Right-drag orbits, WASD moves the
+/// look target, the wheel zooms. Game Z is up; the viewport remaps that to OpenGL Y-up.
 /// </summary>
 public sealed class BatchViewport : OpenGlControlBase
 {
     public static readonly StyledProperty<IReadOnlyList<BatchBoxDraw>?> BoxesProperty =
         AvaloniaProperty.Register<BatchViewport, IReadOnlyList<BatchBoxDraw>?>(nameof(Boxes));
+
+    private const float AxisLengthFactor = 0.08f;
+    private const int GridLines = 20;
 
     private GL? _gl;
     private uint _program;
@@ -26,8 +30,17 @@ public sealed class BatchViewport : OpenGlControlBase
     private float _pitch = 0.55f;
     private float _distance = 40f;
     private Vector3 _target = Vector3.Zero;
-    private bool _wheelHooked;
+    private Vector3 _gridOrigin = Vector3.Zero;
+    private float _gridHalfExtent = 10f;
+    private float _gridStep = 1f;
+    private bool _inputHooked;
     private bool _meshDirty = true;
+    private bool _orbiting;
+    private Point _lastPointer;
+    private bool _moveForward;
+    private bool _moveBack;
+    private bool _moveLeft;
+    private bool _moveRight;
 
     public IReadOnlyList<BatchBoxDraw>? Boxes
     {
@@ -45,6 +58,11 @@ public sealed class BatchViewport : OpenGlControlBase
         });
     }
 
+    public BatchViewport()
+    {
+        Focusable = true;
+    }
+
     protected override void OnOpenGlInit(GlInterface gl)
     {
         base.OnOpenGlInit(gl);
@@ -57,7 +75,7 @@ public sealed class BatchViewport : OpenGlControlBase
         _vbo = _gl.GenBuffer();
         _meshDirty = true;
 
-        EnsureWheelInput();
+        EnsureInput();
         RequestNextFrameRendering();
     }
 
@@ -98,6 +116,8 @@ public sealed class BatchViewport : OpenGlControlBase
             return;
         }
 
+        ApplyMovement();
+
         if (_meshDirty)
         {
             UploadMesh(silk);
@@ -115,6 +135,7 @@ public sealed class BatchViewport : OpenGlControlBase
 
         if (_vertexCount == 0)
         {
+            RequestNextFrameRendering();
             return;
         }
 
@@ -138,9 +159,49 @@ public sealed class BatchViewport : OpenGlControlBase
         RequestNextFrameRendering();
     }
 
+    private void ApplyMovement()
+    {
+        if (!_moveForward && !_moveBack && !_moveLeft && !_moveRight)
+        {
+            return;
+        }
+
+        var forward = new Vector3(MathF.Cos(_yaw), 0f, MathF.Sin(_yaw));
+        var right = new Vector3(-MathF.Sin(_yaw), 0f, MathF.Cos(_yaw));
+        var step = _distance * 0.02f;
+        var delta = Vector3.Zero;
+
+        if (_moveForward)
+        {
+            delta += forward;
+        }
+
+        if (_moveBack)
+        {
+            delta -= forward;
+        }
+
+        if (_moveRight)
+        {
+            delta += right;
+        }
+
+        if (_moveLeft)
+        {
+            delta -= right;
+        }
+
+        if (delta.LengthSquared() < 1e-8f)
+        {
+            return;
+        }
+
+        _target += Vector3.Normalize(delta) * step;
+    }
+
     private void UploadMesh(GL silk)
     {
-        var vertices = BuildLineMesh(Boxes);
+        var vertices = BuildLineMesh(Boxes, _gridOrigin, _gridHalfExtent, _gridStep);
         _vertexCount = vertices.Length / 6;
 
         silk.BindVertexArray(_vao);
@@ -166,7 +227,10 @@ public sealed class BatchViewport : OpenGlControlBase
         if (boxes is null || boxes.Count == 0)
         {
             _target = Vector3.Zero;
+            _gridOrigin = Vector3.Zero;
             _distance = 40f;
+            _gridHalfExtent = 10f;
+            _gridStep = 1f;
             return;
         }
 
@@ -182,9 +246,28 @@ public sealed class BatchViewport : OpenGlControlBase
         }
 
         _target = (min + max) * 0.5f;
+        _gridOrigin = _target;
         var extent = max - min;
         var radius = MathF.Max(extent.X, MathF.Max(extent.Y, extent.Z)) * 0.6f;
         _distance = Math.Clamp(radius / MathF.Tan(MathF.PI / 8f), 20f, 200_000f);
+
+        var ground = MathF.Max(extent.X, extent.Z);
+        _gridHalfExtent = Math.Max(10f, ground * 0.55f);
+        _gridStep = NiceStep(_gridHalfExtent / GridLines);
+    }
+
+    private static float NiceStep(float rough)
+    {
+        if (rough <= 0f)
+        {
+            return 1f;
+        }
+
+        var exponent = MathF.Floor(MathF.Log10(rough));
+        var baseStep = MathF.Pow(10f, exponent);
+        var fraction = rough / baseStep;
+        var nice = fraction <= 1f ? 1f : fraction <= 2f ? 2f : fraction <= 5f ? 5f : 10f;
+        return nice * baseStep;
     }
 
     private Vector3 CameraPosition()
@@ -196,25 +279,105 @@ public sealed class BatchViewport : OpenGlControlBase
             _distance * MathF.Sin(_yaw) * cosPitch);
     }
 
-    private void EnsureWheelInput()
+    private void EnsureInput()
     {
-        if (_wheelHooked)
+        if (_inputHooked)
         {
             return;
         }
 
-        _wheelHooked = true;
+        _inputHooked = true;
+
         PointerWheelChanged += (_, e) =>
         {
             var factor = e.Delta.Y > 0 ? 0.9f : 1.1f;
             _distance = Math.Clamp(_distance * factor, 10f, 400_000f);
             e.Handled = true;
         };
+
+        PointerPressed += (_, e) =>
+        {
+            Focus();
+            if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+            {
+                _orbiting = true;
+                _lastPointer = e.GetPosition(this);
+                e.Pointer.Capture(this);
+                e.Handled = true;
+            }
+        };
+
+        PointerMoved += (_, e) =>
+        {
+            if (!_orbiting)
+            {
+                return;
+            }
+
+            var position = e.GetPosition(this);
+            var dx = (float)(position.X - _lastPointer.X);
+            var dy = (float)(position.Y - _lastPointer.Y);
+            _lastPointer = position;
+
+            _yaw += dx * 0.005f;
+            _pitch = Math.Clamp(_pitch + dy * 0.005f, 0.05f, MathF.PI / 2f - 0.05f);
+            e.Handled = true;
+        };
+
+        PointerReleased += (_, e) =>
+        {
+            if (!_orbiting)
+            {
+                return;
+            }
+
+            _orbiting = false;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+        };
+
+        PointerCaptureLost += (_, _) => _orbiting = false;
+
+        KeyDown += (_, e) =>
+        {
+            if (SetMoveKey(e.Key, true))
+            {
+                e.Handled = true;
+            }
+        };
+
+        KeyUp += (_, e) =>
+        {
+            if (SetMoveKey(e.Key, false))
+            {
+                e.Handled = true;
+            }
+        };
     }
 
-    private static float[] BuildLineMesh(IReadOnlyList<BatchBoxDraw>? boxes)
+    private bool SetMoveKey(Key key, bool down) =>
+        key switch
+        {
+            Key.W => Assign(ref _moveForward, down),
+            Key.S => Assign(ref _moveBack, down),
+            Key.A => Assign(ref _moveLeft, down),
+            Key.D => Assign(ref _moveRight, down),
+            _ => false
+        };
+
+    private static bool Assign(ref bool field, bool value)
     {
-        var lines = new List<float>(4096);
+        field = value;
+        return true;
+    }
+
+    private static float[] BuildLineMesh(
+        IReadOnlyList<BatchBoxDraw>? boxes,
+        Vector3 gridOrigin,
+        float gridHalfExtent,
+        float gridStep)
+    {
+        var lines = new List<float>(8192);
 
         void AddLine(Vector3 a, Vector3 b, Vector3 color)
         {
@@ -232,9 +395,28 @@ public sealed class BatchViewport : OpenGlControlBase
             lines.Add(color.Z);
         }
 
+        var gridColor = new Vector3(0.35f, 0.37f, 0.42f);
+        var y = gridOrigin.Y;
+        for (var i = -gridHalfExtent; i <= gridHalfExtent + gridStep * 0.01f; i += gridStep)
+        {
+            AddLine(
+                new Vector3(gridOrigin.X + i, y, gridOrigin.Z - gridHalfExtent),
+                new Vector3(gridOrigin.X + i, y, gridOrigin.Z + gridHalfExtent),
+                gridColor);
+            AddLine(
+                new Vector3(gridOrigin.X - gridHalfExtent, y, gridOrigin.Z + i),
+                new Vector3(gridOrigin.X + gridHalfExtent, y, gridOrigin.Z + i),
+                gridColor);
+        }
+
+        var axis = Math.Max(gridStep * 2f, gridHalfExtent * AxisLengthFactor);
+        AddLine(gridOrigin, gridOrigin + new Vector3(axis, 0f, 0f), new Vector3(0.9f, 0.2f, 0.2f));
+        AddLine(gridOrigin, gridOrigin + new Vector3(0f, axis, 0f), new Vector3(0.2f, 0.85f, 0.3f));
+        AddLine(gridOrigin, gridOrigin + new Vector3(0f, 0f, axis), new Vector3(0.25f, 0.45f, 0.95f));
+
         if (boxes is null)
         {
-            return [];
+            return [.. lines];
         }
 
         foreach (var box in boxes)
