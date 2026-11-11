@@ -180,4 +180,37 @@ public interface IAiHost
     /// for escaping.
     /// </summary>
     AiSkill? FindSkill(int id) => null;
+
+    /// <summary>
+    /// Lying on the ground or in the air after a blow: the AI starts no skill of its own then.
+    /// </summary>
+    bool IsDownOrFlying => false;
+
+    /// <summary>
+    /// Gives the monster a defense for a while, then it has its own again.
+    /// </summary>
+    void ForceDefense(AiDefense defense, float seconds)
+    {
+    }
+
+    /// <summary>
+    /// A monster that is flinching stops at once and is free to act.
+    /// </summary>
+    void EndFlinch()
+    {
+    }
+
+    /// <summary>
+    /// The clients are told that the monster has escaped: its defense now and for how long it has it.
+    /// </summary>
+    void NotifyEscape(float seconds)
+    {
+    }
+
+    /// <summary>
+    /// The monsters of the same group that have no enemy yet turn on the one this monster fights.
+    /// </summary>
+    void AlertGroup(int target)
+    {
+    }
 }

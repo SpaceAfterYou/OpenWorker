@@ -70,6 +70,17 @@ public sealed class ProjectileFlightTest
     }
 
     [TestMethod]
+    public void AShooterWithoutACameraShootsAlongItsFacingWhateverTheEventSaysAboutTheCamera()
+    {
+        var byCamera = Straight with { DirectionType = ProjectileInfo.ByCamera, Direction = new Vector3(30f, 0, 0), Start = new Vector3(50, -15, 110) };
+        var flight = ProjectileFlight.LaunchByFacing(Trigger(byCamera, 1), Vector3.Zero, new Vector3(-1, 0, 0), 77f);
+        var (sin, cos) = MathF.SinCos(17f * MathF.PI / 180f);
+
+        AssertNear(new Vector3(cos, sin, 0), flight.Direction);
+        AssertNear(new Vector3(50 * cos + 15, 50 * sin, 110), flight.Position);
+    }
+
+    [TestMethod]
     public void HitsWhatIsOnItsWayAndStops()
     {
         var flight = Launch(Straight);

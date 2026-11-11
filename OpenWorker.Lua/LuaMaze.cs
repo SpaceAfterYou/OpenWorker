@@ -29,6 +29,8 @@ using OpenWorker.Hotspot.Modules.Chat.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Lua.Ai;
+using OpenWorker.Gameplay.Ai;
 using OpenWorker.Lua.Buffs;
 using OpenWorker.Lua.Enums;
 using OpenWorker.Lua.Managers;
@@ -1216,7 +1218,7 @@ public partial class LuaMaze(
 
         var attackerStats = combat.GetPlayer(Ecs, player);
         var skillDamage = combat.GetSkill(skill);
-        var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, origin)).ToArray();
+        var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, skill, HitKinds.Of(trigger), origin)).ToArray();
 
         // The combo of the player goes into the message of the hit: the client shows it.
         var now = (long)Clock.Time.TotalMilliseconds;
@@ -1338,7 +1340,7 @@ public partial class LuaMaze(
         }
     }
 
-    private SkillDmgValue ApplyDamage(Entity attacker, Entity target, in CombatStats attackerStats, in SkillDamage skill, float attackRate, in AttackTrigger trigger, Vector3? origin = null)
+    private SkillDmgValue ApplyDamage(Entity attacker, Entity target, in CombatStats attackerStats, in SkillDamage skill, float attackRate, in AttackTrigger trigger, int skillId = 0, AiHitKind kind = AiHitKind.Skill, Vector3? origin = null)
     {
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
@@ -1367,7 +1369,7 @@ public partial class LuaMaze(
 
         Ecs.Set(target, creature with { Health = health });
 
-        creatureManager.OnMonsterHit(target, attacker, result.Damage);
+        creatureManager.OnMonsterHit(target, attacker, result.Damage, skillId, kind);
 
         var effect = creatureManager.ReceiveBlow(target, BlowOf(attacker, trigger, origin), defense, result.Damage, skill.SuperArmorAttack, health > 0);
 

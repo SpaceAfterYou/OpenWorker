@@ -28,19 +28,8 @@ public sealed partial class AiMachine
 
     private const int RecoveryParts = 20;
 
-    /// <summary>
-    /// What a blow adds to the escape points: a skill, a projectile, a trap.
-    /// </summary>
-    public const float SkillBlow = 1f;
-
-    public const float ProjectileBlow = 0.5f;
-
-    public const float TrapBlow = 0.2f;
-
     private int _farChecksLeft = FarChecks;
     private float _recoveryTime;
-    private float _escapePoints = -1f;
-    private float _sinceEscapePoint;
 
     /// <summary>
     /// The machine drives a helper of a person, not a monster of the maze.
@@ -71,56 +60,6 @@ public sealed partial class AiMachine
         if (_host.Owner is { } owner)
         {
             WarpToOwner(owner.Position);
-        }
-    }
-
-    /// <summary>
-    /// A blow has landed on the monster: the points of its escape grow, and when they are full it may get away with its
-    /// escape skill.
-    /// </summary>
-    public void OnEscapeBlow(float points)
-    {
-        if (_profile.Follower.Escape is not { Points: > 0f } escape || IsRecovering)
-        {
-            return;
-        }
-
-        if (_escapePoints < 0f)
-        {
-            _escapePoints = RandomBetween(0f, escape.Points / 2f);
-        }
-
-        _escapePoints += points;
-        _sinceEscapePoint = 0f;
-
-        if (_escapePoints < escape.Points)
-        {
-            return;
-        }
-
-        _escapePoints = RandomBetween(0f, escape.Points / 2f);
-
-        if (escape.Kind != AiEscape.SkillKind || escape.Chance <= _random.Next(RandomRange) || _host.FindSkill(escape.Value) is not { } skill)
-        {
-            return;
-        }
-
-        _host.UseSkill(skill, Target ?? Self);
-    }
-
-    private void StepEscape(float elapsed)
-    {
-        if (_escapePoints <= 0f || _profile.Follower.Escape is not { } escape)
-        {
-            return;
-        }
-
-        _sinceEscapePoint += elapsed;
-
-        if (_sinceEscapePoint >= escape.ResetTime)
-        {
-            _escapePoints = RandomBetween(0f, escape.Points / 2f);
-            _sinceEscapePoint = 0f;
         }
     }
 
@@ -251,6 +190,21 @@ public sealed partial class AiMachine
         _host.WarpTo(position);
 
         ChangeState(AiState.SelectAction);
+    }
+
+    /// <summary>
+    /// The state that follows the owner: a monster without an owner has nobody to follow and waits.
+    /// </summary>
+    private void StartTraceMove()
+    {
+        if (!IsFollower)
+        {
+            ChangeState(AiState.Wait);
+
+            return;
+        }
+
+        StartFollowing();
     }
 
     private void StartRecovery()

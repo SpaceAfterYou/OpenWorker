@@ -4,7 +4,23 @@ using System.Text;
 namespace OpenWorker.Batch.Actions;
 
 /// <param name="Repeats">Whether the animation starts over by itself until something stops it, like the waiting and the loop of a skill.</param>
-public sealed record ActionAnimation(string Name, float Length, IReadOnlyList<AttackTrigger> Attacks, bool Repeats = false);
+/// <param name="Hides">The moments of the animation at which the monster hides, if it does.</param>
+public sealed record ActionAnimation(string Name, float Length, IReadOnlyList<AttackTrigger> Attacks, bool Repeats = false, IReadOnlyList<InvisibleEvent>? Hides = null);
+
+/// <summary>
+/// The monster disappears at a moment of an animation: for a time, or until its life is down to a share.
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="Flags">What the monster keeps while it is gone: 1 its collision, 2 its effects, 4 its movement, 8 its mind.</param>
+/// <param name="ConditionType">What ends it: 0 a time, 1 a share of the life, other kinds wait for monsters that die.</param>
+/// <param name="Value">The time in milliseconds, or the share of the life in thousandths.</param>
+public sealed record InvisibleEvent(float Start, byte Flags, int ConditionType, int Value)
+{
+    public const byte KeepsMind = 8;
+
+    public const int ForTime = 0;
+    public const int UntilHurt = 1;
+}
 
 /// <summary>
 /// An action file of the client: what happens during each animation of a character.
@@ -16,6 +32,7 @@ public sealed class ActionFile
     private const string RootTag = "TRIG";
     private const string SequenceTag = "SEQU";
     private const short AttackTriggerType = 3;
+    private const short InvisibleTriggerType = 14;
 
     private const short FiltersSinceVersion = 204;
     private const short CollisionRangeSinceVersion = 205;
@@ -142,15 +159,26 @@ public sealed class ActionFile
         reader.ReadInt16();
 
         var attacks = new List<AttackTrigger>();
+        var hides = new List<InvisibleEvent>();
         var events = reader.ReadInt32();
 
         for (var i = 0; i < events; i++)
         {
             var chunk = Open(reader);
+            var begin = reader.BaseStream.Position;
 
-            if (ReadEvent(reader, version) is { } attack)
+            if (ReadInvisible(reader, version) is { } hide)
             {
-                attacks.Add(attack);
+                hides.Add(hide);
+            }
+            else
+            {
+                reader.BaseStream.Position = begin;
+
+                if (ReadEvent(reader, version) is { } attack)
+                {
+                    attacks.Add(attack);
+                }
             }
 
             Close(reader, chunk);
@@ -164,7 +192,47 @@ public sealed class ActionFile
             SkipFrames(reader);
         }
 
-        return new ActionAnimation(name, length, attacks, repeats);
+        return new ActionAnimation(name, length, attacks, repeats, hides);
+    }
+
+    /// <summary>
+    /// An event that hides the monster: four switches for what it keeps, then what ends it. Null for any other event.
+    /// </summary>
+    private static InvisibleEvent? ReadInvisible(BinaryReader reader, short version)
+    {
+        if (reader.ReadInt16() != InvisibleTriggerType)
+        {
+            return null;
+        }
+
+        ReadString(reader);
+
+        reader.ReadInt32();
+
+        var start = reader.ReadSingle();
+
+        reader.ReadSingle();
+
+        if (version >= ThirdFilterSinceVersion)
+        {
+            Skip(reader, 3 * sizeof(int));
+        }
+        else if (version >= FiltersSinceVersion)
+        {
+            Skip(reader, 2 * sizeof(int));
+        }
+
+        var flags = 0;
+
+        for (var bit = 0; bit < 4; bit++)
+        {
+            flags |= reader.ReadBoolean() ? 1 << bit : 0;
+        }
+
+        var type = reader.ReadInt32();
+        var value = reader.ReadInt32();
+
+        return new InvisibleEvent(start, (byte)flags, type, value);
     }
 
     private static AttackTrigger? ReadEvent(BinaryReader reader, short version)

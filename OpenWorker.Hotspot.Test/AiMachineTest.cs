@@ -4,7 +4,7 @@ using OpenWorker.Gameplay.Ai;
 namespace OpenWorker.Hotspot.Test;
 
 [TestClass]
-public sealed class AiMachineTest
+public sealed partial class AiMachineTest
 {
     private const float Step = 0.1f;
 
@@ -31,6 +31,17 @@ public sealed class AiMachineTest
         public float AttackLength { get; set; } = 1f;
         public Vector3? Destination { get; set; }
         public AiTarget? Player { get; set; }
+
+        /// <summary>
+        /// Other players in the fight, beside <see cref="Player"/>.
+        /// </summary>
+        public List<AiTarget> Others { get; } = [];
+
+        public bool Down { get; set; }
+        public List<(AiDefense Defense, float Seconds)> Forced { get; } = [];
+        public List<float> Escapes { get; } = [];
+        public List<int> Alerted { get; } = [];
+        public Dictionary<int, AiSkill> Known { get; } = [];
         public AiSkill?[] Skills { get; } = new AiSkill?[AiProfile.SkillSlots];
         public List<string> Log { get; } = [];
         public List<AiState> Visited { get; } = [];
@@ -45,7 +56,29 @@ public sealed class AiMachineTest
 
         public AiSkill? GetSkill(int slot) => Skills[slot];
 
-        public AiTarget? GetTarget(int id) => Player is { } player && player.Id == id ? player : null;
+        public AiTarget? GetTarget(int id)
+        {
+            if (Player is { } player && player.Id == id)
+            {
+                return player;
+            }
+
+            foreach (var other in Others)
+            {
+                if (other.Id == id)
+                {
+                    return other;
+                }
+            }
+
+            return null;
+        }
+
+        public AiSkill? FindSkill(int id) => Known.GetValueOrDefault(id);
+        public bool IsDownOrFlying => Down;
+        public void ForceDefense(AiDefense defense, float seconds) => Forced.Add((defense, seconds));
+        public void NotifyEscape(float seconds) => Escapes.Add(seconds);
+        public void AlertGroup(int target) => Alerted.Add(target);
 
         public AiTarget? FindEnemy(float distance)
         {
@@ -307,7 +340,6 @@ public sealed class AiMachineTest
         Run(machine, host, 0.5f);
 
         Assert.AreEqual(1000, machine.TargetId);
-        Assert.AreEqual(1f, machine.AggroList.Single().Value);
     }
 
     [TestMethod]

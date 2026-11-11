@@ -11,6 +11,11 @@ namespace OpenWorker.Batch.Actions;
 public readonly record struct SkillHit(float Time, AttackTrigger Trigger);
 
 /// <summary>
+/// A moment of a skill at which the monster that plays it hides.
+/// </summary>
+public readonly record struct SkillHiding(float Time, InvisibleEvent Event);
+
+/// <summary>
 /// Finds what a skill hits from the animations the table names for it.
 /// </summary>
 public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
@@ -89,6 +94,34 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     }
 
     /// <summary>
+    /// The moments at which a monster hides while it plays a skill, from the start of the skill.
+    /// </summary>
+    public IReadOnlyList<SkillHiding> GetHidings(int skill, string actionFile)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
+        {
+            return [];
+        }
+
+        var hidings = new List<SkillHiding>();
+        var offset = 0f;
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        {
+            if (Find(file, name) is not { } animation)
+            {
+                continue;
+            }
+
+            hidings.AddRange((animation.Hides ?? []).Select(hide => new SkillHiding(offset + hide.Start, hide)));
+
+            offset += animation.Length;
+        }
+
+        return hidings;
+    }
+
+    /// <summary>
     /// How long the animations of a skill last together, in seconds. Zero when the file has none of them.
     /// </summary>
     public float GetDuration(int skill, string actionFile)
@@ -125,6 +158,14 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     public float GetAnimationLength(string actionFile, string animation)
     {
         return GetFile(actionFile) is { } file && Find(file, animation) is { } found ? found.Length : 0f;
+    }
+
+    /// <summary>
+    /// Whether an animation starts over by itself until something stops it, as standing does.
+    /// </summary>
+    public bool IsLooping(string actionFile, string animation)
+    {
+        return GetFile(actionFile) is { } file && Find(file, animation) is { Repeats: true };
     }
 
     /// <summary>

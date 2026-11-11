@@ -53,6 +53,13 @@ internal partial class MonsterBody : IAiHost
     private bool _gazing;
     private double _attackEnd;
     private double _staggerEnd;
+    private double _forcedDefenseEnd;
+    private string _spawnAction = string.Empty;
+    private int _idleAnimation;
+    private double _idleEnd;
+    private InvisibleEvent? _hidden;
+    private double _hiddenEnd;
+    private readonly List<(double Time, InvisibleEvent Event)> _hidings = [];
     private double _lastMoveSent;
     private float _lastYawSent = float.NaN;
     private double _born;
@@ -115,6 +122,12 @@ internal partial class MonsterBody : IAiHost
         _attackEnd = 0;
         _staggerEnd = 0;
         _reaction = null;
+        _forcedDefenseEnd = 0;
+        _spawnAction = string.Empty;
+        _idleEnd = 0;
+        _hidden = null;
+        _hidings.Clear();
+        Group = default;
         _lastMoveSent = 0;
         _lastYawSent = float.NaN;
         _born = _manager.Now;
@@ -196,6 +209,48 @@ internal partial class MonsterBody : IAiHost
     }
 
     /// <summary>
+    /// The animation a spawn box has the monster play as it appears. The monster does nothing else until it is over, unless it
+    /// is one that starts over by itself. Null when the box asks for none or the file has no such animation.
+    /// </summary>
+    public MovementIdleEntry? StartSpawnAction()
+    {
+        var length = string.IsNullOrEmpty(_spawnAction) ? 0f : _actions.GetAnimationLength(Behavior.ActionFile, _spawnAction);
+
+        if (length <= 0f)
+        {
+            return null;
+        }
+
+        _idleAnimation = _actions.GetAnimationIndex(Behavior.ActionFile, _spawnAction);
+
+        if (!_actions.IsLooping(Behavior.ActionFile, _spawnAction))
+        {
+            _idleEnd = _manager.Now + length;
+            _attackEnd = Math.Max(_attackEnd, _idleEnd);
+        }
+
+        return IdleEntry();
+    }
+
+    /// <summary>
+    /// What the monster plays now if it is in the middle of an animation of its own, for a client that comes into the maze late.
+    /// </summary>
+    public MovementIdleEntry? CurrentAction()
+    {
+        return _manager.Now < _idleEnd ? IdleEntry() : null;
+    }
+
+    private MovementIdleEntry IdleEntry()
+    {
+        return new MovementIdleEntry(Actor, Position, Yaw, _idleAnimation, 0f);
+    }
+
+    public void SetSpawnAction(string action)
+    {
+        _spawnAction = action;
+    }
+
+    /// <summary>
     /// A hit has thrown the monster off balance: whatever it was doing is over and it can do nothing for a while.
     /// </summary>
     public void Stagger(float seconds)
@@ -224,11 +279,22 @@ internal partial class MonsterBody : IAiHost
         }
 
         StepReaction(elapsed);
+        if (_forcedDefenseEnd > 0 && now >= _forcedDefenseEnd)
+        {
+            _forcedDefenseEnd = 0;
+            _manager.RestoreDefense(Entity);
+        }
+
         Advance(now, elapsed);
         ResolveHits(now);
+        ResolveHidings(now);
         Fly(elapsed);
 
-        Machine.Update(elapsed);
+        // A monster that has hidden thinks no more, unless its animation leaves the mind on.
+        if (_hidden is null || (_hidden.Flags & InvisibleEvent.KeepsMind) != 0)
+        {
+            Machine.Update(elapsed);
+        }
     }
 
     // ---- Movement -----------------------------------------------------------------------------
@@ -474,6 +540,51 @@ internal partial class MonsterBody : IAiHost
 
     public AiSkill? FindSkill(int id) => _manager.Services?.Behaviors.GetSkill(id);
 
+    // ---- Hate and escape ----------------------------------------------------------------------
+
+    /// <summary>
+    /// The monsters that come to help when this one fights, from the spawn box it came from.
+    /// </summary>
+    public AggroGroup Group { get; private set; }
+
+    public void SetGroup(AggroGroup group)
+    {
+        Group = group;
+        Machine.CallsGroup = group.Id != 0 && group.MaxCount != 0;
+    }
+
+    public void AlertGroup(int target)
+    {
+        _manager.AlertGroup(this, target);
+    }
+
+    /// <summary>
+    /// Whether the monster lies on the ground or flies after a blow.
+    /// </summary>
+    public virtual bool IsDownOrFlying => _reaction is { IsAirborne: true } or { IsDown: true };
+
+    public void ForceDefense(AiDefense defense, float seconds)
+    {
+        _forcedDefenseEnd = _manager.Now + seconds;
+        _manager.ForceDefense(Entity, defense == AiDefense.Invincible ? DefenseType.Invincible : DefenseType.SuperArmor);
+    }
+
+    public void EndFlinch()
+    {
+        _staggerEnd = 0;
+        _reaction?.EndFlinch();
+    }
+
+    public void NotifyEscape(float seconds)
+    {
+        Broadcast(new MonsterEscapeDamageResponse
+        {
+            Actor = Actor,
+            DefenseType = (byte)_ecs.Get<MonsterCombatComponent>(Entity).Defense,
+            Time = seconds
+        });
+    }
+
     // ---- Seeing -------------------------------------------------------------------------------
 
     public AiSkill? GetSkill(int slot)
@@ -532,12 +643,15 @@ internal partial class MonsterBody : IAiHost
             return 0f;
         }
 
+        _idleAnimation = _actions.GetAnimationIndex(Behavior.ActionFile, name);
+        _idleEnd = _manager.Now + length;
+
         Broadcast(new MovementIdleBtResponse
         {
             Actor = Actor,
             Position = Position,
             Yaw = Yaw,
-            Animation = _actions.GetAnimationIndex(Behavior.ActionFile, name),
+            Animation = _idleAnimation,
             DefaultStep = 0,
             Delay = -1f
         });
@@ -578,6 +692,17 @@ internal partial class MonsterBody : IAiHost
         }
 
         _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
+
+        _hidings.Clear();
+
+        foreach (var hiding in _actions.GetHidings(skill.Id, Behavior.ActionFile))
+        {
+            // The kinds that wait for other monsters to die are not followed.
+            if (hiding.Event.ConditionType is InvisibleEvent.ForTime or InvisibleEvent.UntilHurt)
+            {
+                _hidings.Add((now + hiding.Time, hiding.Event));
+            }
+        }
 
         Broadcast(new SkillActiveBroadcastResponse
         {
@@ -643,8 +768,8 @@ internal partial class MonsterBody : IAiHost
     }
 
     /// <summary>
-    /// Sets a projectile off in the direction the monster looks. A monster has no camera, so the direction of the shot
-    /// is the one the monster itself would give a player standing in its place.
+    /// Sets a projectile off in the direction the monster looks. A monster has no camera: whatever the event says about one, the
+    /// shot goes the way the monster faces, turned and lowered by the angles of the event.
     /// </summary>
     private void Fire(int skill, AttackTrigger trigger)
     {
@@ -654,8 +779,7 @@ internal partial class MonsterBody : IAiHost
         }
 
         var right = new Vector3(AiMath.Direction(Yaw - 90f), 0f);
-        var camera = new Vector3(Yaw - 180f, 0f, 0f);
-        var flight = ProjectileFlight.Launch(trigger, Position, right, Yaw, camera);
+        var flight = ProjectileFlight.LaunchByFacing(trigger, Position, right, Yaw);
 
         _flights.Add(new Flight(flight, trigger, skill));
 
@@ -701,6 +825,43 @@ internal partial class MonsterBody : IAiHost
         }
 
         _flights.RemoveAll(static e => e.Projectile.IsOver);
+    }
+
+    // ---- Hiding -------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The monster is gone from sight and cannot be hit or aimed at.
+    /// </summary>
+    public bool IsHidden => _hidden is not null;
+
+    private void ResolveHidings(double now)
+    {
+        if (_hidden is { } hidden && (hidden.ConditionType == InvisibleEvent.ForTime ? now >= _hiddenEnd : IsHurtTo(hidden.Value)))
+        {
+            _hidden = null;
+
+            Broadcast(new MonsterInvisibleResponse { Actor = Actor, Invisible = false });
+        }
+
+        while (_hidings.Count > 0 && _hidings[0].Time <= now)
+        {
+            var hide = _hidings[0].Event;
+
+            _hidings.RemoveAt(0);
+
+            _hidden = hide;
+            _hiddenEnd = now + hide.Value * 0.001;
+
+            Broadcast(new MonsterInvisibleResponse { Actor = Actor, Invisible = true, Flags = hide.Flags, Type = hide.ConditionType, Value = hide.Value });
+        }
+    }
+
+    /// <summary>
+    /// Whether the life of the monster is down to a share, in thousandths.
+    /// </summary>
+    private bool IsHurtTo(int thousandths)
+    {
+        return MaxHealth > 0 && (long)Health * 1000 / MaxHealth <= thousandths;
     }
 
     // ---- Telling the clients ------------------------------------------------------------------

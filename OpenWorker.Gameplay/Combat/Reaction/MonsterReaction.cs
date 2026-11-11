@@ -196,6 +196,17 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         StopSlide();
     }
 
+    /// <summary>
+    /// A monster that flinches stands up from the flinch at once: nothing else of a reaction is cut short.
+    /// </summary>
+    public void EndFlinch()
+    {
+        if (_phase == Phase.Flinch)
+        {
+            Reset();
+        }
+    }
+
     private void StopSlide()
     {
         _sliding = false;

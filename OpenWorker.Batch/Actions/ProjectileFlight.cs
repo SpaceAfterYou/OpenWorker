@@ -58,27 +58,40 @@ public sealed class ProjectileFlight
     public static ProjectileFlight Launch(in AttackTrigger trigger, Vector3 position, Vector3 right, float yaw, Vector3 camera, int? target = null)
     {
         var info = trigger.Projectile ?? throw new ArgumentException("The attack does not fly.", nameof(trigger));
+
+        if (info.DirectionType != ProjectileInfo.ByCamera)
+        {
+            return LaunchByFacing(trigger, position, right, yaw, target);
+        }
+
         var template = info.Direction;
-        Vector3 direction;
+        var cameraYaw = camera.X + 90f;
+        var cameraPitch = -camera.Z;
+        var direction = Rotate(Axis(template.X, template.Y), cameraYaw, cameraPitch);
 
-        if (info.DirectionType == ProjectileInfo.ByCamera)
-        {
-            var cameraYaw = camera.X + 90f;
-            var cameraPitch = -camera.Z;
+        right = Rotate(RightAxis(template.X, template.Y, template.Z), cameraYaw, cameraPitch);
 
-            direction = Rotate(Axis(template.X, template.Y), cameraYaw, cameraPitch);
-            right = Rotate(RightAxis(template.X, template.Y, template.Z), cameraYaw, cameraPitch);
-        }
-        else
-        {
-            direction = Axis(template.X + yaw - 90f, template.Y);
-        }
+        return new ProjectileFlight(info, Start(trigger, info, position, right, direction, yaw), direction, position.Z, target);
+    }
 
-        var start = trigger.AttackType == AttackTrigger.FromBody
+    /// <summary>
+    /// A shot of something that has no camera, a monster: whatever the event says about the camera, the shot goes the way the
+    /// shooter looks, turned and lowered by the angles of the event, and starts at the side of the shooter.
+    /// </summary>
+    /// <param name="right">To the right of the shooter.</param>
+    public static ProjectileFlight LaunchByFacing(in AttackTrigger trigger, Vector3 position, Vector3 right, float yaw, int? target = null)
+    {
+        var info = trigger.Projectile ?? throw new ArgumentException("The attack does not fly.", nameof(trigger));
+        var direction = Axis(info.Direction.X + yaw - 90f, info.Direction.Y);
+
+        return new ProjectileFlight(info, Start(trigger, info, position, right, direction, yaw), direction, position.Z, target);
+    }
+
+    private static Vector3 Start(in AttackTrigger trigger, ProjectileInfo info, Vector3 position, Vector3 right, Vector3 direction, float yaw)
+    {
+        return trigger.AttackType == AttackTrigger.FromBody
             ? Rotate(info.Start, yaw - 90f, 0f) + position
             : position + new Vector3(0f, 0f, info.Start.Z) + direction * info.Start.X + right * info.Start.Y;
-
-        return new ProjectileFlight(info, start, direction, position.Z, target);
     }
 
     /// <summary>

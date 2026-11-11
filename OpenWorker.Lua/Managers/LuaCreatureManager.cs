@@ -15,6 +15,7 @@ using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -242,6 +243,17 @@ public sealed class LuaCreatureManager
         if (monsters.Length > 0)
         {
             Broadcast(DescribeMonsters(monsters));
+
+            // The monsters that come with an animation of their own play it where they appear.
+            var idles = monsters
+                .Select(e => Bodies.TryGetValue(e, out var body) ? body.StartSpawnAction() : null)
+                .OfType<MovementIdleEntry>()
+                .ToArray();
+
+            if (idles.Length > 0)
+            {
+                Broadcast(new MovementIdlesBtResponse { Entries = idles });
+            }
         }
 
         if (npcs.Length > 0)
@@ -279,6 +291,16 @@ public sealed class LuaCreatureManager
         if (monsters.Length > 0)
         {
             session.Send(DescribeMonsters(monsters));
+
+            var idles = monsters
+                .Select(e => Bodies.TryGetValue(e, out var body) ? body.CurrentAction() : null)
+                .OfType<MovementIdleEntry>()
+                .ToArray();
+
+            if (idles.Length > 0)
+            {
+                session.Send(new MovementIdlesBtResponse { Entries = idles });
+            }
         }
 
         if (npcs.Length > 0)
@@ -341,7 +363,7 @@ public sealed class LuaCreatureManager
 
         Creatures.Add(creature);
 
-        GiveMind(creature, identifier, ecs.Get<WorldComponent>(creature).Position);
+        GiveMind(creature, identifier, ecs.Get<WorldComponent>(creature).Position, spawn);
 
         return creature;
     }
@@ -453,7 +475,7 @@ public sealed class LuaCreatureManager
     /// <summary>
     /// A monster with a script thinks. Objects and the rest just stand.
     /// </summary>
-    private void GiveMind(Entity creature, int identifier, Vector3 home)
+    private void GiveMind(Entity creature, int identifier, Vector3 home, MonsterSpawnBox spawn)
     {
         if (Services is not { } services || services.Behaviors.Get(identifier) is not { } behavior)
         {
@@ -471,6 +493,9 @@ public sealed class LuaCreatureManager
         var body = SpareBodies.TryGetValue(profile, out var spare) && spare.TryPop(out var used)
             ? used.Revive(creature, behavior, home)
             : new MonsterBody(ecs, this, services.Actions, creature, behavior, profile, home);
+
+        body.SetGroup(new AggroGroup(spawn.AggroGroup, spawn.AggroDistance, spawn.AggroMaxCount));
+        body.SetSpawnAction(spawn.ChangeSpawnAction is ChangeSpawnActionType.Empty or ChangeSpawnActionType.Zero ? string.Empty : spawn.ChangeSpawnAction.ToString());
 
         Bodies.Add(creature, body);
         Minds.Add(body);
@@ -530,9 +555,17 @@ public sealed class LuaCreatureManager
     public Entity[] FindMonsters(Func<Vector3, MonsterCombatComponent, bool> touches)
     {
         return Creatures
-            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
+            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster && !IsHidden(e))
             .Where(e => touches(ecs.Get<WorldComponent>(e).Position, ecs.Get<MonsterCombatComponent>(e)))
             .ToArray();
+    }
+
+    /// <summary>
+    /// A monster that has hidden cannot be hit while it is gone.
+    /// </summary>
+    private bool IsHidden(Entity creature)
+    {
+        return Bodies.TryGetValue(creature, out var body) && body.IsHidden;
     }
 
     public Entity? FindMonster(int identifier)
@@ -553,7 +586,7 @@ public sealed class LuaCreatureManager
     public FlightTarget[] GetFlightTargets()
     {
         return Creatures
-            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
+            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster && !IsHidden(e))
             .Select(e => new FlightTarget(ecs.Get<ActorComponent>(e).Identifier, ecs.Get<WorldComponent>(e).Position, ecs.Get<MonsterCombatComponent>(e).BodyRadius, ecs.Get<MonsterCombatComponent>(e).BodyHeight))
             .ToArray();
     }
@@ -813,31 +846,65 @@ public sealed class LuaCreatureManager
     }
 
     /// <summary>
-    /// A player has hurt a monster: the monster remembers who did it, and the more damage, the more it cares.
+    /// Somebody has hurt a monster: the monster remembers who did it, and the more damage and the more the skill is made to draw
+    /// hate, the more it cares.
     /// </summary>
-    public void OnMonsterHit(Entity monster, Entity attacker, int damage)
+    public void OnMonsterHit(Entity monster, Entity attacker, int damage, int skill = 0, AiHitKind kind = AiHitKind.Skill)
     {
         if (Bodies.TryGetValue(monster, out var body) && ecs.IsAlive(attacker))
         {
-            body.Machine.OnDamaged(ecs.Get<ActorComponent>(attacker), damage * AggroPerDamage);
+            var hate = (Services?.Aggro ?? SkillAggro.None).Hate(skill, damage, LevelOrder(attacker));
+
+            body.Machine.OnDamaged(new AiHit(ecs.Get<ActorComponent>(attacker), hate, damage, kind));
         }
     }
 
-    private const float AggroPerDamage = 0.0004f;
-
     /// <summary>
-    /// What a taunt adds to the care of a monster for whoever gave it: more than a fight adds in any one hit.
+    /// How many players of the maze are of a lower level than the one who dealt a blow, those of the same level counted by the
+    /// order they came in. The lower the level, the more the blow angers a monster.
     /// </summary>
-    private const float TauntAggro = 5f;
+    private int LevelOrder(Entity attacker)
+    {
+        var at = Players.IndexOf(attacker);
+
+        if (at < 0 || !ecs.TryGet<LevelComponent>(attacker, out var level))
+        {
+            return 0;
+        }
+
+        var order = 0;
+
+        for (var index = 0; index < Players.Count; index++)
+        {
+            if (index != at && ecs.IsAlive(Players[index]) && ecs.TryGet<LevelComponent>(Players[index], out var other)
+                && (other.Level < level.Level || other.Level == level.Level && index < at))
+            {
+                order++;
+            }
+        }
+
+        return order;
+    }
 
     /// <summary>
-    /// A buff turns the monster on the actor that gave it.
+    /// A buff turns the monster on the actor that gave it, for as long as the buff lasts.
     /// </summary>
     internal void Provoke(Entity monster, int actor)
     {
         if (Bodies.TryGetValue(monster, out var body))
         {
-            body.Machine.Provoke(actor, TauntAggro);
+            body.Machine.Taunt(actor);
+        }
+    }
+
+    /// <summary>
+    /// The taunt on a monster is over: its hate decides whom it fights again.
+    /// </summary>
+    internal void EndTaunt(Entity monster)
+    {
+        if (Bodies.TryGetValue(monster, out var body))
+        {
+            body.Machine.ReleaseTaunt();
         }
     }
 
@@ -995,6 +1062,21 @@ public sealed class LuaCreatureManager
 
     internal void SetInvincible(Entity monster, bool invincible)
     {
+        if (invincible)
+        {
+            ForceDefense(monster, DefenseType.Invincible);
+        }
+        else
+        {
+            RestoreDefense(monster);
+        }
+    }
+
+    /// <summary>
+    /// A monster takes another defense until <see cref="RestoreDefense"/> gives it its own back.
+    /// </summary>
+    internal void ForceDefense(Entity monster, DefenseType defense)
+    {
         if (!ecs.IsAlive(monster))
         {
             return;
@@ -1002,14 +1084,50 @@ public sealed class LuaCreatureManager
 
         var combat = ecs.Get<MonsterCombatComponent>(monster);
 
-        if (invincible)
+        Defenses.TryAdd(monster, combat.Defense);
+        ecs.Set(monster, combat with { Defense = defense });
+    }
+
+    internal void RestoreDefense(Entity monster)
+    {
+        if (ecs.IsAlive(monster) && Defenses.Remove(monster, out var defense))
         {
-            Defenses.TryAdd(monster, combat.Defense);
-            ecs.Set(monster, combat with { Defense = DefenseType.Invincible });
+            ecs.Set(monster, ecs.Get<MonsterCombatComponent>(monster) with { Defense = defense });
         }
-        else if (Defenses.Remove(monster, out var defense))
+    }
+
+    /// <summary>
+    /// A monster of a group fights somebody: the monsters of its group within the reach of the spawn box that have no enemy
+    /// turn on that one, as many as the box allows. The monster that called counts among them.
+    /// </summary>
+    internal void AlertGroup(MonsterBody caller, int target)
+    {
+        var group = caller.Group;
+
+        if (group.Id == 0)
         {
-            ecs.Set(monster, combat with { Defense = defense });
+            return;
+        }
+
+        var origin = caller.Position;
+        var called = 0;
+
+        foreach (var body in Bodies.Values)
+        {
+            if (body.Group.Id != group.Id || !body.IsRevealed || body.IsDead || Vector3.Distance(body.Position, origin) >= group.Distance)
+            {
+                continue;
+            }
+
+            if (body.Machine.TargetId == AiMachine.NoTarget)
+            {
+                body.Machine.Alert(target);
+            }
+
+            if (++called >= group.MaxCount)
+            {
+                break;
+            }
         }
     }
 

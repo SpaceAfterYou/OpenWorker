@@ -51,6 +51,7 @@ public sealed class ServerTablesTest
             ("tb_Monster", typeof(MonsterReviseGroupRow)),
             ("tb_Quest_Condition", typeof(QuestConditionRuleRow)),
             ("tb_PartyRevise", typeof(PartyReviseRatesRow)),
+            ("tb_Skill", typeof(SkillAggroRow)),
             ("tb_Drop", typeof(DropRow)),
             ("tb_Drop_Group", typeof(DropGroupRow)),
             ("tb_MazeReward_Item", typeof(MazeRewardItemRow)),

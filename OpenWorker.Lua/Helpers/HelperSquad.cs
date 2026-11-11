@@ -558,8 +558,7 @@ public sealed class HelperSquad
             if (!shielded)
             {
                 struck.Add(helper.Entity);
-                body.Machine.OnDamaged(attackerActor, result.Damage * AggroPerDamage);
-                body.Machine.OnEscapeBlow(collider is null ? AiMachine.SkillBlow : AiMachine.ProjectileBlow);
+                body.Machine.OnDamaged(new AiHit(attackerActor, result.Damage * AggroPerDamage, result.Damage, collider is null ? AiHitKind.Skill : AiHitKind.Projectile));
             }
         }
 
