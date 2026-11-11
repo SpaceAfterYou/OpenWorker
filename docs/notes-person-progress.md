@@ -114,13 +114,24 @@ Without the server's tables: achievements count with target 0, and the six types
 | 37 to 42 | a maze cleared at rank SS, S, A, B, C, F (`docs/notes-maze-results.md`) | same, with the rank of the run |
 | 47 | a maze of a kind other than 0 cleared, by kind | same |
 | 48 | a helper gained, by helper | `HelperManager.AddAsync` |
+| 15 | an item used, whatever its kind, once the use starts its cooldown | `ItemUseService` |
+| 16 | a purchase at a shop, once per request | `NpcShopService.Buy` |
+| 17 | the gold a repair costs, by any of the four ways | `ItemRepairService` |
+| 18 | a death in a maze | `MazeResults.OnHealthChanged` |
+| 26 | a monster hit by an attack of the person | `MazeResults.OnMonstersHit` |
+| 27 | the longest combo (the counter keeps the highest) | same |
+| 33 | battle points added to the purse from anywhere | `InventoryService`, through `ItemArrivals` |
+| 43 | the minutes of play | the tick of the misc work, whole minutes |
+| 49, 50 | an upgrade tried, an upgrade that did not go up | `ItemUpgradeService` |
+| 51, 52 | a request to make items, a request to take items apart | `ItemMakeService`, `ItemDisassembleService` |
+| 53 | a daily mission finished (target 0) | `DailyMissionManager` |
+| 56 | a ride of an NPC | `TransportService` |
+| 57 | the credit points gained with a group, as far as the day allowed (target is the group) | `NpcCreditManager.Raise` |
 
-Not counted yet, with what they need: 15 consumable used and 16 shop purchases (a hook in the item use and the shop), 17
-repair cost (the repair of the item setup), 18 deaths (the death of a player is not handled by the server), 26 a skill used
-and 27 the longest combo (no combo count), 33 battle points gained (the wallet has no event), 43 play time (no timer of the person), 46 a maze challenged, 49
-and 50 upgrades tried and failed, 51 making, 52 disassembling (the item setup work), 53 daily missions and hidden events,
-54 visits of a room, 55 purchases of the exchange, 56 skycraft, 57 trades with characters (their features). The reference
-server also opens titles when an achievement is reached; that is not done.
+Not counted, with what they need: 46 (a maze of the infinite tower), 54 (visits of a room) and 55 (purchases of the exchange)
+wait for their features, and the hidden events of 53 (target 1) for hidden events. The reference server also opens titles when
+an achievement is reached or a level is: that is built (`OpenTitleManager`, `notes-maze-modes.md`); the titles of the reward are
+given when the reward is taken.
 
 ## Assumptions and what to check with the real client
 
