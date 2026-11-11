@@ -19,15 +19,18 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Modules.World.Enums;
 using OpenWorker.Hotspot.Modules.World.Responses;
+using OpenWorker.Hotspot.Messages.Response.Person;
 
 namespace OpenWorker.Channel;
 
 /// <summary>
 /// Keeps the place of a person and shows its movement to the others on the map. The sender gets its
 /// own movement too: the client skips what it has already done and starts looped motions only from here.<br/>
-/// A move faster than the player can run (<see cref="MovementPace"/>) is refused: the place stays, nobody else hears of
-/// it, and the player is warped back to the place the server keeps. The first refusal in a second counts against the
-/// error budget of the session.<br/>
+/// A move that takes the player too far in one message (<see cref="MovementPace"/>) is refused: the place stays, nobody
+/// else hears of it, and the player is warped back to the place the server keeps. The first refusal in a second counts
+/// against the error budget of the session. A move that names another map than the one the player is in is from the map
+/// it left, and is dropped as the original server drops it; so is one from the place the client left before it took the
+/// place it was told.<br/>
 /// A player on a ride of an NPC of transports (<see cref="TransportRideComponent"/>) is carried by the ride: what its client
 /// reports meanwhile is not a move.
 /// </summary>
@@ -86,7 +89,7 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw) &&
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw, request.nMapID) &&
             float.IsFinite(request.fTargetPosX) &&
             float.IsFinite(request.fTargetPosY))
         {
@@ -112,7 +115,7 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw))
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw, request.nMapID))
         {
             Broadcast(context.Player, new MovementStopBtResponse
             {
@@ -133,7 +136,7 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
     {
         var position = new Vector3(request.fPosX, request.fPosY, request.fPosZ);
 
-        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw) &&
+        if (TryUpdatePlace(context.Player, request.Opcode, request.dwActorID, position, request.fYaw, request.nMapID) &&
             float.IsFinite(request.fTargetPosX) &&
             float.IsFinite(request.fTargetPosY))
         {
@@ -163,7 +166,8 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
             request.Opcode,
             request.dwActorID,
             new Vector3(request.fPosX, request.fPosY, request.fPosZ),
-            request.fYaw);
+            request.fYaw,
+            request.nMapID);
 
         return ValueTask.CompletedTask;
     }
@@ -264,8 +268,27 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// The client says whether the player stands on the ground and how high the ground is. The server keeps it as the
+    /// original does (<see cref="GroundStateComponent"/>) and tells nobody.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, MovementGroundStatusRequest request)
     {
+        if (IsOwnActor(context.Player, request.dwActorID) && float.IsFinite(request.fValue))
+        {
+            var state = new GroundStateComponent(request.nStatus != 0, request.fValue);
+
+            if (world.Has<GroundStateComponent>(context.Player))
+            {
+                world.Set(context.Player, state);
+            }
+
+            else
+            {
+                world.Add(context.Player, state);
+            }
+        }
+
         return ValueTask.CompletedTask;
     }
 
@@ -293,7 +316,8 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
                world.Get<ActorComponent>(player).Identifier == actor.Identifier;
     }
 
-    private bool TryUpdatePlace(Entity player, MessageOpcode opcode, ActorValue actor, Vector3 position, float rotation)
+    /// <param name="map">The map the request names, for the requests that carry one.</param>
+    private bool TryUpdatePlace(Entity player, MessageOpcode opcode, ActorValue actor, Vector3 position, float rotation, MapValue? map = null)
     {
         // A rider is carried by the ride, not by its client: what the client reports along the path is not a move.
         if (!IsOwnActor(player, actor) ||
@@ -305,11 +329,21 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
 
         var place = world.Get<WorldComponent>(player);
 
-        if (!pace.TryMove(world, player, place.Position, position, out var charge))
+        // A move of the map the client has left: the original drops it whatever the place.
+        if (map is { } named && named.Location != place.Location)
         {
-            Refuse(player, opcode, place, position, charge);
-
             return false;
+        }
+
+        switch (pace.Check(world, player, place.Position, position, out var charge))
+        {
+            case MoveVerdict.Refused:
+                Refuse(player, opcode, place, position, charge);
+
+                return false;
+
+            case MoveVerdict.Stale:
+                return false;
         }
 
         world.Set(player, place with { Position = position, Rotation = rotation });
@@ -344,6 +378,6 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Refused a move of actor {Actor} over {Distance} units, faster than it can run; counted against the budget: {Charged}.")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Refused a move of actor {Actor} over {Distance} units, too far in one message; counted against the budget: {Charged}.")]
     private static partial void LogRefused(ILogger logger, int actor, float distance, bool charged);
 }

@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics.Metrics;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,16 +40,20 @@ internal sealed class DistrictHarness : IDisposable
 
     /// <param name="speeds">The run speed of the heroes; with none, no move is too fast.</param>
     /// <param name="maxErrors">The error budget of a session in a minute.</param>
-    public DistrictHarness(IReadOnlyDictionary<Hero, float>? speeds = null, int maxErrors = 10)
+    /// <param name="meters">Where the pace check counts the moves it lets through too fast and the ones it refuses.</param>
+    /// <param name="world">The options of the world; with none, the defaults.</param>
+    public DistrictHarness(IReadOnlyDictionary<Hero, float>? speeds = null, int maxErrors = 10, IMeterFactory? meters = null, WorldOptions? world = null)
     {
         Channels = ChannelMembers.Channels(Ecs);
 
         var budget = new HandlerErrorBudget(Time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = maxErrors, Window = TimeSpan.FromMinutes(1) }));
         Errors = new HandlerExecutor(Table, new ServiceCollection().BuildServiceProvider(), Ecs, budget, NullLogger<HandlerExecutor>.Instance);
-        var pace = new MovementPace(speeds ?? new Dictionary<Hero, float>(), new WorldOptions(), Time);
+        Pace = new MovementPace(speeds ?? new Dictionary<Hero, float>(), world ?? new WorldOptions(), Time, meters);
 
-        Movement = new MovementService(Ecs, new ChannelAudience(Ecs, Channels), pace, Errors, NullLogger<MovementService>.Instance);
+        Movement = new MovementService(Ecs, new ChannelAudience(Ecs, Channels), Pace, Errors, NullLogger<MovementService>.Instance);
     }
+
+    public MovementPace Pace { get; }
 
     /// <summary>
     /// What counts the requests a handler refuses as impossible against the budget of the session.
@@ -87,9 +92,9 @@ internal sealed class DistrictHarness : IDisposable
     /// <summary>
     /// The player says it runs to the place.
     /// </summary>
-    public ValueTask MoveAsync(Player player, float x, float y)
+    public ValueTask MoveAsync(Player player, float x, float y, long map = 0x0001_2713_0000_0000)
     {
-        return Movement.OnHandleAsync(new ServiceHandleContext(player.Entity, CancellationToken.None), Request(player.Actor, x, y));
+        return Movement.OnHandleAsync(new ServiceHandleContext(player.Entity, CancellationToken.None), Request(player.Actor, x, y, map));
     }
 
     /// <summary>
@@ -115,14 +120,14 @@ internal sealed class DistrictHarness : IDisposable
         Forget(players);
     }
 
-    public static MovementMoveRequest Request(int actor, float x, float y)
+    public static MovementMoveRequest Request(int actor, float x, float y, long map = 0x0001_2713_0000_0000)
     {
         Span<byte> bytes = stackalloc byte[4 + 8 + (6 * 4) + 1 + 4 + 4 + 1];
 
         var writer = new PacketWriter(bytes);
 
         writer.WriteInt32(actor);
-        writer.WriteInt64(0x0001_2713_0000_0000);
+        writer.WriteInt64(map);
         writer.WriteSingle(x);
         writer.WriteSingle(y);
         writer.WriteSingle(0f);
@@ -286,7 +291,8 @@ public sealed class DistrictMovementTest
     [TestMethod]
     public async Task CrossingTheEdgeOfACellTellsWhoComesIntoSightAndWhoGoesOut()
     {
-        using var district = new DistrictHarness();
+        // The jumps across the cells are longer than one move may be.
+        using var district = new DistrictHarness(world: new WorldOptions { MaxMoveStep = 20_000f });
 
         var mover = district.Join(100f, 100f);
         var behind = district.Join(200f, 100f);

@@ -278,7 +278,7 @@ public sealed partial class MazeService(
             return requested with { Position = world.Position, Angle = rotation };
         }
 
-        if (!pace.TryMove(ecs, player, world.Position, requested.Position, out var charge))
+        if (pace.Check(ecs, player, world.Position, requested.Position, out var charge) != MoveVerdict.Taken)
         {
             if (charge)
             {
@@ -350,7 +350,7 @@ public sealed partial class MazeService(
             return;
         }
 
-        if (!pace.TryMove(ecs, player, world.Position, position, out var charge))
+        if (pace.Check(ecs, player, world.Position, position, out var charge) != MoveVerdict.Taken)
         {
             if (charge)
             {
@@ -712,6 +712,7 @@ public sealed partial class MazeService(
         var world = ecs.Get<WorldComponent>(player);
 
         ecs.Set(player, world with { Position = position, Rotation = rotation });
+        pace.PlaceTold(ecs, player);
 
         ecs.Get<ServerSessionComponent>(player).Send(new WorldWarpResponse
         {
