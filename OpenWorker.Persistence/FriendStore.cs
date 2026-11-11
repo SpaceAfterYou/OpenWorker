@@ -226,6 +226,7 @@ public static class FriendStore
 
         await using var database = await factory.CreateDbContextAsync();
         await using var transaction = await database.Database.BeginTransactionAsync();
+        await RowLocks.HoldPersonsAsync(database, inviter, target);
 
         if (!await database.Persons.AnyAsync(e => e.Id == target))
         {
@@ -297,6 +298,7 @@ public static class FriendStore
     {
         await using var database = await factory.CreateDbContextAsync();
         await using var transaction = await database.Database.BeginTransactionAsync();
+        await RowLocks.HoldPersonsAsync(database, answering, inviter);
 
         var rows = await database.Friends
             .AsTracking()
@@ -372,6 +374,7 @@ public static class FriendStore
 
         await using var database = await factory.CreateDbContextAsync();
         await using var transaction = await database.Database.BeginTransactionAsync();
+        await RowLocks.HoldPersonsAsync(database, owner, target);
 
         if (!await database.Persons.AnyAsync(e => e.Id == target))
         {

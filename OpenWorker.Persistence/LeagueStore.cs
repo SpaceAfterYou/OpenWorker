@@ -410,6 +410,7 @@ public static class LeagueStore
     {
         await using var database = await factory.CreateDbContextAsync();
         await using var transaction = await database.Database.BeginTransactionAsync();
+        await RowLocks.HoldLeagueAsync(database, league);
 
         if (!await database.Leagues.AnyAsync(e => e.Id == league))
         {
@@ -455,11 +456,14 @@ public static class LeagueStore
     /// <summary>
     /// Takes a person out of their league. The penalty keeps them from joining another for a while.
     /// </summary>
-    public static async Task<bool> LeaveAsync(this IDbContextFactory<PersistenceContext> factory, int person, bool penalty)
+    public static async Task<bool> LeaveAsync(this IDbContextFactory<PersistenceContext> factory, int person, bool penalty, int league = 0)
     {
         await using var database = await factory.CreateDbContextAsync();
 
-        var removed = await database.LeagueMembers.Where(e => e.PersonId == person).ExecuteDeleteAsync() > 0;
+        // A member who is thrown out leaves the league they were thrown out of, not one they joined a moment later.
+        var removed = await database.LeagueMembers
+            .Where(e => e.PersonId == person && (league == 0 || e.LeagueId == league) && e.Position != LeagueRules.Master)
+            .ExecuteDeleteAsync() > 0;
 
         if (removed && penalty)
         {
@@ -484,6 +488,7 @@ public static class LeagueStore
     {
         await using var database = await factory.CreateDbContextAsync();
         await using var transaction = await database.Database.BeginTransactionAsync();
+        await RowLocks.HoldLeagueAsync(database, league);
 
         var entity = await database.Leagues.AsNoTracking().FirstOrDefaultAsync(e => e.Id == league);
 
@@ -608,6 +613,7 @@ public static class LeagueStore
     {
         await using var database = await factory.CreateDbContextAsync();
         await using var transaction = await database.Database.BeginTransactionAsync();
+        await RowLocks.HoldLeagueAsync(database, league);
 
         if (LeagueRules.HoldersOf(position) is { } holders &&
             await database.LeagueMembers.CountAsync(e => e.LeagueId == league && e.Position == position && e.PersonId != person) >= holders)

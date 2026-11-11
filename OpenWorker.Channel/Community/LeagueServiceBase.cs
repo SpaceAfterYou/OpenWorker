@@ -509,7 +509,7 @@ public abstract class LeagueServiceBase(
             return;
         }
 
-        if (!await factory.LeaveAsync(target.Person, penalty: true))
+        if (!await factory.LeaveAsync(target.Person, penalty: true, league.Id))
         {
             return;
         }
