@@ -51,14 +51,25 @@
             </ListBox>
 
             <DockPanel Grid.Column="2">
-                <TextBlock DockPanel.Dock="Top"
-                           Margin="0,0,0,8"
-                           Opacity="0.8"
-                           Text="{Binding SelectionStatus}"
-                           TextTrimming="CharacterEllipsis" />
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="6">
+                    <TextBlock Opacity="0.8"
+                               Text="{Binding SelectionStatus}"
+                               TextTrimming="CharacterEllipsis" />
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="Layers" />
+                        <CheckBox Content="Boxes"
+                                  IsChecked="{Binding ShowBoxesLayer}" />
+                        <CheckBox Content="NavMesh"
+                                  IsChecked="{Binding ShowNavMeshLayer}"
+                                  IsEnabled="{Binding HasNavMesh}" />
+                    </StackPanel>
+                </StackPanel>
                 <Border Background="#FF1E1F24" CornerRadius="6" ClipToBounds="True">
                     <rendering:BatchViewport Boxes="{Binding Boxes}"
-                                             SelectedBox="{Binding SelectedBox}" />
+                                             SelectedBox="{Binding SelectedBox}"
+                                             NavMesh="{Binding NavMesh}"
+                                             ShowBoxes="{Binding ShowBoxesLayer}"
+                                             ShowNavMesh="{Binding ShowNavMeshLayer}" />
                 </Border>
             </DockPanel>
 

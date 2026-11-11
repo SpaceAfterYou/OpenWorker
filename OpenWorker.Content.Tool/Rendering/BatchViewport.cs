@@ -7,14 +7,15 @@ using Avalonia.Media;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
 using OpenWorker.Content.Tool.Models;
+using OpenWorker.Navigation;
 using Silk.NET.OpenGL;
 
 namespace OpenWorker.Content.Tool.Rendering;
 
 /// <summary>
-/// Draws the translucent oriented boxes of a <c>*.vbatch</c> with a grid and RGB axes. Right-drag orbits
-/// around a pivot kept in front of the camera, Shift+right-drag pans, WASD flies along the look, the wheel
-/// zooms. Game Z is up; the viewport remaps that to OpenGL Y-up.
+/// Draws the translucent oriented boxes of a <c>*.vbatch</c> and an optional navigation mesh, with a grid and
+/// RGB axes. Right-drag orbits around a pivot kept in front of the camera, Shift+right-drag pans, WASD flies
+/// along the look, the wheel zooms. Game Z is up; the viewport remaps that to OpenGL Y-up.
 /// </summary>
 public sealed class BatchViewport : UserControl
 {
@@ -23,6 +24,15 @@ public sealed class BatchViewport : UserControl
 
     public static readonly StyledProperty<BatchBoxDraw?> SelectedBoxProperty =
         AvaloniaProperty.Register<BatchViewport, BatchBoxDraw?>(nameof(SelectedBox));
+
+    public static readonly StyledProperty<NavMesh?> NavMeshProperty =
+        AvaloniaProperty.Register<BatchViewport, NavMesh?>(nameof(NavMesh));
+
+    public static readonly StyledProperty<bool> ShowBoxesProperty =
+        AvaloniaProperty.Register<BatchViewport, bool>(nameof(ShowBoxes), defaultValue: true);
+
+    public static readonly StyledProperty<bool> ShowNavMeshProperty =
+        AvaloniaProperty.Register<BatchViewport, bool>(nameof(ShowNavMesh), defaultValue: true);
 
     private readonly BatchGlSurface _surface = new() { IsHitTestVisible = false };
     private readonly Border _overlay;
@@ -44,6 +54,24 @@ public sealed class BatchViewport : UserControl
         set => SetValue(SelectedBoxProperty, value);
     }
 
+    public NavMesh? NavMesh
+    {
+        get => GetValue(NavMeshProperty);
+        set => SetValue(NavMeshProperty, value);
+    }
+
+    public bool ShowBoxes
+    {
+        get => GetValue(ShowBoxesProperty);
+        set => SetValue(ShowBoxesProperty, value);
+    }
+
+    public bool ShowNavMesh
+    {
+        get => GetValue(ShowNavMeshProperty);
+        set => SetValue(ShowNavMeshProperty, value);
+    }
+
     static BatchViewport()
     {
         BoxesProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
@@ -53,6 +81,18 @@ public sealed class BatchViewport : UserControl
         SelectedBoxProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
         {
             viewport._surface.SelectedBox = args.NewValue as BatchBoxDraw;
+        });
+        NavMeshProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
+        {
+            viewport._surface.NavMesh = args.NewValue as NavMesh;
+        });
+        ShowBoxesProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
+        {
+            viewport._surface.ShowBoxes = args.NewValue is true;
+        });
+        ShowNavMeshProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
+        {
+            viewport._surface.ShowNavMesh = args.NewValue is true;
         });
     }
 
@@ -273,6 +313,7 @@ public sealed class BatchViewport : UserControl
         private const int GridLines = 20;
         private const float FaceAlpha = 0.28f;
         private const float SelectedFaceAlpha = 0.45f;
+        private const float NavFaceAlpha = 0.22f;
         private const int FloatsPerVertex = 7;
 
         private GL? _gl;
@@ -293,6 +334,9 @@ public sealed class BatchViewport : UserControl
         private bool _meshDirty = true;
         private IReadOnlyList<BatchBoxDraw>? _boxes;
         private BatchBoxDraw? _selectedBox;
+        private NavMesh? _navMesh;
+        private bool _showBoxes = true;
+        private bool _showNavMesh = true;
         private bool _moveForward;
         private bool _moveBack;
         private bool _moveLeft;
@@ -314,7 +358,7 @@ public sealed class BatchViewport : UserControl
             {
                 _boxes = value;
                 _meshDirty = true;
-                FrameCamera(value);
+                FrameCamera();
                 RequestNextFrameRendering();
             }
         }
@@ -325,6 +369,50 @@ public sealed class BatchViewport : UserControl
             set
             {
                 _selectedBox = value;
+                _meshDirty = true;
+                RequestNextFrameRendering();
+            }
+        }
+
+        public NavMesh? NavMesh
+        {
+            get => _navMesh;
+            set
+            {
+                _navMesh = value;
+                _meshDirty = true;
+                FrameCamera();
+                RequestNextFrameRendering();
+            }
+        }
+
+        public bool ShowBoxes
+        {
+            get => _showBoxes;
+            set
+            {
+                if (_showBoxes == value)
+                {
+                    return;
+                }
+
+                _showBoxes = value;
+                _meshDirty = true;
+                RequestNextFrameRendering();
+            }
+        }
+
+        public bool ShowNavMesh
+        {
+            get => _showNavMesh;
+            set
+            {
+                if (_showNavMesh == value)
+                {
+                    return;
+                }
+
+                _showNavMesh = value;
                 _meshDirty = true;
                 RequestNextFrameRendering();
             }
@@ -586,7 +674,13 @@ public sealed class BatchViewport : UserControl
 
         private void UploadMesh(GL silk)
         {
-            var (faces, lines) = BuildMeshes(_boxes, _selectedBox, _gridOrigin, _gridHalfExtent, _gridStep);
+            var (faces, lines) = BuildMeshes(
+                _showBoxes ? _boxes : null,
+                _selectedBox,
+                _showNavMesh ? _navMesh : null,
+                _gridOrigin,
+                _gridHalfExtent,
+                _gridStep);
             _faceVertexCount = faces.Length / FloatsPerVertex;
             _lineVertexCount = lines.Length / FloatsPerVertex;
 
@@ -614,9 +708,14 @@ public sealed class BatchViewport : UserControl
             silk.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
         }
 
-        private void FrameCamera(IReadOnlyList<BatchBoxDraw>? boxes)
+        private void FrameCamera()
         {
-            if (boxes is null || boxes.Count == 0)
+            var boxes = _boxes;
+            var navMesh = _navMesh;
+            var hasBoxes = boxes is { Count: > 0 };
+            var hasNav = navMesh is not null && navMesh.FaceCount > 0;
+
+            if (!hasBoxes && !hasNav)
             {
                 _target = Vector3.Zero;
                 _gridOrigin = Vector3.Zero;
@@ -629,32 +728,35 @@ public sealed class BatchViewport : UserControl
 
             var min = new Vector3(float.MaxValue);
             var max = new Vector3(float.MinValue);
-            foreach (var box in boxes)
+
+            if (hasBoxes)
             {
-                foreach (var corner in CornersGl(box))
+                foreach (var box in boxes!)
                 {
-                    min = Vector3.Min(min, corner);
-                    max = Vector3.Max(max, corner);
+                    foreach (var corner in CornersGl(box))
+                    {
+                        min = Vector3.Min(min, corner);
+                        max = Vector3.Max(max, corner);
+                    }
                 }
             }
 
-            _target = (min + max) * 0.5f;
-            if (ReferenceEquals(boxes, _boxes))
+            if (hasNav)
             {
-                _gridOrigin = _target;
+                min = Vector3.Min(min, ToGl(navMesh!.Minimum));
+                max = Vector3.Max(max, ToGl(navMesh.Maximum));
             }
+
+            _target = (min + max) * 0.5f;
+            _gridOrigin = _target;
 
             var extent = max - min;
             var radius = MathF.Max(extent.X, MathF.Max(extent.Y, extent.Z)) * 0.6f;
             _distance = Math.Clamp(radius / MathF.Tan(MathF.PI / 8f), 5f, 200_000f);
 
-            if (ReferenceEquals(boxes, _boxes))
-            {
-                var ground = MathF.Max(extent.X, extent.Z);
-                _gridHalfExtent = Math.Max(10f, ground * 0.55f);
-                _gridStep = NiceStep(_gridHalfExtent / GridLines);
-            }
-
+            var ground = MathF.Max(extent.X, extent.Z);
+            _gridHalfExtent = Math.Max(10f, ground * 0.55f);
+            _gridStep = NiceStep(_gridHalfExtent / GridLines);
             SyncEyeFromTarget();
         }
 
@@ -675,6 +777,7 @@ public sealed class BatchViewport : UserControl
         private static (float[] Faces, float[] Lines) BuildMeshes(
             IReadOnlyList<BatchBoxDraw>? boxes,
             BatchBoxDraw? selected,
+            NavMesh? navMesh,
             Vector3 gridOrigin,
             float gridHalfExtent,
             float gridStep)
@@ -730,6 +833,36 @@ public sealed class BatchViewport : UserControl
             AddLine(gridOrigin, gridOrigin + new Vector3(axis, 0f, 0f), new Vector4(0.9f, 0.2f, 0.2f, 1f));
             AddLine(gridOrigin, gridOrigin + new Vector3(0f, axis, 0f), new Vector4(0.2f, 0.85f, 0.3f, 1f));
             AddLine(gridOrigin, gridOrigin + new Vector3(0f, 0f, axis), new Vector4(0.25f, 0.45f, 0.95f, 1f));
+
+            if (navMesh is not null)
+            {
+                var walk = new Vector4(0.25f, 0.75f, 0.45f, NavFaceAlpha);
+                var walkEdge = new Vector4(0.35f, 0.85f, 0.55f, 1f);
+                var wallEdge = new Vector4(0.95f, 0.45f, 0.25f, 1f);
+
+                for (var face = 0; face < navMesh.FaceCount; face++)
+                {
+                    var corners = navMesh.GetCorners(face).Select(ToGl).ToArray();
+                    if (corners.Length < 3)
+                    {
+                        continue;
+                    }
+
+                    for (var i = 1; i < corners.Length - 1; i++)
+                    {
+                        AddTriangle(corners[0], corners[i], corners[i + 1], walk);
+                    }
+                }
+
+                for (var edgeIndex = 0; edgeIndex < navMesh.EdgeCount; edgeIndex++)
+                {
+                    var edge = navMesh.GetEdge(edgeIndex);
+                    AddLine(
+                        ToGl(navMesh.GetVertex(edge.From)),
+                        ToGl(navMesh.GetVertex(edge.To)),
+                        edge.OppositeFace < 0 ? wallEdge : walkEdge);
+                }
+            }
 
             if (boxes is null)
             {

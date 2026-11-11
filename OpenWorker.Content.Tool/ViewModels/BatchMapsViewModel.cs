@@ -3,11 +3,12 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OpenWorker.Content.Tool.Data;
 using OpenWorker.Content.Tool.Models;
+using OpenWorker.Navigation;
 
 namespace OpenWorker.Content.Tool.ViewModels;
 
 /// <summary>
-/// Shared list of district or maze batch maps with a 3D view of the selected file's boxes.
+/// Shared list of district or maze batch maps with a 3D view of boxes and the matching navigation mesh.
 /// </summary>
 public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
 {
@@ -40,6 +41,18 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     public partial BatchBoxDraw? SelectedBox { get; set; }
+
+    [ObservableProperty]
+    public partial NavMesh? NavMesh { get; set; }
+
+    [ObservableProperty]
+    public partial bool ShowBoxesLayer { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool ShowNavMeshLayer { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool HasNavMesh { get; set; }
 
     [ObservableProperty]
     public partial string SelectionStatus { get; set; } = "Select a map to draw its boxes.";
@@ -80,6 +93,8 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         BoxGroups = [];
         SelectedBoxNode = null;
         SelectedBox = null;
+        NavMesh = null;
+        HasNavMesh = false;
         _all = [];
         _loaded = false;
         Title = PanelTitle;
@@ -116,9 +131,12 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
 
             _all = loaded.Entries;
             _loaded = true;
+            var nav = ContentPaths.NavMeshFolder;
             Status = batch is null
                 ? $"{loaded.Status}. Set {ContentPaths.BatchVariable} to the folder with *.vbatch files."
-                : loaded.Status;
+                : nav is null
+                    ? $"{loaded.Status}. Set {ContentPaths.NavMeshVariable} to the folder with *.hkt meshes."
+                    : loaded.Status;
             ApplyFilter();
         }
         catch (OperationCanceledException)
@@ -158,14 +176,14 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         ApplyFilter();
     }
 
-    partial void OnSelectedMapChanged(BatchMapEntry? value) => _ = ShowBoxesAsync(value);
+    partial void OnSelectedMapChanged(BatchMapEntry? value) => _ = ShowMapAsync(value);
 
     partial void OnSelectedBoxNodeChanged(object? value)
     {
         SelectedBox = value as BatchBoxDraw;
     }
 
-    private async Task ShowBoxesAsync(BatchMapEntry? entry)
+    private async Task ShowMapAsync(BatchMapEntry? entry)
     {
         _boxesCts?.Cancel();
         _boxesCts?.Dispose();
@@ -176,6 +194,8 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         BoxGroups = [];
         SelectedBoxNode = null;
         SelectedBox = null;
+        NavMesh = null;
+        HasNavMesh = false;
 
         if (entry is null)
         {
@@ -183,27 +203,64 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        if (!entry.FileExists)
+        var navFolder = ContentPaths.NavMeshFolder;
+        var navPath = navFolder is null
+            ? null
+            : Path.Combine(navFolder, entry.BatchName + ".hkt");
+        var navExists = navPath is not null && File.Exists(navPath);
+
+        if (!entry.FileExists && !navExists)
         {
             SelectionStatus = string.Format(
                 CultureInfo.InvariantCulture,
-                "Batch file missing: {0}.vbatch",
+                "Missing {0}.vbatch and {0}.hkt",
                 entry.BatchName);
             return;
         }
 
         SelectionStatus = string.Format(
             CultureInfo.InvariantCulture,
-            "Loading {0}.vbatch…",
+            "Loading {0}…",
             entry.BatchName);
 
         try
         {
-            var boxes = await Task.Run(
+            var loaded = await Task.Run(
                 () =>
                 {
                     token.ThrowIfCancellationRequested();
-                    return BatchMapCatalog.LoadBoxes(entry.Path);
+
+                    IReadOnlyList<BatchBoxDraw> boxes = [];
+                    string? boxError = null;
+                    if (entry.FileExists)
+                    {
+                        try
+                        {
+                            boxes = BatchMapCatalog.LoadBoxes(entry.Path);
+                        }
+                        catch (Exception exception)
+                        {
+                            boxError = exception.Message;
+                        }
+                    }
+
+                    token.ThrowIfCancellationRequested();
+
+                    NavMesh? mesh = null;
+                    string? navError = null;
+                    if (navExists)
+                    {
+                        try
+                        {
+                            mesh = NavMeshFileCache.Shared.Load(navPath!);
+                        }
+                        catch (Exception exception)
+                        {
+                            navError = exception.Message;
+                        }
+                    }
+
+                    return (Boxes: boxes, BoxError: boxError, Mesh: mesh, NavError: navError);
                 },
                 token);
 
@@ -212,14 +269,12 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            Boxes = boxes;
-            BoxGroups = BatchMapCatalog.GroupBoxes(boxes);
-            SelectionStatus = string.Format(
-                CultureInfo.InvariantCulture,
-                "{0}: {1} boxes in {2} groups",
-                entry.BatchName,
-                boxes.Count,
-                BoxGroups.Count);
+            Boxes = loaded.Boxes;
+            BoxGroups = BatchMapCatalog.GroupBoxes(loaded.Boxes);
+            NavMesh = loaded.Mesh;
+            HasNavMesh = loaded.Mesh is not null;
+
+            SelectionStatus = FormatSelectionStatus(entry.BatchName, loaded.Boxes.Count, loaded.Mesh, loaded.BoxError, loaded.NavError, entry.FileExists, navExists);
         }
         catch (OperationCanceledException)
         {
@@ -235,6 +290,53 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
                     exception.Message);
             }
         }
+    }
+
+    private static string FormatSelectionStatus(
+        string name,
+        int boxCount,
+        NavMesh? mesh,
+        string? boxError,
+        string? navError,
+        bool batchExists,
+        bool navExists)
+    {
+        var parts = new List<string>(4);
+
+        if (boxError is not null)
+        {
+            parts.Add("batch: " + boxError);
+        }
+        else if (batchExists)
+        {
+            parts.Add(string.Format(CultureInfo.InvariantCulture, "{0} boxes", boxCount));
+        }
+        else
+        {
+            parts.Add("batch missing");
+        }
+
+        if (navError is not null)
+        {
+            parts.Add("navmesh: " + navError);
+        }
+        else if (mesh is not null)
+        {
+            parts.Add(string.Format(
+                CultureInfo.InvariantCulture,
+                "navmesh {0} faces",
+                mesh.FaceCount));
+        }
+        else if (!navExists)
+        {
+            parts.Add("navmesh missing");
+        }
+
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0}: {1}",
+            name,
+            string.Join(", ", parts));
     }
 
     private void ApplyFilter()
