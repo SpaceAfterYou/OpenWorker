@@ -49,6 +49,29 @@ public sealed partial class AiMachineTest
     }
 
     [TestMethod]
+    public void AnEnemyWhoGivesNoHateForTheResetTimeIsForgottenAndTheMonsterMayBeLeftWithoutOne()
+    {
+        var host = Crowd();
+        var builder = Fighter();
+
+        builder.SetFindEnemyInfo(false, 0.1f, 1000f);
+        builder.SetDmgAggroReset(1f, 0f);
+        builder.SetEnableClearTarget(true);
+
+        var machine = Create(builder, host);
+
+        machine.Start();
+
+        Hit(machine, host, 1000, 1f, 0.3f);
+
+        Assert.AreEqual(1000, machine.TargetId);
+
+        Run(machine, host, 3f);
+
+        Assert.AreEqual(AiMachine.NoTarget, machine.TargetId);
+    }
+
+    [TestMethod]
     public void ATauntHoldsTheMonsterOnItsGiverUntilItIsReleased()
     {
         var host = Crowd();

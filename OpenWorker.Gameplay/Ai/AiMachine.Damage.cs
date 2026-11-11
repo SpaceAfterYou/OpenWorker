@@ -59,7 +59,7 @@ public sealed partial class AiMachine
     /// </summary>
     public void OnDamaged(in AiHit hit)
     {
-        AddEscapePoint(hit.Kind);
+        CountEscapeBlow(hit.Kind);
 
         if (_targetId == NoTarget && _host.GetTarget(hit.Attacker) is not null)
         {
@@ -126,7 +126,7 @@ public sealed partial class AiMachine
         }
 
         AddAggro(target, AlertHate);
-        DamageAggressive();
+        ChooseEnemyByHate();
         ChangeState(AiState.SelectAction);
     }
 
@@ -144,7 +144,7 @@ public sealed partial class AiMachine
     /// The enemy who has angered the monster most is the one it looks at. Every look weakens the hate of all of them, with time
     /// and by half, and takes away what is left of the little there is.
     /// </summary>
-    private void DamageAggressive()
+    private void ChooseEnemyByHate()
     {
         _aggroChanged = false;
 
@@ -199,7 +199,7 @@ public sealed partial class AiMachine
     /// The hate for the one the monster fights is forgotten when they have given none for the time the script says or have
     /// gone farther than it says; the monster then looks round for the enemy it hates most.
     /// </summary>
-    private void CheckDamageAggroReset()
+    private void ForgetCalmEnemy()
     {
         var time = _profile.DamageAggroResetTime;
         var distance = _profile.DamageAggroResetDistance;
@@ -227,7 +227,7 @@ public sealed partial class AiMachine
         {
             _aggro.Remove(_targetId);
 
-            DamageAggressive();
+            ChooseEnemyByHate();
         }
     }
 
@@ -249,7 +249,7 @@ public sealed partial class AiMachine
     /// time two blows follow each other within half a second every blow of the monster counts a fifth, as in the original. At
     /// the points the script asks for, the monster escapes with the chance it has.
     /// </summary>
-    private void AddEscapePoint(AiHitKind kind)
+    private void CountEscapeBlow(AiHitKind kind)
     {
         if (_profile.Follower.Escape is not { Points: > 0f } escape || IsRecovering)
         {

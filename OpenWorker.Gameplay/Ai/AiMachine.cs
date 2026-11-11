@@ -180,7 +180,7 @@ public sealed partial class AiMachine
         if (_aggroChanged && _aggroTime >= _profile.AggroCheckTime)
         {
             _aggroTime = 0f;
-            DamageAggressive();
+            ChooseEnemyByHate();
         }
 
         if (_sinceCheck > _profile.CheckTime)
@@ -814,7 +814,7 @@ public sealed partial class AiMachine
         if (enemy.Id != _targetId)
         {
             AddAggro(enemy.Id, AggroPerSighting);
-            DamageAggressive();
+            ChooseEnemyByHate();
 
             if (_targetId != NoTarget && CallsGroup)
             {
@@ -1223,7 +1223,7 @@ public sealed partial class AiMachine
         {
             _retargetTime = 0f;
 
-            CheckDamageAggroReset();
+            ForgetCalmEnemy();
 
             if (_host.CanMove && Target is { } enemy)
             {
