@@ -15,7 +15,8 @@ namespace OpenWorker.Content.Tool.Rendering;
 /// <summary>
 /// Draws the translucent oriented boxes of a <c>*.vbatch</c> and an optional navigation mesh, with a grid and
 /// RGB axes. Right-drag orbits around a pivot kept in front of the camera, Shift+right-drag pans, WASD flies
-/// along the look, the wheel zooms. Game Z is up; the viewport remaps that to OpenGL Y-up.
+/// along the look, the wheel zooms, F frames the selected box. Game Z is up; the viewport remaps that to
+/// OpenGL Y-up.
 /// </summary>
 public sealed class BatchViewport : UserControl
 {
@@ -174,6 +175,12 @@ public sealed class BatchViewport : UserControl
 
     private void OnTopLevelKeyDown(object? sender, KeyEventArgs e)
     {
+        if (TryFrameSelected(e))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (!IsInputActive())
         {
             return;
@@ -195,6 +202,12 @@ public sealed class BatchViewport : UserControl
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (TryFrameSelected(e))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (SetMoveKey(e, true))
         {
             e.Handled = true;
@@ -207,6 +220,35 @@ public sealed class BatchViewport : UserControl
         {
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// F moves and aims the camera at the selected event box. Works while the sidebar tree has focus so a
+    /// click-then-F flow still frames; skipped when typing in a text box or when this view is hidden.
+    /// </summary>
+    private bool TryFrameSelected(KeyEventArgs e)
+    {
+        if (!IsEffectivelyVisible)
+        {
+            return false;
+        }
+
+        if (e.PhysicalKey != PhysicalKey.F && e.Key != Key.F)
+        {
+            return false;
+        }
+
+        if ((e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Meta | KeyModifiers.Shift)) != 0)
+        {
+            return false;
+        }
+
+        if (_topLevel?.FocusManager?.GetFocusedElement() is TextBox)
+        {
+            return false;
+        }
+
+        return _surface.FrameSelected();
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -422,6 +464,47 @@ public sealed class BatchViewport : UserControl
         /// Places the orbit pivot on the look ray in front of the camera before a right-drag orbit.
         /// </summary>
         public void CaptureOrbitPivot() => PlaceOrbitPivotInFront();
+
+        /// <summary>
+        /// Aims at the selected box and places the eye at a framing distance along that look.
+        /// </summary>
+        public bool FrameSelected()
+        {
+            if (_selectedBox is null)
+            {
+                return false;
+            }
+
+            var corners = CornersGl(_selectedBox);
+            var min = corners[0];
+            var max = corners[0];
+            for (var i = 1; i < corners.Length; i++)
+            {
+                min = Vector3.Min(min, corners[i]);
+                max = Vector3.Max(max, corners[i]);
+            }
+
+            var center = (min + max) * 0.5f;
+            var extent = max - min;
+            var radius = MathF.Max(extent.X, MathF.Max(extent.Y, extent.Z)) * 0.6f;
+            var distance = Math.Clamp(radius / MathF.Tan(MathF.PI / 8f), 5f, 200_000f);
+
+            var offset = center - _eye;
+            if (offset.LengthSquared() > 1e-6f)
+            {
+                var to = Vector3.Normalize(offset);
+                _yaw = MathF.Atan2(-to.Z, -to.X);
+                var pitch = MathF.Asin(Math.Clamp(-to.Y, -1f, 1f));
+                _pitch = Math.Clamp(pitch, -MathF.PI / 2f + 0.05f, MathF.PI / 2f - 0.05f);
+            }
+
+            _target = center;
+            _distance = distance;
+            _gridOrigin = center;
+            SyncEyeFromTarget();
+            RequestNextFrameRendering();
+            return true;
+        }
 
         public void Orbit(float dx, float dy)
         {
