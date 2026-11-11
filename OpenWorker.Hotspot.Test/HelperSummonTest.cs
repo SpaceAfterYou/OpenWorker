@@ -124,7 +124,7 @@ public sealed class HelperSummonTest
     /// it is (27/02). When its owner leaves the maze it falls and everybody hears it was sent away; nothing of it stays.
     /// </summary>
     [TestMethod]
-    public void ACalledHelperIsShownToEveryPlayerAndGoesWhenItsOwnerLeaves()
+    public async Task ACalledHelperIsShownToEveryPlayerAndGoesWhenItsOwnerLeaves()
     {
         var world = World.Create();
 
@@ -145,6 +145,11 @@ public sealed class HelperSummonTest
 
             foreach (var connection in new[] { first, second })
             {
+                // The frames reach a connection through the queue of its writer: wait for the one that comes last.
+                await MetricAssertions.UntilAsync(
+                    () => Received(connection).Any(e => e.Is(GroupOpcode.Helper, (byte)HelperOpcode.Summon)),
+                    "The player is told whose helper it is.");
+
                 var frames = Received(connection);
                 var shown = Array.FindIndex(frames, e => e.Is(GroupOpcode.World, (byte)WorldOpcode.InInfoMonster));
                 var named = Array.FindIndex(frames, e => e.Is(GroupOpcode.Helper, (byte)HelperOpcode.Summon));
@@ -158,6 +163,10 @@ public sealed class HelperSummonTest
 
             Assert.AreEqual(0, maze.Helpers.Count);
             Assert.IsFalse(world.IsAlive(helper.Entity));
+
+            await MetricAssertions.UntilAsync(
+                () => Received(second).Count(e => e.Is(GroupOpcode.Helper, (byte)HelperOpcode.Summon)) == 2,
+                "The other player is told the helper was sent away.");
 
             var after = Received(second);
             var sent = after.Last(e => e.Is(GroupOpcode.Helper, (byte)HelperOpcode.Summon));
