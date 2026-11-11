@@ -17,6 +17,8 @@ internal sealed class ResTableCache
     private ReadOnlyCollection<MakeRow>? _makes;
     private ReadOnlyCollection<ItemRow>? _items;
     private ReadOnlyCollection<ItemScriptRow>? _scripts;
+    private ReadOnlyCollection<DistrictRow>? _districts;
+    private ReadOnlyCollection<MazeInfoRow>? _mazes;
     private RowIndex<int, ItemRow>? _itemsById;
     private RowIndex<int, ItemScriptRow>? _scriptsById;
 
@@ -28,6 +30,12 @@ internal sealed class ResTableCache
 
     public ReadOnlyCollection<ItemScriptRow> Scripts(string folder) =>
         Get(ref _scripts, folder, static path => BinaryResourceTables.LoadFromDirectory<ItemScriptRow>(path));
+
+    public ReadOnlyCollection<DistrictRow> Districts(string folder) =>
+        Get(ref _districts, folder, static path => BinaryResourceTables.LoadFromDirectory<DistrictRow>(path));
+
+    public ReadOnlyCollection<MazeInfoRow> Mazes(string folder) =>
+        Get(ref _mazes, folder, static path => BinaryResourceTables.LoadFromDirectory<MazeInfoRow>(path));
 
     public RowIndex<int, ItemRow> ItemsById(string folder)
     {
@@ -73,6 +81,8 @@ internal sealed class ResTableCache
         _makes = null;
         _items = null;
         _scripts = null;
+        _districts = null;
+        _mazes = null;
         _itemsById = null;
         _scriptsById = null;
     }

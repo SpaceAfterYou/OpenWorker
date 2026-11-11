@@ -31,6 +31,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpenWorker.Res\OpenWorker.Res.csproj" />
+    <ProjectReference Include="..\OpenWorker.Batch\OpenWorker.Batch.csproj" />
   </ItemGroup>
 
 </Project>

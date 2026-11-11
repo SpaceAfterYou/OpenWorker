@@ -26,6 +26,8 @@
                 <MenuItem Header="Viewport" Command="{Binding ShowViewportCommand}" />
                 <MenuItem Header="Items" Command="{Binding ShowItemsCommand}" />
                 <MenuItem Header="Craftables" Command="{Binding ShowCraftablesCommand}" />
+                <MenuItem Header="Districts" Command="{Binding ShowDistrictsCommand}" />
+                <MenuItem Header="Mazes" Command="{Binding ShowMazesCommand}" />
             </MenuItem>
         </Menu>
 
@@ -54,9 +56,12 @@
                         <Button Content="Craftables"
                                 HorizontalAlignment="Stretch"
                                 Command="{Binding ShowCraftablesCommand}" />
-                        <Button Content="Batch"
+                        <Button Content="Districts"
                                 HorizontalAlignment="Stretch"
-                                IsEnabled="False" />
+                                Command="{Binding ShowDistrictsCommand}" />
+                        <Button Content="Mazes"
+                                HorizontalAlignment="Stretch"
+                                Command="{Binding ShowMazesCommand}" />
                         <Button Content="Navigation"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="False" />
@@ -73,6 +78,12 @@
                 </Border>
                 <Border IsVisible="{Binding IsCraftablesVisible}">
                     <views:CraftablesView DataContext="{Binding Craftables}" />
+                </Border>
+                <Border IsVisible="{Binding IsDistrictsVisible}">
+                    <views:BatchMapsView DataContext="{Binding Districts}" />
+                </Border>
+                <Border IsVisible="{Binding IsMazesVisible}">
+                    <views:BatchMapsView DataContext="{Binding Mazes}" />
                 </Border>
             </Panel>
         </Grid>

@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenWorker.Content.Tool.ViewModels"
+             xmlns:models="using:OpenWorker.Content.Tool.Models"
+             xmlns:rendering="using:OpenWorker.Content.Tool.Rendering"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="OpenWorker.Content.Tool.Views.BatchMapsView"
+             x:DataType="vm:BatchMapsViewModel">
+
+    <DockPanel Margin="12">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock DockPanel.Dock="Left"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       FontSize="18"
+                       Text="{Binding Title}" />
+            <TextBox PlaceholderText="Filter by id or batch name…"
+                     Text="{Binding Filter}"
+                     Width="300"
+                     HorizontalAlignment="Right"
+                     IsEnabled="{Binding IsIdle}" />
+        </DockPanel>
+
+        <TextBlock DockPanel.Dock="Bottom"
+                   Margin="0,8,0,0"
+                   Opacity="0.75"
+                   Text="{Binding Status}"
+                   TextTrimming="CharacterEllipsis" />
+
+        <Grid ColumnDefinitions="320,12,*">
+            <ListBox Grid.Column="0"
+                     ItemsSource="{Binding Maps}"
+                     SelectedItem="{Binding SelectedMap}"
+                     IsEnabled="{Binding IsIdle}"
+                     Background="Transparent">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:BatchMapEntry">
+                        <StackPanel Margin="4" MinHeight="40" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Subtitle}" Opacity="0.7" FontSize="12" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top"
+                           Margin="0,0,0,8"
+                           Opacity="0.8"
+                           Text="{Binding SelectionStatus}"
+                           TextTrimming="CharacterEllipsis" />
+                <Border Background="#FF1E1F24" CornerRadius="6" ClipToBounds="True">
+                    <rendering:BatchViewport Boxes="{Binding Boxes}" />
+                </Border>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>
