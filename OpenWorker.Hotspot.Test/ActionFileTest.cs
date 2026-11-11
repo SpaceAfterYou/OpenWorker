@@ -125,6 +125,7 @@ public sealed class ActionFileTest
     }
 
     private const float WaitingHideStart = 0.6f;
+    private static readonly int[] WaitedFor = [10190029, 10190031];
 
     private static void WriteInts(BinaryWriter writer, params ReadOnlySpan<int> values)
     {
@@ -317,15 +318,16 @@ public sealed class ActionFileTest
         foreach (var version in (short[])[236, 245])
         {
             var animation = ActionFile.Read(Build(version)).Animations["first"];
+            var hides = animation.Hides ?? [];
 
             Assert.HasCount(2, animation.Attacks);
-            Assert.HasCount(2, animation.Hides!);
-            Assert.AreEqual(new InvisibleEvent(0.5f, 12, InvisibleEvent.ForTime, 2500), animation.Hides[0]);
+            Assert.HasCount(2, hides);
+            Assert.AreEqual(new InvisibleEvent(0.5f, 12, InvisibleEvent.ForTime, 2500), hides[0]);
 
-            var waiting = animation.Hides[1];
+            var waiting = hides[1];
 
             Assert.AreEqual((InvisibleEvent.UntilMonstersDie, 0.6f), (waiting.ConditionType, waiting.Start));
-            CollectionAssert.AreEqual(new[] { 10190029, 10190031 }, waiting.Waits!.ToArray(), "the tables it waits for, without the empty ones");
+            CollectionAssert.AreEqual(WaitedFor, (waiting.Waits ?? []).ToArray(), "the tables it waits for, without the empty ones");
         }
     }
 
