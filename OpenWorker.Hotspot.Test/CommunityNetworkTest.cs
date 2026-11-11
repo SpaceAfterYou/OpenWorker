@@ -191,7 +191,7 @@ public sealed class CommunityNetworkTest
             });
         }
 
-        first.Run(() => first.Network.PublishAsync([], "test.all", ReadOnlyMemory<byte>.Empty).AsTask());
+        first.Run(() => first.Network.PublishToAllAsync("test.all", ReadOnlyMemory<byte>.Empty).AsTask());
 
         SpinWait.SpinUntil(() => Volatile.Read(ref count) >= 2, 2000);
         Thread.Sleep(200);

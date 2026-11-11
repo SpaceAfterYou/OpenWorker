@@ -280,8 +280,21 @@ public sealed partial class CommunityNetwork(
     }
 
     /// <summary>
+    /// Has every server run the event once, this one too.
+    /// </summary>
+    public async ValueTask PublishToAllAsync(string name, ReadOnlyMemory<byte> body)
+    {
+        await RunAsync(new CommunityEvent(name, [], body));
+
+        var envelope = new CommunityEnvelope(CommunityEnvelopeKind.Event, Instance, [], name, body);
+
+        await TryAsync(() => transport.PublishAsync(AllChannel, envelope.ToBytes()).AsTask(), "publish an event");
+    }
+
+    /// <summary>
     /// Has the servers of the persons run the event: this one for those who are here, the others for theirs. With no persons
-    /// every server runs it once.
+    /// nothing runs: an event for everybody is asked for by name (<see cref="PublishToAllAsync"/>), not by a list that
+    /// happens to be empty.
     /// </summary>
     public async ValueTask PublishAsync(IEnumerable<int> persons, string name, ReadOnlyMemory<byte> body)
     {
@@ -289,12 +302,6 @@ public sealed partial class CommunityNetwork(
 
         if (targets.Length == 0)
         {
-            await RunAsync(new CommunityEvent(name, [], body));
-
-            var envelope = new CommunityEnvelope(CommunityEnvelopeKind.Event, Instance, [], name, body);
-
-            await TryAsync(() => transport.PublishAsync(AllChannel, envelope.ToBytes()).AsTask(), "publish an event");
-
             return;
         }
 
