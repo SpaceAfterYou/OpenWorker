@@ -743,8 +743,8 @@ public sealed class BatchViewport : UserControl
 
             if (hasNav)
             {
-                min = Vector3.Min(min, ToGl(navMesh!.Minimum));
-                max = Vector3.Max(max, ToGl(navMesh.Maximum));
+                min = Vector3.Min(min, GameCoordinates.ToGl(navMesh!.Minimum));
+                max = Vector3.Max(max, GameCoordinates.ToGl(navMesh.Maximum));
             }
 
             _target = (min + max) * 0.5f;
@@ -842,7 +842,7 @@ public sealed class BatchViewport : UserControl
 
                 for (var face = 0; face < navMesh.FaceCount; face++)
                 {
-                    var corners = navMesh.GetCorners(face).Select(ToGl).ToArray();
+                    var corners = navMesh.GetCorners(face).Select(GameCoordinates.ToGl).ToArray();
                     if (corners.Length < 3)
                     {
                         continue;
@@ -858,8 +858,8 @@ public sealed class BatchViewport : UserControl
                 {
                     var edge = navMesh.GetEdge(edgeIndex);
                     AddLine(
-                        ToGl(navMesh.GetVertex(edge.From)),
-                        ToGl(navMesh.GetVertex(edge.To)),
+                        GameCoordinates.ToGl(navMesh.GetVertex(edge.From)),
+                        GameCoordinates.ToGl(navMesh.GetVertex(edge.To)),
                         edge.OppositeFace < 0 ? wallEdge : walkEdge);
                 }
             }
@@ -931,7 +931,7 @@ public sealed class BatchViewport : UserControl
                 var dy = y - centerY;
                 var rx = centerX + dx * cos - dy * sin;
                 var ry = centerY + dx * sin + dy * cos;
-                return ToGl(new Vector3(rx, ry, z));
+                return GameCoordinates.ToGl(new Vector3(rx, ry, z));
             }
 
             return
@@ -946,8 +946,6 @@ public sealed class BatchViewport : UserControl
                 Rotate(minX, maxY, maxZ)
             ];
         }
-
-        private static Vector3 ToGl(Vector3 game) => new(game.X, game.Z, game.Y);
 
         private bool IsOpenGles => GlVersion.Type == GlProfileType.OpenGLES;
 

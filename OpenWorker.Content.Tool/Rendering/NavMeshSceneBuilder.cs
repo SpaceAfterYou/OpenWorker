@@ -42,8 +42,8 @@ internal static class NavMeshSceneBuilder
             AddVertex(faces, c, color);
         }
 
-        var min = ToGl(mesh.Minimum);
-        var max = ToGl(mesh.Maximum);
+        var min = GameCoordinates.ToGl(mesh.Minimum);
+        var max = GameCoordinates.ToGl(mesh.Maximum);
         var origin = (min + max) * 0.5f;
         var ground = MathF.Max(max.X - min.X, max.Z - min.Z);
         var gridHalfExtent = Math.Max(10f, ground * 0.55f);
@@ -74,7 +74,7 @@ internal static class NavMeshSceneBuilder
 
         for (var face = 0; face < mesh.FaceCount; face++)
         {
-            var corners = mesh.GetCorners(face).Select(ToGl).ToArray();
+            var corners = mesh.GetCorners(face).Select(GameCoordinates.ToGl).ToArray();
             if (corners.Length < 3)
             {
                 continue;
@@ -89,8 +89,8 @@ internal static class NavMeshSceneBuilder
         for (var edgeIndex = 0; edgeIndex < mesh.EdgeCount; edgeIndex++)
         {
             var edge = mesh.GetEdge(edgeIndex);
-            var from = ToGl(mesh.GetVertex(edge.From));
-            var to = ToGl(mesh.GetVertex(edge.To));
+            var from = GameCoordinates.ToGl(mesh.GetVertex(edge.From));
+            var to = GameCoordinates.ToGl(mesh.GetVertex(edge.To));
             AddLine(from, to, edge.OppositeFace < 0 ? wallEdge : walkEdge);
         }
 
@@ -98,12 +98,10 @@ internal static class NavMeshSceneBuilder
         {
             Faces = [.. faces],
             Lines = [.. lines],
-            Minimum = min,
-            Maximum = max
+            Minimum = Vector3.Min(min, max),
+            Maximum = Vector3.Max(min, max)
         };
     }
-
-    private static Vector3 ToGl(Vector3 game) => new(game.X, game.Z, game.Y);
 
     private static float NiceStep(float rough)
     {
