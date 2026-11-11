@@ -5,7 +5,7 @@
              xmlns:rendering="using:OpenWorker.Content.Tool.Rendering"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
              x:Class="OpenWorker.Content.Tool.Views.BatchMapsView"
              x:DataType="vm:BatchMapsViewModel">
 
@@ -29,7 +29,7 @@
                    Text="{Binding Status}"
                    TextTrimming="CharacterEllipsis" />
 
-        <Grid ColumnDefinitions="320,12,*">
+        <Grid ColumnDefinitions="280,12,*,12,260">
             <ListBox Grid.Column="0"
                      ItemsSource="{Binding Maps}"
                      SelectedItem="{Binding SelectedMap}"
@@ -57,8 +57,29 @@
                            Text="{Binding SelectionStatus}"
                            TextTrimming="CharacterEllipsis" />
                 <Border Background="#FF1E1F24" CornerRadius="6" ClipToBounds="True">
-                    <rendering:BatchViewport Boxes="{Binding Boxes}" />
+                    <rendering:BatchViewport Boxes="{Binding Boxes}"
+                                             SelectedBox="{Binding SelectedBox}" />
                 </Border>
+            </DockPanel>
+
+            <DockPanel Grid.Column="4">
+                <TextBlock DockPanel.Dock="Top"
+                           Margin="0,0,0,8"
+                           FontWeight="SemiBold"
+                           Text="Boxes" />
+                <TreeView ItemsSource="{Binding BoxGroups}"
+                          SelectedItem="{Binding SelectedBoxNode}"
+                          Background="Transparent">
+                    <TreeView.DataTemplates>
+                        <TreeDataTemplate DataType="models:BatchBoxGroup"
+                                          ItemsSource="{Binding Boxes}">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                        </TreeDataTemplate>
+                        <TreeDataTemplate DataType="models:BatchBoxDraw">
+                            <TextBlock Text="{Binding DisplayName}" />
+                        </TreeDataTemplate>
+                    </TreeView.DataTemplates>
+                </TreeView>
             </DockPanel>
         </Grid>
     </DockPanel>

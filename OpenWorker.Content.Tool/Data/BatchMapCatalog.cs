@@ -1,13 +1,14 @@
+using System.Drawing;
 using System.Globalization;
 using System.Numerics;
+using System.Text;
 using OpenWorker.Batch.Entities.Basic;
 using OpenWorker.Content.Tool.Models;
-using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Content.Tool.Data;
 
 /// <summary>
-/// Lists districts and mazes that name a batch file, and builds the ground rectangles of a map.
+/// Lists districts and mazes that name a batch file, and builds the boxes of a map.
 /// </summary>
 internal static class BatchMapCatalog
 {
@@ -45,6 +46,28 @@ internal static class BatchMapCatalog
             .ToArray();
     }
 
+    public static IReadOnlyList<BatchBoxGroup> GroupBoxes(IReadOnlyList<BatchBoxDraw> boxes)
+    {
+        return boxes
+            .GroupBy(box => box.Kind, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var items = group.OrderBy(box => box.Id).ToArray();
+                return new BatchBoxGroup
+                {
+                    Kind = group.Key,
+                    Title = string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0} ({1})",
+                        FriendlyKind(group.Key),
+                        items.Length),
+                    Boxes = items
+                };
+            })
+            .ToArray();
+    }
+
     private static BatchMapEntry ToEntry(short id, string batch, string? batchFolder, string kind)
     {
         var name = batch.Trim();
@@ -69,19 +92,26 @@ internal static class BatchMapCatalog
 
     private static BatchBoxDraw ToDraw(BasicEntity box)
     {
+        var kind = box.GetType().Name;
         return new BatchBoxDraw
         {
             Id = box.Id,
-            Kind = box.GetType().Name,
+            Kind = kind,
+            DisplayName = string.Format(CultureInfo.InvariantCulture, "#{0}", box.Id),
             TopLeft = box.PosTopLeft,
             BottomRight = box.PosBottomRight,
             RotationDegrees = box.Rotation,
-            Color = ColorOf(box.GetType().Name)
+            Color = ColorOf(kind, box.Color)
         };
     }
 
-    private static Vector3 ColorOf(string kind)
+    private static Vector3 ColorOf(string kind, Color color)
     {
+        if (color.R != 0 || color.G != 0 || color.B != 0)
+        {
+            return new Vector3(color.R / 255f, color.G / 255f, color.B / 255f);
+        }
+
         var hash = 2166136261u;
         foreach (var c in kind)
         {
@@ -92,6 +122,29 @@ internal static class BatchMapCatalog
         var g = 0.35f + ((hash >> 8) & 0xFF) / 255f * 0.55f;
         var b = 0.35f + ((hash >> 16) & 0xFF) / 255f * 0.55f;
         return new Vector3(r, g, b);
+    }
+
+    private static string FriendlyKind(string kind)
+    {
+        var name = kind.EndsWith("Box", StringComparison.Ordinal) ? kind[..^3] : kind;
+        if (name.Length == 0)
+        {
+            return kind;
+        }
+
+        var text = new StringBuilder(name.Length + 8);
+        for (var i = 0; i < name.Length; i++)
+        {
+            var c = name[i];
+            if (i > 0 && char.IsUpper(c) && !char.IsUpper(name[i - 1]))
+            {
+                text.Append(' ');
+            }
+
+            text.Append(c);
+        }
+
+        return text.ToString();
     }
 
     private static string FormatStatus(string label, BatchMapEntry[] entries)

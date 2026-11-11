@@ -12,13 +12,16 @@ using Silk.NET.OpenGL;
 namespace OpenWorker.Content.Tool.Rendering;
 
 /// <summary>
-/// Draws the ground rectangles of a <c>*.vbatch</c> with a grid and RGB axes. Right-drag orbits, WASD moves the
-/// look target, the wheel zooms. Game Z is up; the viewport remaps that to OpenGL Y-up.
+/// Draws the translucent oriented boxes of a <c>*.vbatch</c> with a grid and RGB axes. Right-drag orbits, WASD
+/// moves the look target, the wheel zooms. Game Z is up; the viewport remaps that to OpenGL Y-up.
 /// </summary>
 public sealed class BatchViewport : UserControl
 {
     public static readonly StyledProperty<IReadOnlyList<BatchBoxDraw>?> BoxesProperty =
         AvaloniaProperty.Register<BatchViewport, IReadOnlyList<BatchBoxDraw>?>(nameof(Boxes));
+
+    public static readonly StyledProperty<BatchBoxDraw?> SelectedBoxProperty =
+        AvaloniaProperty.Register<BatchViewport, BatchBoxDraw?>(nameof(SelectedBox));
 
     private readonly BatchGlSurface _surface = new() { IsHitTestVisible = false };
     private readonly Border _overlay;
@@ -33,11 +36,21 @@ public sealed class BatchViewport : UserControl
         set => SetValue(BoxesProperty, value);
     }
 
+    public BatchBoxDraw? SelectedBox
+    {
+        get => GetValue(SelectedBoxProperty);
+        set => SetValue(SelectedBoxProperty, value);
+    }
+
     static BatchViewport()
     {
         BoxesProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
         {
             viewport._surface.Boxes = args.NewValue as IReadOnlyList<BatchBoxDraw>;
+        });
+        SelectedBoxProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
+        {
+            viewport._surface.SelectedBox = args.NewValue as BatchBoxDraw;
         });
     }
 
@@ -235,13 +248,17 @@ public sealed class BatchViewport : UserControl
     {
         private const float AxisLengthFactor = 0.08f;
         private const int GridLines = 20;
+        private const float FaceAlpha = 0.28f;
+        private const float SelectedFaceAlpha = 0.45f;
+        private const int FloatsPerVertex = 7;
 
         private GL? _gl;
         private uint _program;
         private uint _vao;
         private uint _vbo;
         private int _mvpLocation;
-        private int _vertexCount;
+        private int _faceVertexCount;
+        private int _lineVertexCount;
         private float _yaw = 0.7f;
         private float _pitch = 0.55f;
         private float _distance = 40f;
@@ -251,6 +268,7 @@ public sealed class BatchViewport : UserControl
         private float _gridStep = 1f;
         private bool _meshDirty = true;
         private IReadOnlyList<BatchBoxDraw>? _boxes;
+        private BatchBoxDraw? _selectedBox;
         private bool _moveForward;
         private bool _moveBack;
         private bool _moveLeft;
@@ -272,7 +290,23 @@ public sealed class BatchViewport : UserControl
             {
                 _boxes = value;
                 _meshDirty = true;
-                FrameCamera();
+                FrameCamera(value);
+                RequestNextFrameRendering();
+            }
+        }
+
+        public BatchBoxDraw? SelectedBox
+        {
+            get => _selectedBox;
+            set
+            {
+                _selectedBox = value;
+                _meshDirty = true;
+                if (value is not null)
+                {
+                    FrameCamera([value]);
+                }
+
                 RequestNextFrameRendering();
             }
         }
@@ -381,7 +415,8 @@ public sealed class BatchViewport : UserControl
             silk.ClearColor(0.12f, 0.13f, 0.16f, 1f);
             silk.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            if (_vertexCount == 0)
+            var total = _faceVertexCount + _lineVertexCount;
+            if (total == 0)
             {
                 RequestNextFrameRendering();
                 return;
@@ -400,7 +435,22 @@ public sealed class BatchViewport : UserControl
             }
 
             silk.BindVertexArray(_vao);
-            silk.DrawArrays(PrimitiveType.Lines, 0, (uint)_vertexCount);
+
+            if (_faceVertexCount > 0)
+            {
+                silk.Enable(EnableCap.Blend);
+                silk.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+                silk.DepthMask(false);
+                silk.DrawArrays(PrimitiveType.Triangles, 0, (uint)_faceVertexCount);
+                silk.DepthMask(true);
+                silk.Disable(EnableCap.Blend);
+            }
+
+            if (_lineVertexCount > 0)
+            {
+                silk.DrawArrays(PrimitiveType.Lines, _faceVertexCount, (uint)_lineVertexCount);
+            }
+
             silk.BindVertexArray(0);
             silk.UseProgram(0);
 
@@ -414,8 +464,9 @@ public sealed class BatchViewport : UserControl
                 return;
             }
 
-            var forward = new Vector3(MathF.Cos(_yaw), 0f, MathF.Sin(_yaw));
-            var right = new Vector3(-MathF.Sin(_yaw), 0f, MathF.Cos(_yaw));
+            // Camera looks from offset toward target; ground forward is the negated yaw offset.
+            var forward = new Vector3(-MathF.Cos(_yaw), 0f, -MathF.Sin(_yaw));
+            var right = new Vector3(MathF.Sin(_yaw), 0f, -MathF.Cos(_yaw));
             var step = _distance * 0.02f;
             var delta = Vector3.Zero;
 
@@ -449,32 +500,36 @@ public sealed class BatchViewport : UserControl
 
         private void UploadMesh(GL silk)
         {
-            var vertices = BuildLineMesh(_boxes, _gridOrigin, _gridHalfExtent, _gridStep);
-            _vertexCount = vertices.Length / 6;
+            var (faces, lines) = BuildMeshes(_boxes, _selectedBox, _gridOrigin, _gridHalfExtent, _gridStep);
+            _faceVertexCount = faces.Length / FloatsPerVertex;
+            _lineVertexCount = lines.Length / FloatsPerVertex;
+
+            var combined = new float[faces.Length + lines.Length];
+            faces.CopyTo(combined, 0);
+            lines.CopyTo(combined, faces.Length);
 
             silk.BindVertexArray(_vao);
             silk.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
             silk.BufferData<float>(
                 BufferTargetARB.ArrayBuffer,
-                vertices.Length == 0 ? [0f] : vertices,
+                combined.Length == 0 ? [0f] : combined,
                 BufferUsageARB.DynamicDraw);
 
-            const uint stride = 6 * sizeof(float);
+            const uint stride = FloatsPerVertex * sizeof(float);
             silk.EnableVertexAttribArray(0);
             unsafe
             {
                 silk.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, (void*)0);
                 silk.EnableVertexAttribArray(1);
-                silk.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
+                silk.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
             }
 
             silk.BindVertexArray(0);
             silk.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
         }
 
-        private void FrameCamera()
+        private void FrameCamera(IReadOnlyList<BatchBoxDraw>? boxes)
         {
-            var boxes = _boxes;
             if (boxes is null || boxes.Count == 0)
             {
                 _target = Vector3.Zero;
@@ -497,14 +552,21 @@ public sealed class BatchViewport : UserControl
             }
 
             _target = (min + max) * 0.5f;
-            _gridOrigin = _target;
+            if (ReferenceEquals(boxes, _boxes))
+            {
+                _gridOrigin = _target;
+            }
+
             var extent = max - min;
             var radius = MathF.Max(extent.X, MathF.Max(extent.Y, extent.Z)) * 0.6f;
-            _distance = Math.Clamp(radius / MathF.Tan(MathF.PI / 8f), 20f, 200_000f);
+            _distance = Math.Clamp(radius / MathF.Tan(MathF.PI / 8f), 5f, 200_000f);
 
-            var ground = MathF.Max(extent.X, extent.Z);
-            _gridHalfExtent = Math.Max(10f, ground * 0.55f);
-            _gridStep = NiceStep(_gridHalfExtent / GridLines);
+            if (ReferenceEquals(boxes, _boxes))
+            {
+                var ground = MathF.Max(extent.X, extent.Z);
+                _gridHalfExtent = Math.Max(10f, ground * 0.55f);
+                _gridStep = NiceStep(_gridHalfExtent / GridLines);
+            }
         }
 
         private static float NiceStep(float rough)
@@ -530,31 +592,47 @@ public sealed class BatchViewport : UserControl
                 _distance * MathF.Sin(_yaw) * cosPitch);
         }
 
-        private static float[] BuildLineMesh(
+        private static (float[] Faces, float[] Lines) BuildMeshes(
             IReadOnlyList<BatchBoxDraw>? boxes,
+            BatchBoxDraw? selected,
             Vector3 gridOrigin,
             float gridHalfExtent,
             float gridStep)
         {
+            var faces = new List<float>(16384);
             var lines = new List<float>(8192);
 
-            void AddLine(Vector3 a, Vector3 b, Vector3 color)
+            void AddVertex(List<float> sink, Vector3 position, Vector4 color)
             {
-                lines.Add(a.X);
-                lines.Add(a.Y);
-                lines.Add(a.Z);
-                lines.Add(color.X);
-                lines.Add(color.Y);
-                lines.Add(color.Z);
-                lines.Add(b.X);
-                lines.Add(b.Y);
-                lines.Add(b.Z);
-                lines.Add(color.X);
-                lines.Add(color.Y);
-                lines.Add(color.Z);
+                sink.Add(position.X);
+                sink.Add(position.Y);
+                sink.Add(position.Z);
+                sink.Add(color.X);
+                sink.Add(color.Y);
+                sink.Add(color.Z);
+                sink.Add(color.W);
             }
 
-            var gridColor = new Vector3(0.35f, 0.37f, 0.42f);
+            void AddLine(Vector3 a, Vector3 b, Vector4 color)
+            {
+                AddVertex(lines, a, color);
+                AddVertex(lines, b, color);
+            }
+
+            void AddTriangle(Vector3 a, Vector3 b, Vector3 c, Vector4 color)
+            {
+                AddVertex(faces, a, color);
+                AddVertex(faces, b, color);
+                AddVertex(faces, c, color);
+            }
+
+            void AddQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector4 color)
+            {
+                AddTriangle(a, b, c, color);
+                AddTriangle(a, c, d, color);
+            }
+
+            var gridColor = new Vector4(0.35f, 0.37f, 0.42f, 1f);
             var y = gridOrigin.Y;
             for (var i = -gridHalfExtent; i <= gridHalfExtent + gridStep * 0.01f; i += gridStep)
             {
@@ -569,55 +647,90 @@ public sealed class BatchViewport : UserControl
             }
 
             var axis = Math.Max(gridStep * 2f, gridHalfExtent * AxisLengthFactor);
-            AddLine(gridOrigin, gridOrigin + new Vector3(axis, 0f, 0f), new Vector3(0.9f, 0.2f, 0.2f));
-            AddLine(gridOrigin, gridOrigin + new Vector3(0f, axis, 0f), new Vector3(0.2f, 0.85f, 0.3f));
-            AddLine(gridOrigin, gridOrigin + new Vector3(0f, 0f, axis), new Vector3(0.25f, 0.45f, 0.95f));
+            AddLine(gridOrigin, gridOrigin + new Vector3(axis, 0f, 0f), new Vector4(0.9f, 0.2f, 0.2f, 1f));
+            AddLine(gridOrigin, gridOrigin + new Vector3(0f, axis, 0f), new Vector4(0.2f, 0.85f, 0.3f, 1f));
+            AddLine(gridOrigin, gridOrigin + new Vector3(0f, 0f, axis), new Vector4(0.25f, 0.45f, 0.95f, 1f));
 
             if (boxes is null)
             {
-                return [.. lines];
+                return ([.. faces], [.. lines]);
             }
 
             foreach (var box in boxes)
             {
                 var corners = CornersGl(box);
-                AddLine(corners[0], corners[1], box.Color);
-                AddLine(corners[1], corners[2], box.Color);
-                AddLine(corners[2], corners[3], box.Color);
-                AddLine(corners[3], corners[0], box.Color);
+                var selectedBox = ReferenceEquals(box, selected)
+                    || (selected is not null && box.Id == selected.Id && box.Kind == selected.Kind);
+                var rgb = selectedBox
+                    ? Vector3.Clamp(box.Color * 1.25f + new Vector3(0.15f), Vector3.Zero, Vector3.One)
+                    : box.Color;
+                var face = new Vector4(rgb, selectedBox ? SelectedFaceAlpha : FaceAlpha);
+                var edge = new Vector4(rgb, 1f);
+
+                // Bottom
+                AddQuad(corners[0], corners[1], corners[2], corners[3], face);
+                // Top
+                AddQuad(corners[4], corners[7], corners[6], corners[5], face);
+                // Sides
+                AddQuad(corners[0], corners[4], corners[5], corners[1], face);
+                AddQuad(corners[1], corners[5], corners[6], corners[2], face);
+                AddQuad(corners[2], corners[6], corners[7], corners[3], face);
+                AddQuad(corners[3], corners[7], corners[4], corners[0], face);
+
+                AddLine(corners[0], corners[1], edge);
+                AddLine(corners[1], corners[2], edge);
+                AddLine(corners[2], corners[3], edge);
+                AddLine(corners[3], corners[0], edge);
+                AddLine(corners[4], corners[5], edge);
+                AddLine(corners[5], corners[6], edge);
+                AddLine(corners[6], corners[7], edge);
+                AddLine(corners[7], corners[4], edge);
+                AddLine(corners[0], corners[4], edge);
+                AddLine(corners[1], corners[5], edge);
+                AddLine(corners[2], corners[6], edge);
+                AddLine(corners[3], corners[7], edge);
             }
 
-            return [.. lines];
+            return ([.. faces], [.. lines]);
         }
 
+        /// <summary>
+        /// Eight corners of the oriented box in OpenGL space: game XY is the floor, game Z is height (GL Y).
+        /// Indices 0-3 are the bottom face, 4-7 the top, matching bottom corners.
+        /// </summary>
         private static Vector3[] CornersGl(BatchBoxDraw box)
         {
             var minX = MathF.Min(box.TopLeft.X, box.BottomRight.X);
             var maxX = MathF.Max(box.TopLeft.X, box.BottomRight.X);
             var minY = MathF.Min(box.TopLeft.Y, box.BottomRight.Y);
             var maxY = MathF.Max(box.TopLeft.Y, box.BottomRight.Y);
-            var height = (box.TopLeft.Z + box.BottomRight.Z) * 0.5f;
+            var minZ = MathF.Min(box.TopLeft.Z, box.BottomRight.Z);
+            var maxZ = MathF.Max(box.TopLeft.Z, box.BottomRight.Z);
 
             var centerX = (minX + maxX) * 0.5f;
             var centerY = (minY + maxY) * 0.5f;
             var radians = box.RotationDegrees * (MathF.PI / 180f);
             var (sin, cos) = MathF.SinCos(radians);
 
-            Vector3 Rotate(float x, float y)
+            Vector3 Rotate(float x, float y, float z)
             {
                 var dx = x - centerX;
                 var dy = y - centerY;
                 var rx = centerX + dx * cos - dy * sin;
                 var ry = centerY + dx * sin + dy * cos;
-                return ToGl(new Vector3(rx, ry, height));
+                return ToGl(new Vector3(rx, ry, z));
             }
 
             return
             [
-                Rotate(minX, minY),
-                Rotate(maxX, minY),
-                Rotate(maxX, maxY),
-                Rotate(minX, maxY)
+                Rotate(minX, minY, minZ),
+                Rotate(maxX, minY, minZ),
+                Rotate(maxX, maxY, minZ),
+                Rotate(minX, maxY, minZ),
+                Rotate(minX, minY, maxZ),
+                Rotate(maxX, minY, maxZ),
+                Rotate(maxX, maxY, maxZ),
+                Rotate(minX, maxY, maxZ)
             ];
         }
 
@@ -635,9 +748,9 @@ public sealed class BatchViewport : UserControl
                 precision +
                 """
                 layout (location = 0) in vec3 aPos;
-                layout (location = 1) in vec3 aColor;
+                layout (location = 1) in vec4 aColor;
                 uniform mat4 uMvp;
-                out vec3 vColor;
+                out vec4 vColor;
                 void main()
                 {
                     vColor = aColor;
@@ -649,11 +762,11 @@ public sealed class BatchViewport : UserControl
                 "#version " + version + "\n" +
                 precision +
                 """
-                in vec3 vColor;
+                in vec4 vColor;
                 out vec4 FragColor;
                 void main()
                 {
-                    FragColor = vec4(vColor, 1.0);
+                    FragColor = vColor;
                 }
                 """;
 

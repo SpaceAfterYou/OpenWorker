@@ -33,6 +33,15 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
     public partial IReadOnlyList<BatchBoxDraw> Boxes { get; set; } = [];
 
     [ObservableProperty]
+    public partial IReadOnlyList<BatchBoxGroup> BoxGroups { get; set; } = [];
+
+    [ObservableProperty]
+    public partial object? SelectedBoxNode { get; set; }
+
+    [ObservableProperty]
+    public partial BatchBoxDraw? SelectedBox { get; set; }
+
+    [ObservableProperty]
     public partial string SelectionStatus { get; set; } = "Select a map to draw its boxes.";
 
     public ObservableCollection<BatchMapEntry> Maps { get; } = [];
@@ -68,6 +77,9 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         Maps.Clear();
         SelectedMap = null;
         Boxes = [];
+        BoxGroups = [];
+        SelectedBoxNode = null;
+        SelectedBox = null;
         _all = [];
         _loaded = false;
         Title = PanelTitle;
@@ -148,6 +160,11 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
 
     partial void OnSelectedMapChanged(BatchMapEntry? value) => _ = ShowBoxesAsync(value);
 
+    partial void OnSelectedBoxNodeChanged(object? value)
+    {
+        SelectedBox = value as BatchBoxDraw;
+    }
+
     private async Task ShowBoxesAsync(BatchMapEntry? entry)
     {
         _boxesCts?.Cancel();
@@ -156,6 +173,9 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         var token = _boxesCts.Token;
 
         Boxes = [];
+        BoxGroups = [];
+        SelectedBoxNode = null;
+        SelectedBox = null;
 
         if (entry is null)
         {
@@ -193,11 +213,13 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             }
 
             Boxes = boxes;
+            BoxGroups = BatchMapCatalog.GroupBoxes(boxes);
             SelectionStatus = string.Format(
                 CultureInfo.InvariantCulture,
-                "{0}: {1} boxes",
+                "{0}: {1} boxes in {2} groups",
                 entry.BatchName,
-                boxes.Count);
+                boxes.Count,
+                BoxGroups.Count);
         }
         catch (OperationCanceledException)
         {
