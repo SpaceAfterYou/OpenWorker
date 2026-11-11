@@ -437,10 +437,11 @@ public sealed class BatchViewport : UserControl
         {
             var forward = new Vector3(-MathF.Cos(_yaw), 0f, -MathF.Sin(_yaw));
             var right = new Vector3(MathF.Sin(_yaw), 0f, -MathF.Cos(_yaw));
-            // Grab-the-world: drag right moves the scene right (camera left).
+            // Grab-the-world: drag right moves the scene right (camera left); the orbit pivot comes along.
             var scale = _distance * 0.0015f;
-            _eye += right * (-dx) * scale + forward * dy * scale;
-            PlaceOrbitPivotInFront();
+            var move = right * (-dx) * scale + forward * dy * scale;
+            _eye += move;
+            _target += move;
         }
 
         public void Zoom(float factor)
