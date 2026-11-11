@@ -61,6 +61,7 @@ public sealed partial class MazeService(
     HandlerExecutor errors,
     SimulationClock clock,
     IPlayerAudience audience,
+    SkillInputRelay relay,
     ILogger<MazeService> logger,
     MazeHelperField? helpers = null
 ) :
@@ -72,6 +73,10 @@ public sealed partial class MazeService(
     IHotspotHandler<SkillProjectileRequest>,
     IHotspotHandler<SkillChainRequest>,
     IHotspotHandler<SkillKeypressRequest>,
+    IHotspotHandler<SkillTargetChangeRequest>,
+    IHotspotHandler<SkillSubInputRequest>,
+    IHotspotHandler<SkillChargingRequest>,
+    IHotspotHandler<SkillPreTargetListRequest>,
     IHotspotHandler<SkillTrapPosUpdateRequest>,
     IHotspotHandler<SkillWarpPositionRequest>,
     IHotspotHandler<WorldWarpRequest>,
@@ -278,7 +283,7 @@ public sealed partial class MazeService(
             return requested with { Position = world.Position, Angle = rotation };
         }
 
-        if (!pace.TryMove(ecs, player, world.Position, requested.Position, out var charge))
+        if (pace.Check(ecs, player, world.Position, requested.Position, out var charge) != MoveVerdict.Taken)
         {
             if (charge)
             {
@@ -299,18 +304,28 @@ public sealed partial class MazeService(
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillSyncPositionRequest request)
     {
-        TakePlace(context.Player, request.Position, request.Yaw, SkillOpcode.SkillSyncPositionReq);
+        if (IsFighting(context.Player))
+        {
+            TakePlace(context.Player, request.Position, request.Yaw, SkillOpcode.SkillSyncPositionReq);
+        }
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// A skill that jumps the player somewhere. The place is taken when the player could have got there; otherwise the player
-    /// stays where the server has it. Everybody in the maze is told where the player is (06/46).
+    /// A skill that jumps the player somewhere. As the original server does, the place is taken wherever the player jumps
+    /// within a move's reach (no skill of the tables has a distance of its own that the server could check), and everybody
+    /// in the maze is told where the player is (06/46). A place that is out of reach is not taken: the player alone is told
+    /// the place the server keeps, and its client goes back to it.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillWarpPositionRequest request)
     {
-        TakePlace(context.Player, request.Position, null, SkillOpcode.SkillWarpPositionReq);
+        if (!IsFighting(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var taken = TakePlace(context.Player, request.Position, null, SkillOpcode.SkillWarpPositionReq);
 
         var place = ecs.Get<WorldComponent>(context.Player);
         var warp = new SkillWarpPositionBroadcastResponse
@@ -324,7 +339,7 @@ public sealed partial class MazeService(
             }
         };
 
-        if (ecs.Has<LuaMaze>(context.Player))
+        if (taken)
         {
             ecs.Get<LuaMaze>(context.Player).Creatures.Broadcast(warp);
         }
@@ -340,27 +355,30 @@ public sealed partial class MazeService(
     /// A place a skill reports for the player, taken when it is a place and the player could have run there since the last
     /// one. A refused place counts against the error budget once a second, as a refused move does, and the player stays.
     /// </summary>
-    private void TakePlace(Entity player, Vector3 position, float? yaw, SkillOpcode request)
+    /// <returns>Whether the place was taken.</returns>
+    private bool TakePlace(Entity player, Vector3 position, float? yaw, SkillOpcode request)
     {
         var world = ecs.Get<WorldComponent>(player);
         var rotation = yaw is { } turned && Place.IsValid(world.Position, turned) ? turned : world.Rotation;
 
         if (!Place.IsValid(position))
         {
-            return;
+            return false;
         }
 
-        if (!pace.TryMove(ecs, player, world.Position, position, out var charge))
+        if (pace.Check(ecs, player, world.Position, position, out var charge) != MoveVerdict.Taken)
         {
             if (charge)
             {
                 errors.Charge(player, MessageOpcode.From(GroupOpcode.Skill, request), HandlerErrorReason.Violation);
             }
 
-            return;
+            return false;
         }
 
         ecs.Set(player, world with { Position = position, Rotation = rotation });
+
+        return true;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request)
@@ -396,11 +414,11 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// The player holds the key of the skill or lets it go.
+    /// The player holds the key of the skill or lets it go. The others see it hold.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillKeypressRequest request)
     {
-        if (!ecs.Has<LuaMaze>(context.Player))
+        if (!IsFighting(context.Player))
         {
             return ValueTask.CompletedTask;
         }
@@ -411,8 +429,70 @@ public sealed partial class MazeService(
         }
 
         ecs.Get<LuaMaze>(context.Player).PressKey(context.Player, request.IsKeyPressed);
+        relay.KeyPressed(context.Player, request.IsKeyPressed);
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player picks another target for its skills. The others see whom it aims at.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTargetChangeRequest request)
+    {
+        if (IsFighting(context.Player))
+        {
+            relay.TargetChanged(context.Player, request.Actor);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player asks for a sub animation of its skill. The others play it too.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillSubInputRequest request)
+    {
+        if (IsFighting(context.Player))
+        {
+            relay.SubInput(context.Player, request.SubAnimIndex);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player starts charging a skill, or ends it after holding the key for a time. The others see both.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillChargingRequest request)
+    {
+        if (IsFighting(context.Player))
+        {
+            relay.Charging(context.Player, request.Released, request.PressTime);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The monsters a skill of the player aims at before it is played. The others see them marked.
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPreTargetListRequest request)
+    {
+        if (IsFighting(context.Player))
+        {
+            relay.PreTargets(context.Player, request.ActorList);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player is in a maze and on its feet: the skill input of a player that is down or that has not loaded is nobody's
+    /// business.
+    /// </summary>
+    private bool IsFighting(Entity player)
+    {
+        return ecs.Has<LuaMaze>(player) && ecs.Get<LuaMaze>(player).Creatures.Vitals.IsAlive(player);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillChainRequest request)
@@ -432,9 +512,10 @@ public sealed partial class MazeService(
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTrapPosUpdateRequest request)
     {
-        if (Place.IsValid(request.Position) && ecs.Has<LuaMaze>(context.Player))
+        if (Place.IsValid(request.Position) && IsFighting(context.Player))
         {
             ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position);
+            relay.TrapMoved(context.Player, request.Skill, request.TriggerIndex, request.Position);
         }
 
         return ValueTask.CompletedTask;
@@ -712,6 +793,7 @@ public sealed partial class MazeService(
         var world = ecs.Get<WorldComponent>(player);
 
         ecs.Set(player, world with { Position = position, Rotation = rotation });
+        pace.PlaceTold(ecs, player);
 
         ecs.Get<ServerSessionComponent>(player).Send(new WorldWarpResponse
         {

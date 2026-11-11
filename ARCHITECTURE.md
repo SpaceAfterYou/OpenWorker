@@ -204,10 +204,13 @@ flowchart TB
   loading a map (`World:ObjectReq`) holds the players in sight; the chat stays channel-wide (`Broadcast`). A move (05/02) waits
   in the channel for the end of the pass and a later move of the same player in the pass replaces it, so an observer gets at
   most one move of an actor per pass; any other message of the player for the players around it sends the waiting move first.
-  `MovementPace` refuses a move that covers more ground than the hero can run (its run speed from the tables, times the move
-  speed of its abilities, times `World:SpeedTolerance`, with `World:MoveBurst` of running saved up): the place stays, the player
-  gets a warp back to it, and the first refusal in a second counts against the error budget of the session (`HandlerExecutor.Charge`,
-  reason `violation`). The count of each channel goes to Redis when players join or leave, gathered for a second
+  `MovementPace` refuses a move that takes the player further than `World:MaxMoveStep` (3000 units, both axes added) from the place the
+  server keeps, as the original server does: the place stays, the player gets a warp back to it, and the first refusal in a second
+  counts against the error budget of the session (`HandlerExecutor.Charge`, reason `violation`). A move that covers more ground than
+  the hero can run (its run speed from the tables, times the move speed of its abilities, times `World:SpeedTolerance`, with
+  `World:MoveBurst` of running saved up) is let through and counted (`movement.too_fast`). A request that names another map than the
+  player's is dropped, and so is a move too far from the place the server keeps within `World:PlaceGrace` of a place it told the client
+  (`MovementPace.PlaceTold`: an entry, a warp): the client has not taken the place yet. See `docs/notes-fight-movement.md`. The count of each channel goes to Redis when players join or leave, gathered for a second
   (`ChannelLifecycleService`), not on a clock; every 10 s it writes every record again, which renews its lifetime of 30 s. Design and limits: `docs/phase-3/README.md`.
 - **Rate limits.** Before it parses a packet, `HandlerExecutor` takes a token from the bucket of its group in the session
   (`PacketRateLimiter`, `PacketRateComponent`): movement, chat, items, everything else, each filling at its own rate up to its
@@ -280,7 +283,7 @@ instruments stay switched off. The compose file starts Prometheus and Grafana, a
 `eng/observability` (how to open it: the notes at the end of `compose.yaml`).
 
 The meters come from the `IMeterFactory` of the container, and each area has a small class that creates its instruments on it:
-`WorldLoopMetrics`, `HandlerMetrics`, `SimulationMetrics` and `SessionMetrics` in `OpenWorker.Runtime/Telemetry`, registered by
+`WorldLoopMetrics`, `HandlerMetrics`, `SimulationMetrics`, `SessionMetrics` and `MovementMetrics` in `OpenWorker.Runtime/Telemetry`, registered by
 `AddOpenWorkerMetrics`, `RedisMetrics` in `OpenWorker.Infrastructure.Redis` (`AddRedisMetrics`) and `PostgresMetrics` in
 `OpenWorker.Persistence` (`AddPostgresMetrics`); `AddTelemetry` registers all of them. A test makes its own container and listens with
 `MetricCollector<T>` (`MetricsHost` in `OpenWorker.Hotspot.Test`), so it sees only its own measurements. The classes that measure take
@@ -293,6 +296,8 @@ the metrics class as the last, optional constructor parameter: `null` is a part 
 | `handler.duration` | histogram, s | `opcode` | the task of a handler, from start to end, awaits included |
 | `handler.errors` | counter | `reason`: `malformed`, `handler_fault`, `violation` | packets that failed to parse or to handle, or that a handler refused as impossible |
 | `handler.refused` | counter | `group`: `movement`, `chat`, `items`, `other` | packets dropped because the session sent their group faster than its limit |
+| `movement.too_fast` | counter | | moves that covered more ground than the player could have run in the time it had, let through |
+| `movement.refused` | counter | `reason`: `far`, `stale` | moves that were not taken: too far in one message, or from the place the client left |
 | `simulation.step.duration` | histogram, s | | one tick of `SimulationClock`, all simulations |
 | `simulation.count` | gauge, simulations | | simulations (mazes) the clock steps |
 | `simulation.overbudget` | counter | | ticks longer than the 50 ms period |
@@ -468,9 +473,11 @@ or wrong setting stops the server with a message that names the key. A setting w
   session may fail to parse or to handle before the server closes its connection; `HandlerErrorBudget` reads them.
 - `Hotspot:RateLimits:Movement`, `:Chat`, `:Items` and `:Other`, each with `PerSecond` and `Burst`, are the token buckets of a
   session: 30 and 60, 5 and 10, 20 and 40, 60 and 200 unless set (a rate above 0, a burst from 1).
-- `World:VisibilityRadius` (5000 game units), `World:SpeedTolerance` (1.5) and `World:MoveBurst` (`00:00:05`) of the district and
-  the maze: the size of a cell of the visibility grid, how much faster than its run speed a player may go, and how much running
-  it may save up and spend at once. The defaults stand unless set.
+- `World:VisibilityRadius` (5000 game units), `World:SpeedTolerance` (1.5), `World:MoveBurst` (`00:00:05`), `World:MaxMoveStep`
+  (3000 game units) and `World:PlaceGrace` (`00:00:05`) of the district and the maze: the size of a cell of the visibility grid, how
+  much faster than its run speed a player may go before a move is counted, how much running it may save up and spend at once, the
+  furthest one move may take a player, and how long the moves from the place the client left are dropped after the server told it a
+  place. The defaults stand unless set.
 - `Logging:Console:FormatterName` (`simple`) and `Logging:Console:FormatterOptions:IncludeScopes` (`true`) make the
   console print the scope of a line after `=>`. The older `Logging:Console:IncludeScopes` replaces the formatter
   options with its own and is not used. `Logging__LogLevel__Default=Debug` shows the debug lines.

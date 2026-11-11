@@ -93,6 +93,7 @@ public sealed partial class PersonService(
     PlayerGauges gauges,
     HelperGear helperGear,
     MazeEntryLimits entryLimits,
+    MovementPace pace,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -271,6 +272,8 @@ public sealed partial class PersonService(
         }
 
         // A client that was already playing reads the answer of the play scene; one from the character selection, the record.
+        // Until it has taken the place in it, the client goes on sending the place of the map it left.
+        pace.PlaceTold(world, context.Player);
         session.Send(PersonSnapshotMapper.CreateEntryResponse(world, context.Player, request.FirstConnect));
         skills.Send(context.Player);
         creatureServices.Stats?.SendAll(context.Player);

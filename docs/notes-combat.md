@@ -24,8 +24,8 @@ Buffs and debuffs: `docs/notes-buffs.md` (feature/skill-buffs). Closed from the 
 
 ## The checks of a skill (06/08), in order
 
-1. The place of the request: taken when it is a place and the player could have run there since the last move
-   (`MovementPace`, as for a move); otherwise the skill starts where the server has the player, and a refused place counts
+1. The place of the request: taken when it is a place and within the reach of one move (`MovementPace`, as for a move:
+   `docs/notes-fight-movement.md`); otherwise the skill starts where the server has the player, and a refused place counts
    against the error budget once a second. An angle that is not one is replaced by the facing of the player.
 2. The skill is in the table, owned and usable without a deck or in the deck: the plain attacks and the common skill, skills
    of type 1 or 2 with a passive type (attacks, special attack, evade, dash, revival), skill types 4, 5, 6, 7 and 9 and skills
@@ -96,7 +96,7 @@ Server tables read from `res-server/` (optional; a missing one turns its feature
 | Skill owned, in the deck | as above | same | same |
 | Order of the checks | owned, deck, level, hero, awakening, can attack, cost, cooldown | owned, deck, level, hero, alive, cost, cooldown | same, without awakening (not kept) |
 | Skill state (motion, down, counter hit) | 56009 / 56016 by use and normal state | not checked | kept different: the server has no motion state of the player |
-| Place of the skill | replaced by the area's when invalid | replaced by the server's when invalid or out of pace | stricter: a place out of reach is not taken |
+| Place of the skill | replaced by the area's when invalid | replaced by the server's when invalid or out of the reach of a move | stricter: a place out of reach is not taken |
 | Cooldown reduction | rates of items, options, deck bonus | none | not done: no source of those rates yet |
 | Cost reduction | deck bonus, items, soul cost down | none | not done: as above |
 | Continuous costs (cost type 1) | drained each second during the skill | taken once | kept different: no skill of the tutorial has one |
@@ -118,7 +118,7 @@ Server tables read from `res-server/` (optional; a missing one turns its feature
 - Charging, key press, sub input and target change are answered as before (no checks of their own); continuous skill costs.
 - ~~The stats of an item do not change with its upgrade or gems; stamina and soul gauge of gear, titles and akashic cards are
   not added.~~ Done: `docs/notes-stats.md` (feature/equipment-stats). Akashic cards give no stats in the original either.
-- The positions of 06/45, 06/47 and 06/05 (skills that move the player) are taken as sent, as before.
+- ~~The positions of 06/45, 06/47 and 06/05 (skills that move the player) are taken as sent.~~ Done as the original does it: `docs/notes-fight-movement.md`.
 - ~~Endurance is not worn.~~ Done: gear wears on blows given, blows taken and falls (`docs/notes-stats.md`, "Endurance").
 
 ## Tests

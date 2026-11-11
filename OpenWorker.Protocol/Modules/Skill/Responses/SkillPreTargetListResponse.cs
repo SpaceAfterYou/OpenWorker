@@ -21,6 +21,11 @@ public readonly struct SkillPreTargetListResponse(BinaryReader reader) : IRespon
 
 #region Message: Body
 
+    /// <summary>
+    /// The player whose targets these are.
+    /// </summary>
+    public ActorValue Actor { get; init; } = new(reader);
+
     public ActorValue[] ActorList { get; init; } = reader.ReadPreTargetList();
 
 #endregion Message: Body
@@ -29,6 +34,7 @@ public readonly struct SkillPreTargetListResponse(BinaryReader reader) : IRespon
 
     public void Write(BinaryWriter writer)
     {
+        writer.Write(Actor);
         writer.WritePreTargetList(ActorList);
     }
 
