@@ -426,7 +426,7 @@ public sealed class BatchViewport : UserControl
         public void Orbit(float dx, float dy)
         {
             _yaw += dx * 0.005f;
-            _pitch = Math.Clamp(_pitch + dy * 0.005f, 0.05f, MathF.PI / 2f - 0.05f);
+            _pitch = Math.Clamp(_pitch + dy * 0.005f, -MathF.PI / 2f + 0.05f, MathF.PI / 2f - 0.05f);
             SyncEyeFromTarget();
         }
 
