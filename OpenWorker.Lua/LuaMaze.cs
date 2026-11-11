@@ -238,6 +238,7 @@ public partial class LuaMaze(
         public int CurrentSkill { get; set; }
         public TrapSite? MouseTrap { get; set; }
         public SkillRun? Playback { get; set; }
+        public CarryRun? Carry { get; set; }
         public ScheduledAction SkillWake { get; set; }
         public Queue<bool> PressedKeys { get; } = [];
         public uint ProjectileSession { get; set; }
@@ -516,6 +517,7 @@ public partial class LuaMaze(
         {
             StepFlights(_members[index]);
             StepChains(_members[index]);
+            StepCarry(_members[index]);
         }
 
         // The gauges of those who have loaded the maze fill with the time of the fight.
@@ -816,6 +818,7 @@ public partial class LuaMaze(
         member.Playback = run;
         member.PressedKeys.Clear();
 
+        PlanCarries(member, skill, hero, generation, run.Began);
         Play(member, run);
     }
 

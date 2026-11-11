@@ -24,6 +24,32 @@ public readonly record struct SkillHiding(float Time, InvisibleEvent Event);
 public readonly record struct SkillDetach(float Time, float DropTime, AttackTrigger? FollowUp);
 
 /// <summary>
+/// The parts of a grabbing skill.
+/// </summary>
+public enum GrabStage
+{
+    Start,
+
+    /// <summary>
+    /// What plays after the start while the monster holds a player.
+    /// </summary>
+    Holding,
+
+    /// <summary>
+    /// What plays after the start when the monster has taken nobody.
+    /// </summary>
+    Missed
+}
+
+/// <summary>
+/// One animation of a skill with everything that happens in it, times from the start of the animation.
+/// </summary>
+public sealed record SkillStage(float Length, IReadOnlyList<SkillHit> Hits, IReadOnlyList<SkillHit> Shots, IReadOnlyList<SkillHiding> Hidings, IReadOnlyList<SkillDetach> Detaches)
+{
+    public static SkillStage Empty { get; } = new(0f, [], [], [], []);
+}
+
+/// <summary>
 /// A moment of a skill at which the character that plays it starts to carry away what stands before it.
 /// </summary>
 public readonly record struct SkillCarry(float Time, AttachEvent Event);
@@ -47,6 +73,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     private const string ForwardSuffix = "_F";
 
     private const byte FlownByClient = 2;
+    private const byte GrabSkillType = 8;
 
     private const byte Charging = 2;
     private const byte ChargingToTheEnd = 5;
@@ -163,37 +190,53 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     }
 
     /// <summary>
-    /// The moments at which a monster lets go of the player it holds while it plays a skill, from the start of the skill.
+    /// Whether the skill grabs: it plays its start, then the animation of holding the target if the monster holds one, or the
+    /// one of missing it if not, and ends.
     /// </summary>
-    public IReadOnlyList<SkillDetach> GetDetaches(int skill, string actionFile)
+    public bool IsGrabSkill(int skill)
+    {
+        return Rows.TryGetValue(skill, out var row) && row.SkillType == GrabSkillType;
+    }
+
+    /// <summary>
+    /// What one animation of a grabbing skill holds, with its times counted from the start of that animation. Empty when the
+    /// file does not have the animation.
+    /// </summary>
+    public SkillStage GetStage(int skill, string actionFile, GrabStage stage)
     {
         if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
         {
-            return [];
+            return SkillStage.Empty;
+        }
+
+        var name = stage switch
+        {
+            GrabStage.Start => row.AnimationStart,
+            GrabStage.Holding => row.AnimationEnd,
+            _ => row.AnimationExtra
+        };
+
+        if (Find(file, name) is not { } animation)
+        {
+            return SkillStage.Empty;
         }
 
         var detaches = new List<SkillDetach>();
-        var offset = 0f;
 
-        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        foreach (var detach in animation.Detaches ?? [])
         {
-            if (Find(file, name) is not { } animation)
-            {
-                continue;
-            }
+            var following = Find(file, detach.Animation)?.Attacks;
+            AttackTrigger? followUp = following is not null && detach.Event >= 0 && detach.Event < following.Count ? following[detach.Event] : null;
 
-            foreach (var detach in animation.Detaches ?? [])
-            {
-                var following = Find(file, detach.Animation)?.Attacks;
-                AttackTrigger? followUp = following is not null && detach.Event >= 0 && detach.Event < following.Count ? following[detach.Event] : null;
-
-                detaches.Add(new SkillDetach(offset + detach.Start, detach.DropTime, followUp));
-            }
-
-            offset += animation.Length;
+            detaches.Add(new SkillDetach(detach.Start, detach.DropTime, followUp));
         }
 
-        return detaches;
+        return new SkillStage(
+            animation.Length,
+            animation.Attacks.Where(e => e.HitsArea || e.IsTrap).Select(e => new SkillHit(e.Start, e)).ToArray(),
+            animation.Attacks.Where(e => e.IsProjectile).Select(e => new SkillHit(e.Start, e)).ToArray(),
+            (animation.Hides ?? []).Select(e => new SkillHiding(e.Start, e)).ToArray(),
+            detaches);
     }
 
     /// <summary>

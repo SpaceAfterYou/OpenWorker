@@ -115,6 +115,9 @@ internal partial class MonsterBody : IAiHost
         _route.Clear();
         _found.Clear();
         _flights.Clear();
+        _grab.Release();
+        _detaches.Clear();
+        _carried = false;
         _destination = null;
         _run = false;
         _battlePose = false;
@@ -175,13 +178,13 @@ internal partial class MonsterBody : IAiHost
 
     public bool IsAttacking => _manager.Now < _attackEnd;
 
-    public bool CanMove => !IsAttacking && !IsStaggered && !IsReactionBlockingMove && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
+    public bool CanMove => !IsAttacking && !IsStaggered && !_carried && !IsReactionBlockingMove && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
 
     private bool IsStaggered => _manager.Now < _staggerEnd;
 
     public bool IsRooted => Behavior.IsRooted;
 
-    public bool CanAttack => !IsAttacking && !IsStaggered && !IsReactionBlockingAttack;
+    public bool CanAttack => !IsAttacking && !IsStaggered && !_carried && !IsReactionBlockingAttack;
 
     public bool IsMoving => _destination is not null;
 
@@ -264,6 +267,7 @@ internal partial class MonsterBody : IAiHost
         _attackEnd = 0;
         _pending.Clear();
         _flights.Clear();
+        ReleaseGrab(true);
 
         if (IsMoving)
         {
@@ -287,11 +291,12 @@ internal partial class MonsterBody : IAiHost
 
         Advance(now, elapsed);
         ResolveHits(now);
+        ResolveGrab(now);
         ResolveHidings(now);
         Fly(elapsed);
 
         // A monster that has hidden thinks no more, unless its animation leaves the mind on.
-        if (_hidden is null || (_hidden.Flags & InvisibleEvent.KeepsMind) != 0)
+        if (!_carried && (_hidden is null || (_hidden.Flags & InvisibleEvent.KeepsMind) != 0))
         {
             Machine.Update(elapsed);
         }
@@ -561,6 +566,11 @@ internal partial class MonsterBody : IAiHost
     /// <summary>
     /// Whether the monster lies on the ground or flies after a blow.
     /// </summary>
+    /// <summary>
+    /// Whether the monster lies on the ground after a fall.
+    /// </summary>
+    public bool IsLying => _reaction is { IsDown: true };
+
     public virtual bool IsDownOrFlying => _reaction is { IsAirborne: true } or { IsDown: true };
 
     public void ForceDefense(AiDefense defense, float seconds)
@@ -662,7 +672,11 @@ internal partial class MonsterBody : IAiHost
     public virtual bool UseSkill(AiSkill skill, AiTarget target)
     {
         var now = _manager.Now;
-        var duration = _actions.GetDuration(skill.Id, Behavior.ActionFile);
+
+        // A skill that grabs plays its start, and what follows depends on whether the start took somebody.
+        var grabbing = _actions.IsGrabSkill(skill.Id);
+        var start = grabbing ? _actions.GetStage(skill.Id, Behavior.ActionFile, GrabStage.Start) : null;
+        var duration = start?.Length ?? _actions.GetDuration(skill.Id, Behavior.ActionFile);
 
         if (duration <= 0f)
         {
@@ -680,27 +694,39 @@ internal partial class MonsterBody : IAiHost
 
         _attackEnd = now + duration;
         _pending.Clear();
-
-        foreach (var hit in _actions.GetHits(skill.Id, Behavior.ActionFile))
-        {
-            _pending.Add(new PendingHit(now + hit.Time, hit, skill.Id));
-        }
-
-        foreach (var shot in _actions.GetShots(skill.Id, Behavior.ActionFile))
-        {
-            _pending.Add(new PendingHit(now + shot.Time, shot, skill.Id, true));
-        }
-
-        _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
-
         _hidings.Clear();
+        _detaches.Clear();
+        _staged = false;
 
-        foreach (var hiding in _actions.GetHidings(skill.Id, Behavior.ActionFile))
+        if (start is not null)
         {
-            // The kinds that wait for other monsters to die are not followed.
-            if (hiding.Event.ConditionType is InvisibleEvent.ForTime or InvisibleEvent.UntilHurt)
+            _grabSkill = skill.Id;
+            _staged = true;
+            _stageEnd = _attackEnd;
+
+            AddStage(skill.Id, start, now);
+        }
+        else
+        {
+            foreach (var hit in _actions.GetHits(skill.Id, Behavior.ActionFile))
             {
-                _hidings.Add((now + hiding.Time, hiding.Event));
+                _pending.Add(new PendingHit(now + hit.Time, hit, skill.Id));
+            }
+
+            foreach (var shot in _actions.GetShots(skill.Id, Behavior.ActionFile))
+            {
+                _pending.Add(new PendingHit(now + shot.Time, shot, skill.Id, true));
+            }
+
+            _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
+
+            foreach (var hiding in _actions.GetHidings(skill.Id, Behavior.ActionFile))
+            {
+                // The kinds that wait for other monsters to die are not followed.
+                if (hiding.Event.ConditionType is InvisibleEvent.ForTime or InvisibleEvent.UntilHurt)
+                {
+                    _hidings.Add((now + hiding.Time, hiding.Event));
+                }
             }
         }
 
@@ -733,6 +759,12 @@ internal partial class MonsterBody : IAiHost
                 continue;
             }
 
+            // What a monster does while it holds a player is the hold's: its other blows do not land.
+            if (_grab.IsHolding)
+            {
+                continue;
+            }
+
             Strike(pending.Skill, pending.Hit.Trigger, new AttackArea(pending.Hit.Trigger, Position, Yaw), null, false);
         }
     }
@@ -748,6 +780,8 @@ internal partial class MonsterBody : IAiHost
         {
             victims = [.. victims, hit];
         }
+
+        victims = TakeGrabbed(trigger, victims, skill);
 
         _manager.HitPlayers(this, skill, trigger, victims);
 

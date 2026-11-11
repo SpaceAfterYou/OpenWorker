@@ -137,6 +137,11 @@ public sealed class LuaCreatureManager
     private List<Entity> Players { get; } = [];
 
     /// <summary>
+    /// The players a monster holds in a grab: no other monster takes them.
+    /// </summary>
+    private HashSet<Entity> Grabbed { get; } = [];
+
+    /// <summary>
     /// Creatures that wait for their delay before the clients see them.
     /// </summary>
     private HashSet<Entity> Unseen { get; } = [];
@@ -176,6 +181,7 @@ public sealed class LuaCreatureManager
     public void Detach(Entity player)
     {
         Players.Remove(player);
+        Grabbed.Remove(player);
         Vitals.Forget(player);
     }
 
@@ -549,6 +555,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     private void Retire(MonsterBody body)
     {
+        body.Retired();
         Minds.Remove(body);
 
         if (!SpareBodies.TryGetValue(body.Machine.Profile, out var spare))
@@ -1390,6 +1397,35 @@ public sealed class LuaCreatureManager
     internal int CountMonsters(int sector)
     {
         return Creatures.Count(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster && ecs.Get<NonPlayableCreatureComponent>(e).Sector == sector);
+    }
+
+    internal Vector3 PositionOf(Entity player) => Vitals.PositionOf(player);
+
+    internal MonsterBody? BodyOf(Entity monster) => Bodies.GetValueOrDefault(monster);
+
+    /// <summary>
+    /// Nothing hurts the player now: it has just come back, or a buff makes it invincible.
+    /// </summary>
+    internal bool IsShielded(Entity player)
+    {
+        return Vitals.IsProtected(player) || (Buffs?.DefenseOf(player, DefenseType.Normal) ?? DefenseType.Normal) == DefenseType.Invincible;
+    }
+
+    /// <summary>
+    /// A monster may grab a player that lives and is not held by another.
+    /// </summary>
+    internal bool CanBeGrabbed(Entity player) => Vitals.IsAlive(player) && !Grabbed.Contains(player);
+
+    internal void Grab(Entity player) => Grabbed.Add(player);
+
+    internal void LetGo(Entity player) => Grabbed.Remove(player);
+
+    /// <summary>
+    /// The server puts a player at a place: it flew there held by a monster.
+    /// </summary>
+    internal void Place(Entity player, Vector3 position)
+    {
+        ecs.Set(player, ecs.Get<WorldComponent>(player) with { Position = position });
     }
 
     internal IReadOnlyList<Entity> PlayersTouching(AttackArea area)
