@@ -696,8 +696,8 @@ internal partial class MonsterBody : IAiHost
     }
 
     /// <summary>
-    /// Sets a projectile off in the direction the monster looks. A monster has no camera, so the direction of the shot
-    /// is the one the monster itself would give a player standing in its place.
+    /// Sets a projectile off in the direction the monster looks. A monster has no camera: whatever the event says about one, the
+    /// shot goes the way the monster faces, turned and lowered by the angles of the event.
     /// </summary>
     private void Fire(int skill, AttackTrigger trigger)
     {
@@ -707,8 +707,7 @@ internal partial class MonsterBody : IAiHost
         }
 
         var right = new Vector3(AiMath.Direction(Yaw - 90f), 0f);
-        var camera = new Vector3(Yaw - 180f, 0f, 0f);
-        var flight = ProjectileFlight.Launch(trigger, Position, right, Yaw, camera);
+        var flight = ProjectileFlight.LaunchByFacing(trigger, Position, right, Yaw);
 
         _flights.Add(new Flight(flight, trigger, skill));
 
