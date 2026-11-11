@@ -1,6 +1,7 @@
 ﻿using System.Xml.Linq;
 using System.Xml.XPath;
 using OpenWorker.Batch.Entities;
+using OpenWorker.Batch.Entities.Basic;
 
 namespace OpenWorker.Batch;
 
@@ -99,5 +100,33 @@ public sealed class EventBox(XElement x)
     public SectorStartBox? StartOf(int sector)
     {
         return (_startsOfSector ??= SectorStarts.ToLookup(e => e.Sector))[sector].FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Every event box of the map, in the order of the kinds below.
+    /// </summary>
+    public IEnumerable<BasicEntity> AllBoxes
+    {
+        get
+        {
+            foreach (var box in Sectors) yield return box;
+            foreach (var box in MonsterSpawns) yield return box;
+            foreach (var box in StartEvents) yield return box;
+            foreach (var box in PortalExits) yield return box;
+            foreach (var box in Portals) yield return box;
+            foreach (var box in MazeEscapes) yield return box;
+            foreach (var box in SectorStarts) yield return box;
+            foreach (var box in SocialItemExcludes) yield return box;
+            foreach (var box in LuaFunctions) yield return box;
+            foreach (var box in SafeAreas) yield return box;
+            foreach (var box in PersonalShopAreas) yield return box;
+            foreach (var box in InterActions) yield return box;
+            foreach (var box in CheckMonsterSpawns) yield return box;
+            foreach (var box in CommonPositions) yield return box;
+            foreach (var box in CheckSectors) yield return box;
+            foreach (var box in ServerGates) yield return box;
+            foreach (var box in QuestMoveChecks) yield return box;
+            foreach (var box in CheckEventSpawns) yield return box;
+        }
     }
 }
