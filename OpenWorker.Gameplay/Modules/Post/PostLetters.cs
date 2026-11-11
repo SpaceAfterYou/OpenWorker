@@ -37,7 +37,7 @@ public static class PostLetters
         {
             Item = item.Item,
             Count = count,
-            BindType = (byte)item.BindType,
+            BindType = (byte)item.BindState,
             Upgrade = item.Upgrade,
             Endurance = item.Endurance,
             SocketActive = item.SocketActive,
@@ -111,7 +111,7 @@ public static class PostLetters
 
     private static ItemInstance Restore(ItemInstance instance, PostItemPersistent item)
     {
-        instance.BindType = (ItemBindType)item.BindType;
+        instance.BindState = (ItemBindState)item.BindType;
         instance.Upgrade = item.Upgrade;
         instance.Endurance = item.Endurance;
         instance.SocketActive = item.SocketActive;
@@ -270,7 +270,7 @@ public static class PostLetters
             Item = item.Item,
             Serial = new SerialValue(0),
             Count = item.Count,
-            BindType = (ItemBindType)item.BindType,
+            BindState = (ItemBindState)item.BindType,
             OptionList = Enumerable.Range(0, ItemModuleDefines.OptionCount)
                 .Select(i => i < item.OptionType.Length && i < item.OptionValue.Length ? new ItemOption(item.OptionType[i], item.OptionValue[i]) : new ItemOption(0, 0))
                 .ToList(),

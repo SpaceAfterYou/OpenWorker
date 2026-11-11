@@ -148,7 +148,17 @@ public sealed partial class PostService(
                 return;
             }
 
-            if (item.BindType == ItemBindType.OnPickUp)
+            // The table rule "bound from the start" counts even for an item that is not bound yet; a broken item goes to a shop only.
+            var held = ItemBinding.HeldBack(item);
+            var boundFromStart = inventory.Catalog.TryGet(item.Item, out var row) && (ItemBindType)row.BindType == ItemBindType.OnPickUp;
+
+            if (held == ItemHeldBack.Broken)
+            {
+                RefuseSend(context, PostMessages.CannotBeTraded);
+                return;
+            }
+
+            if (held == ItemHeldBack.Bound || boundFromStart)
             {
                 RefuseSend(context, PostMessages.Bound);
                 return;

@@ -27,7 +27,10 @@ public sealed class ItemInstance
     public StorageGroup Storage { get; internal set; } = StorageGroup.None;
     public short Slot { get; internal set; } = -1;
 
-    public ItemBindType BindType { get; set; }
+    /// <summary>
+    /// Whether the item is bound to its owner (see <see cref="ItemBinding"/>).
+    /// </summary>
+    public ItemBindState BindState { get; set; }
     public byte Upgrade { get; set; }
     public byte Endurance { get; set; } = 100;
     public byte SocketActive { get; set; }
@@ -120,7 +123,7 @@ public sealed class ItemInstance
             Item = Item,
             Serial = new SerialValue(Serial),
             Count = Count,
-            BindType = BindType,
+            BindState = BindState,
             OptionList = Options.ToList(),
             Upgrade = Upgrade,
             Endurance = Endurance,
@@ -146,7 +149,7 @@ public sealed class ItemInstance
             Slot = Slot,
             Item = Item,
             Count = Count,
-            BindType = (byte)BindType,
+            BindType = (byte)BindState,
             Upgrade = Upgrade,
             Endurance = Endurance,
             SocketActive = SocketActive,
@@ -202,7 +205,7 @@ public sealed class ItemInstance
             Count = row.Count,
             Storage = (StorageGroup)row.Storage,
             Slot = row.Slot,
-            BindType = (ItemBindType)row.BindType,
+            BindState = (ItemBindState)row.BindType,
             Upgrade = row.Upgrade,
             Endurance = row.Endurance,
             SocketActive = row.SocketActive,

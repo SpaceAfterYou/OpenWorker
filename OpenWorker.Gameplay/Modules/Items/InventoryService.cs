@@ -59,8 +59,8 @@ public sealed class InventoryService(
     }
 
     /// <summary>
-    /// A new item as it comes out of the table: bound the way its type says, with the places for broaches of its kind, its
-    /// options rolled and the sockets it opens with, not yet in any slot.
+    /// A new item as it comes out of the table: bound if its rule says it binds from the start (<see cref="ItemBinding"/>), with
+    /// the places for broaches of its kind, its options rolled and the sockets it opens with, not yet in any slot.
     /// </summary>
     public ItemInstance Create(int item, int count)
     {
@@ -71,7 +71,7 @@ public sealed class InventoryService(
             Serial = serials.NextSerial(),
             Item = item,
             Count = (short)count,
-            BindType = (ItemBindType)row.BindType,
+            BindState = ItemBinding.OnMade((ItemBindType)row.BindType),
             Endurance = row.Endurance,
             BroachState = broaches?.StateOf(item) ?? ItemInstance.NoBroaches
         };
@@ -127,7 +127,11 @@ public sealed class InventoryService(
         var updated = new List<ItemInstance>();
         var created = new List<ItemInstance>();
 
-        foreach (var stack in storage.Slots.OfType<ItemInstance>().Where(e => e.Item == item && e.Count < limit))
+        // New items join the stacks that are bound as they are (a free stack never takes bound items, nor the other way round).
+        var rule = catalog.TryGet(item, out var row) ? (ItemBindType)row.BindType : ItemBindType.None;
+        var made = ItemBinding.OnMade(rule);
+
+        foreach (var stack in storage.Slots.OfType<ItemInstance>().Where(e => e.Item == item && e.Count < limit && ItemBinding.CanStack(e.BindState, made, rule)))
         {
             var add = Math.Min(rest, limit - stack.Count);
 
@@ -485,6 +489,14 @@ public sealed class InventoryService(
             return;
         }
 
+        // An item that goes on binds when its rule says so, and so does the one that takes its place on the other side.
+        BindWhenWorn(item, src.Storage, dest.Storage);
+
+        if (other is not null)
+        {
+            BindWhenWorn(other, dest.Storage, src.Storage);
+        }
+
         inventory.Lift(src.Storage, src.Index);
         inventory.Lift(dest.Storage, dest.Index);
 
@@ -509,11 +521,19 @@ public sealed class InventoryService(
                 {
                     Src = new MoveItemValue { Storage = src.Storage, Item = other?.Item ?? -1, Index = src.Index },
                     Dest = new MoveItemValue { Storage = dest.Storage, Item = item.Item, Index = dest.Index },
-                    SrcBind = (byte)(other?.BindType ?? ItemBindType.None),
-                    DestBind = (byte)item.BindType
+                    SrcBind = (byte)(other?.BindState ?? ItemBindState.Free),
+                    DestBind = (byte)item.BindState
                 }
             ]
         });
+    }
+
+    private void BindWhenWorn(ItemInstance item, StorageGroup from, StorageGroup to)
+    {
+        if (ItemCatalog.IsEquipment(to) && !ItemCatalog.IsEquipment(from) && catalog.TryGet(item.Item, out var row))
+        {
+            item.BindState = ItemBinding.OnWorn(item.BindState, (ItemBindType)row.BindType);
+        }
     }
 
     public void Combine(Entity player, MoveItemValue src, MoveItemValue dest, short count)
@@ -524,7 +544,7 @@ public sealed class InventoryService(
 
         // Stacks pour into one another only when both are bound alike, or a bound stack would come out free.
         if (inventory is null || from is null || to is null || from == to || count <= 0 || count > from.Count || from.Item != to.Item ||
-            from.BindType != to.BindType ||
+            from.BindState != to.BindState ||
             ItemCatalog.IsEquipment(src.Storage) || ItemCatalog.IsEquipment(dest.Storage) ||
             ItemCatalog.KindOf(src.Storage) != ItemCatalog.KindOf(dest.Storage) ||
             to.Count + count > catalog.StackLimit(to.Item))
@@ -581,7 +601,7 @@ public sealed class InventoryService(
 
         var piece = Create(from.Item, count);
 
-        piece.BindType = from.BindType;
+        piece.BindState = from.BindState;
         piece.Endurance = from.Endurance;
 
         from.Count -= count;

@@ -338,7 +338,7 @@ public sealed class NpcShopService(
     /// </summary>
     private static void CopyState(ItemInstance from, ItemInstance to)
     {
-        to.BindType = from.BindType;
+        to.BindState = from.BindState;
         to.Upgrade = from.Upgrade;
         to.Endurance = from.Endurance;
         to.SocketActive = from.SocketActive;

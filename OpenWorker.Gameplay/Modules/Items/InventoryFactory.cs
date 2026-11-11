@@ -66,7 +66,7 @@ public sealed class InventoryFactory(
             Serial = serials.NextSerial(),
             Item = WeaponOf(person.Hero),
             Count = 1,
-            BindType = ItemBindType.OnPickUp
+            BindState = ItemBinding.StartingItem
         };
 
         if (catalog.Exists(weapon.Item))
@@ -88,7 +88,7 @@ public sealed class InventoryFactory(
                         Serial = serials.NextSerial(),
                         Item = id,
                         Count = 1,
-                        BindType = ItemBindType.OnPickUp
+                        BindState = ItemBinding.StartingItem
                     });
                 }
             }

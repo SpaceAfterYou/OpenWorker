@@ -15,11 +15,6 @@ namespace OpenWorker.DistrictServer.Trade;
 /// </summary>
 public sealed class TradeGoods(World world, InventoryService inventory)
 {
-    /// <summary>
-    /// The item flag of an item that may not leave its owner.
-    /// </summary>
-    private const byte LockedFlag = 2;
-
     public InventoryService Inventory => inventory;
 
     /// <summary>
@@ -42,14 +37,14 @@ public sealed class TradeGoods(World world, InventoryService inventory)
             return TradeCodes.ItemRefused;
         }
 
-        if (found.BindType == ItemBindType.OnPickUp)
+        // A broken item is asked before a bound one.
+        switch (ItemBinding.HeldBack(found))
         {
-            return TradeCodes.ItemBound;
-        }
+            case ItemHeldBack.Broken:
+                return TradeCodes.ItemRefused;
 
-        if (found.Flag == LockedFlag)
-        {
-            return TradeCodes.ItemRefused;
+            case ItemHeldBack.Bound:
+                return TradeCodes.ItemBound;
         }
 
         item = found;
@@ -176,7 +171,7 @@ public sealed class TradeGoods(World world, InventoryService inventory)
     {
         var copy = inventory.Create(item.Item, item.Count);
 
-        copy.BindType = item.BindType;
+        copy.BindState = item.BindState;
         copy.Upgrade = item.Upgrade;
         copy.Endurance = item.Endurance;
         copy.SocketActive = item.SocketActive;

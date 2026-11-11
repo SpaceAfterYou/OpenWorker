@@ -304,4 +304,82 @@ public sealed class PostTest
         Assert.AreEqual((byte)PostOpcode.Receipt | 0x80, answers[1].Command, "the second time is refused");
         Assert.AreEqual(PostMessages.Deleted, BitConverter.ToUInt16(answers[1].Content));
     }
+
+    /// <summary>
+    /// An item that is bound to its owner, or broken, does not go into a letter: the letter is refused with the text for it, the
+    /// item stays in the bag and the sender pays nothing. A free item goes. (The rule is the one of the trade and the shops of
+    /// players: <c>ItemBinding.HeldBack</c>.)
+    /// </summary>
+    [TestMethod]
+    public async Task ABoundOrBrokenItemIsNotMailedAndAFreeOneIs()
+    {
+        var (_, from) = await CreatePersonAsync("bsender");
+        var (toAccount, to) = await CreatePersonAsync("breceiver");
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var sender = server.Join(from, "bsender");
+        using var receiver = server.Join(to, "breceiver");
+
+        var inventory = new InventoryService(server.World, Catalog(), new LocalItemSerials());
+        var factory = new InventoryFactory(Catalog(), new([]), new LocalItemSerials());
+
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TimeProvider.System,
+            NullLogger<PostService>.Instance);
+
+        foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
+        {
+            var person = new PersonPersistent
+            {
+                Id = player.Person, Name = player.Name, Hero = Hero.Lily,
+                DefaultHairStyle = 0, DefaultHairColor = 0, DefaultEyeColor = 0, DefaultSkinColor = 0,
+                EquippedHairStyle = 0, EquippedHairColor = 0, EquippedEyeColor = 0, EquippedSkinColor = 0,
+                Location = 0, PositionX = 0, PositionY = 0, PositionZ = 0, RotationX = 0, FatiguePointCommon = 0,
+                Account = null!, Gate = null!
+            };
+
+            server.World.Add(player.Entity, new InventoryComponent(factory.CreateNew(person)), new CurrencyComponent { Gold = 1_000 },
+                new ClaimsComponent(account, 0));
+        }
+
+        var bag = server.World.Get<InventoryComponent>(sender.Entity).Value!;
+
+        bag.Place(StorageGroup.Common, 3, new ItemInstance { Serial = 71, Item = Sword, Count = 1, BindState = ItemBindState.BoundByBroach });
+        bag.Place(StorageGroup.Common, 4, new ItemInstance { Serial = 72, Item = Sword, Count = 1, Flag = 2 });
+        bag.Place(StorageGroup.Common, 5, new ItemInstance { Serial = 73, Item = Sword, Count = 1 });
+
+        void Send(short slot) => server.Run(async () => await service.OnHandleAsync(
+            new ServiceHandleContext(sender.Entity, CancellationToken.None),
+            new PostSendRequest(Body(w =>
+            {
+                w.Write(0);
+                Text(w, "breceiver");
+                Text(w, "Hello");
+                Text(w, "A sword.");
+                w.Write(0L);
+
+                for (var i = 0; i < PostModuleDefines.ItemCount; i++)
+                {
+                    w.Write((byte)(i == 0 ? StorageGroup.Common : StorageGroup.None));
+                    w.Write((short)(i == 0 ? slot : -1));
+                    w.Write((short)(i == 0 ? 1 : 0));
+                }
+            }))));
+
+        Send(3);
+        Send(4);
+
+        Assert.IsNotNull(bag.At(StorageGroup.Common, 3), "the bound sword stayed");
+        Assert.IsNotNull(bag.At(StorageGroup.Common, 4), "the broken sword stayed");
+        Assert.AreEqual(1_000, server.World.Get<CurrencyComponent>(sender.Entity).Gold, "nothing was paid");
+
+        var refusals = sender.Read().Where(e => e.Group == (byte)GroupOpcode.Post).ToList();
+
+        Assert.HasCount(2, refusals);
+        Assert.IsTrue(refusals.All(e => e.Command == (byte)PostOpcode.Send && BitConverter.ToInt32(e.Content) != 0), "both letters were refused");
+        Assert.IsEmpty(receiver.Read().Where(e => e.Group == (byte)GroupOpcode.Post), "the receiver heard nothing");
+
+        Send(5);
+
+        Assert.IsNull(bag.At(StorageGroup.Common, 5), "the free sword went");
+    }
 }

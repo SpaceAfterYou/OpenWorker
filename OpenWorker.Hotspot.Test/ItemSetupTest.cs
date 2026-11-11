@@ -166,7 +166,7 @@ public sealed class ItemSetupTest
         Assert.AreEqual(1, target.RestoreCount);
         Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == restoring.Serial), "The restoring item is used up");
 
-        target.BindType = ItemRestoreService.Bound;
+        target.BindState = ItemBindState.Bound;
 
         await f.Handler.OnHandleAsync(f.Context, new ItemSetupUnsealRequest
         {
@@ -174,7 +174,7 @@ public sealed class ItemSetupTest
             Target = ItemSetupFixture.SlotOf(target)
         });
 
-        Assert.AreEqual(ItemBindType.None, target.BindType);
+        Assert.AreEqual(ItemBindState.Free, target.BindState);
         Assert.AreEqual(row.SealLimit == 255 ? 0 : 1, target.SealCount);
         Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == unsealing.Serial), "The unsealing item is used up");
     }

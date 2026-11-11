@@ -121,7 +121,7 @@ public sealed class HelperTest
             Item = 360010202,
             Serial = new SerialValue(1234567890123),
             Count = 1,
-            BindType = (ItemBindType)1,
+            BindState = ItemBindState.Bound,
             OptionList = [new ItemOption(3, 86), new ItemOption(0, 0), new ItemOption(0, 0), new ItemOption(0, 0), new ItemOption(0, 0)],
             Upgrade = 2,
             Endurance = 100,

@@ -29,7 +29,7 @@ public static class BinaryWriteExtension
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, ItemBindType value)
+    internal static void Write(this BinaryWriter writer, ItemBindState value)
     {
         writer.Write((byte)value);
     }
@@ -52,7 +52,7 @@ public static class BinaryWriteExtension
         writer.Write(value.Item);
         writer.Write(value.Serial);
         writer.Write(value.Count);
-        writer.Write(value.BindType);
+        writer.Write(value.BindState);
         writer.Write(value.OptionList);
         writer.Write(value.Upgrade);
         writer.Write(value.Endurance);

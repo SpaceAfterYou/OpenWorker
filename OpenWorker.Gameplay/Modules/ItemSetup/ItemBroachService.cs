@@ -82,9 +82,9 @@ public sealed class ItemBroachService(
 
         var bound = false;
 
-        if (broach.BindType != ItemBindType.None && BoundByBroach(target.BindType) is { } bind)
+        if (ItemBinding.IsBound(broach.BindState) && ItemBinding.OnBoundBroachSet(target.BindState) is { } bind)
         {
-            target.BindType = bind;
+            target.BindState = bind;
             bound = true;
         }
 
@@ -174,7 +174,7 @@ public sealed class ItemBroachService(
         {
             if (slot.Key.Storage is not (StorageGroup.Common or StorageGroup.Cash) ||
                 bag.At(slot.Key.Storage, slot.Key.Slot) is not { } item || item.Count < slot.Count() ||
-                item.BindType != ItemBindType.None ||
+                ItemBinding.IsBound(item.BindState) ||
                 inventory.Catalog.Classify(item.Item)?.ItemUseType != ItemUseType.ITEM_BROACH ||
                 !inventory.Catalog.TryGet(item.Item, out var row) ||
                 row.Rank is < 2 or > 6 || KindOf(row.Classify) is not { } kind || row.EffectValue is < 1 or > 4)
@@ -249,19 +249,5 @@ public sealed class ItemBroachService(
     private static char[] StateOf(ItemInstance item)
     {
         return item.BroachState.PadRight(CostumeBroachPlaces.Places, CostumeBroachPlaces.None)[..CostumeBroachPlaces.Places].ToCharArray();
-    }
-
-    /// <summary>
-    /// The binding of clothing that a bound broach is set into: a free one becomes bound by the broach, a bound one bound by
-    /// both; one bound by a broach already stays as it is.
-    /// </summary>
-    private static ItemBindType? BoundByBroach(ItemBindType bind)
-    {
-        return (byte)bind switch
-        {
-            0 => (ItemBindType)2,
-            1 => (ItemBindType)3,
-            _ => null
-        };
     }
 }
