@@ -12,9 +12,9 @@ using Silk.NET.OpenGL;
 namespace OpenWorker.Content.Tool.Rendering;
 
 /// <summary>
-/// Draws the translucent oriented boxes of a <c>*.vbatch</c> with a grid and RGB axes. Right-drag orbits,
-/// Shift+right-drag pans on the ground, WASD flies along the camera look, the wheel zooms. Game Z is up; the
-/// viewport remaps that to OpenGL Y-up.
+/// Draws the translucent oriented boxes of a <c>*.vbatch</c> with a grid and RGB axes. Right-drag orbits
+/// around a pivot kept in front of the camera, Shift+right-drag pans, WASD flies along the look, the wheel
+/// zooms. Game Z is up; the viewport remaps that to OpenGL Y-up.
 /// </summary>
 public sealed class BatchViewport : UserControl
 {
@@ -182,6 +182,11 @@ public sealed class BatchViewport : UserControl
         var pan = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         _panning = pan;
         _orbiting = !pan;
+        if (_orbiting)
+        {
+            _surface.CaptureOrbitPivot();
+        }
+
         _lastPointer = e.GetPosition(_overlay);
         e.Pointer.Capture(_overlay);
         e.Handled = true;
@@ -280,6 +285,7 @@ public sealed class BatchViewport : UserControl
         private float _yaw = 0.7f;
         private float _pitch = 0.55f;
         private float _distance = 40f;
+        private Vector3 _eye = new(0f, 32f, 0f);
         private Vector3 _target = Vector3.Zero;
         private Vector3 _gridOrigin = Vector3.Zero;
         private float _gridHalfExtent = 10f;
@@ -329,25 +335,35 @@ public sealed class BatchViewport : UserControl
             }
         }
 
+        /// <summary>
+        /// Places the orbit pivot in front of the camera (ground hit when possible) before a right-drag orbit.
+        /// </summary>
+        public void CaptureOrbitPivot() => PlaceOrbitPivotInFront();
+
         public void Orbit(float dx, float dy)
         {
             _yaw += dx * 0.005f;
             _pitch = Math.Clamp(_pitch + dy * 0.005f, 0.05f, MathF.PI / 2f - 0.05f);
+            SyncEyeFromTarget();
         }
 
         /// <summary>
-        /// Ground-plane pan: the same motion WASD used to apply, driven by Shift+right-drag.
+        /// Ground-plane pan of the camera; the orbit pivot is kept in front afterward.
         /// </summary>
         public void Pan(float dx, float dy)
         {
             var forward = new Vector3(-MathF.Cos(_yaw), 0f, -MathF.Sin(_yaw));
             var right = new Vector3(MathF.Sin(_yaw), 0f, -MathF.Cos(_yaw));
             var scale = _distance * 0.0015f;
-            _target += right * dx * scale + forward * (-dy) * scale;
+            _eye += right * dx * scale + forward * (-dy) * scale;
+            PlaceOrbitPivotInFront();
         }
 
-        public void Zoom(float factor) =>
+        public void Zoom(float factor)
+        {
             _distance = Math.Clamp(_distance * factor, 10f, 400_000f);
+            SyncEyeFromTarget();
+        }
 
         public void SetMove(MoveDirection direction, bool down)
         {
@@ -452,7 +468,7 @@ public sealed class BatchViewport : UserControl
             }
 
             var aspect = width / (float)height;
-            var view = Matrix4x4.CreateLookAt(CameraPosition(), _target, Vector3.UnitY);
+            var view = Matrix4x4.CreateLookAt(_eye, _target, Vector3.UnitY);
             var far = Math.Max(200f, _distance * 8f);
             var projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, aspect, 1f, far);
             var mvp = view * projection;
@@ -493,13 +509,7 @@ public sealed class BatchViewport : UserControl
                 return;
             }
 
-            var look = _target - CameraPosition();
-            if (look.LengthSquared() < 1e-8f)
-            {
-                return;
-            }
-
-            look = Vector3.Normalize(look);
+            var look = LookDirection();
             var right = Vector3.Cross(look, Vector3.UnitY);
             if (right.LengthSquared() < 1e-8f)
             {
@@ -538,7 +548,44 @@ public sealed class BatchViewport : UserControl
                 return;
             }
 
-            _target += Vector3.Normalize(delta) * step;
+            _eye += Vector3.Normalize(delta) * step;
+            PlaceOrbitPivotInFront();
+        }
+
+        private Vector3 LookDirection()
+        {
+            var cosPitch = MathF.Cos(_pitch);
+            return Vector3.Normalize(new Vector3(
+                -MathF.Cos(_yaw) * cosPitch,
+                -MathF.Sin(_pitch),
+                -MathF.Sin(_yaw) * cosPitch));
+        }
+
+        private void SyncEyeFromTarget() =>
+            _eye = _target - LookDirection() * _distance;
+
+        /// <summary>
+        /// Keeps the orbit pivot in front of the camera: the ground under the view ray when it hits ahead,
+        /// otherwise a point along the look direction at the current distance.
+        /// </summary>
+        private void PlaceOrbitPivotInFront()
+        {
+            var look = LookDirection();
+            var groundY = _gridOrigin.Y;
+            if (MathF.Abs(look.Y) > 1e-4f)
+            {
+                var distanceToGround = (groundY - _eye.Y) / look.Y;
+                if (distanceToGround > 1f)
+                {
+                    var clamped = Math.Min(distanceToGround, Math.Max(_distance, 10f) * 20f);
+                    _distance = Math.Clamp(clamped, 10f, 400_000f);
+                    _target = _eye + look * _distance;
+                    return;
+                }
+            }
+
+            _distance = Math.Clamp(_distance, 10f, 400_000f);
+            _target = _eye + look * _distance;
         }
 
         private void UploadMesh(GL silk)
@@ -580,6 +627,7 @@ public sealed class BatchViewport : UserControl
                 _distance = 40f;
                 _gridHalfExtent = 10f;
                 _gridStep = 1f;
+                SyncEyeFromTarget();
                 return;
             }
 
@@ -610,6 +658,8 @@ public sealed class BatchViewport : UserControl
                 _gridHalfExtent = Math.Max(10f, ground * 0.55f);
                 _gridStep = NiceStep(_gridHalfExtent / GridLines);
             }
+
+            SyncEyeFromTarget();
         }
 
         private static float NiceStep(float rough)
@@ -624,15 +674,6 @@ public sealed class BatchViewport : UserControl
             var fraction = rough / baseStep;
             var nice = fraction <= 1f ? 1f : fraction <= 2f ? 2f : fraction <= 5f ? 5f : 10f;
             return nice * baseStep;
-        }
-
-        private Vector3 CameraPosition()
-        {
-            var cosPitch = MathF.Cos(_pitch);
-            return _target + new Vector3(
-                _distance * MathF.Cos(_yaw) * cosPitch,
-                _distance * MathF.Sin(_pitch),
-                _distance * MathF.Sin(_yaw) * cosPitch);
         }
 
         private static (float[] Faces, float[] Lines) BuildMeshes(
