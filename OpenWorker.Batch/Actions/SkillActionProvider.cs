@@ -161,6 +161,14 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     }
 
     /// <summary>
+    /// Whether an animation starts over by itself until something stops it, as standing does.
+    /// </summary>
+    public bool IsLooping(string actionFile, string animation)
+    {
+        return GetFile(actionFile) is { } file && Find(file, animation) is { Repeats: true };
+    }
+
+    /// <summary>
     /// What a skill plays, step by step, and how its charge grows. Null when nothing is known about the skill.
     /// </summary>
     public SkillAnimations? GetAnimations(int skill, Hero hero)

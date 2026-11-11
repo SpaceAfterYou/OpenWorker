@@ -243,6 +243,17 @@ public sealed class LuaCreatureManager
         if (monsters.Length > 0)
         {
             Broadcast(DescribeMonsters(monsters));
+
+            // The monsters that come with an animation of their own play it where they appear.
+            var idles = monsters
+                .Select(e => Bodies.TryGetValue(e, out var body) ? body.StartSpawnAction() : null)
+                .OfType<MovementIdleEntry>()
+                .ToArray();
+
+            if (idles.Length > 0)
+            {
+                Broadcast(new MovementIdlesBtResponse { Entries = idles });
+            }
         }
 
         if (npcs.Length > 0)
@@ -280,6 +291,16 @@ public sealed class LuaCreatureManager
         if (monsters.Length > 0)
         {
             session.Send(DescribeMonsters(monsters));
+
+            var idles = monsters
+                .Select(e => Bodies.TryGetValue(e, out var body) ? body.CurrentAction() : null)
+                .OfType<MovementIdleEntry>()
+                .ToArray();
+
+            if (idles.Length > 0)
+            {
+                session.Send(new MovementIdlesBtResponse { Entries = idles });
+            }
         }
 
         if (npcs.Length > 0)
@@ -474,6 +495,7 @@ public sealed class LuaCreatureManager
             : new MonsterBody(ecs, this, services.Actions, creature, behavior, profile, home);
 
         body.SetGroup(new AggroGroup(spawn.AggroGroup, spawn.AggroDistance, spawn.AggroMaxCount));
+        body.SetSpawnAction(spawn.ChangeSpawnAction is ChangeSpawnActionType.Empty or ChangeSpawnActionType.Zero ? string.Empty : spawn.ChangeSpawnAction.ToString());
 
         Bodies.Add(creature, body);
         Minds.Add(body);
@@ -533,9 +555,17 @@ public sealed class LuaCreatureManager
     public Entity[] FindMonsters(Func<Vector3, MonsterCombatComponent, bool> touches)
     {
         return Creatures
-            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
+            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster && !IsHidden(e))
             .Where(e => touches(ecs.Get<WorldComponent>(e).Position, ecs.Get<MonsterCombatComponent>(e)))
             .ToArray();
+    }
+
+    /// <summary>
+    /// A monster that has hidden cannot be hit while it is gone.
+    /// </summary>
+    private bool IsHidden(Entity creature)
+    {
+        return Bodies.TryGetValue(creature, out var body) && body.IsHidden;
     }
 
     public Entity? FindMonster(int identifier)
@@ -556,7 +586,7 @@ public sealed class LuaCreatureManager
     public FlightTarget[] GetFlightTargets()
     {
         return Creatures
-            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster)
+            .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster && !IsHidden(e))
             .Select(e => new FlightTarget(ecs.Get<ActorComponent>(e).Identifier, ecs.Get<WorldComponent>(e).Position, ecs.Get<MonsterCombatComponent>(e).BodyRadius, ecs.Get<MonsterCombatComponent>(e).BodyHeight))
             .ToArray();
     }
