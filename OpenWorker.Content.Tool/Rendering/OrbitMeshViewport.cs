@@ -516,8 +516,10 @@ public sealed class OrbitMeshViewport : UserControl
                 return;
             }
 
-            _eye += Vector3.Normalize(delta) * step;
-            PlaceOrbitPivotInFront();
+            // Translate the eye and the orbit pivot together so WASD carries the center; zoom alone changes distance.
+            var move = Vector3.Normalize(delta) * step;
+            _eye += move;
+            _target += move;
         }
 
         private Vector3 LookDirection()
