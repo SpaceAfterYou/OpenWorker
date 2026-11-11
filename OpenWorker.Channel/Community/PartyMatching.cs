@@ -129,6 +129,15 @@ public sealed class PartyMatching(
         return 1
         """);
 
+    // KEYS: the group. ARGV: the person, the answer. Only a member of a group that still stands is given an answer.
+    private static RedisScript Answer { get; } = new("""
+        if redis.call('HEXISTS', KEYS[1], 'p:' .. ARGV[1]) == 0 then
+            return 0
+        end
+        redis.call('HSET', KEYS[1], 'c:' .. ARGV[1], ARGV[2])
+        return 1
+        """);
+
     private readonly HashSet<int> _owned = [];
 
     private IDatabase Database => redis.GetDatabase();
@@ -254,7 +263,7 @@ public sealed class PartyMatching(
 
         if (id.TryParse(out int group))
         {
-            await Database.HashSetAsync(GroupKey(group), "c:" + person.ToString(CultureInfo.InvariantCulture), goes ? 1 : 2, When.Exists);
+            await Answer.EvaluateAsync(redis, [GroupKey(group)], [person, goes ? 1 : 2]);
         }
     }
 

@@ -288,6 +288,55 @@ public sealed class PartyTest
         }
     }
 
+    /// <summary>
+    /// Who waits in a group is asked whether they go, and the answer is kept with the group; somebody who waits in no
+    /// group is given none.
+    /// </summary>
+    [TestMethod]
+    public async Task TheAnswerOfAMemberToTheMatchingCheckIsKeptWithItsGroup()
+    {
+        var redis = await RedisAsync();
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var people = People(3);
+        var maze = (short)Random.Shared.Next(20_000, 30_000);
+
+        using var server = new TestServer(new MemoryCommunity());
+
+        var matching = new PartyMatching(server.Network, Notifier(server, new PartyBook(redis, time)), redis, time);
+        var players = people.Take(2).Select(e => server.Join(e, "P" + e)).ToArray();
+
+        try
+        {
+            foreach (var player in players)
+            {
+                server.Run(() => matching.EnterAsync(player.Entity, maze, PartyRules.MatchingLimit(2)));
+            }
+
+            await matching.CheckAsync(people[0], true);
+            await matching.CheckAsync(people[1], false);
+            await matching.CheckAsync(people[2], true);
+
+            var group = (await matching.OfAsync(people[0]))!;
+
+            Assert.AreEqual(1, group.Members.Single(e => e.Card.Person == people[0]).Answer, "The one who goes");
+            Assert.AreEqual(2, group.Members.Single(e => e.Card.Person == people[1]).Answer, "The one who does not");
+            Assert.HasCount(2, group.Members, "An answer makes nobody a member");
+        }
+
+        finally
+        {
+            foreach (var person in people)
+            {
+                await matching.ExitAsync(person, PartyMatchingExit.None);
+            }
+
+            foreach (var player in players)
+            {
+                player.Dispose();
+            }
+        }
+    }
+
     private sealed class Blocks(int blocker, int blocked) : IPersonRelations
     {
         public ValueTask<bool> IsFriendAsync(int person, int other) => ValueTask.FromResult(false);
