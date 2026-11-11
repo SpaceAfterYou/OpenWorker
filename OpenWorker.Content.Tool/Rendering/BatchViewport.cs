@@ -743,8 +743,11 @@ public sealed class BatchViewport : UserControl
 
             if (hasNav)
             {
-                min = Vector3.Min(min, GameCoordinates.ToGl(navMesh!.Minimum));
-                max = Vector3.Max(max, GameCoordinates.ToGl(navMesh.Maximum));
+                // After the LH→RH flip a game AABB corner is no longer a GL AABB corner.
+                var navA = GameCoordinates.ToGl(navMesh!.Minimum);
+                var navB = GameCoordinates.ToGl(navMesh.Maximum);
+                min = Vector3.Min(min, Vector3.Min(navA, navB));
+                max = Vector3.Max(max, Vector3.Max(navA, navB));
             }
 
             _target = (min + max) * 0.5f;
