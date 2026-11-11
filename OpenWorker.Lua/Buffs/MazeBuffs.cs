@@ -826,9 +826,9 @@ public sealed partial class MazeBuffs
             _taunted[carrier] = taunt;
             _creatures.Provoke(carrier, taunt);
         }
-        else if (taunt == 0)
+        else if (taunt == 0 && _taunted.Remove(carrier))
         {
-            _taunted.Remove(carrier);
+            _creatures.EndTaunt(carrier);
         }
 
         if (book.IsHeld)

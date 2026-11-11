@@ -2,6 +2,8 @@ using Arch.Core;
 using Lua;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Ai;
+using OpenWorker.Lua.Ai;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
@@ -100,7 +102,7 @@ public partial class LuaMaze
         var attacker = Ecs.Get<WorldComponent>(helper.Entity);
         var stats = _buffs.StatsOf(helper.Entity, Ecs.Get<MonsterCombatComponent>(helper.Entity).Stats);
         var skill = combat.GetSkill(strike.Skill);
-        var hits = targets.Select(target => ApplyDamage(helper.Entity, target, stats, skill, strike.Trigger.DamageRate, strike.Trigger)).ToArray();
+        var hits = targets.Select(target => ApplyDamage(helper.Entity, target, stats, skill, strike.Trigger.DamageRate, strike.Trigger, strike.Skill, HitKinds.Of(strike.Trigger))).ToArray();
 
         creatureManager.TellHitSlow(hits, strike.Trigger);
 

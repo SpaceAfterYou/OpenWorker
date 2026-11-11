@@ -57,6 +57,7 @@ await Host
         services.AddSingleton<MonsterBehaviorTables>();
         services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<PartyRevision>();
+        services.AddSingleton<SkillAggro>();
         services.AddSingleton<CreatureServices>();
         services.AddSingleton<IPlayerHealthResize, MazeHealthResize>();
         services.AddSingleton(_ => new MazeScripts());

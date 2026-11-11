@@ -277,6 +277,7 @@ public sealed class AiScriptLoader
         // What the scripts of the helpers say about following their owner.
         Add("SetHelperFarDist", c => { if (N(c, 1, out var a) && N(c, 2, out var b)) { builder.SetHelperFarDist((float)a, (float)b); } });
         Add("SetRecoverySkill", c => { if (Whole(c, 1) is { } skill) { builder.SetRecoverySkill(skill); } });
+        Add("SetSuperArmorSkill", c => { if (Whole(c, 1) is { } skill) { builder.SetSuperArmorSkill(skill); } });
 
         Add("SetEscapeInfo", c =>
         {

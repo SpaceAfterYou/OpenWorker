@@ -157,6 +157,12 @@ public sealed class AiProfile
     public float SpawnAggroDistance { get; init; }
     public float SpawnAggroValue { get; init; }
     public bool ClearsTarget { get; init; }
+
+    /// <summary>
+    /// The skill the monster plays when its super armor is whole again, or zero for none.
+    /// </summary>
+    public int SuperArmorSkill { get; init; }
+
     public float SuicideTime { get; init; }
     public string DeathAction { get; init; } = string.Empty;
     public int RunawayHealth { get; init; }
@@ -297,6 +303,7 @@ public sealed class AiProfileBuilder
     private float _spawnAggroDistance;
     private float _spawnAggroValue;
     private bool _clearsTarget;
+    private int _superArmorSkill;
     private float _suicide;
     private string _deathAction = string.Empty;
     private int _runawayHealth;
@@ -366,6 +373,11 @@ public sealed class AiProfileBuilder
     }
 
     public void SetEnableClearTarget(bool enable) => _clearsTarget = enable;
+
+    /// <summary>
+    /// The skill the monster plays each time its super armor is whole again.
+    /// </summary>
+    public void SetSuperArmorSkill(int skill) => _superArmorSkill = skill;
 
     public void SetSuicideTime(float seconds) => _suicide = seconds;
 
@@ -594,6 +606,7 @@ public sealed class AiProfileBuilder
             SpawnAggroDistance = _spawnAggroDistance,
             SpawnAggroValue = _spawnAggroValue,
             ClearsTarget = _clearsTarget,
+            SuperArmorSkill = _superArmorSkill,
             SuicideTime = _suicide,
             DeathAction = _deathAction,
             RunawayHealth = _runawayHealth,

@@ -9,6 +9,16 @@ namespace OpenWorker.Gameplay.Ai;
 public sealed record AiEscape(float Points, int Chance, float MinDistance, float MaxDistance, float ResetTime, byte Kind, int Value)
 {
     /// <summary>
+    /// The escape that makes the monster hard to stagger for a while.
+    /// </summary>
+    public const byte SuperArmorKind = 0;
+
+    /// <summary>
+    /// The escape that makes the monster invincible for a while.
+    /// </summary>
+    public const byte InvincibleKind = 1;
+
+    /// <summary>
     /// The escape that plays a skill.
     /// </summary>
     public const byte SkillKind = 2;

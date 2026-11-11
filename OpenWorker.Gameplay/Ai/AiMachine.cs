@@ -180,7 +180,7 @@ public sealed partial class AiMachine
         if (_aggroChanged && _aggroTime >= _profile.AggroCheckTime)
         {
             _aggroTime = 0f;
-            ChooseTargetByAggro();
+            DamageAggressive();
         }
 
         if (_sinceCheck > _profile.CheckTime)
@@ -202,38 +202,6 @@ public sealed partial class AiMachine
         else
         {
             CheckLifeTime();
-        }
-    }
-
-    /// <summary>
-    /// Somebody has hurt the monster.
-    /// </summary>
-    public void OnDamaged(int attacker, float aggro)
-    {
-        AddAggro(attacker, aggro);
-
-        _lastDamageTime = 0f;
-        _preSkillDamageCount++;
-        _hitCount++;
-
-        if (_targetId == NoTarget && _host.GetTarget(attacker) is not null)
-        {
-            ChangeTarget(attacker);
-            ChangeState(AiState.SelectAction);
-        }
-    }
-
-    /// <summary>
-    /// The monster is turned on somebody (a taunt): it cares about the target a great deal, and takes it for its own now.
-    /// </summary>
-    public void Provoke(int target, float aggro)
-    {
-        AddAggro(target, aggro);
-
-        if (_targetId != target && _host.GetTarget(target) is not null)
-        {
-            ChangeTarget(target);
-            ChangeState(AiState.SelectAction);
         }
     }
 
@@ -793,52 +761,21 @@ public sealed partial class AiMachine
         _aggroChanged = true;
     }
 
-    /// <summary>
-    /// The enemy who has angered the monster most is the one it looks at.
-    /// </summary>
-    private void ChooseTargetByAggro()
-    {
-        _aggroChanged = false;
-
-        var best = NoTarget;
-        var most = 0f;
-
-        foreach (var (id, aggro) in _aggro.ToArray())
-        {
-            var expired = _profile.DamageAggroResetTime > 0 && _now - aggro.Time > _profile.DamageAggroResetTime;
-
-            if (expired || _host.GetTarget(id) is null)
-            {
-                _aggro.Remove(id);
-
-                continue;
-            }
-
-            if (aggro.Value > most)
-            {
-                most = aggro.Value;
-                best = id;
-            }
-        }
-
-        if (best == NoTarget)
-        {
-            if (_profile.ClearsTarget)
-            {
-                ClearTarget();
-            }
-
-            return;
-        }
-
-        if (best != _targetId && _random.Next(RandomRange) < _profile.DamageAggressive)
-        {
-            ChangeTarget(best);
-        }
-    }
-
     private void ChangeTarget(int id)
     {
+        // A taunt holds the monster on the one who gave it for as long as that one is there to be fought.
+        if (_taunt != NoTarget)
+        {
+            if (_host.GetTarget(_taunt) is not null)
+            {
+                id = _taunt;
+            }
+            else
+            {
+                _taunt = NoTarget;
+            }
+        }
+
         if (_targetId == id)
         {
             return;
@@ -877,8 +814,12 @@ public sealed partial class AiMachine
         if (enemy.Id != _targetId)
         {
             AddAggro(enemy.Id, AggroPerSighting);
-            _aggroChanged = false;
-            ChangeTarget(enemy.Id);
+            DamageAggressive();
+
+            if (_targetId != NoTarget && CallsGroup)
+            {
+                AlertGroup();
+            }
         }
     }
 
@@ -1144,6 +1085,10 @@ public sealed partial class AiMachine
             case AiState.Recovery:
                 StartRecovery();
                 break;
+
+            case AiState.TraceMove:
+                StartTraceMove();
+                break;
         }
     }
 
@@ -1184,6 +1129,10 @@ public sealed partial class AiMachine
 
             case AiState.Recovery:
                 UpdateRecovery(elapsed);
+                break;
+
+            case AiState.TraceMove:
+                UpdateFollowing();
                 break;
         }
     }
@@ -1270,10 +1219,16 @@ public sealed partial class AiMachine
             return;
         }
 
-        if (_host.CanMove && _retargetTime > RetargetPause)
+        if (_retargetTime > RetargetPause)
         {
             _retargetTime = 0f;
-            _host.FaceTo(target.Value.Position);
+
+            CheckDamageAggroReset();
+
+            if (_host.CanMove && Target is { } enemy)
+            {
+                _host.FaceTo(enemy.Position);
+            }
         }
     }
 

@@ -15,6 +15,7 @@ using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -813,31 +814,65 @@ public sealed class LuaCreatureManager
     }
 
     /// <summary>
-    /// A player has hurt a monster: the monster remembers who did it, and the more damage, the more it cares.
+    /// Somebody has hurt a monster: the monster remembers who did it, and the more damage and the more the skill is made to draw
+    /// hate, the more it cares.
     /// </summary>
-    public void OnMonsterHit(Entity monster, Entity attacker, int damage)
+    public void OnMonsterHit(Entity monster, Entity attacker, int damage, int skill = 0, AiHitKind kind = AiHitKind.Skill)
     {
         if (Bodies.TryGetValue(monster, out var body) && ecs.IsAlive(attacker))
         {
-            body.Machine.OnDamaged(ecs.Get<ActorComponent>(attacker), damage * AggroPerDamage);
+            var hate = (Services?.Aggro ?? SkillAggro.None).Hate(skill, damage, LevelOrder(attacker));
+
+            body.Machine.OnDamaged(new AiHit(ecs.Get<ActorComponent>(attacker), hate, damage, kind));
         }
     }
 
-    private const float AggroPerDamage = 0.0004f;
-
     /// <summary>
-    /// What a taunt adds to the care of a monster for whoever gave it: more than a fight adds in any one hit.
+    /// How many players of the maze are of a lower level than the one who dealt a blow, those of the same level counted by the
+    /// order they came in. The lower the level, the more the blow angers a monster.
     /// </summary>
-    private const float TauntAggro = 5f;
+    private int LevelOrder(Entity attacker)
+    {
+        var at = Players.IndexOf(attacker);
+
+        if (at < 0 || !ecs.TryGet<LevelComponent>(attacker, out var level))
+        {
+            return 0;
+        }
+
+        var order = 0;
+
+        for (var index = 0; index < Players.Count; index++)
+        {
+            if (index != at && ecs.IsAlive(Players[index]) && ecs.TryGet<LevelComponent>(Players[index], out var other)
+                && (other.Level < level.Level || other.Level == level.Level && index < at))
+            {
+                order++;
+            }
+        }
+
+        return order;
+    }
 
     /// <summary>
-    /// A buff turns the monster on the actor that gave it.
+    /// A buff turns the monster on the actor that gave it, for as long as the buff lasts.
     /// </summary>
     internal void Provoke(Entity monster, int actor)
     {
         if (Bodies.TryGetValue(monster, out var body))
         {
-            body.Machine.Provoke(actor, TauntAggro);
+            body.Machine.Taunt(actor);
+        }
+    }
+
+    /// <summary>
+    /// The taunt on a monster is over: its hate decides whom it fights again.
+    /// </summary>
+    internal void EndTaunt(Entity monster)
+    {
+        if (Bodies.TryGetValue(monster, out var body))
+        {
+            body.Machine.ReleaseTaunt();
         }
     }
 
