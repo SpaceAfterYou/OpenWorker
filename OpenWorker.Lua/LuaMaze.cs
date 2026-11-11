@@ -1323,6 +1323,12 @@ public partial class LuaMaze(
             MonsterKilled?.Invoke(player, identifier, fell);
         }
 
+        // Gear that gives life and soul gauge back for a kill does so for every monster killed.
+        if (dead.Length > 0)
+        {
+            GiveBackOnKill(player, attackerStats, dead.Length);
+        }
+
         var kind = actions.GetPassiveType(skill);
 
         foreach (var ((identifier, place, _), hit) in dead)
@@ -1356,7 +1362,7 @@ public partial class LuaMaze(
         var defense = _buffs.DefenseOf(target, creatureManager.FrameDefenseOf(target, body.Defense));
         // A super armor that was broken before this hit lets half as much again through.
         var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
-        var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken);
+        var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken, creatureManager.ContextOf(target));
 
         result = result with { Damage = _buffs.Adjust(attacker, target, result.Damage) };
 
@@ -1380,7 +1386,8 @@ public partial class LuaMaze(
 
         creatureManager.OnMonsterHit(target, attacker, result.Damage, skillId, kind);
 
-        var effect = creatureManager.ReceiveBlow(target, BlowOf(attacker, trigger, origin), defense, result.Damage, skill.SuperArmorAttack, health > 0);
+        var armorShare = skill.SuperArmorAttack * (1f + attackerStats.Special.Of(SpecialEffect.SuperArmorDamage) * 0.01f);
+        var effect = creatureManager.ReceiveBlow(target, BlowOf(attacker, trigger, origin), defense, result.Damage, armorShare, health > 0);
 
         return default(SkillDmgValue) with
         {
@@ -1394,6 +1401,26 @@ public partial class LuaMaze(
             DefenseType = effect.Defense,
             CurSuperArmorGauge = effect.SuperArmor
         };
+    }
+
+    /// <summary>
+    /// A kill gives a player life and soul gauge back by what its gear says.
+    /// </summary>
+    private void GiveBackOnKill(Entity player, in CombatStats stats, int kills)
+    {
+        var health = (int)(stats.Special.Of(SpecialEffect.HealthOnKill) * kills);
+
+        if (health > 0 && creatureManager.Vitals.IsAlive(player))
+        {
+            creatureManager.Vitals.Heal(player, health);
+        }
+
+        var soul = stats.Special.Of(SpecialEffect.SoulGaugeOnKill) * kills;
+
+        if (soul > 0f && creatureManager.Services?.Gauges is { } gauges)
+        {
+            gauges.Absorb(player, soul, stats.SoulGaugeMax);
+        }
     }
 
     /// <summary>

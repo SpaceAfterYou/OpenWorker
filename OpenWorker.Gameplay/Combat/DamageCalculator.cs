@@ -54,7 +54,8 @@ public static class DamageCalculator
         DefenseType defense,
         float attackRate,
         Random random,
-        bool superArmorBroken = false)
+        bool superArmorBroken = false,
+        in DamageContext context = default)
     {
         if (defense == DefenseType.Invincible)
         {
@@ -118,6 +119,9 @@ public static class DamageCalculator
         {
             afterDefense = (int)(afterDefense * BrokenSuperArmorDamage);
         }
+
+        // What gear adds to the damage to a kind of monster, and takes off the damage of one.
+        afterDefense = SpecialDamage.Apply(afterDefense, attacker, target, context, (flags & HitResults.Miss) != 0);
 
         if (attackRate > 0)
         {

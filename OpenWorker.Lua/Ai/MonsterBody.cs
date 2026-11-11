@@ -589,6 +589,11 @@ internal partial class MonsterBody : IAiHost
     /// </summary>
     public bool IsLying => _reaction is { IsDown: true };
 
+    /// <summary>
+    /// Whether the monster is in the air after a throw.
+    /// </summary>
+    public bool IsAirborne => _reaction is { IsAirborne: true };
+
     public virtual bool IsDownOrFlying => _reaction is { IsAirborne: true } or { IsDown: true };
 
     /// <summary>

@@ -1427,6 +1427,17 @@ public sealed class LuaCreatureManager
     internal MonsterBody? BodyOf(Entity monster) => Bodies.GetValueOrDefault(monster);
 
     /// <summary>
+    /// What a player's hit needs to know of the monster it hits: its kind, and whether it is in the air or on the ground.
+    /// </summary>
+    internal DamageContext ContextOf(Entity monster)
+    {
+        var combat = ecs.Get<MonsterCombatComponent>(monster);
+        var body = BodyOf(monster);
+
+        return DamageContext.PlayerHits(new Opponent(combat.Rank, combat.Faction, combat.StatusType), body?.IsAirborne ?? false, body?.IsLying ?? false);
+    }
+
+    /// <summary>
     /// Whether a monster of a table lives in the maze.
     /// </summary>
     internal bool IsMonsterAlive(int table)
@@ -1491,6 +1502,7 @@ public sealed class LuaCreatureManager
         List<Entity>? hurt = null;
         var origin = ecs.Get<WorldComponent>(attacker.Entity);
         var weight = ecs.Get<MonsterCombatComponent>(attacker.Entity).WeightRank;
+        var kind = DamageContext.MonsterHits(new Opponent(ecs.Get<MonsterCombatComponent>(attacker.Entity).Rank, ecs.Get<MonsterCombatComponent>(attacker.Entity).Faction, ecs.Get<MonsterCombatComponent>(attacker.Entity).StatusType));
         var blow = new Blow(trigger.Reaction, (ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue), trigger.DamageRate, trigger.Angle, origin.Position, origin.Position, origin.Rotation, true, weight, IsMelee: trigger.HitsArea);
 
         foreach (var victim in victims)
@@ -1504,7 +1516,7 @@ public sealed class LuaCreatureManager
             var shielded = Vitals.IsProtected(victim) || defense == DefenseType.Invincible;
             var result = shielded
                 ? new DamageResult(0, HitResults.None)
-                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random);
+                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random, context: kind);
 
             if (Buffs is not null && !shielded)
             {

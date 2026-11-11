@@ -71,7 +71,7 @@ public static class SkillRefusal
 /// the skill is the player's own and in its deck, the level, the hero, the cost, the cooldown. Using it takes the cost
 /// and starts the cooldown of its group and the global cooldown.
 /// </summary>
-public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, PlayerGauges gauges, ReadOnlyCollection<DeckBonusRow>? deckBonuses = null)
+public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, PlayerGauges gauges, ReadOnlyCollection<DeckBonusRow>? deckBonuses = null, CombatTables? combat = null)
 {
     private readonly RowIndex<short, DeckBonusRow> _deckBonuses = (deckBonuses ?? new ReadOnlyCollection<DeckBonusRow>([])).IndexBy(e => e.Id);
 
@@ -242,7 +242,7 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
 
         if (kind == SkillCostKind.SoulGauge)
         {
-            var reduction = (buffs?.SoulCostDown ?? 0f) + DeckBonus(player, row, DeckBonusKind.SoulCost);
+            var reduction = (buffs?.SoulCostDown ?? 0f) + DeckBonus(player, row, DeckBonusKind.SoulCost) + Special(player).Of(SpecialEffect.SoulCostDown) * 0.01f;
 
             cost -= cost * reduction;
         }
@@ -334,9 +334,17 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
             return 0f;
         }
 
-        var rate = (BuffBook.Of(world, player)?.CooldownRate ?? 0f) + DeckBonus(player, row, DeckBonusKind.Cooldown) * 100f;
+        var rate = (BuffBook.Of(world, player)?.CooldownRate ?? 0f) + Special(player).Of(SpecialEffect.CooldownShare) + DeckBonus(player, row, DeckBonusKind.Cooldown) * 100f;
 
         return Math.Clamp(rate, 0f, 100f);
+    }
+
+    /// <summary>
+    /// The special effects of the gear, titles and buffs of the player.
+    /// </summary>
+    private SpecialEffects Special(Entity player)
+    {
+        return combat is null ? SpecialEffects.None : combat.GetPlayer(world, player).Special;
     }
 
     /// <summary>
