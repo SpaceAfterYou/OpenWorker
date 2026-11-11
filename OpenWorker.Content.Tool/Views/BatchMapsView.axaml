@@ -29,7 +29,7 @@
                    Text="{Binding Status}"
                    TextTrimming="CharacterEllipsis" />
 
-        <Grid ColumnDefinitions="280,12,*,12,260">
+        <Grid ColumnDefinitions="280,12,*,12,280">
             <ListBox Grid.Column="0"
                      ItemsSource="{Binding Maps}"
                      SelectedItem="{Binding SelectedMap}"
@@ -51,19 +51,11 @@
             </ListBox>
 
             <DockPanel Grid.Column="2">
-                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Spacing="6">
-                    <TextBlock Opacity="0.8"
-                               Text="{Binding SelectionStatus}"
-                               TextTrimming="CharacterEllipsis" />
-                    <StackPanel Orientation="Horizontal" Spacing="16">
-                        <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="Layers" />
-                        <CheckBox Content="Boxes"
-                                  IsChecked="{Binding ShowBoxesLayer}" />
-                        <CheckBox Content="NavMesh"
-                                  IsChecked="{Binding ShowNavMeshLayer}"
-                                  IsEnabled="{Binding HasNavMesh}" />
-                    </StackPanel>
-                </StackPanel>
+                <TextBlock DockPanel.Dock="Top"
+                           Margin="0,0,0,8"
+                           Opacity="0.8"
+                           Text="{Binding SelectionStatus}"
+                           TextTrimming="CharacterEllipsis" />
                 <Border Background="#FF1E1F24" CornerRadius="6" ClipToBounds="True">
                     <rendering:BatchViewport Boxes="{Binding Boxes}"
                                              SelectedBox="{Binding SelectedBox}"
@@ -73,25 +65,31 @@
                 </Border>
             </DockPanel>
 
-            <DockPanel Grid.Column="4">
-                <TextBlock DockPanel.Dock="Top"
-                           Margin="0,0,0,8"
-                           FontWeight="SemiBold"
-                           Text="Boxes" />
-                <TreeView ItemsSource="{Binding BoxGroups}"
-                          SelectedItem="{Binding SelectedBoxNode}"
-                          Background="Transparent">
-                    <TreeView.DataTemplates>
-                        <TreeDataTemplate DataType="models:BatchBoxGroup"
-                                          ItemsSource="{Binding Boxes}">
-                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                        </TreeDataTemplate>
-                        <TreeDataTemplate DataType="models:BatchBoxDraw">
-                            <TextBlock Text="{Binding DisplayName}" />
-                        </TreeDataTemplate>
-                    </TreeView.DataTemplates>
-                </TreeView>
-            </DockPanel>
+            <TabControl Grid.Column="4"
+                        SelectedIndex="{Binding SelectedLayerTab}">
+                <TabItem Header="Event Box">
+                    <TreeView ItemsSource="{Binding BoxGroups}"
+                              SelectedItem="{Binding SelectedBoxNode}"
+                              Background="Transparent"
+                              Margin="0,8,0,0">
+                        <TreeView.DataTemplates>
+                            <TreeDataTemplate DataType="models:BatchBoxGroup"
+                                              ItemsSource="{Binding Boxes}">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                            </TreeDataTemplate>
+                            <TreeDataTemplate DataType="models:BatchBoxDraw">
+                                <TextBlock Text="{Binding DisplayName}" />
+                            </TreeDataTemplate>
+                        </TreeView.DataTemplates>
+                    </TreeView>
+                </TabItem>
+                <TabItem Header="NavMesh">
+                    <TextBlock Margin="0,8,0,0"
+                               TextWrapping="Wrap"
+                               Opacity="0.85"
+                               Text="{Binding NavMeshStatus}" />
+                </TabItem>
+            </TabControl>
         </Grid>
     </DockPanel>
 </UserControl>

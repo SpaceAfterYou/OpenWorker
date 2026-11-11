@@ -49,10 +49,16 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
     public partial bool ShowBoxesLayer { get; set; } = true;
 
     [ObservableProperty]
-    public partial bool ShowNavMeshLayer { get; set; } = true;
+    public partial bool ShowNavMeshLayer { get; set; }
 
     [ObservableProperty]
     public partial bool HasNavMesh { get; set; }
+
+    [ObservableProperty]
+    public partial int SelectedLayerTab { get; set; }
+
+    [ObservableProperty]
+    public partial string NavMeshStatus { get; set; } = "No navigation mesh for this map.";
 
     [ObservableProperty]
     public partial string SelectionStatus { get; set; } = "Select a map to draw its boxes.";
@@ -95,6 +101,9 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         SelectedBox = null;
         NavMesh = null;
         HasNavMesh = false;
+        NavMeshStatus = "No navigation mesh for this map.";
+        SelectedLayerTab = 0;
+        ApplyLayerTab(0);
         _all = [];
         _loaded = false;
         Title = PanelTitle;
@@ -183,6 +192,19 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         SelectedBox = value as BatchBoxDraw;
     }
 
+    partial void OnSelectedLayerTabChanged(int value) => ApplyLayerTab(value);
+
+    private void ApplyLayerTab(int tab)
+    {
+        ShowBoxesLayer = tab == 0;
+        ShowNavMeshLayer = tab == 1;
+        if (tab != 0)
+        {
+            SelectedBoxNode = null;
+            SelectedBox = null;
+        }
+    }
+
     private async Task ShowMapAsync(BatchMapEntry? entry)
     {
         _boxesCts?.Cancel();
@@ -196,6 +218,7 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         SelectedBox = null;
         NavMesh = null;
         HasNavMesh = false;
+        NavMeshStatus = "No navigation mesh for this map.";
 
         if (entry is null)
         {
@@ -273,8 +296,10 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             BoxGroups = BatchMapCatalog.GroupBoxes(loaded.Boxes);
             NavMesh = loaded.Mesh;
             HasNavMesh = loaded.Mesh is not null;
+            NavMeshStatus = FormatNavMeshStatus(entry.BatchName, loaded.Mesh, loaded.NavError, navExists);
 
             SelectionStatus = FormatSelectionStatus(entry.BatchName, loaded.Boxes.Count, loaded.Mesh, loaded.BoxError, loaded.NavError, entry.FileExists, navExists);
+            ApplyLayerTab(SelectedLayerTab);
         }
         catch (OperationCanceledException)
         {
@@ -337,6 +362,32 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             "{0}: {1}",
             name,
             string.Join(", ", parts));
+    }
+
+    private static string FormatNavMeshStatus(string name, NavMesh? mesh, string? navError, bool navExists)
+    {
+        if (navError is not null)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "Failed to read {0}.hkt: {1}", name, navError);
+        }
+
+        if (mesh is not null)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "{0}.hkt — {1} faces, {2} edges, {3} vertices",
+                name,
+                mesh.FaceCount,
+                mesh.EdgeCount,
+                mesh.VertexCount);
+        }
+
+        if (!navExists)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0}.hkt is missing.", name);
+        }
+
+        return "No navigation mesh for this map.";
     }
 
     private void ApplyFilter()
