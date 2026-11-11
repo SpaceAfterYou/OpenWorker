@@ -87,44 +87,51 @@ the original checks it:
 | Exchange (auction) | asked | does not exist | n/a |
 | The server option of the second password | the checks run only when the option is on | always on | kept different: no such option here; the client asks anyway |
 
-### The state across servers
+### Where it lives
 
-The original keeps it in the control server per online user, and the account database decides a wrong password and the lock. Here the state
-of the password of a **login** is a record in Redis next to the lease of the session (`ITradePasswordStates`, `RedisTradePasswordStates`,
-key `ow:trade-password:<session>`, a hash of `Authenticated`, `Locked`, `Failed`):
+The original keeps the wrong tries in the **account database** (a count and the time of the last wrong one, on the account row), and
+"given" per online user on the servers. Here (round 10):
 
-- Why Redis and not the database: the state is valid only while a login is (the architecture puts such state in Redis next to the session
-  lease), a count of wrong answers that two servers change is one script (`HINCRBY` and the lock in one step, as the parties do), and it
-  needs no migration. The database would hold a lock for ever and needs a rule to lift it.
-- The record lives as long as the lease: every write gives it the length of a connected lease, the renewal of the lease
-  (`SessionLeaseManager`, every 30 seconds while a server holds the connection) extends it, and the close of the connection shortens it to
-  the length of a disconnected lease, so the next server of the login finds it and a login nobody holds takes it along.
-- Every entry reads it (`TradePasswordService.EnterAsync`, called by the entry of the district and of the maze, one line each): a player who
-  gave the password in the district has given it in the maze and again in the district; a player who locked it there is locked everywhere.
-  The password is checked, the attempts counted and the lock made through the same record, so the servers never lose an answer to a race.
-- Codes of the answers (`03/18`, `int code, byte state`), as the account database gives them: a wrong password is **50105** with the state
-  1 (not given; it also takes back a password that was given), the fifth wrong one **52003** with the state 3, and every answer after that
-  52003 and 3 whatever the player sends, the right password included. A password that is not four of the digits 0 to 7, or one digit four
-  times, is refused with 59504 or 59505 and the state it had, and counts as no attempt (it counted before). Before this branch the wrong
-  password answered 59504.
+- The count and the time are columns of the account (`Accounts.TradePasswordFailed`, `TradePasswordFailedAt`), changed by one statement
+  (`ITradePasswordTries`, `TradePasswordTriesStore`), so every login of the account on every server sees the same count and a lock
+  outlasts the login. The rules are `TradePasswordRules`: every **third** wrong password stops the tries for **three minutes** (the
+  tries made then count for nothing, the right password too, and are answered like a wrong one), the **tenth** wrong password locks
+  the password (and every tenth after it), a right password sets the count to zero, making the password sets it to zero.
+- "Given on this login" is a key in Redis next to the lease of the session (`ITradePasswordStates`, `RedisTradePasswordStates`,
+  key `ow:trade-password-given:<session>`). It lives as long as the lease: every write gives it the length of a connected lease, the
+  renewal of the lease extends it, and the close of the connection shortens it to the length of a disconnected lease. A wrong
+  password takes it back. The lock is not kept there any more.
+- Every entry reads both: the state at the entry comes from the account row (no password, locked, or one to give), and the entry of
+  a server (`TradePasswordService.EnterAsync`, one line in the district and the maze) makes it "given" when the login gave it on
+  another server. The gate shows the same state in the character list.
+- A locked password is lifted by a game master with `/tradepassword reset` (own account): the account has no password and no wrong
+  tries, as after the page of the account in the original.
+- Codes of the answers (`03/18`, `int code, byte state`): a wrong password is **50105** with the state 1 (not given; it also takes back
+  a password that was given), the tenth wrong one **52003** with the state 3, and every answer after that 52003 and 3 whatever the
+  player sends, the right password included. A password that is not four of the digits 0 to 7, or one digit four times, is refused with
+  59504 or 59505 and the state it had, and counts as no attempt.
 
 ### Compared with the original
 
 | Rule | Original | Here | |
 |---|---|---|---|
 | State 2 needed, state 3 locked | yes | yes | same |
-| Wrong password | 50105, state 1 | the same | fixed (was 59504) |
-| The lock | 52003, state 3; the number of attempts is in the stored procedure | five wrong answers | kept: the original number is not readable |
-| Right password at the lock | assumed: the stored procedure, which cannot be read, answers locked | 52003, 3 | fixed (the right password was taken at the lock check before); the assumption is on the play-session list |
-| Format check before the attempt | invalid: 59504 or 59505 with the state, no attempt | the same | fixed |
-| Make a password (type 1) | only at state 0; ends at state 2 | the same, and the record says so | same |
+| Wrong password | 50105, state 1 | the same | same |
+| Where the count lives | the account row | the account row (round 10; was Redis, per login) | fixed |
+| The lock | the tenth wrong password (and every tenth), 52003, state 3, shown at every login until reset | the same | fixed (was five wrong ones, a lock that ended with the login) |
+| The pause | every third wrong password, three minutes, tries counted for nothing | the same, answered 50105 with the state it had | same, but the original build answers such a try as a success (a hole of that build); kept different on purpose |
+| Right password at the lock | the stored procedure checks it (the client does not offer the check at state 3) | refused, 52003 | kept different: the lock stays a lock for a client that sends it |
+| What lifts the lock | the page of the account (no password), the admin tool, a right password | `/tradepassword reset` of a game master | kept different: no page |
+| Format check before the attempt | invalid: 59504 or 59505 with the state, no attempt | the same | same |
+| Make a password (type 1) | only at state 0; ends at state 2; the count is zero | the same | same |
 | Types 3 and 4 | 3: the state from the database; 4: an account with no password goes on to state 2, one with a password is refused (59504) | the current state is answered | kept different: this client sends only 1 and 2 |
-| Where the lock lives | the account database (it outlasts the login) and the control server | Redis, with the login | kept different: a new login is not locked; five more tries a login are allowed |
-| Between servers | the control server tells the next game server | the record of the session | same effect |
+| Between servers | the control server tells the next game server | the key of the session | same effect |
 
 ## Model change, edits outside the area
 
-None to the EF model (no migration). Redis: one new key per login, `ow:trade-password:<session>`. Edits in files of other areas, all small:
+Round 10 changed the model: two columns of `Accounts` (`TradePasswordFailed` smallint, `TradePasswordFailedAt` timestamp), see
+"Where it lives". Redis: one key per login, `ow:trade-password-given:<session>` (the key `ow:trade-password:<session>` of the first
+version is no longer written). Edits of the first version in files of other areas, all small:
 `SessionLeaseManager` (the renewal script takes the key of the record beside each lease, and a write of the lease gives it the same length),
 `PersonService` of the district and of the maze (one call, `TradePasswordService.EnterAsync`), `MovementServiceBase` (the 05/16 handler left
 it for `TransportService`; a rider's places are not moves), `PlayerVitals` (`Protect` with a length), `LuaCreatureManager` (`TryFindNpc`), the
@@ -133,9 +140,9 @@ maze `Program` (`AddNpcServices`, the maze's `INpcPlaces`, `ITransportMap`).
 ## Tests
 
 `TradeTest.ATradeAndAShopNeedThePasswordGivenOnThisLogin` (the three checks, the codes, nothing left open), `AccountStateTest` (the
-make, the wrong and the right password, with the codes above), `TradePasswordStatesTest` (Redis: a lock and a given password hold from the
-district to the maze and back, another login is not touched; the record lives as long as the lease, through the entry, the renewal and
-the close), `TransportTest` (a ride is paid, told to the rider and to another player, carried by the clock for exactly its seconds, ended at the
+make, the wrong and the right password, with the codes above; the count on the account: the pause, the lock, the new login, the reset),
+`TradePasswordStatesTest` (Redis: a given password holds from the district to the maze and back, a wrong one takes it back, another
+login is not touched; the record lives as long as the lease, through the entry, the renewal and the close), `TransportTest` (a ride is paid, told to the rider and to another player, carried by the clock for exactly its seconds, ended at the
 box; a rider's moves are not moves; each refusal has its code and costs nothing), `MovementWireFormatTest.TheMessagesOfARideHaveTheLayoutTheClientReads`.
 
 On the stand (`OW_STAND=9`, the scripts in `docs/agents/feature-district-gaps/`, output next to them):
@@ -155,7 +162,8 @@ On the stand (`OW_STAND=9`, the scripts in `docs/agents/feature-district-gaps/`,
 - The regional movement dialog at the NPCs of transports: it lists the rides of the NPC's row and shows the fare, and the refusals 58000
   to 58002 show their messages.
 - District 6 itself: the portal in Rocco, the townsfolk and the monsters near the stations, the rider unhurt by them.
-- The trade password window: a wrong password shows the message of the state 1, the fifth the lock; after a round through a maze the
-  client does not ask again; a locked player gets the lock message in the trade window.
-- Whether the lock holds against the right password on the real server (the stored procedure that decides it is not readable): the
-  client shows the message of the state 3 whichever it sends.
+- The trade password window: a wrong password shows the message of the state 1, the tenth the lock; after a round through a maze the
+  client does not ask again; a locked player gets the lock message in the trade window, and at the next login too (the gate shows the
+  state 3 in the character list; what the client does with it there is not known). What the client shows after the third wrong
+  password, when the tries are paused for three minutes (the answer is the same as for a wrong one). Whether the client sends the check
+  at all at the state 3 (the original server would accept the right password then).

@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
@@ -139,7 +140,7 @@ public sealed class AccountStateTest
         server.World.Add(player.Entity, new ClaimsComponent(account, 1));
         server.World.Add(player.Entity, new TradePasswordComponent { Password = string.Empty, State = PasswordProtectionState.None });
 
-        var handler = new TradePasswordService(server.World, Factory, new MemoryTradePasswordStates());
+        var handler = new TradePasswordService(server.World, Factory, new MemoryTradePasswordStates(), new TradePasswordTriesStore(Factory));
 
         (int Error, PasswordProtectionState State) Ask(PasswordCheckType type, string password)
         {
@@ -172,6 +173,88 @@ public sealed class AccountStateTest
         Assert.AreEqual((LoginRules.TradePasswordInvalid, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1289"));
         Assert.AreEqual((TradePasswordService.WrongPassword, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1235"));
         Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(PasswordCheckType.Check, "1234"));
+    }
+
+    /// <summary>
+    /// The wrong trade passwords are counted on the account, not on the login: every third one stops the tries for three
+    /// minutes (the tries made then count for nothing, the right password too), a right one sets the count back, and the tenth
+    /// locks the password: the right password does not open it, a new login finds it locked, and only a reset (the game master)
+    /// gives the account no password again.
+    /// </summary>
+    [TestMethod]
+    public async Task WrongTradePasswordsAreCountedOnTheAccountPauseTheTriesAndLockThePasswordForGood()
+    {
+        var (person, account) = await PersonAsync("locker");
+
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 11, 11, 12, 0, 0, TimeSpan.Zero));
+        var tries = new TradePasswordTriesStore(Factory);
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var player = server.Join(person, "locker");
+
+        server.World.Add(player.Entity, new ClaimsComponent(account, 1));
+        server.World.Add(player.Entity, new TradePasswordComponent { Password = string.Empty, State = PasswordProtectionState.None });
+
+        var handler = new TradePasswordService(server.World, Factory, new MemoryTradePasswordStates(), tries, time);
+
+        (int Error, PasswordProtectionState State) Ask(PasswordCheckType type, string password)
+        {
+            player.Read(50);
+
+            server.Run(() => handler.OnHandleAsync(new ServiceHandleContext(player.Entity, CancellationToken.None), Request(type, password)).AsTask());
+
+            var answer = player.Read().Single(e => e.Group == (byte)GroupOpcode.Character && e.Command == (byte)CharacterOpcode.TradePassword);
+
+            return (BinaryPrimitives.ReadInt32LittleEndian(answer.Content), (PasswordProtectionState)answer.Content[4]);
+        }
+
+        async Task<int> FailedAsync() => (await tries.LoadAsync(account)).Failed;
+
+        Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(PasswordCheckType.Create, "1234"));
+
+        // Two wrong ones and the right one: the count is back to zero.
+        Assert.AreEqual((TradePasswordService.WrongPassword, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1235"));
+        Assert.AreEqual((TradePasswordService.WrongPassword, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1236"));
+        Assert.AreEqual(2, await FailedAsync());
+        Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(PasswordCheckType.Check, "1234"));
+        Assert.AreEqual(0, await FailedAsync());
+
+        // Three rounds of three wrong ones, each followed by a pause in which nothing is counted and the right password is
+        // not tried either, and then three minutes later the tries go on.
+        for (var round = 1; round <= 3; round++)
+        {
+            for (var wrong = 0; wrong < 3; wrong++)
+            {
+                Assert.AreEqual((TradePasswordService.WrongPassword, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "7654"));
+            }
+
+            Assert.AreEqual(3 * round, await FailedAsync());
+            Assert.AreEqual((TradePasswordService.WrongPassword, PasswordProtectionState.UnAuthenticated), Ask(PasswordCheckType.Check, "1234"), "Paused.");
+            Assert.AreEqual(3 * round, await FailedAsync(), "The try of the pause is not counted.");
+
+            time.Advance(TradePasswordRules.Pause + TimeSpan.FromSeconds(1));
+        }
+
+        // The tenth wrong one locks the password, whatever is given after it.
+        Assert.AreEqual((TradePasswordService.Locked, PasswordProtectionState.Lock), Ask(PasswordCheckType.Check, "7654"));
+        Assert.AreEqual((TradePasswordService.Locked, PasswordProtectionState.Lock), Ask(PasswordCheckType.Check, "1234"));
+        Assert.AreEqual(10, await FailedAsync());
+
+        // A new login finds the password locked at the entry.
+        var entry = await Factory.LoadPersonAtEntryAsync(account, person, CancellationToken.None);
+
+        Assert.AreEqual(
+            PasswordProtectionState.Lock,
+            TradePasswordRules.StateAtEntry(!string.IsNullOrEmpty(entry!.TradePassword), entry.TradePasswordFailed));
+
+        // The game master resets it: the account has no password and no tries.
+        await tries.ResetAsync(account);
+
+        entry = await Factory.LoadPersonAtEntryAsync(account, person, CancellationToken.None);
+
+        Assert.AreEqual(string.Empty, entry!.TradePassword);
+        Assert.AreEqual(PasswordProtectionState.None, TradePasswordRules.StateAtEntry(false, entry.TradePasswordFailed));
+        Assert.AreEqual(0, await FailedAsync());
     }
 
     /// <summary>

@@ -186,6 +186,13 @@ public sealed class NpcShopService(
             money += item.Flag == ItemRestoreService.BrokenFlag ? 1 : (long)item.Count * row.SellPrice;
         }
 
+        // A sale the purse would not hold is refused as a whole, with the code of the gold that is too much.
+        if (!inventory.CanReceive(player, ShopCurrency.Gold, money))
+        {
+            Refuse(player, request, InventoryService.TooMuchGold);
+            return;
+        }
+
         var values = sold.Select(InventoryService.ToStorageValue).ToArray();
 
         foreach (var item in sold)
@@ -338,7 +345,7 @@ public sealed class NpcShopService(
     /// </summary>
     private static void CopyState(ItemInstance from, ItemInstance to)
     {
-        to.BindType = from.BindType;
+        to.BindState = from.BindState;
         to.Upgrade = from.Upgrade;
         to.Endurance = from.Endurance;
         to.SocketActive = from.SocketActive;

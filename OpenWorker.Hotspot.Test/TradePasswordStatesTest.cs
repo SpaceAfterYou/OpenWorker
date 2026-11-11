@@ -43,7 +43,7 @@ public sealed class TradePasswordStatesTest
     }
 
     /// <summary>
-    /// The password is never checked against a database here: the hash is made by hand.
+    /// The password is never made against a database here: the hash is made by hand.
     /// </summary>
     private sealed class NoDatabase : IDbContextFactory<PersistenceContext>
     {
@@ -65,11 +65,15 @@ public sealed class TradePasswordStatesTest
     /// <summary>
     /// A server with the player of a login who has an account with a password and has not given it yet.
     /// </summary>
-    private static (TestServer Server, TestPlayer Player, TradePasswordService Service) Enter(ITradePasswordStates states, long session, int person)
+    private static (TestServer Server, TestPlayer Player, TradePasswordService Service) Enter(
+        ITradePasswordStates states,
+        ITradePasswordTries tries,
+        long session,
+        int person)
     {
         var server = new TestServer(new MemoryCommunity());
         var player = server.Join(person, "person" + person);
-        var service = new TradePasswordService(server.World, new NoDatabase(), states);
+        var service = new TradePasswordService(server.World, new NoDatabase(), states, tries);
 
         server.World.Add(player.Entity, new ClaimsComponent(session));
         server.World.Add(player.Entity, new TradePasswordComponent
@@ -109,66 +113,70 @@ public sealed class TradePasswordStatesTest
     }
 
     /// <summary>
-    /// A player who locks the password with wrong answers on one server finds it locked on the next one, and the right
-    /// password does not open it; another login of the same account is not touched. Another player who gave the right
-    /// password on one server has given it on the next.
+    /// A player who gave the right password on one server has given it on the next one of the same login, and a wrong
+    /// password takes it back everywhere; another login is not asked about it.
     /// </summary>
     [TestMethod]
-    public async Task ThePasswordGivenOrLockedOnOneServerIsGivenOrLockedOnTheNext()
+    public async Task ThePasswordGivenOnOneServerIsGivenOnTheNextAndAWrongOneTakesItBack()
     {
         await using var redis = await ConnectAsync(Address());
 
         var states = new RedisTradePasswordStates(redis);
-        var locked = NewSession();
-        var given = NewSession();
+        var tries = new MemoryTradePasswordTries();
+        var login = NewSession();
+        var stranger = NewSession();
 
         try
         {
-            // The district: four wrong answers are wrong, the fifth locks.
-            var (district, player, service) = Enter(states, locked, 1);
+            var (district, player, service) = Enter(states, tries, login, 1);
 
             using (district)
             using (player)
             {
-                foreach (var wrong in new[] { "1235", "1236", "1237", "1245" })
-                {
-                    Assert.AreEqual((TradePasswordService.WrongPassword, PasswordProtectionState.UnAuthenticated), Ask(district, player, service, wrong), wrong);
-                }
-
-                Assert.AreEqual((TradePasswordService.Locked, PasswordProtectionState.Lock), Ask(district, player, service, "7654"));
+                Assert.AreEqual(PasswordProtectionState.UnAuthenticated, district.World.Get<TradePasswordComponent>(player.Entity).State);
+                Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(district, player, service, Password));
             }
 
-            // The maze the same login goes into: locked on entry, and the right password changes nothing.
-            var (maze, inMaze, mazeService) = Enter(states, locked, 1);
+            // The maze the same login goes into finds the password given; a login of its own does not.
+            var (maze, inMaze, mazeService) = Enter(states, tries, login, 1);
 
             using (maze)
             using (inMaze)
             {
-                Assert.AreEqual(PasswordProtectionState.Lock, maze.World.Get<TradePasswordComponent>(inMaze.Entity).State);
-                Assert.AreEqual((TradePasswordService.Locked, PasswordProtectionState.Lock), Ask(maze, inMaze, mazeService, Password));
+                Assert.AreEqual(PasswordProtectionState.Authenticated, maze.World.Get<TradePasswordComponent>(inMaze.Entity).State);
+
+                // A wrong one takes the password back.
+                Assert.AreEqual((TradePasswordService.WrongPassword, PasswordProtectionState.UnAuthenticated), Ask(maze, inMaze, mazeService, "7654"));
             }
 
-            // A login of its own is not locked by it, gives the password in the maze, and finds it given back in the district.
-            var (mazeAgain, other, otherService) = Enter(states, given, 1);
-
-            using (mazeAgain)
-            using (other)
-            {
-                Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(mazeAgain, other, otherService, Password));
-            }
-
-            var (back, returned, _) = Enter(states, given, 1);
+            var (back, returned, _) = Enter(states, tries, login, 1);
 
             using (back)
             using (returned)
             {
-                Assert.AreEqual(PasswordProtectionState.Authenticated, back.World.Get<TradePasswordComponent>(returned.Entity).State);
+                Assert.AreEqual(PasswordProtectionState.UnAuthenticated, back.World.Get<TradePasswordComponent>(returned.Entity).State);
+            }
+
+            var (other, newcomer, otherService) = Enter(states, tries, stranger, 2);
+
+            using (other)
+            using (newcomer)
+            {
+                Assert.AreEqual((0, PasswordProtectionState.Authenticated), Ask(other, newcomer, otherService, Password));
+            }
+
+            var (again, same, _) = Enter(states, tries, stranger, 2);
+
+            using (again)
+            using (same)
+            {
+                Assert.AreEqual(PasswordProtectionState.Authenticated, again.World.Get<TradePasswordComponent>(same.Entity).State);
             }
         }
 
         finally
         {
-            await redis.GetDatabase().KeyDeleteAsync([RedisTradePasswordStates.Key(locked), RedisTradePasswordStates.Key(given)]);
+            await redis.GetDatabase().KeyDeleteAsync([RedisTradePasswordStates.Key(login), RedisTradePasswordStates.Key(stranger)]);
         }
     }
 
@@ -199,7 +207,7 @@ public sealed class TradePasswordStatesTest
 
         try
         {
-            await states.AuthenticateAsync(session);
+            await states.GiveAsync(session);
 
             async Task<TimeSpan> LeftAsync() => (await database.KeyTimeToLiveAsync(key))!.Value;
 

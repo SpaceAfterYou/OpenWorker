@@ -49,9 +49,6 @@ public sealed class ItemDisassembleService(
     /// <summary>The items one request at an NPC may take apart.</summary>
     public const int MaxTargets = 20;
 
-    /// <summary>The ether a person may hold.</summary>
-    public const long MaxEther = 99_999_999_999_999;
-
     /// <summary>The chances are out of this.</summary>
     public const int Chances = 10_000;
 
@@ -91,7 +88,7 @@ public sealed class ItemDisassembleService(
             return;
         }
 
-        if (inventory.Balance(player, ShopCurrency.Ether) + result.Ether > MaxEther)
+        if (!inventory.CanReceive(player, ShopCurrency.Ether, result.Ether))
         {
             answers.Refuse(player, command, TooMuchEther);
             return;
@@ -167,7 +164,7 @@ public sealed class ItemDisassembleService(
             ether += result.Ether;
         }
 
-        if (inventory.Balance(player, ShopCurrency.Ether) + ether > MaxEther)
+        if (!inventory.CanReceive(player, ShopCurrency.Ether, ether))
         {
             answers.Refuse(player, command, TooMuchEther);
             return;

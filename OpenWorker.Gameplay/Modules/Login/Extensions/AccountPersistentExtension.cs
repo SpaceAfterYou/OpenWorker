@@ -17,7 +17,9 @@ public static class AccountPersistentExtension
     {
         return new TradePasswordComponent
         {
-            Password = value.TradePassword
+            Password = value.TradePassword,
+            State = TradePasswordRules.StateAtEntry(!string.IsNullOrEmpty(value.TradePassword), value.TradePasswordFailed),
+            FailedAttempts = value.TradePasswordFailed
         };
     }
 }

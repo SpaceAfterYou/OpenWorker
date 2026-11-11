@@ -83,7 +83,7 @@ tokens, 21 for battle points; 16 lines ask for a grade (1 to 3); no line has a l
   answers, the purchase counts for the quests that ask to buy the item and raises the credit with the group of the NPC.
 - **Selling** (`Sell`): 1 to 10 slots of the common, costume or cash bag, each holding something a shop takes, none twice
   (52312 otherwise, nothing sold). A whole stack is sold, for its count times the sell price; a broken item for one gold.
-  The items leave the bags, the gold comes (`08/20`), `09/02` answers with the slots, `09/05` adds them to what the shop
+  A sale that would take the purse past 99 999 999 999 999 is refused whole with 52056. The items leave the bags, the gold comes (`08/20`), `09/02` answers with the slots, `09/05` adds them to what the shop
   would sell back, and each counts for the quests that ask to sell it. Any NPC buys.
 - **Buying back** (`RepurchaseList`, `Repurchase`): a shop sells back the last 12 items sold in this city, oldest first, for
   what they sold for (one gold at the least). The item comes back as it was (bound, upgraded, its gems and broaches) under a

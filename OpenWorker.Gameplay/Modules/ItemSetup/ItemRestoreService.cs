@@ -20,9 +20,6 @@ public sealed class ItemRestoreService(InventoryService inventory, ItemSetupAnsw
     /// <summary>The flag of an item that broke in an upgrade.</summary>
     public const byte BrokenFlag = 2;
 
-    /// <summary>An item bound to its owner, which an unsealing item frees.</summary>
-    public const ItemBindType Bound = ItemBindType.OnEquip;
-
     /// <summary>The unsealing failed: wrong item, not bound, nothing left to unseal, gems in its sockets.</summary>
     public const ushort UnsealFailed = 52510;
 
@@ -85,7 +82,7 @@ public sealed class ItemRestoreService(InventoryService inventory, ItemSetupAnsw
         var (tool, target) = IsUnsealing(one) || !IsUnsealing(other) ? (one, other) : (other, one);
 
         if (!IsUnsealing(tool) || tool.Count < 1 || !inventory.Catalog.TryGet(target.Item, out var row) ||
-            target.BindType != Bound || target.Sockets.Any(e => !e.IsEmpty))
+            ItemBinding.OnUnsealed(target.BindState) is not { } freed || target.Sockets.Any(e => !e.IsEmpty))
         {
             answers.Refuse(player, command, UnsealFailed);
             return;
@@ -97,7 +94,7 @@ public sealed class ItemRestoreService(InventoryService inventory, ItemSetupAnsw
             return;
         }
 
-        target.BindType = ItemBindType.None;
+        target.BindState = freed;
 
         if (row.SealLimit != EndlessSeals)
         {

@@ -13,7 +13,7 @@ public readonly struct ItemValue : IWireReadable<ItemValue>
     public int Item { get; init; }
     public SerialValue Serial { get; init; }
     public short Count { get; init; }
-    public ItemBindType BindType { get; init; }
+    public ItemBindState BindState { get; init; }
     public byte Endurance { get; init; }
 
     public List<ItemOption> OptionList { get; init; }
@@ -34,7 +34,7 @@ public readonly struct ItemValue : IWireReadable<ItemValue>
         Item = reader.ReadInt32();
         Serial = new SerialValue(reader);
         Count = reader.ReadInt16();
-        BindType = reader.ReadItemBindType();
+        BindState = reader.ReadItemBindState();
         OptionList = Enumerable
             .Range(0, ItemModuleDefines.OptionCount)
             .Select(_ => new ItemOption(reader))
@@ -61,7 +61,7 @@ public readonly struct ItemValue : IWireReadable<ItemValue>
         var item = reader.ReadInt32();
         var serial = new SerialValue(reader.ReadInt64());
         var count = reader.ReadInt16();
-        var bindType = (ItemBindType)reader.ReadByte();
+        var bindState = (ItemBindState)reader.ReadByte();
         var options = new List<ItemOption>(ItemModuleDefines.OptionCount);
 
         for (var i = 0; i < ItemModuleDefines.OptionCount; i++)
@@ -76,7 +76,7 @@ public readonly struct ItemValue : IWireReadable<ItemValue>
             Item = item,
             Serial = serial,
             Count = count,
-            BindType = bindType,
+            BindState = bindState,
             OptionList = options,
             Upgrade = reader.ReadByte(),
             Endurance = reader.ReadByte(),

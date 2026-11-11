@@ -353,4 +353,96 @@ public sealed class TradeTest
         Assert.IsNull(market.Shops.ShopOf(locked.Entity));
         Assert.AreEqual(PrivateShops.Closed, market.District.Ecs.Get<ShopPrivateComponent>(locked.Entity).Type);
     }
+
+    /// <summary>
+    /// Gold the partner could not hold is not put on the table: the offer is refused when the purse of the other player would
+    /// pass the limit of the inventory, and taken when it just fits.
+    /// </summary>
+    [TestMethod]
+    public async Task GoldThePartnerCannotHoldIsNotOffered()
+    {
+        using var market = new Market();
+
+        var seller = market.Join(gold: 1_000);
+        var buyer = market.Join(gold: InventoryService.WalletLimit - 500);
+
+        await market.Send(seller, Invite(buyer));
+        await WaitForAsync(buyer, TradeOpcode.Request);
+        await market.Send(buyer, Accept(seller));
+        await WaitForAsync(seller, TradeOpcode.Accept);
+
+        await market.Send(seller, Gold(501));
+
+        Assert.AreEqual(TradeCodes.TooMuchGold, BitConverter.ToUInt16((await RefusalAsync(seller, TradeOpcode.UpdateMoney)).Body, 0));
+
+        await market.Send(seller, Gold(500));
+        await WaitForAsync(seller, TradeOpcode.UpdateMoney);
+    }
+
+    /// <summary>
+    /// An item that is bound to its owner, or broken, is never put on the table of a trade, nor into a shop of a player; a
+    /// free one is. One rule (<c>ItemBinding.HeldBack</c>) decides for both, and a broken item is asked before a bound one.
+    /// </summary>
+    [TestMethod]
+    public async Task ABoundOrBrokenItemStaysOffTheTableAndOutOfAShop()
+    {
+        using var market = new Market();
+
+        var seller = market.Join(gold: 100);
+        var buyer = market.Join(gold: 100);
+        var bound = market.Put(seller, 0, Cloth, 1);
+        var broken = market.Put(seller, 1, Cloth, 1);
+        var free = market.Put(seller, 2, Cloth, 1);
+
+        bound.BindState = ItemBindState.BoundAndBroach;
+        broken.Flag = 2;
+        broken.BindState = ItemBindState.Bound;
+
+        await market.Send(seller, Invite(buyer));
+        await WaitForAsync(buyer, TradeOpcode.Request);
+        await market.Send(buyer, Accept(seller));
+        await WaitForAsync(seller, TradeOpcode.Accept);
+
+        async Task<ushort> RefusedAsync(ItemInstance item, int refusals)
+        {
+            await market.Send(seller, Offer(item));
+            await MetricAssertions.UntilAsync(
+                () => seller.Received().Count(e => e.Is(GroupOpcode.Trade, (byte)TradeOpcode.UpdateItem | 0x80)) == refusals,
+                "The player gets the refusal.");
+
+            return BitConverter.ToUInt16(seller.Received().Last(e => e.Is(GroupOpcode.Trade, (byte)TradeOpcode.UpdateItem | 0x80)).Body, 0);
+        }
+
+        Assert.AreEqual(TradeCodes.ItemBound, await RefusedAsync(bound, 1), "A bound item, whatever binds it.");
+        Assert.AreEqual(TradeCodes.ItemRefused, await RefusedAsync(broken, 2), "A broken item is refused as the one that is not on the list.");
+
+        await market.Send(seller, Offer(free));
+        await WaitForAsync(seller, TradeOpcode.UpdateItem);
+
+        Assert.AreEqual(2, seller.Received().Count(e => e.Is(GroupOpcode.Trade, (byte)TradeOpcode.UpdateItem | 0x80)), "The free item was taken.");
+
+        // The same rule keeps them out of a shop of a player; a free item opens one.
+        var keeper = market.Join(gold: 100);
+        var boundGoods = market.Put(keeper, 0, Cloth, 1);
+        var freeGoods = market.Put(keeper, 1, Cloth, 1);
+
+        boundGoods.BindState = ItemBindState.Bound;
+
+        TradePrivateShopStartRequest Shop(ItemInstance goods) => Read(w =>
+        {
+            w.Write((byte)StorageGroup.Common);
+            w.Write((short)0);
+            w.WriteUtf16UnicodeString("Cloth for sale");
+            w.Write(new[] { new PrivateShopItemValue { Item = goods.ToValue(), Money = 400 } });
+        }, r => new TradePrivateShopStartRequest(r));
+
+        await market.Send(keeper, Shop(boundGoods));
+
+        Assert.AreEqual(TradeCodes.ShopItemRefused, BitConverter.ToUInt16((await RefusalAsync(keeper, TradeOpcode.PrivateShopStart)).Body, 0));
+        Assert.IsNull(market.Shops.ShopOf(keeper.Entity));
+
+        await market.Send(keeper, Shop(freeGoods));
+
+        Assert.IsNotNull(market.Shops.ShopOf(keeper.Entity));
+    }
 }

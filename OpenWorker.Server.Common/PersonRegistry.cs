@@ -6,6 +6,7 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Login;
 using OpenWorker.Gameplay.Modules.Login.Extensions;
 using OpenWorker.Gameplay.Modules.League.Components;
 using OpenWorker.Gameplay.Modules.Maze.Components;
@@ -151,7 +152,8 @@ public sealed class PersonRegistry(World world, TimeProvider time)
         world.Set(entity, new TradePasswordComponent
         {
             Password = entry.TradePassword,
-            State = string.IsNullOrEmpty(entry.TradePassword) ? PasswordProtectionState.None : PasswordProtectionState.UnAuthenticated
+            State = TradePasswordRules.StateAtEntry(!string.IsNullOrEmpty(entry.TradePassword), entry.TradePasswordFailed),
+            FailedAttempts = entry.TradePasswordFailed
         });
 
         // Entering counts as the first answer to the keep-alive.

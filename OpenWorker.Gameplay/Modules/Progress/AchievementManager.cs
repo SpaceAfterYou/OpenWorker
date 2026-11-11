@@ -58,11 +58,6 @@ public sealed partial class AchievementManager(
     public const ushort DoesNotFit = 52013;
 
     /// <summary>
-    /// The most gold, battle points or ether a person may hold for a reward to be given.
-    /// </summary>
-    public const long WalletLimit = 99_999_999_999_999;
-
-    /// <summary>
     /// The most entries a list of the client may have: it counts them in a signed byte.
     /// </summary>
     private const int MaxListLength = sbyte.MaxValue;
@@ -320,7 +315,7 @@ public sealed partial class AchievementManager(
 
     private bool Overflows(Entity player, ShopCurrency currency, long amount)
     {
-        return amount > 0 && inventory.Balance(player, currency) + amount > WalletLimit;
+        return !inventory.CanReceive(player, currency, amount);
     }
 
     private void Pay(Entity player, ShopCurrency currency, long amount)

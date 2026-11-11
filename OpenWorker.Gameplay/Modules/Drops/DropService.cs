@@ -4,8 +4,6 @@ using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Progress;
-using Microsoft.Extensions.Logging;
-using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
@@ -43,8 +41,6 @@ public sealed partial class DropService(
     ReadOnlyCollection<DropRateMobRow> rates,
     ReadOnlyCollection<MonsterRow> monsters,
     IOptions<RewardsOptions>? options = null,
-    DailyMissionManager? missions = null,
-    ILogger<DropService>? logger = null,
     MazeResults? results = null,
     AchievementManager? achievements = null,
     ReadOnlyCollection<DropRateLevelRow>? levelRates = null,
@@ -271,11 +267,14 @@ public sealed partial class DropService(
             return false;
         }
 
+        // Money fills the purse up to its limit and the rest is lost; items that do not fit stay on the ground.
+        var added = 0L;
+
         var taken = drop.ObjectId switch
         {
-            GoldObject => inventory.TryAddCurrency(player, ShopCurrency.Gold, drop.Count + drop.Bonus, MoneyEarnFlow.PickUp),
-            BattlePointObject => inventory.TryAddCurrency(player, ShopCurrency.Bp, drop.Count),
-            EtherObject => inventory.TryAddCurrency(player, ShopCurrency.Ether, drop.Count),
+            GoldObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Gold, drop.Count + drop.Bonus, MoneyEarnFlow.PickUp)) >= 0,
+            BattlePointObject => inventory.AddUpToLimit(player, ShopCurrency.Bp, drop.Count) >= 0,
+            EtherObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Ether, drop.Count)) >= 0,
             SoulObject => true,
             _ => inventory.TryGive(player, drop.ObjectId, drop.Count)
         };
@@ -289,48 +288,22 @@ public sealed partial class DropService(
 
         if (drop.ObjectId == GoldObject)
         {
-            results?.AddGold(player, drop.Count + drop.Bonus);
-            achievements?.OnGoldPicked(player, drop.Count + drop.Bonus);
+            results?.AddGold(player, (int)added);
+            achievements?.OnGoldPicked(player, (int)added);
         }
         else if (drop.ObjectId == EtherObject)
         {
-            results?.AddEther(player, drop.Count);
-            achievements?.OnEtherPicked(player, drop.Count);
+            results?.AddEther(player, (int)added);
+            achievements?.OnEtherPicked(player, (int)added);
         }
 
-        // The quests hear of the item from the inventory, as of every item that comes into the bags.
-        if (drop.ObjectId < GoldObject && missions is not null)
-        {
-            _ = ReportItemAsync(player, drop);
-        }
-
+        // The quests and the missions hear of the item from the inventory, as of every item that comes into the bags.
         if (world.Has<ServerSessionComponent>(player))
         {
             world.Get<ServerSessionComponent>(player).Send(new DropPickUpResponse { Serial = serial });
         }
 
         return true;
-    }
-
-    // The missions that ask for items are told, they are saved and the pickup does not wait for it.
-    private async Task ReportItemAsync(Entity player, DropObject drop)
-    {
-        try
-        {
-            var count = (short)Math.Min(drop.Count, short.MaxValue);
-
-            if (missions is not null)
-            {
-                await missions.OnItemCollectedAsync(player, drop.ObjectId, count, CancellationToken.None);
-            }
-        }
-        catch (Exception exception)
-        {
-            if (logger is not null)
-            {
-                LogMissionItemFailed(logger, exception, drop.ObjectId);
-            }
-        }
     }
 
     /// <summary>
@@ -379,7 +352,4 @@ public sealed partial class DropService(
 
         return field;
     }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Counting the item {Item} for the missions and quests failed")]
-    private static partial void LogMissionItemFailed(ILogger logger, Exception exception, int item);
 }

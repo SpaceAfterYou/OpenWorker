@@ -100,6 +100,23 @@ public sealed class QuestManagerTest
         QuestRewardDefinition.None,
         [1020]);
 
+    /// <summary>
+    /// A hunt and a collection in one episode.
+    /// </summary>
+    private static QuestDefinition Mixed { get; } = new(
+        450,
+        14,
+        QuestContents.Side,
+        0,
+        0,
+        [],
+        false,
+        false,
+        [],
+        [],
+        QuestRewardDefinition.None,
+        [1010, 1020]);
+
     private static QuestDefinition Late { get; } = new(
         500,
         5,
@@ -190,7 +207,7 @@ public sealed class QuestManagerTest
         [1010]) { StartsByItself = true };
 
     private static QuestCatalog Catalog { get; } = QuestCatalog.From(
-        [Hard, Quick, Bound, Gathering, Late, HighLevel, Daily, Errand, Prequel, Sequel],
+        [Hard, Quick, Bound, Gathering, Mixed, Late, HighLevel, Daily, Errand, Prequel, Sequel],
         [Talk, Hunt, Boars, Tusks, Cleared, HandIn],
         null,
         new Dictionary<int, int[]> { [Wolf] = [Pack] });
@@ -589,6 +606,55 @@ public sealed class QuestManagerTest
         Assert.AreEqual((short)1, BitConverter.ToInt16(update.Body));
         Assert.AreEqual(1020, Int(update.Body, 2));
         Assert.AreEqual((byte)3, update.Body[6]);
+    }
+
+    /// <summary>
+    /// A collecting condition counts the items as they arrive and does not go down when they are sold. It is counted again
+    /// from what is held only when the episode is taken and when another condition of the person is done: then it is set to
+    /// the items held, down as well as up, unless nothing of the item is held at all.
+    /// </summary>
+    [TestMethod]
+    public async Task ACollectingConditionIsCountedAgainFromWhatIsHeldWhenAnotherConditionIsDone()
+    {
+        var inventory = new Inventory { Have = { [880001] = 3 } };
+        using var test = new Harness(inventory: inventory);
+
+        await test.Enter();
+        test.Next();
+        test.Next();
+
+        await test.Run(async () => await test.Manager.AcceptAsync(test.Player, 450, CancellationToken.None));
+
+        Assert.AreEqual(0x03, test.Next().Command);
+
+        var update = test.Next();
+
+        Assert.AreEqual(0x07, update.Command);
+        Assert.AreEqual(1020, Int(update.Body, 2));
+        Assert.AreEqual((byte)3, update.Body[6], "The three held at the start.");
+
+        // Two are sold: the count stays where it was, however many leave.
+        inventory.Have[880001] = 1;
+
+        // The hunt is done: the items are counted again, and one is what is held.
+        await test.Run(async () => await test.Manager.OnMonsterKilledAsync(test.Player, Boar, CancellationToken.None));
+        await test.Settle();
+
+        var steps = test.Book.Find(450)!.Steps;
+
+        Assert.AreEqual((byte)1, steps[0], "The hunt is done.");
+        Assert.AreEqual((byte)1, steps[1], "The tusks are set to what is held, down from three.");
+
+        // A person who holds none of them is left as it stands.
+        await test.Run(async () => await test.Manager.OnItemCollectedAsync(test.Player, 880001, 2, CancellationToken.None));
+
+        inventory.Have.Clear();
+
+        await test.Run(async () => await test.Manager.AcceptAsync(test.Player, 150, CancellationToken.None));
+        await test.Run(async () => await test.Manager.OnMonsterKilledAsync(test.Player, Boar, CancellationToken.None));
+        await test.Settle();
+
+        Assert.AreEqual((byte)3, test.Book.Find(450)!.Steps[1], "Nothing held, so nothing is taken off.");
     }
 
     [TestMethod]

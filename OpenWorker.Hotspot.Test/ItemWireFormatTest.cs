@@ -184,7 +184,7 @@ public sealed class ItemWireFormatTest
             Item = 113000030,
             Serial = new SerialValue(0x0102030405060708),
             Count = 1,
-            BindType = ItemBindType.OnEquip,
+            BindState = ItemBindState.Bound,
             OptionList = Enumerable.Range(1, 5).Select(e => new ItemOption((short)e, e * 10)).ToList(),
             Upgrade = 9,
             Endurance = 80,

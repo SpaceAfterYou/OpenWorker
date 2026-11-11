@@ -152,12 +152,12 @@ public sealed class ItemSocketService(InventoryService inventory, ReadOnlyCollec
 
         target.SetSocket(request.Socket, new ItemSocket(gem.Item, (ItemOption[])gem.Options.Clone()));
 
-        var bound = target.BindType == ItemBindType.None;
+        // A gem binds an item that is free; a bound one stays as it is.
+        var before = target.BindState;
 
-        if (bound)
-        {
-            target.BindType = ItemRestoreService.Bound;
-        }
+        target.BindState = ItemBinding.OnGemSet(before);
+
+        var bound = target.BindState != before;
 
         bag.Touch(target);
         inventory.Spend(player, gem, 1);

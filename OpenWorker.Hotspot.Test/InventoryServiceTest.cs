@@ -12,6 +12,7 @@ using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
+using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -234,6 +235,84 @@ public sealed class InventoryServiceTest
         Assert.AreEqual(30, bag.Slots[0]!.Count, "A stack is not combined over its limit");
     }
 
+    /// <summary>
+    /// What the table says about binding is a rule, not a state: an item with the rule "bound from the start" is made bound, one
+    /// with the rule "bound when worn" is free until it is worn first (and stays bound after), and the others never bind by
+    /// themselves. The characters start with their weapon bound.
+    /// </summary>
+    [TestMethod]
+    public void AnItemIsBoundFromTheStartOrWhenWornFirstAsItsTableSays()
+    {
+        using var f = new Fixture();
+
+        // Wearable by the first class on the first level, and bound when worn.
+        var onWear = Load<ItemRow>("tb_Item")
+            .Where(e => e.BindType == (byte)ItemBindType.OnEquip && f.Catalog.EquipPlaceOf(e.Id) is { Storage: StorageGroup.ShapeEquip } &&
+                        f.Catalog.Limits(e.Id) is (<= 1, 0 or (byte)Hero.Haru))
+            .Select(e => e.Id)
+            .FirstOrDefault();
+
+        Assert.AreNotEqual(0, onWear, "The table has clothing that binds when worn.");
+
+        f.Service.TryGive(f.Player, Material, 1);
+        f.Service.TryGive(f.Player, SecondWeapon, 1);
+        f.Service.TryGive(f.Player, onWear, 1);
+
+        var stateOf = (int item) => f.Inventory.Items.Single(e => e.Item == item).BindState;
+
+        Assert.AreEqual(ItemBindState.Free, stateOf(Material), "No rule.");
+        Assert.AreEqual(ItemBindState.Bound, stateOf(SecondWeapon), "Bound from the start.");
+        Assert.AreEqual(ItemBindState.Free, stateOf(onWear), "Not worn yet.");
+        Assert.AreEqual(ItemBindState.Bound, f.Inventory.At(StorageGroup.AbilityEquip, (int)AbilityEquipSlot.SoulWeapon)!.BindState, "What a character starts with.");
+
+        var clothes = f.Inventory.Items.Single(e => e.Item == onWear);
+        var place = f.Catalog.EquipPlaceOf(onWear)!.Value;
+
+        f.Service.Move(
+            f.Player,
+            new MoveItemValue { Storage = clothes.Storage, Item = onWear, Index = clothes.Slot },
+            new MoveItemValue { Storage = place.Storage, Item = -1, Index = place.Slots[0] });
+
+        Assert.AreEqual(StorageGroup.ShapeEquip, clothes.Storage, "The clothing is worn.");
+        Assert.AreEqual(ItemBindState.Bound, stateOf(onWear), "Worn first.");
+
+        // Taking it off does not free it.
+        var empty = f.Inventory.Find(f.Catalog.HomeOf(onWear))!.FirstFree();
+
+        f.Service.Move(
+            f.Player,
+            new MoveItemValue { Storage = StorageGroup.ShapeEquip, Item = onWear, Index = place.Slots[0] },
+            new MoveItemValue { Storage = f.Catalog.HomeOf(onWear), Item = -1, Index = (short)empty });
+
+        Assert.AreEqual(f.Catalog.HomeOf(onWear), clothes.Storage, "The clothing is back in the bag.");
+        Assert.AreEqual(ItemBindState.Bound, stateOf(onWear));
+    }
+
+    /// <summary>
+    /// A bound stack and a free stack of one item stay apart: new items join the stacks that are bound as they are, except
+    /// for an item that is bound from the start, whose stacks are all bound alike.
+    /// </summary>
+    [TestMethod]
+    public void NewItemsJoinOnlyTheStacksThatAreBoundAsTheyAre()
+    {
+        using var f = new Fixture();
+
+        f.Service.TryGive(f.Player, Material, 20);
+        f.Inventory.Items.Single(e => e.Item == Material).BindState = ItemBindState.Bound;
+        f.Service.TryGive(f.Player, Material, 20);
+
+        Assert.AreEqual(2, f.Inventory.Items.Count(e => e.Item == Material), "The free items did not join the bound stack.");
+
+        // The pick-up rule: every stack is bound, and the items join.
+        const int Bound = 800002001;
+
+        f.Service.TryGive(f.Player, Bound, 20);
+        f.Service.TryGive(f.Player, Bound, 20);
+
+        Assert.AreEqual(1, f.Inventory.Items.Count(e => e.Item == Bound));
+        Assert.AreEqual(ItemBindState.Bound, f.Inventory.Items.Single(e => e.Item == Bound).BindState);
+    }
+
     [TestMethod]
     public void LineUpPutsTheItemsInOrderAtTheFront()
     {
@@ -370,6 +449,30 @@ public sealed class InventoryServiceTest
         Assert.IsFalse(f.Service.TryAddGold(f.Player, -101));
         Assert.AreEqual(100, f.Service.Gold(f.Player));
         Assert.IsTrue(f.Service.TryAddGold(f.Player, -100));
+    }
+
+    /// <summary>
+    /// One limit for every purse: gold, battle points and ether stop at fourteen digits, cash at nine. A gift that would pass
+    /// it is refused as a whole; what is picked up from the ground fills the purse and leaves the rest.
+    /// </summary>
+    [TestMethod]
+    public void APurseHoldsNoMoreThanItsLimitAndAPickupFillsItUpToIt()
+    {
+        using var f = new Fixture();
+
+        Assert.IsTrue(f.Service.TryAddGold(f.Player, InventoryService.WalletLimit - 10));
+        Assert.IsTrue(f.Service.CanReceive(f.Player, ShopCurrency.Gold, 10));
+        Assert.IsFalse(f.Service.CanReceive(f.Player, ShopCurrency.Gold, 11));
+        Assert.IsFalse(f.Service.TryAddGold(f.Player, 11), "Not even one over");
+        Assert.AreEqual(InventoryService.WalletLimit - 10, f.Service.Gold(f.Player), "A refused gift changes nothing");
+
+        Assert.AreEqual(10, f.Service.AddUpToLimit(f.Player, ShopCurrency.Gold, 100), "A pickup takes what fits");
+        Assert.AreEqual(InventoryService.WalletLimit, f.Service.Gold(f.Player));
+        Assert.AreEqual(0, f.Service.AddUpToLimit(f.Player, ShopCurrency.Gold, 100));
+
+        Assert.IsTrue(f.Service.TryAddGold(f.Player, -InventoryService.WalletLimit), "Taking away always fits");
+        Assert.IsFalse(f.Service.CanReceive(f.Player, ShopCurrency.Cash, InventoryService.CashLimit + 1), "Cash has a limit of its own");
+        Assert.IsTrue(f.Service.CanReceive(f.Player, ShopCurrency.Cash, InventoryService.CashLimit));
     }
 
     /// <summary>

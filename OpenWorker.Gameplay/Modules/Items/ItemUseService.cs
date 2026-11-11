@@ -371,6 +371,22 @@ public sealed class ItemUseService(
             return ItemUseResult.Refused(ItemUseCodes.BagFull);
         }
 
+        // What the box holds has to fit the purses as well as the bags.
+        if (!inventory.CanReceive(player, ShopCurrency.Gold, opened.Gold))
+        {
+            return ItemUseResult.Refused(InventoryService.TooMuchGold);
+        }
+
+        if (!inventory.CanReceive(player, ShopCurrency.Bp, opened.BattlePoint))
+        {
+            return ItemUseResult.Refused(InventoryService.TooMuchBattlePoints);
+        }
+
+        if (!inventory.CanReceive(player, ShopCurrency.Ether, opened.Ether))
+        {
+            return ItemUseResult.Refused(InventoryService.TooMuchEther);
+        }
+
         inventory.Spend(player, item, 1);
 
         Grant(player, opened);

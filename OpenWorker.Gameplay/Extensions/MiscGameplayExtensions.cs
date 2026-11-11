@@ -15,6 +15,7 @@ using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.SoulMetry;
@@ -47,7 +48,17 @@ public static class MiscGameplayExtensions
         services.AddSingleton<SoulMetryManager>();
 
         services.AddSingleton<DailyMissionCatalog>();
-        services.AddSingleton<DailyMissionManager>();
+
+        // The missions hear of every item that comes into the bags, as the quests do.
+        services.AddSingleton(provider =>
+        {
+            var manager = ActivatorUtilities.CreateInstance<DailyMissionManager>(provider);
+
+            provider.GetService<ItemArrivals>()?.Listen(manager.OnItemsArrived);
+
+            return manager;
+        });
+
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<DailyMissionManager>());
 
         services.AddSingleton<BoosterCatalog>();

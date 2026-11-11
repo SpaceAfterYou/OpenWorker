@@ -22,6 +22,7 @@ using OpenWorker.Hotspot.Modules.Post.Requests;
 using OpenWorker.Hotspot.Modules.Post.Responses;
 using OpenWorker.Hotspot.Modules.Post.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Hotspot.Modules.Shop.Enums;
 
 namespace OpenWorker.DistrictServer.Services;
 
@@ -148,7 +149,17 @@ public sealed partial class PostService(
                 return;
             }
 
-            if (item.BindType == ItemBindType.OnPickUp)
+            // The table rule "bound from the start" counts even for an item that is not bound yet; a broken item goes to a shop only.
+            var held = ItemBinding.HeldBack(item);
+            var boundFromStart = inventory.Catalog.TryGet(item.Item, out var row) && (ItemBindType)row.BindType == ItemBindType.OnPickUp;
+
+            if (held == ItemHeldBack.Broken)
+            {
+                RefuseSend(context, PostMessages.CannotBeTraded);
+                return;
+            }
+
+            if (held == ItemHeldBack.Bound || boundFromStart)
             {
                 RefuseSend(context, PostMessages.Bound);
                 return;
@@ -420,7 +431,7 @@ public sealed partial class PostService(
 
         // Read after the claim: the inventory and the wallet may have changed while it was made.
         var refusal = !world.IsAlive(player) ? 0
-            : inventory.Gold(player) > long.MaxValue - letter.Money ? PostMessages.TooMuchGold
+            : !inventory.CanReceive(player, ShopCurrency.Gold, letter.Money) ? PostMessages.TooMuchGold
             : !PostLetters.Fits(inventory, player, letter.Items) ? PostMessages.NoRoom
             : (int?)null;
 

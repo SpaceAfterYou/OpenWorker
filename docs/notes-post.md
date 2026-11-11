@@ -93,9 +93,9 @@ The codes are numbers of the UI strings of the client (`PostMessages`):
 | 55301 | the receiver does not exist | no such name, blocked by the receiver, full box (no better text) |
 | 55302 | not enough gold (attached gold and fee) | sending |
 | 55303 | an item that cannot be traded | an item not in the slot, from a storage that may not send, twice, or more than lies there |
-| 55304 | bound items cannot be attached | an item bound on pick-up |
+| 55304 | bound items cannot be attached | a bound item, or an item whose table binds it from the start |
 | 55306 | the mail was deleted | a letter that is not there; also a letter the server does not take at all (too long text, negative gold) |
-| 55307 | too much gold | taking gold that would overflow |
+| 55307 | too much gold | taking gold that would take the purse past 99 999 999 999 999 |
 | 55308 | not enough room in the inventory | taking items |
 | 55619 | account mail could not be deleted | deleting an account letter that still carries something |
 
@@ -122,8 +122,11 @@ A letter of the game for an account is made by the store (`SendToAccountAsync`) 
 - **`State` of `RecvDel`** (the byte after the serial) is read and ignored.
 - **Deleting a letter that still carries something** is refused (2262) instead of destroying what it carries, although the
   client warns that the attachments go with it; sending it back is the way to return them.
-- **Items that may be sent**: those of the common and the costume bag, not bound on pick-up. Bound on equip is allowed;
-  whether an item that was worn once counts as bound is not known.
+- **Items that may be sent**: those of the common and the costume bag, free of binding (`ItemBinding.HeldBack`, see
+  `notes-item-rules.md`): an item that is bound is refused (55304), so is one whose table binds it from the start even if it is
+  not marked yet, and a broken item (flag 2) is refused with 55303. The reference answers 55620 for the table rule and 55602 for
+  a bound state and a broken item; the client has a text for 55304 and 55620 ("Bound items cannot be attached") and none for
+  55602, so the texts decide here. An item worn once is bound.
 - **Expiry is not enforced**: `ExpiresAt` only feeds `RemainTime`. There is no automatic return or deletion.
 
 ## What remains

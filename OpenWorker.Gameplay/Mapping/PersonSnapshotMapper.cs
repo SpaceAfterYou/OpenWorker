@@ -166,9 +166,7 @@ public static class PersonSnapshotMapper
         var prot = new ProtectionStateValue
         {
             SecondPassword = world.Get<SecondPasswordComponent>(gateEntity).State,
-            TradePassword = world.Get<TradePasswordComponent>(gateEntity).Has
-                ? PasswordProtectionState.UnAuthenticated
-                : PasswordProtectionState.None
+            TradePassword = world.Get<TradePasswordComponent>(gateEntity).State
         };
 
         return new CharacterListResponse

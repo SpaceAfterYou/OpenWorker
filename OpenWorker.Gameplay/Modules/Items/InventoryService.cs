@@ -39,6 +39,27 @@ public sealed class InventoryService(
     ItemArrivals? arrivals = null,
     ItemOptionRoller? options = null)
 {
+    /// <summary>
+    /// The most gold, battle points, ether and recycle points a person can hold: fourteen digits. A gift that would take a
+    /// purse past it is refused as a whole (a reward, a sale, a trade, a letter), except for what is picked up from the ground,
+    /// which fills the purse and leaves the rest.
+    /// </summary>
+    public const long WalletLimit = 99_999_999_999_999;
+
+    /// <summary>
+    /// The most cash and cash points a person can hold: nine digits.
+    /// </summary>
+    public const long CashLimit = 999_999_999;
+
+    /// <summary>The gold of the person would pass <see cref="WalletLimit"/>: the code of a reward or a sale that is refused for it.</summary>
+    public const ushort TooMuchGold = 52056;
+
+    /// <summary>The same for battle points.</summary>
+    public const ushort TooMuchBattlePoints = 52057;
+
+    /// <summary>The same for ether.</summary>
+    public const ushort TooMuchEther = 52058;
+
     /// <summary>The client has nothing more specific for a refused item request.</summary>
     public const ushort Refused = 52011;
 
@@ -59,8 +80,8 @@ public sealed class InventoryService(
     }
 
     /// <summary>
-    /// A new item as it comes out of the table: bound the way its type says, with the places for broaches of its kind, its
-    /// options rolled and the sockets it opens with, not yet in any slot.
+    /// A new item as it comes out of the table: bound if its rule says it binds from the start (<see cref="ItemBinding"/>), with
+    /// the places for broaches of its kind, its options rolled and the sockets it opens with, not yet in any slot.
     /// </summary>
     public ItemInstance Create(int item, int count)
     {
@@ -71,7 +92,7 @@ public sealed class InventoryService(
             Serial = serials.NextSerial(),
             Item = item,
             Count = (short)count,
-            BindType = (ItemBindType)row.BindType,
+            BindState = ItemBinding.OnMade((ItemBindType)row.BindType),
             Endurance = row.Endurance,
             BroachState = broaches?.StateOf(item) ?? ItemInstance.NoBroaches
         };
@@ -127,7 +148,11 @@ public sealed class InventoryService(
         var updated = new List<ItemInstance>();
         var created = new List<ItemInstance>();
 
-        foreach (var stack in storage.Slots.OfType<ItemInstance>().Where(e => e.Item == item && e.Count < limit))
+        // New items join the stacks that are bound as they are (a free stack never takes bound items, nor the other way round).
+        var rule = catalog.TryGet(item, out var row) ? (ItemBindType)row.BindType : ItemBindType.None;
+        var made = ItemBinding.OnMade(rule);
+
+        foreach (var stack in storage.Slots.OfType<ItemInstance>().Where(e => e.Item == item && e.Count < limit && ItemBinding.CanStack(e.BindState, made, rule)))
         {
             var add = Math.Min(rest, limit - stack.Count);
 
@@ -404,19 +429,57 @@ public sealed class InventoryService(
     public long Balance(Entity player, ShopCurrency currency) => world.Get<CurrencyComponent>(player)[currency];
 
     /// <summary>
-    /// Adds or takes away gold. Taking more than the person has fails.
+    /// Adds or takes away gold. Taking more than the person has fails, and so does adding more than its purse holds.
     /// </summary>
     public bool TryAddGold(Entity player, long amount, MoneyEarnFlow flow = MoneyEarnFlow.Normal)
     {
         return TryAddCurrency(player, ShopCurrency.Gold, amount, flow);
     }
 
+    /// <summary>
+    /// The most of a currency a person can hold.
+    /// </summary>
+    public static long LimitOf(ShopCurrency currency)
+    {
+        return currency switch
+        {
+            ShopCurrency.Gold or ShopCurrency.Bp or ShopCurrency.Ether or ShopCurrency.Recycle => WalletLimit,
+            ShopCurrency.Cash or ShopCurrency.CashMileageAkashic or ShopCurrency.CashMileageBroach or ShopCurrency.CashMileageTag => CashLimit,
+            _ => long.MaxValue
+        };
+    }
+
+    /// <summary>
+    /// Whether the person can take the amount without its purse of the currency passing the limit. Taking something away
+    /// always fits.
+    /// </summary>
+    public bool CanReceive(Entity player, ShopCurrency currency, long amount)
+    {
+        return amount <= 0 || Balance(player, currency) <= LimitOf(currency) - amount;
+    }
+
+    /// <summary>
+    /// Adds what fits of the amount under the limit of the currency and tells how much that was: the way what lies on the ground
+    /// is picked up.
+    /// </summary>
+    public long AddUpToLimit(Entity player, ShopCurrency currency, long amount, MoneyEarnFlow flow = MoneyEarnFlow.Normal)
+    {
+        var room = Math.Max(0, LimitOf(currency) - Balance(player, currency));
+        var added = Math.Clamp(amount, 0, room);
+
+        return added == 0 || TryAddCurrency(player, currency, added, flow) ? added : 0;
+    }
+
+    /// <summary>
+    /// Adds or takes away an amount of a currency. Taking more than the person has fails, and so does adding what would take
+    /// the purse past its limit.
+    /// </summary>
     public bool TryAddCurrency(Entity player, ShopCurrency currency, long amount, MoneyEarnFlow flow = MoneyEarnFlow.Normal)
     {
         var wallet = world.Get<CurrencyComponent>(player);
         var total = wallet[currency] + amount;
 
-        if (total < 0)
+        if (total < 0 || amount > 0 && !CanReceive(player, currency, amount))
         {
             return false;
         }
@@ -485,6 +548,14 @@ public sealed class InventoryService(
             return;
         }
 
+        // An item that goes on binds when its rule says so, and so does the one that takes its place on the other side.
+        BindWhenWorn(item, src.Storage, dest.Storage);
+
+        if (other is not null)
+        {
+            BindWhenWorn(other, dest.Storage, src.Storage);
+        }
+
         inventory.Lift(src.Storage, src.Index);
         inventory.Lift(dest.Storage, dest.Index);
 
@@ -509,11 +580,19 @@ public sealed class InventoryService(
                 {
                     Src = new MoveItemValue { Storage = src.Storage, Item = other?.Item ?? -1, Index = src.Index },
                     Dest = new MoveItemValue { Storage = dest.Storage, Item = item.Item, Index = dest.Index },
-                    SrcBind = (byte)(other?.BindType ?? ItemBindType.None),
-                    DestBind = (byte)item.BindType
+                    SrcBind = (byte)(other?.BindState ?? ItemBindState.Free),
+                    DestBind = (byte)item.BindState
                 }
             ]
         });
+    }
+
+    private void BindWhenWorn(ItemInstance item, StorageGroup from, StorageGroup to)
+    {
+        if (ItemCatalog.IsEquipment(to) && !ItemCatalog.IsEquipment(from) && catalog.TryGet(item.Item, out var row))
+        {
+            item.BindState = ItemBinding.OnWorn(item.BindState, (ItemBindType)row.BindType);
+        }
     }
 
     public void Combine(Entity player, MoveItemValue src, MoveItemValue dest, short count)
@@ -524,7 +603,7 @@ public sealed class InventoryService(
 
         // Stacks pour into one another only when both are bound alike, or a bound stack would come out free.
         if (inventory is null || from is null || to is null || from == to || count <= 0 || count > from.Count || from.Item != to.Item ||
-            from.BindType != to.BindType ||
+            from.BindState != to.BindState ||
             ItemCatalog.IsEquipment(src.Storage) || ItemCatalog.IsEquipment(dest.Storage) ||
             ItemCatalog.KindOf(src.Storage) != ItemCatalog.KindOf(dest.Storage) ||
             to.Count + count > catalog.StackLimit(to.Item))
@@ -581,7 +660,7 @@ public sealed class InventoryService(
 
         var piece = Create(from.Item, count);
 
-        piece.BindType = from.BindType;
+        piece.BindState = from.BindState;
         piece.Endurance = from.Endurance;
 
         from.Count -= count;

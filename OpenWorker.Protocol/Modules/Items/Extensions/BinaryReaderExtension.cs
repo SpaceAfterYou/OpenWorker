@@ -7,9 +7,9 @@ namespace OpenWorker.Hotspot.Modules.Items.Extensions;
 public static class BinaryReaderExtension
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ItemBindType ReadItemBindType(this BinaryReader reader)
+    public static ItemBindState ReadItemBindState(this BinaryReader reader)
     {
-        return (ItemBindType)reader.ReadByte();
+        return (ItemBindState)reader.ReadByte();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
