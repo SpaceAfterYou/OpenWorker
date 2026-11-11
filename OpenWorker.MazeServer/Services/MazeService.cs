@@ -304,18 +304,28 @@ public sealed partial class MazeService(
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillSyncPositionRequest request)
     {
-        TakePlace(context.Player, request.Position, request.Yaw, SkillOpcode.SkillSyncPositionReq);
+        if (IsFighting(context.Player))
+        {
+            TakePlace(context.Player, request.Position, request.Yaw, SkillOpcode.SkillSyncPositionReq);
+        }
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// A skill that jumps the player somewhere. The place is taken when the player could have got there; otherwise the player
-    /// stays where the server has it. Everybody in the maze is told where the player is (06/46).
+    /// A skill that jumps the player somewhere. As the original server does, the place is taken wherever the player jumps
+    /// within a move's reach (no skill of the tables has a distance of its own that the server could check), and everybody
+    /// in the maze is told where the player is (06/46). A place that is out of reach is not taken: the player alone is told
+    /// the place the server keeps, and its client goes back to it.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillWarpPositionRequest request)
     {
-        TakePlace(context.Player, request.Position, null, SkillOpcode.SkillWarpPositionReq);
+        if (!IsFighting(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var taken = TakePlace(context.Player, request.Position, null, SkillOpcode.SkillWarpPositionReq);
 
         var place = ecs.Get<WorldComponent>(context.Player);
         var warp = new SkillWarpPositionBroadcastResponse
@@ -329,7 +339,7 @@ public sealed partial class MazeService(
             }
         };
 
-        if (ecs.Has<LuaMaze>(context.Player))
+        if (taken)
         {
             ecs.Get<LuaMaze>(context.Player).Creatures.Broadcast(warp);
         }
@@ -345,14 +355,15 @@ public sealed partial class MazeService(
     /// A place a skill reports for the player, taken when it is a place and the player could have run there since the last
     /// one. A refused place counts against the error budget once a second, as a refused move does, and the player stays.
     /// </summary>
-    private void TakePlace(Entity player, Vector3 position, float? yaw, SkillOpcode request)
+    /// <returns>Whether the place was taken.</returns>
+    private bool TakePlace(Entity player, Vector3 position, float? yaw, SkillOpcode request)
     {
         var world = ecs.Get<WorldComponent>(player);
         var rotation = yaw is { } turned && Place.IsValid(world.Position, turned) ? turned : world.Rotation;
 
         if (!Place.IsValid(position))
         {
-            return;
+            return false;
         }
 
         if (pace.Check(ecs, player, world.Position, position, out var charge) != MoveVerdict.Taken)
@@ -362,10 +373,12 @@ public sealed partial class MazeService(
                 errors.Charge(player, MessageOpcode.From(GroupOpcode.Skill, request), HandlerErrorReason.Violation);
             }
 
-            return;
+            return false;
         }
 
         ecs.Set(player, world with { Position = position, Rotation = rotation });
+
+        return true;
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request)
