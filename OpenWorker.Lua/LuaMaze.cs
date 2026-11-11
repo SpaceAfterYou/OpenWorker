@@ -508,6 +508,7 @@ public partial class LuaMaze(
 
         StepTimers((float)elapsed.TotalSeconds);
         StepQuests();
+        StepMode((float)elapsed.TotalSeconds);
         _portalWait?.Advance((float)elapsed.TotalSeconds);
 
         // A player who leaves during the step is taken out of the list, so the list is walked by index.
@@ -2270,13 +2271,12 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// The game modes of waves and survival have tables of their own that are not read here.
+    /// The monsters come in waves at a monster the players must keep alive (<c>LuaMaze.Defence.cs</c>).
     /// </summary>
     [LuaMember]
     public void StartDefenceMode(int table)
     {
-        NotDone(nameof(StartDefenceMode));
-        Logger.IgnoredStartMode(nameof(StartDefenceMode), table);
+        BeginDefence(table);
     }
 
     [LuaMember]
@@ -2285,18 +2285,22 @@ public partial class LuaMaze(
         Timers.Start(function);
     }
 
+    /// <summary>
+    /// A boss sets the players a trial as its life falls (<c>LuaMaze.Operation.cs</c>).
+    /// </summary>
     [LuaMember]
     public void StartOperationMode(int table)
     {
-        NotDone(nameof(StartOperationMode));
-        Logger.IgnoredStartMode(nameof(StartOperationMode), table);
+        BeginOperation(table);
     }
 
+    /// <summary>
+    /// Waves of monsters come and the mode is won when the last is dead (<c>LuaMaze.Survival.cs</c>).
+    /// </summary>
     [LuaMember]
     public void StartSurvivalMode(int table)
     {
-        NotDone(nameof(StartSurvivalMode));
-        Logger.IgnoredStartMode(nameof(StartSurvivalMode), table);
+        BeginSurvival(table);
     }
 
     /// <summary>

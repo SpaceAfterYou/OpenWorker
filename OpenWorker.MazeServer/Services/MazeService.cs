@@ -785,6 +785,9 @@ public sealed partial class MazeService(
 
         await maze.CollectSoulObjectAsync(context.Player, request.Box);
 
+        // A mode of the maze may be waiting for this object.
+        maze.ModeInteracted(context.Player, request.Box);
+
         await maze.State.OnInteractionObject(request.Box, maze);
     }
 

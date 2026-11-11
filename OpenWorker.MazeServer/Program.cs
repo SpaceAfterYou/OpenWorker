@@ -58,6 +58,7 @@ await Host
         services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<PartyRevision>();
         services.AddSingleton<SkillAggro>();
+        services.AddSingleton<GameModes>();
         services.AddSingleton<CreatureServices>();
         services.AddSingleton<IPlayerHealthResize, MazeHealthResize>();
         services.AddSingleton(_ => new MazeScripts());

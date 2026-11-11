@@ -12,6 +12,7 @@ using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Gameplay.Modules.Vaccum;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Lua;
@@ -131,6 +132,25 @@ public partial class MazeReporter(
         catch (Exception e)
         {
             LogReportFailed(logger, e, "SectorCleared");
+        }
+    }
+
+    /// <summary>
+    /// A game mode of the maze was won while the person stood on their feet. True when a condition of the person counts for
+    /// everyone in the maze.
+    /// </summary>
+    public virtual async ValueTask<bool> ModeWonAsync(Entity player, QuestConditionType type, int maze)
+    {
+        try
+        {
+            return await quests.OnMazeModeWonAsync(player, type, maze, CancellationToken.None);
+        }
+
+        catch (Exception e)
+        {
+            LogReportFailed(logger, e, "ModeWon");
+
+            return false;
         }
     }
 

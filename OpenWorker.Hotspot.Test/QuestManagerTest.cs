@@ -44,6 +44,24 @@ public sealed class QuestManagerTest
 
     private static QuestConditionDefinition Cleared { get; } = new(1030, QuestConditionType.Clear, QuestConditionTarget.Maze, 21111, 0, 1, 0, [], []);
 
+    private const int SurvivalMaze = 21331;
+
+    private static QuestConditionDefinition Survive { get; } = new(1050, QuestConditionType.Survival, QuestConditionTarget.Npc, 0, 0, 1, SurvivalMaze, [], []);
+
+    private static QuestDefinition Holdout { get; } = new(
+        950,
+        12,
+        QuestContents.Side,
+        0,
+        0,
+        [],
+        false,
+        false,
+        [],
+        [],
+        QuestRewardDefinition.None,
+        [1050]);
+
     private static QuestDefinition Hard { get; } = new(
         100,
         1,
@@ -207,8 +225,8 @@ public sealed class QuestManagerTest
         [1010]) { StartsByItself = true };
 
     private static QuestCatalog Catalog { get; } = QuestCatalog.From(
-        [Hard, Quick, Bound, Gathering, Mixed, Late, HighLevel, Daily, Errand, Prequel, Sequel],
-        [Talk, Hunt, Boars, Tusks, Cleared, HandIn],
+        [Hard, Quick, Bound, Gathering, Mixed, Late, HighLevel, Daily, Errand, Prequel, Sequel, Holdout],
+        [Talk, Hunt, Boars, Tusks, Cleared, HandIn, Survive],
         null,
         new Dictionary<int, int[]> { [Wolf] = [Pack] });
 
@@ -867,6 +885,81 @@ public sealed class QuestManagerTest
         Assert.AreEqual(1020, Int(update.Body, 2));
         Assert.AreEqual((byte)2, update.Body[6], "The items count, though the person has none");
         Assert.IsTrue(alone.Quiet(), "A condition that does not count for the group counts nothing");
+    }
+
+    /// <summary>
+    /// A mode won in a maze counts for the open conditions of its kind that name the maze, and for none of another kind or of
+    /// another maze.
+    /// </summary>
+    [TestMethod]
+    public async Task AModeWonCountsForTheConditionsOfItsKindThatNameTheMaze()
+    {
+        using var test = new Harness();
+
+        await test.Enter();
+        test.Next();
+        test.Next();
+
+        await test.Run(async () =>
+        {
+            test.World.Get<QuestComponent>(test.Player).Book!.Episodes.Add(QuestRules.Start(Holdout, false));
+
+            await test.Manager.OnMazeModeWonAsync(test.Player, QuestConditionType.Protect, SurvivalMaze, CancellationToken.None);
+            await test.Manager.OnMazeModeWonAsync(test.Player, QuestConditionType.Survival, SurvivalMaze + 1, CancellationToken.None);
+        });
+
+        Assert.IsTrue(test.Quiet(), "Another kind, another maze");
+
+        await test.Run(async () => await test.Manager.OnMazeModeWonAsync(test.Player, QuestConditionType.Survival, SurvivalMaze, CancellationToken.None));
+
+        var update = test.Next();
+
+        Assert.AreEqual(1050, Int(update.Body, 2));
+        Assert.AreEqual((byte)1, update.Body[6]);
+    }
+
+    /// <summary>
+    /// A won mode tells whether a condition it counted counts for everyone in the maze, so that the players who did not stand
+    /// are counted too.
+    /// </summary>
+    [TestMethod]
+    public async Task AModeWonSaysWhetherTheConditionCountsForTheGroup()
+    {
+        static QuestConditionRuleRow Rule(uint id, bool group)
+        {
+            using var stream = new MemoryStream();
+            using var writer = new BinaryWriter(stream);
+
+            writer.Write(id);
+            writer.Write(new byte[1 + 4 + 4 + 1 + 1 + 4 + 4 + 4 + 24 * 4]);
+            writer.Write(group ? (byte)1 : (byte)0);
+            writer.Write(new byte[1 + 8 + 2 + 8 + 2 + 12]);
+            writer.Write((ushort)0);
+            writer.Flush();
+            stream.Position = 0;
+
+            return new QuestConditionRuleRow(new BinaryReader(stream));
+        }
+
+        using var shared = new Harness(rules: new ReadOnlyCollection<QuestConditionRuleRow>([Rule(1050, true)]));
+        using var alone = new Harness(rules: new ReadOnlyCollection<QuestConditionRuleRow>([Rule(1050, false)]));
+        var told = new List<bool>();
+
+        foreach (var test in new[] { shared, alone })
+        {
+            await test.Enter();
+            test.Next();
+            test.Next();
+
+            await test.Run(async () =>
+            {
+                test.World.Get<QuestComponent>(test.Player).Book!.Episodes.Add(QuestRules.Start(Holdout, false));
+
+                told.Add(await test.Manager.OnMazeModeWonAsync(test.Player, QuestConditionType.Survival, SurvivalMaze, CancellationToken.None));
+            });
+        }
+
+        CollectionAssert.AreEqual(new[] { true, false }, told);
     }
 
     #endregion Progress

@@ -12,7 +12,7 @@ namespace OpenWorker.Lua.Ai;
 /// What every maze needs to give its monsters a mind. Everything in it is shared and does not change.
 /// </summary>
 public sealed class CreatureServices(AiScriptLoader scripts, MonsterBehaviorTables behaviors, SkillActionProvider actions, SimulationClock clock, NavMeshProvider meshes,
-    PlayerGauges? gauges = null, PlayerStatsService? stats = null, EnduranceWear? wear = null, PartyRevision? revision = null, SkillAggro? aggro = null)
+    PlayerGauges? gauges = null, PlayerStatsService? stats = null, EnduranceWear? wear = null, PartyRevision? revision = null, SkillAggro? aggro = null, GameModes? modes = null)
 {
     /// <summary>
     /// Steps every maze of the server, its monsters with it, and runs what the mazes wait for.
@@ -50,4 +50,9 @@ public sealed class CreatureServices(AiScriptLoader scripts, MonsterBehaviorTabl
     /// How much a blow angers a monster. A maze without it counts the damage alone.
     /// </summary>
     public SkillAggro? Aggro { get; } = aggro;
+
+    /// <summary>
+    /// The game modes a script can start. A maze without it starts none.
+    /// </summary>
+    public GameModes? Modes { get; } = modes;
 }

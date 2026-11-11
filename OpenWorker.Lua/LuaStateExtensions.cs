@@ -63,6 +63,15 @@ public static class LuaStateExtensions
     }
     
     /// <summary>
+    /// A game mode of the maze has ended and the script hears how: the function is named for the mode and the result, and gets the
+    /// sector the mode was played in.
+    /// </summary>
+    public static async ValueTask OnModeEnded(this LuaState state, string function, int sector, LuaMaze maze, CancellationToken cancellationToken = default)
+    {
+        await CallAsync(state, maze, function, [new LuaValue(sector), new LuaValue(maze)], cancellationToken);
+    }
+
+    /// <summary>
     /// A cutscene is over, once for every cutscene the maze has seen.
     /// </summary>
     public static async ValueTask OnCutsceneOff(this LuaState state, string name, LuaMaze maze, CancellationToken cancellationToken = default)
