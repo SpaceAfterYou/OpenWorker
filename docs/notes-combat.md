@@ -192,11 +192,82 @@ animations of the break and the recovery time of the group. The mind is told whe
 | Slow of a hit on the speed of a flight | scales it | not applied (05/12 is sent) | kept different |
 | A killed monster | reacts as it dies | removed at once; the hit still carries the throw | kept different |
 | The push of a player | the server moves the player and the report of the client overwrites it | only told; the report of the client is taken as before | kept different |
-| Armor frames of a skill (a defense type given by a motion event) | read from the action file | not read | not done |
-| Parts of a monster (17/54) | hit part from the bones | not done | not done |
+| Armor frames of a skill (a defense type given by an animation or a stretch of one) | read from the action file | read, see "Armor of the moment" | same |
+| Parts of a monster (17/54) | hit part from the bones | not done | not done: see "What is not done and why" |
+| Weight rank of a player | 5, the default of every body | 5 | fixed (it was 0) |
+| A helper hit by a monster | thrown like any monster | thrown, the throw told in the hit | fixed |
 
-Not done: the charge of a skill is not read (no charge adds to the push), the weight rank of a player is taken as 0, the
-reaction rate of the hit slow, helpers (a helper hit by a monster is told no throw), the break of the armor of a player.
+Not done: the reaction rate of the hit slow, the break of the armor of a player.
+
+## Armor of the moment
+
+The defense type a body takes a hit with is not only what its table says. Every animation of an action file names one (the fifth value
+of its header): 4 says nothing and the defense stays the table's (and the buffs'); 0 makes it plain, taking even a super armor off; 2 makes
+it armored, 3 invincible, 5 hurt but never moved (a new defense type, `NoReaction`, that shows no reaction to any blow, hard or not). A
+`DefenseTypeTrigger` event of the animation (a stretch in seconds) says one for its time, unless the super armor of the monster is broken.
+Invincible beats armored beats plain beats nothing (`DefenseFrames`).
+
+- **A player** takes it from the animation of the skill it plays (`SkillPlayback.Playing`): every skill of the heroes armors it, an
+  evade or a roll makes it invincible for their length (a blow in them deals nothing and moves nothing), walking and standing say
+  nothing. The monster's blow tells the client the defense type in 06/13, and a player armored or invincible is thrown only by a blow hard
+  enough (`PlayerThrow`).
+- **A monster** takes it from the animations of the skill it is playing (`MonsterBody.FrameDefense`); outside a skill its defense is its
+  table's, as before. The reactions to hits (flinch, fall, get up) keep their own timeline in `MonsterReaction`.
+
+## Carrying (05/34, 05/35)
+
+Not the grab of a boss: three skills of Haru (First Blade, Pierce Step, Spin Cutter) and one or two of each other hero carry away what
+stands in front of them for a short time. The event names the time (0.2 to 0.3 s), the distance (50 to 150), the angle (100 to 150 degrees)
+and a weight rank. From the moment the event comes, at every step of the maze, the monsters in that area before the player that live,
+do not lie, and are not carried yet are looked at: one of a weight rank at or above the limit, or a fixed one (stand type 2 or 3), is not
+carried, and the player stops against it (05/13 with the place the server has); any other is told to the clients with 05/34 {carrier,
+carried, direction, distance} (the direction is from the player to the monster, the distance their distance now), stops, and from then on
+stands before the player the way it did, a body of each and the distance added, until the time is over or the ground stops it. It is let
+go with 05/04 and 05/35. While carried a monster neither thinks nor fights. The client's own report of where the carried monster ended
+(05/36) is not used; the server follows the player.
+
+## Special effects of gear
+
+The tables name effects from 100 on that are not stats: a share of damage to a kind of monster, of cooldown, of cost. Gear, titles and
+buffs write them into the stat sheet (`StatSheet.Apply`), the stats carry them (`CombatStats.Special`), and these count:
+
+| Effect | What it does |
+|---|---|
+| 100 | the cooldown of every skill but a passive one is shorter by this share (added to the buffs' and the deck's, at most 100 %) |
+| 103 to 108 | the damage to a plain monster / a named one, a boss or a raid boss (rank 3 to 5) / a monster that fights close by / one that shoots (none of this client does) / one in the air / one lying down |
+| 126 to 133, 151, 153 | the damage to the monsters of a faction (faction minus 6 is 0, 1, 2, 3, 10, 11, 12, 13, 22, 23) |
+| 109 to 112, 134 to 141, 152, 154 | the same taken away from the damage a monster of that kind does to the player |
+| 113 | the damage to the super armor of a monster is greater by this share |
+| 114 | the soul gauge cost of a skill is lower by this share |
+| 121, 122 | life and soul gauge given back for each monster killed |
+| 142 | the damage of a blow that only grazed is lower by this share |
+
+Each share takes its part of what the one before it left, after the defense of the target and before the damage rate of the event, the
+skill and the rest, as in the original. Not counted: 101 and 102 (battle between players), 115, 116 and 117 (more experience, gold and soul
+vapor from a kill, which the reward code of the maze pays), 118 to 120, 123 to 125 (a buff to give, a reflection), 143 and 144 (less damage
+while in the air or lying: the server does not follow a player on the ground), 145 to 148, 149 and 150 (speed in a district or a maze: the
+pace check only counts a move that is too fast), and the rates of bosses and of every blow that a buff gives. No client message carries
+the special effects.
+
+## Skills and the state of a player
+
+A player thrown into the air by a blow that shows its reaction cannot start a skill whose use state is the plain one (most skills, and the
+evade), until the flight is over, which is counted from the height of the throw (up and down again at least, so that a skill of a player
+who has already landed is never refused): the answer is 56016, or 56009 for a skill that asks for a motion, a counter hit or a buff.
+Skills for any state (use state 1) and the ones whose normal state allows a hit go through. The server does not follow the player once it
+is on the ground, and a skill for the ground only (the roll, the rise attack) or for a counter hit is not checked.
+
+## What is not done and why
+
+- **Parts of a monster (17/54).** Only six monsters of this client are of the kind that has parts (the Deus Ex Machina and its two halves,
+  normal and hard). A part has its own life, a share of the monster's, and only a blow that touches it hurts it; the monster's own life is
+  then not touched, and when parts are broken the monster is changed into another one or spawns one. Which part a blow touched comes from the
+  bones of the model at the moment of the blow, which needs the skeleton of the animation; the server has none, so no hit has a part.
+- **The charge of a skill.** The event that makes a skill grow with the key held is in no action file of this client.
+- **Continuous skill costs.** No skill of this client's table has a cost of type 1 above zero.
+- **Skill options on cooldown and cost.** An item option that names a skill (class 2 and up in the original) has no source in this
+  client's item table, which has classes 0 and 1 only.
+- **Motion states of a player on the ground**, see "Skills and the state of a player".
 
 ## Tests
 
@@ -228,6 +299,15 @@ they failed before this work: the target monster walks while the shot is aimed a
 - That the soul gauge bar follows 03/34 and empties by the cost of a skill.
 - That a refused skill (06/09 with a code) shows its message and the character stays usable.
 - That the evade spends stamina as the bar shows.
+
+## To check with the real client (grabs, armor, carrying)
+
+- A boss that grabs (the Asphalt Golem in the fourth episode of the Concrete Jungle, level 17): the player is held, flies to the place,
+  takes the blow and is put down there; nothing else about it moves wrongly.
+- Pierce Step on a monster in front: the monster is carried by the player for a quarter of a second and let go; on a heavy one the player
+  stops.
+- A hero in the middle of a skill is not thrown by a plain blow and an evade is not hurt at all.
+- A monster whose attack animation says it is armored does not flinch through the attack.
 
 ## To check with the real client (blows)
 
