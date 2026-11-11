@@ -155,12 +155,9 @@ public abstract class PartyServiceBase(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PartyCancelRequest request)
     {
         var me = Me(context);
-        var invite = await book.TakeInviteAsync(me);
-
-        // Only the one who invited hears it; the client says why it declined by itself: busy, or nothing.
-        var inviter = invite?.Inviter ?? request.Actor.Identifier;
-
-        if (!Alive(context) || inviter == 0)
+        // Only the one who invited hears it, and only of an invitation the server remembers: the client cannot name
+        // somebody else to be told. The client says why it declined by itself: busy, or nothing.
+        if (await book.TakeInviteAsync(me) is not { Inviter: not 0 and var inviter } || !Alive(context))
         {
             return;
         }
