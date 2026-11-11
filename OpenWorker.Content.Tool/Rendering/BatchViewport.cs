@@ -12,8 +12,9 @@ using Silk.NET.OpenGL;
 namespace OpenWorker.Content.Tool.Rendering;
 
 /// <summary>
-/// Draws the translucent oriented boxes of a <c>*.vbatch</c> with a grid and RGB axes. Right-drag orbits, WASD
-/// moves the look target, the wheel zooms. Game Z is up; the viewport remaps that to OpenGL Y-up.
+/// Draws the translucent oriented boxes of a <c>*.vbatch</c> with a grid and RGB axes. Right-drag orbits,
+/// Shift+right-drag pans on the ground, WASD flies along the camera look, the wheel zooms. Game Z is up; the
+/// viewport remaps that to OpenGL Y-up.
 /// </summary>
 public sealed class BatchViewport : UserControl
 {
@@ -28,6 +29,7 @@ public sealed class BatchViewport : UserControl
     private TopLevel? _topLevel;
     private bool _pointerInside;
     private bool _orbiting;
+    private bool _panning;
     private Point _lastPointer;
 
     public IReadOnlyList<BatchBoxDraw>? Boxes
@@ -86,7 +88,11 @@ public sealed class BatchViewport : UserControl
         _overlay.PointerPressed += OnPointerPressed;
         _overlay.PointerMoved += OnPointerMoved;
         _overlay.PointerReleased += OnPointerReleased;
-        _overlay.PointerCaptureLost += (_, _) => _orbiting = false;
+        _overlay.PointerCaptureLost += (_, _) =>
+        {
+            _orbiting = false;
+            _panning = false;
+        };
         _overlay.PointerWheelChanged += OnPointerWheelChanged;
         _overlay.KeyDown += OnKeyDown;
         _overlay.KeyUp += OnKeyUp;
@@ -173,7 +179,9 @@ public sealed class BatchViewport : UserControl
             return;
         }
 
-        _orbiting = true;
+        var pan = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        _panning = pan;
+        _orbiting = !pan;
         _lastPointer = e.GetPosition(_overlay);
         e.Pointer.Capture(_overlay);
         e.Handled = true;
@@ -181,7 +189,7 @@ public sealed class BatchViewport : UserControl
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_orbiting)
+        if (!_orbiting && !_panning)
         {
             return;
         }
@@ -190,18 +198,28 @@ public sealed class BatchViewport : UserControl
         var dx = (float)(position.X - _lastPointer.X);
         var dy = (float)(position.Y - _lastPointer.Y);
         _lastPointer = position;
-        _surface.Orbit(dx, dy);
+
+        if (_panning)
+        {
+            _surface.Pan(dx, dy);
+        }
+        else
+        {
+            _surface.Orbit(dx, dy);
+        }
+
         e.Handled = true;
     }
 
     private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (!_orbiting)
+        if (!_orbiting && !_panning)
         {
             return;
         }
 
         _orbiting = false;
+        _panning = false;
         e.Pointer.Capture(null);
         e.Handled = true;
     }
@@ -213,7 +231,7 @@ public sealed class BatchViewport : UserControl
     }
 
     private bool IsInputActive() =>
-        _pointerInside || _orbiting || _overlay.IsFocused || IsFocused;
+        _pointerInside || _orbiting || _panning || _overlay.IsFocused || IsFocused;
 
     private bool SetMoveKey(KeyEventArgs e, bool down)
     {
@@ -315,6 +333,17 @@ public sealed class BatchViewport : UserControl
         {
             _yaw += dx * 0.005f;
             _pitch = Math.Clamp(_pitch + dy * 0.005f, 0.05f, MathF.PI / 2f - 0.05f);
+        }
+
+        /// <summary>
+        /// Ground-plane pan: the same motion WASD used to apply, driven by Shift+right-drag.
+        /// </summary>
+        public void Pan(float dx, float dy)
+        {
+            var forward = new Vector3(-MathF.Cos(_yaw), 0f, -MathF.Sin(_yaw));
+            var right = new Vector3(MathF.Sin(_yaw), 0f, -MathF.Cos(_yaw));
+            var scale = _distance * 0.0015f;
+            _target += right * dx * scale + forward * (-dy) * scale;
         }
 
         public void Zoom(float factor) =>
@@ -464,20 +493,34 @@ public sealed class BatchViewport : UserControl
                 return;
             }
 
-            // Camera looks from offset toward target; ground forward is the negated yaw offset.
-            var forward = new Vector3(-MathF.Cos(_yaw), 0f, -MathF.Sin(_yaw));
-            var right = new Vector3(MathF.Sin(_yaw), 0f, -MathF.Cos(_yaw));
+            var look = _target - CameraPosition();
+            if (look.LengthSquared() < 1e-8f)
+            {
+                return;
+            }
+
+            look = Vector3.Normalize(look);
+            var right = Vector3.Cross(look, Vector3.UnitY);
+            if (right.LengthSquared() < 1e-8f)
+            {
+                right = new Vector3(MathF.Sin(_yaw), 0f, -MathF.Cos(_yaw));
+            }
+            else
+            {
+                right = Vector3.Normalize(right);
+            }
+
             var step = _distance * 0.02f;
             var delta = Vector3.Zero;
 
             if (_moveForward)
             {
-                delta += forward;
+                delta += look;
             }
 
             if (_moveBack)
             {
-                delta -= forward;
+                delta -= look;
             }
 
             if (_moveRight)
