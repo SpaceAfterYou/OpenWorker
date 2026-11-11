@@ -203,6 +203,34 @@ public sealed partial class DailyMissionManager(
     }
 
     /// <summary>
+    /// Items came into the bags of the person, from wherever the inventory gave them (<c>ItemArrivals</c>): they count for the
+    /// missions that ask to collect them, once, and the gift does not wait for the missions to be saved. Items that change
+    /// hands in a trade are not given by the inventory and do not count.
+    /// </summary>
+    public void OnItemsArrived(Entity player, int item, int count)
+    {
+        if (count > 0)
+        {
+            _ = CountArrivalAsync(player, item, (short)Math.Min(count, short.MaxValue));
+        }
+    }
+
+    private async Task CountArrivalAsync(Entity player, int item, short count)
+    {
+        try
+        {
+            await OnItemCollectedAsync(player, item, count, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            LogArrivalFailed(logger, exception, item);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Counting the item {Item} for the daily missions failed")]
+    private static partial void LogArrivalFailed(ILogger logger, Exception exception, int item);
+
+    /// <summary>
     /// The person has got items.
     /// </summary>
     public ValueTask OnItemCollectedAsync(Entity player, int item, short count, CancellationToken cancellationToken)

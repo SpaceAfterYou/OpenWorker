@@ -288,24 +288,78 @@ public sealed partial class QuestManager(
         }
 
         // Items the person already has count towards the conditions that ask for them, as many as the person has.
-        foreach (var slot in Enumerable.Range(0, quest.Conditions.Count))
+        await RecountHeldAsync(player, cancellationToken);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Counts the items the person holds again for the collecting conditions that are open, which is the one time an item that
+    /// has gone since it came is taken off the count: the condition is set to the items held (at most its counter), up or
+    /// down. A person who holds none of the item is left as it stands. The counting is done when an episode is taken and
+    /// whenever another condition of a person is done; otherwise a condition only counts items as they arrive
+    /// (<see cref="OnItemsArrived"/>).
+    /// </summary>
+    private async ValueTask RecountHeldAsync(Entity player, CancellationToken cancellationToken)
+    {
+        if (!TryGet(player, out var book, out _))
         {
-            if (catalog.TryGetCondition(quest.Conditions[slot], out var condition) &&
-                condition is { Type: QuestConditionType.Collect, Target: QuestConditionTarget.Item })
+            return;
+        }
+
+        var collecting = new List<(int Episode, int Slot, QuestConditionDefinition Condition)>();
+
+        foreach (var state in book.Episodes)
+        {
+            if (!catalog.TryGetEpisode(state.Episode, out var quest))
             {
-                var held = Math.Min(await items.CountAsync(player, condition.TargetId, cancellationToken), condition.Counter);
-                var missing = held - state.Steps[slot];
+                continue;
+            }
 
-                if (missing > 0)
+            for (var slot = 0; slot < quest.Conditions.Count; slot++)
+            {
+                if (catalog.TryGetCondition(quest.Conditions[slot], out var condition) &&
+                    condition is { Type: QuestConditionType.Collect, Target: QuestConditionTarget.Item } &&
+                    QuestRules.IsOpen(quest, state, slot, condition))
                 {
-                    var id = condition.Id;
-
-                    await ProgressAsync(player, e => e.Id == id, missing, false);
+                    collecting.Add((state.Episode, slot, condition));
                 }
             }
         }
 
-        return true;
+        var lowered = new List<QuestCondition>();
+
+        foreach (var (episode, slot, condition) in collecting)
+        {
+            var held = Math.Min(await items.CountAsync(player, condition.TargetId, cancellationToken), condition.Counter);
+
+            // The person may have gone, or the episode, or the condition may have moved on while the items were counted.
+            if (held <= 0 || !TryGet(player, out book, out _) || book.Find(episode) is not { } current ||
+                !catalog.TryGetEpisode(episode, out var quest) || !QuestRules.IsOpen(quest, current, slot, condition))
+            {
+                continue;
+            }
+
+            var counted = current.Steps[slot];
+
+            if (held > counted)
+            {
+                var id = condition.Id;
+
+                await ProgressAsync(player, e => e.Id == id, held - counted, false, recount: false);
+            }
+            else if (held < counted)
+            {
+                current.Steps[slot] = (byte)held;
+
+                lowered.Add(new QuestCondition { Condition = condition.Id, Step = (byte)held });
+            }
+        }
+
+        if (lowered.Count > 0)
+        {
+            Send(player, new QuestUpdateResponse { ConditionList = lowered.ToArray() });
+        }
     }
 
     /// <summary>
@@ -878,7 +932,7 @@ public sealed partial class QuestManager(
     /// Counts an act for every open condition it matches, tells the client and gives and takes what the conditions that are
     /// done name. Returns how many conditions moved.
     /// </summary>
-    private async ValueTask<int> ProgressAsync(Entity player, Func<QuestConditionDefinition, bool> matches, int count, bool save = true)
+    private async ValueTask<int> ProgressAsync(Entity player, Func<QuestConditionDefinition, bool> matches, int count, bool save = true, bool recount = true)
     {
         if (!TryGet(player, out var book, out _))
         {
@@ -929,6 +983,12 @@ public sealed partial class QuestManager(
         foreach (var quest in kept.Where(e => e.Completed && e.Quest.FinishesByItself && QuestRules.IsReady(e.Quest, e.State)).Select(e => e.Quest).DistinctBy(e => e.Id))
         {
             await CompleteCoreAsync(player, quest.Id, 0, false, CancellationToken.None);
+        }
+
+        // A condition that is done counts the items held again for the collecting conditions of the person.
+        if (recount && kept.Any(e => e.Completed))
+        {
+            await RecountHeldAsync(player, CancellationToken.None);
         }
 
         if (save)

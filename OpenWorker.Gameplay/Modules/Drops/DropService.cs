@@ -4,8 +4,6 @@ using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Progress;
-using Microsoft.Extensions.Logging;
-using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
@@ -43,8 +41,6 @@ public sealed partial class DropService(
     ReadOnlyCollection<DropRateMobRow> rates,
     ReadOnlyCollection<MonsterRow> monsters,
     IOptions<RewardsOptions>? options = null,
-    DailyMissionManager? missions = null,
-    ILogger<DropService>? logger = null,
     MazeResults? results = null,
     AchievementManager? achievements = null,
     ReadOnlyCollection<DropRateLevelRow>? levelRates = null,
@@ -301,39 +297,13 @@ public sealed partial class DropService(
             achievements?.OnEtherPicked(player, (int)added);
         }
 
-        // The quests hear of the item from the inventory, as of every item that comes into the bags.
-        if (drop.ObjectId < GoldObject && missions is not null)
-        {
-            _ = ReportItemAsync(player, drop);
-        }
-
+        // The quests and the missions hear of the item from the inventory, as of every item that comes into the bags.
         if (world.Has<ServerSessionComponent>(player))
         {
             world.Get<ServerSessionComponent>(player).Send(new DropPickUpResponse { Serial = serial });
         }
 
         return true;
-    }
-
-    // The missions that ask for items are told, they are saved and the pickup does not wait for it.
-    private async Task ReportItemAsync(Entity player, DropObject drop)
-    {
-        try
-        {
-            var count = (short)Math.Min(drop.Count, short.MaxValue);
-
-            if (missions is not null)
-            {
-                await missions.OnItemCollectedAsync(player, drop.ObjectId, count, CancellationToken.None);
-            }
-        }
-        catch (Exception exception)
-        {
-            if (logger is not null)
-            {
-                LogMissionItemFailed(logger, exception, drop.ObjectId);
-            }
-        }
     }
 
     /// <summary>
@@ -382,7 +352,4 @@ public sealed partial class DropService(
 
         return field;
     }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Counting the item {Item} for the missions and quests failed")]
-    private static partial void LogMissionItemFailed(ILogger logger, Exception exception, int item);
 }
