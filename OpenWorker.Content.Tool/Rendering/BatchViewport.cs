@@ -326,11 +326,6 @@ public sealed class BatchViewport : UserControl
             {
                 _selectedBox = value;
                 _meshDirty = true;
-                if (value is not null)
-                {
-                    FrameCamera([value]);
-                }
-
                 RequestNextFrameRendering();
             }
         }
