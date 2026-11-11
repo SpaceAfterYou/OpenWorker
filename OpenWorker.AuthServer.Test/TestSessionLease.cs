@@ -225,6 +225,41 @@ public sealed class TestSessionLease
     }
 
     /// <summary>
+    /// A person is in one world at a time: a server waits for the district or the maze that holds the session to let the
+    /// person go, and follows a login or a gate server at once.
+    /// </summary>
+    [TestMethod]
+    public async Task AServerWaitsForTheWorldThatHoldsTheSessionAndFollowsAGateAtOnce()
+    {
+        using var world = World.Create();
+        var play = Options.Create(new SessionLeaseOptions { Play = true });
+        var gate = new SessionLeaseManager(Sessions, Redis);
+        var district = new SessionLeaseManager(Sessions, Redis, options: play);
+        var maze = new SessionLeaseManager(Sessions, Redis, options: play);
+        var session = NewSession();
+        var atGate = world.Create();
+        var inDistrict = world.Create();
+        var inMaze = world.Create();
+
+        Assert.IsFalse(await district.TakeOverAsync(inDistrict, session, 1), "No such session");
+
+        await gate.AttachAsync(atGate, session, 1);
+
+        Assert.IsTrue(await district.TakeOverAsync(inDistrict, session, 1), "A gate is followed at once");
+
+        var entering = maze.TakeOverAsync(inMaze, session, 1);
+
+        await Task.Delay(TimeSpan.FromMilliseconds(400));
+
+        Assert.IsFalse(entering.IsCompleted, "The district still has the person");
+
+        await district.OnSessionClosedAsync(inDistrict);
+
+        Assert.IsTrue(await entering, "The district has let the person go");
+        Assert.IsTrue((await FindAsync(session))!.Connected);
+    }
+
+    /// <summary>
     /// A name is not tried any more after its wrong passwords, and a right one before that forgets them.
     /// </summary>
     [TestMethod]

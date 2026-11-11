@@ -1,3 +1,4 @@
+using OpenWorker.Hotspot.Cache;
 ﻿using OpenWorker.Batch;
 using OpenWorker.Channel.Community;
 using OpenWorker.Gameplay.Modules.Maze;
@@ -36,6 +37,9 @@ await Host
 
         services.AddCache();
         services.AddSessionCache();
+
+        // A person plays here: the next server waits until this one has let them go.
+        services.Configure<SessionLeaseOptions>(options => options.Play = true);
         services.AddGateCache();
         services.AddChannelCache();
         services.AddDistrictCache();

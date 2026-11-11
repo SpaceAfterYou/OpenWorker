@@ -137,6 +137,14 @@ public sealed partial class PersonService(
             return;
         }
 
+        // The server the person came from lets them go first, and writes what they changed there: a person is
+        // in one world at a time, and is read from the database only after that.
+        if (!await leases.TakeOverAsync(context.Player, request.Session.Key, request.Session.Account) || !ecs.IsAlive(context.Player))
+        {
+            session.Disconnect();
+            return;
+        }
+
         var entry = await factory
             .LoadPersonAtEntryAsync(request.Account, request.Actor.Identifier, context.CancellationToken);
 
@@ -160,9 +168,6 @@ public sealed partial class PersonService(
         ecs.Set(context.Player, new ClaimsComponent(request.Session));
 
         ecs.SetLogAccount(context.Player, request.Session.Account);
-
-        await leases
-            .AttachAsync(context.Player, request.Session.Key, request.Session.Account);
 
         ecs.Set(context.Player, GetReservedPlace(reserve));
 

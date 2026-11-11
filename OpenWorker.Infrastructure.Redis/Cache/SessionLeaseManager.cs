@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using Arch.Core;
+using Microsoft.Extensions.Options;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM;
 using Redis.OM.Searching;
@@ -14,8 +15,45 @@ namespace OpenWorker.Hotspot.Cache;
 /// shortens the lease: the next server takes the session over before it expires. If a server
 /// crashes, its sessions expire because nothing renews them.
 /// </summary>
-public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions, IConnectionMultiplexer redis) : ISessionCloseHandler
+public sealed class SessionLeaseManager(
+    IRedisCollection<SessionCache> sessions,
+    IConnectionMultiplexer redis,
+    World? world = null,
+    WorldLoop? loop = null,
+    IOptions<SessionLeaseOptions>? options = null) : ISessionCloseHandler
 {
+    /// <summary>
+    /// The channel on which a server asks the holder of a session to let its player go.
+    /// </summary>
+    private static RedisChannel TakeoverChannel { get; } = RedisChannel.Literal("ow:session:takeover");
+
+    /// <summary>
+    /// How long a server waits for the server a person plays on to let them go, and how often it looks.
+    /// </summary>
+    public static TimeSpan TakeoverWait { get; } = TimeSpan.FromSeconds(8);
+
+    private static TimeSpan TakeoverStep { get; } = TimeSpan.FromMilliseconds(100);
+
+    private bool Play { get; } = options?.Value.Play ?? false;
+
+    private Task? _listening;
+
+    /// <summary>
+    /// Makes this connection the holder of the session unless a server the person plays on holds it. Returns 1 when it is
+    /// taken, -1 when there is no such session, and 0 with the holder when the holder has to let go first.
+    /// </summary>
+    private static RedisScript Claim { get; } = new("""
+        if redis.call('EXISTS', KEYS[1]) == 0 then
+            return {-1}
+        end
+        local owner = redis.call('HGET', KEYS[1], 'Owner')
+        if owner and owner ~= ARGV[1] and redis.call('HGET', KEYS[1], 'Held') == '1' and redis.call('HGET', KEYS[1], 'Play') == '1' then
+            return {0, owner}
+        end
+        redis.call('HSET', KEYS[1], 'Owner', ARGV[1], 'Held', '1', 'Play', ARGV[2])
+        return {1}
+        """);
+
     public static TimeSpan ConnectedLease { get; } = TimeSpan.FromSeconds(90);
     public static TimeSpan DisconnectedLease { get; } = TimeSpan.FromSeconds(60);
     public static TimeSpan RenewInterval { get; } = TimeSpan.FromSeconds(30);
@@ -50,8 +88,85 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
 
     private ConcurrentDictionary<Entity, Lease> Leases { get; } = new();
 
+    /// <summary>
+    /// Takes over a session that exists for the connection of the player. A person is in one world at a time: while a
+    /// district or a maze still holds the session, that server is asked to let the person go, which it does as a
+    /// connection that closes (its last changes are written first), and this one waits for it. False when there is no
+    /// such session, or its holder did not let go in time; the connection is then to be refused.
+    /// </summary>
+    public async Task<bool> TakeOverAsync(Entity player, long session, int account)
+    {
+        var lease = new Lease(session, account, Guid.NewGuid().ToString("N"), false, null);
+        var key = (RedisKey)(KeyPrefix + session.ToString(CultureInfo.InvariantCulture));
+        var asked = false;
+
+        await ListenAsync();
+
+        for (var waited = TimeSpan.Zero; ; waited += TakeoverStep)
+        {
+            var result = (RedisResult[])(await Claim.EvaluateAsync(redis, [key], [lease.Owner, Play ? 1 : 0]))!;
+
+            switch ((int)result[0])
+            {
+                case 1:
+                    Leases[player] = lease;
+
+                    await WriteAsync(lease, true, ConnectedLease);
+
+                    return true;
+
+                case -1:
+                    return false;
+            }
+
+            if (waited >= TakeoverWait)
+            {
+                return false;
+            }
+
+            if (!asked)
+            {
+                asked = true;
+
+                await redis.GetSubscriber().PublishAsync(TakeoverChannel, (string)result[1]!);
+            }
+
+            await Task.Delay(TakeoverStep);
+        }
+    }
+
+    /// <summary>
+    /// Starts listening for the servers that ask this one to let a player go. Without a world there is nobody to let go.
+    /// </summary>
+    private Task ListenAsync()
+    {
+        if (world is null || loop is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _listening ??= redis.GetSubscriber().SubscribeAsync(TakeoverChannel, (_, owner) => loop.Post(_ => LetGo((string?)owner), null));
+    }
+
+    /// <summary>
+    /// Closes the connection of the lease another server asks for, if it is one of this server: the close writes what the
+    /// person changed and then gives the session up, as any close does.
+    /// </summary>
+    private void LetGo(string? owner)
+    {
+        foreach (var (player, lease) in Leases)
+        {
+            if (lease.Owner == owner && world!.IsAlive(player) && world.TryGet(player, out ServerSessionComponent session))
+            {
+                session.Disconnect();
+            }
+        }
+    }
+
     public async Task AttachAsync(Entity player, long session, int account)
     {
+        await ListenAsync();
+
         var lease = new Lease(session, account, Guid.NewGuid().ToString("N"), false, null);
 
         Leases[player] = lease;
@@ -133,6 +248,8 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
                 Account = lease.Account,
                 UpdatedAt = DateTime.UtcNow,
                 Connected = connected,
+                Held = connected ? 1 : 0,
+                Play = Play ? 1 : 0,
                 Owner = lease.Owner,
                 ReturnToAuth = lease.ReturnToAuth,
                 ReturnAddress = lease.ReturnAddress
