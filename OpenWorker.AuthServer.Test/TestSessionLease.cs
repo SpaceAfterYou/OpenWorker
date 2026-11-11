@@ -198,6 +198,32 @@ public sealed class TestSessionLease
         Assert.IsFalse((await FindAsync(session))!.ReturnToAuth);
     }
 
+    /// <summary>
+    /// The request that continues a session at the auth server names the account and nothing secret, so the session is
+    /// continued only from the address its player left the game from.
+    /// </summary>
+    [TestMethod]
+    public async Task ASessionOnItsWayBackIsContinuedOnlyFromTheAddressItLeftFrom()
+    {
+        using var world = World.Create();
+        var district = new SessionLeaseManager(Sessions, Redis);
+        var player = world.Create();
+        var session = NewSession();
+
+        await district.AttachAsync(player, session, 1);
+
+        Assert.IsFalse(SessionLeaseManager.MayReturn((await FindAsync(session))!, "203.0.113.7:50000"), "Not on its way back yet");
+
+        await district.MarkReturnToAuthAsync(player, "203.0.113.7:50000");
+        await district.OnSessionClosedAsync(player);
+
+        var record = (await FindAsync(session))!;
+
+        Assert.IsTrue(SessionLeaseManager.MayReturn(record, "203.0.113.7:61234"), "The same address, another port");
+        Assert.IsFalse(SessionLeaseManager.MayReturn(record, "198.51.100.9:50000"), "Another address");
+        Assert.IsFalse(SessionLeaseManager.MayReturn(record, null), "An address that is not known");
+    }
+
     [TestMethod]
     public async Task SecondLoginIsRejectedWhileConnectedAndReplacesAfterDisconnect()
     {

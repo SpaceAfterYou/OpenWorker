@@ -70,7 +70,7 @@ public sealed class LeaveManager(
     private async ValueTask<(string Address, short Port, bool Result)> LeaveToServerListAsync(Entity player)
     {
         await leases
-            .MarkReturnToAuthAsync(player);
+            .MarkReturnToAuthAsync(player, world.Get<ServerSessionComponent>(player).RemoteEndPoint);
 
         return (Auth.Host, (short)Auth.Port, true);
     }

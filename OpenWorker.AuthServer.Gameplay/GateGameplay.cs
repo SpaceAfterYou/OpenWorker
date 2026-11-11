@@ -157,7 +157,10 @@ public sealed class GateGameplay(
             .Where(e => e.Account == account)
             .ToListAsync();
 
-        var returning = active.FirstOrDefault(e => e.ReturnToAuth);
+        // The request names an account and carries nothing secret: the session is continued only from the address its
+        // player left the game from.
+        var address = world.Get<ServerSessionComponent>(context.Player).RemoteEndPoint;
+        var returning = active.FirstOrDefault(e => SessionLeaseManager.MayReturn(e, address));
 
         if (returning is null)
         {

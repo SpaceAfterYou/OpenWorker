@@ -22,6 +22,13 @@ public sealed class SessionCache
     public bool ReturnToAuth { get; init; }
 
     /// <summary>
+    /// The address the player left from when <see cref="ReturnToAuth"/> was set. The request that continues the session
+    /// carries the number of the account and nothing secret, so only a connection from this address may continue it.
+    /// Null when the address of the connection was not known.
+    /// </summary>
+    public string? ReturnAddress { get; init; }
+
+    /// <summary>
     /// A server holds the connection of this session right now.
     /// </summary>
     public bool Connected { get; init; }

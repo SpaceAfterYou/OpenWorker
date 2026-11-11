@@ -52,7 +52,7 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
 
     public async Task AttachAsync(Entity player, long session, int account)
     {
-        var lease = new Lease(session, account, Guid.NewGuid().ToString("N"), false);
+        var lease = new Lease(session, account, Guid.NewGuid().ToString("N"), false, null);
 
         Leases[player] = lease;
 
@@ -60,16 +60,17 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
     }
 
     /// <summary>
-    /// Lets the next connection to the auth server continue this session without a login.
+    /// Lets the next connection to the auth server continue this session without a login, if it comes from the address the
+    /// player leaves from (<paramref name="endPoint"/>, the remote end of its connection here).
     /// </summary>
-    public async Task MarkReturnToAuthAsync(Entity player)
+    public async Task MarkReturnToAuthAsync(Entity player, string? endPoint = null)
     {
         if (!Leases.TryGetValue(player, out var lease))
         {
             return;
         }
 
-        lease = lease with { ReturnToAuth = true };
+        lease = lease with { ReturnToAuth = true, ReturnAddress = HostOf(endPoint) };
 
         Leases[player] = lease;
 
@@ -133,7 +134,8 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
                 UpdatedAt = DateTime.UtcNow,
                 Connected = connected,
                 Owner = lease.Owner,
-                ReturnToAuth = lease.ReturnToAuth
+                ReturnToAuth = lease.ReturnToAuth,
+                ReturnAddress = lease.ReturnAddress
             }, duration);
 
         // What the servers of this login share about the trade password lasts as long as the lease; nothing happens when
@@ -141,5 +143,23 @@ public sealed class SessionLeaseManager(IRedisCollection<SessionCache> sessions,
         await redis.GetDatabase().KeyExpireAsync(RedisTradePasswordStates.Key(lease.Session), duration);
     }
 
-    private sealed record Lease(long Session, int Account, string Owner, bool ReturnToAuth);
+    /// <summary>
+    /// The host of an end point as a socket prints it (<c>address:port</c>), or null when it is none.
+    /// </summary>
+    public static string? HostOf(string? endPoint)
+    {
+        return System.Net.IPEndPoint.TryParse(endPoint ?? string.Empty, out var parsed) ? parsed.Address.ToString() : null;
+    }
+
+    /// <summary>
+    /// Whether a connection from <paramref name="endPoint"/> may continue the session that was marked for it: the mark
+    /// names the address the player left from, and only that address continues it. A mark without an address, of a
+    /// connection whose address was not known, is continued from anywhere.
+    /// </summary>
+    public static bool MayReturn(SessionCache session, string? endPoint)
+    {
+        return session.ReturnToAuth && (session.ReturnAddress is null || session.ReturnAddress == HostOf(endPoint));
+    }
+
+    private sealed record Lease(long Session, int Account, string Owner, bool ReturnToAuth, string? ReturnAddress);
 }
