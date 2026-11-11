@@ -7,12 +7,13 @@ using OpenWorker.Content.Tool.Vision;
 namespace OpenWorker.Content.Tool.Data;
 
 /// <summary>
-/// Loads Vision scene static meshes for a batch map and merges them into one translucent draw list.
+/// Loads Vision scene static meshes for a batch map, one layer per <c>.vzone</c>.
 /// </summary>
 internal static class SceneCatalog
 {
     private static readonly Vector4 VisibleColor = new(0.62f, 0.64f, 0.68f, 0.20f);
     private static readonly Vector4 CollisionColor = new(0.75f, 0.45f, 0.30f, 0.12f);
+    private static readonly Vector4 TexturedTint = new(1f, 1f, 1f, 1f);
 
     public static string? FindScenePath(string worldFolder, string batchName)
     {
@@ -27,12 +28,23 @@ internal static class SceneCatalog
 
     public static SceneMeshDraw Load(string worldFolder, string scenePath)
     {
-        var instances = new List<StaticMeshInstance>();
+        var datasRoot = Path.GetFullPath(Path.Combine(worldFolder, ".."));
+        var meshCache = new Dictionary<string, VMeshReader.MeshGeometry>(StringComparer.OrdinalIgnoreCase);
+        var diffuseCache = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var zones = new List<SceneZoneLayer>();
+        var allColorFaces = new List<float>(1 << 20);
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
+        var triangleCount = 0;
+        var instanceCount = 0;
+        var usedMeshes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var zonePath in VSceneLocator.ZoneFilesForScene(scenePath))
         {
+            IReadOnlyList<StaticMeshInstance> instances;
             try
             {
-                instances.AddRange(VZoneReader.Load(zonePath));
+                instances = VZoneReader.Load(zonePath);
             }
             catch (Exception exception)
             {
@@ -44,61 +56,130 @@ internal static class SceneCatalog
                         exception.Message),
                     exception);
             }
-        }
 
-        if (instances.Count == 0)
-        {
-            return new SceneMeshDraw
+            var zoneColor = new List<float>(1 << 16);
+            var batchesByTexture = new Dictionary<string, List<float>>(StringComparer.OrdinalIgnoreCase);
+            var untextured = new List<float>();
+            var zoneTriangles = 0;
+            var zoneMin = new Vector3(float.MaxValue);
+            var zoneMax = new Vector3(float.MinValue);
+
+            foreach (var instance in instances)
             {
-                Faces = [],
-                Minimum = Vector3.Zero,
-                Maximum = Vector3.Zero,
-                TriangleCount = 0,
-                InstanceCount = 0,
-                MeshCount = 0
-            };
-        }
+                if (string.IsNullOrWhiteSpace(instance.Path))
+                {
+                    continue;
+                }
 
-        var meshCache = new Dictionary<string, VMeshReader.MeshGeometry>(StringComparer.OrdinalIgnoreCase);
-        var faces = new List<float>(1 << 20);
-        var min = new Vector3(float.MaxValue);
-        var max = new Vector3(float.MinValue);
-        var triangleCount = 0;
-        var usedMeshes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var resolved = ResolveMeshPath(worldFolder, instance.Path);
+                if (resolved is null)
+                {
+                    continue;
+                }
 
-        foreach (var instance in instances)
-        {
-            if (string.IsNullOrWhiteSpace(instance.Path))
+                if (!meshCache.TryGetValue(resolved, out var geometry))
+                {
+                    geometry = VMeshReader.Load(resolved);
+                    meshCache[resolved] = geometry;
+                }
+
+                if (!diffuseCache.TryGetValue(resolved, out var diffuse))
+                {
+                    diffuse = MeshMaterialLookup.FindDiffusePath(resolved, datasRoot);
+                    diffuseCache[resolved] = diffuse;
+                }
+
+                usedMeshes.Add(resolved);
+                var color = instance.IsCollisionOnly ? CollisionColor : VisibleColor;
+                var matrix = instance.Matrix;
+                var useTexture = !instance.IsCollisionOnly && geometry.HasUv && diffuse is not null;
+                var texturedSink = useTexture
+                    ? GetOrCreateBatch(batchesByTexture, diffuse!)
+                    : null;
+
+                for (var i = 0; i + 2 < geometry.Indices.Length; i += 3)
+                {
+                    var ia = geometry.Indices[i];
+                    var ib = geometry.Indices[i + 1];
+                    var ic = geometry.Indices[i + 2];
+                    var a = Transform(geometry.Positions[ia], matrix);
+                    var b = Transform(geometry.Positions[ib], matrix);
+                    var c = Transform(geometry.Positions[ic], matrix);
+
+                    AddColorVertex(zoneColor, a, color, ref zoneMin, ref zoneMax);
+                    AddColorVertex(zoneColor, b, color, ref zoneMin, ref zoneMax);
+                    AddColorVertex(zoneColor, c, color, ref zoneMin, ref zoneMax);
+
+                    if (texturedSink is not null)
+                    {
+                        AddTexturedVertex(texturedSink, a, geometry.Uvs[ia]);
+                        AddTexturedVertex(texturedSink, b, geometry.Uvs[ib]);
+                        AddTexturedVertex(texturedSink, c, geometry.Uvs[ic]);
+                    }
+                    else if (!instance.IsCollisionOnly)
+                    {
+                        AddColorVertex(untextured, a, TexturedTint, ref zoneMin, ref zoneMax);
+                        AddColorVertex(untextured, b, TexturedTint, ref zoneMin, ref zoneMax);
+                        AddColorVertex(untextured, c, TexturedTint, ref zoneMin, ref zoneMax);
+                    }
+
+                    zoneTriangles++;
+                }
+            }
+
+            if (zoneTriangles == 0)
             {
                 continue;
             }
 
-            var resolved = ResolveMeshPath(worldFolder, instance.Path);
-            if (resolved is null)
+            var batches = new List<SceneTexturedBatch>(batchesByTexture.Count + 1);
+            foreach (var (texturePath, vertices) in batchesByTexture)
             {
-                continue;
+                batches.Add(new SceneTexturedBatch
+                {
+                    TexturePath = texturePath,
+                    Vertices = [.. vertices],
+                    TriangleCount = vertices.Count / 15
+                });
             }
 
-            if (!meshCache.TryGetValue(resolved, out var geometry))
+            if (untextured.Count > 0)
             {
-                geometry = VMeshReader.Load(resolved);
-                meshCache[resolved] = geometry;
+                // Solid white stand-in when UVs or a diffuse map are missing.
+                var solid = new List<float>(untextured.Count / 7 * 5);
+                for (var i = 0; i + 6 < untextured.Count; i += 7)
+                {
+                    solid.Add(untextured[i]);
+                    solid.Add(untextured[i + 1]);
+                    solid.Add(untextured[i + 2]);
+                    solid.Add(0f);
+                    solid.Add(0f);
+                }
+
+                batches.Add(new SceneTexturedBatch
+                {
+                    TexturePath = null,
+                    Vertices = [.. solid],
+                    TriangleCount = solid.Count / 15
+                });
             }
 
-            usedMeshes.Add(resolved);
-            var color = instance.IsCollisionOnly ? CollisionColor : VisibleColor;
-            var matrix = instance.Matrix;
-
-            for (var i = 0; i + 2 < geometry.Indices.Length; i += 3)
+            var zoneName = Path.GetFileNameWithoutExtension(zonePath);
+            zones.Add(new SceneZoneLayer
             {
-                var a = Transform(geometry.Positions[geometry.Indices[i]], matrix);
-                var b = Transform(geometry.Positions[geometry.Indices[i + 1]], matrix);
-                var c = Transform(geometry.Positions[geometry.Indices[i + 2]], matrix);
-                AddVertex(faces, a, color, ref min, ref max);
-                AddVertex(faces, b, color, ref min, ref max);
-                AddVertex(faces, c, color, ref min, ref max);
-                triangleCount++;
-            }
+                Name = zoneName,
+                ColorFaces = [.. zoneColor],
+                TexturedBatches = batches,
+                TriangleCount = zoneTriangles,
+                InstanceCount = instances.Count,
+                IsVisible = true
+            });
+
+            allColorFaces.AddRange(zoneColor);
+            min = Vector3.Min(min, zoneMin);
+            max = Vector3.Max(max, zoneMax);
+            triangleCount += zoneTriangles;
+            instanceCount += instances.Count;
         }
 
         if (triangleCount == 0)
@@ -109,13 +190,25 @@ internal static class SceneCatalog
 
         return new SceneMeshDraw
         {
-            Faces = [.. faces],
+            Zones = zones,
+            Faces = [.. allColorFaces],
             Minimum = min,
             Maximum = max,
             TriangleCount = triangleCount,
-            InstanceCount = instances.Count,
+            InstanceCount = instanceCount,
             MeshCount = usedMeshes.Count
         };
+    }
+
+    private static List<float> GetOrCreateBatch(Dictionary<string, List<float>> map, string texturePath)
+    {
+        if (!map.TryGetValue(texturePath, out var list))
+        {
+            list = new List<float>(1 << 14);
+            map[texturePath] = list;
+        }
+
+        return list;
     }
 
     private static string? ResolveMeshPath(string worldFolder, string relativePath)
@@ -124,7 +217,6 @@ internal static class SceneCatalog
             .Replace('/', Path.DirectorySeparatorChar)
             .TrimStart(Path.DirectorySeparatorChar);
 
-        // Paths are rooted at the client datas folder (parent of World/).
         var datasRoot = Path.GetFullPath(Path.Combine(worldFolder, ".."));
         var candidate = Path.GetFullPath(Path.Combine(datasRoot, normalized));
         if (File.Exists(candidate))
@@ -138,7 +230,6 @@ internal static class SceneCatalog
 
     private static Vector3 Transform(Vector3 position, Matrix4x4 matrix)
     {
-        // Vision stores rows with translation in column 3 (column-vector multiply).
         var game = new Vector3(
             matrix.M11 * position.X + matrix.M12 * position.Y + matrix.M13 * position.Z + matrix.M14,
             matrix.M21 * position.X + matrix.M22 * position.Y + matrix.M23 * position.Z + matrix.M24,
@@ -146,7 +237,7 @@ internal static class SceneCatalog
         return GameCoordinates.ToGl(game);
     }
 
-    private static void AddVertex(
+    private static void AddColorVertex(
         List<float> faces,
         Vector3 position,
         Vector4 color,
@@ -162,5 +253,14 @@ internal static class SceneCatalog
         faces.Add(color.W);
         min = Vector3.Min(min, position);
         max = Vector3.Max(max, position);
+    }
+
+    private static void AddTexturedVertex(List<float> faces, Vector3 position, Vector2 uv)
+    {
+        faces.Add(position.X);
+        faces.Add(position.Y);
+        faces.Add(position.Z);
+        faces.Add(uv.X);
+        faces.Add(uv.Y);
     }
 }

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
@@ -7,6 +8,7 @@ using Avalonia.Media;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
 using OpenWorker.Content.Tool.Models;
+using OpenWorker.Content.Tool.Vision;
 using OpenWorker.Navigation;
 using Silk.NET.OpenGL;
 
@@ -34,6 +36,9 @@ public sealed class BatchViewport : UserControl
 
     public static readonly StyledProperty<bool> ShowNavMeshProperty =
         AvaloniaProperty.Register<BatchViewport, bool>(nameof(ShowNavMesh), defaultValue: true);
+
+    public static readonly StyledProperty<bool> ShowMeshesProperty =
+        AvaloniaProperty.Register<BatchViewport, bool>(nameof(ShowMeshes), defaultValue: false);
 
     public static readonly StyledProperty<SceneMeshDraw?> SceneMeshProperty =
         AvaloniaProperty.Register<BatchViewport, SceneMeshDraw?>(nameof(SceneMesh));
@@ -76,6 +81,12 @@ public sealed class BatchViewport : UserControl
         set => SetValue(ShowNavMeshProperty, value);
     }
 
+    public bool ShowMeshes
+    {
+        get => GetValue(ShowMeshesProperty);
+        set => SetValue(ShowMeshesProperty, value);
+    }
+
     public SceneMeshDraw? SceneMesh
     {
         get => GetValue(SceneMeshProperty);
@@ -107,6 +118,10 @@ public sealed class BatchViewport : UserControl
         ShowNavMeshProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
         {
             viewport._surface.ShowNavMesh = args.NewValue is true;
+        });
+        ShowMeshesProperty.Changed.AddClassHandler<BatchViewport>((viewport, args) =>
+        {
+            viewport._surface.ShowMeshes = args.NewValue is true;
         });
     }
 
@@ -370,14 +385,23 @@ public sealed class BatchViewport : UserControl
         private const float SelectedFaceAlpha = 0.45f;
         private const float NavFaceAlpha = 0.22f;
         private const int FloatsPerVertex = 7;
+        private const int FloatsPerTexturedVertex = 5;
 
         private GL? _gl;
         private uint _program;
+        private uint _texturedProgram;
         private uint _vao;
         private uint _vbo;
+        private uint _texturedVao;
+        private uint _texturedVbo;
+        private uint _whiteTexture;
         private int _mvpLocation;
+        private int _texturedMvpLocation;
+        private int _texturedSamplerLocation;
         private int _faceVertexCount;
         private int _lineVertexCount;
+        private readonly List<(uint Texture, int First, int Count)> _texturedDraws = [];
+        private readonly Dictionary<string, uint> _textureCache = new(StringComparer.OrdinalIgnoreCase);
         private float _yaw = 0.7f;
         private float _pitch = 0.55f;
         private float _distance = 40f;
@@ -393,6 +417,7 @@ public sealed class BatchViewport : UserControl
         private SceneMeshDraw? _sceneMesh;
         private bool _showBoxes = true;
         private bool _showNavMesh = true;
+        private bool _showMeshes;
         private bool _moveForward;
         private bool _moveBack;
         private bool _moveLeft;
@@ -447,7 +472,9 @@ public sealed class BatchViewport : UserControl
             get => _sceneMesh;
             set
             {
+                DetachZoneHandlers(_sceneMesh);
                 _sceneMesh = value;
+                AttachZoneHandlers(_sceneMesh);
                 _meshDirty = true;
                 FrameCamera();
                 RequestNextFrameRendering();
@@ -484,6 +511,59 @@ public sealed class BatchViewport : UserControl
                 _meshDirty = true;
                 RequestNextFrameRendering();
             }
+        }
+
+        public bool ShowMeshes
+        {
+            get => _showMeshes;
+            set
+            {
+                if (_showMeshes == value)
+                {
+                    return;
+                }
+
+                _showMeshes = value;
+                _meshDirty = true;
+                RequestNextFrameRendering();
+            }
+        }
+
+        private void AttachZoneHandlers(SceneMeshDraw? scene)
+        {
+            if (scene is null)
+            {
+                return;
+            }
+
+            foreach (var zone in scene.Zones)
+            {
+                zone.PropertyChanged += OnZonePropertyChanged;
+            }
+        }
+
+        private void DetachZoneHandlers(SceneMeshDraw? scene)
+        {
+            if (scene is null)
+            {
+                return;
+            }
+
+            foreach (var zone in scene.Zones)
+            {
+                zone.PropertyChanged -= OnZonePropertyChanged;
+            }
+        }
+
+        private void OnZonePropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(SceneZoneLayer.IsVisible))
+            {
+                return;
+            }
+
+            _meshDirty = true;
+            RequestNextFrameRendering();
         }
 
         /// <summary>
@@ -603,9 +683,15 @@ public sealed class BatchViewport : UserControl
             _gl = GL.GetApi(gl.GetProcAddress);
             _program = CreateProgram(_gl, IsOpenGles);
             _mvpLocation = _gl.GetUniformLocation(_program, "uMvp");
+            _texturedProgram = CreateTexturedProgram(_gl, IsOpenGles);
+            _texturedMvpLocation = _gl.GetUniformLocation(_texturedProgram, "uMvp");
+            _texturedSamplerLocation = _gl.GetUniformLocation(_texturedProgram, "uTexture");
 
             _vao = _gl.GenVertexArray();
             _vbo = _gl.GenBuffer();
+            _texturedVao = _gl.GenVertexArray();
+            _texturedVbo = _gl.GenBuffer();
+            _whiteTexture = CreateWhiteTexture(_gl);
             _meshDirty = true;
             RequestNextFrameRendering();
         }
@@ -614,6 +700,19 @@ public sealed class BatchViewport : UserControl
         {
             if (_gl is not null)
             {
+                DetachZoneHandlers(_sceneMesh);
+                foreach (var texture in _textureCache.Values)
+                {
+                    _gl.DeleteTexture(texture);
+                }
+
+                _textureCache.Clear();
+                if (_whiteTexture != 0)
+                {
+                    _gl.DeleteTexture(_whiteTexture);
+                    _whiteTexture = 0;
+                }
+
                 if (_vbo != 0)
                 {
                     _gl.DeleteBuffer(_vbo);
@@ -626,10 +725,28 @@ public sealed class BatchViewport : UserControl
                     _vao = 0;
                 }
 
+                if (_texturedVbo != 0)
+                {
+                    _gl.DeleteBuffer(_texturedVbo);
+                    _texturedVbo = 0;
+                }
+
+                if (_texturedVao != 0)
+                {
+                    _gl.DeleteVertexArray(_texturedVao);
+                    _texturedVao = 0;
+                }
+
                 if (_program != 0)
                 {
                     _gl.DeleteProgram(_program);
                     _program = 0;
+                }
+
+                if (_texturedProgram != 0)
+                {
+                    _gl.DeleteProgram(_texturedProgram);
+                    _texturedProgram = 0;
                 }
 
                 _gl.Dispose();
@@ -676,6 +793,28 @@ public sealed class BatchViewport : UserControl
             var far = Math.Max(200f, _distance * 8f);
             var projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, aspect, 1f, far);
             var mvp = view * projection;
+
+            if (_showMeshes && _texturedDraws.Count > 0 && _texturedProgram != 0)
+            {
+                silk.UseProgram(_texturedProgram);
+                unsafe
+                {
+                    silk.UniformMatrix4(_texturedMvpLocation, 1, false, (float*)&mvp);
+                }
+
+                silk.Uniform1(_texturedSamplerLocation, 0);
+                silk.ActiveTexture(TextureUnit.Texture0);
+                silk.Enable(EnableCap.DepthTest);
+                silk.BindVertexArray(_texturedVao);
+                foreach (var (texture, first, count) in _texturedDraws)
+                {
+                    silk.BindTexture(TextureTarget.Texture2D, texture);
+                    silk.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+                }
+
+                silk.BindTexture(TextureTarget.Texture2D, 0);
+                silk.BindVertexArray(0);
+            }
 
             silk.UseProgram(_program);
             unsafe
@@ -782,11 +921,12 @@ public sealed class BatchViewport : UserControl
 
         private void UploadMesh(GL silk)
         {
+            var includeTranslucentScene = !_showMeshes;
             var (faces, lines) = BuildMeshes(
                 _showBoxes ? _boxes : null,
                 _selectedBox,
                 _showNavMesh ? _navMesh : null,
-                _sceneMesh,
+                includeTranslucentScene ? _sceneMesh : null,
                 _gridOrigin,
                 _gridHalfExtent,
                 _gridStep);
@@ -815,6 +955,137 @@ public sealed class BatchViewport : UserControl
 
             silk.BindVertexArray(0);
             silk.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
+
+            UploadTexturedMeshes(silk);
+        }
+
+        private void UploadTexturedMeshes(GL silk)
+        {
+            _texturedDraws.Clear();
+            if (!_showMeshes || _sceneMesh is null || _texturedVao == 0)
+            {
+                silk.BindVertexArray(_texturedVao);
+                silk.BindBuffer(BufferTargetARB.ArrayBuffer, _texturedVbo);
+                silk.BufferData<float>(BufferTargetARB.ArrayBuffer, [0f], BufferUsageARB.DynamicDraw);
+                silk.BindVertexArray(0);
+                silk.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
+                return;
+            }
+
+            var vertices = new List<float>(1 << 20);
+            foreach (var zone in _sceneMesh.Zones)
+            {
+                if (!zone.IsVisible)
+                {
+                    continue;
+                }
+
+                foreach (var batch in zone.TexturedBatches)
+                {
+                    if (batch.Vertices.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var texture = batch.TexturePath is null
+                        ? _whiteTexture
+                        : GetOrCreateTexture(silk, batch.TexturePath);
+                    var first = vertices.Count / FloatsPerTexturedVertex;
+                    vertices.AddRange(batch.Vertices);
+                    var count = batch.Vertices.Length / FloatsPerTexturedVertex;
+                    _texturedDraws.Add((texture, first, count));
+                }
+            }
+
+            silk.BindVertexArray(_texturedVao);
+            silk.BindBuffer(BufferTargetARB.ArrayBuffer, _texturedVbo);
+            silk.BufferData<float>(
+                BufferTargetARB.ArrayBuffer,
+                vertices.Count == 0 ? [0f] : [.. vertices],
+                BufferUsageARB.DynamicDraw);
+
+            const uint texturedStride = FloatsPerTexturedVertex * sizeof(float);
+            silk.EnableVertexAttribArray(0);
+            unsafe
+            {
+                silk.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, texturedStride, (void*)0);
+                silk.EnableVertexAttribArray(1);
+                silk.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, texturedStride, (void*)(3 * sizeof(float)));
+            }
+
+            silk.BindVertexArray(0);
+            silk.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
+        }
+
+        private uint GetOrCreateTexture(GL silk, string path)
+        {
+            if (_textureCache.TryGetValue(path, out var existing))
+            {
+                return existing;
+            }
+
+            try
+            {
+                var image = DdsTextureLoader.Load(path);
+                var texture = silk.GenTexture();
+                silk.BindTexture(TextureTarget.Texture2D, texture);
+                silk.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+                silk.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+                silk.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
+                silk.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
+                unsafe
+                {
+                    fixed (byte* payload = image.Payload)
+                    {
+                        silk.CompressedTexImage2D(
+                            TextureTarget.Texture2D,
+                            0,
+                            (InternalFormat)image.GlInternalFormat,
+                            (uint)image.Width,
+                            (uint)image.Height,
+                            0,
+                            (uint)image.Payload.Length,
+                            payload);
+                    }
+                }
+
+                silk.BindTexture(TextureTarget.Texture2D, 0);
+                _textureCache[path] = texture;
+                return texture;
+            }
+            catch
+            {
+                _textureCache[path] = _whiteTexture;
+                return _whiteTexture;
+            }
+        }
+
+        private static uint CreateWhiteTexture(GL silk)
+        {
+            var texture = silk.GenTexture();
+            silk.BindTexture(TextureTarget.Texture2D, texture);
+            Span<byte> pixel = [255, 255, 255, 255];
+            unsafe
+            {
+                fixed (byte* ptr = pixel)
+                {
+                    silk.TexImage2D(
+                        TextureTarget.Texture2D,
+                        0,
+                        InternalFormat.Rgba,
+                        1,
+                        1,
+                        0,
+                        PixelFormat.Rgba,
+                        PixelType.UnsignedByte,
+                        ptr);
+                }
+            }
+
+            silk.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            silk.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+            silk.BindTexture(TextureTarget.Texture2D, 0);
+            return texture;
         }
 
         private void FrameCamera()
@@ -906,9 +1177,17 @@ public sealed class BatchViewport : UserControl
             var faces = new List<float>(16384);
             var lines = new List<float>(8192);
 
-            if (sceneMesh is { Faces.Length: > 0 })
+            if (sceneMesh is not null)
             {
-                faces.AddRange(sceneMesh.Faces);
+                foreach (var zone in sceneMesh.Zones)
+                {
+                    if (!zone.IsVisible || zone.ColorFaces.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    faces.AddRange(zone.ColorFaces);
+                }
             }
 
             void AddVertex(List<float> sink, Vector3 position, Vector4 color)
@@ -1107,6 +1386,47 @@ public sealed class BatchViewport : UserControl
                 }
                 """;
 
+            return LinkProgram(gl, vertexSource, fragmentSource);
+        }
+
+        private static uint CreateTexturedProgram(GL gl, bool openGles)
+        {
+            var version = openGles ? "300 es" : "330 core";
+            var precision = openGles ? "precision mediump float;\n" : string.Empty;
+
+            var vertexSource =
+                "#version " + version + "\n" +
+                precision +
+                """
+                layout (location = 0) in vec3 aPos;
+                layout (location = 1) in vec2 aUv;
+                uniform mat4 uMvp;
+                out vec2 vUv;
+                void main()
+                {
+                    vUv = aUv;
+                    gl_Position = uMvp * vec4(aPos, 1.0);
+                }
+                """;
+
+            var fragmentSource =
+                "#version " + version + "\n" +
+                precision +
+                """
+                in vec2 vUv;
+                uniform sampler2D uTexture;
+                out vec4 FragColor;
+                void main()
+                {
+                    FragColor = texture(uTexture, vUv);
+                }
+                """;
+
+            return LinkProgram(gl, vertexSource, fragmentSource);
+        }
+
+        private static uint LinkProgram(GL gl, string vertexSource, string fragmentSource)
+        {
             var vertex = CompileShader(gl, ShaderType.VertexShader, vertexSource);
             var fragment = CompileShader(gl, ShaderType.FragmentShader, fragmentSource);
             var program = gl.CreateProgram();

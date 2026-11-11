@@ -62,7 +62,8 @@
                                              NavMesh="{Binding NavMesh}"
                                              SceneMesh="{Binding SceneMesh}"
                                              ShowBoxes="{Binding ShowBoxesLayer}"
-                                             ShowNavMesh="{Binding ShowNavMeshLayer}" />
+                                             ShowNavMesh="{Binding ShowNavMeshLayer}"
+                                             ShowMeshes="{Binding ShowMeshesLayer}" />
                 </Border>
             </DockPanel>
 
@@ -89,6 +90,29 @@
                                TextWrapping="Wrap"
                                Opacity="0.85"
                                Text="{Binding NavMeshStatus}" />
+                </TabItem>
+                <TabItem Header="Meshes">
+                    <DockPanel Margin="0,8,0,0">
+                        <TextBlock DockPanel.Dock="Top"
+                                   TextWrapping="Wrap"
+                                   Opacity="0.85"
+                                   Margin="0,0,0,8"
+                                   Text="{Binding MeshesStatus}" />
+                        <ListBox ItemsSource="{Binding SceneZones}"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:SceneZoneLayer">
+                                    <CheckBox IsChecked="{Binding IsVisible}"
+                                              Margin="4,2">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Subtitle}" Opacity="0.7" FontSize="12" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
                 </TabItem>
             </TabControl>
         </Grid>

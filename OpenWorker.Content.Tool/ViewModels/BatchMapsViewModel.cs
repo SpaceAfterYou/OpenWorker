@@ -55,6 +55,9 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
     public partial bool ShowNavMeshLayer { get; set; }
 
     [ObservableProperty]
+    public partial bool ShowMeshesLayer { get; set; }
+
+    [ObservableProperty]
     public partial bool HasNavMesh { get; set; }
 
     [ObservableProperty]
@@ -64,9 +67,14 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
     public partial string NavMeshStatus { get; set; } = "No navigation mesh for this map.";
 
     [ObservableProperty]
+    public partial string MeshesStatus { get; set; } = "No scene meshes for this map.";
+
+    [ObservableProperty]
     public partial string SelectionStatus { get; set; } = "Select a map to draw its boxes.";
 
     public ObservableCollection<BatchMapEntry> Maps { get; } = [];
+
+    public ObservableCollection<SceneZoneLayer> SceneZones { get; } = [];
 
     private IReadOnlyList<BatchMapEntry> _all = [];
     private CancellationTokenSource? _loadCts;
@@ -104,8 +112,10 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         SelectedBox = null;
         NavMesh = null;
         SceneMesh = null;
+        SceneZones.Clear();
         HasNavMesh = false;
         NavMeshStatus = "No navigation mesh for this map.";
+        MeshesStatus = "No scene meshes for this map.";
         SelectedLayerTab = 0;
         ApplyLayerTab(0);
         _all = [];
@@ -215,6 +225,7 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
     {
         ShowBoxesLayer = tab == 0;
         ShowNavMeshLayer = tab == 1;
+        ShowMeshesLayer = tab == 2;
         if (tab != 0)
         {
             SelectedBoxNode = null;
@@ -235,8 +246,10 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         SelectedBox = null;
         NavMesh = null;
         SceneMesh = null;
+        SceneZones.Clear();
         HasNavMesh = false;
         NavMeshStatus = "No navigation mesh for this map.";
+        MeshesStatus = "No scene meshes for this map.";
 
         if (entry is null)
         {
@@ -255,6 +268,7 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             ? null
             : SceneCatalog.FindScenePath(worldFolder, entry.BatchName);
         var sceneExists = scenePath is not null;
+        var canLoadScene = sceneExists && worldFolder is not null;
 
         if (!entry.FileExists && !navExists && !sceneExists)
         {
@@ -311,11 +325,11 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
 
                     SceneMeshDraw? scene = null;
                     string? sceneError = null;
-                    if (sceneExists && worldFolder is not null)
+                    if (canLoadScene)
                     {
                         try
                         {
-                            scene = SceneFileCache.Shared.Load(worldFolder, scenePath!);
+                            scene = SceneFileCache.Shared.Load(worldFolder!, scenePath!);
                         }
                         catch (Exception exception)
                         {
@@ -336,8 +350,18 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
             BoxGroups = BatchMapCatalog.GroupBoxes(loaded.Boxes);
             NavMesh = loaded.Mesh;
             SceneMesh = loaded.Scene;
+            SceneZones.Clear();
+            if (loaded.Scene is not null)
+            {
+                foreach (var zone in loaded.Scene.Zones)
+                {
+                    SceneZones.Add(zone);
+                }
+            }
+
             HasNavMesh = loaded.Mesh is not null;
             NavMeshStatus = FormatNavMeshStatus(entry.BatchName, loaded.Mesh, loaded.NavError, navExists);
+            MeshesStatus = FormatMeshesStatus(entry.BatchName, loaded.Scene, loaded.SceneError, sceneExists, worldFolder is not null);
 
             SelectionStatus = FormatSelectionStatus(
                 entry.BatchName,
@@ -469,6 +493,45 @@ public abstract partial class BatchMapsViewModel : ViewModelBase, IDisposable
         }
 
         return "No navigation mesh for this map.";
+    }
+
+    private static string FormatMeshesStatus(
+        string name,
+        SceneMeshDraw? scene,
+        string? sceneError,
+        bool sceneExists,
+        bool worldConfigured)
+    {
+        if (sceneError is not null)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "Failed to read scene: {0}", sceneError);
+        }
+
+        if (scene is { TriangleCount: > 0 })
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "{0}: {1} zones, {2} tris, {3} meshes — toggle layers below",
+                name,
+                scene.Zones.Count,
+                scene.TriangleCount,
+                scene.MeshCount);
+        }
+
+        if (!worldConfigured)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "Set {0} to the unpacked client datas (World/Scenes).",
+                ContentPaths.WorldVariable);
+        }
+
+        if (!sceneExists)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0}.vscene is missing.", name);
+        }
+
+        return "No scene meshes for this map.";
     }
 
     private void ApplyFilter()

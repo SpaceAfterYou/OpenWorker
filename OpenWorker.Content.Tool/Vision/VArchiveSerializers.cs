@@ -27,7 +27,38 @@ internal static class VArchiveSerializers
             ["VModelSerializationProxy"] = SerializeModelProxy,
             ["VSequenceSetSerializationProxy"] = SerializeSequenceSetProxy,
             ["VTextureSerializationProxy"] = SerializeTextureProxy,
+            ["VFogObject"] = SerializeFogObject,
+            ["VisBaseEntity_cl"] = SerializeBaseEntity,
+            ["ClothEntity_cl"] = SerializeClothEntity,
+            ["VisParticleConstraint_cl"] = static (ar, obj) => _ = SerializeParticleConstraint(ar, obj),
+            ["VisParticleConstraintPoint_cl"] = SerializeParticleConstraintPoint,
+            ["VisParticleConstraintAABox_cl"] = SerializeParticleConstraintOBox,
+            ["VisParticleConstraintOBox_cl"] = SerializeParticleConstraintOBox,
+            ["VisParticleConstraintSphere_cl"] = SerializeParticleConstraintSphere,
+            ["VisParticleConstraintPlane_cl"] = SerializeParticleConstraintPlane,
+            ["VisParticleConstraintCamBox_cl"] = SerializeParticleConstraintCamBox,
+            ["VisParticleConstraintGroundPlane_cl"] = static (ar, obj) => _ = SerializeParticleConstraint(ar, obj),
+            ["VisParticleConstraintInfCylinder_cl"] = static (ar, obj) => _ = SerializeParticleConstraint(ar, obj),
+            ["VisParticleConstraintTerrain_cl"] = SerializeParticleConstraintTerrain,
+            ["VisParticleAffectorFan_cl"] = SerializeParticleAffectorFan,
+            ["VisParticleAffectorCyclone_cl"] = SerializeParticleAffectorFan,
+            ["VisParticleAffectorGravityPoint_cl"] = SerializeParticleAffectorGravity,
+            ["VSimpleAnimationComponent"] = SerializeSimpleAnimationComponent,
+            ["VSequenceSerializationProxy"] = SerializeSequenceProxy,
+            ["VSkeletonSerializationProxy"] = SerializeSkeletonProxy,
+            ["VisVertexDeformerStack_cl"] = SerializeVertexDeformerStack,
+            ["VisSkinningDeformer_cl"] = SerializeSkinningDeformer,
+            ["VisAnimFinalSkeletalResult_cl"] = SerializeAnimFinalSkeletalResult,
+            ["VisSkeletalAnimControl_cl"] = SerializeSkeletalAnimControl,
+            ["VisAnimConfig_cl"] = SerializeAnimConfig,
         };
+
+        foreach (var name in GamePluginBaseEntities)
+        {
+            map[name] = SerializeBaseEntity;
+        }
+
+        map["VGateEntity_cl"] = SerializeGateEntity;
 
         return map;
     }
@@ -41,7 +72,65 @@ internal static class VArchiveSerializers
         "VisVisibilityObjectAABox_cl",
         "VProjectedWallmark",
         "ParticleGroupBase_cl",
+        "VFogObject",
+        "VisBaseEntity_cl",
+        "ClothEntity_cl",
+        "VisParticleConstraint_cl",
+        "VisParticleConstraintPoint_cl",
+        "VisParticleConstraintAABox_cl",
+        "VisParticleConstraintOBox_cl",
+        "VisParticleConstraintSphere_cl",
+        "VisParticleConstraintPlane_cl",
+        "VisParticleConstraintCamBox_cl",
+        "VisParticleConstraintGroundPlane_cl",
+        "VisParticleConstraintInfCylinder_cl",
+        "VisParticleConstraintTerrain_cl",
+        "VisParticleAffectorFan_cl",
+        "VisParticleAffectorCyclone_cl",
+        "VisParticleAffectorGravityPoint_cl",
+        "VGateEntity_cl",
     };
+
+    /// <summary>
+    /// GamePlugin entities that serialize as <c>VisBaseEntity_cl</c> with no extra archive fields.
+    /// </summary>
+    private static readonly string[] GamePluginBaseEntities =
+    [
+        "VEventBox",
+        "VStartEventBox",
+        "VMonsterSpawnBox",
+        "VCheckMonsterSpawnBox",
+        "VOpenMazeBox",
+        "VCheckSceneDirectingBox",
+        "VPortalBox",
+        "VPortalExitBox",
+        "VCommonPositionBox",
+        "VSectorBox",
+        "VCheckSectorBox",
+        "VServerGateBox",
+        "VMazeEscapeBox",
+        "VLuaFunctionBox",
+        "VInterActionBox",
+        "VQuestMoveCheckBox",
+        "VCutSceneEventBox",
+        "VCheckEventSpawnBox",
+        "VPersonalShopAreaBox",
+        "VSafeAreaBox",
+        "VSectorStartBox",
+        "VSocialItemExcludeBox",
+        "VCollisionEventBox",
+        "VEventObject",
+        "VEventPoint",
+        "VWayPoint",
+        "VEscortPoint",
+        "VEventObjectShader",
+        "VIncludingShaderObject_cl",
+        "VRigidBodyEntity",
+        "VPartsEntity",
+        "VAlphaStaticEntity_cl",
+        "VCharLightColorCorrectionEntity_cl",
+        "VCinematicCameraTester_cl",
+    ];
 
     private static void SerializeStaticMeshInstance(VArchiveReader ar, ArchiveObject obj)
     {
@@ -617,6 +706,7 @@ internal static class VArchiveSerializers
         if (version >= 2)
         {
             _ = ar.ReadFloat();
+            _ = ar.ReadFloat();
         }
     }
 
@@ -1018,5 +1108,412 @@ internal static class VArchiveSerializers
     {
         _ = ar.ReadStringBinary();
         _ = ar.ReadUInt32();
+    }
+
+    private static void SerializeFogObject(VArchiveReader ar, ArchiveObject obj)
+    {
+        SerializeObject3d(ar, obj);
+        var version = ar.ReadUInt8();
+        _ = ar.ReadUInt8();
+        ar.ReadEffectConfig();
+        _ = ar.ReadUInt8();
+        _ = ar.ReadBool();
+        _ = ar.ReadVisVector();
+        _ = ar.ReadBool();
+        _ = ar.ReadVisVector();
+        _ = ar.ReadVisVector();
+        _ = ar.ReadBool();
+        _ = ar.ReadVisVector();
+        _ = ar.ReadVisVector();
+        _ = ar.ReadBool();
+        _ = ar.ReadVisVector();
+        _ = ar.ReadVisVector();
+        _ = ar.ReadVisVector();
+        if (version >= 2)
+        {
+            _ = ar.ReadBool();
+            _ = ar.ReadStringBinary();
+            _ = ar.ReadVisVector();
+            _ = ar.ReadVisVector();
+        }
+
+        if (version >= 3)
+        {
+            _ = ar.ReadUInt8();
+        }
+    }
+
+    private static void SerializeBaseEntity(VArchiveReader ar, ArchiveObject obj)
+    {
+        SerializeObject3d(ar, obj);
+        var entityVersion = ar.ReadUInt8();
+        _ = ar.ReadProxyObject();
+        if (entityVersion >= 9)
+        {
+            _ = SerializeVisibilityData(ar);
+        }
+
+        _ = ar.ReadVec3();
+        if (ar.LoadingVersion < 25)
+        {
+            obj.ObjectKey = ar.ReadVString();
+        }
+
+        if (entityVersion < 9)
+        {
+            _ = ar.ReadObject();
+        }
+
+        _ = ar.ReadUInt32();
+        _ = ar.ReadUInt32();
+        _ = ar.ReadBool();
+        if (entityVersion < 9)
+        {
+            _ = ar.ReadUInt8();
+            _ = ar.ReadInt32();
+        }
+
+        _ = ar.ReadInt32();
+        _ = ar.ReadObject();
+        if (ar.ReadInt32() == 1)
+        {
+            _ = ar.ReadBBoxVis();
+        }
+
+        if (entityVersion < 9)
+        {
+            _ = ar.ReadVString();
+        }
+
+        _ = ar.ReadBool();
+        if (entityVersion < 9)
+        {
+            _ = ar.ReadFloat();
+            _ = ar.ReadUInt32();
+            _ = ar.ReadBool();
+            _ = ar.ReadInt32();
+        }
+
+        _ = ar.ReadUInt8();
+        _ = ar.ReadFloat();
+        _ = ar.ReadUInt32();
+        _ = ar.ReadUInt8();
+        if (entityVersion < 9)
+        {
+            ar.Skip(8);
+            _ = ar.ReadObject();
+        }
+
+        _ = ar.ReadColorRef();
+        _ = ar.ReadUInt32();
+        _ = ar.ReadUInt32();
+        _ = ar.ReadVec3();
+        if (entityVersion >= 3)
+        {
+            if (entityVersion < 8)
+            {
+                if (ar.ReadBool())
+                {
+                    throw new InvalidDataException("Inline surface texture set is not supported.");
+                }
+            }
+            else
+            {
+                _ = ar.ReadProxyObject();
+            }
+        }
+
+        if (entityVersion >= 4 && ar.ReadUInt8() != 0)
+        {
+            var count = ar.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                _ = ar.ReadUInt32();
+            }
+        }
+    }
+
+    private static void SerializeGateEntity(VArchiveReader ar, ArchiveObject obj)
+    {
+        SerializeBaseEntity(ar, obj);
+        _ = ar.ReadUInt8();
+        _ = ar.ReadStringBinary();
+        _ = ar.ReadStringBinary();
+        _ = ar.ReadStringBinary();
+        _ = ar.ReadStringBinary();
+        _ = ar.ReadStringBinary();
+    }
+
+    private static void SerializeClothEntity(VArchiveReader ar, ArchiveObject obj)
+    {
+        SerializeBaseEntity(ar, obj);
+        var version = ar.ReadUInt8();
+        _ = ar.ReadUInt8();
+        _ = ar.ReadStringBinary();
+        _ = ar.ReadVec4();
+        _ = ar.ReadVec4();
+        if (version >= 1)
+        {
+            _ = ar.ReadVisVector();
+        }
+
+        _ = ar.ReadFloat();
+        _ = ar.ReadBool();
+        _ = ar.ReadFloat();
+        if (ar.ReadBool())
+        {
+            SerializeClothMesh(ar);
+        }
+
+        _ = ar.ReadInt32();
+        _ = ar.ReadInt32();
+    }
+
+    private static void SerializeClothMesh(VArchiveReader ar)
+    {
+        _ = SerializeParticleConstraintList(ar);
+        var count = SerializeParticleConstraintList(ar);
+        for (var i = 0; i < count; i++)
+        {
+            _ = ar.ReadInt32();
+        }
+    }
+
+    private static int SerializeParticleConstraintList(VArchiveReader ar)
+    {
+        var count = ar.ReadInt32();
+        for (var i = 0; i < count; i++)
+        {
+            _ = ar.ReadObject();
+            _ = ar.ReadInt32();
+        }
+
+        return count;
+    }
+
+    private static int SerializeParticleConstraint(VArchiveReader ar, ArchiveObject obj)
+    {
+        SerializeObject3d(ar, obj);
+        var version = ar.ReadInt8();
+        _ = ar.ReadColorRef();
+        _ = ar.ReadInt32();
+        _ = ar.ReadBool();
+        _ = ar.ReadBool();
+        _ = ar.ReadFloat();
+        _ = ar.ReadUInt32();
+        if (version >= 2)
+        {
+            _ = ar.ReadFloat();
+        }
+
+        return version;
+    }
+
+    private static void SerializeParticleConstraintPoint(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeParticleConstraint(ar, obj);
+        _ = ar.ReadFloat();
+    }
+
+    private static void SerializeParticleConstraintOBox(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeParticleConstraint(ar, obj);
+        _ = ar.ReadBBoxVis();
+        _ = ar.ReadBool();
+    }
+
+    private static void SerializeParticleConstraintSphere(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeParticleConstraint(ar, obj);
+        _ = ar.ReadFloat();
+        _ = ar.ReadBool();
+        _ = ar.ReadInt32();
+    }
+
+    private static void SerializeParticleConstraintPlane(VArchiveReader ar, ArchiveObject obj)
+    {
+        var version = SerializeParticleConstraint(ar, obj);
+        for (var i = 0; i < 4; i++)
+        {
+            _ = ar.ReadFloat();
+        }
+
+        if (ar.LoadingVersion >= 22)
+        {
+            _ = ar.ReadBool();
+            _ = ar.ReadFloat();
+            _ = ar.ReadFloat();
+            if (version >= 3)
+            {
+                _ = ar.ReadFloat();
+            }
+        }
+    }
+
+    private static void SerializeParticleConstraintCamBox(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeParticleConstraint(ar, obj);
+        _ = ar.ReadVisVector();
+    }
+
+    private static void SerializeParticleConstraintTerrain(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeParticleConstraint(ar, obj);
+        _ = ar.ReadInt8();
+        _ = ar.ReadObject();
+    }
+
+    private static void SerializeParticleAffectorFan(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeParticleConstraint(ar, obj);
+        _ = ar.ReadFloat();
+        _ = ar.ReadFloat();
+        _ = ar.ReadFloat();
+    }
+
+    private static void SerializeParticleAffectorGravity(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeParticleConstraint(ar, obj);
+        _ = ar.ReadFloat();
+        _ = ar.ReadFloat();
+    }
+
+    private static void SerializeSimpleAnimationComponent(VArchiveReader ar, ArchiveObject obj)
+    {
+        SerializeObjectComponentBase(ar, obj);
+        var version = ar.ReadUInt8();
+        _ = ar.ReadVString();
+        if (version >= 1)
+        {
+            _ = ar.ReadInt32();
+        }
+    }
+
+    private static void SerializeSequenceProxy(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = ar.ReadUInt8();
+        _ = ar.ReadProxyObject();
+        _ = ar.ReadStringBinary();
+    }
+
+    private static void SerializeSkeletonProxy(VArchiveReader ar, ArchiveObject obj)
+    {
+        var kind = ar.ReadUInt8();
+        if (kind == 1)
+        {
+            _ = ar.ReadProxyObject();
+        }
+        else if (kind == 2)
+        {
+            _ = ar.ReadProxyObject();
+            _ = ar.ReadInt32();
+        }
+    }
+
+    private static void SerializeVertexDeformerStack(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeTypedEngineObject(ar, obj);
+        var count = ar.ReadInt32();
+        for (var i = 0; i < count; i++)
+        {
+            _ = ar.ReadObject();
+        }
+    }
+
+    private static void SerializeSkinningDeformer(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeTypedEngineObject(ar, obj);
+        _ = ar.ReadBool();
+    }
+
+    private static void SerializeAnimEventList(VArchiveReader ar)
+    {
+        _ = ar.ReadFloat();
+        _ = ar.ReadFloat();
+        _ = ar.ReadBool();
+        var count = ar.ReadInt32();
+        for (var i = 0; i < count; i++)
+        {
+            _ = ar.ReadFloat();
+            if (ar.ReadBool())
+            {
+                _ = ar.ReadStringBinary();
+            }
+            else
+            {
+                _ = ar.ReadInt32();
+            }
+
+            if (ar.LoadingVersion >= 24)
+            {
+                _ = ar.ReadBool();
+            }
+        }
+
+        _ = ar.ReadInt32();
+        _ = ar.ReadInt32();
+    }
+
+    private static void SerializeAnimControlX(VArchiveReader ar)
+    {
+        _ = ar.ReadProxyObject();
+        _ = ar.ReadFloat();
+        _ = ar.ReadBool();
+        _ = ar.ReadUInt32();
+        _ = ar.ReadFloat();
+        _ = ar.ReadFloat();
+        SerializeAnimEventList(ar);
+        var listenerCount = ar.ReadInt32();
+        for (var i = 0; i < listenerCount; i++)
+        {
+            _ = ar.ReadObject();
+        }
+
+        var syncCount = ar.ReadInt32();
+        for (var i = 0; i < syncCount; i++)
+        {
+            SerializeAnimControlX(ar);
+        }
+    }
+
+    private static void SerializeAnimFinalSkeletalResult(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeTypedEngineObject(ar, obj);
+        _ = ar.ReadProxyObject();
+        _ = ar.ReadObject();
+    }
+
+    private static void SerializeSkeletalAnimControl(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeTypedEngineObject(ar, obj);
+        _ = ar.ReadProxyObject();
+        SerializeAnimControlX(ar);
+    }
+
+    private static void SerializeAnimConfig(VArchiveReader ar, ArchiveObject obj)
+    {
+        _ = SerializeTypedEngineObject(ar, obj);
+        _ = ar.ReadProxyObject();
+        var version = ar.ReadUInt32();
+        if (version >= 0x80000000u)
+        {
+            if (version >= 0x80000001u)
+            {
+                _ = ar.ReadProxyObject();
+            }
+
+            _ = ar.ReadInt32();
+            _ = ar.ReadInt32();
+            _ = ar.ReadBool();
+            _ = ar.ReadInt32();
+        }
+
+        _ = ar.ReadObject();
+        _ = ar.ReadObject();
+        _ = ar.ReadBool();
+        if (version >= 0x80000002u)
+        {
+            _ = ar.ReadBool();
+        }
     }
 }

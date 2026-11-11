@@ -3,7 +3,7 @@ using System.Numerics;
 namespace OpenWorker.Content.Tool.Vision;
 
 /// <summary>
-/// Reads triangle positions from a Vision <c>*.vmesh</c> (<c>VBIN</c> / <c>VMSH</c>).
+/// Reads triangle positions and the first UV channel from a Vision <c>*.vmesh</c> (<c>VBIN</c> / <c>VMSH</c>).
 /// </summary>
 internal static class VMeshReader
 {
@@ -14,7 +14,11 @@ internal static class VMeshReader
     private const ushort UnsetOffset = 0xFFFF;
     private const ushort OffsetMask = 0x0FFF;
 
-    public readonly record struct MeshGeometry(Vector3[] Positions, int[] Indices);
+    public readonly record struct MeshGeometry(
+        Vector3[] Positions,
+        Vector2[] Uvs,
+        int[] Indices,
+        bool HasUv);
 
     public static MeshGeometry Load(string path)
     {
@@ -23,7 +27,6 @@ internal static class VMeshReader
         var headerId = cursor.ReadChunkId();
         if (headerId != VbinMagic && headerId != unchecked((int)0x5642494E))
         {
-            // Accept either byte order of the VBIN fourcc.
             var fourcc = BitConverter.GetBytes(headerId);
             if (!(fourcc[0] == (byte)'V' && fourcc[1] == (byte)'B' && fourcc[2] == (byte)'I' && fourcc[3] == (byte)'N')
                 && !(fourcc[0] == (byte)'N' && fourcc[1] == (byte)'I' && fourcc[2] == (byte)'B' && fourcc[3] == (byte)'V'))
@@ -93,7 +96,7 @@ internal static class VMeshReader
             throw new InvalidDataException($"Unsupported VMSH version {version}.");
         }
 
-        var (stride, posOffset, hasPosition) = ReadDescriptor(cursor);
+        var (stride, posOffset, texOffset, hasPosition, hasUv) = ReadDescriptor(cursor);
         var vertexCount = checked((int)cursor.ReadUInt32());
         _ = cursor.ReadUInt8(); // usage vertices
         if (version >= 4)
@@ -144,12 +147,21 @@ internal static class VMeshReader
         }
 
         var positions = new Vector3[vertexCount];
+        var uvs = new Vector2[vertexCount];
         var vertexStart = cursor.Position;
         for (var i = 0; i < vertexCount; i++)
         {
             var baseOffset = vertexStart + i * stride;
             cursor.Seek(baseOffset + posOffset);
             positions[i] = new Vector3(cursor.ReadFloat(), cursor.ReadFloat(), cursor.ReadFloat());
+            if (hasUv)
+            {
+                cursor.Seek(baseOffset + texOffset);
+                var u = cursor.ReadFloat();
+                var v = cursor.ReadFloat();
+                // Vision stores V with the opposite sense of OpenGL / Blender.
+                uvs[i] = new Vector2(u, -v);
+            }
         }
 
         cursor.Seek(vertexStart + stride * vertexCount);
@@ -174,17 +186,17 @@ internal static class VMeshReader
             throw new InvalidDataException($"Unknown VMSH index format {indexFormat}.");
         }
 
-        // Bounding box + unused int; ignore remainder of chunk.
         if (cursor.Position + 28 <= end)
         {
             cursor.Seek(Math.Min(end, cursor.Position + 28));
         }
 
         cursor.Seek(end);
-        return new MeshGeometry(positions, indices);
+        return new MeshGeometry(positions, uvs, indices, hasUv);
     }
 
-    private static (int Stride, int PosOffset, bool HasPosition) ReadDescriptor(BinaryCursor cursor)
+    private static (int Stride, int PosOffset, int TexOffset, bool HasPosition, bool HasUv) ReadDescriptor(
+        BinaryCursor cursor)
     {
         var magick = cursor.ReadUInt32();
         if (magick != DescriptorMagic)
@@ -197,7 +209,8 @@ internal static class VMeshReader
         var posOffset = cursor.ReadUInt16();
         _ = cursor.ReadUInt16(); // color
         _ = cursor.ReadUInt16(); // normal
-        for (var i = 0; i < 16; i++)
+        var tex0 = cursor.ReadUInt16();
+        for (var i = 1; i < 16; i++)
         {
             _ = cursor.ReadUInt16();
         }
@@ -212,7 +225,8 @@ internal static class VMeshReader
 
         _ = cursor.ReadUInt32(); // trailing magic
         var hasPosition = posOffset != UnsetOffset;
-        return (stride, posOffset & OffsetMask, hasPosition);
+        var hasUv = tex0 != UnsetOffset;
+        return (stride, posOffset & OffsetMask, tex0 & OffsetMask, hasPosition, hasUv);
     }
 
     private static void ReadEffectConfig(BinaryCursor cursor)
@@ -220,9 +234,6 @@ internal static class VMeshReader
         var count = cursor.ReadUInt16();
         for (var i = 0; i < count; i++)
         {
-            // Leaf effect: three length-prefixed UTF-8 strings + flags.
-            // Nested count wrappers also start with a u16; when the outer count
-            // is zero (common for static props) we never enter this loop.
             _ = cursor.ReadUtf8UInt32();
             _ = cursor.ReadUtf8UInt32();
             _ = cursor.ReadUtf8UInt32();

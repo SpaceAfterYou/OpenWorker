@@ -157,6 +157,8 @@ internal sealed class VArchiveReader
         }
     }
 
+    public void Skip(int count) => _ = _cursor.ReadBytes(count);
+
     public void ReadEffectConfig()
     {
         var techCount = ReadUInt16();

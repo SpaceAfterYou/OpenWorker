@@ -57,7 +57,10 @@
                            Text="{Binding SelectionStatus}"
                            TextTrimming="CharacterEllipsis" />
                 <Border Background="#FF1E1F24" CornerRadius="6" ClipToBounds="True">
-                    <rendering:NavMeshViewport Mesh="{Binding Mesh}" />
+                    <rendering:BatchViewport NavMesh="{Binding Mesh}"
+                                             SceneMesh="{Binding SceneMesh}"
+                                             ShowBoxes="False"
+                                             ShowNavMesh="True" />
                 </Border>
             </DockPanel>
         </Grid>

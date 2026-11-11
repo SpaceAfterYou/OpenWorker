@@ -31,6 +31,9 @@ public sealed partial class NavMeshesViewModel : ViewModelBase, IDisposable
     public partial NavMesh? Mesh { get; set; }
 
     [ObservableProperty]
+    public partial SceneMeshDraw? SceneMesh { get; set; }
+
+    [ObservableProperty]
     public partial string SelectionStatus { get; set; } = "Select a navigation mesh.";
 
     public ObservableCollection<NavMeshEntry> Entries { get; } = [];
@@ -62,6 +65,7 @@ public sealed partial class NavMeshesViewModel : ViewModelBase, IDisposable
         Entries.Clear();
         SelectedEntry = null;
         Mesh = null;
+        SceneMesh = null;
         _all = [];
         _loaded = false;
         SelectionStatus = "Select a navigation mesh.";
@@ -89,7 +93,13 @@ public sealed partial class NavMeshesViewModel : ViewModelBase, IDisposable
 
             _all = loaded.Entries;
             _loaded = true;
-            Status = loaded.Status;
+            var parts = new List<string> { loaded.Status };
+            if (ContentPaths.WorldFolder is null)
+            {
+                parts.Add($"Set {ContentPaths.WorldVariable} to the unpacked client datas (World/Scenes).");
+            }
+
+            Status = string.Join(' ', parts);
             ApplyFilter();
         }
         catch (OperationCanceledException)
@@ -138,6 +148,7 @@ public sealed partial class NavMeshesViewModel : ViewModelBase, IDisposable
         var token = _meshCts.Token;
 
         Mesh = null;
+        SceneMesh = null;
 
         if (entry is null)
         {
@@ -156,16 +167,50 @@ public sealed partial class NavMeshesViewModel : ViewModelBase, IDisposable
 
         SelectionStatus = string.Format(
             CultureInfo.InvariantCulture,
-            "Loading {0}.hkt…",
+            "Loading {0}…",
             entry.Name);
+
+        var worldFolder = ContentPaths.WorldFolder;
+        var scenePath = worldFolder is null
+            ? null
+            : SceneCatalog.FindScenePath(worldFolder, entry.Name);
+        var canLoadScene = scenePath is not null && worldFolder is not null;
 
         try
         {
-            var mesh = await Task.Run(
+            var loaded = await Task.Run(
                 () =>
                 {
                     token.ThrowIfCancellationRequested();
-                    return NavMeshFileCache.Shared.Load(entry.Path);
+                    var mesh = NavMeshFileCache.Shared.Load(entry.Path);
+
+                    token.ThrowIfCancellationRequested();
+                    SceneMeshDraw? scene = null;
+                    string? sceneError = null;
+                    if (canLoadScene)
+                    {
+                        try
+                        {
+                            scene = SceneFileCache.Shared.Load(worldFolder!, scenePath!);
+                        }
+                        catch (Exception exception)
+                        {
+                            sceneError = exception.Message;
+                        }
+                    }
+                    else if (worldFolder is null)
+                    {
+                        sceneError = string.Format(
+                            CultureInfo.InvariantCulture,
+                            "set {0}",
+                            ContentPaths.WorldVariable);
+                    }
+                    else if (scenePath is null)
+                    {
+                        sceneError = "scene missing";
+                    }
+
+                    return (Mesh: mesh, Scene: scene, SceneError: sceneError);
                 },
                 token);
 
@@ -174,8 +219,9 @@ public sealed partial class NavMeshesViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            Mesh = mesh;
-            SelectionStatus = entry.FormatCounts(mesh.FaceCount, mesh.EdgeCount, mesh.VertexCount);
+            Mesh = loaded.Mesh;
+            SceneMesh = loaded.Scene;
+            SelectionStatus = FormatSelectionStatus(entry, loaded.Mesh, loaded.Scene, loaded.SceneError);
         }
         catch (OperationCanceledException)
         {
@@ -191,6 +237,37 @@ public sealed partial class NavMeshesViewModel : ViewModelBase, IDisposable
                     exception.Message);
             }
         }
+    }
+
+    private static string FormatSelectionStatus(
+        NavMeshEntry entry,
+        NavMesh mesh,
+        SceneMeshDraw? scene,
+        string? sceneError)
+    {
+        var parts = new List<string>(2)
+        {
+            entry.FormatCounts(mesh.FaceCount, mesh.EdgeCount, mesh.VertexCount)
+        };
+
+        if (sceneError is not null)
+        {
+            parts.Add("scene: " + sceneError);
+        }
+        else if (scene is { TriangleCount: > 0 })
+        {
+            parts.Add(string.Format(
+                CultureInfo.InvariantCulture,
+                "scene {0} tris ({1} meshes)",
+                scene.TriangleCount,
+                scene.MeshCount));
+        }
+        else if (scene is not null)
+        {
+            parts.Add("scene empty");
+        }
+
+        return string.Join(", ", parts);
     }
 
     private void ApplyFilter()
