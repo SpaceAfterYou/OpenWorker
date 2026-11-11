@@ -59,6 +59,26 @@ public readonly record struct MonsterCombatComponent
     public byte Rank { get; init; }
 
     public bool IsBoss => Rank is 3 or 4 or 5;
+
+    /// <summary>
+    /// How heavy the monster is: a heavy attacker throws a light monster farther.
+    /// </summary>
+    public byte WeightRank { get; init; }
+
+    /// <summary>
+    /// What the monster cannot be thrown by.
+    /// </summary>
+    public ReactionLimit ReactionLimit { get; init; }
+
+    /// <summary>
+    /// The monster shows an animation when its super armor breaks and stands helpless through it.
+    /// </summary>
+    public bool ArmorBreakMotion { get; init; }
+
+    /// <summary>
+    /// How the monster stands: 2 and 3 are fixed in their place for good, 1 waits for a fight.
+    /// </summary>
+    public byte StandType { get; init; }
 }
 
 public sealed class CombatTables(
@@ -82,6 +102,7 @@ public sealed class CombatTables(
     private const byte EquippedMonster = 3;
     private const byte BrokenPartsMonster = 11;
     private const byte HitCountingMonster = 14;
+    private const byte ArmorBreakMotionType = 1;
 
     private const float DefaultBodyRadius = 50f;
     private const float DefaultBodyHeight = 200f;
@@ -286,7 +307,11 @@ public sealed class CombatTables(
             BodyHeight = row.CollisionHeight > 0 ? row.CollisionHeight : DefaultBodyHeight,
             CountsHits = row.Type == HitCountingMonster,
             HoldsSector = HoldsSector(row),
-            Rank = row.Rank
+            Rank = row.Rank,
+            WeightRank = row.WeightRank,
+            ReactionLimit = (ReactionLimit)(row.ReactionLimit & (byte)ReactionLimit.Immovable),
+            ArmorBreakMotion = row.SuperArmorBreakMotion == ArmorBreakMotionType,
+            StandType = (byte)row.StandType
         };
     }
 

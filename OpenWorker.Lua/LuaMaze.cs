@@ -945,7 +945,7 @@ public partial class LuaMaze(
         var area = new AttackArea(trigger, site.Position, yaw);
         var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
 
-        Run(ApplyDamageAsync(member, skill, trigger, targets, position));
+        Run(ApplyDamageAsync(member, skill, trigger, targets, position, origin: site.Position));
 
         if (!info.IsContinuous || info.ContinuousTime <= 0f || left <= info.ContinuousTime)
         {
@@ -1191,11 +1191,12 @@ public partial class LuaMaze(
             targets = [.. targets, collider];
         }
 
-        return ApplyDamageAsync(member, skill, trigger, targets, position);
+        return ApplyDamageAsync(member, skill, trigger, targets, position, origin: explosion.Position);
     }
 
     /// <param name="shares">The share of the damage each target takes, by their place in the list. Everyone takes all of it without.</param>
-    private async ValueTask ApplyDamageAsync(Fighter member, int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null)
+    /// <param name="origin">Where the blow comes from when it is not the player: the place a shot burst at or a trap lies.</param>
+    private async ValueTask ApplyDamageAsync(Fighter member, int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null, Vector3? origin = null)
     {
         var player = member.Player;
 
@@ -1215,7 +1216,7 @@ public partial class LuaMaze(
 
         var attackerStats = combat.GetPlayer(Ecs, player);
         var skillDamage = combat.GetSkill(skill);
-        var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger.ReactionType)).ToArray();
+        var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, origin)).ToArray();
 
         // The combo of the player goes into the message of the hit: the client shows it.
         var now = (long)Clock.Time.TotalMilliseconds;
@@ -1258,6 +1259,8 @@ public partial class LuaMaze(
 
             gauges.Absorb(player, absorbed, attackerStats.SoulGaugeMax);
         }
+
+        creatureManager.TellHitSlow(hits, trigger);
 
         creatureManager.Broadcast(new SkillActionBroadcastResponse
         {
@@ -1335,15 +1338,16 @@ public partial class LuaMaze(
         }
     }
 
-    private SkillDmgValue ApplyDamage(Entity player, Entity target, in CombatStats attacker, in SkillDamage skill, float attackRate, int reaction)
+    private SkillDmgValue ApplyDamage(Entity attacker, Entity target, in CombatStats attackerStats, in SkillDamage skill, float attackRate, in AttackTrigger trigger, Vector3? origin = null)
     {
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
+        var defense = _buffs.DefenseOf(target, body.Defense);
         // A super armor that was broken before this hit lets half as much again through.
         var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
-        var result = DamageCalculator.Calculate(attacker, _buffs.StatsOf(target, body.Stats), skill, _buffs.DefenseOf(target, body.Defense), attackRate, Random.Shared, broken);
+        var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken);
 
-        result = result with { Damage = _buffs.Adjust(player, target, result.Damage) };
+        result = result with { Damage = _buffs.Adjust(attacker, target, result.Damage) };
 
         var lost = result.Damage;
 
@@ -1363,20 +1367,43 @@ public partial class LuaMaze(
 
         Ecs.Set(target, creature with { Health = health });
 
-        creatureManager.OnMonsterHit(target, player, result.Damage);
+        creatureManager.OnMonsterHit(target, attacker, result.Damage);
 
-        var effect = creatureManager.AbsorbHit(target, skill.SuperArmorAttack, reaction, health > 0);
+        var effect = creatureManager.ReceiveBlow(target, BlowOf(attacker, trigger, origin), defense, result.Damage, skill.SuperArmorAttack, health > 0);
 
         return default(SkillDmgValue) with
         {
             UxActorId = Ecs.Get<ActorComponent>(target),
-            ReactionType = effect.Reaction,
+            ReactionType = (byte)trigger.ReactionType,
             DamageFlags = (byte)result.Flags,
             Damage = result.Damage,
             Health = health,
+            ExtraMove = effect.ExtraMove,
+            FlySpeed = effect.FlySpeed,
             DefenseType = effect.Defense,
             CurSuperArmorGauge = effect.SuperArmor
         };
+    }
+
+    /// <summary>
+    /// The blow of an attack event as it reaches a target: from a player, or from a helper, which is a monster.
+    /// </summary>
+    private Blow BlowOf(Entity attacker, in AttackTrigger trigger, Vector3? origin)
+    {
+        var place = Ecs.Get<WorldComponent>(attacker);
+        var helper = Ecs.TryGet<MonsterCombatComponent>(attacker, out var combatant);
+
+        return new Blow(
+            trigger.Reaction,
+            (ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue),
+            trigger.DamageRate,
+            trigger.Angle,
+            origin ?? place.Position,
+            place.Position,
+            place.Rotation,
+            helper,
+            helper ? combatant.WeightRank : 0,
+            IsMelee: trigger.HitsArea);
     }
 
     private async ValueTask CheckSectorAsync(int sector)

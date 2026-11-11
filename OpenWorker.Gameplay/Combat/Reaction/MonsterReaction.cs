@@ -47,7 +47,8 @@ public readonly record struct ReactionStep(Vector3 Position, ReactionEvents Even
 /// <param name="FlySpeed">How fast the monster flies, as the clients are told in the hit.</param>
 /// <param name="Shown">The monster shows a reaction: whatever it was doing is over.</param>
 /// <param name="Motion">The motion class of the reaction, or <see cref="MotionClass.None"/>.</param>
-public readonly record struct HitOutcome(Vector3 Position, Vector3 ExtraMove, float FlySpeed, bool Shown, short Motion);
+/// <param name="Facing">The way the monster turns to face the attacker, in degrees; not a number when it keeps its facing.</param>
+public readonly record struct HitOutcome(Vector3 Position, Vector3 ExtraMove, float FlySpeed, bool Shown, short Motion, float Facing = float.NaN);
 
 /// <summary>
 /// What a blow does to a monster over the time that follows it, worked out as the clients work it out from the same blow, so
@@ -231,9 +232,12 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
     {
         var push = blow.Reaction;
 
+        // A monster in the break of its armor takes no reaction; the clients are told it stays where it is.
         if (_phase == Phase.ArmorBreak)
         {
-            return new HitOutcome(position, Vector3.Zero, 0f, false, MotionClass.None);
+            var stays = push.Moves && !IsLaunch(blow.Kind) ? new Vector3(position.X, position.Y, 0f) : Vector3.Zero;
+
+            return new HitOutcome(position, stays, 0f, false, MotionClass.None);
         }
 
         Anchor(position);
@@ -255,6 +259,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         var physical = enabled && IsLaunch(kind) && vector.Z <= 0f ? ReactionKind.Flinch : kind;
         var flyAction = enabled && IsLaunch(physical);
         var shown = motion != MotionClass.None && displayed;
+        var facing = survives && shown && enabled && !IsFixed && !IsDown ? Facing(thrown.Yaw) : float.NaN;
 
         if (survives && shown && enabled)
         {
@@ -294,7 +299,27 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
             told = new Vector3(place.X, place.Y, vector.Z);
         }
 
-        return new HitOutcome(position, told, _flySpeed, shown && survives, shown ? motion : MotionClass.None);
+        return new HitOutcome(position, told, _flySpeed, shown && survives, shown ? motion : MotionClass.None, facing);
+    }
+
+    /// <summary>
+    /// A monster that is hit turns its face to the attacker: the opposite of the way the blow goes.
+    /// </summary>
+    private static float Facing(float blowYaw)
+    {
+        var yaw = blowYaw + 180f;
+
+        while (yaw > 180f)
+        {
+            yaw -= 360f;
+        }
+
+        while (yaw < -180f)
+        {
+            yaw += 360f;
+        }
+
+        return yaw;
     }
 
     /// <summary>
@@ -329,7 +354,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         return profile.Limit.HasFlag(ReactionLimit.NoLaunch) && IsLaunch(kind) ? ReactionKind.Flinch : kind;
     }
 
-    private static bool IsLaunch(ReactionKind kind) => kind is ReactionKind.LaunchUp or ReactionKind.KnockDown or ReactionKind.KnockDownStraight;
+    internal static bool IsLaunch(ReactionKind kind) => kind is ReactionKind.LaunchUp or ReactionKind.KnockDown or ReactionKind.KnockDownStraight;
 
     /// <summary>
     /// Whether the animation of a reaction plays at all: a weak blow shows none, and a monster whose armor holds or that

@@ -20,7 +20,7 @@ namespace OpenWorker.Lua.Ai;
 /// <summary>
 /// A monster as its mind sees it. The mind decides, the body walks, turns, attacks, and tells the clients about it.
 /// </summary>
-internal class MonsterBody : IAiHost
+internal partial class MonsterBody : IAiHost
 {
     /// <summary>
     /// How often a client hears about a monster that keeps walking, in seconds.
@@ -114,6 +114,7 @@ internal class MonsterBody : IAiHost
         _gazing = false;
         _attackEnd = 0;
         _staggerEnd = 0;
+        _reaction = null;
         _lastMoveSent = 0;
         _lastYawSent = float.NaN;
         _born = _manager.Now;
@@ -161,13 +162,13 @@ internal class MonsterBody : IAiHost
 
     public bool IsAttacking => _manager.Now < _attackEnd;
 
-    public bool CanMove => !IsAttacking && !IsStaggered && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
+    public bool CanMove => !IsAttacking && !IsStaggered && !IsReactionBlockingMove && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
 
     private bool IsStaggered => _manager.Now < _staggerEnd;
 
     public bool IsRooted => Behavior.IsRooted;
 
-    public bool CanAttack => !IsAttacking && !IsStaggered;
+    public bool CanAttack => !IsAttacking && !IsStaggered && !IsReactionBlockingAttack;
 
     public bool IsMoving => _destination is not null;
 
@@ -222,6 +223,7 @@ internal class MonsterBody : IAiHost
             return;
         }
 
+        StepReaction(elapsed);
         Advance(now, elapsed);
         ResolveHits(now);
         Fly(elapsed);
@@ -749,7 +751,7 @@ internal class MonsterBody : IAiHost
 
     protected void Broadcast(OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage message)
     {
-        if (IsRevealed)
+        if (IsRevealed && !IsSilencedByReaction(message))
         {
             _manager.Broadcast(message);
         }

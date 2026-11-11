@@ -100,7 +100,9 @@ public partial class LuaMaze
         var attacker = Ecs.Get<WorldComponent>(helper.Entity);
         var stats = _buffs.StatsOf(helper.Entity, Ecs.Get<MonsterCombatComponent>(helper.Entity).Stats);
         var skill = combat.GetSkill(strike.Skill);
-        var hits = targets.Select(target => ApplyDamage(helper.Entity, target, stats, skill, strike.Trigger.DamageRate, strike.Trigger.ReactionType)).ToArray();
+        var hits = targets.Select(target => ApplyDamage(helper.Entity, target, stats, skill, strike.Trigger.DamageRate, strike.Trigger)).ToArray();
+
+        creatureManager.TellHitSlow(hits, strike.Trigger);
 
         creatureManager.Broadcast(new SkillActionBroadcastResponse
         {
