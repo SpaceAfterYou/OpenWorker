@@ -364,5 +364,22 @@ public sealed class TestServerOptions
         }
     }
 
+    /// <summary>
+    /// One server brings the schema of the database up to date, the relay; the others wait for it. Servers that all
+    /// migrate an empty database make its first tables at once, and all but one fail.
+    /// </summary>
+    [TestMethod]
+    public void OnlyTheRelayMigratesTheDatabase()
+    {
+        foreach (var server in AllServers)
+        {
+            using var host = CreateHost(server);
+
+            var migrates = host.Services.GetRequiredService<IOptions<PersistenceOptions>>().Value.Migrate;
+
+            Assert.AreEqual(server == Relay, migrates, server);
+        }
+    }
+
     public TestContext TestContext { get; set; } = null!;
 }

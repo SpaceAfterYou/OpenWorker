@@ -30,7 +30,7 @@ flowchart LR
 | GateServer | Character list, creation, deletion, selection |
 | DistrictServer | One city with its channels (`Channel__From`..`Channel__To`) |
 | MazeServer | Maze instances: monsters, combat, AI scripts |
-| RelayServer | Discord bot, Redis index setup (it makes the missing indexes and never deletes a record) |
+| RelayServer | Discord bot, Redis index setup (it makes the missing indexes and never deletes a record), database migration |
 
 Shared state between processes:
 
@@ -399,8 +399,10 @@ projects `Domain`, `Extensions`, `Res`, `Batch`, `SourceGenerator.ResourceStruct
 
 ## Database
 
-Every server migrates the database before its other services start (`PersistenceBootstrapService`);
-Npgsql locks the database while it migrates, so servers that start together apply each migration once.
+One server migrates the database before its other services start: the relay (`Persistence:Migrate` is true in its
+settings only). Every other server waits in `PersistenceBootstrapService` until no migration is left to apply, and
+says so in its log; to run one server alone, start it with `Persistence__Migrate=true`. Servers that all migrate an
+empty Postgres make the database and its first tables at once, and all but one fail.
 EF Core refuses to migrate while the model has changes with no migration: after changing the model,
 add the migration before starting the servers. Two branches that each add a migration from the same
 snapshot produce two migrations that repeat each other, and the second one fails on an empty database

@@ -28,6 +28,12 @@ public sealed class PersistenceOptions : IValidatableObject
     public bool SensitiveDataLogging { get; set; }
 #endif
 
+    /// <summary>
+    /// This server brings the schema of the database up to date when it starts (<c>Persistence:Migrate</c>). One server of
+    /// an installation has it, the relay; every other server waits until the schema is there.
+    /// </summary>
+    public bool Migrate { get; set; }
+
     public static TimeSpan MinFlushInterval { get; } = TimeSpan.FromSeconds(1);
     public static TimeSpan MaxFlushInterval { get; } = TimeSpan.FromMinutes(5);
 

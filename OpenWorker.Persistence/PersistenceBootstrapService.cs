@@ -1,69 +1,93 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using OpenWorker.Extensions;
 
 namespace OpenWorker.Persistence;
 
 /// <summary>
-/// Brings the database schema up to date before the server starts. The host waits for
+/// Has the database schema up to date before the server starts. The host waits for
 /// <see cref="StartAsync"/>, so nothing that starts after this service meets a missing table.
-/// Every server runs it: the provider locks the database while it migrates, so servers that
-/// start together apply each migration once. The lock does not cover a database that is not there yet:
-/// servers that start together on an empty Postgres all try to make it and its first tables, one wins
-/// and the others are told the thing exists. Those try again and find the work done.
+/// One server of an installation migrates (<see cref="PersistenceOptions.Migrate"/>, the relay); the others
+/// wait here until it has: servers that all migrate an empty Postgres make the database and its first
+/// tables at once, and all but one fail.
 /// </summary>
 internal sealed partial class PersistenceBootstrapService(
     ILogger<PersistenceBootstrapService> logger,
-    IDbContextFactory<PersistenceContext> factory
+    IDbContextFactory<PersistenceContext> factory,
+    IOptions<PersistenceOptions> options
 ) :
     IHostedService
 {
+    private static TimeSpan Pause { get; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How many looks pass between two warnings that the schema is still not there.
+    /// </summary>
+    private const int LooksPerWarning = 30;
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         LogBootstrapping();
 
-        LogMigrating();
-
-        for (var attempt = 1; ; attempt++)
+        if (options.Value.Migrate)
         {
-            // A new context for every attempt: the connection of a failed one is not used again.
             await using var context = await factory
                 .CreateDbContextAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            try
-            {
-                await context.Database
-                    .MigrateAsync(cancellationToken)
-                    .ConfigureAwait(false);
+            LogMigrating();
 
-                break;
-            }
-            catch (PostgresException e) when (attempt < Attempts && MadeByAnotherServer(e))
-            {
-                LogMigratedElsewhere(e.SqlState, attempt);
+            await context.Database
+                .MigrateAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
 
-                await Task.Delay(Pause, cancellationToken).ConfigureAwait(false);
-            }
+        else
+        {
+            await WaitForSchemaAsync(cancellationToken).ConfigureAwait(false);
         }
 
         LogBootstrapped();
     }
 
-    private const int Attempts = 10;
-
-    private static TimeSpan Pause { get; } = TimeSpan.FromSeconds(2);
-
     /// <summary>
-    /// The database, a table or a row of the history was made by another server between the look and the making.
+    /// Looks every second until no migration is left to apply. A database that is not there yet, or does not answer,
+    /// is one more reason to look again.
     /// </summary>
-    private static bool MadeByAnotherServer(PostgresException e)
+    private async Task WaitForSchemaAsync(CancellationToken cancellationToken)
     {
-        return e.SqlState is PostgresErrorCodes.DuplicateDatabase
-            or PostgresErrorCodes.DuplicateTable
-            or PostgresErrorCodes.DuplicateObject
-            or PostgresErrorCodes.UniqueViolation;
+        for (var look = 0; ; look++)
+        {
+            try
+            {
+                await using var context = await factory
+                    .CreateDbContextAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var pending = await context.Database
+                    .GetPendingMigrationsAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!pending.Any())
+                {
+                    return;
+                }
+            }
+            catch (NpgsqlException)
+            {
+                // No database yet, or no answer: the same as a schema that is not there.
+            }
+
+            if (look % LooksPerWarning == 0)
+            {
+                LogWaiting();
+            }
+
+            await Task.Delay(Pause, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
@@ -77,8 +101,8 @@ internal sealed partial class PersistenceBootstrapService(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Migrating database...")]
     private partial void LogMigrating();
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Another server is migrating the database ({SqlState}), attempt {Attempt}; trying again.")]
-    private partial void LogMigratedElsewhere(string sqlState, int attempt);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The database schema is not up to date. Waiting for the server that migrates it (the relay, or any server started with Persistence:Migrate=true).")]
+    private partial void LogWaiting();
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Database bootstrapped.")]
     private partial void LogBootstrapped();
