@@ -138,6 +138,9 @@ public sealed class PartyMatching(
         return 1
         """);
 
+    // The state of a group whose end one server has taken on; no server moves such a group on.
+    private const PartyMatchingState Ending = (PartyMatchingState)3;
+
     private readonly HashSet<int> _owned = [];
 
     private IDatabase Database => redis.GetDatabase();
@@ -168,10 +171,9 @@ public sealed class PartyMatching(
             return PartyRules.Text.Unexpected;
         }
 
-        if (result[0] == 2)
-        {
-            _owned.Add(result[1]);
-        }
+        // Every server that has a member of the group moves it on, so the group does not stand still when the server
+        // that started it stops; only one of them makes each step (see AdvanceAsync and ClaimEndAsync).
+        _owned.Add(result[1]);
 
         if (await GetAsync(result[1]) is { } group)
         {
@@ -352,6 +354,11 @@ public sealed class PartyMatching(
     /// </summary>
     private async Task StartAsync(PartyMatchingGroup group)
     {
+        if (!await ClaimEndAsync(group))
+        {
+            return;
+        }
+
         await ForgetAsync(group);
 
         var cards = group.Members
@@ -377,6 +384,11 @@ public sealed class PartyMatching(
 
     private async Task DissolveAsync(PartyMatchingGroup group, PartyMatchingExit reason)
     {
+        if (!await ClaimEndAsync(group))
+        {
+            return;
+        }
+
         await ForgetAsync(group);
 
         // Nobody in particular left: the client takes zero as the whole group.
@@ -399,6 +411,15 @@ public sealed class PartyMatching(
 
         await Database.KeyDeleteAsync(GroupKey(group.Id));
         await Database.SetRemoveAsync(MazePrefix + group.Maze.ToString(CultureInfo.InvariantCulture), group.Id);
+    }
+
+    /// <summary>
+    /// Marks the group as ending. True for the one server that does it: the others, which watch the same group, leave its
+    /// end to that one, so its members are told once and one party is made of them.
+    /// </summary>
+    private Task<bool> ClaimEndAsync(PartyMatchingGroup group)
+    {
+        return AdvanceAsync(group, Ending, 0, group.Leader);
     }
 
     private async Task<bool> AdvanceAsync(PartyMatchingGroup group, PartyMatchingState next, long deadline, int leader)
