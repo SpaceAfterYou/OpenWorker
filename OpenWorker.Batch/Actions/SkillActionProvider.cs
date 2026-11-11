@@ -16,6 +16,19 @@ public readonly record struct SkillHit(float Time, AttackTrigger Trigger);
 public readonly record struct SkillHiding(float Time, InvisibleEvent Event);
 
 /// <summary>
+/// A moment of a skill at which the monster that plays it lets go of a player it holds.
+/// </summary>
+/// <param name="Time">From the start of the skill.</param>
+/// <param name="DropTime">How long the player flies to the place it is put down at.</param>
+/// <param name="FollowUp">The blow that lands on the player there, if the file names one found.</param>
+public readonly record struct SkillDetach(float Time, float DropTime, AttackTrigger? FollowUp);
+
+/// <summary>
+/// A moment of a skill at which the character that plays it starts to carry away what stands before it.
+/// </summary>
+public readonly record struct SkillCarry(float Time, AttachEvent Event);
+
+/// <summary>
 /// Finds what a skill hits from the animations the table names for it.
 /// </summary>
 public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
@@ -119,6 +132,68 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         }
 
         return hidings;
+    }
+
+    /// <summary>
+    /// The moments at which a skill of a hero starts to carry away what stands before the hero, from the start of the skill.
+    /// </summary>
+    public IReadOnlyList<SkillCarry> GetCarries(int skill, Hero hero)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(GetHeroFileName(hero)) is not { } file)
+        {
+            return [];
+        }
+
+        var carries = new List<SkillCarry>();
+        var offset = 0f;
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        {
+            if (Find(file, name) is not { } animation)
+            {
+                continue;
+            }
+
+            carries.AddRange((animation.Attaches ?? []).Select(carry => new SkillCarry(offset + carry.Start, carry)));
+
+            offset += animation.Length;
+        }
+
+        return carries;
+    }
+
+    /// <summary>
+    /// The moments at which a monster lets go of the player it holds while it plays a skill, from the start of the skill.
+    /// </summary>
+    public IReadOnlyList<SkillDetach> GetDetaches(int skill, string actionFile)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
+        {
+            return [];
+        }
+
+        var detaches = new List<SkillDetach>();
+        var offset = 0f;
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        {
+            if (Find(file, name) is not { } animation)
+            {
+                continue;
+            }
+
+            foreach (var detach in animation.Detaches ?? [])
+            {
+                var following = Find(file, detach.Animation)?.Attacks;
+                AttackTrigger? followUp = following is not null && detach.Event >= 0 && detach.Event < following.Count ? following[detach.Event] : null;
+
+                detaches.Add(new SkillDetach(offset + detach.Start, detach.DropTime, followUp));
+            }
+
+            offset += animation.Length;
+        }
+
+        return detaches;
     }
 
     /// <summary>

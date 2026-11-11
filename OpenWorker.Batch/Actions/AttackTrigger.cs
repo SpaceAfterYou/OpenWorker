@@ -10,6 +10,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="TargetType">Whom the attack is for: the enemies of the attacker, the attacker itself, its friends or its party.</param>
 /// <param name="Aura">The aura the attack puts on the targets it reaches (they give its buff to those around them), zero for none.</param>
 /// <param name="Reaction">How hard the attack throws its targets.</param>
+/// <param name="GrabDrop">For an attack that grabs: where the target is put down, from the attacker, turned by the way it looks.</param>
 public readonly record struct AttackTrigger(
     int Id,
     short RangeType,
@@ -30,7 +31,8 @@ public readonly record struct AttackTrigger(
     int Buff = 0,
     int TargetType = AttackTrigger.Enemies,
     int Aura = 0,
-    AttackReaction Reaction = default)
+    AttackReaction Reaction = default,
+    Vector3 GrabDrop = default)
 {
     /// <summary>
     /// The attacker itself, wherever it stands.
@@ -63,6 +65,7 @@ public readonly record struct AttackTrigger(
     private const short Thrown = 1;
     private const short Trap = 2;
     private const short Chained = 5;
+    private const short Grabbing = 7;
 
     public const short FromBody = 6;
     public const short BoxRange = 1;
@@ -70,7 +73,12 @@ public readonly record struct AttackTrigger(
     /// <summary>
     /// Other types leave it to an object they spawn: a projectile, a trap or a chain.
     /// </summary>
-    public bool HitsArea => AttackType is Melee;
+    public bool HitsArea => AttackType is Melee or Grabbing;
+
+    /// <summary>
+    /// Hurts like any blow, and the first target of it that is a player is held by the attacker.
+    /// </summary>
+    public bool IsGrab => AttackType is Grabbing;
 
     public bool IsProjectile => AttackType is Thrown or FromBody;
 

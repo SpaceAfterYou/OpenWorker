@@ -70,6 +70,35 @@ public sealed class ActionFileTest
                 e.Write(new byte[12]);
             }
 
+            if (type == 22)
+            {
+                WriteFloats(e, 0.2f, 50f, 100f, 1f, 2f, 3f);
+
+                if (version >= 231)
+                {
+                    e.Write(7);
+                }
+            }
+
+            if (type == 25)
+            {
+                e.Write((short)ActionDefense.Invincible);
+
+                if (version >= 237)
+                {
+                    e.Write(true);
+                    e.Write(0);
+                }
+            }
+
+            if (type == 30)
+            {
+                e.Write(0.05f);
+                WriteString(e, "Grip");
+                e.Write(-1);
+                e.Write(7);
+            }
+
             if (type == 3)
             {
                 e.Write((short)1);
@@ -100,6 +129,7 @@ public sealed class ActionFileTest
     private const int Grade = 3;
     private const int AwayFromOrigin = 2;
     private const float ReactionAngle = 15f;
+    private static readonly Vector3 GrabDrop = new(0f, -300f, 50f);
 
     private static void WriteProjectile(BinaryWriter e, short version)
     {
@@ -149,7 +179,7 @@ public sealed class ActionFileTest
         e.Write(new byte[12]);
         WriteString(e, "text");
         WriteString(e, "text");
-        e.Write(new byte[24]);
+        WriteFloats(e, 0f, 0f, 0f, GrabDrop.X, GrabDrop.Y, GrabDrop.Z);
         e.Write(new byte[40]);
         e.Write(true);
         e.Write(4);
@@ -177,7 +207,8 @@ public sealed class ActionFileTest
     private static void WriteAnimation(BinaryWriter writer, short version, string name)
     {
         WriteString(writer, name);
-        writer.Write(new byte[10]);
+        writer.Write(new byte[8]);
+        writer.Write((short)ActionDefense.SuperArmor);
         writer.Write(0f);
 
         if (version >= 235)
@@ -187,11 +218,14 @@ public sealed class ActionFileTest
 
         writer.Write(1.5f);
         writer.Write(new byte[4]);
-        writer.Write(4);
+        writer.Write(7);
         WriteEvent(writer, version, 1, 0.1f);
         WriteEvent(writer, version, 3, 0.25f);
         WriteEvent(writer, version, 14, 0.5f);
         WriteEvent(writer, version, 3, 0.75f);
+        WriteEvent(writer, version, 22, 0.8f);
+        WriteEvent(writer, version, 25, 0.9f);
+        WriteEvent(writer, version, 30, 1.2f);
         writer.Write(1);
         writer.Write(Chunk("FRMS", e => e.Write(new byte[8])));
         writer.Write(0);
@@ -246,7 +280,7 @@ public sealed class ActionFileTest
 
             Assert.AreEqual(
                 new AttackTrigger(51, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty, version >= AuraSinceVersion ? AuraWritten : 0,
-                    new AttackReaction(120f, 75f, 30f, 900f, AwayFromOrigin, ReactionAngle, 0.4f, 0.5f, 0.1f, 0.05f, 15, Grade, true, Hardness, version >= AuraSinceVersion)),
+                    new AttackReaction(120f, 75f, 30f, 900f, AwayFromOrigin, ReactionAngle, 0.4f, 0.5f, 0.1f, 0.05f, 15, Grade, true, Hardness, version >= AuraSinceVersion), GrabDrop),
                 attack);
             Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
             Assert.AreEqual(0.75f, animation.Attacks[1].Start);
@@ -267,6 +301,26 @@ public sealed class ActionFileTest
 
             Assert.HasCount(2, animation.Attacks);
             Assert.AreEqual(new InvisibleEvent(0.5f, 12, InvisibleEvent.ForTime, 2500), animation.Hides!.Single());
+        }
+    }
+
+    /// <summary>
+    /// What an animation says about armor, the grab it lets go of and the targets it carries is read on both sides of the versions
+    /// that added the fields of those events.
+    /// </summary>
+    [TestMethod]
+    public void ReadsTheDefenseTheGrabAndTheCarryOfAnAnimation()
+    {
+        foreach (var version in (short[])[236, 245])
+        {
+            var animation = ActionFile.Read(Build(version)).Animations["first"];
+
+            Assert.AreEqual(ActionDefense.SuperArmor, animation.Defense);
+            Assert.AreEqual(new DefenseEvent(0.9f, -1f, ActionDefense.Invincible, version >= 237), animation.Defenses!.Single());
+            Assert.AreEqual(new DetachEvent(1.2f, 0.05f, "Grip", 7), animation.Detaches!.Single());
+            Assert.AreEqual(new AttachEvent(0.8f, 0.2f, 50f, 100f, new Vector3(1, 2, 3), version >= 231 ? 7 : 0), animation.Attaches!.Single());
+            Assert.AreEqual(GrabDrop, animation.Attacks[0].GrabDrop);
+            Assert.IsFalse(animation.Attacks[0].IsGrab);
         }
     }
 
