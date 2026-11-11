@@ -26,7 +26,12 @@ public enum TitleSource
 /// <summary>
 /// The titles a person has earned. Whatever rewards a title (a quest, an achievement, a rank) hands it over with GrantAsync.
 /// </summary>
-public sealed class TitleBook(World world, TitleCatalog catalog, IDbContextFactory<PersistenceContext> factory, PlayerStatsService? stats = null)
+public sealed class TitleBook(
+    World world,
+    TitleCatalog catalog,
+    IDbContextFactory<PersistenceContext> factory,
+    PlayerStatsService? stats = null,
+    OpenTitleManager? openTitles = null)
 {
     public TitleCatalog Catalog => catalog;
 
@@ -114,29 +119,30 @@ public sealed class TitleBook(World world, TitleCatalog catalog, IDbContextFacto
     }
 
     /// <summary>
-    /// Tells the client which titles the person has. A list longer than the client can take comes in pieces, each adding
-    /// to what it already knows.
+    /// Tells the client which titles the person has and which are open. A list longer than the client can take comes in
+    /// pieces, each adding to what it already knows.
     /// </summary>
     public void Send(Entity player)
     {
         var session = world.Get<ServerSessionComponent>(player);
 
-        foreach (var message in Messages(world.Get<TitleComponent>(player).Owned ?? []))
+        foreach (var message in Messages(world.Get<TitleComponent>(player).Owned ?? [], openTitles?.OpenOf(player)))
         {
             session.Send(message);
         }
     }
 
-    public static IEnumerable<PersonLoadTitleResponse> Messages(IReadOnlyList<int> owned)
+    public static IEnumerable<PersonLoadTitleResponse> Messages(IReadOnlyList<int> owned, IReadOnlyList<int>? open = null)
     {
         var limit = PersonLoadTitleResponse.MaxListLength;
+        var length = Math.Max(owned.Count, open?.Count ?? 0);
 
-        for (var from = 0; from == 0 || from < owned.Count; from += limit)
+        for (var from = 0; from == 0 || from < length; from += limit)
         {
             yield return new PersonLoadTitleResponse
             {
                 TitleList = owned.Skip(from).Take(limit).ToArray(),
-                OpenList = [],
+                OpenList = open?.Skip(from).Take(limit).ToArray() ?? [],
                 Result = true
             };
         }

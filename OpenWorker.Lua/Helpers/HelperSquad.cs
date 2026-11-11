@@ -61,6 +61,8 @@ public sealed class HelperSquad
         _manager = manager;
         _tables = tables;
 
+        Defended = new DefendedTargets(ecs, manager, tables);
+
         // A person who falls takes its helpers with it.
         manager.Vitals.HealthChanged += OnHealthChanged;
     }
@@ -71,6 +73,16 @@ public sealed class HelperSquad
     public int Count => _helpers.Count;
 
     public IReadOnlyList<SummonedHelper> All => _helpers;
+
+    /// <summary>
+    /// The monsters a mode of the maze asks the players to defend, which the monsters go for as they go for a helper.
+    /// </summary>
+    public DefendedTargets Defended { get; }
+
+    /// <summary>
+    /// Whether the monsters have anything to fight besides the players: a helper, or a monster to defend.
+    /// </summary>
+    public bool HasTargets => _helpers.Count > 0 || Defended.Any;
 
     /// <summary>
     /// Where the blows of the helpers go: the maze deals them as it deals those of a player.
@@ -379,6 +391,7 @@ public sealed class HelperSquad
         _helpers.Clear();
         _strikes.Clear();
         _lastSummon.Clear();
+        Defended.Clear();
     }
 
     // ---- The helpers as the monsters see them ------------------------------------------------
@@ -427,13 +440,23 @@ public sealed class HelperSquad
             }
         }
 
-        return null;
+        return Defended.Find(id);
+    }
+
+    /// <summary>
+    /// The nearest of a player, the helpers and the monsters to defend that the monster may go for.
+    /// </summary>
+    internal AiTarget? Nearest(MonsterBody monster, float distance, AiTarget? player)
+    {
+        var best = NearestHelper(monster, distance, player);
+
+        return Defended.Any ? Defended.Nearest(monster, distance, best) : best;
     }
 
     /// <summary>
     /// The nearer of a player and the helpers the monster may go for. A monster of a high rank does not look for helpers.
     /// </summary>
-    internal AiTarget? Nearest(MonsterBody monster, float distance, AiTarget? player)
+    private AiTarget? NearestHelper(MonsterBody monster, float distance, AiTarget? player)
     {
         if (monster.Behavior.Rank >= MonsterBehavior.IgnoresFollowersFromRank)
         {
@@ -477,7 +500,7 @@ public sealed class HelperSquad
             }
         }
 
-        return count;
+        return count + Defended.CountFoes(monster, distance);
     }
 
     internal IEnumerable<FlightTarget> FlightTargets(MonsterBody monster)
@@ -491,6 +514,11 @@ public sealed class HelperSquad
                 yield return new FlightTarget(helper.Actor, _ecs.Get<WorldComponent>(helper.Entity).Position, combat.BodyRadius, combat.BodyHeight);
             }
         }
+
+        foreach (var target in Defended.FlightTargets(monster))
+        {
+            yield return target;
+        }
     }
 
     /// <summary>
@@ -499,6 +527,8 @@ public sealed class HelperSquad
     /// </summary>
     internal void HitBy(MonsterBody attacker, int skillId, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
     {
+        Defended.HitBy(attacker, skillId, trigger, area, collider, colliderOnly);
+
         // A blow for the side of the monster, or one that only gives a buff, was dealt with for the players already, and the
         // helpers are not of its side.
         if (!trigger.AffectsTargets || !_ecs.IsAlive(attacker.Entity) || trigger.ForAllies || (trigger.Buff > 0 && trigger.DamageRate <= 0f))
@@ -607,7 +637,7 @@ public sealed class HelperSquad
     /// </summary>
     private bool IsEnemy(HelperBody helper, Entity creature)
     {
-        if (!_ecs.IsAlive(creature) || _ecs.Get<ActorComponent>(creature).Type != ActorType.Monster || !_manager.IsSeen(creature))
+        if (!_ecs.IsAlive(creature) || _ecs.Get<ActorComponent>(creature).Type != ActorType.Monster || !_manager.IsSeen(creature) || Defended.Contains(creature))
         {
             return false;
         }

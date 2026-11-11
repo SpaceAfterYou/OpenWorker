@@ -83,7 +83,12 @@ public sealed class ServerTablesTest
             ("tb_Soul_Guage", typeof(SoulGaugeRuleRow)),
             ("tb_Random_Option", typeof(ItemOptionRollRow)),
             ("tb_Socket", typeof(SocketChanceRow)),
-            ("tb_Item_Endurance", typeof(ItemEnduranceRow))
+            ("tb_Item_Endurance", typeof(ItemEnduranceRow)),
+            ("tb_Mode_Survival", typeof(SurvivalModeRow)),
+            ("tb_Mode_Defence", typeof(DefenceModeRow)),
+            ("tb_Mode_Operation", typeof(OperationModeRow)),
+            ("tb_Interaction_Object", typeof(CubeObjectRow)),
+            ("tb_Interaction_Item", typeof(CubeRewardRow))
         ];
 
         foreach (var (table, row) in tables)

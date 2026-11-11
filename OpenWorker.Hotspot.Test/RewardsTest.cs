@@ -1,11 +1,14 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
+using Microsoft.Extensions.Logging.Abstractions;
 using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.Boosters.Components;
 using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons;
@@ -147,8 +150,14 @@ public sealed class RewardsTest
 
         public Fixture(byte level = 1, ReadOnlyCollection<MonsterExpRow>? monsterExp = null, ReadOnlyCollection<PartyExpMobRow>? intervals = null,
             ReadOnlyCollection<DropRow>? drops = null, ReadOnlyCollection<DropGroupRow>? groups = null,
-            ReadOnlyCollection<DropRateLevelRow>? levelRates = null, ReadOnlyCollection<DropRateMemberRow>? memberRates = null)
+            ReadOnlyCollection<DropRateLevelRow>? levelRates = null, ReadOnlyCollection<DropRateMemberRow>? memberRates = null,
+            BoosterEffectValue? boost = null)
         {
+            // The person carries one booster with the effect, when a test asks for one.
+            var boosters = boost is { } effect
+                ? new BoosterManager(World, null!, BoosterCatalog.From([new BoosterDefinition(1, 1, BoosterTime.Endless, 0, [effect])]), TimeProvider.System, NullLogger<BoosterManager>.Instance)
+                : null;
+
             var catalog = new ItemCatalog(
                 Load<ItemRow>("tb_Item"),
                 Load<ItemClassifyRow>("tb_Item_Classify"),
@@ -165,7 +174,8 @@ public sealed class RewardsTest
                 monsterExp ?? Rows<MonsterExpRow>(),
                 intervals ?? Rows<PartyExpMobRow>(),
                 Rows<MonsterRewardRow>(),
-                Monsters);
+                Monsters,
+                boosters: boosters);
 
             Drops = new DropService(
                 World,
@@ -177,7 +187,8 @@ public sealed class RewardsTest
                 Rows<DropRateMobRow>(),
                 Monsters,
                 levelRates: levelRates,
-                memberRates: memberRates);
+                memberRates: memberRates,
+                boosters: boosters);
 
             Player = World.Create(
                 Component.GetComponentType(typeof(ActorComponent)),
@@ -208,6 +219,11 @@ public sealed class RewardsTest
             World.Set(Player, new PersonInfoComponent { Name = "Test", Hero = Hero.Haru });
             World.Set(Player, new WorldComponent { Location = 0, Position = Vector3.Zero, Rotation = 0, Jump = 0 });
             World.Set(Player, new CurrencyComponent());
+
+            if (boosters is not null)
+            {
+                World.Add(Player, new BoosterComponent { Person = 7, Book = new BoosterBook { Boosters = [new BoosterEntry { Booster = 1 }] } });
+            }
         }
 
         public LevelComponent Rank => World.Get<LevelComponent>(Player);
@@ -271,6 +287,74 @@ public sealed class RewardsTest
         f.Experience.GiveForMonster(f.Player, monster.Id);
 
         Assert.AreEqual(40, f.Rank.Experience);
+    }
+
+    /// <summary>
+    /// A booster of experience adds a part of the experience of a kill, which the client is told as a bonus, and the player gets
+    /// the two together.
+    /// </summary>
+    [TestMethod]
+    public void ABoosterAddsToTheExperienceOfAKill()
+    {
+        var monster = FindMonster();
+
+        using var f = new Fixture(
+            monsterExp: Rows<MonsterExpRow>(MonsterExp((byte)monster.Level, monster.Rank, 40)),
+            boost: new BoosterEffectValue(BoosterEffect.IncExp, BoosterApply.Rate, 0.25f));
+
+        var given = f.Experience.GiveForMonster(f.Player, monster.Id);
+
+        Assert.AreEqual(50, given, "40 and a quarter of it");
+        Assert.AreEqual(50, f.Rank.Experience);
+    }
+
+    /// <summary>
+    /// A booster of gold adds a part of each heap of gold that falls; the heap is the two together, the bonus is told apart, and the
+    /// player takes it whole.
+    /// </summary>
+    [TestMethod]
+    public void ABoosterAddsToTheGoldThatFalls()
+    {
+        var monster = FindMonster();
+
+        using var f = new Fixture(
+            drops: Rows<DropRow>(Drop(monster.DropId, 10000, 100, 100, 0, 0)),
+            boost: new BoosterEffectValue(BoosterEffect.IncGoldDrop, BoosterApply.Rate, 0.5f));
+
+        f.Drops.DropForKill(f.Player, monster.Id, Vector3.Zero);
+
+        var heap = f.Drops.On(f.Player).Single();
+
+        Assert.AreEqual(150, heap.Count);
+        Assert.AreEqual(50, heap.Bonus);
+        Assert.IsTrue(f.Drops.PickUp(f.Player, heap.Serial));
+        Assert.AreEqual(150, f.Inventory.Gold(f.Player));
+    }
+
+    /// <summary>
+    /// A booster of items makes what a group lets fall more likely: a chance of 5000 that loses to a roll of 6000 wins with half
+    /// as much again.
+    /// </summary>
+    [TestMethod]
+    public void ABoosterRaisesTheChanceOfWhatFalls()
+    {
+        var monster = FindMonster();
+        var roll = new FixedRandom(6000);
+
+        using var plain = new Fixture(
+            drops: Rows<DropRow>(Drop(monster.DropId, 0, 0, 0, group: 5, groupChance: 5000)),
+            groups: Rows<DropGroupRow>(Group(5, Material, 1, 1)));
+
+        using var boosted = new Fixture(
+            drops: Rows<DropRow>(Drop(monster.DropId, 0, 0, 0, group: 5, groupChance: 5000)),
+            groups: Rows<DropGroupRow>(Group(5, Material, 1, 1)),
+            boost: new BoosterEffectValue(BoosterEffect.IncItemDrop, BoosterApply.Rate, 0.5f));
+
+        plain.Drops.DropForKill(plain.Player, monster.Id, Vector3.Zero, roll);
+        boosted.Drops.DropForKill(boosted.Player, monster.Id, Vector3.Zero, roll);
+
+        Assert.AreEqual(0, plain.Drops.On(plain.Player).Count);
+        Assert.AreEqual(Material, boosted.Drops.On(boosted.Player).Single().ObjectId);
     }
 
     [TestMethod]

@@ -129,7 +129,8 @@ of the portal) and getting up after a fall are in `notes-maze-entry.md`.
   the person, in the document of the share points, written by the flush of the maze and read at the next entry. No change of
   the model.
 - **Achievements**: a clear counts for the type of its rank, 37 (SS) to 42 (F), through one optional parameter of
-  `AchievementManager.OnMazeCleared`. The daily missions get the rank of the clear (they had 0).
+  `AchievementManager.OnMazeCleared`. The daily missions get the rank of the clear (they had 0). The run counts a monster hit
+  (type 26), the longest combo (27) and a death (18) as it goes (`MazeResults`, `notes-maze-modes.md`).
 - **Ranking**: the clear of a casual maze (kind 2) or of a district raid (kind 8) is written into the time attack ranking of
   the maze (`IRankingStore`, the best time per person), which is what the ranking window of the client lists; it refuses any
   other kind of maze.

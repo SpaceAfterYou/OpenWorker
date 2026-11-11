@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress.Components;
 using OpenWorker.Gameplay.Modules.Quests;
@@ -33,8 +34,9 @@ public sealed record AchievementReward(bool Given, ushort Error, IReadOnlyList<i
 /// The achievements of a person: the counters of its chains, told to the client when the person enters and whenever they
 /// move, and the rewards of the achievements reached. The rest of the game tells the manager what the person does
 /// (<see cref="OnMonsterKilled"/>, <see cref="OnMazeCleared"/>, <see cref="OnLevelReached"/>, <see cref="OnQuestFinished"/>,
-/// <see cref="OnHelperGained"/>, <see cref="OnGoldPicked"/>, <see cref="OnEtherPicked"/>); a change marks
-/// <see cref="PersonSections.Progress"/> and the flush writes the book.
+/// <see cref="OnHelperGained"/>, <see cref="OnGoldPicked"/>, <see cref="OnEtherPicked"/>, and <see cref="Count"/> for the
+/// events that have no more to say than the kind); a change marks <see cref="PersonSections.Progress"/> and the flush writes
+/// the book. The minutes of play are counted on the tick of the misc work.
 /// </summary>
 public sealed partial class AchievementManager(
     World world,
@@ -43,7 +45,9 @@ public sealed partial class AchievementManager(
     ProgressItems items,
     InventoryService inventory,
     ReadOnlyCollection<MonsterRow> monsters,
-    ILogger<AchievementManager> logger)
+    ILogger<AchievementManager> logger,
+    TimeProvider? time = null,
+    OpenTitleManager? openTitles = null) : IMiscTick
 {
     /// <summary>The gold of the reward would go past what a person can hold.</summary>
     public const ushort GoldOverflow = 52056;
@@ -67,7 +71,10 @@ public sealed partial class AchievementManager(
     /// </summary>
     private const int FastClearSeconds = 180;
 
+    private static readonly QueryDescription Everyone = new QueryDescription().WithAll<AchievementComponent>();
+
     private readonly RowIndex<int, MonsterRow> _monsters = monsters.IndexBy(e => e.Id);
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
 
     /// <summary>
     /// The book of the achievements as the flush writes it.
@@ -78,10 +85,16 @@ public sealed partial class AchievementManager(
     public AchievementCatalog Catalog => catalog;
 
     /// <summary>
-    /// Loads the achievements of the person, starts the chains its level opens and tells the client.
+    /// Loads the achievements of the person, starts the chains its level opens and tells the client. The titles the person has
+    /// opened with them are loaded as well.
     /// </summary>
     public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
     {
+        if (openTitles is not null)
+        {
+            await openTitles.EnterAsync(player, person, cancellationToken);
+        }
+
         var book = await store.LoadAsync<AchievementBook>(person, PersonStateKind.Achievements, cancellationToken) ?? new AchievementBook();
 
         if (!world.IsAlive(player))
@@ -95,7 +108,7 @@ public sealed partial class AchievementManager(
         book.Open(catalog, level);
         book.CatchUp(catalog, level);
 
-        world.Set(player, new AchievementComponent { Person = person, Book = book });
+        world.Set(player, new AchievementComponent { Person = person, Book = book, PlayCountedAt = _time.GetTimestamp() });
 
         Send(player, new PersonAchieveSelectResponse
         {
@@ -179,6 +192,8 @@ public sealed partial class AchievementManager(
             return;
         }
 
+        openTitles?.Update(player, OpenTitleManager.ByLevel, level);
+
         if (book.Open(catalog, level))
         {
             world.MarkDirty(player, PersonSections.Progress);
@@ -226,6 +241,52 @@ public sealed partial class AchievementManager(
     }
 
     /// <summary>
+    /// Battle points were added to the purse of the person, from wherever they came (<c>ItemArrivals</c>).
+    /// </summary>
+    public void OnBattlePointsGained(Entity player, long points)
+    {
+        Count(player, AchievementType.BattlePointsGained, points);
+    }
+
+    /// <summary>
+    /// The person did something the chains of one kind count: <paramref name="amount"/> of it, about a target (the group of
+    /// NPCs whose credit grew) or about nothing (0).
+    /// </summary>
+    public void Count(Entity player, AchievementType type, long amount = 1, int target = 0)
+    {
+        Raise(player, [(type, target)], amount);
+    }
+
+    /// <summary>
+    /// Counts the whole minutes every person has played since it was last counted.
+    /// </summary>
+    public ValueTask TickAsync(CancellationToken cancellationToken)
+    {
+        var players = new List<Entity>();
+
+        world.Query(in Everyone, (Entity entity, ref AchievementComponent component) =>
+        {
+            if (component.Book is not null)
+            {
+                players.Add(entity);
+            }
+        });
+
+        foreach (var player in players)
+        {
+            var component = world.Get<AchievementComponent>(player);
+            var played = component.Played + _time.GetElapsedTime(component.PlayCountedAt);
+            var minutes = (long)played.TotalMinutes;
+
+            world.Set(player, component with { Played = played - TimeSpan.FromMinutes(minutes), PlayCountedAt = _time.GetTimestamp() });
+
+            Count(player, AchievementType.PlayTime, minutes);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
     /// Counts events for the chains of the person and tells the client what moved, in one message.
     /// </summary>
     public void Raise(Entity player, IReadOnlyList<(AchievementType Type, int Target)> events, long amount)
@@ -236,10 +297,11 @@ public sealed partial class AchievementManager(
         }
 
         var updates = new List<AchieveUpdateValue>();
+        var reached = new List<int>();
 
         foreach (var (type, target) in events)
         {
-            if (book.Raise(catalog, (ushort)type, target, amount) is { } update)
+            if (book.Raise(catalog, (ushort)type, target, amount, reached) is { } update)
             {
                 updates.Add(update);
             }
@@ -258,6 +320,12 @@ public sealed partial class AchievementManager(
             RewardBits = book.Rewarded,
             Categories = book.Categories(catalog)
         });
+
+        // Every achievement reached opens the titles that ask for it.
+        foreach (var achievement in reached)
+        {
+            openTitles?.Update(player, OpenTitleManager.ByAchievement, achievement);
+        }
     }
 
     /// <summary>

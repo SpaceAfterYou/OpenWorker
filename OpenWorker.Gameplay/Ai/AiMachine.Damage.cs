@@ -91,6 +91,24 @@ public sealed partial class AiMachine
     }
 
     /// <summary>
+    /// Something other than a blow angers the monster at somebody: its hate for them grows, and a monster that has no enemy yet
+    /// turns on them. It is no blow, so it adds to no counter and to no escape points.
+    /// </summary>
+    public void Provoke(int target, float hate)
+    {
+        if (_targetId == NoTarget && _host.GetTarget(target) is not null)
+        {
+            ChangeTarget(target);
+            ChangeState(AiState.SelectAction);
+        }
+
+        if (_host.Health > 0)
+        {
+            AddAggro(target, hate);
+        }
+    }
+
+    /// <summary>
     /// The monster is turned on somebody for as long as a taunt lasts: it fights them whatever hate says.
     /// </summary>
     public void Taunt(int target)

@@ -4,6 +4,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Npcs.Components;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Shop;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -37,8 +38,15 @@ public sealed class NpcServicesTest
         public NpcShopService Shop { get; }
         public IReadOnlyList<ShopRow> Lines { get; } = ItemSetupFixture.Load<ShopRow>("tb_Shop");
 
-        public Shops()
+        /// <param name="counting">Whether the person has chains of achievements for a purchase and for the credit with every group.</param>
+        public Shops(bool counting = false)
         {
+            Chains = counting
+                ? new AchievementChains(
+                    F.World,
+                    [(AchievementType.ShopPurchase, 0), .. F.NpcTable.Select(e => (int)e.Group).Distinct().Select(e => (AchievementType.NpcCredit, e))])
+                : null;
+
             Credit = new NpcCreditManager(
                 F.World,
                 new PersonStateStore(null!),
@@ -49,12 +57,16 @@ public sealed class NpcServicesTest
                 F.Inventory,
                 new FakeTimeProvider(new DateTimeOffset(2026, 11, 9, 12, 0, 0, TimeSpan.Zero)),
                 NullLogger<NpcCreditManager>.Instance,
-                random: new LowestRandom());
+                random: new LowestRandom(),
+                achievements: Chains?.Manager);
 
-            Shop = new NpcShopService(F.World, F.Inventory, F.Npcs, Credit, ItemSetupFixture.Load<ShopRow>("tb_Shop"));
+            Shop = new NpcShopService(F.World, F.Inventory, F.Npcs, Credit, ItemSetupFixture.Load<ShopRow>("tb_Shop"), achievements: Chains?.Manager);
 
             F.World.Set(F.Player, new NpcCreditComponent { Person = 7, Book = new NpcCreditBook() });
+            Chains?.Enter(F.Player);
         }
+
+        public AchievementChains? Chains { get; }
 
         public NpcCreditBook Book => F.World.Get<NpcCreditComponent>(F.Player).Book!;
 
@@ -194,6 +206,36 @@ public sealed class NpcServicesTest
         await s.F.Handler.OnHandleAsync(s.F.Context, repair);
 
         Assert.IsTrue(s.F.Weapon.Endurance > 50, "near the NPC that repairs");
+    }
+
+    [TestMethod]
+    public void EveryPurchaseCountsOnceForTheAchievementsAndTheCreditItEarnsCountsByItsGroup()
+    {
+        using var s = new Shops(counting: true);
+        var (line, item, npc) = s.GoldLine();
+
+        Assert.IsTrue(s.F.Npcs.Find(s.F.Player, Actor(npc), NpcFunction.Shop, out var at) == NpcRefusal.None);
+
+        var price = line.Price != 0 ? line.Price : item.Price;
+
+        s.F.Gold = price * 2L;
+        s.Shop.Buy(s.F.Player, Actor(npc), line.Id, 1);
+
+        var gained = s.Book.Find(at.Group)!.DayPoint;
+
+        Assert.IsTrue(gained > 0, "the purchase gave credit");
+        Assert.AreEqual(1, s.Chains!.Counted(s.F.Player, AchievementType.ShopPurchase));
+        Assert.AreEqual(gained, s.Chains.Counted(s.F.Player, AchievementType.NpcCredit, at.Group), "the points of the group, not of another");
+
+        s.Shop.Buy(s.F.Player, Actor(npc), line.Id, 1);
+
+        Assert.AreEqual(2, s.Chains.Counted(s.F.Player, AchievementType.ShopPurchase));
+
+        // A purchase that is refused counts for nothing.
+        s.F.Gold = 0;
+        s.Shop.Buy(s.F.Player, Actor(npc), line.Id, 1);
+
+        Assert.AreEqual(2, s.Chains.Counted(s.F.Player, AchievementType.ShopPurchase));
     }
 
     [TestMethod]

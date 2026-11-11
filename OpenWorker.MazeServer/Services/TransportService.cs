@@ -8,6 +8,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Npcs.Components;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Handler.Abstractions;
@@ -57,7 +58,8 @@ public sealed partial class TransportService(
     IPlayerAudience audience,
     SimulationClock clock,
     HandlerExecutor errors,
-    ILogger<TransportService> logger) :
+    ILogger<TransportService> logger,
+    AchievementManager? achievements = null) :
     IHotspotHandler<MovementTransportTakeRequest>
 {
     /// <summary>
@@ -131,6 +133,7 @@ public sealed partial class TransportService(
         clock.Schedule(length, () => End(player));
 
         credit.Raise(player, npc, CreditRaise.Transport);
+        achievements?.Count(player, AchievementType.TransportTaken);
 
         LogRide(logger, request.Actor.Identifier, ride.Id, fare, length.TotalSeconds);
     }

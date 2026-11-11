@@ -5,6 +5,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Npcs;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -29,7 +30,8 @@ public sealed class ItemRepairService(
     InventoryService inventory,
     ReadOnlyCollection<ItemRepairRow> repairs,
     NpcCreditManager? credit = null,
-    PlayerStatsService? stats = null)
+    PlayerStatsService? stats = null,
+    AchievementManager? achievements = null)
 {
     /// <summary>The repair failed: no such item, nothing to repair, a table without a row for it.</summary>
     public const ushort Failed = 52450;
@@ -118,6 +120,7 @@ public sealed class ItemRepairService(
 
         Restore(bag, item);
         Send(player, new ItemSetupRepairNpcResponse { Item = InventoryService.ToStorageValue(item), Spent = price });
+        achievements?.Count(player, AchievementType.RepairCost, price);
         Raise(player, npc);
     }
 
@@ -186,6 +189,7 @@ public sealed class ItemRepairService(
             Send(player, new ItemSetupRepairEquipResponse { Items = values, Spent = total });
         }
 
+        achievements?.Count(player, AchievementType.RepairCost, total);
         Raise(player, npc);
     }
 
@@ -271,6 +275,7 @@ public sealed class ItemRepairService(
         inventory.Spend(player, kit, 1);
         Restore(bag, item);
         Send(player, new ItemSetupRepairResponse { Item = InventoryService.ToStorageValue(item), Kit = kitItem, Spent = price });
+        achievements?.Count(player, AchievementType.RepairCost, price);
     }
 
     private void RepairEquippedWithKit(Entity player, Inventory bag, ItemInstance kit, MessageOpcode opcode)
@@ -317,6 +322,7 @@ public sealed class ItemRepairService(
 
         // The client hears a kit that repairs the equipment as a repair of the equipment.
         Send(player, new ItemSetupRepairEquipResponse { Items = values, Spent = total });
+        achievements?.Count(player, AchievementType.RepairCost, total);
     }
 
     /// <summary>

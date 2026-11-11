@@ -140,20 +140,23 @@ skill (06/42), a change of target (06/44), the place of a moving skill (06/48), 
 have no handler in the maze at all. Alone in a maze this changes nothing; in a party the others see a skill start and
 its hits, not what happens in between.
 
-**B3. Rankings are always empty (2C/01-03). S once A4 exists.** The store can record a time and a kill score, but nothing
-calls it; the tower ranking is zeros. Depends on A4 for times and scores, on C2 for the tower.
+**B3. Rankings: the time attack is written, the arena and the tower are not (2C/01-03). Partly done in round 11.** The clear of
+a casual maze or a district raid writes the time attack (`notes-maze-results.md`). The client has no request that starts an
+arena, so the arena ranking never gets a result, and the tower ranking waits for the tower (C2). Nothing more can be built for
+client 1.4.2.3 (`notes-maze-modes.md`).
 
 **B4. The cash shop is made up (09/20). L, original for the rules.** It lists one hard-coded item at a made-up price;
 buying, the cart, gifts and the gacha are ignored. `tb_CashShop` and `tb_CashBilling_Info` are in the client; a source
 of cash (the wallet has a cash balance) is a decision of the project, not a rule.
 
-**B5. Cubes of the vacuum give nothing (25/01-03). M, original.** The cubes of a maze are registered and taken, but the
-reward source is the empty `NoVaccumRewards`. The server-only table of interaction items is on the reference disk; it
-needs a hand-written row and the original's reward rule.
+**B5. Cubes of the vacuum (25/01-03). Done in round 11, M, original.** A pick rolls the rewards of the server-only
+`tb_Interaction_Item` and answers with the codes of the original; the picks and the hold time of a cube are the row of
+`tb_Interaction_Object` (`notes-maze-modes.md`). Left: a cube shared by the players of a maze and the respawn of cubes.
 
-**B6. Boosters are kept but do almost nothing (29/xx). M, original for the scale.** Only the experience of a quest is
-raised. Experience of monsters and mazes, drop rates, gold, ether, battle points, upgrade chances and the status
-boosters (a buff) are not applied; account boosters are kept per character.
+**B6. Boosters (29/xx). Mostly done in round 11, M, original for the scale.** The experience of a kill, the gold, battle
+points, ether and items of a drop and the chance of an upgrade are raised where the original raises them, besides the quest and
+the maze (`notes-maze-modes.md`). Left: the pool of fatigue of an internet cafe, the hidden event, the Grouton rate and the
+exchange effects; account boosters are kept per character.
 
 **B7. Gestures need no unlock (23/01). S.** Showing a gesture works in a district and a maze for any gesture of the table.
 
@@ -161,8 +164,9 @@ boosters (a buff) are not applied; account boosters are kept per character.
 offers is ignored~~ Done in round 7 (`notes-district-gaps.md`: the rides are in District 6, a maze). Appearance items are not
 kept, so the look of a costume over gear is never loaded or changed.
 
-**B9. Titles and echelon. S to M.** Titles granted by achievements are not given (the original does); the title clear,
-delete and open notices (03/27-29) are never sent; the echelon of a person (03/52, 03/53) is never sent and not stored.
+**B9. Titles and echelon. S to M.** The titles an achievement rewards are given when the reward is taken; the titles that open
+for an achievement or a level are kept and told (03/29, and the open list of 03/28; `notes-maze-modes.md`). The title clear and
+delete notices (03/27, 03/28 for a removal) are never sent; the echelon of a person (03/52, 03/53) is never sent and not stored.
 
 **B10. Small leftovers.** The dead monsters of a running instance (11/68) are always sent empty, so a member who joins
 late may see monsters the others killed (S, check first). The answer of the use-effect tool (18/26) goes to a case the
@@ -195,8 +199,8 @@ the maps are read by the batch reader).
 **C7. Mail from the game. M.** Letters of the player are real; letters the game itself should send (rewards that do not
 fit, the original's daily mission rewards, gifts, the exchange) and the sweep of expired letters are not there.
 
-**C8. Achievements: 26 of 43 kinds are not counted. M.** The list with what each needs is in
-`docs/notes-person-progress.md`; most wait for A2, A4 and the systems above.
+**C8. Achievements: three kinds are not counted (46, 54, 55). Done in round 11.** The tower, the visits of a room and the
+purchases of the exchange wait for their features; the list is in `docs/notes-person-progress.md`.
 
 **C9. NPC credit (03/65-67). In progress (`feature/npc-services`).**
 ## The features of the client
@@ -243,18 +247,18 @@ means nothing on the server.
 | Mail | mail, mail read, mail write | 20/xx | done | letters of the game, expiry (C7) |
 | Quests | quest, NPC talk, quest alarm | 15/xx | done | checks on the real client (notes-quests) |
 | Daily missions | (quest window part) | 24/xx | done | friends and my room conditions |
-| Achievements | game progress window; `tb_Achievement` | 03/70-74 | partial | 26 of 43 kinds (C8) |
+| Achievements | game progress window; `tb_Achievement` | 03/70-74 | done | three kinds wait for their features (C8) |
 | Share points of districts and maze groups | district condition | 03/58-63 | done | |
-| Titles | title window; `tb_Title_*` | 03/23-29 | partial | titles of achievements, the clear and open notices (B9) |
+| Titles | title window; `tb_Title_*` | 03/23-29 | partial | the clear and delete notices (B9) |
 | Echelon | character info; `tb_Echelon` | 03/52-53 | missing | B9 |
 | Soul metry | soul metry window | 21/xx | done | |
 | Attendance and access rewards | attendance check | 2A/01-05 | done | behind a server setting, off by default |
-| Boosters | (icons) | 29/xx | partial | effects (B6) |
+| Boosters | (icons) | 29/xx | partial | four effects wait for their features (B6) |
 | Helpers | helper, register helper | 27/xx | done | |
-| Vacuum (cubes in mazes) | (maze objects) | 25/xx | partial | rewards (B5) |
+| Vacuum (cubes in mazes) | (maze objects) | 25/xx | partial | shared cubes and respawn (B5) |
 | My room | my room inventory; `tb_Myroom_*` | 26/xx | missing | C4 |
 | Exchange | exchange | 2B/xx | missing | C5 |
-| Rankings | ranking | 2C/xx | partial | nothing records (B3) |
+| Rankings | ranking | 2C/xx | partial | the arena and the tower record nothing (B3) |
 | Gestures and social motions | gesture slots; `tb_Gesture`, `tb_Social_Motion` | 23/xx, 03/45 | partial | no unlock (B7) |
 | Social items | social item; `tb_Social_Item` | 2D/xx | missing | C6 |
 | Revive | revival window | 03/42, 03/44 | partial | A8 |

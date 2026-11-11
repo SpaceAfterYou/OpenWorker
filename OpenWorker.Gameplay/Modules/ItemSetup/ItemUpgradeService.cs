@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Npcs;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
@@ -32,7 +34,9 @@ public sealed class ItemUpgradeService(
     ItemSetupAnswers answers,
     Random? random = null,
     QuestManager? quests = null,
-    NpcCreditManager? credit = null)
+    NpcCreditManager? credit = null,
+    BoosterManager? boosters = null,
+    AchievementManager? achievements = null)
 {
     /// <summary>The item cannot be upgraded further, or with that protection.</summary>
     public const ushort CannotUpgrade = 52201;
@@ -169,7 +173,7 @@ public sealed class ItemUpgradeService(
         }
 
         var roll = _random.Next(1, Chances + 1);
-        var up = chance.Up[level] + (credit is not null && npc is { } near ? credit.UpgradeBonus(player, near) : 0);
+        var up = (int)(boosters?.Apply(player, BoosterEffect.IncUpgradeItem, chance.Up[level]) ?? chance.Up[level]) + (credit is not null && npc is { } near ? credit.UpgradeBonus(player, near) : 0);
         var breaks = chance.Break[level];
         ItemSetupUpgradeResult result;
 
@@ -198,6 +202,14 @@ public sealed class ItemUpgradeService(
 
         // Every try counts for the quests that ask to upgrade the item, whatever came of it, and raises the credit.
         quests?.OnEvent(player, QuestConditionType.Upgrade, QuestConditionTarget.Item, target.Item);
+
+        // And for the achievements: a try always, a failure when the item did not go up.
+        if (result != ItemSetupUpgradeResult.Success)
+        {
+            achievements?.Count(player, AchievementType.UpgradeFailed);
+        }
+
+        achievements?.Count(player, AchievementType.UpgradeTried);
 
         if (credit is not null && npc is { } served)
         {

@@ -3,6 +3,7 @@ using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Npcs;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.ItemSetup.Responses;
@@ -22,7 +23,8 @@ public sealed class ItemMakeService(
     ReadOnlyCollection<MakeRow> recipes,
     ItemSetupAnswers answers,
     QuestManager? quests = null,
-    NpcCreditManager? credit = null)
+    NpcCreditManager? credit = null,
+    AchievementManager? achievements = null)
 {
     /// <summary>The person lacks the materials.</summary>
     public const ushort NotEnoughMaterials = 52254;
@@ -138,6 +140,9 @@ public sealed class ItemMakeService(
 
         // Every item made counts for the quests that ask to make it, and the making raises the credit.
         quests?.OnEvent(player, QuestConditionType.Make, QuestConditionTarget.Item, row.Product, count);
+
+        // One request counts once for the achievements, whatever the count.
+        achievements?.Count(player, AchievementType.ItemMade);
 
         if (credit is not null && npc is { } served)
         {

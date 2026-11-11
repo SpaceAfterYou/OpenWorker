@@ -13,8 +13,8 @@ public readonly partial struct TitleInfoRow(BinaryReader reader)
     public byte Type { get; } = reader.ReadByte();
     public byte Class { get; } = reader.ReadByte();
     public byte Field4 { get; } = reader.ReadByte();
-    public byte Field5 { get; } = reader.ReadByte();
-    public int Field6 { get; } = reader.ReadInt32();
+    public byte OpenCondition { get; } = reader.ReadByte();
+    public int OpenValue { get; } = reader.ReadInt32();
     public byte Field7 { get; } = reader.ReadByte();
     public byte EffectGroup1 { get; } = reader.ReadByte();
     public byte EffectGroup2 { get; } = reader.ReadByte();

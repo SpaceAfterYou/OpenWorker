@@ -6,6 +6,7 @@ using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.DailyMissions.Components;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot;
@@ -28,7 +29,8 @@ public sealed partial class DailyMissionManager(
     IRewardGranter rewards,
     TimeProvider time,
     IOptions<DailyMissionOptions> options,
-    ILogger<DailyMissionManager> logger) : IMiscTick
+    ILogger<DailyMissionManager> logger,
+    AchievementManager? achievements = null) : IMiscTick
 {
     /// <summary>
     /// The mission is accepted, finished or not on the list of the person.
@@ -350,6 +352,8 @@ public sealed partial class DailyMissionManager(
 
         entry.State = DailyMissionState.Success;
         entry.Helper = false;
+
+        achievements?.Count(player, AchievementType.MissionDone);
 
         return true;
     }

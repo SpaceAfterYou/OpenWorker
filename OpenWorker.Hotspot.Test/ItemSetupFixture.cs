@@ -8,6 +8,9 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using System.Numerics;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using Microsoft.Extensions.Logging.Abstractions;
+using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.Boosters.Components;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Gameplay.Modules.Npcs;
@@ -91,8 +94,13 @@ internal sealed class ItemSetupFixture : IDisposable
     public Entity Player { get; }
     public PersonDirty Dirty { get; } = new(7);
 
-    public ItemSetupFixture(bool withServerTables = false)
+    public ItemSetupFixture(bool withServerTables = false, BoosterEffectValue? boost = null)
     {
+        // The person carries one booster with the effect, when a test asks for one.
+        var boosters = boost is { } effect
+            ? new BoosterManager(World, null!, BoosterCatalog.From([new BoosterDefinition(1, 1, BoosterTime.Endless, 0, [effect])]), TimeProvider.System, NullLogger<BoosterManager>.Instance)
+            : null;
+
         Catalog = new ItemCatalog(
             Load<ItemRow>("tb_Item"),
             Load<ItemClassifyRow>("tb_Item_Classify"),
@@ -118,7 +126,7 @@ internal sealed class ItemSetupFixture : IDisposable
             new ItemRepairService(World, Inventory, Repairs),
             new ItemRestoreService(Inventory, answers),
             new ItemSocketService(Inventory, Load<SocketRow>("tb_Socket"), answers),
-            new ItemUpgradeService(Inventory, Load<ReinforceRow>("tb_Reinforce"), chances, answers, Random),
+            new ItemUpgradeService(Inventory, Load<ReinforceRow>("tb_Reinforce"), chances, answers, Random, boosters: boosters),
             Akashic = new AkashicService(Inventory, Load<AkashicRecordsRow>("tb_Akashic_Records"), Load<AkashicMakeRow>("tb_Akashic_Make"),
                 Load<AkashicDisassembleRow>("tb_Akashic_Disassemble"), answers),
             new ItemBroachService(
@@ -163,6 +171,12 @@ internal sealed class ItemSetupFixture : IDisposable
         World.Set(Player, new LevelComponent(1, 0));
         World.Set(Player, new PersonInfoComponent { Name = "Test", Hero = Hero.Haru });
         World.Set(Player, new CurrencyComponent());
+
+        if (boosters is not null)
+        {
+            World.Add(Player, new BoosterComponent { Person = 7, Book = new BoosterBook { Boosters = [new BoosterEntry { Booster = 1 }] } });
+        }
+
         StandAway(0);
     }
 

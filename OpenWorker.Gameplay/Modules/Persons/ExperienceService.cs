@@ -5,6 +5,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.League;
@@ -34,6 +35,7 @@ public sealed class ExperienceService
     private readonly LeagueGrowth? _league;
     private readonly HelperManager? _helpers;
     private readonly SkillLearning? _skills;
+    private readonly BoosterManager? _boosters;
     private readonly Dictionary<int, int> _need;
     private readonly Dictionary<int, MonsterExpRow> _monsterExp;
     private readonly Dictionary<int, MonsterRow> _monsters;
@@ -55,8 +57,10 @@ public sealed class ExperienceService
         LeagueGrowth? league = null,
         ReadOnlyCollection<PartyExpLevelRow>? levelGaps = null,
         HelperManager? helpers = null,
-        SkillLearning? skills = null)
+        SkillLearning? skills = null,
+        BoosterManager? boosters = null)
     {
+        _boosters = boosters;
         _rate = options?.Value.ExpRate ?? 1f;
         _world = world;
         _inventory = inventory;
@@ -128,11 +132,20 @@ public sealed class ExperienceService
             experience *= rate;
         }
 
-        var given = (int)Math.Ceiling(experience * _rate);
+        return GiveWithBoosters(player, (int)Math.Ceiling(experience * _rate));
+    }
 
-        Add(player, given);
+    /// <summary>
+    /// Gives the experience of a kill with what the boosters of the player add to it: the part they add is told to the client as
+    /// a bonus. Returns what the player got in all.
+    /// </summary>
+    private int GiveWithBoosters(Entity player, int experience)
+    {
+        var bonus = (int)(experience * (_boosters?.GetRate(player, BoosterEffect.IncExp) ?? 0f));
 
-        return given;
+        Add(player, experience + bonus, bonus);
+
+        return experience + bonus;
     }
 
     /// <summary>
@@ -189,8 +202,7 @@ public sealed class ExperienceService
 
         for (var index = 0; index < members.Count; index++)
         {
-            Add(members[index], each);
-            given[index] = each;
+            given[index] = GiveWithBoosters(members[index], each);
         }
 
         return given;

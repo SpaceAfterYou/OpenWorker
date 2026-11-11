@@ -6,6 +6,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.ItemSetup;
 using OpenWorker.Gameplay.Modules.Npcs;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot;
@@ -35,7 +36,8 @@ public sealed class NpcShopService(
     ServiceNpcs npcs,
     NpcCreditManager credit,
     ReadOnlyCollection<ShopRow> lines,
-    QuestManager? quests = null)
+    QuestManager? quests = null,
+    AchievementManager? achievements = null)
 {
     /// <summary>Gold, battle points or ether short of the price; gold short of buying back.</summary>
     public const ushort NotEnoughMoney = 52301;
@@ -147,6 +149,7 @@ public sealed class NpcShopService(
 
         // A purchase counts once for the quests that ask to buy the item, and raises the credit with the shop's group.
         quests?.OnEvent(player, QuestConditionType.Buy, QuestConditionTarget.Item, line.Item);
+        achievements?.Count(player, AchievementType.ShopPurchase);
         credit.Raise(player, npc, CreditRaise.Buy);
     }
 

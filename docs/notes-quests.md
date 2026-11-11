@@ -106,16 +106,14 @@ What a member does in a maze counts for the quests of the others as the original
 | A move box (11/65) | the one who stood in it; the others too when the condition counts for the group; 11/66 to all | the same | fixed (alone, 11/66 to the one) |
 | An item that comes into the bags | the one who got it; the others in the maze too, on the conditions that count for the group, without holding the items | the same (`QuestManager.OnItemsArrivedForGroup`, from `ItemArrivals` through `PartyMazeEvents`) | fixed (none) |
 | Which conditions count for the group | the column of the server's `tb_Quest_Condition` (942 of its 1915 conditions: 230 of 250 collects of an item, 320 of 383 clears of a sector, 320 of 383 hunts, 28 of 117 objects, 15 of 56 moves) | the same column, read as `QuestConditionRuleRow` (the client's table has none) | same |
-| Survival, defence (protect) | the mode of the maze ends in a win: every player of the maze on their feet completes the condition of the kind for that maze | not counted: the modes are not built (the two mazes that start them call a stub) | left, see below |
+| Survival, defence (protect) | the mode of the maze ends in a win: every player of the maze on their feet completes the condition of the kind for that maze (the others too on a condition that counts for the group) | the same (`QuestManager.OnMazeModeWonAsync`, called when a mode is won, `docs/notes-maze-modes.md`); the client's table has survival conditions only | fixed |
 | Guard | no server code counts it; the client tells it with 15/08 | not counted | left, see below |
 | Escort | no condition of the client's tables, none in the server's | none | same |
 | Fail when a target dies or is left (`Fail_Death_ID`, `Fail_Range_ID`, `Fail_Range`) | columns of the server's table | all zero in the server's table | same |
 
-Not built, and what it needs: the survival and the defence modes are game modes of a maze (`StartSurvivalMode` and
-`StartDefenceMode` in the scripts of two mazes) with tables of their own on the reference disk
-(`tb_Mode_Survival`, `tb_Mode_Defence`): waves of monsters, a target to protect, a result. When a mode ends in a win, the
-quests of the kinds protect (6) and survival (7) of the maze are counted for every player of the maze on their feet. That counting
-is one call to the quest manager once the modes exist.
+The survival and the defence modes are built (`docs/notes-maze-modes.md`): when a mode ends in a win, the quests of the kinds
+protect (6) and survival (7) of the maze are counted for every player of the maze on their feet. The stand plays the survival of
+maze 21331 to a win: the step of condition 1000901 arrives for the player who stands and not for the one who is down.
 
 ## What each message carries
 
@@ -137,7 +135,7 @@ episode`; `15/07 short count, (int condition, byte step)`; `15/09 byte, int`; `1
 | Trigger 2 | world object | 80 maze | the maze, `11/77` |
 | Hunt 3 | monster 102, monster group 52 | | the maze, kills |
 | Collect 4 | item | 147 | the bags |
-| Survival 7 | NPC | 1 maze | **not counted** (survival mode of a maze, not built) |
+| Survival 7 | NPC | 1 maze | the survival mode of the maze when it is won |
 | Guard 9 | monster | 4 maze | **not counted** (escort of a maze, not built) |
 | Clear 10 | sector 38, event 2 | maze | the maze; the events (hidden event, daily mission) are not reported |
 | Make 13 | item | 10 | production |

@@ -134,8 +134,8 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetMonsterDefenceType: monster {Monster}, type {Type}, {Seconds} s")]
     public static partial void IgnoredSetMonsterDefenceType(this ILogger logger, int monster, int type, float seconds);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call {Call}: table {Table}")]
-    public static partial void IgnoredStartMode(this ILogger logger, string call, int table);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Script asked for the mode {Call} of the table {Table}, which the server has no row for; nothing starts")]
+    public static partial void UnknownMode(this ILogger logger, string call, int table);
 
     // ---- The script asks for something that is not there ---------------------------------------
 

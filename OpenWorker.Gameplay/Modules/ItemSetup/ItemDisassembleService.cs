@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -29,7 +30,8 @@ public sealed class ItemDisassembleService(
     ReadOnlyCollection<DisassembleResultRow> results,
     ItemSetupAnswers answers,
     Random? random = null,
-    QuestManager? quests = null)
+    QuestManager? quests = null,
+    AchievementManager? achievements = null)
 {
     /// <summary>The person would hold more ether than a wallet can.</summary>
     public const ushort TooMuchEther = 52058;
@@ -108,6 +110,7 @@ public sealed class ItemDisassembleService(
         answers.Send(player, new ItemSetupDisassembleResponse { Results = [result] });
 
         quests?.OnEvent(player, QuestConditionType.Disassemble, QuestConditionTarget.Item, item);
+        achievements?.Count(player, AchievementType.ItemDisassembled);
     }
 
     /// <summary>
@@ -194,6 +197,9 @@ public sealed class ItemDisassembleService(
         {
             quests?.OnEvent(player, QuestConditionType.Disassemble, QuestConditionTarget.Item, item);
         }
+
+        // The request counts once for the achievements, whatever the count of the items.
+        achievements?.Count(player, AchievementType.ItemDisassembled);
     }
 
     private static bool InBag(ItemInstance item)

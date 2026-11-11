@@ -609,7 +609,7 @@ internal partial class MonsterBody : IAiHost
     {
         var player = _manager.NearestPlayer(Position, distance);
 
-        return _manager.Helpers.Count == 0 ? player : _manager.Helpers.Nearest(this, distance, player);
+        return !_manager.Helpers.HasTargets ? player : _manager.Helpers.Nearest(this, distance, player);
     }
 
     /// <summary>
@@ -751,7 +751,7 @@ internal partial class MonsterBody : IAiHost
 
         _manager.HitPlayers(this, skill, trigger, victims);
 
-        if (_manager.Helpers.Count > 0)
+        if (_manager.Helpers.HasTargets)
         {
             _manager.Helpers.HitBy(this, skill, trigger, area, collider, colliderOnly);
         }
@@ -764,7 +764,7 @@ internal partial class MonsterBody : IAiHost
     {
         var players = _manager.GetPlayerTargets();
 
-        return _manager.Helpers.Count == 0 ? players : [.. players, .. _manager.Helpers.FlightTargets(this)];
+        return !_manager.Helpers.HasTargets ? players : [.. players, .. _manager.Helpers.FlightTargets(this)];
     }
 
     /// <summary>

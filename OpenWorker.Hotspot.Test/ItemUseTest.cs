@@ -5,6 +5,7 @@ using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Res.Types;
@@ -55,10 +56,15 @@ public sealed class ItemUseTest
 
         public ReadOnlyCollection<ItemRow> Items { get; } = ItemSetupFixture.Load<ItemRow>("tb_Item");
 
-        public Rig()
+        public AchievementChains? Chains { get; }
+
+        public Rig(bool counting = false)
         {
+            Chains = counting ? new AchievementChains(Fixture.World, (AchievementType.ItemUsed, 0)) : null;
+            Chains?.Enter(Fixture.Player);
+
             Limits = new ItemUseLimits(Fixture.World, new PersonStateStore(null!), Time, Options.Create(new DailyMissionOptions()));
-            Use = new ItemUseService(Fixture.World, Fixture.Inventory, Fixture.Catalog, Limits, new([]), new([]), new([]), Field);
+            Use = new ItemUseService(Fixture.World, Fixture.Inventory, Fixture.Catalog, Limits, new([]), new([]), new([]), Field, achievements: Chains?.Manager);
         }
 
         /// <summary>
@@ -106,6 +112,23 @@ public sealed class ItemUseTest
         Assert.AreEqual((potion.Id, item.Slot), (used.Item, used.Slot), "The motion names the item and its slot");
         CollectionAssert.AreEqual(new[] { potion.EffectValue }, rig.Field.Given, "The buff of the item is given");
         Assert.AreEqual(4, item.Count, "One potion is used up");
+    }
+
+    [TestMethod]
+    public async Task OnlyAnItemThatIsUsedCountsForTheAchievements()
+    {
+        using var rig = new Rig(counting: true);
+
+        rig.Field.Place = Maze;
+
+        var item = rig.Fixture.Give(rig.Potion().Id, 5);
+
+        Assert.IsTrue((await rig.UseAsync(item)).Ok);
+        Assert.AreEqual(1, rig.Chains!.Counted(rig.Fixture.Player, AchievementType.ItemUsed));
+
+        // Inside the cooldown the use is refused and counts for nothing.
+        Assert.AreEqual(ItemUseCodes.Cooling, (await rig.UseAsync(item)).Error);
+        Assert.AreEqual(1, rig.Chains.Counted(rig.Fixture.Player, AchievementType.ItemUsed));
     }
 
     [TestMethod]

@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -25,6 +26,11 @@ public sealed class PlayerDrops
     public Dictionary<long, DropObject> Objects { get; } = [];
 }
 
+/// <summary>
+/// Something that falls: an item or a kind of money, how many of it in all, and how many of those a booster added.
+/// </summary>
+public readonly record struct DropThing(int ObjectId, int Count, int Bonus = 0);
+
 public sealed record DropObject(long Serial, int Group, int ObjectId, int Count, int Bonus, Vector3 Position, long ExpiresAt);
 
 /// <summary>
@@ -44,7 +50,8 @@ public sealed partial class DropService(
     MazeResults? results = null,
     AchievementManager? achievements = null,
     ReadOnlyCollection<DropRateLevelRow>? levelRates = null,
-    ReadOnlyCollection<DropRateMemberRow>? memberRates = null)
+    ReadOnlyCollection<DropRateMemberRow>? memberRates = null,
+    BoosterManager? boosters = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -109,7 +116,7 @@ public sealed partial class DropService(
 
         foreach (var member in members)
         {
-            var things = Roll(drop, rate, random);
+            var things = Roll(drop, rate, random, member);
 
             if (things.Count > 0)
             {
@@ -139,11 +146,20 @@ public sealed partial class DropService(
     }
 
     /// <summary>
-    /// Works out what falls: money by its chances, then one item from each group that falls.
+    /// A chance with what the boosters of the player add to it: the chance, a part of it for the rates, and the values.
     /// </summary>
-    public List<(int Object, int Count)> Roll(DropRow drop, float rate, Random random)
+    private float Boosted(Entity? player, BoosterEffect effect, float chance)
     {
-        var things = new List<(int, int)>();
+        return player is { } known && boosters is not null ? boosters.Apply(known, effect, chance) : chance;
+    }
+
+    /// <summary>
+    /// Works out what falls: money by its chances, then one item from each group that falls. The boosters of the player
+    /// add to the gold that falls and to the chances of battle points, ether and the items of each group.
+    /// </summary>
+    public List<DropThing> Roll(DropRow drop, float rate, Random random, Entity? player = null)
+    {
+        var things = new List<DropThing>();
 
         if (drop.GoldChance * rate >= random.Next(1, Chances + 1))
         {
@@ -154,25 +170,30 @@ public sealed partial class DropService(
                 multiple = drop.GoldBonusMultiple;
             }
 
+            var goldRate = player is { } known && boosters is not null ? boosters.GetRate(known, BoosterEffect.IncGoldDrop) : 0f;
+
             for (var i = 0; i < multiple; i++)
             {
-                things.Add((GoldObject, random.Next(drop.GoldMin, drop.GoldMax + 1)));
+                var gold = random.Next(drop.GoldMin, drop.GoldMax + 1);
+                var bonus = (int)(gold * goldRate);
+
+                things.Add(new DropThing(GoldObject, gold + bonus, bonus));
             }
         }
 
-        if (drop.BattlePointChance * rate >= random.Next(1, Chances + 1))
+        if (Boosted(player, BoosterEffect.IncBattlePoint, drop.BattlePointChance * rate) >= random.Next(1, Chances + 1))
         {
-            things.Add((BattlePointObject, random.Next(drop.BattlePointMin, drop.BattlePointMax + 1)));
+            things.Add(new DropThing(BattlePointObject, random.Next(drop.BattlePointMin, drop.BattlePointMax + 1)));
         }
 
-        if (drop.EtherUnit > 0 && drop.EtherChance * rate >= random.Next(1, Chances + 1))
+        if (drop.EtherUnit > 0 && Boosted(player, BoosterEffect.IncEtherDrop, drop.EtherChance * rate) >= random.Next(1, Chances + 1))
         {
             things.AddRange(RollEther(drop, random));
         }
 
         for (var i = 0; i < DropRow.GroupCount; i++)
         {
-            if (drop.GroupId[i] == 0 || drop.GroupChance[i] * rate < random.Next(1, Chances + 1) || !_groups.TryGetValue(drop.GroupId[i], out var group))
+            if (drop.GroupId[i] == 0 || Boosted(player, BoosterEffect.IncItemDrop, drop.GroupChance[i] * rate) < random.Next(1, Chances + 1) || !_groups.TryGetValue(drop.GroupId[i], out var group))
             {
                 continue;
             }
@@ -191,7 +212,7 @@ public sealed partial class DropService(
                 // Items the client does not have are left lying in the table.
                 if (group.Item[n] > 0 && catalog.Exists(group.Item[n]))
                 {
-                    things.Add((group.Item[n], random.Next(group.Min[n], Math.Max(group.Min[n], group.Max[n]) + 1)));
+                    things.Add(new DropThing(group.Item[n], random.Next(group.Min[n], Math.Max(group.Min[n], group.Max[n]) + 1)));
                 }
 
                 break;
@@ -201,7 +222,7 @@ public sealed partial class DropService(
         return things;
     }
 
-    private static IEnumerable<(int, int)> RollEther(DropRow drop, Random random)
+    private static IEnumerable<DropThing> RollEther(DropRow drop, Random random)
     {
         var parts = Math.Max(1, (drop.EtherMax + drop.EtherUnit - 1) / drop.EtherUnit);
         var least = drop.EtherMin / parts;
@@ -213,32 +234,32 @@ public sealed partial class DropService(
 
             total += given;
 
-            yield return (EtherObject, given - Math.Max(0, total - drop.EtherMax));
+            yield return new DropThing(EtherObject, given - Math.Max(0, total - drop.EtherMax));
         }
 
         if (total < drop.EtherMin)
         {
-            yield return (EtherObject, drop.EtherMin - total);
+            yield return new DropThing(EtherObject, drop.EtherMin - total);
         }
     }
 
     /// <summary>
     /// Puts things on the ground around a place and tells the player.
     /// </summary>
-    public void Place(Entity player, IReadOnlyList<(int Object, int Count)> things, Vector3 position, bool boss = false)
+    public void Place(Entity player, IReadOnlyList<DropThing> things, Vector3 position, bool boss = false)
     {
         var field = Field(player);
         var group = Interlocked.Increment(ref _group);
         var expires = Environment.TickCount64 + (long)Lifetime.TotalMilliseconds;
         var values = new List<DropObjectValue>();
 
-        foreach (var (thing, count) in things)
+        foreach (var (thing, count, bonus) in things)
         {
             var spot = position + new Vector3(Random.Shared.Next(-60, 61), Random.Shared.Next(-60, 61), 0);
-            var drop = new DropObject(serials.NextSerial(), group, thing, count, 0, spot, expires);
+            var drop = new DropObject(serials.NextSerial(), group, thing, count, bonus, spot, expires);
 
             field.Objects[drop.Serial] = drop;
-            values.Add(new DropObjectValue(spot, thing, (short)Math.Min(count, short.MaxValue), 0, drop.Serial));
+            values.Add(new DropObjectValue(spot, thing, (short)Math.Min(count, short.MaxValue), (short)Math.Min(bonus, short.MaxValue), drop.Serial));
         }
 
         if (world.Has<ServerSessionComponent>(player))
@@ -272,7 +293,7 @@ public sealed partial class DropService(
 
         var taken = drop.ObjectId switch
         {
-            GoldObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Gold, drop.Count + drop.Bonus, MoneyEarnFlow.PickUp)) >= 0,
+            GoldObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Gold, drop.Count, MoneyEarnFlow.PickUp)) >= 0,
             BattlePointObject => inventory.AddUpToLimit(player, ShopCurrency.Bp, drop.Count) >= 0,
             EtherObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Ether, drop.Count)) >= 0,
             SoulObject => true,

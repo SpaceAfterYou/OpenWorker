@@ -744,6 +744,30 @@ public sealed partial class QuestManager(
     }
 
     /// <summary>
+    /// A game mode of the maze (the survival of waves, the defence of a monster) was won while the person stood on their feet:
+    /// every open condition of that kind that names the maze counts. True when one of them counts for everyone in the maze,
+    /// which the caller then counts for those who did not stand.
+    /// </summary>
+    public async ValueTask<bool> OnMazeModeWonAsync(Entity player, QuestConditionType type, int maze, CancellationToken cancellationToken)
+    {
+        var shared = false;
+
+        await CountAsync(
+            player,
+            e =>
+            {
+                var counts = e.Type == type && e.Maze == maze;
+
+                shared |= counts && _countedForGroup.Contains(e.Id);
+
+                return counts;
+            },
+            1);
+
+        return shared;
+    }
+
+    /// <summary>
     /// The person has cleared a sector of a maze.
     /// </summary>
     public ValueTask OnSectorClearedAsync(Entity player, int maze, int sector, CancellationToken cancellationToken)

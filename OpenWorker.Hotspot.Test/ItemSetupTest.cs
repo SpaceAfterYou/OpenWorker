@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Domain.Enums;
@@ -91,6 +92,63 @@ public sealed class ItemSetupTest
         Assert.AreEqual(ItemRestoreService.BrokenFlag, target.Flag);
         Assert.AreEqual(100_000_000 - 2 * cost.Gold, f.Gold);
         Assert.IsTrue(f.Dirty.Sections.HasFlag(PersonSections.Inventory), "The upgraded item is written by the flush");
+    }
+
+    /// <summary>
+    /// A booster of upgrades raises the chance of going up by a part of it: the highest roll that goes up is the chance and the
+    /// part, whole numbers.
+    /// </summary>
+    [TestMethod]
+    public async Task ABoosterRaisesTheChanceOfAnUpgradeByAPartOfIt()
+    {
+        using var f = new ItemSetupFixture(withServerTables: true, boost: new BoosterEffectValue(BoosterEffect.IncUpgradeItem, BoosterApply.Rate, 0.5f));
+
+        var costs = ItemSetupFixture.Load<ReinforceRow>("tb_Reinforce").GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
+        var chances = ItemSetupFixture.Load<ReinforceChanceRow>("tb_Reinforce", ItemSetupFixture.ServerTablesVariable)
+            .GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());
+
+        var item = ItemSetupFixture.Load<ItemRow>("tb_Item").First(e =>
+            e.Reinforce != 0 && costs.ContainsKey(e.Reinforce) && chances.ContainsKey(e.Reinforce) &&
+            f.Catalog.HomeOf(e.Id) == StorageGroup.Common);
+        var target = f.Give(item.Id, 1);
+
+        var chance = chances[item.Reinforce];
+        var level = Enumerable.Range(ItemUpgradeService.ProtectedFrom, 5)
+            .First(e => e < costs[item.Reinforce].MaxLevel && chance.Up[e] > 0 && chance.Break[e] > 0 && chance.Up[e] * 3 / 2 + chance.Break[e] < ItemUpgradeService.Chances);
+        var cost = costs[item.Reinforce].Cost(level)!.Value;
+
+        f.Gold = 100_000_000;
+        f.World.Get<CurrencyComponent>(f.Player)[ShopCurrency.Bp] = 1_000_000;
+        f.World.Get<CurrencyComponent>(f.Player)[ShopCurrency.Ether] = 1_000_000;
+
+        if (cost.Material != 0)
+        {
+            f.Give(cost.Material, cost.MaterialCount * 2);
+        }
+
+        if (cost.ExtraMaterial != 0)
+        {
+            f.Give(cost.ExtraMaterial, cost.ExtraMaterialCount * 2);
+        }
+
+        var request = new ItemSetupUpgradeRequest { Npc = f.NpcOffering(NpcFunction.Upgrade), Target = ItemSetupFixture.SlotOf(target) };
+        var boosted = (int)(chance.Up[level] * 1.5f);
+
+        // A roll the plain chance would not win goes up with the booster.
+        target.Upgrade = (byte)level;
+        f.Random.Roll = boosted;
+
+        await f.Handler.OnHandleAsync(f.Context, request);
+
+        Assert.AreEqual(level + 1, target.Upgrade);
+
+        // The first roll past the boosted chance does not.
+        target.Upgrade = (byte)level;
+        f.Random.Roll = boosted + 1;
+
+        await f.Handler.OnHandleAsync(f.Context, request);
+
+        Assert.AreEqual(level, target.Upgrade);
     }
 
     [TestMethod]

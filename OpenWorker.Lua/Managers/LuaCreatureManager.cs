@@ -200,27 +200,7 @@ public sealed class LuaCreatureManager
 
         foreach (var monster in spawn.MonsterList.Where(x => x.Id is not 0))
         {
-            switch (monster.Type)
-            {
-                case MonsterSpawnType.Npc:
-                    created.Add(CreateNpc(monster.Id, spawn));
-                    break;
-
-                case MonsterSpawnType.Monster:
-                    created.Add(CreateMonster(monster.Id, spawn));
-                    break;
-
-                case MonsterSpawnType.DestructionObject or MonsterSpawnType.TreasureBox or MonsterSpawnType.Unit:
-                    var scenery = CreateMonster(monster.Id, spawn);
-                    Scenery.Add(scenery);
-                    created.Add(scenery);
-                    break;
-
-                default:
-                    // One kind of object the server cannot show must not stop the rest of the map.
-                    Logger.UnsupportedMonsterType(box, monster.Id, monster.Type);
-                    break;
-            }
+            CreateOf(spawn, monster, created);
         }
 
         switch (spawn.CreationCondition)
@@ -233,6 +213,69 @@ public sealed class LuaCreatureManager
                 ShowLater(created, TimeSpan.FromSeconds(float.IsFinite(spawn.WaitCreationDelayTime) ? Math.Clamp(spawn.WaitCreationDelayTime, 0f, 86_400f) : 0f));
                 break;
         }
+    }
+
+    /// <summary>
+    /// Makes what one slot of a box holds, by the kind it is.
+    /// </summary>
+    private void CreateOf(MonsterSpawnBox spawn, Monster monster, List<Entity> created)
+    {
+        switch (monster.Type)
+        {
+            case MonsterSpawnType.Npc:
+                created.Add(CreateNpc(monster.Id, spawn));
+                break;
+
+            case MonsterSpawnType.Monster:
+                created.Add(CreateMonster(monster.Id, spawn));
+                break;
+
+            case MonsterSpawnType.DestructionObject or MonsterSpawnType.TreasureBox or MonsterSpawnType.Unit:
+                var scenery = CreateMonster(monster.Id, spawn);
+                Scenery.Add(scenery);
+                created.Add(scenery);
+                break;
+
+            default:
+                // One kind of object the server cannot show must not stop the rest of the map.
+                Logger.UnsupportedMonsterType(spawn.Id, monster.Id, monster.Type);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// One wave of a box that waits for a signal: each of the slots makes as many creatures as the box allows at once, and the
+    /// clients see them at once. The box counts as appeared only when <paramref name="last"/> says this is its last wave, so a
+    /// sector that waits for the box is not cleared between two waves.
+    /// </summary>
+    public IReadOnlyList<Entity> SpawnWave(MonsterSpawnBox spawn, IReadOnlyList<int> slots, bool last)
+    {
+        var created = new List<Entity>();
+
+        foreach (var slot in slots)
+        {
+            if (slot is < 0 or >= 10 || slot >= spawn.MonsterList.Count || spawn.MonsterList[slot].Id is 0)
+            {
+                continue;
+            }
+
+            for (var count = 0; count < spawn.MaxEntityCount; count++)
+            {
+                CreateOf(spawn, spawn.MonsterList[slot], created);
+            }
+        }
+
+        if (last)
+        {
+            SpawnedBoxes.Add(spawn.Id);
+        }
+
+        if (created.Count > 0)
+        {
+            Show(created);
+        }
+
+        return created;
     }
 
     private void Show(List<Entity> created)
@@ -545,6 +588,11 @@ public sealed class LuaCreatureManager
     }
 
     /// <summary>
+    /// Whether the box has appeared, or has been told it never will.
+    /// </summary>
+    public bool HasAppeared(int box) => SpawnedBoxes.Contains(box);
+
+    /// <summary>
     /// A box that has not appeared yet never will.
     /// </summary>
     public void Terminate(int box)
@@ -561,11 +609,11 @@ public sealed class LuaCreatureManager
     }
 
     /// <summary>
-    /// A monster that has hidden cannot be hit while it is gone.
+    /// A monster that has hidden cannot be hit while it is gone, and one the players are asked to defend cannot be hit by them at all.
     /// </summary>
     private bool IsHidden(Entity creature)
     {
-        return Bodies.TryGetValue(creature, out var body) && body.IsHidden;
+        return Bodies.TryGetValue(creature, out var body) && body.IsHidden || Helpers.Defended.Contains(creature);
     }
 
     public Entity? FindMonster(int identifier)
@@ -856,6 +904,18 @@ public sealed class LuaCreatureManager
             var hate = (Services?.Aggro ?? SkillAggro.None).Hate(skill, damage, LevelOrder(attacker));
 
             body.Machine.OnDamaged(new AiHit(ecs.Get<ActorComponent>(attacker), hate, damage, kind));
+        }
+    }
+
+    /// <summary>
+    /// Something other than a blow angers a monster at a creature of the maze: its hate for that creature grows, and a monster
+    /// with no enemy turns on it.
+    /// </summary>
+    public void Provoke(Entity monster, Entity target, float hate)
+    {
+        if (Bodies.TryGetValue(monster, out var body) && ecs.IsAlive(target))
+        {
+            body.Machine.Provoke(ecs.Get<ActorComponent>(target), hate);
         }
     }
 

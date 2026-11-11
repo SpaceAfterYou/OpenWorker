@@ -50,5 +50,10 @@ public enum PersonStateKind : byte
     /// <summary>
     /// The buffs the person carries from one server to the next and through a relog, with the time they have left.
     /// </summary>
-    Buffs = 14
+    Buffs = 14,
+
+    /// <summary>
+    /// The titles that have become visible in the list of the person, without being its own yet.
+    /// </summary>
+    OpenTitles = 15
 }

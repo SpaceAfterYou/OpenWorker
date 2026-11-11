@@ -7,6 +7,26 @@ namespace OpenWorker.Gameplay.Modules.Progress;
 public enum AchievementType : ushort
 {
     /// <summary>
+    /// An item used up: every use that starts the cooldown of the item.
+    /// </summary>
+    ItemUsed = 15,
+
+    /// <summary>
+    /// A purchase at a shop, once for every request whatever the count of the items.
+    /// </summary>
+    ShopPurchase = 16,
+
+    /// <summary>
+    /// Gold spent on repairs.
+    /// </summary>
+    RepairCost = 17,
+
+    /// <summary>
+    /// A death of the person.
+    /// </summary>
+    Death = 18,
+
+    /// <summary>
     /// A monster killed, about its number and, as a second event, about its type.
     /// </summary>
     MonsterKilled = 19,
@@ -27,7 +47,12 @@ public enum AchievementType : ushort
     FactionKilled = 25,
 
     /// <summary>
-    /// The longest combo; the counter keeps the highest value. Nothing raises it yet.
+    /// A monster hit by a skill of the person, once for every monster of every attack.
+    /// </summary>
+    SkillUsed = 26,
+
+    /// <summary>
+    /// The longest combo; the counter keeps the highest value.
     /// </summary>
     Combo = 27,
 
@@ -44,6 +69,11 @@ public enum AchievementType : ushort
     /// The level of the person; the counter is the level.
     /// </summary>
     LevelReached = 32,
+
+    /// <summary>
+    /// Battle points gained, from whatever source.
+    /// </summary>
+    BattlePointsGained = 33,
 
     /// <summary>
     /// A maze cleared, about the maze and, as a second event, about any maze.
@@ -71,6 +101,11 @@ public enum AchievementType : ushort
     MazeClearedRankF = 42,
 
     /// <summary>
+    /// The minutes the person has played, counted whole.
+    /// </summary>
+    PlayTime = 43,
+
+    /// <summary>
     /// A monster of the middle-boss rank killed.
     /// </summary>
     MiddleBossKilled = 44,
@@ -88,5 +123,40 @@ public enum AchievementType : ushort
     /// <summary>
     /// A helper gained, about the helper.
     /// </summary>
-    HelperGained = 48
+    HelperGained = 48,
+
+    /// <summary>
+    /// An upgrade of an item tried, whatever came of it.
+    /// </summary>
+    UpgradeTried = 49,
+
+    /// <summary>
+    /// An upgrade of an item that did not go up.
+    /// </summary>
+    UpgradeFailed = 50,
+
+    /// <summary>
+    /// A request to make items, once whatever the count.
+    /// </summary>
+    ItemMade = 51,
+
+    /// <summary>
+    /// A request to take items apart, once whatever the count.
+    /// </summary>
+    ItemDisassembled = 52,
+
+    /// <summary>
+    /// A daily mission finished, about the kind of mission (0).
+    /// </summary>
+    MissionDone = 53,
+
+    /// <summary>
+    /// A ride of an NPC of a transport.
+    /// </summary>
+    TransportTaken = 56,
+
+    /// <summary>
+    /// The credit points gained with a group of NPCs, about the group.
+    /// </summary>
+    NpcCredit = 57
 }
