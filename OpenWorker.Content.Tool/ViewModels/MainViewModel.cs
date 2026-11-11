@@ -11,6 +11,7 @@ public partial class MainViewModel : ViewModelBase
         Items = new ItemsViewModel();
         Districts = new DistrictsViewModel();
         Mazes = new MazesViewModel();
+        NavMeshes = new NavMeshesViewModel();
         ShowViewport();
     }
 
@@ -21,6 +22,8 @@ public partial class MainViewModel : ViewModelBase
     public DistrictsViewModel Districts { get; }
 
     public MazesViewModel Mazes { get; }
+
+    public NavMeshesViewModel NavMeshes { get; }
 
     [ObservableProperty]
     public partial string StatusText { get; set; } = "Ready";
@@ -43,6 +46,9 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsMazesVisible { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsNavMeshesVisible { get; set; }
+
     private void HideAll()
     {
         IsViewportVisible = false;
@@ -50,6 +56,7 @@ public partial class MainViewModel : ViewModelBase
         IsItemsVisible = false;
         IsDistrictsVisible = false;
         IsMazesVisible = false;
+        IsNavMeshesVisible = false;
     }
 
     [RelayCommand]
@@ -103,5 +110,16 @@ public partial class MainViewModel : ViewModelBase
         StatusText = string.IsNullOrEmpty(Mazes.Status) ? "Loading mazes…" : Mazes.Status;
         await Mazes.EnsureLoadedAsync();
         StatusText = Mazes.Status;
+    }
+
+    [RelayCommand]
+    public async Task ShowNavMeshesAsync()
+    {
+        SelectedPanel = "Navigation";
+        HideAll();
+        IsNavMeshesVisible = true;
+        StatusText = string.IsNullOrEmpty(NavMeshes.Status) ? "Loading navigation meshes…" : NavMeshes.Status;
+        await NavMeshes.EnsureLoadedAsync();
+        StatusText = NavMeshes.Status;
     }
 }

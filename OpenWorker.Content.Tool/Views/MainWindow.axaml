@@ -28,6 +28,7 @@
                 <MenuItem Header="Craftables" Command="{Binding ShowCraftablesCommand}" />
                 <MenuItem Header="Districts" Command="{Binding ShowDistrictsCommand}" />
                 <MenuItem Header="Mazes" Command="{Binding ShowMazesCommand}" />
+                <MenuItem Header="Navigation" Command="{Binding ShowNavMeshesCommand}" />
             </MenuItem>
         </Menu>
 
@@ -64,7 +65,7 @@
                                 Command="{Binding ShowMazesCommand}" />
                         <Button Content="Navigation"
                                 HorizontalAlignment="Stretch"
-                                IsEnabled="False" />
+                                Command="{Binding ShowNavMeshesCommand}" />
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -84,6 +85,9 @@
                 </Border>
                 <Border IsVisible="{Binding IsMazesVisible}">
                     <views:BatchMapsView DataContext="{Binding Mazes}" />
+                </Border>
+                <Border IsVisible="{Binding IsNavMeshesVisible}">
+                    <views:NavMeshesView DataContext="{Binding NavMeshes}" />
                 </Border>
             </Panel>
         </Grid>

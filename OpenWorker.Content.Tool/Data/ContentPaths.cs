@@ -1,13 +1,14 @@
 namespace OpenWorker.Content.Tool.Data;
 
 /// <summary>
-/// Folders the content tool reads: client tables, unpacked GUI icons and map batch files.
+/// Folders the content tool reads: client tables, unpacked GUI icons, map batch files and navigation meshes.
 /// </summary>
 internal static class ContentPaths
 {
     public const string ResVariable = "OPENWORKER_TEST_RES";
     public const string GuiVariable = "OPENWORKER_CONTENT_GUI";
     public const string BatchVariable = "OPENWORKER_TEST_BATCH";
+    public const string NavMeshVariable = "OPENWORKER_TEST_NAVMESH";
 
     public static string? ResFolder =>
         FirstExisting(Environment.GetEnvironmentVariable(ResVariable));
@@ -35,6 +36,30 @@ internal static class ContentPaths
             }
 
             var sibling = Path.GetFullPath(Path.Combine(res, "..", "client_batch"));
+            return FirstExisting(sibling);
+        }
+    }
+
+    /// <summary>
+    /// Folder of Havok <c>*.hkt</c> navigation meshes. Falls back to a <c>client_navmesh</c> sibling of the res folder.
+    /// </summary>
+    public static string? NavMeshFolder
+    {
+        get
+        {
+            var explicitFolder = FirstExisting(Environment.GetEnvironmentVariable(NavMeshVariable));
+            if (explicitFolder is not null)
+            {
+                return explicitFolder;
+            }
+
+            var res = ResFolder;
+            if (res is null)
+            {
+                return null;
+            }
+
+            var sibling = Path.GetFullPath(Path.Combine(res, "..", "client_navmesh"));
             return FirstExisting(sibling);
         }
     }

@@ -32,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\OpenWorker.Res\OpenWorker.Res.csproj" />
     <ProjectReference Include="..\OpenWorker.Batch\OpenWorker.Batch.csproj" />
+    <ProjectReference Include="..\OpenWorker.Navigation\OpenWorker.Navigation.csproj" />
   </ItemGroup>
 
 </Project>
