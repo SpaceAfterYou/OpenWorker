@@ -186,6 +186,9 @@ public sealed partial class PostService(
             PostLetters.Postage,
             items);
 
+        // Read now: the sender may be gone when what was taken has to go back.
+        var account = Account(context);
+
         PostSendResult result = default;
         var sent = false;
 
@@ -200,7 +203,7 @@ public sealed partial class PostService(
             // A letter that was refused, or a store that failed: what was taken goes back.
             if (!sent)
             {
-                await GiveBackAsync(context, draft, price);
+                await GiveBackAsync(context, draft, price, account);
             }
         }
 
@@ -446,16 +449,19 @@ public sealed partial class PostService(
 
     /// <summary>
     /// The letter did not go: the sender gets back the gold and the items it took. An inventory that filled up meanwhile
-    /// sends the items to the box of the account instead, so they are never lost.
+    /// sends the items to the box of the account instead, and a sender who has left meanwhile gets the gold there too, so
+    /// nothing is lost.
     /// </summary>
-    private async ValueTask GiveBackAsync(ServiceHandleContext context, PostDraft draft, long price)
+    private async ValueTask GiveBackAsync(ServiceHandleContext context, PostDraft draft, long price, int account)
     {
         var player = context.Player;
         var items = draft.Items;
 
         if (!world.IsAlive(player))
         {
-            LogLostLetter(logger, price, items.Count);
+            LogReturnedToAccount(logger, account, price, items.Count);
+
+            await store.SendToAccountAsync(new PostAccountDraft(account, draft.SenderName, draft.Title, draft.Body, price, items), CancellationToken.None);
             return;
         }
 
@@ -473,7 +479,7 @@ public sealed partial class PostService(
             return;
         }
 
-        await store.SendToAccountAsync(new PostAccountDraft(Account(context), draft.SenderName, draft.Title, draft.Body, 0, items), CancellationToken.None);
+        await store.SendToAccountAsync(new PostAccountDraft(account, draft.SenderName, draft.Title, draft.Body, 0, items), CancellationToken.None);
     }
 
     private async ValueTask FlushAsync(ServiceHandleContext context)
@@ -508,8 +514,8 @@ public sealed partial class PostService(
         Send(context, new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Post, command), (ushort)code));
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "A letter that did not go could not give back {Gold} gold and {Items} items: the player is gone")]
-    private static partial void LogLostLetter(ILogger logger, long gold, int items);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A letter did not go and its sender has left: {Gold} gold and {Items} items go to the box of account {Account}")]
+    private static partial void LogReturnedToAccount(ILogger logger, int account, long gold, int items);
 
     #endregion
 }
