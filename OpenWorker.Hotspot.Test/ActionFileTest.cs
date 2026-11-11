@@ -58,7 +58,15 @@ public sealed class ActionFileTest
                 e.Write(0);
             }
 
-            if (type == 14)
+            if (type == 14 && start == WaitingHideStart)
+            {
+                // Gone until the monsters of two tables are dead.
+                e.Write(new byte[4]);
+                e.Write(3);
+                e.Write(10190029);
+                WriteInts(e, 0, 10190031, 0);
+            }
+            else if (type == 14)
             {
                 // Keeps its movement and its mind while it is gone, for two and a half seconds.
                 e.Write(false);
@@ -114,6 +122,16 @@ public sealed class ActionFileTest
                 WriteProjectile(e, version);
             }
         }));
+    }
+
+    private const float WaitingHideStart = 0.6f;
+
+    private static void WriteInts(BinaryWriter writer, params ReadOnlySpan<int> values)
+    {
+        foreach (var value in values)
+        {
+            writer.Write(value);
+        }
     }
 
     private static void WriteFloats(BinaryWriter writer, params ReadOnlySpan<float> values)
@@ -218,10 +236,11 @@ public sealed class ActionFileTest
 
         writer.Write(1.5f);
         writer.Write(new byte[4]);
-        writer.Write(7);
+        writer.Write(8);
         WriteEvent(writer, version, 1, 0.1f);
         WriteEvent(writer, version, 3, 0.25f);
         WriteEvent(writer, version, 14, 0.5f);
+        WriteEvent(writer, version, 14, WaitingHideStart);
         WriteEvent(writer, version, 3, 0.75f);
         WriteEvent(writer, version, 22, 0.8f);
         WriteEvent(writer, version, 25, 0.9f);
@@ -300,7 +319,13 @@ public sealed class ActionFileTest
             var animation = ActionFile.Read(Build(version)).Animations["first"];
 
             Assert.HasCount(2, animation.Attacks);
-            Assert.AreEqual(new InvisibleEvent(0.5f, 12, InvisibleEvent.ForTime, 2500), animation.Hides!.Single());
+            Assert.HasCount(2, animation.Hides!);
+            Assert.AreEqual(new InvisibleEvent(0.5f, 12, InvisibleEvent.ForTime, 2500), animation.Hides[0]);
+
+            var waiting = animation.Hides[1];
+
+            Assert.AreEqual((InvisibleEvent.UntilMonstersDie, 0.6f), (waiting.ConditionType, waiting.Start));
+            CollectionAssert.AreEqual(new[] { 10190029, 10190031 }, waiting.Waits!.ToArray(), "the tables it waits for, without the empty ones");
         }
     }
 

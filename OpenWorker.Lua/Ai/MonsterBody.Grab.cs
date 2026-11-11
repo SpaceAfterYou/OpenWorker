@@ -56,7 +56,7 @@ internal partial class MonsterBody
 
         _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
-        foreach (var hiding in stage.Hidings.Where(e => e.Event.ConditionType is InvisibleEvent.ForTime or InvisibleEvent.UntilHurt))
+        foreach (var hiding in stage.Hidings.Where(e => IsFollowed(e.Event)))
         {
             _hidings.Add((at + hiding.Time, hiding.Event));
         }

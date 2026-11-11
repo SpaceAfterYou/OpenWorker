@@ -74,14 +74,17 @@ public sealed record AttachEvent(float Start, float Duration, float Distance, fl
 /// </summary>
 /// <param name="Start">Seconds from the start of the animation.</param>
 /// <param name="Flags">What the monster keeps while it is gone: 1 its collision, 2 its effects, 4 its movement, 8 its mind.</param>
-/// <param name="ConditionType">What ends it: 0 a time, 1 a share of the life, other kinds wait for monsters that die.</param>
-/// <param name="Value">The time in milliseconds, or the share of the life in thousandths.</param>
-public sealed record InvisibleEvent(float Start, byte Flags, int ConditionType, int Value)
+/// <param name="ConditionType">What ends it: 0 a time, 1 a share of the life, 2 the death of a monster it summoned, 3 the death of every monster of the given tables.</param>
+/// <param name="Value">The time in milliseconds, the share of the life in thousandths, or the number of summoned monsters to wait for.</param>
+/// <param name="Waits">For the kind that waits for monsters of the maze: their tables.</param>
+public sealed record InvisibleEvent(float Start, byte Flags, int ConditionType, int Value, IReadOnlyList<int>? Waits = null)
 {
     public const byte KeepsMind = 8;
 
     public const int ForTime = 0;
     public const int UntilHurt = 1;
+    public const int UntilSummonsDie = 2;
+    public const int UntilMonstersDie = 3;
 }
 
 /// <summary>
@@ -321,8 +324,9 @@ public sealed class ActionFile
 
         var type = reader.ReadInt32();
         var value = reader.ReadInt32();
+        var waits = new[] { value, reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32() };
 
-        return new InvisibleEvent(header.Start, (byte)flags, type, value);
+        return new InvisibleEvent(header.Start, (byte)flags, type, value, type == InvisibleEvent.UntilMonstersDie ? waits.Where(e => e != 0).ToArray() : null);
     }
 
     private static DefenseEvent ReadDefense(BinaryReader reader, short version, in EventHeader header)

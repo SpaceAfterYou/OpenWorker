@@ -60,6 +60,7 @@ internal partial class MonsterBody : IAiHost
     private InvisibleEvent? _hidden;
     private double _hiddenEnd;
     private readonly List<(double Time, InvisibleEvent Event)> _hidings = [];
+    private double _nextHideLook;
     private readonly List<(double Start, double End, ActionAnimation Clip)> _clips = [];
     private double _lastMoveSent;
     private float _lastYawSent = float.NaN;
@@ -120,6 +121,9 @@ internal partial class MonsterBody : IAiHost
         _detaches.Clear();
         _clips.Clear();
         _carried = false;
+        _lastChange = 0;
+        _holdUntil = 0;
+        _moveAfterHold = false;
         _destination = null;
         _run = false;
         _battlePose = false;
@@ -296,6 +300,7 @@ internal partial class MonsterBody : IAiHost
         ResolveHits(now);
         ResolveGrab(now);
         ResolveHidings(now);
+        CheckIdleTime(now);
         Fly(elapsed);
 
         // A monster that has hidden thinks no more, unless its animation leaves the mind on.
@@ -309,7 +314,7 @@ internal partial class MonsterBody : IAiHost
 
     private void Advance(double now, float elapsed)
     {
-        if (_destination is null)
+        if (_destination is null || IsHeldBeforeWalk(now))
         {
             return;
         }
@@ -370,6 +375,8 @@ internal partial class MonsterBody : IAiHost
 
         _destination = null;
         _route.Clear();
+        _holdUntil = 0;
+        _moveAfterHold = false;
 
         if (send || moved)
         {
@@ -391,6 +398,8 @@ internal partial class MonsterBody : IAiHost
             return false;
         }
 
+        var wasStanding = _destination is null;
+
         _route.Clear();
 
         // The first point of the way is the place the monster stands at.
@@ -404,9 +413,15 @@ internal partial class MonsterBody : IAiHost
             return true;
         }
 
-        Place(position, AiMath.YawTo(position, _route[0]));
+        var wanted = AiMath.YawTo(position, _route[0]);
+        var sendNow = BeginWalk(wanted, wasStanding);
 
-        SendMove(_manager.Now);
+        Place(position, wanted);
+
+        if (sendNow)
+        {
+            SendMove(_manager.Now);
+        }
 
         return true;
     }
@@ -751,7 +766,7 @@ internal partial class MonsterBody : IAiHost
             foreach (var hiding in _actions.GetHidings(skill.Id, Behavior.ActionFile))
             {
                 // The kinds that wait for other monsters to die are not followed.
-                if (hiding.Event.ConditionType is InvisibleEvent.ForTime or InvisibleEvent.UntilHurt)
+                if (IsFollowed(hiding.Event))
                 {
                     _hidings.Add((now + hiding.Time, hiding.Event));
                 }
@@ -898,7 +913,7 @@ internal partial class MonsterBody : IAiHost
 
     private void ResolveHidings(double now)
     {
-        if (_hidden is { } hidden && (hidden.ConditionType == InvisibleEvent.ForTime ? now >= _hiddenEnd : IsHurtTo(hidden.Value)))
+        if (_hidden is { } hidden && IsHidingOver(hidden, now))
         {
             _hidden = null;
 
@@ -913,8 +928,45 @@ internal partial class MonsterBody : IAiHost
 
             _hidden = hide;
             _hiddenEnd = now + hide.Value * 0.001;
+            _nextHideLook = now + HideLook;
 
             Broadcast(new MonsterInvisibleResponse { Actor = Actor, Invisible = true, Flags = hide.Flags, Type = hide.ConditionType, Value = hide.Value });
+        }
+    }
+
+    /// <summary>
+    /// How often a monster that hides until others die looks whether they have, in seconds.
+    /// </summary>
+    private const double HideLook = 1.0;
+
+    /// <summary>
+    /// The kinds of hiding the body follows. The kind that waits for the monsters it summoned is not: nothing summons in a maze yet.
+    /// </summary>
+    internal static bool IsFollowed(InvisibleEvent hide)
+    {
+        return hide.ConditionType is InvisibleEvent.ForTime or InvisibleEvent.UntilHurt or InvisibleEvent.UntilMonstersDie;
+    }
+
+    private bool IsHidingOver(InvisibleEvent hide, double now)
+    {
+        switch (hide.ConditionType)
+        {
+            case InvisibleEvent.ForTime:
+                return now >= _hiddenEnd;
+
+            case InvisibleEvent.UntilMonstersDie:
+                // Looked at once a second: it shows itself when none of the monsters it waits for lives.
+                if (now < _nextHideLook)
+                {
+                    return false;
+                }
+
+                _nextHideLook = now + HideLook;
+
+                return !(hide.Waits ?? []).Any(_manager.IsMonsterAlive);
+
+            default:
+                return IsHurtTo(hide.Value);
         }
     }
 

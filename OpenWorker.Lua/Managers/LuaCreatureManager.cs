@@ -1427,6 +1427,14 @@ public sealed class LuaCreatureManager
     internal MonsterBody? BodyOf(Entity monster) => Bodies.GetValueOrDefault(monster);
 
     /// <summary>
+    /// Whether a monster of a table lives in the maze.
+    /// </summary>
+    internal bool IsMonsterAlive(int table)
+    {
+        return Creatures.Any(e => ecs.IsAlive(e) && ecs.Get<ActorComponent>(e).Type == ActorType.Monster && ecs.Get<CreatureComponent>(e) is { Health: > 0 } creature && creature.Identifier == table);
+    }
+
+    /// <summary>
     /// Nothing hurts the player now: it has just come back, or a buff makes it invincible.
     /// </summary>
     internal bool IsShielded(Entity player)
