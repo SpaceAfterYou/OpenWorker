@@ -79,7 +79,8 @@ public abstract class ChatServiceBase(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ChatStuffRequest request)
     {
-        if (!await TryCommandAsync(context.Player, request.Message))
+        // The player can be gone by the time the command has run.
+        if (!await TryCommandAsync(context.Player, request.Message) || !world.IsAlive(context.Player))
         {
             return;
         }

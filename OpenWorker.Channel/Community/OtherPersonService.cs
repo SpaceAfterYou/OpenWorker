@@ -111,6 +111,12 @@ public sealed partial class OtherPersonService(
             return;
         }
 
+        // The one looked at can be gone by the time their friends are read.
+        if (!world.IsAlive(target) || !world.Has<ActorComponent>(target))
+        {
+            return;
+        }
+
         await network.SendAsync(viewer, Create(window, FromEntity(target), calculateStat));
     }
 
