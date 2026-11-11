@@ -259,7 +259,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         var kind = Limited(blow.Kind, push.Grade);
         var motion = DamageMotion(kind);
         var displayed = Displayed(push.Hardness, defense);
-        var enabled = defense is not (DefenseType.SuperArmor or DefenseType.Invincible) || displayed;
+        var enabled = defense is not (DefenseType.SuperArmor or DefenseType.Invincible or DefenseType.NoReaction) || displayed;
 
         if (!enabled)
         {
@@ -387,7 +387,7 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         {
             DefenseType.Guard => hardness is 2 or 4,
             DefenseType.SuperArmor => hardness is 3 or 4,
-            DefenseType.Invincible => false,
+            DefenseType.Invincible or DefenseType.NoReaction => false,
             _ => true
         };
     }

@@ -44,10 +44,15 @@ public enum GrabStage
 /// <summary>
 /// One animation of a skill with everything that happens in it, times from the start of the animation.
 /// </summary>
-public sealed record SkillStage(float Length, IReadOnlyList<SkillHit> Hits, IReadOnlyList<SkillHit> Shots, IReadOnlyList<SkillHiding> Hidings, IReadOnlyList<SkillDetach> Detaches)
+public sealed record SkillStage(float Length, IReadOnlyList<SkillHit> Hits, IReadOnlyList<SkillHit> Shots, IReadOnlyList<SkillHiding> Hidings, IReadOnlyList<SkillDetach> Detaches, ActionAnimation? Clip = null)
 {
     public static SkillStage Empty { get; } = new(0f, [], [], [], []);
 }
+
+/// <summary>
+/// An animation of a skill and the moment it begins, from the start of the skill.
+/// </summary>
+public readonly record struct SkillClip(float Began, ActionAnimation Animation);
 
 /// <summary>
 /// A moment of a skill at which the character that plays it starts to carry away what stands before it.
@@ -236,7 +241,34 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             animation.Attacks.Where(e => e.HitsArea || e.IsTrap).Select(e => new SkillHit(e.Start, e)).ToArray(),
             animation.Attacks.Where(e => e.IsProjectile).Select(e => new SkillHit(e.Start, e)).ToArray(),
             (animation.Hides ?? []).Select(e => new SkillHiding(e.Start, e)).ToArray(),
-            detaches);
+            detaches,
+            animation);
+    }
+
+    /// <summary>
+    /// The animations a skill plays one after the other and when each begins.
+    /// </summary>
+    public IReadOnlyList<SkillClip> GetClips(int skill, string actionFile)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
+        {
+            return [];
+        }
+
+        var clips = new List<SkillClip>();
+        var offset = 0f;
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        {
+            if (Find(file, name) is { } animation)
+            {
+                clips.Add(new SkillClip(offset, animation));
+
+                offset += animation.Length;
+            }
+        }
+
+        return clips;
     }
 
     /// <summary>

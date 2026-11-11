@@ -60,6 +60,7 @@ internal partial class MonsterBody : IAiHost
     private InvisibleEvent? _hidden;
     private double _hiddenEnd;
     private readonly List<(double Time, InvisibleEvent Event)> _hidings = [];
+    private readonly List<(double Start, double End, ActionAnimation Clip)> _clips = [];
     private double _lastMoveSent;
     private float _lastYawSent = float.NaN;
     private double _born;
@@ -117,6 +118,7 @@ internal partial class MonsterBody : IAiHost
         _flights.Clear();
         _grab.Release();
         _detaches.Clear();
+        _clips.Clear();
         _carried = false;
         _destination = null;
         _run = false;
@@ -267,6 +269,7 @@ internal partial class MonsterBody : IAiHost
         _attackEnd = 0;
         _pending.Clear();
         _flights.Clear();
+        _clips.Clear();
         ReleaseGrab(true);
 
         if (IsMoving)
@@ -573,6 +576,25 @@ internal partial class MonsterBody : IAiHost
 
     public virtual bool IsDownOrFlying => _reaction is { IsAirborne: true } or { IsDown: true };
 
+    /// <summary>
+    /// How the monster takes a hit now: by its own defense, unless the animation of the skill it plays says another.
+    /// </summary>
+    /// <param name="armorBroken">The super armor of the monster is broken, so the stretches of the animation say nothing.</param>
+    public DefenseType FrameDefense(DefenseType own, bool armorBroken)
+    {
+        var now = _manager.Now;
+
+        foreach (var (start, end, clip) in _clips)
+        {
+            if (now >= start && now < end)
+            {
+                return DefenseFrames.Of(own, clip.Defense, clip.Defenses, (float)(now - start), armorBroken);
+            }
+        }
+
+        return own;
+    }
+
     public void ForceDefense(AiDefense defense, float seconds)
     {
         _forcedDefenseEnd = _manager.Now + seconds;
@@ -696,6 +718,7 @@ internal partial class MonsterBody : IAiHost
         _pending.Clear();
         _hidings.Clear();
         _detaches.Clear();
+        _clips.Clear();
         _staged = false;
 
         if (start is not null)
@@ -708,6 +731,11 @@ internal partial class MonsterBody : IAiHost
         }
         else
         {
+            foreach (var clip in _actions.GetClips(skill.Id, Behavior.ActionFile))
+            {
+                _clips.Add((now + clip.Began, now + clip.Began + clip.Animation.Length, clip.Animation));
+            }
+
             foreach (var hit in _actions.GetHits(skill.Id, Behavior.ActionFile))
             {
                 _pending.Add(new PendingHit(now + hit.Time, hit, skill.Id));

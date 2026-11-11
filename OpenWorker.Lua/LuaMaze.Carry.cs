@@ -57,6 +57,22 @@ public partial class LuaMaze
         }
     }
 
+    /// <summary>
+    /// How a player takes a hit now, as the animation of the skill it plays says: armored through a skill, out of reach through
+    /// an evade or a roll, plain in the rest of the time.
+    /// </summary>
+    private DefenseType FrameDefenseOf(Entity player)
+    {
+        if (Find(player) is not { Playback: { } run } || run.Playback.Playing is not { } playing)
+        {
+            return DefenseType.Normal;
+        }
+
+        var elapsed = (float)(Clock.Time - run.Began).TotalSeconds - playing.Began;
+
+        return DefenseFrames.Of(DefenseType.Normal, playing.Clip.Defense, playing.Clip.Defenses, elapsed);
+    }
+
     private void StepCarry(Fighter member)
     {
         if (member.Carry is not { } run)

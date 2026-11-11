@@ -52,6 +52,7 @@ public sealed class SkillPlayback
     private float _nextRound;
     private bool _roundsEnded;
     private float _loopStart;
+    private ActionAnimation? _clip;
 
     public SkillPlayback(SkillAnimations animations)
     {
@@ -64,6 +65,12 @@ public sealed class SkillPlayback
     public SkillStep Step { get; private set; }
 
     public bool IsDone => Step == SkillStep.Done;
+
+    /// <summary>
+    /// The animation that plays now and the moment it began, in seconds from the start of the skill. Nothing once the skill is
+    /// over or when the step has no animation.
+    /// </summary>
+    public (ActionAnimation Clip, float Began)? Playing => !IsDone && _clip is { } clip ? (clip, _stepStart) : null;
 
     /// <summary>
     /// When something happens next: an attack is judged, or a step is over. Null once the skill has ended.
@@ -194,6 +201,8 @@ public sealed class SkillPlayback
             SkillStep.Extra => _animations.Extra,
             _ => EndClip(at)
         };
+
+        _clip = clip;
 
         if (clip is null)
         {

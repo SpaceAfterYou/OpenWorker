@@ -1353,7 +1353,7 @@ public partial class LuaMaze(
     {
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
-        var defense = _buffs.DefenseOf(target, body.Defense);
+        var defense = _buffs.DefenseOf(target, creatureManager.FrameDefenseOf(target, body.Defense));
         // A super armor that was broken before this hit lets half as much again through.
         var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
         var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken);
@@ -1413,7 +1413,7 @@ public partial class LuaMaze(
             place.Position,
             place.Rotation,
             helper,
-            helper ? combatant.WeightRank : 0,
+            helper ? combatant.WeightRank : PlayerVitals.WeightRank,
             IsMelee: trigger.HitsArea);
     }
 
@@ -1659,6 +1659,7 @@ public partial class LuaMaze(
         Started = true;
         StartedAt = Stopwatch.GetTimestamp();
         _buffs.MonsterKilled += OnBuffKill;
+        creatureManager.PlayerFrames = FrameDefenseOf;
 
         // The quests the player has when the maze starts are where the script begins to follow them.
         foreach (var member in _members)

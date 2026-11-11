@@ -543,6 +543,9 @@ public sealed class HelperSquad
         var attackerActor = _ecs.Get<ActorComponent>(attacker.Entity);
         var hits = new List<SkillDmgValue>();
         var beaten = new List<SummonedHelper>();
+        var origin = _ecs.Get<WorldComponent>(attacker.Entity);
+        var weight = _ecs.Get<MonsterCombatComponent>(attacker.Entity).WeightRank;
+        var blow = new Blow(trigger.Reaction, (ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue), trigger.DamageRate, trigger.Angle, origin.Position, origin.Position, origin.Rotation, true, weight, IsMelee: trigger.HitsArea);
 
         foreach (var helper in _helpers)
         {
@@ -575,6 +578,9 @@ public sealed class HelperSquad
 
             _ecs.Set(helper.Entity, creature with { Health = left });
 
+            // The blow throws the helper like any monster: the body of the helper takes it, and everyone is told how far.
+            var thrown = shielded ? default : body.ReceiveBlow(blow, defense, true, BlowRolls.Roll(_manager.Random));
+
             hits.Add(default(SkillDmgValue) with
             {
                 UxActorId = helper.Actor,
@@ -582,6 +588,8 @@ public sealed class HelperSquad
                 DamageFlags = (byte)result.Flags,
                 Damage = result.Damage,
                 Health = left,
+                ExtraMove = thrown.ExtraMove,
+                FlySpeed = thrown.FlySpeed,
                 DefenseType = (byte)(shielded ? DefenseType.Invincible : defense)
             });
 

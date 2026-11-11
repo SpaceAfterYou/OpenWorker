@@ -39,6 +39,11 @@ internal partial class MonsterBody
     /// </summary>
     private void AddStage(int skill, SkillStage stage, double at)
     {
+        if (stage.Clip is { } clip)
+        {
+            _clips.Add((at, at + stage.Length, clip));
+        }
+
         foreach (var hit in stage.Hits)
         {
             _pending.Add(new PendingHit(at + hit.Time, hit, skill));

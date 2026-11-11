@@ -1401,6 +1401,29 @@ public sealed class LuaCreatureManager
 
     internal Vector3 PositionOf(Entity player) => Vitals.PositionOf(player);
 
+    /// <summary>
+    /// What the animation of its skill makes of the defense of a player at this moment; the maze, which plays the skills, says.
+    /// </summary>
+    public Func<Entity, DefenseType>? PlayerFrames { get; set; }
+
+    /// <summary>
+    /// How a player takes a hit now: by the animation of its skill, and a buff that makes it stronger.
+    /// </summary>
+    internal DefenseType DefenseOfPlayer(Entity player)
+    {
+        var frames = PlayerFrames?.Invoke(player) ?? DefenseType.Normal;
+
+        return Buffs?.DefenseOf(player, frames) ?? frames;
+    }
+
+    /// <summary>
+    /// How a monster takes a hit now: the defense of its table, unless the animation of the skill it plays says another.
+    /// </summary>
+    internal DefenseType FrameDefenseOf(Entity monster, DefenseType own)
+    {
+        return Bodies.TryGetValue(monster, out var body) ? body.FrameDefense(own, ecs.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil != 0) : own;
+    }
+
     internal MonsterBody? BodyOf(Entity monster) => Bodies.GetValueOrDefault(monster);
 
     /// <summary>
@@ -1408,7 +1431,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     internal bool IsShielded(Entity player)
     {
-        return Vitals.IsProtected(player) || (Buffs?.DefenseOf(player, DefenseType.Normal) ?? DefenseType.Normal) == DefenseType.Invincible;
+        return Vitals.IsProtected(player) || DefenseOfPlayer(player) == DefenseType.Invincible;
     }
 
     /// <summary>
@@ -1469,7 +1492,7 @@ public sealed class LuaCreatureManager
                 continue;
             }
 
-            var defense = Buffs?.DefenseOf(victim, DefenseType.Normal) ?? DefenseType.Normal;
+            var defense = DefenseOfPlayer(victim);
             var shielded = Vitals.IsProtected(victim) || defense == DefenseType.Invincible;
             var result = shielded
                 ? new DamageResult(0, HitResults.None)
@@ -1492,7 +1515,7 @@ public sealed class LuaCreatureManager
             var shownDefense = shielded ? DefenseType.Invincible : defense;
             var (extraMove, flySpeed) = shielded
                 ? (Vector3.Zero, 0f)
-                : PlayerThrow.Told(blow, new Struck(Vitals.PositionOf(victim), 0, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
+                : PlayerThrow.Told(blow, new Struck(Vitals.PositionOf(victim), PlayerVitals.WeightRank, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
 
             hits.Add(default(SkillDmgValue) with
             {

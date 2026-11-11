@@ -18,7 +18,12 @@ public enum DefenseType : byte
     Normal = 0,
     Guard = 1,
     SuperArmor = 2,
-    Invincible = 3
+    Invincible = 3,
+
+    /// <summary>
+    /// Hurt as a plain target but shows no reaction to any blow: an animation of a monster can give it.
+    /// </summary>
+    NoReaction = 5
 }
 
 /// <param name="SoulGaugeAbsorb">What a hit of the skill gives to the soul gauge of the attacker, before the share of the target.</param>
