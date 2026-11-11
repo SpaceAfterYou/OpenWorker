@@ -342,7 +342,7 @@ public sealed class LuaCreatureManager
 
         Creatures.Add(creature);
 
-        GiveMind(creature, identifier, ecs.Get<WorldComponent>(creature).Position);
+        GiveMind(creature, identifier, ecs.Get<WorldComponent>(creature).Position, spawn);
 
         return creature;
     }
@@ -454,7 +454,7 @@ public sealed class LuaCreatureManager
     /// <summary>
     /// A monster with a script thinks. Objects and the rest just stand.
     /// </summary>
-    private void GiveMind(Entity creature, int identifier, Vector3 home)
+    private void GiveMind(Entity creature, int identifier, Vector3 home, MonsterSpawnBox spawn)
     {
         if (Services is not { } services || services.Behaviors.Get(identifier) is not { } behavior)
         {
@@ -472,6 +472,8 @@ public sealed class LuaCreatureManager
         var body = SpareBodies.TryGetValue(profile, out var spare) && spare.TryPop(out var used)
             ? used.Revive(creature, behavior, home)
             : new MonsterBody(ecs, this, services.Actions, creature, behavior, profile, home);
+
+        body.SetGroup(new AggroGroup(spawn.AggroGroup, spawn.AggroDistance, spawn.AggroMaxCount));
 
         Bodies.Add(creature, body);
         Minds.Add(body);
@@ -1030,6 +1032,21 @@ public sealed class LuaCreatureManager
 
     internal void SetInvincible(Entity monster, bool invincible)
     {
+        if (invincible)
+        {
+            ForceDefense(monster, DefenseType.Invincible);
+        }
+        else
+        {
+            RestoreDefense(monster);
+        }
+    }
+
+    /// <summary>
+    /// A monster takes another defense until <see cref="RestoreDefense"/> gives it its own back.
+    /// </summary>
+    internal void ForceDefense(Entity monster, DefenseType defense)
+    {
         if (!ecs.IsAlive(monster))
         {
             return;
@@ -1037,14 +1054,50 @@ public sealed class LuaCreatureManager
 
         var combat = ecs.Get<MonsterCombatComponent>(monster);
 
-        if (invincible)
+        Defenses.TryAdd(monster, combat.Defense);
+        ecs.Set(monster, combat with { Defense = defense });
+    }
+
+    internal void RestoreDefense(Entity monster)
+    {
+        if (ecs.IsAlive(monster) && Defenses.Remove(monster, out var defense))
         {
-            Defenses.TryAdd(monster, combat.Defense);
-            ecs.Set(monster, combat with { Defense = DefenseType.Invincible });
+            ecs.Set(monster, ecs.Get<MonsterCombatComponent>(monster) with { Defense = defense });
         }
-        else if (Defenses.Remove(monster, out var defense))
+    }
+
+    /// <summary>
+    /// A monster of a group fights somebody: the monsters of its group within the reach of the spawn box that have no enemy
+    /// turn on that one, as many as the box allows. The monster that called counts among them.
+    /// </summary>
+    internal void AlertGroup(MonsterBody caller, int target)
+    {
+        var group = caller.Group;
+
+        if (group.Id == 0)
         {
-            ecs.Set(monster, combat with { Defense = defense });
+            return;
+        }
+
+        var origin = caller.Position;
+        var called = 0;
+
+        foreach (var body in Bodies.Values)
+        {
+            if (body.Group.Id != group.Id || !body.IsRevealed || body.IsDead || Vector3.Distance(body.Position, origin) >= group.Distance)
+            {
+                continue;
+            }
+
+            if (body.Machine.TargetId == AiMachine.NoTarget)
+            {
+                body.Machine.Alert(target);
+            }
+
+            if (++called >= group.MaxCount)
+            {
+                break;
+            }
         }
     }
 

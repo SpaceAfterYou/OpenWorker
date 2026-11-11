@@ -53,6 +53,7 @@ internal partial class MonsterBody : IAiHost
     private bool _gazing;
     private double _attackEnd;
     private double _staggerEnd;
+    private double _forcedDefenseEnd;
     private double _lastMoveSent;
     private float _lastYawSent = float.NaN;
     private double _born;
@@ -115,6 +116,8 @@ internal partial class MonsterBody : IAiHost
         _attackEnd = 0;
         _staggerEnd = 0;
         _reaction = null;
+        _forcedDefenseEnd = 0;
+        Group = default;
         _lastMoveSent = 0;
         _lastYawSent = float.NaN;
         _born = _manager.Now;
@@ -224,6 +227,12 @@ internal partial class MonsterBody : IAiHost
         }
 
         StepReaction(elapsed);
+        if (_forcedDefenseEnd > 0 && now >= _forcedDefenseEnd)
+        {
+            _forcedDefenseEnd = 0;
+            _manager.RestoreDefense(Entity);
+        }
+
         Advance(now, elapsed);
         ResolveHits(now);
         Fly(elapsed);
@@ -473,6 +482,50 @@ internal partial class MonsterBody : IAiHost
     }
 
     public AiSkill? FindSkill(int id) => _manager.Services?.Behaviors.GetSkill(id);
+
+    // ---- Hate and escape ----------------------------------------------------------------------
+
+    /// <summary>
+    /// The monsters that come to help when this one fights, from the spawn box it came from.
+    /// </summary>
+    public AggroGroup Group { get; private set; }
+
+    public void SetGroup(AggroGroup group)
+    {
+        Group = group;
+        Machine.CallsGroup = group.Id != 0 && group.MaxCount != 0;
+    }
+
+    public void AlertGroup(int target)
+    {
+        _manager.AlertGroup(this, target);
+    }
+
+    /// <summary>
+    /// Whether the monster lies on the ground or flies after a blow.
+    /// </summary>
+    public virtual bool IsDownOrFlying => false;
+
+    public void ForceDefense(AiDefense defense, float seconds)
+    {
+        _forcedDefenseEnd = _manager.Now + seconds;
+        _manager.ForceDefense(Entity, defense == AiDefense.Invincible ? DefenseType.Invincible : DefenseType.SuperArmor);
+    }
+
+    public void EndFlinch()
+    {
+        _staggerEnd = 0;
+    }
+
+    public void NotifyEscape(float seconds)
+    {
+        Broadcast(new MonsterEscapeDamageResponse
+        {
+            Actor = Actor,
+            DefenseType = (byte)_ecs.Get<MonsterCombatComponent>(Entity).Defense,
+            Time = seconds
+        });
+    }
 
     // ---- Seeing -------------------------------------------------------------------------------
 
