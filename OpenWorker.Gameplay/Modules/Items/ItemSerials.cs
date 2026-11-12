@@ -41,8 +41,11 @@ public sealed class LocalItemSerials : IItemSerials
 /// </summary>
 public sealed class DatabaseItemSerials(IPersonStore store) : IItemSerials
 {
-    private const int Block = 256;
-    private const int Reserve = 64;
+    private const int Block = 1024;
+
+    // A boss that dies before a full party drops tens of items in one turn of the world loop: the supply left when the next
+    // block is asked for covers many such turns, since a block takes one query to arrive.
+    private const int Reserve = 512;
 
     private readonly ConcurrentQueue<long> _ready = new();
     private int _fetching;
@@ -97,7 +100,12 @@ public sealed class DatabaseItemSerials(IPersonStore store) : IItemSerials
         {
             try
             {
-                await FetchAsync();
+                // One block may already be used up when it arrives: ask until the supply is whole again.
+                do
+                {
+                    await FetchAsync();
+                }
+                while (_ready.Count < Reserve);
             }
             catch
             {
