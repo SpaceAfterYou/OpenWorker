@@ -534,14 +534,14 @@
     "Int16"
   ],
   "tb_Skill_Script": [
-    "Int16",
-    "String",
-    "String",
-    "String",
-    "String",
-    "Int32",
-    "Int32",
-    "String"
+    "Int16 Id // The id of the row, which tb_Skill names in its Script column.",
+    "String Name // The name of the skill, shown in the skill window and the tooltip.",
+    "String Description // What the skill does, shown in the tooltip.",
+    "String LevelText // What this level of the skill gives, shown in the tooltip under its own heading. \".\" and \"LvMax\" on many rows.",
+    "String Icon // The icon of the skill, a path without the extension (the client adds \".png\"). \"0\" for none.",
+    "Int32 ShownSkill1 // A skill whose icon the tooltip shows in a section of its own. 0 in every row of this client, so what the section is for is not settled.",
+    "Int32 ShownSkill2 // A second skill shown in that section of the tooltip (see ShownSkill1). 0 in every row of this client.",
+    "String DescriptionImage // A picture the skill window shows, a path without the extension (the client adds \".png\"). \"0\" on all but five rows."
   ],
   "tb_Warlord_GUI": [
     "Int16",
