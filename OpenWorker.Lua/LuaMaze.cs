@@ -860,29 +860,42 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// Whether the skill plays an animation on the hero of the player: a move that does cuts the skill the player plays.
+    /// Whether the skill is a move on the hero of the player: it plays an animation that attacks nothing (an evade, a roll, a
+    /// dash). A move cuts the skill the player plays.
     /// </summary>
     [LuaIgnoreMember]
-    public bool PlaysAnimation(Entity player, int skill)
+    public bool IsMove(Entity player, int skill)
     {
-        return actions.GetAnimations(skill, Ecs.Get<PersonInfoComponent>(player).Hero) is { } animations && (animations.Start is not null || animations.End is not null);
+        return MoveOf(player, skill) is not null;
+    }
+
+    private ActionAnimation?[]? MoveOf(Entity player, int skill)
+    {
+        if (actions.GetAnimations(skill, Ecs.Get<PersonInfoComponent>(player).Hero) is not { } animations || (animations.Start is null && animations.End is null))
+        {
+            return null;
+        }
+
+        ActionAnimation?[] clips = [animations.Start, animations.Loop, animations.Extra, animations.End];
+
+        return clips.All(e => e is null || e.Attacks.Count == 0) ? clips : null;
     }
 
     /// <summary>
     /// The player evades, rolls or dashes: the skill it plays ends there (with its attacks to come, its shots and its chains).
     /// A move during which the client holds back the skills of the player until a moment of its animation plays in its place,
-    /// until it is over or the client says it ended; during the others (a dash) the player may start a skill at once.
+    /// until it is over or the client says it ended; during the others (a dash) the player may start a skill at once. A skill
+    /// that is no move changes nothing.
     /// </summary>
     [LuaIgnoreMember]
     public void Evade(Entity player, int skill)
     {
-        if (!Started || Find(player) is not { } member ||
-            actions.GetAnimations(skill, Ecs.Get<PersonInfoComponent>(player).Hero) is not { } animations || (animations.Start is null && animations.End is null))
+        if (!Started || Find(player) is not { } member || MoveOf(player, skill) is not { } clips)
         {
             return;
         }
 
-        if (new[] { animations.Start, animations.Loop, animations.Extra, animations.End }.Any(e => e?.Cuts is { Count: > 0 }))
+        if (clips.Any(e => e?.Cuts is { Count: > 0 }))
         {
             Begin(member, skill, default, false);
 

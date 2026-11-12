@@ -406,9 +406,9 @@ public sealed partial class MazeService(
 
     /// <summary>
     /// The player evades, rolls, dashes or gets up: as the original server, the move must be the player's own, its cooldown over
-    /// and its stamina payable, and it is paid; a refusal is the answer 06/07 with the code. A move with an animation cuts the
-    /// skill the player plays, as on the client, which allows it only when the skill gives way to it no harder than the move
-    /// does (its skip priority); otherwise it is refused and the skill goes on.
+    /// and its stamina payable, and it is paid; a refusal is the answer 06/07 with the code. A move (a passive skill whose
+    /// animation attacks nothing) cuts the skill the player plays, as on the client, which allows it only when the skill gives way
+    /// to it no harder than the move does (its skip priority); otherwise it is refused and the skill goes on.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request)
     {
@@ -418,11 +418,10 @@ public sealed partial class MazeService(
         var now = clock.Time;
         var refusal = skillUse.Check(player, skill, now);
         var maze = IsFighting(player) ? ecs.Get<LuaMaze>(player) : null;
+        var cuts = maze is not null && skillUse.TryGetSkill(skill, out var move) && move.SkillType == PassiveSkillType && maze.IsMove(player, skill);
 
-        if (refusal == SkillRefusal.None && maze is not null && maze.PlaysAnimation(player, skill) &&
-            maze.PlayingSkill(player) is var playing and not 0 &&
-            skillUse.TryGetSkill(skill, out var move) && skillUse.TryGetSkill(playing, out var cut) &&
-            cut.SkipPriorityGroup > move.SkipPriorityGroup)
+        if (refusal == SkillRefusal.None && cuts && maze?.PlayingSkill(player) is { } playing and not 0 &&
+            skillUse.TryGetSkill(playing, out var cut) && skillUse.TryGetSkill(skill, out move) && cut.SkipPriorityGroup > move.SkipPriorityGroup)
         {
             refusal = SkillRefusal.CannotAttack;
         }
@@ -440,10 +439,18 @@ public sealed partial class MazeService(
 
         session.Send(new SkillPassiveResponse());
 
-        maze?.Evade(player, skill);
+        if (cuts)
+        {
+            maze?.Evade(player, skill);
+        }
 
         return ValueTask.CompletedTask;
     }
+
+    /// <summary>
+    /// The type of the skill table for the passive skills, the moves among them.
+    /// </summary>
+    private const byte PassiveSkillType = 1;
 
     /// <summary>
     /// A passive move (evade, dash) ends where the client says, when the player could have got there, and the player may start
