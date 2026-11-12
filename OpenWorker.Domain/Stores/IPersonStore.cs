@@ -28,6 +28,11 @@ public interface IPersonStore
     Task<string?> LoadDocumentAsync(int person, PersonStateKind kind, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Every progress document the person has, serialized, by kind, in one query: a kind without a document is not in it.
+    /// </summary>
+    Task<Dictionary<PersonStateKind, string>> LoadDocumentsAsync(int person, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Writes the changes of many persons in one transaction, in the order given: the changes of one person that appear
     /// twice are written oldest first.
     /// </summary>

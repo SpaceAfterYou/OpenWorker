@@ -44,6 +44,7 @@ using OpenWorker.Hotspot.Modules.Boosters.Enums;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.SoulMetry;
+using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Persistence;
 using OpenWorker.Gameplay.Combat;
@@ -68,6 +69,7 @@ public sealed partial class PersonService(
     SessionLeaseManager leases,
     ServiceChannels channels,
     IDbContextFactory<PersistenceContext> factory,
+    PersonStateStore states,
     IOptions<InstanceOptions> instance,
     PersonRegistry registry,
     TradePasswordService passwords,
@@ -172,6 +174,9 @@ public sealed partial class PersonService(
         ecs.SetLogAccount(context.Player, request.Session.Account);
 
         ecs.Set(context.Player, GetReservedPlace(reserve));
+
+        // Every document of the person in one query: the features below take theirs from it until the entry is over.
+        using var documents = await states.ReadAtEntryAsync(person.Id, context.CancellationToken);
 
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 

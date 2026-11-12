@@ -35,6 +35,8 @@ public sealed class ItemSerialsTest
 
         public Task<string?> LoadDocumentAsync(int person, PersonStateKind kind, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public Task<Dictionary<PersonStateKind, string>> LoadDocumentsAsync(int person, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public Task SaveChangesAsync(IReadOnlyList<PersonChanges> batch, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 

@@ -61,6 +61,7 @@ public sealed partial class PersonService(
     IRedisCollection<MazeReserveCache> mazeReserves,
     Reservations reservations,
     IDbContextFactory<PersistenceContext> factory,
+    PersonStateStore states,
     PersonRegistry registry,
     TradePasswordService passwords,
     InventoryPersistence inventories,
@@ -208,6 +209,9 @@ public sealed partial class PersonService(
                 Server = Gate
             }
         });
+
+        // Every document of the person in one query: the features below take theirs from it until the entry is over.
+        using var documents = await states.ReadAtEntryAsync(person.Id, context.CancellationToken);
 
         await inventories.LoadAsync(context.Player, person, context.CancellationToken);
 

@@ -31,6 +31,17 @@ public sealed class PersonStore(IDbContextFactory<PersistenceContext> factory) :
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<Dictionary<PersonStateKind, string>> LoadDocumentsAsync(int person, CancellationToken cancellationToken = default)
+    {
+        await using var database = await factory
+            .CreateDbContextAsync(cancellationToken);
+
+        return await database.PersonStates
+            .Where(e => e.PersonId == person)
+            .Select(e => new { e.Kind, e.Payload })
+            .ToDictionaryAsync(e => e.Kind, e => e.Payload, cancellationToken);
+    }
+
     public Task SaveChangesAsync(IReadOnlyList<PersonChanges> batch, CancellationToken cancellationToken = default)
     {
         return factory.SaveChangesAsync(batch, cancellationToken);
