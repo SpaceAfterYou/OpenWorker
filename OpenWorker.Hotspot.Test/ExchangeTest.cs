@@ -171,12 +171,72 @@ public sealed class ExchangeTest
             new TradePasswordComponent { Password = "hash", State = PasswordProtectionState.Authenticated });
     }
 
-    private static ExchangeService Service(TestServer server, ItemCatalog catalog)
+    private static ExchangeService Service(TestServer server, ItemCatalog catalog, IExchangeStore? store = null)
     {
         var inventory = new InventoryService(server.World, catalog, new LocalItemSerials());
 
-        return new ExchangeService(server.World, new ExchangeStore(Factory), new PostStore(Factory), inventory, server.Network,
+        return new ExchangeService(server.World, store ?? new ExchangeStore(Factory), new PostStore(Factory), inventory, server.Network,
             NoPersonFlush.Instance, Fees(), NullLogger<ExchangeService>.Instance);
+    }
+
+    /// <summary>
+    /// The store of the exchange with a purchase that fails the way a lost connection does.
+    /// </summary>
+    public class PurchaseFails : System.Reflection.DispatchProxy
+    {
+        public IExchangeStore Inner { get; set; } = null!;
+
+        protected override object? Invoke(System.Reflection.MethodInfo? method, object?[]? args)
+        {
+            if (method!.Name == nameof(IExchangeStore.BuyAsync))
+            {
+                return Task.FromException<ExchangeBuyResult>(new TimeoutException("the database does not answer"));
+            }
+
+            return method.Invoke(Inner, args);
+        }
+    }
+
+    /// <summary>
+    /// The database fails in the middle of a purchase: nothing was sold, so the buyer keeps its gold.
+    /// </summary>
+    [TestMethod]
+    public async Task APurchaseTheDatabaseFailsCostsTheBuyerNothing()
+    {
+        var (_, seller) = await CreatePersonAsync("failseller");
+        var (buyerAccount, buyer) = await CreatePersonAsync("failbuyer");
+
+        var real = new ExchangeStore(Factory);
+        var waiting = await real.AddWaitingAsync(Draft(seller, upgrade: 0), 10);
+        var listing = (await real.PutOnSaleAsync(waiting.Listing!.Serial, seller, 2_000, 9, DateTime.UtcNow.AddHours(1), 10)).Listing!;
+
+        var failing = System.Reflection.DispatchProxy.Create<IExchangeStore, PurchaseFails>();
+
+        ((PurchaseFails)(object)failing).Inner = real;
+
+        var catalog = Catalog();
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var player = server.Join(buyer, "failbuyer");
+
+        Equip(server, player, buyerAccount, catalog, 5_000);
+
+        var service = Service(server, catalog, failing);
+
+        try
+        {
+            Handle(server, player, c => service.OnHandleAsync(c, new ExchangeItemBuyRequest { Exchange = listing.Id, Item = Sword, Count = 1 }));
+        }
+        catch (Exception e) when (e is TimeoutException || e.InnerException is TimeoutException || e is AggregateException)
+        {
+            // The failure of the store goes on to the error budget of the session; the gold is what is asked here.
+        }
+
+        Assert.AreEqual(5_000, server.World.Get<CurrencyComponent>(player.Entity).Gold);
+        Assert.AreEqual((short)1, (await real.FindAsync(listing.Id))!.Count, "the listing is untouched");
+
+        // The tests of this class share one exchange: the listing leaves it again.
+        await real.RecallAsync(listing.Serial, seller, e => ExchangeListings.ReturnLetter(e, DateTime.UtcNow));
     }
 
     private static void Handle(TestServer server, TestPlayer player, Func<ServiceHandleContext, ValueTask> handle) =>

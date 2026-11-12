@@ -254,6 +254,9 @@ public sealed partial class ExchangeService(
 
         ExchangeListingResult result = default;
 
+        // Told apart from the default of the result, which reads as "done": a store that throws has put nothing on sale.
+        var listed = false;
+
         try
         {
             result = await store.PutOnSaleAsync(
@@ -264,10 +267,12 @@ public sealed partial class ExchangeService(
                 expiresAt,
                 useCount ? ExchangeRules.SaleLimitWithTicket : limit,
                 context.CancellationToken);
+
+            listed = result.Outcome == ExchangeOutcome.Done;
         }
         finally
         {
-            if (result.Outcome != ExchangeOutcome.Done && fee > 0)
+            if (!listed && fee > 0)
             {
                 await GiveBackAsync(context, account, fee, []);
             }
@@ -334,7 +339,8 @@ public sealed partial class ExchangeService(
             return;
         }
 
-        var page = Math.Max(1, request.Page);
+        // A page so far that its first row cannot be counted in an int is as empty as any page past the end.
+        var page = Math.Clamp(request.Page, 1, int.MaxValue / ExchangeRules.PageSize);
 
         var search = ExchangeRules.Filter(request.Item, request.Category, request.SubCategory, request.UseClass, request.LevelMin,
             request.LevelMax, request.GradeMin, request.GradeMax, request.Price, request.Upgrade);
@@ -366,15 +372,16 @@ public sealed partial class ExchangeService(
         var player = context.Player;
         var me = Me(context);
 
-        if (request.Count <= 0 || request.Count > inventory.Catalog.StackLimit(request.Item))
-        {
-            Bought(context, request, ExchangeCodes.CountMismatch);
-            return;
-        }
-
+        // The trade password is asked before anything of the request is looked at.
         if (!MayTrade(player))
         {
             Bought(context, request, ExchangeCodes.Mismatch);
+            return;
+        }
+
+        if (request.Count <= 0 || request.Count > inventory.Catalog.StackLimit(request.Item))
+        {
+            Bought(context, request, ExchangeCodes.CountMismatch);
             return;
         }
 
@@ -414,6 +421,9 @@ public sealed partial class ExchangeService(
 
         ExchangeBuyResult result = default;
 
+        // Told apart from the default of the result, which reads as "done": a store that throws has sold nothing.
+        var bought = false;
+
         try
         {
             result = await store.BuyAsync(
@@ -425,10 +435,12 @@ public sealed partial class ExchangeService(
                 now,
                 (sold, count) => ExchangeListings.SaleLetters(sold, count, me, info.Name, (byte)info.Hero, now),
                 context.CancellationToken);
+
+            bought = result.Outcome == ExchangeOutcome.Done;
         }
         finally
         {
-            if (result.Outcome != ExchangeOutcome.Done)
+            if (!bought)
             {
                 await GiveBackAsync(context, account, total, []);
             }
