@@ -149,7 +149,22 @@ public sealed partial class MyRoomBook(
         }
 
         var room = new MyRoomRecord(account, Gate, (short)row.Id, Grid: 1, OpenLevel: 0, name);
-        var made = await store.CreateAsync(room, cancellationToken);
+        var made = false;
+
+        try
+        {
+            made = await store.CreateAsync(room, cancellationToken);
+        }
+
+        finally
+        {
+            // A room that was not made costs nothing: another character of the account made it on another server a moment
+            // before, or the store failed (the failure goes on to the error budget of the session).
+            if (!made && world.IsAlive(player))
+            {
+                inventory.TryAddGold(player, row.CreateGold);
+            }
+        }
 
         if (!world.IsAlive(player))
         {
@@ -158,8 +173,6 @@ public sealed partial class MyRoomBook(
 
         if (!made)
         {
-            // Another character of the account made it on another server a moment before.
-            inventory.TryAddGold(player, row.CreateGold);
             Send(player, new ErrorMessageResponse(CreateOpcode, MyRoomCodes.AlreadyMade));
             return;
         }

@@ -13,6 +13,9 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Shop.Components;
+using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -51,7 +54,9 @@ public sealed class MyRoomServiceTest
 
         public Task<int?> AccountOfAsync(int person, short gate, CancellationToken cancellationToken = default) => Task.FromResult<int?>(null);
 
-        public Task<bool> CreateAsync(MyRoomRecord room, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Func<MyRoomRecord, Task<bool>> Create { get; set; } = _ => Task.FromResult(true);
+
+        public Task<bool> CreateAsync(MyRoomRecord room, CancellationToken cancellationToken = default) => Create(room);
 
         public Task SetupAsync(int account, short gate, byte openLevel, string name, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
@@ -86,7 +91,8 @@ public sealed class MyRoomServiceTest
                 new([]));
 
             Catalog = new MyRoomCatalog(
-                new ReadOnlyCollection<MyroomInfoRow>([TestRows.Build<MyroomInfoRow>(("Id", 1), ("Maze", 20011), ("MaxVisitors", 19))]),
+                new ReadOnlyCollection<MyroomInfoRow>(
+                    [TestRows.Build<MyroomInfoRow>(("Id", 1), ("Maze", 20011), ("MaxVisitors", 19), ("CreateLevel", 10), ("CreateGold", 5000))]),
                 new ReadOnlyCollection<MyroomFurnitureRow>(
                     [TestRows.Build<MyroomFurnitureRow>(("Id", 1), ("ItemId", Bed), ("Placement", 1), ("Width", 1), ("Depth", 1), ("Seats", 1))]),
                 new ReadOnlyCollection<MyroomGreedRow>([TestRows.Build<MyroomGreedRow>(("Id", 1), ("Width", 26), ("Depth", 28), ("Height", 8))]),
@@ -108,6 +114,10 @@ public sealed class MyRoomServiceTest
                 new ServerSessionComponent(new RecordingConnection()),
                 new WorldComponent { Location = 20011, Position = Vector3.Zero, Rotation = 0f, Jump = 0 },
                 new ClaimsComponent(Account, 0),
+                new LevelComponent(10, 0),
+                new MyRoomComponent(),
+                new CurrencyComponent { Gold = 10_000 },
+                new PersonInfoComponent { Name = "Owner", Hero = Hero.Lily },
                 new InventoryComponent(new InventoryFactory(items, new([]), new LocalItemSerials()).CreateNew(person)));
 
             World.Add(Player, TestMazes.Create(World, Player, instance: Instance));
@@ -123,9 +133,9 @@ public sealed class MyRoomServiceTest
             Rooms.Open(Instance, Room, Guid.NewGuid());
             Rooms.Join(Player, Instance, Room, Account, 1, 0);
 
-            var book = new MyRoomBook(World, StoreOfRooms, Catalog, Inventory, Options.Create(new GateOptions { Id = 1 }), NullLogger<MyRoomBook>.Instance);
+            Book = new MyRoomBook(World, StoreOfRooms, Catalog, Inventory, Options.Create(new GateOptions { Id = 1 }), NullLogger<MyRoomBook>.Instance);
 
-            Service = new MyRoomService(World, Rooms, book, Catalog, StoreOfRooms, null!, null!, Inventory, NoPersonFlush.Instance,
+            Service = new MyRoomService(World, Rooms, Book, Catalog, StoreOfRooms, null!, null!, Inventory, NoPersonFlush.Instance,
                 NullLogger<MyRoomService>.Instance);
         }
 
@@ -146,6 +156,8 @@ public sealed class MyRoomServiceTest
         public MyRoomState Room { get; }
 
         public MyRoomService Service { get; }
+
+        public MyRoomBook Book { get; }
 
         public ServiceHandleContext Context => new(Player, CancellationToken.None);
 
@@ -205,5 +217,26 @@ public sealed class MyRoomServiceTest
 
         Assert.IsNull(harness.BedInBag(), "a piece the database took leaves the bag");
         Assert.AreEqual(serial, harness.Room.Furniture.Single().Serial);
+    }
+
+    /// <summary>
+    /// The gold of making a room is taken before the room is written, and comes back when the store fails.
+    /// </summary>
+    [TestMethod]
+    public async Task ARoomTheStoreFailsToMakeCostsNothing()
+    {
+        using var harness = new Harness();
+
+        harness.StoreOfRooms.Create = _ => Task.FromException<bool>(new TimeoutException("the database does not answer"));
+
+        await Assert.ThrowsExactlyAsync<TimeoutException>(async () => await harness.Book.CreateAsync(harness.Player, 1, CancellationToken.None));
+
+        Assert.AreEqual(10_000, harness.Inventory.Gold(harness.Player));
+
+        harness.StoreOfRooms.Create = _ => Task.FromResult(true);
+
+        await harness.Book.CreateAsync(harness.Player, 1, CancellationToken.None);
+
+        Assert.AreEqual(5_000, harness.Inventory.Gold(harness.Player), "a room that is made costs its gold");
     }
 }

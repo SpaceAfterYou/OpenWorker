@@ -60,4 +60,10 @@ public sealed class MazeReserveCache
     /// </summary>
     [RedisField]
     public short Return { get; set; }
+
+    /// <summary>
+    /// The room is of a friend of the person: going into it counts for the achievement of visits once the room lets it in.
+    /// </summary>
+    [RedisField]
+    public bool Friend { get; set; }
 }

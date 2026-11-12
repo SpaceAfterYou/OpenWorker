@@ -211,9 +211,11 @@ public sealed partial class WorldManager(
 
     /// <summary>
     /// Sends the player into the instance of the room of an account, the room being played in a maze; <paramref name="back"/> is
-    /// the district the player goes back to when it leaves. False when the location has no start to enter by.
+    /// the district the player goes back to when it leaves; <paramref name="friend"/> tells the room that the owner is a friend
+    /// of the player. False when the location has no start to enter by.
     /// </summary>
-    public async ValueTask<bool> SendToRoomAsync(Entity player, short location, (string Host, short Port) maze, Guid instance, int owner, short back)
+    public async ValueTask<bool> SendToRoomAsync(Entity player, short location, (string Host, short Port) maze, Guid instance, int owner, short back,
+        bool friend = false)
     {
         if (!provider.TryGetAndCache(location, out var batch, out var type) ||
             type != BatchType.Maze ||
@@ -222,12 +224,13 @@ public sealed partial class WorldManager(
             return false;
         }
 
-        await SendToMazeAsync(player, location, start, maze, instance, 0, 0, owner, back);
+        await SendToMazeAsync(player, location, start, maze, instance, 0, 0, owner, back, friend);
 
         return true;
     }
 
-    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party, int members, int room = 0, short back = 0)
+    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party, int members, int room = 0, short back = 0,
+        bool friend = false)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
@@ -276,7 +279,8 @@ public sealed partial class WorldManager(
             Party = party,
             Members = (byte)Math.Clamp(members, 0, byte.MaxValue),
             Room = room,
-            Return = back
+            Return = back,
+            Friend = friend
         };
 
         // The maze loads the person from the database: what this server has must be there first.

@@ -10,6 +10,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Handler.Abstractions;
@@ -40,7 +41,8 @@ public sealed partial class MyRoomService(
     WorldManager manager,
     InventoryService inventory,
     IPersonFlush persons,
-    ILogger<MyRoomService> logger
+    ILogger<MyRoomService> logger,
+    AchievementManager? achievements = null
 ) :
     IHotspotHandler<MyRoomEditStartRequest>,
     IHotspotHandler<MyRoomEditEndRequest>,
@@ -67,7 +69,7 @@ public sealed partial class MyRoomService(
     /// the player is let in or sent back with the reason, and the client is told the room, its furniture and who sits where.
     /// The room is opened only in the instance its record names: a player who comes into another one is sent on to it.
     /// </summary>
-    public async ValueTask ArriveAsync(Entity player, LuaMaze maze, int owner, short back, CancellationToken cancellationToken)
+    public async ValueTask ArriveAsync(Entity player, LuaMaze maze, int owner, short back, bool friend, CancellationToken cancellationToken)
     {
         if (owner == 0 || !world.IsAlive(player))
         {
@@ -94,7 +96,7 @@ public sealed partial class MyRoomService(
             if (taken.Elsewhere is { } elsewhere)
             {
                 LogSentOn(owner, maze.Instance, elsewhere.Instance);
-                await SendOnAsync(player, elsewhere, owner, back);
+                await SendOnAsync(player, elsewhere, owner, back, friend);
                 return;
             }
 
@@ -131,6 +133,12 @@ public sealed partial class MyRoomService(
         }
 
         rooms.Join(player, maze.Instance, room, account, world.Get<ActorComponent>(player).Identifier, back);
+
+        // Going into the room of a friend counts once the room has let the player in.
+        if (friend && achievements is not null)
+        {
+            achievements.Count(player, AchievementType.RoomVisited);
+        }
 
         var session = world.Get<ServerSessionComponent>(player);
 
@@ -188,7 +196,7 @@ public sealed partial class MyRoomService(
     /// <summary>
     /// Sends the player into the instance that plays the room; back to its district when that cannot be.
     /// </summary>
-    private async ValueTask SendOnAsync(Entity player, MyRoomCache elsewhere, int owner, short back)
+    private async ValueTask SendOnAsync(Entity player, MyRoomCache elsewhere, int owner, short back, bool friend = false)
     {
         if (!world.IsAlive(player))
         {
@@ -197,7 +205,7 @@ public sealed partial class MyRoomService(
 
         var location = world.Get<WorldComponent>(player).Location;
 
-        if (!await manager.SendToRoomAsync(player, location, (elsewhere.Host, elsewhere.Port), elsewhere.Instance, owner, back))
+        if (!await manager.SendToRoomAsync(player, location, (elsewhere.Host, elsewhere.Port), elsewhere.Instance, owner, back, friend))
         {
             await SendOutAsync(player, back, MyRoomCodes.EnterFailed);
             return;

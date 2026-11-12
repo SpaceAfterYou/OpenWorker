@@ -309,7 +309,7 @@ public sealed partial class PersonService(
         await roomBook.EnterAsync(context.Player, context.CancellationToken);
 
         // A room tells who may come in, and the client what stands in it.
-        await roomService.ArriveAsync(context.Player, maze, mazeReserve.Room, mazeReserve.Return, context.CancellationToken);
+        await roomService.ArriveAsync(context.Player, maze, mazeReserve.Room, mazeReserve.Return, mazeReserve.Friend, context.CancellationToken);
 
         // The client has the maze now: the count of the entries is told last.
         if (world.IsAlive(context.Player))

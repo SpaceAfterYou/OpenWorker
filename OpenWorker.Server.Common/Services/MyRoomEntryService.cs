@@ -8,7 +8,6 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.MyRoom;
-using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
@@ -33,8 +32,7 @@ public sealed partial class MyRoomEntryService(
     WorldManager manager,
     IPersonRelations relations,
     MyRoomDirectory directory,
-    ILogger<MyRoomEntryService> logger,
-    AchievementManager? achievements = null
+    ILogger<MyRoomEntryService> logger
 ) :
     IHotspotHandler<MyRoomCreateRequest>,
     IHotspotHandler<MyRoomEnterRequest>
@@ -79,24 +77,16 @@ public sealed partial class MyRoomEntryService(
             return;
         }
 
-        // The room of a friend counts for the achievement, the visit of one's own does not.
-        if (owner != account && achievements is not null &&
-            await relations.IsFriendAsync(world.Get<ActorComponent>(player).Identifier, request.Person))
-        {
-            if (!world.IsAlive(player))
-            {
-                return;
-            }
-
-            achievements.Count(player, AchievementType.RoomVisited);
-        }
+        // The room of a friend counts for the achievement, the visit of one's own does not; the room counts it as it lets the
+        // player in.
+        var friend = owner != account && await relations.IsFriendAsync(world.Get<ActorComponent>(player).Identifier, request.Person);
 
         if (!world.IsAlive(player))
         {
             return;
         }
 
-        if (!await manager.SendToRoomAsync(player, (short)row.Maze, (record.Host, record.Port), record.Instance, owner, back))
+        if (!await manager.SendToRoomAsync(player, (short)row.Maze, (record.Host, record.Port), record.Instance, owner, back, friend))
         {
             if (world.IsAlive(player))
             {
