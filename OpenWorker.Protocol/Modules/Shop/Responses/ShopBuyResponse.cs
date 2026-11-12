@@ -2,15 +2,15 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
-using OpenWorker.Hotspot.Modules.Shop.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct ShopBuyResponse : IResponseHotspotMessage
+public readonly partial struct ShopBuyResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -23,20 +23,10 @@ public readonly struct ShopBuyResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireArray(WireLength.Signed32)]
     public IReadOnlyCollection<StorageValue> StorageList { get; init; }
     public long Spent { get; init; }
     public ShopCurrency Currency { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(StorageList);
-        writer.Write(Spent);
-        writer.Write(Currency);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -36,17 +36,6 @@ public static class BinaryWriteExtension
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, IReadOnlyCollection<StorageValue> storageList)
-    {
-        writer.Write(storageList.Count);
-
-        foreach (var storage in storageList)
-        {
-            writer.Write(storage);
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ItemValue value)
     {
         WireBridge.Write(writer, value);
