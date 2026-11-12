@@ -1,4 +1,3 @@
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
@@ -204,7 +203,7 @@ public sealed class ItemWireFormatTest
             writer.Write(7);
             writer.Write((byte)StorageGroup.Common);
             writer.Write((short)12);
-            writer.Write(item);
+            WireBridge.Write(writer, item);
         });
 
         var reader = new PacketReader(bytes);

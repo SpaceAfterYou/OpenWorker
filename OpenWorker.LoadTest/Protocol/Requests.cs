@@ -1,11 +1,11 @@
 using System.Numerics;
 using OpenWorker.Domain.Enums;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 using OpenWorker.Hotspot.Modules.Chat.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.LoadTest.Protocol;
 
@@ -89,7 +89,7 @@ internal static class Requests
         using var stream = new MemoryStream();
         using (var binary = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
         {
-            binary.Write(TemplatePerson(name));
+            WireBridge.Write(binary, TemplatePerson(name));
             binary.Write(Template.Outfit);
         }
 

@@ -1,5 +1,4 @@
 ﻿using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;

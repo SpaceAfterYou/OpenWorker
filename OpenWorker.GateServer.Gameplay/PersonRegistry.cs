@@ -4,7 +4,6 @@ using Arch.Core;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;

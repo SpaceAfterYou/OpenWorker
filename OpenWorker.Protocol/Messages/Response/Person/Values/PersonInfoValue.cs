@@ -1,6 +1,5 @@
 ﻿using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;

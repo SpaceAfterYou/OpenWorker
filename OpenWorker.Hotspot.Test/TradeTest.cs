@@ -11,13 +11,10 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Shop.Components;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
-using OpenWorker.Hotspot.Modules.Trade.Extensions;
 using OpenWorker.Hotspot.Modules.Trade.Requests;
 using OpenWorker.Hotspot.Modules.Trade.Types;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -145,9 +142,28 @@ public sealed class TradeTest
         return read(reader);
     }
 
+    // A text as the client sends it: a 16-bit length of twice the characters and a zero byte, UTF-16, the zero byte.
+    private static void Text(BinaryWriter writer, string value)
+    {
+        writer.Write((short)(2 * value.Length + 1));
+        writer.Write(System.Text.Encoding.Unicode.GetBytes(value));
+        writer.Write((byte)0);
+    }
+
+    // The items put up in a shop of a player: a byte count, then each item.
+    private static void Items(BinaryWriter writer, params PrivateShopItemValue[] items)
+    {
+        writer.Write(checked((byte)items.Length));
+
+        foreach (var item in items)
+        {
+            item.Write(writer);
+        }
+    }
+
     private static int Raw(Player player) => new ActorValue(player.Actor, ActorType.User);
 
-    private static TradeRequest Invite(Player target) => Read(w => w.WritePersonName("Player" + (target.Actor - 1000)), r => new TradeRequest(r));
+    private static TradeRequest Invite(Player target) => Read(w => Text(w, "Player" + (target.Actor - 1000)), r => new TradeRequest(r));
 
     private static TradeAcceptRequest Accept(Player inviter) => Read(w => { w.Write(Raw(inviter)); w.Write((byte)1); }, r => new TradeAcceptRequest(r));
 
@@ -317,8 +333,8 @@ public sealed class TradeTest
         {
             w.Write((byte)StorageGroup.Common);
             w.Write((short)0);
-            w.WriteUtf16UnicodeString("Cloth for sale");
-            w.Write(new[] { new PrivateShopItemValue { Item = cloth.ToValue(), Money = 400 } });
+            Text(w, "Cloth for sale");
+            Items(w, new PrivateShopItemValue { Item = cloth.ToValue(), Money = 400 });
         }, r => new TradePrivateShopStartRequest(r)));
 
         Assert.AreEqual(PrivateShops.Selling, market.District.Ecs.Get<ShopPrivateComponent>(owner.Entity).Type);
@@ -382,8 +398,8 @@ public sealed class TradeTest
         {
             w.Write((byte)StorageGroup.Common);
             w.Write((short)0);
-            w.WriteUtf16UnicodeString("Cloth for sale");
-            w.Write(new[] { new PrivateShopItemValue { Item = cloth.ToValue(), Money = 400 } });
+            Text(w, "Cloth for sale");
+            Items(w, new PrivateShopItemValue { Item = cloth.ToValue(), Money = 400 });
         }, r => new TradePrivateShopStartRequest(r)));
 
         Assert.AreEqual(TradeCodes.ShopItemRefused, BitConverter.ToUInt16((await RefusalAsync(locked, TradeOpcode.PrivateShopStart)).Body, 0));
@@ -469,8 +485,8 @@ public sealed class TradeTest
         {
             w.Write((byte)StorageGroup.Common);
             w.Write((short)0);
-            w.WriteUtf16UnicodeString("Cloth for sale");
-            w.Write(new[] { new PrivateShopItemValue { Item = goods.ToValue(), Money = 400 } });
+            Text(w, "Cloth for sale");
+            Items(w, new PrivateShopItemValue { Item = goods.ToValue(), Money = 400 });
         }, r => new TradePrivateShopStartRequest(r));
 
         await market.Send(keeper, Shop(boundGoods));

@@ -4,7 +4,6 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Login;
 using OpenWorker.Gameplay.Modules.Login.Extensions;

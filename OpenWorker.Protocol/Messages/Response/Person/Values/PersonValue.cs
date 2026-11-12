@@ -1,5 +1,4 @@
 ﻿using OpenWorker.Domain.Types;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;

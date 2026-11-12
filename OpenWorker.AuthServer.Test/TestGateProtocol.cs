@@ -12,7 +12,6 @@ using OpenWorker.Gameplay.Modules.Login;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.GateServer.Gameplay;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
@@ -22,6 +21,7 @@ using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using OpenWorker.Persistence;
 using OpenWorker.Persistence.Utils;
+using OpenWorker.Wire;
 
 namespace OpenWorker.AuthServer.Test;
 
@@ -179,7 +179,7 @@ public sealed class TestGateProtocol
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
 
-        writer.Write(new ProtectionStateValue
+        WireBridge.Write(writer, new ProtectionStateValue
         {
             SecondPassword = PasswordProtectionState.Lock,
             TradePassword = PasswordProtectionState.UnAuthenticated

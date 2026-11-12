@@ -4,6 +4,7 @@ using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Responses;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -34,7 +35,7 @@ public sealed class ShopWireFormatTest
             OptionList = Enumerable.Range(0, 5).Select(_ => new ItemOption(0, 0)).ToList(),
             BroachState = "000000000000000"
         };
-        var itemSize = ToBytes(writer => writer.Write(item)).Length;
+        var itemSize = ToBytes(writer => WireBridge.Write(writer, item)).Length;
         var slot = new StorageItemValue(StorageGroup.Common, 3, item);
 
         var bought = ToBytes(new ShopBuyResponse

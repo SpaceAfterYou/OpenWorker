@@ -1,5 +1,4 @@
 ﻿using System.Buffers.Binary;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.SoulWorker.Network.DataTypes.Enums;
 
 namespace OpenWorker.Hotspot.SoulWorker.Network;
@@ -75,7 +74,7 @@ public readonly struct MessageHeader
     {
         writer.Write(Version);
         writer.Write(Length);
-        writer.Write(Direction);
+        writer.Write((byte)Direction);
     }
 
     /// <summary>

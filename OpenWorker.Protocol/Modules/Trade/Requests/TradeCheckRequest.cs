@@ -8,7 +8,7 @@ namespace OpenWorker.Hotspot.Modules.Trade.Requests;
 
 [WireMessage(WireMethods.Read)]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly partial struct TradeCheckRequest : IRequestHotspotMessage, IWritableData
+public readonly partial struct TradeCheckRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.Check;
@@ -16,9 +16,4 @@ public readonly partial struct TradeCheckRequest : IRequestHotspotMessage, IWrit
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public byte IsChecked { get; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(IsChecked);
-    }
 }
