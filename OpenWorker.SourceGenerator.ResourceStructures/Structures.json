@@ -2416,9 +2416,9 @@
   ],
   "tb_Myroom_Greed": [
     "Int32",
-    "Int32",
-    "Int32",
-    "Int32",
+    "Int32 Width",
+    "Int32 Depth",
+    "Int32 Height",
     "Int32",
     "Int32",
     "Int32",
