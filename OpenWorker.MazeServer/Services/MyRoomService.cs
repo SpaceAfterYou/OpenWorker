@@ -342,18 +342,23 @@ public sealed partial class MyRoomService(
 
         var placed = new MyRoomPiece(piece.Serial, piece.Item, piece.Rotation, piece.Grid);
 
-        inventory.Spend(player, item, 1);
-        room.Place(placed);
-
+        // The database takes the piece first: an item leaves the bag only for a piece that stands in the room. A refusal or an
+        // error of the store leaves the item where it is.
         if (!await store.PlaceAsync(room.Room.Account, room.Room.Gate, placed, context.CancellationToken))
         {
             LogNotPlaced(piece.Serial, room.Room.Account);
-        }
-
-        if (!world.IsAlive(player))
-        {
             return;
         }
+
+        // The player may have left, or the room moved elsewhere, while the piece was written: the piece goes again, so it never
+        // stands in the room while its item is still in the bag.
+        if (OwnRoom(player) != room || !room.Arranging || FindInBag(player, piece.Serial) != item || !room.Place(placed))
+        {
+            await store.RemoveAsync(room.Room.Account, room.Room.Gate, piece.Serial, CancellationToken.None);
+            return;
+        }
+
+        inventory.Spend(player, item, 1);
 
         // The bag without the item is written at once, so the piece is never in the room and in the bag both.
         await persons.FlushAsync(player);
