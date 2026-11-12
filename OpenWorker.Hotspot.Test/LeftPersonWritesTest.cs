@@ -432,9 +432,9 @@ public sealed class LeftPersonWritesTest
         });
 
         Assert.IsTrue(await flushed!, "The write of the player who stays is in");
-        CollectionAssert.AreEqual(new[] { 7 }, script.Saves[first].Persons, "The round was stopped right after person 7");
-        CollectionAssert.AreEqual(new[] { 7, 8 }, script.Saves[first + 2].Persons, "The next round tries both together first");
-        CollectionAssert.AreEqual(new[] { 8 }, script.Saves[first + 3].Persons, "and then the one tried longest ago");
+        Assert.IsTrue(script.Saves[first].Persons is [7], "The round was stopped right after person 7");
+        Assert.IsTrue(script.Saves[first + 2].Persons is [7, 8], "The next round tries both together first");
+        Assert.IsTrue(script.Saves[first + 3].Persons is [8], "and then the one tried longest ago");
 
         await server.Writer.StopAsync(new CancellationToken(true));
     }
