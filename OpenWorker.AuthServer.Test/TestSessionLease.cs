@@ -6,7 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenWorker.AuthServer.App;
+using OpenWorker.AuthServer.Test.DependencyInjection;
+using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Domain.Stores;
+using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.DependencyInjection;
@@ -260,6 +265,109 @@ public sealed class TestSessionLease
     }
 
     /// <summary>
+    /// The database of the test: the first write waits until the test lets it through.
+    /// </summary>
+    private sealed class HeldStore : IPersonStore
+    {
+        public TaskCompletionSource<IReadOnlyList<PersonChanges>> Writing { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Written { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task SaveChangesAsync(IReadOnlyList<PersonChanges> batch, CancellationToken cancellationToken = default)
+        {
+            Writing.TrySetResult(batch);
+
+            await Written.Task;
+        }
+
+        public Task<List<ItemPersistent>> LoadItemsAsync(int person, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<long[]> ReserveSerialsAsync(int count, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<string?> LoadDocumentAsync(int person, PersonStateKind kind, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// The person stands somewhere it has not been written at, so its flush has a write to make.
+    /// </summary>
+    private sealed class NewPlace : IPersonPlaceSource
+    {
+        public static PersonPlace Place { get; } = new(10003, 1, 2, 3, 0);
+
+        public bool TryGetPlace(World world, Entity player, out PersonPlace place)
+        {
+            place = Place;
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// A connection that closes gives its session up only after what the person changed is in the database: the server the
+    /// person goes to (or a new login) reads the person only then. The lease is registered before the flush, as every
+    /// server registers it, and still goes last.
+    /// </summary>
+    [TestMethod]
+    public async Task AClosedConnectionGivesTheSessionUpOnlyAfterItsLastWriteIsInTheDatabase()
+    {
+        var store = new HeldStore();
+        var play = Options.Create(new SessionLeaseOptions { Play = true });
+        var session = NewSession();
+
+        await using var server = await ServerHarness.StartAsync(collection =>
+        {
+            collection.AddSingleton(provider => new SessionLeaseManager(
+                Sessions, Redis, provider.GetRequiredService<World>(), provider.GetRequiredService<WorldLoop>(), play));
+            collection.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<SessionLeaseManager>());
+
+            collection.AddSingleton<IPersonStore>(store);
+            collection.AddSingleton<IPersonPlaceSource, NewPlace>();
+            collection.AddSingleton<PersonSnapshots>();
+            collection.AddSingleton<PersistenceWriter>();
+            collection.AddHostedService(provider => provider.GetRequiredService<PersistenceWriter>());
+            collection.AddSingleton<PersonFlush>();
+            collection.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<PersonFlush>());
+        }, cancellationToken: TestContext.CancellationToken);
+
+        var client = await server.ConnectAsync(TestContext.CancellationToken);
+
+        // The person has entered: its state is loaded and the session is held here.
+        var player = await server.Loop.InvokeAsync(() =>
+        {
+            Entity found = default;
+
+            server.World.Query(new QueryDescription().WithAll<ServerSessionComponent>(), entity => found = entity);
+
+            server.World.Add(found, new DirtyComponent(new PersonDirty(1)));
+
+            return found;
+        });
+
+        await server.Host.Services.GetRequiredService<SessionLeaseManager>().AttachAsync(player, session, 1);
+
+        client.Dispose();
+
+        var batch = await store.Writing.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken);
+
+        Assert.AreEqual(NewPlace.Place, batch.Single().Place);
+
+        // The write has not reached the database: the session is still this server's, and the next one waits for it.
+        Assert.IsTrue((await FindAsync(session))!.Connected, "A new login is refused while the write is on its way");
+
+        using var world = World.Create();
+        var next = new SessionLeaseManager(Sessions, Redis, options: play);
+        var entering = next.TakeOverAsync(world.Create(), session, 1);
+
+        await Task.Delay(TimeSpan.FromMilliseconds(400), TestContext.CancellationToken);
+
+        Assert.IsFalse(entering.IsCompleted, "The next server waits for the write");
+
+        store.Written.SetResult();
+
+        Assert.IsTrue(await entering.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken), "The written person is let go");
+    }
+
+    /// <summary>
     /// A name is not tried any more after its wrong passwords, and a right one before that forgets them.
     /// </summary>
     [TestMethod]
@@ -333,7 +441,8 @@ public sealed class TestSessionLease
             var client = new TcpClient();
             await client.ConnectAsync(IPAddress.Loopback, ((IPEndPoint)listener.LocalEndpoint).Port);
 
-            var player = world.Create(new ServerSessionComponent(await listener.AcceptTcpClientAsync()));
+            // The login sets the claims of the connection: the entity has them, as every connection of a server has.
+            var player = world.Create(new ServerSessionComponent(await listener.AcceptTcpClientAsync()), new ClaimsComponent());
 
             await gameplay.TryJoinAsync(
                 new ServiceHandleContext(player, CancellationToken.None),
@@ -403,4 +512,6 @@ public sealed class TestSessionLease
                 }
             });
     }
+
+    public TestContext TestContext { get; set; } = null!;
 }
