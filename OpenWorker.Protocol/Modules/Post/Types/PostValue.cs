@@ -1,27 +1,46 @@
 using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
-using System.Diagnostics;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Post.Types;
 
-public readonly struct PostValue : IWritableData
+/// <summary>
+/// A letter between characters: who sent it, its texts, its gold and its <see cref="PostModuleDefines.ItemCount"/>
+/// items, its times, and the gems and broaches of the items.
+/// </summary>
+/// <remarks>Written by the generator. The reader of <see cref="BinaryReader"/> stays by hand for the tests that read a
+/// letter back: it takes the lengths of the texts in bytes, which no one <c>[WireString]</c> says together with how they
+/// are written.</remarks>
+[WireMessage(WireMethods.Write)]
+public readonly partial struct PostValue : IWritableData
 {
     public long Serial { get; init; }
     public PostCharacterValue Character { get; init; }
+
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Title { get; init; }
+
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Message { get; init; }
+
     public long Money { get; init; }
+
+    [WireArray(Count = PostModuleDefines.ItemCount)]
     public ItemValue[] Items { get; init; }
+
     public long RegisteredTime { get; init; }
     public byte Flag { get; init; }
     public byte Type { get; init; }
     public byte SubType { get; init; }
     public long RemainTime { get; init; }
     public long Event { get; init; }
+
+    [WireArray(WireLength.Byte)]
     public ItemSocketValue[] Sockets { get; init; }
+
+    [WireArray(WireLength.Byte)]
     public ItemBroachValue[] Broaches { get; init; }
 
     public PostValue(BinaryReader reader)
@@ -43,30 +62,5 @@ public readonly struct PostValue : IWritableData
         Event = reader.ReadInt64();
         Sockets = reader.ReadItemSocketList();
         Broaches = reader.ReadItemBroachList();
-    }
-
-    public void Write(BinaryWriter writer)
-    {
-        Debug.Assert(Items.Length is PostModuleDefines.ItemCount);
-
-        writer.Write(Serial);
-        Character.Write(writer);
-        writer.WriteUtf16UnicodeString(Title, PostModuleDefines.MaxTitleLength);
-        writer.WriteUtf16UnicodeString(Message, PostModuleDefines.MaxMessageLength);
-        writer.Write(Money);
-
-        foreach (var item in Items)
-        {
-            writer.Write(item);
-        }
-
-        writer.Write(RegisteredTime);
-        writer.Write(Flag);
-        writer.Write(Type);
-        writer.Write(SubType);
-        writer.Write(RemainTime);
-        writer.Write(Event);
-        writer.Write(Sockets);
-        writer.Write(Broaches);
     }
 }
