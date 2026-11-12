@@ -207,33 +207,48 @@ public sealed class InventoryService(
     }
 
     /// <summary>
-    /// How many of an item the person has outside the equipment.
+    /// The bags a cost is paid from. What lies in the bank or is worn is neither counted nor taken: an item put away
+    /// must not pay for anything while it stays where it is.
+    /// </summary>
+    private static bool PaysFrom(StorageGroup group)
+    {
+        return group is StorageGroup.Common or StorageGroup.Costume or StorageGroup.Cash or StorageGroup.Cube;
+    }
+
+    /// <summary>
+    /// How many of an item the person has in the bags: what <see cref="TryTake"/> can take.
     /// </summary>
     public long CountOf(Entity player, int item)
     {
         return InventoryOf(player)?.Storages
-            .Where(e => !ItemCatalog.IsEquipment(e.Group))
+            .Where(e => PaysFrom(e.Group))
             .SelectMany(e => e.Slots)
             .Where(e => e is not null && e.Item == item)
             .Sum(e => (long)e!.Count) ?? 0;
     }
 
     /// <summary>
-    /// Takes items from the inventory, all of them or none. The smallest stacks go first.
+    /// Takes items from the bags, all of them or none. The smallest stacks go first.
     /// </summary>
     public bool TryTake(Entity player, int item, int count)
     {
         var inventory = InventoryOf(player);
 
-        if (inventory is null || count <= 0 || CountOf(player, item) < count)
+        if (inventory is null || count <= 0)
         {
             return false;
         }
 
         var stacks = inventory.Items
-            .Where(e => e.Item == item && e.Storage is StorageGroup.Common or StorageGroup.Costume or StorageGroup.Cash or StorageGroup.Cube)
+            .Where(e => e.Item == item && PaysFrom(e.Storage))
             .OrderBy(e => e.Count)
             .ToList();
+
+        // Counted on the very stacks that are taken from, so a count from anywhere else can never pass for them.
+        if (stacks.Sum(e => (long)e.Count) < count)
+        {
+            return false;
+        }
 
         var rest = count;
 

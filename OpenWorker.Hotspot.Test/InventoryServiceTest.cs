@@ -121,6 +121,26 @@ public sealed class InventoryServiceTest
     }
 
     [TestMethod]
+    public void WhatLiesInTheBankPaysForNothing()
+    {
+        using var f = new Fixture();
+
+        f.Service.TryGive(f.Player, Material, 10);
+
+        var slot = f.Inventory.Find(StorageGroup.Common)!.Slots.OfType<ItemInstance>().Single().Slot;
+
+        f.Service.Move(
+            f.Player,
+            new MoveItemValue { Storage = StorageGroup.Common, Item = Material, Index = slot },
+            new MoveItemValue { Storage = StorageGroup.CommonStorage, Item = -1, Index = 0 });
+
+        Assert.AreEqual((short)10, f.Inventory.At(StorageGroup.CommonStorage, 0)?.Count, "the items are in the bank");
+        Assert.AreEqual(0, f.Service.CountOf(f.Player, Material), "and are not counted as a cost that can be paid");
+        Assert.IsFalse(f.Service.TryTake(f.Player, Material, 10), "nor taken");
+        Assert.AreEqual((short)10, f.Inventory.At(StorageGroup.CommonStorage, 0)?.Count);
+    }
+
+    [TestMethod]
     public void ItemsThatDoNotFitAreNotGivenAtAll()
     {
         using var f = new Fixture();
