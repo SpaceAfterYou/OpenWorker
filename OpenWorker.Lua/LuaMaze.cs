@@ -247,6 +247,11 @@ public partial class LuaMaze(
         public List<ChainRun> Chains { get; } = [];
 
         /// <summary>
+        /// When a claim of the client was last counted against its error budget, on the clock of the maze.
+        /// </summary>
+        public TimeSpan? RefusedAt { get; set; }
+
+        /// <summary>
         /// The combo of the player and when its last attack hit, in milliseconds of the clock of the maze.
         /// </summary>
         public int Combo { get; set; }
@@ -982,25 +987,65 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// The client fires a projectile when its animation gets there, and the server follows it to see whom it hits.
+    /// A claim of the client that cannot be made counts against its error budget once in this time: the ones it sent before the
+    /// first was refused are the same fault.
+    /// </summary>
+    private static readonly TimeSpan RefusalInterval = TimeSpan.FromSeconds(1);
+
+    private ClaimVerdict Refuse(Fighter member)
+    {
+        if (member.RefusedAt is { } last && Clock.Time - last < RefusalInterval)
+        {
+            return ClaimVerdict.Dropped;
+        }
+
+        member.RefusedAt = Clock.Time;
+
+        return ClaimVerdict.Refused;
+    }
+
+    /// <summary>
+    /// The skill being played lets the client fire one more shot of the attack: its animation has let go of one the client has
+    /// not fired yet, or is about to.
+    /// </summary>
+    private bool TakeShot(Fighter member, SkillRun run, int attack)
+    {
+        // The playback is brought up to now first: the shot may be of the animation that has just begun.
+        member.SkillWake.Cancel();
+        Play(member, run);
+
+        return member.Playback == run && run.Playback.TakeShot(attack, run.Last);
+    }
+
+    /// <summary>
+    /// The client fires a projectile when its animation gets there, and the server follows it to see whom it hits. The shot
+    /// leaves from where the server has the player, the way the client aims it; a player who is down fires nothing, and a skill
+    /// fires no more shots than its animations let go.
     /// </summary>
     [LuaIgnoreMember]
-    public void FireProjectile(Entity player, SkillProjectileRequest request)
+    public ClaimVerdict FireProjectile(Entity player, SkillProjectileRequest request)
     {
-        if (!Started || Find(player) is not { } member)
+        if (!Started || Find(player) is not { } member || !creatureManager.Vitals.IsAlive(player))
         {
-            return;
+            return ClaimVerdict.Dropped;
         }
 
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
-        // Only the skill that is being played fires its projectiles: a skill the server refused fires nothing.
-        if (request.Skill != member.CurrentSkill || !actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
+        // Only the skill that is being played fires its projectiles: a skill the server refused, or one cut by another, fires nothing.
+        if (member.Playback is not { } run || run.Skill != request.Skill ||
+            !actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
         {
-            return;
+            return ClaimVerdict.Dropped;
         }
 
-        var flight = ProjectileFlight.Launch(trigger, request.Position, request.Right, request.Yaw, request.Direction, request.Target.Identifier);
+        if (!TakeShot(member, run, trigger.Id))
+        {
+            return Refuse(member);
+        }
+
+        var shooter = Ecs.Get<WorldComponent>(player).Position;
+        var flight = ProjectileFlight.Launch(trigger, shooter, RightOf(request.Right, request.Yaw), request.Yaw, request.Direction, request.Target.Identifier);
         var session = ++member.ProjectileSession;
 
         if (!actions.IsFlownByClient(request.Skill))
@@ -1019,10 +1064,23 @@ public partial class LuaMaze(
             });
         }
 
-        var position = default(SkillPositionValue) with { Position = request.Position, Angle = request.Yaw };
+        var position = default(SkillPositionValue) with { Position = shooter, Angle = request.Yaw };
 
         // It flies with the steps of the maze from now on.
         member.Flights.Add(new PlayerFlight(request.Skill, trigger, flight, position, Clock.Time));
+
+        return ClaimVerdict.Taken;
+    }
+
+    /// <summary>
+    /// To the right of the shooter, as the client says, as a direction: a length the client makes up would carry the start of
+    /// the shot away from the player. The way the shooter looks gives it when the client's says nothing.
+    /// </summary>
+    private static Vector3 RightOf(Vector3 right, float yaw)
+    {
+        var length = right.Length();
+
+        return float.IsFinite(length) && length > 0.001f ? right / length : new Vector3(AiMath.Direction(yaw - 90f), 0f);
     }
 
     /// <summary>

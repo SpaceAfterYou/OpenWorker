@@ -422,14 +422,19 @@ public sealed partial class MazeService(
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// The player fires a shot of the skill it plays. More shots than the skill lets go count against the error budget, once a
+    /// second, as a refused move does.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillProjectileRequest request)
     {
         if (Place.IsValid(request.Position, request.Yaw) &&
             Place.IsValid(request.Right) &&
             Place.IsValid(request.Direction) &&
-            ecs.Has<LuaMaze>(context.Player))
+            ecs.Has<LuaMaze>(context.Player) &&
+            ecs.Get<LuaMaze>(context.Player).FireProjectile(context.Player, request) == ClaimVerdict.Refused)
         {
-            ecs.Get<LuaMaze>(context.Player).FireProjectile(context.Player, request);
+            errors.Charge(context.Player, MessageOpcode.From(GroupOpcode.Skill, SkillOpcode.ProjectileReq), HandlerErrorReason.Violation);
         }
 
         return ValueTask.CompletedTask;

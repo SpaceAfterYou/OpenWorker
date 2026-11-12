@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -5,32 +6,143 @@ using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Hotspot.Modules.Skill.Requests;
+using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// What a player sets going with a skill, with the client's tables and action files: a player who leaves lets go of what it carries.
+/// What a player fires with a skill is bounded by the skill, with the client's tables and action files: a projectile leaves
+/// from where the server has the player, a skill fires no more shots than it lets go, a player who is down fires nothing, and a
+/// player who leaves lets go of what it carries.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
 public sealed class PlayerShotTest
 {
     /// <summary>
+    /// A skill of Haru that throws one projectile (attack 1701 of its only animation).
+    /// </summary>
+    private const int Flying = 12000911;
+
+    private const short FlyingAttack = 1701;
+
+    /// <summary>
     /// A skill of Haru that carries away what stands before it, and a monster light enough to be carried.
     /// </summary>
     private const int PierceStep = 12000411;
 
     private const int LightMonster = 30103001;
+
+    /// <summary>
+    /// The shot of a skill leaves from where the server has the player, whatever place the client names, the way the client aims.
+    /// </summary>
+    [TestMethod]
+    public async Task AShotLeavesFromWhereTheServerHasThePlayer()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Haru, 350f).Open();
+            var player = world.Get<WorldComponent>(arena.Player).Position;
+
+            arena.Maze.StartSkill(arena.Player, Flying, default);
+
+            Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, player + new Vector3(5000f, 5000f, 0f))));
+
+            await MetricAssertions.UntilAsync(() => Frames(arena.Connection, SkillOpcode.ProjectileBt).Length == 1, "The others see the shot.");
+
+            var body = Frames(arena.Connection, SkillOpcode.ProjectileBt).Single().Body;
+            var start = new Vector2(BinaryPrimitives.ReadSingleLittleEndian(body.AsSpan(4 + 4 + 2)), BinaryPrimitives.ReadSingleLittleEndian(body.AsSpan(4 + 4 + 2 + 4)));
+
+            Assert.IsLessThan(500f, Vector2.Distance(start, new Vector2(player.X, player.Y)), $"The shot leaves from the player, not from the place the client named: {start}.");
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A skill fires the shots its animations let go and no more: the next one is refused and counts against the error budget,
+    /// the ones the client sends in the same second only do nothing.
+    /// </summary>
+    [TestMethod]
+    public void ASkillFiresNoMoreShotsThanItLetsGo()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Haru, 350f).Open();
+            var place = world.Get<WorldComponent>(arena.Player).Position;
+
+            arena.Maze.StartSkill(arena.Player, Flying, default);
+
+            Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)));
+            Assert.AreEqual(ClaimVerdict.Refused, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)), "The animation let one shot go.");
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)), "The fault is counted once a second.");
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, 99, place)), "The skill has no such attack.");
+
+            arena.Run(1.2f);
+            arena.Maze.StartSkill(arena.Player, Flying + 1, default);
+
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)), "Another skill has cut it.");
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A player who is down fires nothing: the request does nothing and is no fault.
+    /// </summary>
+    [TestMethod]
+    public void APlayerWhoIsDownFiresNothing()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Haru, 350f).Open();
+            var place = world.Get<WorldComponent>(arena.Player).Position;
+
+            arena.Maze.StartSkill(arena.Player, Flying, default);
+
+            var ability = world.Get<AbilityComponent>(arena.Player);
+
+            world.Set(arena.Player, ability with { Health = ability.Health with { Current = 0 } });
+
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)));
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
 
     /// <summary>
     /// A player who leaves the maze while it carries monsters lets them go where they stand: nothing steps the carry of a player
@@ -69,6 +181,40 @@ public sealed class PlayerShotTest
             World.Destroy(world);
         }
     }
+
+    private static SkillProjectileRequest Shot(int skill, short attack, Vector3 place)
+    {
+        Span<byte> bytes = stackalloc byte[4 + 2 + (12 * 3) + 4 + 4 + 2 + 2 + 4 + 4];
+
+        var writer = new PacketWriter(bytes);
+
+        writer.WriteInt32(skill);
+        writer.WriteInt16(attack);
+        writer.WriteSingle(place.X);
+        writer.WriteSingle(place.Y);
+        writer.WriteSingle(place.Z);
+
+        // The camera looks the way the player does, along yaw 0.
+        writer.WriteSingle(180f);
+        writer.WriteSingle(0f);
+        writer.WriteSingle(0f);
+        writer.WriteSingle(-1f);
+        writer.WriteSingle(0f);
+        writer.WriteSingle(0f);
+        writer.WriteSingle(0f);
+        writer.WriteSingle(0f);
+        writer.WriteInt16(0);
+        writer.WriteInt16(0);
+        writer.WriteUInt32(0);
+        writer.WriteInt32(0);
+
+        var reader = new PacketReader(bytes);
+
+        return SkillProjectileRequest.Read(ref reader);
+    }
+
+    private static PlayerFrame[] Frames(RecordingConnection connection, SkillOpcode command) =>
+        connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)command)).ToArray();
 
     /// <summary>
     /// A maze of the client's tables and files with one monster, and a player of the hero who stands the given distance behind it,
