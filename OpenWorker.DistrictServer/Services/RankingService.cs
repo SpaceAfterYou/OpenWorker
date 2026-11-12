@@ -99,7 +99,10 @@ public sealed class RankingService(World world, IDbContextFactory<PersistenceCon
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, RankingInfiniteTowerListRequest request)
     {
-        world.Get<ServerSessionComponent>(context.Player).Send(RankingInfiniteTowerListResponse.Create(request.Chapter));
+        world.Get<ServerSessionComponent>(context.Player).Send(new RankingInfiniteTowerListResponse
+        {
+            Data = new RankingInfiniteTowerClearInfo { FriendsClearedPerChapter = [], Stages = [], Chapter = request.Chapter }
+        });
 
         return ValueTask.CompletedTask;
     }

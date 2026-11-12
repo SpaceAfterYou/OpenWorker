@@ -1,8 +1,5 @@
-using System.Diagnostics;
-using OpenWorker.Domain.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
@@ -10,6 +7,11 @@ using OpenWorker.Hotspot.Modules.Ranking.Types;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Responses;
 
+/// <summary>
+/// The tower in the ranking window: for each chapter how many friends cleared it, and for each stage of the chapter asked for
+/// the time of the person and the fastest clear among the person and its friends. The client reads exactly fifteen chapters
+/// and five stages; fewer are filled with nothing, more are left out.
+/// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessage
 {
@@ -22,6 +24,16 @@ public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessag
 
 #endregion Interface: IHotspotMessage
 
+    /// <summary>
+    /// The chapters of the tower the client lists.
+    /// </summary>
+    public const int Chapters = 15;
+
+    /// <summary>
+    /// The stages of a chapter.
+    /// </summary>
+    public const int Stages = 5;
+
 #region Message: Body
 
     public RankingInfiniteTowerClearInfo Data { get; init; }
@@ -32,24 +44,27 @@ public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessag
 
     public void Write(BinaryWriter writer)
     {
-        Debug.Assert(Data.FriendPassedPerFloor.Length == 15);
+        var chapters = Data.FriendsClearedPerChapter ?? [];
 
-        foreach (var info in Data.FriendPassedPerFloor)
+        for (var index = 0; index < Chapters; index++)
         {
-            writer.Write(info);
+            writer.Write(index < chapters.Length ? chapters[index] : 0);
         }
 
-        Debug.Assert(Data.BestOfStage.Length == 5);
+        var stages = Data.Stages ?? [];
 
-        foreach (var friend in Data.BestOfStage)
+        for (var index = 0; index < Stages; index++)
         {
-            writer.Write(friend.MyClearTime);
-            writer.Write(friend.Stage);
-            writer.Write(friend.Person);
-            writer.Write(friend.Hero);
-            writer.Write(friend.Level);
-            writer.WritePersonName(friend.Name);
-            writer.Write(friend.ClearTime);
+            var stage = index < stages.Length ? stages[index] : Empty;
+
+            writer.Write(stage.MyClearTime);
+            writer.Write(stage.Chapter);
+            writer.Write(stage.Stage);
+            writer.Write(stage.Person);
+            writer.Write((byte)stage.Hero);
+            writer.Write(stage.Level);
+            writer.WritePersonName(stage.Name ?? string.Empty);
+            writer.Write(stage.ClearTime);
         }
 
         writer.Write(Data.Chapter);
@@ -58,30 +73,17 @@ public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessag
 #endregion Interface: IWritableData
 
     /// <summary>
-    /// Nobody has climbed the tower on this server yet, so it has nothing to show but the chapter that was asked for.
+    /// A stage nobody has cleared.
     /// </summary>
-    public static RankingInfiniteTowerListResponse Create(int chapter)
+    public static RankingInfiniteTowerRankingInfo Empty { get; } = new()
     {
-        return new RankingInfiniteTowerListResponse
-        {
-            Data = new RankingInfiniteTowerClearInfo
-            {
-                Chapter = chapter,
-                FriendPassedPerFloor = new int[15],
-                BestOfStage = Enumerable
-                    .Range(0, 5)
-                    .Select(_ => new RankingInfiniteTowerRankingInfo
-                    {
-                        MyClearTime = 0,
-                        Stage = 0,
-                        Person = 0,
-                        Hero = 0,
-                        Level = 0,
-                        Name = string.Empty,
-                        ClearTime = 0
-                    })
-                    .ToArray()
-            }
-        };
-    }
+        MyClearTime = 0,
+        Chapter = 0,
+        Stage = 0,
+        Person = 0,
+        Hero = 0,
+        Level = 0,
+        Name = string.Empty,
+        ClearTime = 0
+    };
 }
