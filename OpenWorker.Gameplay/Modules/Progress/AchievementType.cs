@@ -151,6 +151,11 @@ public enum AchievementType : ushort
     MissionDone = 53,
 
     /// <summary>
+    /// A purchase at the exchange, once for every request whatever the count.
+    /// </summary>
+    ExchangePurchase = 55,
+
+    /// <summary>
     /// A ride of an NPC of a transport.
     /// </summary>
     TransportTaken = 56,

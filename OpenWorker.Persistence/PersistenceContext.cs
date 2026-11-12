@@ -7,6 +7,9 @@ namespace OpenWorker.Persistence;
 public sealed class PersistenceContext(DbContextOptions<PersistenceContext> options) : DbContext(options)
 {
     public DbSet<AccountPersistent> Accounts { get; init; }
+    public DbSet<ExchangeInterestPersistent> ExchangeInterests { get; init; }
+    public DbSet<ExchangeListingPersistent> ExchangeListings { get; init; }
+    public DbSet<ExchangeSalePersistent> ExchangeSales { get; init; }
     public DbSet<FriendPersistent> Friends { get; init; }
     public DbSet<GatePersistent> Gates { get; init; }
     public DbSet<HelperSupportPersistent> HelperSupports { get; init; }

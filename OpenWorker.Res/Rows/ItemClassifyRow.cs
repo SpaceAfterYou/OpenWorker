@@ -13,7 +13,7 @@ public readonly partial struct ItemClassifyRow(BinaryReader reader)
     public int Id { get; } = reader.ReadInt32();
     public byte Group { get; } = reader.ReadByte();
     public short Field2 { get; } = reader.ReadInt16();
-    public byte Field3 { get; } = reader.ReadByte();
+    public byte SubGroup { get; } = reader.ReadByte();
     public short Field4 { get; } = reader.ReadInt16();
     public byte Field5 { get; } = reader.ReadByte();
     public short Field6 { get; } = reader.ReadInt16();
