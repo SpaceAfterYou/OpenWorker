@@ -42,6 +42,15 @@ public sealed class PersonRegistry(World world, InventoryFactory inventories) : 
         Component.GetComponentType(typeof(WorldComponent)),
     ];
     
+    /// <summary>
+    /// Waits until the serials are ready for the first items of the persons that have none yet, which
+    /// <see cref="CreatePersonListComponent"/> gives them and cannot wait for. After the wait the caller checks the player again.
+    /// </summary>
+    internal ValueTask EnsureSerialsAsync(IReadOnlyCollection<PersonPersistent> collection)
+    {
+        return inventories.EnsureSerialsAsync(collection.Count(e => e.Items.Count == 0));
+    }
+
     internal GatePersonComponent CreatePersonListComponent(IReadOnlyCollection<PersonPersistent> collection, byte[] accountOptions)
     {
         // The client places characters by their position in the list, so it must not change between visits.

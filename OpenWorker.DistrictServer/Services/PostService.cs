@@ -427,6 +427,8 @@ public sealed partial class PostService(
             return null;
         }
 
+        await inventory.EnsureSerialsAsync(letter.Items.Select(e => (e.Item, (int)e.Count)));
+
         var player = context.Player;
 
         // Read after the claim: the inventory and the wallet may have changed while it was made.
@@ -467,6 +469,8 @@ public sealed partial class PostService(
     {
         var player = context.Player;
         var items = draft.Items;
+
+        await inventory.EnsureSerialsAsync(items.Select(e => (e.Item, (int)e.Count)));
 
         if (!world.IsAlive(player))
         {
