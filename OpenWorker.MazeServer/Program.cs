@@ -18,6 +18,7 @@ using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Lua;
@@ -71,6 +72,7 @@ await Host
         services.AddPlayerTransfer();
         services.AddServerCommon<MazeAudience>();
         services.AddSingleton<MazeInstances>();
+        services.AddMyRoom().AddSingleton<MyRooms>().AddSingleton<IMyRoomPlace, MazeRoomPlace>();
         services.AddSingleton<PartyMazeEvents>();
         services.AddSingleton<ICommunityModule>(provider => provider.GetRequiredService<PartyMazeEvents>());
         services.AddSingleton<MazeHelperField>();

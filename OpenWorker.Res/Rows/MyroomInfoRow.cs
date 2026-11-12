@@ -9,8 +9,8 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct MyroomInfoRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public int Field1 { get; } = reader.ReadInt32();
-    public int Field2 { get; } = reader.ReadInt32();
-    public int Field3 { get; } = reader.ReadInt32();
-    public int Field4 { get; } = reader.ReadInt32();
+    public int Maze { get; } = reader.ReadInt32();
+    public int MaxVisitors { get; } = reader.ReadInt32();
+    public int CreateLevel { get; } = reader.ReadInt32();
+    public int CreateGold { get; } = reader.ReadInt32();
 }

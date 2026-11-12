@@ -48,4 +48,16 @@ public sealed class MazeReserveCache
     /// </summary>
     [RedisField]
     public byte Members { get; set; }
+
+    /// <summary>
+    /// The account whose room the maze is, or zero for a maze that is no room.
+    /// </summary>
+    [RedisField]
+    public int Room { get; set; }
+
+    /// <summary>
+    /// The district the person goes back to when it leaves the room.
+    /// </summary>
+    [RedisField]
+    public short Return { get; set; }
 }

@@ -11,7 +11,7 @@ namespace OpenWorker.MazeServer.Services;
 /// one, which the first of them to arrive opens and the others join where it stands. A member who leaves leaves the
 /// instance, the maze goes on for the rest, and the last one out ends it. Everything runs on the world loop.
 /// </summary>
-public sealed partial class MazeInstances(World world, IRedisCollection<PartyMazeCache> parties, ILogger<MazeInstances> logger)
+public sealed partial class MazeInstances(World world, IRedisCollection<PartyMazeCache> parties, ILogger<MazeInstances> logger, MyRooms? rooms = null)
 {
     private readonly Dictionary<Guid, LuaMaze> _running = [];
 
@@ -77,6 +77,12 @@ public sealed partial class MazeInstances(World world, IRedisCollection<PartyMaz
     /// </summary>
     public async ValueTask LeaveAsync(Entity player)
     {
+        // A room forgets the player whatever is left of it.
+        if (rooms is not null)
+        {
+            await rooms.LeftAsync(player);
+        }
+
         if (!world.IsAlive(player) || !world.TryGet(player, out LuaMaze? maze) || maze is null)
         {
             return;
@@ -95,6 +101,11 @@ public sealed partial class MazeInstances(World world, IRedisCollection<PartyMaz
     /// </summary>
     public async ValueTask AbandonAsync(LuaMaze maze, Entity player)
     {
+        if (rooms is not null)
+        {
+            await rooms.LeftAsync(player);
+        }
+
         if (maze.Leave(player) || maze.MemberCount == 0)
         {
             await EndAsync(maze);

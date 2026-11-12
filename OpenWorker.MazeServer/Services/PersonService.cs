@@ -47,6 +47,7 @@ using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.MyRoom;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -91,6 +92,8 @@ public sealed partial class PersonService(
     HelperGear helperGear,
     MazeEntryLimits entryLimits,
     MovementPace pace,
+    MyRoomBook roomBook,
+    MyRoomService roomService,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -289,6 +292,10 @@ public sealed partial class PersonService(
         await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await sharePoints.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
         await community.EnterAsync(context.Player);
+        await roomBook.EnterAsync(context.Player, context.CancellationToken);
+
+        // A room tells who may come in, and the client what stands in it.
+        await roomService.ArriveAsync(context.Player, maze, mazeReserve.Room, mazeReserve.Return, context.CancellationToken);
 
         // The client has the maze now: the count of the entries is told last.
         if (world.IsAlive(context.Player))
