@@ -3,10 +3,12 @@ using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Helpers.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Modules.Helpers.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Lua;
 
@@ -155,9 +157,8 @@ public sealed partial class MazeHelperField(
         }
 
         var record = gear.Record(player, entry, summoned: true);
-        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
 
-        return maze.SummonHelper(player, stats.Combat(helper, level, record.Additional ?? []), record) is not null;
+        return maze.SummonHelper(player, MazeSummonedHelpers.CombatOf(world, stats, player, record), record) is not null;
     }
 
     private LuaMaze? MazeOf(Entity player)
@@ -202,12 +203,34 @@ public sealed partial class MazeHelperField(
 }
 
 /// <summary>
-/// Which helpers of a person stand in its maze now: those give back the orbs of friends when the maze is cleared.
+/// Which helpers of a person stand in its maze now: those are told to the client as called, fight with what they wear after
+/// every change of it, and give back the orbs of friends when the maze is cleared.
 /// </summary>
-public sealed class MazeSummonedHelpers(World world) : ISummonedHelpers
+public sealed class MazeSummonedHelpers(World world, HelperStats stats) : ISummonedHelpers
 {
     public bool IsSummoned(Entity player, int helper)
     {
-        return world.IsAlive(player) && world.TryGet(player, out LuaMaze? maze) && maze is { IsClosed: false } && maze.Helpers.Find(player, helper) is not null;
+        return MazeOf(player) is { } maze && maze.Helpers.Find(player, helper) is not null;
+    }
+
+    public void Refit(Entity player, in HelperValue record)
+    {
+        MazeOf(player)?.RefitHelper(player, CombatOf(world, stats, player, record), record);
+    }
+
+    /// <summary>
+    /// What a called helper fights with: what it has by itself at its owner's level, and what its record says its items and
+    /// orb add.
+    /// </summary>
+    public static CombatStats CombatOf(World world, HelperStats stats, Entity player, in HelperValue record)
+    {
+        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
+
+        return stats.Combat(record.Helper, level, record.Additional ?? []);
+    }
+
+    private LuaMaze? MazeOf(Entity player)
+    {
+        return world.IsAlive(player) && world.TryGet(player, out LuaMaze? maze) && maze is { IsClosed: false } ? maze : null;
     }
 }

@@ -10,16 +10,21 @@ using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Modules.Helpers;
+using OpenWorker.Gameplay.Modules.Helpers.Components;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
+using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Helpers;
 using OpenWorker.Lua.Managers;
+using OpenWorker.MazeServer.Services;
 using OpenWorker.Navigation;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -27,7 +32,7 @@ namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
 /// A helper called into a maze: the rules of calling it, what every player of the maze sees of it, that it goes with its
-/// owner, and that what it kills is its owner's.
+/// owner, that what it kills is its owner's, and that it fights with what it wears now.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
@@ -222,6 +227,116 @@ public sealed class HelperSummonTest
             World.Destroy(world);
         }
     }
+
+    /// <summary>
+    /// A helper that stands in the maze fights with what it wears now: a weapon put on raises its attacks, taken off (and
+    /// free to be sold) it is no longer in its blows, and the orb of a friend counts until the maze is cleared. Every record
+    /// the client gets of it meanwhile (27/10, 27/09, 27/11) says it is called, as the window must keep offering to send it
+    /// away; once sent away it is not called any more.
+    /// </summary>
+    [TestMethod]
+    public async Task AHelperInTheMazeFightsWithWhatItWearsNowAndIsToldAsCalled()
+    {
+        const int weaponOfMirium = 360010102;
+        const float weaponAttack = 157f;
+        var world = World.Create();
+
+        try
+        {
+            var connection = new RecordingConnection();
+            var owner = Player(world, 1, connection);
+            var catalog = new ItemCatalog(
+                TestTables.Load<ItemRow>("tb_Item"),
+                TestTables.Load<ItemClassifyRow>("tb_Item_Classify"),
+                TestTables.Load<InvenSlotExtendRow>("tb_Inven_Slot_Extend"),
+                TestTables.Load<BankSlotExtendRow>("tb_Bank_Slot_Extend"));
+            var serials = new LocalItemSerials();
+            var inventory = new InventoryService(world, catalog, serials);
+            var helpers = new HelperCatalog(TestTables.Load<HelperRow>("tb_Helper"));
+            var stats = new HelperStats(helpers, TestTables.Load<MonsterRow>("tb_Monster"), TestTables.Load<StatusRow>("tb_Status"), catalog);
+            var gear = new HelperGear(world, helpers, inventory, stats, new MazeSummonedHelpers(world, stats));
+            var book = new HelperBook();
+
+            Assert.IsTrue(book.TryAdd(Mirium, out var entry));
+
+            world.Add(owner,
+                new InventoryComponent(new InventoryFactory(catalog, TestTables.Load<CreateClothRow>("tb_Create_Cloth"), serials).CreateNew(Person(1))),
+                new HelperComponent { Person = 1, Book = book });
+
+            var batch = TestMazes.Map();
+            var maze = TestMazes.Create(world, owner, batch: batch, creatures: Creatures(world, batch, out _));
+
+            world.Add(owner, maze);
+
+            var record = gear.Record(owner, entry, summoned: true);
+            var called = maze.SummonHelper(owner, MazeSummonedHelpers.CombatOf(world, stats, owner, record), record)!;
+
+            float Attack() => world.Get<MonsterCombatComponent>(called.Entity).Stats.Physical.AttackMax;
+
+            var own = Attack();
+
+            Assert.IsTrue(inventory.TryGive(owner, weaponOfMirium, 1, out var given));
+
+            var weapon = inventory.InventoryOf(owner)!.At(given[0].Storage, given[0].Slot)!;
+
+            gear.Equip(owner, HelperGearTest.Request(Mirium, weapon, null, 0));
+
+            Assert.AreEqual(own + weaponAttack, Attack(), "the weapon put on is in its blows at once");
+            Assert.AreEqual(1, await CalledByteAsync(connection, HelperOpcode.Equip, gear.Record(owner, entry)), "27/10 says it is called");
+
+            gear.Equip(owner, HelperGearTest.Request(Mirium, null, weapon, 0));
+
+            Assert.AreEqual(StorageGroup.Common, weapon.Storage, "the weapon is back in the bag");
+            Assert.AreEqual(own, Attack(), "taken off, the weapon is no longer in its blows");
+
+            var orb = new HelperOrb { Friend = 9, SupportType = HelperStats.AttackOrb, Value = 30f, Until = DateTimeOffset.UtcNow.AddHours(24) };
+
+            Assert.IsTrue(gear.WearOrb(owner, Mirium, orb, out var withOrb));
+            Assert.IsTrue(withOrb.Summoned, "27/09 says it is called");
+            Assert.AreEqual(own + 30f, Attack(), "the orb counts at once");
+
+            var before = connection.Frames.Length;
+
+            gear.OnMazeCleared(owner);
+
+            Assert.AreEqual(own, Attack(), "the orb given back at the clear no longer counts");
+            Assert.AreEqual(1, await CalledByteAsync(connection, HelperOpcode.UpdateInfo, gear.Record(owner, entry), before), "27/11 says it is called");
+
+            Assert.IsTrue(maze.ReleaseHelper(owner, Mirium));
+            Assert.IsFalse(gear.Record(owner, entry).Summoned, "sent away, it is not called any more");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// The "called" byte of the last record of a helper the client got in this message: the record ends with it, the two
+    /// lists of stats (a count, then a byte and a float each) and the place in the list.
+    /// </summary>
+    private static async Task<byte> CalledByteAsync(RecordingConnection connection, HelperOpcode message, HelperValue record, int after = 0)
+    {
+        await MetricAssertions.UntilAsync(
+            () => Received(connection).Skip(after).Any(e => e.Is(GroupOpcode.Helper, (byte)message)),
+            "The client is told of the helper.");
+
+        var body = Received(connection).Skip(after).Last(e => e.Is(GroupOpcode.Helper, (byte)message)).Body;
+
+        return body[^(1 + 2 + 5 * record.Additional.Count + 2 + 5 * record.Origin.Count + 1)];
+    }
+
+    private static PersonPersistent Person(int id) => new()
+    {
+        Id = id,
+        Name = "Member" + id,
+        Hero = Hero.Haru,
+        DefaultHairStyle = 0, DefaultHairColor = 0, DefaultEyeColor = 0, DefaultSkinColor = 0,
+        EquippedHairStyle = 0, EquippedHairColor = 0, EquippedEyeColor = 0, EquippedSkinColor = 0,
+        Location = 0, PositionX = 0, PositionY = 0, PositionZ = 0, RotationX = 0, FatiguePointCommon = 0,
+        Account = null!, Gate = null!
+    };
 
     /// <summary>
     /// The creatures of a maze that knows the monsters of the tables and the helpers among them.

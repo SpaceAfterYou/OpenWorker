@@ -32,9 +32,9 @@ public sealed class SummonedHelper
     public ActorComponent OwnerActor { get; }
 
     /// <summary>
-    /// The helper as the client reads it, called.
+    /// The helper as the client reads it, called, with what it wears now.
     /// </summary>
-    public HelperValue Record { get; }
+    public HelperValue Record { get; internal set; }
 
     /// <summary>
     /// The helper, which is the id of its monster row.

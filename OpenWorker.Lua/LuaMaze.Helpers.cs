@@ -54,6 +54,23 @@ public partial class LuaMaze
     }
 
     /// <summary>
+    /// What a called helper of a player wears has changed: it fights from now on with these stats. False when that helper is
+    /// not called.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool RefitHelper(Entity owner, CombatStats stats, HelperValue record)
+    {
+        if (Closed || creatureManager.Helpers.Find(owner, record.Helper) is not { } called)
+        {
+            return false;
+        }
+
+        creatureManager.Helpers.Refit(called, stats, record);
+
+        return true;
+    }
+
+    /// <summary>
     /// A player sends one of its helpers away. False when that helper is not called.
     /// </summary>
     [LuaIgnoreMember]
