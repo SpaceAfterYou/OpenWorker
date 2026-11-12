@@ -20,6 +20,7 @@ public sealed class PartyRecruitNotifier(
     TimeProvider time
 ) :
     IPartyJoinListener,
+    IPartyMasterListener,
     ICommunityListener,
     IPartyClock
 {
@@ -139,6 +140,19 @@ public sealed class PartyRecruitNotifier(
         else if (await board.GetAsync(party.Id) is { } shown)
         {
             await network.SendAsync(person, new PartyRecruitInfoResponse { Recruit = await ValueAsync(shown) });
+        }
+    }
+
+    /// <summary>
+    /// A recruitment is put up by the master of its party: when they leave it, are dropped from it or hand it over, it goes as
+    /// if its time were up, and its applicants lose their applications. A party that lives on does not keep it under a master
+    /// who is gone.
+    /// </summary>
+    public async ValueTask OnMasterGoneAsync(PartyRecord party, int master)
+    {
+        if (await board.OfAsync(master) is { } own && own.Id == party.Id)
+        {
+            await TakeDownAsync(own, penalize: false);
         }
     }
 

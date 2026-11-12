@@ -25,7 +25,7 @@ namespace OpenWorker.AuthServer.App;
 public sealed class GateGameplay(
     IRedisCollection<GateCache> gates,
     IDbContextFactory<PersistenceContext> factory,
-    List<GateInfo> gateList,
+    GateDirectory directory,
     IRedisCollection<SessionCache> sessions,
     SessionLeaseManager leases,
     ServerContent contents,
@@ -115,7 +115,7 @@ public sealed class GateGameplay(
 
         var groupList = personList.CountBy(e => e.Gate.Id);
 
-        var values = gateList
+        var values = directory.Gates
             .Select(gate =>
             {
                 if (gate.Workload == GateWorkload.Offline)

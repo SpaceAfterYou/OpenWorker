@@ -118,6 +118,7 @@ public sealed class PartyTest
         Assert.IsTrue(left.Left);
         Assert.IsFalse(left.Deleted);
         Assert.AreEqual(people[0], left.Master, "The member with the lowest number takes over.");
+        Assert.AreEqual(master, left.Before!.Master, "What the party was names the master who left.");
         Assert.AreEqual(people[0], (await book.OfAsync(people[1]))!.Master);
         Assert.IsNull(await book.OfAsync(master));
 
@@ -234,6 +235,58 @@ public sealed class PartyTest
         Assert.AreEqual(id, party.Id, "The party is the one the board showed.");
         Assert.AreEqual(master, party.Master);
         Assert.IsEmpty(await board.AppliedAsync(applicant), "Who is in a party applies nowhere.");
+    }
+
+    /// <summary>
+    /// A recruitment is its master's: when the master leaves a party that lives on, or hands it over, the board stops showing
+    /// it, the master hears it go, and its applicants hear that their applications went.
+    /// </summary>
+    [TestMethod]
+    public async Task ARecruitmentGoesWhenItsMasterLeavesThePartyOrHandsItOver()
+    {
+        var redis = await RedisAsync();
+        var people = People(6);
+        var (leaver, giver, applicant) = (people[0], people[3], people[5]);
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var services = Parties(server, redis, TimeProvider.System);
+
+        var book = services.GetRequiredService<PartyBook>();
+        var board = services.GetRequiredService<PartyRecruitBoard>();
+        var notifier = services.GetRequiredService<PartyNotifier>();
+
+        using var leaving = server.Join(leaver, "Leaver");
+        using var waiting = server.Join(applicant, "Applicant");
+
+        var (_, left) = await book.JoinAsync(Card(leaver), Card(people[1]));
+        await book.JoinAsync(Card(leaver), Card(people[2]));
+        var (_, handed) = await book.JoinAsync(Card(giver), Card(people[4]));
+
+        foreach (var (id, master) in new[] { (left, leaver), (handed, giver) })
+        {
+            await board.PutAsync(id, master, "P" + master, new PartyRecruitTerms("Come", 1, 100, 0, 10003));
+            Assert.AreEqual(PartyApplyError.Success, (await board.ApplyAsync(id, Card(applicant))).Outcome);
+        }
+
+        var party = (await book.GetAsync(handed))!;
+
+        server.Run(() => notifier.LeaveAsync(leaver, kicked: false));
+        server.Run(() => notifier.HandOverAsync(party, people[4]));
+
+        Assert.IsNotNull(await book.GetAsync(left), "The party of the master who left lives on.");
+        Assert.IsNull(await board.GetAsync(left));
+        Assert.IsNull(await board.GetAsync(handed));
+        Assert.IsNull(await board.OfAsync(giver));
+        Assert.IsEmpty(await board.AppliedAsync(applicant));
+
+        Assert.IsTrue(leaving.Read().Any(e => e.Group == (byte)GroupOpcode.Party && e.Command == (byte)PartyOpcode.RecruitDel && BitConverter.ToInt32(e.Content, 0) == left));
+
+        var gone = waiting.Read()
+            .Where(e => e.Group == (byte)GroupOpcode.Party && e.Command == (byte)PartyOpcode.RecruitApplyDel)
+            .Select(e => BitConverter.ToInt32(e.Content, 4))
+            .ToArray();
+
+        CollectionAssert.AreEquivalent(new[] { left, handed }, gone);
     }
 
     [TestMethod]
@@ -460,6 +513,7 @@ public sealed class PartyTest
         services.AddSingleton<PartyAwaiterBoard>();
         services.AddSingleton<PartyRecruitNotifier>();
         services.AddSingleton<IPartyJoinListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
+        services.AddSingleton<IPartyMasterListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
         services.AddSingleton<PartyMatching>();
 
         return services.BuildServiceProvider();

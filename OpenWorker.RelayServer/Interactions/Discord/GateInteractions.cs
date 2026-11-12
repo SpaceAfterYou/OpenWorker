@@ -14,12 +14,11 @@ public sealed class GateInteractions(IDbContextFactory<PersistenceContext> facto
     public async Task CreateAsync([Summary("name", "The name of the gate")] string name)
     {
         await using var context = await factory
-            .CreateDbContextAsync()
-            .ConfigureAwait(false);
+            .CreateDbContextAsync();
 
-        if (await context.Gates.AnyAsync(x => x.Name == name).ConfigureAwait(false))
+        if (await context.Gates.AnyAsync(x => x.Name == name))
         {
-            await RespondAsync("Gate with this name already exists.", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync("Gate with this name already exists.", ephemeral: true);
         }
 
         else
@@ -30,14 +29,12 @@ public sealed class GateInteractions(IDbContextFactory<PersistenceContext> facto
             };
                 
             await context.Gates
-                .AddAsync(gate)
-                .ConfigureAwait(false);
+                .AddAsync(gate);
 
             await context
-                .SaveChangesAsync()
-                .ConfigureAwait(false);
+                .SaveChangesAsync();
 
-            await RespondAsync($"Created gate with name {name}.", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync($"Created gate with name {name}.", ephemeral: true);
         }
     }
 
@@ -45,17 +42,15 @@ public sealed class GateInteractions(IDbContextFactory<PersistenceContext> facto
     public async Task DeleteAsync([Summary("id", "The id of the gate")] int id)
     {
         await using var context = await factory
-            .CreateDbContextAsync()
-            .ConfigureAwait(false);
+            .CreateDbContextAsync();
 
         var gate = await context.Gates
             .AsTracking()
-            .FirstOrDefaultAsync(x => x.Id == id)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(x => x.Id == id);
         
         if (gate is null)
         {
-            await RespondAsync("Gate not found.", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync("Gate not found.", ephemeral: true);
         }
 
         else
@@ -63,10 +58,9 @@ public sealed class GateInteractions(IDbContextFactory<PersistenceContext> facto
             context.Gates.Remove(gate);
 
             await context
-                .SaveChangesAsync()
-                .ConfigureAwait(false);
+                .SaveChangesAsync();
 
-            await RespondAsync("Gate has been deleted.", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync("Gate has been deleted.", ephemeral: true);
         }
     }
 }

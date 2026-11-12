@@ -13,18 +13,16 @@ public sealed class PersonInteractions(IDbContextFactory<PersistenceContext> fac
         [Summary("new-name", "New name of the person")] string name)
     {
         await using var context = await factory
-            .CreateDbContextAsync()
-            .ConfigureAwait(false);
+            .CreateDbContextAsync();
 
         var account = await context.Accounts
             .AsTracking()
             .Include(x => x.Persons)
-            .FirstOrDefaultAsync(x => x.Discord == Context.User.Id)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(x => x.Discord == Context.User.Id);
 
         if (account is null)
         {
-            await RespondAsync("Account not found", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync("Account not found", ephemeral: true);
 
             return;
         }
@@ -33,7 +31,7 @@ public sealed class PersonInteractions(IDbContextFactory<PersistenceContext> fac
         
         if (person is null)
         {
-            await RespondAsync("Person not found", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync("Person not found", ephemeral: true);
 
             return;
         }
@@ -41,9 +39,8 @@ public sealed class PersonInteractions(IDbContextFactory<PersistenceContext> fac
         person.Name = name;
 
         await context
-            .SaveChangesAsync()
-            .ConfigureAwait(false);
+            .SaveChangesAsync();
 
-        await RespondAsync("Person has been renamed.", ephemeral: true).ConfigureAwait(false);
+        await RespondAsync("Person has been renamed.", ephemeral: true);
     }
 }

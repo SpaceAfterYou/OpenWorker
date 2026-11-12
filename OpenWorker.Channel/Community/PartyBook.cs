@@ -177,7 +177,7 @@ public sealed class PartyBook(IConnectionMultiplexer redis, TimeProvider time) :
         """);
 
     // KEYS: the pointer of the person. ARGV: the person, the prefix of parties, the prefix of pointers. Returns the outcome
-    // (0 in no party, 1 left, 2 the party ended), the party, the master after, then the members before.
+    // (0 in no party, 1 left, 2 the party ended), the party, the master before, the master after, then the members before.
     private static RedisScript Leave { get; } = new(PartyOf + "\n" + """
         local id = party_of(KEYS[1], ARGV[2])
         if not id then
@@ -199,9 +199,10 @@ public sealed class PartyBook(IConnectionMultiplexer redis, TimeProvider time) :
                     redis.call('DEL', ARGV[3] .. member)
                 end
             end
-            return {2, tonumber(id), master, unpack(list)}
+            return {2, tonumber(id), master, master, unpack(list)}
         end
         redis.call('HDEL', key, 'm:' .. ARGV[1], 'off:' .. ARGV[1])
+        local before = master
         if master == person then
             master = nil
             for _, member in ipairs(list) do
@@ -211,7 +212,7 @@ public sealed class PartyBook(IConnectionMultiplexer redis, TimeProvider time) :
             end
             redis.call('HSET', key, 'master', master)
         end
-        return {1, tonumber(id), master, unpack(list)}
+        return {1, tonumber(id), before, master, unpack(list)}
         """);
 
     // KEYS: the party. ARGV: the master now, the next one.
@@ -377,10 +378,10 @@ public sealed class PartyBook(IConnectionMultiplexer redis, TimeProvider time) :
         }
 
         // What the party was is read back from the answer: the cards are gone with a deleted party.
-        var members = result[3..].Order().Select(e => new PartyMember(new PartyMemberCard(e, string.Empty, 0, 0), null)).ToArray();
+        var members = result[4..].Order().Select(e => new PartyMember(new PartyMemberCard(e, string.Empty, 0, 0), null)).ToArray();
         var before = new PartyRecord(result[1], result[2], PartyType.Base, members);
 
-        return new PartyLeave(true, before, result[2], result[0] == 2);
+        return new PartyLeave(true, before, result[3], result[0] == 2);
     }
 
     /// <summary>

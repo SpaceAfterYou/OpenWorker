@@ -29,23 +29,20 @@ internal sealed partial class PersistenceBootstrapService(
         if (options.Value.Migrate)
         {
             await using var context = await factory
-                .CreateDbContextAsync(cancellationToken)
-                .ConfigureAwait(false);
+                .CreateDbContextAsync(cancellationToken);
 
             LogMigrating();
 
             await context.Database
-                .MigrateAsync(cancellationToken)
-                .ConfigureAwait(false);
+                .MigrateAsync(cancellationToken);
         }
 
         else
         {
             await using var context = await factory
-                .CreateDbContextAsync(cancellationToken)
-                .ConfigureAwait(false);
+                .CreateDbContextAsync(cancellationToken);
 
-            if (await IsBehindAsync(context, cancellationToken).ConfigureAwait(false))
+            if (await IsBehindAsync(context, cancellationToken))
             {
                 throw new InvalidOperationException(
                     "The database schema is not up to date. Start the relay first and wait until it is ready: it migrates the database. " +
@@ -64,8 +61,7 @@ internal sealed partial class PersistenceBootstrapService(
         try
         {
             var pending = await context.Database
-                .GetPendingMigrationsAsync(cancellationToken)
-                .ConfigureAwait(false);
+                .GetPendingMigrationsAsync(cancellationToken);
 
             return pending.Any();
         }
