@@ -16,6 +16,8 @@ public sealed class PersistenceContext(DbContextOptions<PersistenceContext> opti
     public DbSet<LeagueMemberPersistent> LeagueMembers { get; init; }
     public DbSet<LeaguePersistent> Leagues { get; init; }
     public DbSet<ItemPersistent> Items { get; init; }
+    public DbSet<MyRoomPersistent> MyRooms { get; init; }
+    public DbSet<MyRoomFurniturePersistent> MyRoomFurniture { get; init; }
     public DbSet<PersonPersistent> Persons { get; init; }
     public DbSet<PersonStatePersistent> PersonStates { get; init; }
     public DbSet<PostPersistent> Posts { get; init; }
