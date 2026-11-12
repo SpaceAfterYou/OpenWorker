@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct PersonUpdateTitleRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct PersonUpdateTitleRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Character;
     private const CharacterOpcode Command = CharacterOpcode.UpdateTitle;
@@ -15,12 +17,12 @@ public readonly struct PersonUpdateTitleRequest(BinaryReader reader) : IRequestH
     /// <summary>
     /// Apply ability
     /// </summary>
-    public TitleValue Ability { get; } = new(reader);
+    public TitleValue Ability { get; }
     
     /// <summary>
     /// Just show names
     /// </summary>
-    public TitleValue Represent { get; } = new(reader);
+    public TitleValue Represent { get; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }

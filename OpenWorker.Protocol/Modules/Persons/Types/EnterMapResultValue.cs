@@ -1,13 +1,18 @@
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Types;
 
-public readonly struct EnterMapResultValue
+/// <summary>
+/// Where a move to another map goes: the zone, whether the client changes servers and how, and the result.
+/// </summary>
+[WireMessage(WireMethods.Write)]
+public readonly partial struct EnterMapResultValue
 {
     public ZoneValue Zone { get; init; }
-    public ChangeServerType ChangeType { get; init; }
     public bool ChangeServer { get; init; }
+    public ChangeServerType ChangeType { get; init; }
     public int Result { get; init; }
 
     public static EnterMapResultValue Error => Failed(1);

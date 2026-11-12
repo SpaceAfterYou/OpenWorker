@@ -183,25 +183,13 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, EnterMapResultValue value)
     {
-        writer.Write(value.Zone);
-        writer.Write(value.ChangeServer);
-        writer.Write(value.ChangeType);
-        writer.Write(value.Result);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ZoneValue value)
     {
-        writer.WriteActor(value.Actor);
-        writer.Write(value.Account);
-        writer.Write(value.Server);
-        writer.Write(value.Jump);
-        writer.WriteMapValue(value.Map);
-        writer.WriteMapValue(value.Parent);
-        writer.WriteUtf8AsciiStringWithoutTerminator(value.Address, 16);
-        writer.Write(value.Port);
-        writer.Write(value.World);
-        writer.Write(value.Type);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

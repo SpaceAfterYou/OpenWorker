@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// The reward of a district or a maze has been given.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PersonGetRewardSharePointResponse : IResponseHotspotMessage
+public readonly partial struct PersonGetRewardSharePointResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -26,24 +28,8 @@ public readonly struct PersonGetRewardSharePointResponse : IResponseHotspotMessa
     public int Identifier { get; init; }
     public byte RewardStep { get; init; }
     public byte Result { get; init; }
+    [WireArray(WireLength.Byte)]
     public IReadOnlyCollection<RewardItemValue> Items { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Identifier);
-        writer.Write(RewardStep);
-        writer.Write(Result);
-        writer.Write((byte)Items.Count);
-
-        foreach (var item in Items)
-        {
-            item.Write(writer);
-        }
-    }
-
-#endregion Interface: IWritableData
 }

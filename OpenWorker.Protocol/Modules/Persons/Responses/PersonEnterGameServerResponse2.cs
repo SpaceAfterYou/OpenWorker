@@ -1,9 +1,9 @@
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
@@ -12,8 +12,9 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// at the place, loads the map and asks for the objects around it. A client that came from the character selection reads the
 /// character record (03/32) instead. The gate has the same packet with a different structure.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PersonEnterGameServerResponse2 : IResponseHotspotMessage
+public readonly partial struct PersonEnterGameServerResponse2 : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -26,6 +27,16 @@ public readonly struct PersonEnterGameServerResponse2 : IResponseHotspotMessage
 
 #region Message: Body
 
+    /// <summary>
+    /// The error code: always zero, this answer goes only to a client that entered.
+    /// </summary>
+    public int Result { get; init; }
+
+    /// <summary>
+    /// Always zero; its meaning is not known.
+    /// </summary>
+    public byte Unknown { get; init; }
+
     public WorldValue World { get; init; }
 
     public byte EchelonLevel { get; init; }
@@ -33,17 +44,4 @@ public readonly struct PersonEnterGameServerResponse2 : IResponseHotspotMessage
     public int EchelonExperience { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(0); // error code
-        writer.Write((byte)0); // unknown
-        writer.Write(World);
-        writer.Write(EchelonLevel);
-        writer.Write(EchelonExperience);
-    }
-
-#endregion Interface: IWritableData
 }
