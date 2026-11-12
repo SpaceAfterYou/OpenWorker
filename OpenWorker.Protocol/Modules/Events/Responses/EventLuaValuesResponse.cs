@@ -1,16 +1,17 @@
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Events.Responses;
 
 /// <summary>
-/// Names that the client hands one by one to the function of its script that handles event values.
+/// Names that the client hands one by one to the function of its script that handles event values. Written by hand
+/// because a name the client cannot hold is refused before anything is written.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct EventLuaValuesResponse : IResponseHotspotMessage
+public readonly struct EventLuaValuesResponse : IResponseHotspotMessage, IWireWritable
 {
     /// <summary>
     /// The client keeps a name in a buffer of 30 bytes and drops the whole message if one is longer.
@@ -32,16 +33,16 @@ public readonly struct EventLuaValuesResponse : IResponseHotspotMessage
 
 #endregion Message: Body
 
-#region Interface: IWritableData
+#region Interface: IWireWritable
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
         if (Scripts.Any(e => e.Length is 0 or > MaxNameLength))
         {
             throw new InvalidOperationException("The name of an event value has to fit the buffer of the client.");
         }
 
-        writer.Write(checked((byte)Scripts.Count));
+        writer.WriteLength(WireLength.Byte, Scripts.Count);
 
         foreach (var script in Scripts)
         {
@@ -49,5 +50,10 @@ public readonly struct EventLuaValuesResponse : IResponseHotspotMessage
         }
     }
 
-#endregion Interface: IWritableData
+    public void Write(BinaryWriter writer)
+    {
+        WireBridge.Write(writer, this);
+    }
+
+#endregion Interface: IWireWritable
 }

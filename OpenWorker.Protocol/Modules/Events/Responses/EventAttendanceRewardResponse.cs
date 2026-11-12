@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Events.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Events.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct EventAttendanceRewardResponse : IResponseHotspotMessage
+public readonly partial struct EventAttendanceRewardResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -23,13 +25,4 @@ public readonly struct EventAttendanceRewardResponse : IResponseHotspotMessage
     public AttendanceInfo Info { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Info.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }
