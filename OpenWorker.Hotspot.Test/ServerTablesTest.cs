@@ -67,6 +67,7 @@ public sealed class ServerTablesTest
             ("tb_MazeReward_PartyValue", typeof(MazePartyShareRow)),
             ("tb_MazeReward_Revision", typeof(MazeComboRevisionRow)),
             ("tb_Reinforce", typeof(ReinforceChanceRow)),
+            ("tb_Item_Classify", typeof(ItemClassifyFeeRow)),
             ("tb_Buff", typeof(BuffSystemRow)),
             ("tb_Item", typeof(ItemRollRow)),
             ("tb_Reinforce_Option", typeof(ReinforceOptionRow)),
