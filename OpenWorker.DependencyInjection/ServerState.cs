@@ -10,6 +10,7 @@ internal sealed class ServerState
 {
     private volatile bool _listening;
     private volatile bool _draining;
+    private volatile int _port;
 
     /// <summary>
     /// A server is draining from the moment the host starts to stop, before any service has stopped: a signal
@@ -26,12 +27,19 @@ internal sealed class ServerState
     public bool IsListening => _listening;
 
     /// <summary>
+    /// The port the game listener got, known from the moment it listens: the port of the settings, or the one the system
+    /// picked when the listener was made on port 0, as the tests make it.
+    /// </summary>
+    public int Port => _port;
+
+    /// <summary>
     /// The server is shutting down: it takes no new connection and closes the ones it has.
     /// </summary>
     public bool IsDraining => _draining;
 
-    public void MarkListening()
+    public void MarkListening(int port)
     {
+        _port = port;
         _listening = true;
     }
 
