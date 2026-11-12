@@ -1,0 +1,21 @@
+# Debugging the stand from Rider (or Visual Studio): add this file after compose.yaml in the Docker Compose run
+# configuration. The IDE does not debug a service that another service waits for to be healthy: it starts a debugged
+# container with its own entry point, and the health check cannot pass before the debugger attaches. In compose.yaml
+# every server waits for a healthy relay, so the relay would run without the debugger.
+#
+# Here the servers wait only until the relay container is started. A server that comes up before the relay has migrated
+# the database stops at start (the schema is not up to date) and compose starts it again, until the relay is done.
+x-after-relay: &after-relay
+  restart: on-failure
+  depends_on:
+    openworker.relayserver:
+      condition: service_started
+
+services:
+  openworker.authserver: *after-relay
+  openworker.gateserver: *after-relay
+  openworker.districtserver-roccotown: *after-relay
+  openworker.districtserver-canduscity: *after-relay
+  openworker.districtserver-gracecity: *after-relay
+  openworker.districtserver-ruinfortress: *after-relay
+  openworker.mazeserver: *after-relay
