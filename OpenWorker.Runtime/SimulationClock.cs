@@ -255,7 +255,8 @@ public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationCl
     /// </summary>
     public void Tick()
     {
-        var started = Stopwatch.GetTimestamp();
+        // The step is measured on the clock the game time is read from, so a test that moves the time by hand decides how
+        // long a step takes too.
         var now = _time.GetTimestamp();
         var elapsed = _time.GetElapsedTime(_last, now);
 
@@ -275,7 +276,7 @@ public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationCl
         RunDue();
         Step(elapsed);
 
-        Measure(Stopwatch.GetElapsedTime(started));
+        Measure(_time.GetElapsedTime(now));
     }
 
     private void RunDue()
@@ -366,7 +367,7 @@ public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationCl
             _worst = duration;
         }
 
-        if (Stopwatch.GetElapsedTime(_lastReport) < ReportInterval)
+        if (_time.GetElapsedTime(_lastReport) < ReportInterval)
         {
             return;
         }
@@ -375,7 +376,7 @@ public sealed partial class SimulationClock(WorldLoop loop, ILogger<SimulationCl
 
         _overBudget = 0;
         _worst = TimeSpan.Zero;
-        _lastReport = Stopwatch.GetTimestamp();
+        _lastReport = _time.GetTimestamp();
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "An action scheduled on the simulation clock failed.")]

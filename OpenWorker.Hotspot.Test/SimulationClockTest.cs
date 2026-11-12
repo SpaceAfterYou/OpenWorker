@@ -42,13 +42,14 @@ public sealed class SimulationClockTest
     [TestMethod]
     public void LongPauseIsCappedToOneStep()
     {
-        var clock = Create();
+        var time = new FakeTimeProvider();
+        var clock = new SimulationClock(new WorldLoop(NullLogger<WorldLoop>.Instance), NullLogger<SimulationClock>.Instance, time: time);
         var recorder = new Recorder();
 
         clock.Add(recorder);
 
         // The clock was made long before this tick: far more than MaxStep has passed.
-        Thread.Sleep(SimulationClock.MaxStep * 2);
+        time.Advance(SimulationClock.MaxStep * 2);
 
         clock.Tick();
 
