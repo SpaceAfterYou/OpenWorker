@@ -1,21 +1,18 @@
-using System.Diagnostics;
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
-using OpenWorker.Hotspot.Modules.League.Extensions;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Responses;
 
 /// <summary>
-/// The call for new members.
+/// The call for new members. The time to wait goes only with the result that says to wait, so the writer is written by
+/// hand.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct LeagueRecruitNoticeResponse : IResponseHotspotMessage
+public readonly struct LeagueRecruitNoticeResponse : IResponseHotspotMessage, IWireWritable
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.RecruitNotice;
@@ -32,16 +29,22 @@ public readonly struct LeagueRecruitNoticeResponse : IResponseHotspotMessage
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
-        writer.Write(League);
-        writer.WriteUtf16UnicodeString(Notice, 51);
-        writer.Write(Date);
-        writer.Write(Result);
+        writer.WriteInt32(League);
+        writer.WriteUtf16UnicodeString(Notice);
+        writer.WriteInt64(Date);
+        writer.WriteInt32(Result);
+
         // Only an answer that says to wait has the time to wait.
         if (Result == 57029)
         {
-            writer.Write(Remain);
+            writer.WriteInt64(Remain);
         }
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        WireBridge.Write(writer, this);
     }
 }
