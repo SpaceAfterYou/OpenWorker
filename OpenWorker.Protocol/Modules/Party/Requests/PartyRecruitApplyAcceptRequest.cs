@@ -17,9 +17,4 @@ public readonly partial struct PartyRecruitApplyAcceptRequest : IRequestHotspotM
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public ActorValue Actor { get; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Actor);
-    }
 }
