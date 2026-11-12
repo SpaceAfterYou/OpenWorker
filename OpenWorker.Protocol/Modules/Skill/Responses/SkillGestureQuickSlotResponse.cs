@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
 /// <summary>
-/// This packet defined but isn't processed on the client side.
+/// This packet defined but isn't processed on the client side. Nothing sends it, and writing it throws, so that it is not
+/// sent by mistake as an empty body.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillGestureQuickSlotResponse : IResponseHotspotMessage
+public readonly struct SkillGestureQuickSlotResponse : IResponseHotspotMessage, IWireWritable
 {
 #region Interface: IHotspotMessage
 
@@ -20,12 +22,17 @@ public readonly struct SkillGestureQuickSlotResponse : IResponseHotspotMessage
 
 #endregion Interface: IHotspotMessage
 
-#region Interface: IWritableData
+#region Interface: IWireWritable
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
         throw new NotImplementedException();
     }
 
-#endregion Interface: IWritableData
+    public void Write(BinaryWriter writer)
+    {
+        WireBridge.Write(writer, this);
+    }
+
+#endregion Interface: IWireWritable
 }
