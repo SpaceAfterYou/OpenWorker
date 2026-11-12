@@ -246,9 +246,10 @@ public sealed partial class MazeService(
     private static SectorBox? FindSector(LuaMaze maze, Vector3 position) => maze.SectorAt(position);
 
     /// <summary>
-    /// The player starts a skill. It must be the player's own and in its deck, its cooldown over and its cost payable; a
-    /// refusal is the answer 06/09 with the code the client shows, and nothing starts. The skill starts from the place the
-    /// client gives when the player could be there, from the place the server keeps otherwise.
+    /// The player starts a skill. It must be the player's own and in its deck, its cooldown over and its cost payable, and the
+    /// skill the player plays in a maze must have come to the moment it may be cut; a refusal is the answer 06/09 with the code
+    /// the client shows, and nothing starts. The skill starts from the place the client gives when the player could be there,
+    /// from the place the server keeps otherwise.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillActiveSkillRequest request)
     {
@@ -258,6 +259,12 @@ public sealed partial class MazeService(
         var now = clock.Time;
 
         var refusal = skillUse.Check(context.Player, skill.Skill, now);
+
+        // The skill that plays is cut only once it may be, as the client lets the player.
+        if (refusal == SkillRefusal.None && ecs.Has<LuaMaze>(context.Player) && !ecs.Get<LuaMaze>(context.Player).MayStartSkill(context.Player))
+        {
+            refusal = SkillRefusal.CannotAttack;
+        }
 
         if (refusal != SkillRefusal.None)
         {

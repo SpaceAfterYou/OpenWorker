@@ -16,6 +16,7 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -812,15 +813,40 @@ public partial class LuaMaze(
 
         _buffs.OnCondition(player, MazeBuffs.OnSkill);
 
+        Begin(member, skill, position, true);
+    }
+
+    /// <summary>
+    /// Whether the player may start another skill now: the client lets a skill be cut only once its animation has come to the
+    /// moment it may be, and a client that starts a skill again and again before that would fire its shots over and over.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool MayStartSkill(Entity player)
+    {
+        if (Find(player) is not { Playback: { } run } member)
+        {
+            return true;
+        }
+
+        BringUp(member, run);
+
+        return member.Playback != run || run.Playback.MayCut(run.Last);
+    }
+
+    /// <summary>
+    /// A new skill interrupts the previous one, along with the attacks it has not reached yet. The akashic skill with a called
+    /// card plays the card's coming instead of its own attacks, when <paramref name="callsCards"/>.
+    /// </summary>
+    private void Begin(Fighter member, int skill, SkillPositionValue position, bool callsCards)
+    {
         var generation = ++member.SkillGeneration;
-        var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
+        var hero = Ecs.Get<PersonInfoComponent>(member.Player).Hero;
 
         member.CurrentSkill = skill;
         member.Playback = null;
         member.SkillWake.Cancel();
 
-        // The akashic skill with a called card plays the card's coming instead of its own attacks.
-        if (BringsCardIn(member, skill, generation))
+        if (callsCards && BringsCardIn(member, skill, generation))
         {
             return;
         }
@@ -830,12 +856,33 @@ public partial class LuaMaze(
             return;
         }
 
-        var run = new SkillRun(skill, new SkillPlayback(animations), position, generation, Clock.Time);
+        var run = new SkillRun(skill, new SkillPlayback(animations, AttackSpeedOf(member.Player)), position, generation, Clock.Time);
 
         member.Playback = run;
         member.PressedKeys.Clear();
 
         PlanCarries(member, skill, hero, generation, run.Began);
+        Play(member, run);
+    }
+
+    /// <summary>
+    /// The attack speed every hero starts with; the client plays the animations of a skill at the player's share of it.
+    /// </summary>
+    private const float NormalAttackSpeed = 100f;
+
+    private float AttackSpeedOf(Entity player)
+    {
+        return Ecs.TryGet<AbilityComponent>(player, out var ability) && float.IsFinite(ability.Speed.Attack) && ability.Speed.Attack > 0f
+            ? ability.Speed.Attack / NormalAttackSpeed
+            : 1f;
+    }
+
+    /// <summary>
+    /// Brings the playback of a skill up to now: what is due lands, and the step that has begun is the one that plays.
+    /// </summary>
+    private void BringUp(Fighter member, SkillRun run)
+    {
+        member.SkillWake.Cancel();
         Play(member, run);
     }
 
@@ -885,7 +932,7 @@ public partial class LuaMaze(
                     }
                     else
                     {
-                        Run(ApplyHitAsync(member, run.Skill, hit, run.Position));
+                        Run(ApplyHitAsync(member, run, hit));
                     }
                 }
 
@@ -902,13 +949,19 @@ public partial class LuaMaze(
         }
     }
 
-    private ValueTask ApplyHitAsync(Fighter member, int skill, SkillHit hit, SkillPositionValue position)
+    private ValueTask ApplyHitAsync(Fighter member, SkillRun run, SkillHit hit)
     {
         var attacker = Ecs.Get<WorldComponent>(member.Player);
         var area = new AttackArea(hit.Trigger, attacker.Position, attacker.Rotation);
         var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
 
-        return ApplyDamageAsync(member, skill, hit.Trigger, targets, position);
+        // A blow that lands holds the animation of the attacker for a moment, on its client as here.
+        if (targets.Length > 0)
+        {
+            run.Playback.Pause(hit.Trigger.Reaction.HitFreeze);
+        }
+
+        return ApplyDamageAsync(member, run.Skill, hit.Trigger, targets, run.Position);
     }
 
     /// <summary>

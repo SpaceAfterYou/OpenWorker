@@ -11,6 +11,11 @@ public sealed class SkillPlaybackTest
         return new AttackTrigger(id, 0, 0, 0, start, 360f, Vector3.Zero, 0, 0, 100, 100, 0);
     }
 
+    private static AttackTrigger Shot(int id, float start)
+    {
+        return Attack(id, start) with { AttackType = 1 };
+    }
+
     private static ActionAnimation Clip(string name, float length, bool repeats, params AttackTrigger[] attacks)
     {
         return new ActionAnimation(name, length, attacks, repeats);
@@ -270,8 +275,6 @@ public sealed class SkillPlaybackTest
     [TestMethod]
     public void ASkillTakesTheShotsItsAnimationsLetGo()
     {
-        static AttackTrigger Shot(int id, float start) => Attack(id, start) with { AttackType = 1 };
-
         var playback = new SkillPlayback(Skill(
             Clip("start", 0.5f, false, Shot(1, 0.2f)),
             Clip("loop", 0.4f, true, Shot(2, 0f)),
@@ -311,6 +314,81 @@ public sealed class SkillPlaybackTest
         over.Advance(1f);
 
         Assert.IsFalse(over.TakeShot(4, 1f), "Long after the end it is not.");
+    }
+
+    /// <summary>
+    /// A shot comes at its own moment of the animation, not as the animation begins: a client that fires it sooner than a moment
+    /// before is refused, so starting a skill again and again does not fire all of its shots at once.
+    /// </summary>
+    [TestMethod]
+    public void AShotComesAtItsOwnMoment()
+    {
+        var playback = new SkillPlayback(Skill(null, null, null, Clip("end", 2f, false, Shot(1, 1f))));
+
+        playback.Advance(0.5f);
+
+        Assert.IsFalse(playback.TakeShot(1, 0.5f), "Half a second before its moment.");
+
+        playback.Advance(0.75f);
+
+        Assert.IsTrue(playback.TakeShot(1, 0.75f), "A moment before it.");
+    }
+
+    /// <summary>
+    /// Another skill cuts the one that plays only from the moment its animation may be cut, as the client lets the player (a
+    /// moment early for a client ahead, a moment after the animation gave way for one behind), or as the skill ends.
+    /// </summary>
+    [TestMethod]
+    public void AnotherSkillCutsTheSkillOnlyOnceItsMomentHasCome()
+    {
+        var start = Clip("start", 1f, false) with { Cuts = [new CutEvent(0.6f, 0.9f, 0.7f)] };
+        var playback = new SkillPlayback(Skill(start, null, null, Clip("end", 1f, false)));
+
+        playback.Advance(0.3f);
+
+        Assert.IsFalse(playback.MayCut(0.3f), "The start may be cut from 0.7.");
+
+        playback.Advance(0.45f);
+
+        Assert.IsTrue(playback.MayCut(0.45f), "A moment before.");
+
+        playback.Advance(1.2f);
+
+        Assert.IsTrue(playback.MayCut(1.2f), "A moment after the start gave way to the end.");
+
+        playback.Advance(1.5f);
+
+        Assert.IsFalse(playback.MayCut(1.5f), "The end may not be cut.");
+
+        playback.Advance(1.75f);
+
+        Assert.IsTrue(playback.MayCut(1.75f), "The skill is about to end.");
+    }
+
+    /// <summary>
+    /// The animations play at the attack speed of the player, and a stretch with a speed of its own at that speed.
+    /// </summary>
+    [TestMethod]
+    public void AnimationsPlayAtTheAttackSpeedAndAtTheSpeedOfTheirStretches()
+    {
+        var clip = Clip("end", 2f, false, Attack(1, 0.4f), Attack(2, 1.2f)) with { Speeds = [new SpeedEvent(0f, 0.4f, 4f, false)] };
+
+        // Twice as fast: the stretch to 0.4 at four times its speed takes 0.1, the 0.8 after it 0.4.
+        AreTimes([0.1f, 0.5f], Play(new SkillPlayback(Skill(null, null, null, clip), 2f)));
+    }
+
+    /// <summary>
+    /// A blow that lands holds the animation of the attacker for its time: what was to come comes that much later.
+    /// </summary>
+    [TestMethod]
+    public void ABlowThatLandsHoldsTheAnimation()
+    {
+        var playback = new SkillPlayback(Skill(null, null, null, Clip("end", 1f, false, Attack(1, 0.2f), Attack(2, 0.6f))));
+
+        playback.Advance(0.2f);
+        playback.Pause(0.1f);
+
+        Assert.AreEqual(0.7f, playback.NextTime!.Value, 0.001f);
     }
 }
 

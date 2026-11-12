@@ -40,6 +40,11 @@ public sealed class PlayerShotTest
     private const short FlyingAttack = 1701;
 
     /// <summary>
+    /// When the shot of that skill comes, in seconds after the start, near enough.
+    /// </summary>
+    private const double FlyingShotTime = 0.5;
+
+    /// <summary>
     /// A skill of Haru that charges, and a shot of the end of its third level.
     /// </summary>
     private const int ChargedSkill = 12000632;
@@ -74,6 +79,7 @@ public sealed class PlayerShotTest
             var player = world.Get<WorldComponent>(arena.Player).Position;
 
             arena.Maze.StartSkill(arena.Player, Flying, default);
+            arena.Run(FlyingShotTime);
 
             Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, player + new Vector3(5000f, 5000f, 0f))));
 
@@ -108,6 +114,7 @@ public sealed class PlayerShotTest
             var place = world.Get<WorldComponent>(arena.Player).Position;
 
             arena.Maze.StartSkill(arena.Player, Flying, default);
+            arena.Run(FlyingShotTime);
 
             Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)));
             Assert.AreEqual(ClaimVerdict.Refused, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)), "The animation let one shot go.");
@@ -233,6 +240,36 @@ public sealed class PlayerShotTest
             Assert.IsTrue(body.IsCarried, "The skill carries the monster in front of the player.");
             Assert.IsFalse(arena.Maze.Leave(arena.Player), "The maze goes on for the one who stays.");
             Assert.IsFalse(body.IsCarried, "The monster is let go.");
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// The skill a player plays is cut by another only once it may be: Haru's skill that throws gives way to no other before it
+    /// is about to end, so the client cannot start it again to fire its shot over and over.
+    /// </summary>
+    [TestMethod]
+    public void ASkillIsCutOnlyOnceItMayBe()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Haru, 350f).Open();
+
+            arena.Maze.StartSkill(arena.Player, Flying, default);
+
+            Assert.IsFalse(arena.Maze.MayStartSkill(arena.Player), "The skill has just begun.");
+
+            arena.Run(1.5);
+
+            Assert.IsTrue(arena.Maze.MayStartSkill(arena.Player), "It is about to end.");
 
             arena.Maze.Close();
         }
@@ -371,7 +408,7 @@ public sealed class PlayerShotTest
                 new WorldComponent { Location = 0, Position = Vector3.Zero, Rotation = 0f, Jump = 0 },
                 new LevelComponent(20, 0),
                 new PersonInfoComponent { Name = "Shooter" + person, Hero = hero },
-                new AbilityComponent { Health = life, SoulGain = life, SoulVapor = life, Stamina = life, SuperArmor = life, Speed = new SpeedComponentEntry { Move = 1f, Attack = 1f } });
+                new AbilityComponent { Health = life, SoulGain = life, SoulVapor = life, Stamina = life, SuperArmor = life, Speed = new SpeedComponentEntry { Move = 1f, Attack = 100f } });
         }
 
         public void Run(double seconds)
