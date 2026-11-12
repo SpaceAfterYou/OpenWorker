@@ -247,6 +247,11 @@ public partial class LuaMaze(
         public List<ChainRun> Chains { get; } = [];
 
         /// <summary>
+        /// When a claim of the client was last counted against its error budget, on the clock of the maze.
+        /// </summary>
+        public TimeSpan? RefusedAt { get; set; }
+
+        /// <summary>
         /// The combo of the player and when its last attack hit, in milliseconds of the clock of the maze.
         /// </summary>
         public int Combo { get; set; }
@@ -462,6 +467,9 @@ public partial class LuaMaze(
         member.Flights.Clear();
         member.Chains.Clear();
         member.Playback = null;
+
+        // What the player carries is let go where it stands: nobody steps the carry of a player who is gone.
+        EndCarry(member);
 
         _members.Remove(member);
         creatureManager.Detach(player);
@@ -808,9 +816,6 @@ public partial class LuaMaze(
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
         member.CurrentSkill = skill;
-
-        // A trap follows the cursor only while its skill is being played.
-        member.MouseTrap = null;
         member.Playback = null;
         member.SkillWake.Cancel();
 
@@ -889,12 +894,6 @@ public partial class LuaMaze(
                     run.Playback.Press(pressed, now);
                 }
             }
-
-            // The skill is over, and a trap that followed the cursor stays where it is.
-            if (run.Generation == member.SkillGeneration)
-            {
-                member.MouseTrap = null;
-            }
         }
 
         catch (Exception e)
@@ -924,13 +923,22 @@ public partial class LuaMaze(
 
         if (actions.FollowsMouse(skill))
         {
-            // One trap follows the cursor at a time, a second attack of the skill only keeps it company.
+            // One trap follows the cursor at a time, for as long as it lives: another attack of the skill, or another use of it,
+            // places none while it does.
             if (member.MouseTrap is not null)
             {
                 return;
             }
 
             member.MouseTrap = site;
+
+            _schedule.Schedule(Wait(info.LifeTime), () =>
+            {
+                if (member.MouseTrap == site)
+                {
+                    member.MouseTrap = null;
+                }
+            });
         }
 
         if (!actions.IsFlownByClient(skill))
@@ -979,25 +987,72 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// The client fires a projectile when its animation gets there, and the server follows it to see whom it hits.
+    /// A claim of the client that cannot be made counts against its error budget once in this time: the ones it sent before the
+    /// first was refused are the same fault.
+    /// </summary>
+    private static readonly TimeSpan RefusalInterval = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How far from the player the client puts a trap it drags with the mouse (the skill's table gives it no reach): the pointer
+    /// meets the ground at most 2500 from the camera, or lies 2500 from the player where it meets nothing, and the camera behind
+    /// the player and the moves the server has not heard of yet add to that.
+    /// </summary>
+    private const float MouseReach = 3500f;
+
+    private ClaimVerdict Refuse(Fighter member)
+    {
+        if (member.RefusedAt is { } last && Clock.Time - last < RefusalInterval)
+        {
+            return ClaimVerdict.Dropped;
+        }
+
+        member.RefusedAt = Clock.Time;
+
+        return ClaimVerdict.Refused;
+    }
+
+    /// <summary>
+    /// The skill being played lets the client fire one more shot of the attack: its animation has let go of one the client has
+    /// not fired yet, or is about to.
+    /// </summary>
+    private bool TakeShot(Fighter member, SkillRun run, int attack)
+    {
+        // The playback is brought up to now first: the shot may be of the animation that has just begun.
+        member.SkillWake.Cancel();
+        Play(member, run);
+
+        return member.Playback == run && run.Playback.TakeShot(attack, run.Last);
+    }
+
+    /// <summary>
+    /// The client fires a projectile when its animation gets there, and the server follows it to see whom it hits. The shot
+    /// leaves from where the server has the player, the way the client aims it; a player who is down fires nothing, and a skill
+    /// fires no more shots than its animations let go.
     /// </summary>
     [LuaIgnoreMember]
-    public void FireProjectile(Entity player, SkillProjectileRequest request)
+    public ClaimVerdict FireProjectile(Entity player, SkillProjectileRequest request)
     {
-        if (!Started || Find(player) is not { } member)
+        if (!Started || Find(player) is not { } member || !creatureManager.Vitals.IsAlive(player))
         {
-            return;
+            return ClaimVerdict.Dropped;
         }
 
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
-        // Only the skill that is being played fires its projectiles: a skill the server refused fires nothing.
-        if (request.Skill != member.CurrentSkill || !actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
+        // Only the skill that is being played fires its projectiles: a skill the server refused, or one cut by another, fires nothing.
+        if (member.Playback is not { } run || run.Skill != request.Skill ||
+            !actions.TryGetProjectile(request.Skill, hero, request.TriggerIndex, out var trigger))
         {
-            return;
+            return ClaimVerdict.Dropped;
         }
 
-        var flight = ProjectileFlight.Launch(trigger, request.Position, request.Right, request.Yaw, request.Direction, request.Target.Identifier);
+        if (!TakeShot(member, run, trigger.Id))
+        {
+            return Refuse(member);
+        }
+
+        var shooter = Ecs.Get<WorldComponent>(player).Position;
+        var flight = ProjectileFlight.Launch(trigger, shooter, RightOf(request.Right, request.Yaw), request.Yaw, request.Direction, request.Target.Identifier);
         var session = ++member.ProjectileSession;
 
         if (!actions.IsFlownByClient(request.Skill))
@@ -1016,42 +1071,77 @@ public partial class LuaMaze(
             });
         }
 
-        var position = default(SkillPositionValue) with { Position = request.Position, Angle = request.Yaw };
+        var position = default(SkillPositionValue) with { Position = shooter, Angle = request.Yaw };
 
         // It flies with the steps of the maze from now on.
         member.Flights.Add(new PlayerFlight(request.Skill, trigger, flight, position, Clock.Time));
+
+        return ClaimVerdict.Taken;
     }
 
     /// <summary>
-    /// The player drags the trap of a skill with the mouse. The trap hits where it is; the others see only the hits.
+    /// To the right of the shooter, as the client says, as a direction: a length the client makes up would carry the start of
+    /// the shot away from the player. The way the shooter looks gives it when the client's says nothing.
+    /// </summary>
+    private static Vector3 RightOf(Vector3 right, float yaw)
+    {
+        var length = right.Length();
+
+        return float.IsFinite(length) && length > 0.001f ? right / length : new Vector3(AiMath.Direction(yaw - 90f), 0f);
+    }
+
+    /// <summary>
+    /// The player drags the trap of a skill with the mouse. The trap hits where it is; the others see only the hits. A place out
+    /// of the reach of the mouse from where the server has the player is refused, and the trap stays.
     /// </summary>
     [LuaIgnoreMember]
-    public void MoveTrap(Entity player, Vector3 place)
+    public ClaimVerdict MoveTrap(Entity player, Vector3 place)
     {
-        if (Started && Find(player) is { MouseTrap: { } trap })
+        if (!Started || Find(player) is not { } member || !creatureManager.Vitals.IsAlive(player))
+        {
+            return ClaimVerdict.Dropped;
+        }
+
+        var from = Ecs.Get<WorldComponent>(player).Position;
+
+        if (!(Vector2.DistanceSquared(new Vector2(from.X, from.Y), new Vector2(place.X, place.Y)) <= MouseReach * MouseReach))
+        {
+            return Refuse(member);
+        }
+
+        if (member.MouseTrap is { } trap)
         {
             trap.Position = place;
         }
+
+        return ClaimVerdict.Taken;
     }
 
     /// <summary>
     /// The client lets a chain go when its animation gets there. The chain jumps between monsters on the server,
-    /// and the client draws it from what it is told: who it holds and when it lets go.
+    /// and the client draws it from what it is told: who it holds and when it lets go. As for a projectile, a player who is down
+    /// lets none go, and a skill no more than its animations let go.
     /// </summary>
     [LuaIgnoreMember]
-    public void FireChain(Entity player, SkillProjectileValue request)
+    public ClaimVerdict FireChain(Entity player, SkillProjectileValue request)
     {
-        if (!Started || Find(player) is not { } member)
+        if (!Started || Find(player) is not { } member || !creatureManager.Vitals.IsAlive(player))
         {
-            return;
+            return ClaimVerdict.Dropped;
         }
 
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
         // Only the skill that is being played may let a chain go.
-        if (request.Skill != member.CurrentSkill || !actions.TryGetChain(request.Skill, hero, request.TriggerIndex, out var trigger))
+        if (member.Playback is not { } run || run.Skill != request.Skill ||
+            !actions.TryGetChain(request.Skill, hero, request.TriggerIndex, out var trigger))
         {
-            return;
+            return ClaimVerdict.Dropped;
+        }
+
+        if (!TakeShot(member, run, trigger.Id))
+        {
+            return Refuse(member);
         }
 
         var attacker = Ecs.Get<WorldComponent>(player);
@@ -1076,6 +1166,8 @@ public partial class LuaMaze(
         var position = default(SkillPositionValue) with { Position = attacker.Position, Angle = attacker.Rotation };
 
         member.Chains.Add(new ChainRun(request.Skill, trigger, chain, session, position, member.SkillGeneration, Clock.Time));
+
+        return ClaimVerdict.Taken;
     }
 
     /// <summary>

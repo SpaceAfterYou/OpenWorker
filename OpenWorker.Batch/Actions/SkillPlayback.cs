@@ -44,8 +44,22 @@ public sealed class SkillPlayback
     /// </summary>
     public const float WaitTime = 3f;
 
+    /// <summary>
+    /// How far the client may play a skill ahead of the server or behind it, in seconds: a shot the client fires this much before
+    /// the animation that holds it begins on the server, or this much after the skill is over there, is still the skill's.
+    /// </summary>
+    public const float ShotLeeway = 0.3f;
+
     private readonly SkillAnimations _animations;
     private readonly List<SkillHit> _pending = [];
+
+    /// <summary>
+    /// The shots (projectiles and chains) the animations played so far have let go and the client has not fired yet, by attack.
+    /// Below zero when the client has fired a shot of the animation that comes next before it began here.
+    /// </summary>
+    private readonly Dictionary<int, int> _shots = [];
+
+    private float _doneAt;
     private bool _pressed;
     private float _stepStart;
     private float _stepEnd;
@@ -182,9 +196,73 @@ public sealed class SkillPlayback
 
             default:
                 Step = SkillStep.Done;
+                _doneAt = at;
                 _pending.Clear();
                 break;
         }
+    }
+
+    /// <summary>
+    /// The client fires a shot of the skill: a projectile or a chain. Each play of an animation, and each round of one that
+    /// repeats, lets go of the shots it holds once, and the skill takes no more of them than were let go. A shot of the
+    /// animation that begins within <see cref="ShotLeeway"/> is taken from what that animation will let go. <see cref="Advance"/>
+    /// has to run up to this moment first.
+    /// </summary>
+    /// <returns>Whether the shot is the skill's to fire now.</returns>
+    public bool TakeShot(int attack, float now)
+    {
+        if (IsDone && now > _doneAt + ShotLeeway)
+        {
+            return false;
+        }
+
+        var left = _shots.GetValueOrDefault(attack);
+
+        if (left > 0 || (!IsDone && left > -ShotsOf(NextClip(now + ShotLeeway), attack)))
+        {
+            _shots[attack] = left - 1;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The animation that begins next, when it begins by the given moment: the next round of one that repeats, or the step that
+    /// follows this one as things stand.
+    /// </summary>
+    private ActionAnimation? NextClip(float by)
+    {
+        if (!_roundsEnded && _nextRound < _stepEnd)
+        {
+            return _nextRound <= by ? _clip : null;
+        }
+
+        if (_stepEnd > by)
+        {
+            return null;
+        }
+
+        return Step switch
+        {
+            SkillStep.Start when _animations.Loop is null => EndClip(_stepEnd),
+            SkillStep.Start when _animations.Extra is null || _pressed => _animations.Loop,
+            SkillStep.Start => _animations.Extra,
+            SkillStep.Extra when _pressed && _animations.Loop is not null => _animations.Loop,
+            SkillStep.Extra or SkillStep.Loop => EndClip(_stepEnd),
+            _ => null
+        };
+    }
+
+    private static int ShotsOf(ActionAnimation? clip, int attack)
+    {
+        return clip?.Attacks.Count(e => e.Id == attack && IsShot(e)) ?? 0;
+    }
+
+    private static bool IsShot(AttackTrigger attack)
+    {
+        return attack.IsProjectile || attack.IsChain;
     }
 
     private void Enter(SkillStep step, float at)
@@ -297,11 +375,21 @@ public sealed class SkillPlayback
     /// <param name="limit">Attacks that would come after it are cut off with the step.</param>
     private void AddAttacks(ActionAnimation clip, float at, float limit)
     {
-        foreach (var attack in clip.Attacks.Where(e => e.HitsArea || e.IsTrap))
+        foreach (var attack in clip.Attacks)
         {
             var time = at + attack.Start;
 
-            if (time < limit)
+            if (time >= limit)
+            {
+                continue;
+            }
+
+            // The client fires the shots itself; the play only lets them go.
+            if (IsShot(attack))
+            {
+                _shots[attack.Id] = _shots.GetValueOrDefault(attack.Id) + 1;
+            }
+            else if (attack.HitsArea || attack.IsTrap)
             {
                 _pending.Add(new SkillHit(time, attack));
             }

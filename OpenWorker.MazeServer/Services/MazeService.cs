@@ -422,14 +422,19 @@ public sealed partial class MazeService(
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// The player fires a shot of the skill it plays. More shots than the skill lets go count against the error budget, once a
+    /// second, as a refused move does.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillProjectileRequest request)
     {
         if (Place.IsValid(request.Position, request.Yaw) &&
             Place.IsValid(request.Right) &&
             Place.IsValid(request.Direction) &&
-            ecs.Has<LuaMaze>(context.Player))
+            ecs.Has<LuaMaze>(context.Player) &&
+            ecs.Get<LuaMaze>(context.Player).FireProjectile(context.Player, request) == ClaimVerdict.Refused)
         {
-            ecs.Get<LuaMaze>(context.Player).FireProjectile(context.Player, request);
+            errors.Charge(context.Player, MessageOpcode.From(GroupOpcode.Skill, SkillOpcode.ProjectileReq), HandlerErrorReason.Violation);
         }
 
         return ValueTask.CompletedTask;
@@ -521,23 +526,35 @@ public sealed partial class MazeService(
     {
         var chain = request.Projectile;
 
-        if (Place.IsValid(chain.Position) && Place.IsValid(chain.Direction) && ecs.Has<LuaMaze>(context.Player))
+        if (Place.IsValid(chain.Position) && Place.IsValid(chain.Direction) && ecs.Has<LuaMaze>(context.Player) &&
+            ecs.Get<LuaMaze>(context.Player).FireChain(context.Player, chain) == ClaimVerdict.Refused)
         {
-            ecs.Get<LuaMaze>(context.Player).FireChain(context.Player, chain);
+            errors.Charge(context.Player, MessageOpcode.From(GroupOpcode.Skill, SkillOpcode.ChainReq), HandlerErrorReason.Violation);
         }
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// The player moves a trap with the mouse. The trap follows; the others see where it hits.
+    /// The player moves a trap with the mouse. The trap follows; the others see where it hits. A place out of the reach of the
+    /// mouse is refused: it counts against the error budget, once a second, and the others are not told.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTrapPosUpdateRequest request)
     {
-        if (Place.IsValid(request.Position) && IsFighting(context.Player))
+        if (!Place.IsValid(request.Position) || !ecs.Has<LuaMaze>(context.Player))
         {
-            ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position);
+            return ValueTask.CompletedTask;
+        }
+
+        var verdict = ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position);
+
+        if (verdict == ClaimVerdict.Taken)
+        {
             relay.TrapMoved(context.Player, request.Skill, request.TriggerIndex, request.Position);
+        }
+        else if (verdict == ClaimVerdict.Refused)
+        {
+            errors.Charge(context.Player, MessageOpcode.From(GroupOpcode.Skill, SkillOpcode.TrapPosUpdateReq), HandlerErrorReason.Violation);
         }
 
         return ValueTask.CompletedTask;

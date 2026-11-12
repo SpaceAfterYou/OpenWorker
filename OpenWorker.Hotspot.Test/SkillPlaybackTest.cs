@@ -261,6 +261,57 @@ public sealed class SkillPlaybackTest
 
         Assert.AreEqual(10, Play(playback, (1.0f, false)).Single().Id);
     }
+
+    /// <summary>
+    /// The client fires the shots of a skill itself, and the skill takes no more of them than its animations let go: each play of
+    /// an animation, and each round of one that repeats, once. A shot of the round or the animation about to begin is taken a
+    /// moment early, and one of a skill that is over only a moment late.
+    /// </summary>
+    [TestMethod]
+    public void ASkillTakesTheShotsItsAnimationsLetGo()
+    {
+        static AttackTrigger Shot(int id, float start) => Attack(id, start) with { AttackType = 1 };
+
+        var playback = new SkillPlayback(Skill(
+            Clip("start", 0.5f, false, Shot(1, 0.2f)),
+            Clip("loop", 0.4f, true, Shot(2, 0f)),
+            null,
+            Clip("end", 0.3f, false),
+            loopTime: 0.8f));
+
+        playback.Advance(0.1f);
+
+        Assert.IsTrue(playback.TakeShot(1, 0.1f), "The start lets its shot go as it begins.");
+        Assert.IsFalse(playback.TakeShot(1, 0.2f), "It lets it go once.");
+        Assert.IsTrue(playback.TakeShot(2, 0.3f), "The loop begins at 0.5: its shot comes a moment early.");
+        Assert.IsFalse(playback.TakeShot(2, 0.3f), "The first round has none left.");
+
+        playback.Advance(0.55f);
+
+        Assert.IsFalse(playback.TakeShot(2, 0.55f), "The shot of the first round was fired before it began, and the second is not near.");
+
+        playback.Advance(0.9f);
+
+        Assert.IsTrue(playback.TakeShot(2, 0.9f), "The second round lets one more go.");
+        Assert.IsFalse(playback.TakeShot(3, 0.9f), "The skill has no such shot.");
+
+        playback.Advance(1.8f);
+
+        Assert.IsTrue(playback.IsDone);
+        Assert.IsFalse(playback.TakeShot(2, 1.8f), "Two rounds, two shots.");
+
+        var late = new SkillPlayback(Skill(null, null, null, Clip("end", 0.3f, false, Shot(4, 0.2f))));
+
+        late.Advance(0.5f);
+
+        Assert.IsTrue(late.TakeShot(4, 0.5f), "A moment after the end the shot is still the skill's.");
+
+        var over = new SkillPlayback(Skill(null, null, null, Clip("end", 0.3f, false, Shot(4, 0.2f))));
+
+        over.Advance(1f);
+
+        Assert.IsFalse(over.TakeShot(4, 1f), "Long after the end it is not.");
+    }
 }
 
 internal static class SkillAnimationsExtensions
