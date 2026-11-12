@@ -439,12 +439,16 @@ wrote last. A handler never waits for these writes.
 - **The write.** `PersistenceWriter` writes off the loop, one batch after another: everything queued while a batch is
   written goes into the next one, in one transaction of raw statements (an item and a document are upserts, a row an
   `UPDATE` by its key), a few hundred statements per round trip. The snapshot and the queue happen in one callback of
-  the loop, so the writes of a person reach the database in the order they were taken. A failed batch is written person by
-  person; a person whose write still fails is tried again (`PersistenceWriter.MaxAttempts`), then given up, with an error
-  in the log and its parts marked again if it is still on the server.
+  the loop, so the writes of a person reach the database in the order they were taken. A batch the database refused is
+  written person by person; one it did not answer (a timeout, a broken connection) is not, since each person would wait as
+  long again. A person whose write still fails is tried again (`PersistenceWriter.MaxAttempts`), then given up, with an
+  error in the log and its parts marked again if it is still on the server.
 - **A player who leaves while the database is down.** The flush of a closing connection (`PersistenceWriter.LeaveAsync`)
   does not give the parts back to the player, who is about to be destroyed: the writer keeps the snapshots, in order, and
-  tries them again every two seconds, off the loop; a later write of that person goes after them. `PersonFlush` puts a
+  tries them again every two seconds, off the loop; a later write of that person goes after them. A round tries every kept
+  person in one transaction; only when the database refused it, each person on its own, the one tried longest ago first,
+  and the round stops as soon as writes of the players still on the server wait. A person whose time is up is given up
+  before the round, without a try, so a session is held at most `Persistence:KeepTimeout` and one try. `PersonFlush` puts a
   `SessionHoldComponent` on the closing entity, and `SessionLeaseManager` keeps the session held and renewed after the
   entity is gone, so no other server and no new login loads the person until the write is in. Bounds:
   `Persistence:KeepTimeout` (10 min) per person and `Persistence:KeepLimit` (2000) persons per server; past either the
