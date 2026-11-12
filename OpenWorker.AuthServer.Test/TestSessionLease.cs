@@ -3,7 +3,9 @@ using System.Net.Sockets;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 using OpenWorker.AuthServer.App;
 using OpenWorker.AuthServer.Test.DependencyInjection;
@@ -405,6 +407,40 @@ public sealed class TestSessionLease
 
         Assert.IsTrue(await entering.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken), "The person is let go once the write is in");
         Assert.AreEqual(0, await district.RenewAsync(), "The session is no longer this server's");
+    }
+
+    /// <summary>
+    /// A held session whose record Redis lost no longer keeps its person from being loaded elsewhere: the next renewal
+    /// notices it and reports it once, as an error.
+    /// </summary>
+    [TestMethod]
+    public async Task AHeldSessionWhoseRecordIsLostIsReportedAsAnError()
+    {
+        using var world = World.Create();
+        var logs = new FakeLogger<SessionLeaseManager>();
+        var district = new SessionLeaseManager(Sessions, Redis, world, options: Options.Create(new SessionLeaseOptions { Play = true }), logger: logs);
+        var session = NewSession();
+        var player = world.Create();
+        var written = new TaskCompletionSource();
+
+        await district.AttachAsync(player, session, 1);
+
+        world.Add(player, new SessionHoldComponent(written.Task));
+
+        await district.OnSessionClosedAsync(player);
+
+        world.Destroy(player);
+
+        Assert.AreEqual(1, await district.RenewAsync());
+        Assert.AreEqual(0, logs.Collector.GetSnapshot().Count(e => e.Level == LogLevel.Error));
+
+        await Provider.Connection.ExecuteAsync("DEL", $"{typeof(SessionCache).FullName}:{session}");
+
+        Assert.AreEqual(0, await district.RenewAsync());
+        Assert.AreEqual(0, await district.RenewAsync());
+        Assert.AreEqual(1, logs.Collector.GetSnapshot().Count(e => e.Level == LogLevel.Error), "Reported once");
+
+        written.SetResult();
     }
 
     /// <summary>

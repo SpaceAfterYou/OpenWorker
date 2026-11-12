@@ -452,7 +452,10 @@ wrote last. A handler never waits for these writes.
   and the round stops as soon as writes of the players still on the server wait. A person whose time is up is given up
   before the round, without a try, so a session is held at most `Persistence:KeepTimeout` and one try. `PersonFlush` puts a
   `SessionHoldComponent` on the closing entity, and `SessionLeaseManager` keeps the session held and renewed after the
-  entity is gone, so no other server and no new login loads the person until the write is in. Bounds:
+  entity is gone, so no other server and no new login loads the person until the write is in. That hold rests on the
+  Redis record: the entry of the district and the maze also turns away a person this server still keeps
+  (`PersistenceWriter.Keeps`), and a held lease whose record could not be renewed (Redis lost it, or another holder took
+  it) is logged as an error and no longer renewed. Bounds:
   `Persistence:KeepTimeout` (10 min) per person and `Persistence:KeepLimit` (2000) persons per server; past either the
   changes are lost, with an error that names the person and the parts, and the session is let go. `persistence.kept`
   counts the players who wait.

@@ -131,6 +131,19 @@ public sealed partial class PersistenceWriter(
         }
     }
 
+    /// <summary>
+    /// Whether what the person changed before it left this server still waits here for the database. Such a person may not
+    /// enter again until it is written or given up: its entry would read an older state, and the kept writes would land
+    /// over what it changes then.
+    /// </summary>
+    public bool Keeps(int person)
+    {
+        lock (_keptLock)
+        {
+            return _kept.ContainsKey(person);
+        }
+    }
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _consumer = Task.Run(ConsumeAsync, CancellationToken.None);

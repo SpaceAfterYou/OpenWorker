@@ -144,12 +144,14 @@ public sealed class LeftPersonWritesTest
         Assert.IsNotNull(until, "The session is held while the write waits");
         Assert.IsFalse(until.IsCompleted);
         Assert.IsEmpty(server.Database.Written);
+        Assert.IsTrue(server.Writer.Keeps(7), "The person may not enter this server again while its write waits");
 
         server.Database.Down = false;
 
         await until.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken);
 
         Assert.AreEqual(Place, server.Database.Written.Single().Place, "The write is in before the session is let go");
+        Assert.IsFalse(server.Writer.Keeps(7));
         Assert.AreEqual(1, ended.Sum("outcome", "written"));
 
         await server.Writer.StopAsync(CancellationToken.None);
