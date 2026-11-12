@@ -63,6 +63,12 @@ public sealed partial class PersistenceWriter(
     private readonly Lock _keptLock = new();
 
     /// <summary>
+    /// The stop of the server has given up what was kept: what would be kept after it is lost at once. Under
+    /// <see cref="_keptLock"/>.
+    /// </summary>
+    private bool _givenUp;
+
+    /// <summary>
     /// Counts the tries of kept persons on their own, so that the one tried longest ago goes first. Writer only.
     /// </summary>
     private long _turn;
@@ -406,6 +412,7 @@ public sealed partial class PersistenceWriter(
         kept.Writes.AddRange(given.Select(e => e.Write!));
 
         bool full;
+        bool stopped;
 
         lock (_keptLock)
         {
@@ -416,12 +423,23 @@ public sealed partial class PersistenceWriter(
                 return;
             }
 
+            stopped = _givenUp;
             full = _kept.Count >= _keepLimit;
 
-            if (!full)
+            if (!full && !stopped)
             {
                 _kept[person] = kept;
             }
+        }
+
+        if (stopped)
+        {
+            // The stop of the server has given up what was kept already; nothing would try this one any more.
+            LogKeptLostOnStop(logger, person, kept.Sections, kept.Items);
+
+            metrics?.Refused();
+
+            return;
         }
 
         if (full)
@@ -553,7 +571,8 @@ public sealed partial class PersistenceWriter(
     }
 
     /// <summary>
-    /// Takes the persons about to be tried, <paramref name="one"/> or every kept person. One no longer kept is left out.
+    /// Takes the persons about to be tried, <paramref name="one"/> or every kept person, and marks them as on their way to
+    /// the database, so that the stop of the server knows their outcome is not known yet. One no longer kept is left out.
     /// </summary>
     private Kept[] Begin(Kept? one)
     {
@@ -563,21 +582,33 @@ public sealed partial class PersistenceWriter(
                 ? [.. _kept.Values]
                 : _kept.TryGetValue(one.Person, out var found) && found == one ? [one] : [];
 
+            foreach (var each in taken)
+            {
+                each.Writing = true;
+            }
+
             return taken;
         }
     }
 
     /// <summary>
     /// A try of a kept person has answered: written (<paramref name="failure"/> null), or failed. The person is ended when
-    /// it is written and when its time is up; else it waits for the next round.
+    /// it is written, when its time is up, and when the stop of the server gave it up during the try; else it waits for the
+    /// next round.
     /// </summary>
     private void Settle(Kept kept, Exception? failure)
     {
         lock (_keptLock)
         {
+            kept.Writing = false;
             kept.Failure = failure ?? kept.Failure;
 
-            if (!_kept.TryGetValue(kept.Person, out var found) || found != kept)
+            if (kept.GivenUpWhileWriting)
+            {
+                kept.GivenUpWhileWriting = false;
+            }
+
+            else if (!_kept.TryGetValue(kept.Person, out var found) || found != kept)
             {
                 return;
             }
@@ -620,22 +651,38 @@ public sealed partial class PersistenceWriter(
     }
 
     /// <summary>
-    /// The host stopped waiting: what is still kept is lost.
+    /// The host stopped waiting: what is still kept is lost, nothing of it is tried any more, and what would be kept from
+    /// now on is lost at once. A person whose try is on its way to the database at this moment may still land there: its
+    /// session is let go only when the database has answered, or expires by itself when the process ends first.
     /// </summary>
     private void GiveUpKept()
     {
-        Kept[] kept;
+        (Kept Kept, bool Writing, PersonSections Sections, int Items)[] kept;
 
         lock (_keptLock)
         {
-            kept = [.. _kept.Values];
+            _givenUp = true;
+
+            kept = [.. _kept.Values.Select(e => (e, e.Writing, e.Sections, e.Items))];
 
             _kept.Clear();
+
+            foreach (var (one, writing, _, _) in kept)
+            {
+                one.GivenUpWhileWriting = writing;
+            }
         }
 
-        foreach (var one in kept)
+        foreach (var (one, writing, sections, items) in kept)
         {
-            LogKeptLostOnStop(logger, one.Person, one.Sections, one.Items);
+            if (writing)
+            {
+                LogKeptUnsettledOnStop(logger, one.Person, sections, items);
+
+                continue;
+            }
+
+            LogKeptLostOnStop(logger, one.Person, sections, items);
 
             metrics?.Ended(false);
 
@@ -700,6 +747,17 @@ public sealed partial class PersistenceWriter(
         /// </summary>
         public long Turn { get; set; }
 
+        /// <summary>
+        /// A try is on its way to the database. Under the lock of the kept persons.
+        /// </summary>
+        public bool Writing { get; set; }
+
+        /// <summary>
+        /// The stop of the server gave the person up while its try was on its way: it is ended when the try answers. Under the
+        /// lock of the kept persons.
+        /// </summary>
+        public bool GivenUpWhileWriting { get; set; }
+
         public List<PersonWrite> Writes { get; } = [];
 
         public TaskCompletionSource<bool> Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -744,6 +802,9 @@ public sealed partial class PersistenceWriter(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The server stopped before what person {Person} changed before it left could be written; it is lost: {Sections}, {Items} items")]
     private static partial void LogKeptLostOnStop(ILogger logger, int person, PersonSections sections, int items);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The server stopped while what person {Person} changed before it left was on its way to the database; whether it lands is not known: {Sections}, {Items} items. The session is let go when the database answers, or expires by itself")]
+    private static partial void LogKeptUnsettledOnStop(ILogger logger, int person, PersonSections sections, int items);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The writer of the changes of persons failed")]
     private static partial void LogWriterFailed(ILogger logger, Exception exception);

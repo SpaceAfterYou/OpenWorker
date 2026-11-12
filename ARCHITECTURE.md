@@ -271,7 +271,9 @@ readiness off, because `ServerState` listens to `ApplicationStopping`.
 4. The host stops the other services, the health endpoint among them, in the reverse order of their registration:
    `PersistenceFlushService` takes a last round of what is left (players the drain did not close in time), then
    `PersistenceWriter` writes what is queued and what it keeps of the players who left (see Database), and stops; the
-   time of the host bounds that wait, and what is still kept then is lost, with an error per player. Last the container
+   time of the host bounds that wait, and what is still kept then is lost, with an error per player, and is not tried any
+   more; a player whose write is on its way at that moment is let go only once the database answers it (or the lease
+   expires with the process), and a player who would be kept after that is lost at once. Last the container
    disposes the world loop.
    The loop runs through the whole drain and the last round, because the close handlers and the snapshots need it.
 

@@ -437,5 +437,54 @@ public sealed class LeftPersonWritesTest
         await server.Writer.StopAsync(new CancellationToken(true));
     }
 
+    /// <summary>
+    /// A server that stops and gives up what it keeps writes nothing of it any more, lets a session go only once the database
+    /// has answered the write that was on its way, and does not keep a player who leaves after that.
+    /// </summary>
+    [TestMethod]
+    public async Task AStopThatGivesUpWritesNothingOfWhatItGaveUpAndKeepsNobodyAfter()
+    {
+        var script = new Script();
+
+        using var server = new Server(new PersistenceOptions(), script.Database, script.Clock);
+        using var ended = server.Metrics.Listen<long>("persistence.kept.ended");
+
+        script.Database.Answer = _ => Unreachable();
+
+        var holds = await LeaveAndKeepAsync(script, server, 7, 8);
+        var onItsWay = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sent = 0;
+
+        // The next write of the persons who left hangs on its way. The database is back for them after it: anything of them
+        // written later would land after their sessions went. Player 10 is never written.
+        script.Database.Answer = persons => persons.Contains(10)
+            ? Unreachable()
+            : Interlocked.Increment(ref sent) == 1 ? onItsWay.Task : Task.CompletedTask;
+
+        await script.RunUntilAsync(() => Volatile.Read(ref sent) > 0);
+
+        // A player leaves while the kept writes are on their way; the server stops before its writes are given up.
+        var player = await server.EnterAsync(10);
+        var last = server.LeaveAsync(player);
+
+        await server.Loop.InvokeAsync(() => { });
+        await server.Writer.StopAsync(new CancellationToken(true));
+
+        Assert.IsFalse(holds.Any(e => e.IsCompleted), "The sessions stay held while their write may still land");
+
+        onItsWay.SetException(new TimeoutException());
+
+        await script.RunUntilAsync(() => last.IsCompleted && holds.All(e => e.IsCompleted), Task.WhenAll([last, .. holds]));
+
+        Assert.IsFalse(holds.Any(e => ((Task<bool>)e).Result), "Lost, not written");
+        Assert.AreEqual(1, Volatile.Read(ref sent), "Nothing given up is written after the write that was on its way");
+        Assert.IsNull(await last, "A player who leaves after the stop gave up is not kept: its session goes at once");
+        Assert.AreEqual(3, ended.Sum("outcome", "lost"));
+
+        var stopped = server.Writer.StopAsync(CancellationToken.None);
+
+        await script.RunUntilAsync(() => stopped.IsCompleted, stopped);
+    }
+
     public TestContext TestContext { get; set; } = null!;
 }
