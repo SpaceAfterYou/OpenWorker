@@ -216,6 +216,8 @@ public sealed class TestServerOptions
             (Auth, new() { ["Game:Version"] = "../../etc" }, ["Game:Version"]),
             (Auth, new() { ["ConnectionStrings:Redis"] = "http://redis:6379" }, ["ConnectionStrings:Redis"]),
             (Gate, new() { ["Hotspot:ErrorBudget:Window"] = "00:00:00" }, ["Hotspot:ErrorBudget:Window"]),
+            // The timer of a connection that has not entered counts no further than about 49 days.
+            (Auth, new() { ["Hotspot:EntryTimeout"] = "50.00:00:00" }, ["Hotspot:EntryTimeout"]),
             (Relay, new() { ["Health:LoopTimeout"] = "00:00:00" }, ["Health:LoopTimeout"]),
             // Two listeners on one port: one of them would fail to start, and the failure would not name the setting.
             (Gate, new() { ["Health:Port"] = "10000", ["Server:Port"] = "10000" }, ["Health:Port", "Server:Port"]),

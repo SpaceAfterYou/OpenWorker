@@ -25,11 +25,18 @@ public sealed class HotspotOptions : IValidatableObject
     /// </summary>
     public TimeSpan EntryTimeout { get; set; } = TimeSpan.FromMinutes(1);
 
+    /// <summary>
+    /// The longest <see cref="EntryTimeout"/>: a day is far beyond any wait for a login, and well inside what the timer of a
+    /// connection can count.
+    /// </summary>
+    public static TimeSpan MaxEntryTimeout { get; } = TimeSpan.FromDays(1);
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (EntryTimeout <= TimeSpan.Zero)
+        if (EntryTimeout <= TimeSpan.Zero || EntryTimeout > MaxEntryTimeout)
         {
-            yield return new ValidationResult("Hotspot:EntryTimeout must be a time longer than zero, for example 00:01:00.", [nameof(EntryTimeout)]);
+            yield return new ValidationResult(
+                "Hotspot:EntryTimeout must be a time longer than zero and at most a day (1.00:00:00), for example 00:01:00.", [nameof(EntryTimeout)]);
         }
     }
 }

@@ -493,7 +493,7 @@ or wrong setting stops the server with a message that names the key. A setting w
 - `Hotspot:EntryTimeout` is how long a connection may stay open before it enters (see "Read loop"): `00:01:00` unless set,
   which the gate, the districts and the mazes keep, since the client sends its entry the moment it connects to them; the
   auth server sets `00:10:00`, since the client connects to it when the program starts and a person types the password
-  into the login window on that connection, and the client quits when the server closes it.
+  into the login window on that connection, and the client quits when the server closes it. It is at most a day.
 - `Hotspot:RateLimits:Movement`, `:Chat`, `:Items` and `:Other`, each with `PerSecond` and `Burst`, are the token buckets of a
   session: 30 and 60, 5 and 10, 20 and 40, 60 and 200 unless set (a rate above 0, a burst from 1).
 - `World:VisibilityRadius` (5000 game units), `World:SpeedTolerance` (1.5), `World:MoveBurst` (`00:00:05`), `World:MaxMoveStep`
