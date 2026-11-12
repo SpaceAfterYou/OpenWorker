@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillAkashicRecordBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillAkashicRecordBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,16 +22,7 @@ public readonly struct SkillAkashicRecordBroadcastResponse(BinaryReader reader) 
 
 #region Message: Body
 
-    public SkillAkashicRecordValue Card { get;  init; } = new(reader);
+    public SkillAkashicRecordValue Card { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Card.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

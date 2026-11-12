@@ -1,37 +1,23 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillActionValue(BinaryReader reader) : IWritableData
+[WireMessage]
+public readonly partial struct SkillActionValue
 {
 #region Message: Body
 
-    public SkillActorInfoValue SkillActorInfo { get; init; } = new(reader);
+    public SkillActorInfoValue SkillActorInfo { get; init; }
 
-    public int Skill { get; init; } = reader.ReadInt32();
+    public int Skill { get; init; }
 
-    public short TriggerIndex { get; init; } = reader.ReadInt16();
+    public short TriggerIndex { get; init; }
 
-    public ushort ContinuousHit { get; init; } = reader.ReadUInt16();
+    public ushort ContinuousHit { get; init; }
 
-    public bool IsCounterAttack { get; init; } = reader.ReadBoolean();
+    public bool IsCounterAttack { get; init; }
 
-    public bool IsPenetrate { get; init; } = reader.ReadBoolean();
+    public bool IsPenetrate { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        SkillActorInfo.Write(writer);
-
-        writer.Write(Skill);
-        writer.Write(TriggerIndex);
-        writer.Write(ContinuousHit);
-        writer.Write(IsCounterAttack);
-        writer.Write(IsPenetrate);
-    }
-
-#endregion Interface: IWritableData
 }

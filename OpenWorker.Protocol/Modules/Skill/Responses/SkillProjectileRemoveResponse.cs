@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillProjectileRemoveResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillProjectileRemoveResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -19,16 +21,7 @@ public readonly struct SkillProjectileRemoveResponse(BinaryReader reader) : IRes
 
 #region Message: Body
 
-    public uint Session { get; init; } = reader.ReadUInt32();
+    public uint Session { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Session);
-    }
-
-#endregion Interface: IWritableData
 }

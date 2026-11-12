@@ -2,14 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
 /// <summary>
 /// TODO: Deleted mech. Research.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillStartSoulViperBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillStartSoulViperBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,19 +24,9 @@ public readonly struct SkillStartSoulViperBroadcastResponse(BinaryReader reader)
 
 #region Message: Body
 
-    public int ActorId { get; init; } = reader.ReadInt32();
+    public int ActorId { get; init; }
 
-    public float TimerScale { get; init; } = reader.ReadSingle();
+    public float TimerScale { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(ActorId);
-        writer.Write(TimerScale);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillActiveResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillActiveResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -19,20 +21,9 @@ public readonly struct SkillActiveResponse(BinaryReader reader) : IResponseHotsp
 
 #region Message: Body
 
-    public short ErrorCode { get; init; } = reader.ReadInt16();
-    public int Divergence { get; init; } = reader.ReadInt32();
-    public bool Swap { get; init; } = reader.ReadBoolean();
+    public short ErrorCode { get; init; }
+    public int Divergence { get; init; }
+    public bool Swap { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(ErrorCode);
-        writer.Write(Divergence);
-        writer.Write(Swap);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -1,39 +1,20 @@
 using System.Numerics;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillActionPosInfoValue(BinaryReader reader) : IWritableData
+[WireMessage]
+public readonly partial struct SkillActionPosInfoValue
 {
 #region Message: Body
 
-    public Vector3 Position { get; init; } = reader.ReadVector3();
-    public float Angle { get; init; } = reader.ReadSingle();
-    public short MotionClass { get; init; } = reader.ReadInt16();
+    public Vector3 Position { get; init; }
+    public float Angle { get; init; }
+    public short MotionClass { get; init; }
 
-    /// <summary>
-    /// TODO: client have in the struct but doesn't read.
-    /// </summary>
-    private bool SwapSkill { get; init; } /* = reader.ReadBoolean(); */
+    // The client's struct has a flag of a swapped skill here, which it does not read: it is not sent.
 
-    public bool HasInputFlag { get; init; } = reader.ReadBoolean();
+    public bool HasInputFlag { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Position);
-        writer.Write(Angle);
-        writer.Write(MotionClass);
-
-        // TODO: client have in the struct but doesn't read
-        // writer.Write(SwapSkill);
-
-        writer.Write(HasInputFlag);
-    }
-
-#endregion Interface: IWritableData
 }

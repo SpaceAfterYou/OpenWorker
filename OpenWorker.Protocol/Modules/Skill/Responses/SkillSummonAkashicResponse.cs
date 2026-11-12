@@ -2,14 +2,15 @@ using System.Numerics;
 using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillSummonAkashicResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillSummonAkashicResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,26 +23,12 @@ public readonly struct SkillSummonAkashicResponse(BinaryReader reader) : IRespon
 
 #region Message: Body
 
-    public ActorValue Owner { get; init; } = new(reader);
-    public ActorValue Creature { get; init; } = new(reader);
-    public float AlphaValuea { get; init; } = reader.ReadSingle();
-    public float BlendingTime { get; init; } = reader.ReadSingle();
-    public Vector3 Position { get; init; } = reader.ReadVector3();
-    public bool ApplyRotation { get; init; } = reader.ReadBoolean();
+    public ActorValue Owner { get; init; }
+    public ActorValue Creature { get; init; }
+    public float AlphaValuea { get; init; }
+    public float BlendingTime { get; init; }
+    public Vector3 Position { get; init; }
+    public bool ApplyRotation { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Owner);
-        writer.Write(Creature);
-        writer.Write(AlphaValuea);
-        writer.Write(BlendingTime);
-        writer.Write(Position);
-        writer.Write(ApplyRotation);
-    }
-
-#endregion Interface: IWritableData
 }

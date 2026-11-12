@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillAddDeckSlotResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillAddDeckSlotResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -19,16 +21,7 @@ public readonly struct SkillAddDeckSlotResponse(BinaryReader reader) : IResponse
 
 #region Message: Body
 
-    public short SlotCount { get; init; } = reader.ReadInt16();
+    public short SlotCount { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(SlotCount);
-    }
-
-#endregion Interface: IWritableData
 }

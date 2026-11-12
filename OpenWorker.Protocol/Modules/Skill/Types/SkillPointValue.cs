@@ -1,23 +1,14 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillPointValue(BinaryReader reader) : IWritableData
+[WireMessage]
+public readonly partial struct SkillPointValue
 {
 #region Message: Body
 
-    public short TotalSkillPoint { get; init; } = reader.ReadInt16();
-    public short FreeSkillPoint { get; init; } = reader.ReadInt16();
+    public short TotalSkillPoint { get; init; }
+    public short FreeSkillPoint { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(TotalSkillPoint);
-        writer.Write(FreeSkillPoint);
-    }
-
-#endregion Interface: IWritableData
 }

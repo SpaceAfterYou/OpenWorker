@@ -1,54 +1,35 @@
 using System.Numerics;
 using OpenWorker.Domain.Types;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillDmgValue(BinaryReader reader) : IWritableData
+[WireMessage]
+public readonly partial struct SkillDmgValue
 {
 #region Message: Body
 
-    public ActorValue UxActorId { get; init; } = new(reader);
+    public ActorValue UxActorId { get; init; }
 
-    public byte ReactionType { get; init; } = reader.ReadByte();
+    public byte ReactionType { get; init; }
 
-    public byte DamageFlags { get; init; } = reader.ReadByte();
+    public byte DamageFlags { get; init; }
 
-    public int Damage { get; init; } = reader.ReadInt32();
+    public int Damage { get; init; }
 
-    public int Health { get; init; } = reader.ReadInt32();
+    public int Health { get; init; }
 
-    public Vector3 ExtraMove { get; init; } = reader.ReadVector3();
+    public Vector3 ExtraMove { get; init; }
 
-    public float FlySpeed { get; init; } = reader.ReadSingle();
+    public float FlySpeed { get; init; }
 
-    public byte AttackCounter { get; init; } = reader.ReadByte();
+    public byte AttackCounter { get; init; }
 
-    public byte DefenseType { get; init; } = reader.ReadByte();
+    public byte DefenseType { get; init; }
 
-    public float CurSuperArmorGauge { get; init; } = reader.ReadSingle();
+    public float CurSuperArmorGauge { get; init; }
 
-    public byte HitPartsIndex { get; init; } = reader.ReadByte();
+    public byte HitPartsIndex { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(UxActorId);
-        writer.Write(ReactionType);
-        writer.Write(DamageFlags);
-        writer.Write(Damage);
-        writer.Write(Health);
-        writer.Write(ExtraMove);
-        writer.Write(FlySpeed);
-        writer.Write(AttackCounter);
-        writer.Write(DefenseType);
-        writer.Write(CurSuperArmorGauge);
-        writer.Write(HitPartsIndex);
-    }
-
-#endregion Interface: IWritableData
 }
