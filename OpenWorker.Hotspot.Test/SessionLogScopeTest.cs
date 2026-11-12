@@ -384,11 +384,12 @@ public sealed partial class SessionLogScopeTest
         private readonly ServerService _service;
         private readonly ApplicationLifetime _lifetime = new(NullLogger<ApplicationLifetime>.Instance);
         private readonly MetricsHost _metrics = new();
-        private readonly int _port = FreePort();
+        private readonly ServerState _state;
 
         public Server(Logs logs)
         {
             _loop = new WorldLoop(logs.Factory.CreateLogger<WorldLoop>());
+            _state = new ServerState(_lifetime);
 
             var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
 
@@ -413,12 +414,12 @@ public sealed partial class SessionLogScopeTest
                 _ecs,
                 _loop,
                 executor,
-                Options.Create(new ServerOptions { Port = _port }),
+                Options.Create(new ServerOptions { Port = 0 }),
                 Options.Create(new GameOptions { Version = "1.0" }),
                 Options.Create(new HotspotOptions()),
                 Options.Create(new ShutdownOptions { Timeout = TimeSpan.FromSeconds(30), DrainTimeout = TimeSpan.FromSeconds(15) }),
                 new ArchComponentProvider(configuration, NullLogger<ArchComponentProvider>.Instance),
-                new ServerState(_lifetime),
+                _state,
                 new SessionTracker(),
                 [new CloseHandler(logs.Factory.CreateLogger<CloseHandler>())],
                 _metrics.Get<SessionMetrics>(),
@@ -429,28 +430,17 @@ public sealed partial class SessionLogScopeTest
         public Task StartAsync() => _service.StartAsync(CancellationToken.None);
 
         /// <summary>
-        /// The listener starts a moment after the service does.
+        /// The listener starts a moment after the service does, on a port the system picks.
         /// </summary>
         public async Task<TcpClient> ConnectAsync()
         {
-            for (var attempt = 0; ; attempt++)
-            {
-                var client = new TcpClient();
+            await ServerServiceHost.ListeningAsync(_state);
 
-                try
-                {
-                    await client.ConnectAsync(IPAddress.Loopback, _port);
+            var client = new TcpClient();
 
-                    return client;
-                }
+            await client.ConnectAsync(IPAddress.Loopback, _state.Port);
 
-                catch (SocketException) when (attempt < 100)
-                {
-                    client.Dispose();
-
-                    await Task.Delay(50);
-                }
-            }
+            return client;
         }
 
         public async ValueTask DisposeAsync()
@@ -461,19 +451,6 @@ public sealed partial class SessionLogScopeTest
             _loop.Dispose();
             _ecs.Dispose();
             _metrics.Dispose();
-        }
-
-        private static int FreePort()
-        {
-            var probe = new TcpListener(IPAddress.Loopback, 0);
-
-            probe.Start();
-
-            var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-
-            probe.Stop();
-
-            return port;
         }
     }
 

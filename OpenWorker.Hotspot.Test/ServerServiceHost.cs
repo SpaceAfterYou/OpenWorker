@@ -19,8 +19,8 @@ using OpenWorker.Hotspot.Telemetry;
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// A <see cref="ServerService"/> on a free port of the loopback, with the handlers of the tests (<see cref="ProbeHandler"/>)
-/// and the metrics of its own <see cref="MetricsHost"/>. It creates entities in the registry of Arch, which does not take
+/// A <see cref="ServerService"/> on a port the system picks (its listener is made on port 0), with the handlers of the
+/// tests (<see cref="ProbeHandler"/>) and the metrics of its own <see cref="MetricsHost"/>. It creates entities in the registry of Arch, which does not take
 /// two threads at once: the tests that use it do not run side by side.
 /// </summary>
 internal sealed class ServerServiceHost : IAsyncDisposable
@@ -29,6 +29,7 @@ internal sealed class ServerServiceHost : IAsyncDisposable
     private readonly WorldLoop _loop = new(NullLogger<WorldLoop>.Instance);
     private readonly ServerService _service;
     private readonly ApplicationLifetime _lifetime = new(NullLogger<ApplicationLifetime>.Instance);
+    private readonly ServerState _state;
 
     public ServerServiceHost()
     {
@@ -36,7 +37,7 @@ internal sealed class ServerServiceHost : IAsyncDisposable
 
         Metrics = new MetricsHost();
 
-        Port = FreePort();
+        _state = new ServerState(_lifetime);
 
         var empty = typeof(HandlerTable).Assembly.GetType("OpenWorker.Hotspot.Handler.EmptyHandler")!;
         var services = new ServiceCollection().AddSingleton<ProbeHandler>().AddSingleton(empty).BuildServiceProvider();
@@ -57,12 +58,12 @@ internal sealed class ServerServiceHost : IAsyncDisposable
             _ecs,
             _loop,
             executor,
-            Options.Create(new ServerOptions { Port = Port }),
+            Options.Create(new ServerOptions { Port = 0 }),
             Options.Create(new GameOptions { Version = "1.0" }),
             Options.Create(new HotspotOptions()),
             Options.Create(new ShutdownOptions { Timeout = TimeSpan.FromSeconds(30), DrainTimeout = TimeSpan.FromSeconds(15) }),
             new ArchComponentProvider(configuration, NullLogger<ArchComponentProvider>.Instance),
-            new ServerState(_lifetime),
+            _state,
             new SessionTracker(),
             [],
             Metrics.Get<SessionMetrics>(),
@@ -99,34 +100,34 @@ internal sealed class ServerServiceHost : IAsyncDisposable
         });
     }
 
-    public int Port { get; }
-
     public Task StartAsync() => _service.StartAsync(CancellationToken.None);
 
     public Task StopAsync() => _service.StopAsync(CancellationToken.None);
 
     /// <summary>
-    /// The listener starts a moment after the service does.
+    /// The listener starts a moment after the service does, and its port is known from then on.
     /// </summary>
     public async Task<TcpClient> ConnectAsync()
     {
-        for (var attempt = 0; ; attempt++)
+        await ListeningAsync(_state);
+
+        var client = new TcpClient();
+
+        await client.ConnectAsync(IPAddress.Loopback, _state.Port);
+
+        return client;
+    }
+
+    /// <summary>
+    /// Waits until the listener of a <see cref="ServerService"/> has started, at most ten seconds.
+    /// </summary>
+    public static async Task ListeningAsync(ServerState state)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        while (!state.IsListening)
         {
-            var client = new TcpClient();
-
-            try
-            {
-                await client.ConnectAsync(IPAddress.Loopback, Port);
-
-                return client;
-            }
-
-            catch (SocketException) when (attempt < 100)
-            {
-                client.Dispose();
-
-                await Task.Delay(50);
-            }
+            await Task.Delay(5, timeout.Token);
         }
     }
 
@@ -138,19 +139,6 @@ internal sealed class ServerServiceHost : IAsyncDisposable
         _loop.Dispose();
         _ecs.Dispose();
         Metrics.Dispose();
-    }
-
-    private static int FreePort()
-    {
-        var probe = new TcpListener(IPAddress.Loopback, 0);
-
-        probe.Start();
-
-        var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-
-        probe.Stop();
-
-        return port;
     }
 
     /// <summary>

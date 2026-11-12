@@ -1,15 +1,19 @@
 using System.Diagnostics.Metrics;
-using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using OpenWorker.DependencyInjection;
 using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Telemetry;
 
@@ -17,8 +21,10 @@ namespace OpenWorker.AuthServer.Test.DependencyInjection;
 
 /// <summary>
 /// A real host of the world-loop servers: the same registrations <c>Program.cs</c> makes through
-/// <c>AddHotspot</c>, the game listener on a free port and the health endpoint on another, the database in memory.
-/// Redis is not part of it, so a test needs neither Redis nor Postgres.
+/// <c>AddHotspot</c>, the game listener and the health endpoint each on a port the system picks, the database in memory.
+/// Redis is not part of it, so a test needs neither Redis nor Postgres.<br/>
+/// The listeners are made on port 0 and the harness reads the ports they got. A port picked by the harness and handed to
+/// the server later could be taken in between by another test process that runs beside this one.
 /// </summary>
 internal sealed class ServerHarness : IAsyncDisposable
 {
@@ -63,16 +69,15 @@ internal sealed class ServerHarness : IAsyncDisposable
         Dictionary<string, string?>? settings = null,
         CancellationToken cancellationToken = default)
     {
-        var (gamePort, healthPort) = FreePorts();
-
         var configuration = new Dictionary<string, string?>
         {
-            ["Server:Port"] = gamePort.ToString(CultureInfo.InvariantCulture),
+            // Checked at start as in production, which refuses a port of 0 in the settings; the listeners are given 0 below.
+            ["Server:Port"] = "1",
             ["Game:Version"] = "1.4.2.3",
             ["Hotspot:PacketDumpPath"] = "",
             ["Hotspot:ErrorBudget:MaxErrors"] = "10",
             ["Hotspot:ErrorBudget:Window"] = "00:01:00",
-            ["Health:Port"] = healthPort.ToString(CultureInfo.InvariantCulture),
+            ["Health:Port"] = "2",
             ["Health:LoopTimeout"] = "00:00:02",
             ["Health:CheckTimeout"] = "00:00:02",
             ["Shutdown:Timeout"] = "00:00:20",
@@ -97,6 +102,8 @@ internal sealed class ServerHarness : IAsyncDisposable
                 collection.AddHotspot(context, EntityComponentService.Auth);
 
                 services?.Invoke(collection);
+
+                ListenOnAnyPort(collection);
             })
             .Build();
 
@@ -114,7 +121,10 @@ internal sealed class ServerHarness : IAsyncDisposable
             await Task.Delay(5, timeout.Token);
         }
 
-        return new ServerHarness(host, gamePort, healthPort);
+        // Kestrel has bound its port by the time the host has started.
+        var health = host.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>().Addresses.Single();
+
+        return new ServerHarness(host, state.Port, new Uri(health).Port);
     }
 
     /// <summary>
@@ -169,27 +179,18 @@ internal sealed class ServerHarness : IAsyncDisposable
     }
 
     /// <summary>
-    /// Two different free ports. Both listeners are open while the ports are read: a port that was just closed is
-    /// what the system hands out next, so two calls in a row could return the same port, and then the health
-    /// endpoint would be told to share the port of the game listener.
+    /// The game listener and the health endpoint listen on port 0, so the system gives each a free port when it binds it.
+    /// The settings themselves are checked as written: only what the listeners read is replaced.
     /// </summary>
-    private static (int Game, int Health) FreePorts()
+    private static void ListenOnAnyPort(IServiceCollection services)
     {
-        var game = new TcpListener(IPAddress.Loopback, 0);
-        var health = new TcpListener(IPAddress.Loopback, 0);
+        services.AddSingleton<IOptions<ServerOptions>>(Options.Create(new ServerOptions { Port = 0 }));
 
-        game.Start();
-        health.Start();
-
-        try
+        services.AddSingleton<IOptions<HealthOptions>>(provider =>
         {
-            return (((IPEndPoint)game.LocalEndpoint).Port, ((IPEndPoint)health.LocalEndpoint).Port);
-        }
+            var health = provider.GetRequiredService<IOptionsMonitor<HealthOptions>>().CurrentValue;
 
-        finally
-        {
-            game.Stop();
-            health.Stop();
-        }
+            return Options.Create(new HealthOptions { Port = 0, LoopTimeout = health.LoopTimeout, CheckTimeout = health.CheckTimeout });
+        });
     }
 }
