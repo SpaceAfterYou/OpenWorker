@@ -333,6 +333,30 @@ public sealed class InventoryServiceTest
         Assert.AreEqual(ItemBindState.Bound, f.Inventory.Items.Single(e => e.Item == Bound).BindState);
     }
 
+    /// <summary>
+    /// The room a check counts is the room the gift uses: a bound stack with room left takes no free items, so with every other
+    /// slot full the check refuses them, and the gift refuses them too, before anything has been taken for it.
+    /// </summary>
+    [TestMethod]
+    public void TheRoomCountedIsTheRoomTheGiftUses()
+    {
+        using var f = new Fixture();
+
+        f.Service.TryGive(f.Player, Material, 20);
+        f.Inventory.Items.Single(e => e.Item == Material).BindState = ItemBindState.Bound;
+
+        const int Filler = Material + 1;
+        var bag = f.Inventory.Find(StorageGroup.Common)!;
+
+        Assert.IsTrue(f.Service.TryGive(f.Player, Filler, bag.Slots.Count(e => e is null) * f.Catalog.StackLimit(Filler)));
+        Assert.AreEqual(-1, bag.FirstFree(), "the bag is full but for the room of the bound stack");
+
+        Assert.IsFalse(f.Service.CanGive(f.Player, Material, 1));
+        Assert.IsFalse(f.Service.CanGiveAll(f.Player, [(Material, 1)]));
+        Assert.IsFalse(f.Service.TryGive(f.Player, Material, 1));
+        Assert.AreEqual(20, f.Service.CountOf(f.Player, Material));
+    }
+
     [TestMethod]
     public void LineUpPutsTheItemsInOrderAtTheFront()
     {
