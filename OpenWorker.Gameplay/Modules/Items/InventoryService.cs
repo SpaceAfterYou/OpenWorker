@@ -123,6 +123,15 @@ public sealed class InventoryService(
     }
 
     /// <summary>
+    /// Whether that many new items can be made right now without waiting for their serials: asked before an exchange
+    /// that takes from one side and makes copies for the other.
+    /// </summary>
+    public bool CanMake(int items)
+    {
+        return serials.HasReady(items);
+    }
+
+    /// <summary>
     /// Whether the items fit, and the serials of the stacks they may start are ready (<see cref="IItemSerials.HasReady"/>):
     /// a gift is refused here, before anything is taken for it, rather than halfway through.
     /// </summary>

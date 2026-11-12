@@ -385,7 +385,9 @@ public sealed partial class Trades(
         var second = session.Invitee;
 
         // An item given away, split, used or sold since it was offered.
-        if (!first.Items.All(e => goods.StillHolds(first.Player, e)) || !second.Items.All(e => goods.StillHolds(second.Player, e)))
+        // The items change hands as copies under new serials: with none ready nothing is taken from anybody.
+        if (!first.Items.All(e => goods.StillHolds(first.Player, e)) || !second.Items.All(e => goods.StillHolds(second.Player, e)) ||
+            !goods.Inventory.CanMake(first.Items.Count + second.Items.Count))
         {
             Cancel(session, default, TradeCodes.ItemsUnavailable);
             return false;

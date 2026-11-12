@@ -315,7 +315,7 @@ public sealed partial class PrivateShops(
         var line = shown >= 0 && shown < browsing.Serials.Length ? shop.Lines.FindIndex(e => e.Item.Serial == browsing.Serials[shown]) : -1;
 
         // A line sold since, changed by the owner, or whose item has left the bags.
-        if (line < 0 || shop.Lines[line].Price != price || !goods.StillHolds(owner, shop.Lines[line].Item))
+        if (line < 0 || shop.Lines[line].Price != price || !goods.StillHolds(owner, shop.Lines[line].Item) || !goods.Inventory.CanMake(1))
         {
             Refuse(player, TradeOpcode.PrivateShopItem, TradeCodes.ShopItemRefused);
             return ValueTask.CompletedTask;
