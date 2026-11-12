@@ -60,6 +60,15 @@ public sealed class InventoryFactory(
     public const int MostStartingItems = 6;
 
     /// <summary>
+    /// Waits until the serials of the first items of that many persons are ready, so that <see cref="CreateNew"/>, which
+    /// cannot wait, finds them. After the wait the caller checks the player again.
+    /// </summary>
+    public ValueTask EnsureSerialsAsync(int persons = 1)
+    {
+        return serials.EnsureAsync(persons * MostStartingItems);
+    }
+
+    /// <summary>
     /// What a character is born with: the weapon of its class and the clothes it was made with.
     /// </summary>
     public Inventory CreateNew(PersonPersistent person)

@@ -97,6 +97,14 @@ public sealed partial class LoginGameplay(
             return;
         }
 
+        await registry.EnsureSerialsAsync(account.Persons);
+
+        // The player may have left while the account was read.
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
+
         world.Set(context.Player, new ClaimsComponent(request.Session));
 
         world.SetLogAccount(context.Player, request.Session.Account);

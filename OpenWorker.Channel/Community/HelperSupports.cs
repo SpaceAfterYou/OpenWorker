@@ -200,6 +200,8 @@ public sealed class HelperSupports(
             return;
         }
 
+        await inventory.EnsureSerialsAsync(items);
+
         // The bag may have filled while the claim was written: then the reward waits for another try.
         if (!world.IsAlive(player) || !inventory.CanGiveAll(player, items))
         {

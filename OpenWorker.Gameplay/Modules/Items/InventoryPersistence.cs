@@ -35,6 +35,11 @@ public sealed partial class InventoryPersistence(
             ? null
             : await documents.LoadAsync<AkashicRecordBook>(person.Id, PersonStateKind.AkashicRecords, cancellationToken);
 
+        if (rows.Count == 0)
+        {
+            await inventories.EnsureSerialsAsync();
+        }
+
         // The player may have left while the items were read.
         if (!world.IsAlive(player))
         {
