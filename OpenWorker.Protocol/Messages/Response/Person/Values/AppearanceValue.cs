@@ -4,7 +4,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 [StructLayout(LayoutKind.Explicit, Size = sizeof(long))]
-public readonly struct AppearanceValue : IWireWritable
+public readonly struct AppearanceValue : IWireReadable<AppearanceValue>, IWireWritable
 {
     [field: FieldOffset(0)]
     public ulong Value { get; init; }
@@ -29,10 +29,12 @@ public readonly struct AppearanceValue : IWireWritable
         SkinColor = skinColor;
     }
 
-    public AppearanceValue(BinaryReader reader)
+    private AppearanceValue(ulong value)
     {
-        Value = reader.ReadUInt64();
+        Value = value;
     }
+
+    public static AppearanceValue Read(ref PacketReader reader) => new(reader.ReadUInt64());
 
     /// <summary>
     /// The four shorts as one 64-bit value.

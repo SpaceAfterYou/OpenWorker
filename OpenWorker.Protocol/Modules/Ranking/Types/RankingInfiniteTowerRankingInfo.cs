@@ -1,4 +1,5 @@
 using OpenWorker.Domain.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Types;
 
@@ -6,7 +7,8 @@ namespace OpenWorker.Hotspot.Modules.Ranking.Types;
 /// One stage of the chapter asked for: the time of the person who asks, and the fastest clear of the stage among the
 /// person and its friends.
 /// </summary>
-public readonly record struct RankingInfiniteTowerRankingInfo
+[WireMessage(WireMethods.Write)]
+public readonly partial record struct RankingInfiniteTowerRankingInfo
 {
     /// <summary>
     /// The fastest clear of the stage by the person who asks, in seconds; 0 for none.
@@ -24,8 +26,10 @@ public readonly record struct RankingInfiniteTowerRankingInfo
     public required int Stage { get; init; }
 
     public required int Person { get; init; }
+    [WireAs(typeof(byte))]
     public required Hero Hero { get; init; }
     public required byte Level { get; init; }
+    [WireString(WireStringFormat.Utf16Unicode)]
     public required string Name { get; init; }
 
     /// <summary>

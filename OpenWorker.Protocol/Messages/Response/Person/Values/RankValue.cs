@@ -3,7 +3,7 @@
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 [WireMessage(WireMethods.Write)]
-public readonly partial struct RankValue
+public readonly partial struct RankValue : IWireReadable<RankValue>
 {
     public byte Level { get; }
     public int Experience { get; }
@@ -14,9 +14,11 @@ public readonly partial struct RankValue
         Experience = experience;
     }
 
-    public RankValue(BinaryReader reader)
+    public static RankValue Read(ref PacketReader reader)
     {
-        Level = reader.ReadByte();
-        Experience = reader.ReadInt32();
+        var level = reader.ReadByte();
+        var experience = reader.ReadInt32();
+
+        return new RankValue(level, experience);
     }
 }

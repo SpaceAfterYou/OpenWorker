@@ -4,7 +4,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 [WireMessage(WireMethods.Write)]
-public readonly partial struct AbilityValue
+public readonly partial struct AbilityValue : IWireReadable<AbilityValue>
 {
     public AbilityValueEntry Health { get; init; }
     public AbilityValueEntry SoulGain { get; init; }
@@ -30,13 +30,16 @@ public readonly partial struct AbilityValue
         Speed = speed;
     }
 
-    public AbilityValue(BinaryReader reader)
+    public static AbilityValue Read(ref PacketReader reader)
     {
-        Health = new AbilityValueEntry(reader);
-        SoulGain = new AbilityValueEntry(reader);
-        SoulVapor = new AbilityValueEntry(reader);
-        Stamina = new AbilityValueEntry(reader);
-        SuperArmor = new AbilityValueEntry(reader);
-        Speed = new SpeedValueEntry(reader);
+        return new AbilityValue
+        {
+            Health = AbilityValueEntry.Read(ref reader),
+            SoulGain = AbilityValueEntry.Read(ref reader),
+            SoulVapor = AbilityValueEntry.Read(ref reader),
+            Stamina = AbilityValueEntry.Read(ref reader),
+            SuperArmor = AbilityValueEntry.Read(ref reader),
+            Speed = SpeedValueEntry.Read(ref reader)
+        };
     }
 }

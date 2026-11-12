@@ -5,6 +5,7 @@ using OpenWorker.Hotspot.Modules.Post.Requests;
 using OpenWorker.Hotspot.Modules.Post.Responses;
 using OpenWorker.Hotspot.Modules.Post.Types;
 using OpenWorker.Hotspot.Modules.Trade.Requests;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -36,7 +37,7 @@ public sealed class TradePostWireFormatTest
     [TestMethod]
     public void ItemHasClientSize()
     {
-        Assert.HasCount(ItemSize, ToBytes(writer => writer.Write(CreateItem())));
+        Assert.HasCount(ItemSize, ToBytes(writer => WireBridge.Write(writer, CreateItem())));
     }
 
     [TestMethod]
@@ -47,7 +48,7 @@ public sealed class TradePostWireFormatTest
     {
         var item = CreateItem();
 
-        var bytes = ToBytes(writer => writer.Write(new ItemValue { OptionList = item.OptionList, BroachState = state }));
+        var bytes = ToBytes(writer => WireBridge.Write(writer, new ItemValue { OptionList = item.OptionList, BroachState = state }));
 
         // The client takes between one and fifteen characters here and has no room for a terminator.
         var length = BitConverter.ToInt16(bytes, ItemSize - 2 - 15 - 2);

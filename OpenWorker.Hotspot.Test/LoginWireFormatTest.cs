@@ -2,7 +2,6 @@ using System.Text;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Hotspot.Dtos;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 using OpenWorker.Hotspot.Modules.Login.Requests;
 using OpenWorker.Hotspot.Modules.Login.Responses;
@@ -156,7 +155,7 @@ public sealed class LoginWireFormatTest
     [TestMethod]
     public void AccountIdIsAscii()
     {
-        var bytes = ToBytes(writer => writer.Write(new CharacterInfoGatePayload { AccountId = "abc" }));
+        var bytes = ToBytes(writer => new CharacterInfoGatePayload { AccountId = "abc" }.Write(writer));
 
         // int + long + 4 bytes + 2 uint + 3 long precede the string.
         const int offset = 4 + 8 + 4 + 8 + 24;

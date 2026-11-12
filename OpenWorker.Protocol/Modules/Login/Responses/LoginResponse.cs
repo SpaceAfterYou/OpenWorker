@@ -2,16 +2,19 @@ using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Enums;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Login.Enums;
-using OpenWorker.Hotspot.Modules.Login.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Login.Responses;
 
+/// <summary>
+/// The answer to a login: the account of the session first, the session itself last. The one value goes twice, so the
+/// writer is written by hand.
+/// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct LoginResponse : IResponseHotspotMessage
+public readonly struct LoginResponse : IResponseHotspotMessage, IWireWritable
 {
     private const GroupOpcode Group = GroupOpcode.Login;
     private const LoginOpcode Command = LoginOpcode.Result;
@@ -45,19 +48,24 @@ public readonly struct LoginResponse : IResponseHotspotMessage
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
-        writer.Write(Session.Account);
+        writer.WriteInt32(Session.Account);
 
-        writer.Write(IsClearTutorial);
+        writer.WriteBoolean(IsClearTutorial);
         writer.WriteAsciiString(MacAddress);
 
-        writer.WriteUtf16UnicodeString(ErrorMessage, 1025);
-        writer.Write(ErrorCode);
+        writer.WriteUtf16UnicodeString(ErrorMessage);
+        writer.WriteInt32((int)ErrorCode);
 
-        writer.Write(LoginType);
-        writer.WriteUtf16UnicodeString(Login, 21);
+        writer.WriteByte((byte)LoginType);
+        writer.WriteUtf16UnicodeString(Login);
 
-        writer.Write(Session);
+        Session.Write(ref writer);
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        WireBridge.Write(writer, this);
     }
 }

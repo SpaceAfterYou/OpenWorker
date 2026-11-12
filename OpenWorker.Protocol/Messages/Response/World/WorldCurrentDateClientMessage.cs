@@ -1,13 +1,17 @@
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.World;
 
+/// <summary>
+/// The time of the server, in seconds since 1970. It is read from the clock when the message is written, so the writer is
+/// written by hand.
+/// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct WorldCurrentDateClientMessage : IResponseHotspotMessage
+public readonly struct WorldCurrentDateClientMessage : IResponseHotspotMessage, IWireWritable
 {
 #region Interface: IHotspotMessage
 
@@ -18,12 +22,17 @@ public readonly struct WorldCurrentDateClientMessage : IResponseHotspotMessage
 
 #endregion Interface: IHotspotMessage
 
-#region Interface: IWritableData
+#region Interface: IWireWritable
+
+    public void Write(ref PacketWriter writer)
+    {
+        writer.WriteDateTimeOffset(DateTimeOffset.UtcNow);
+    }
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(DateTime.UtcNow);
+        WireBridge.Write(writer, this);
     }
 
-#endregion Interface: IWritableData
+#endregion Interface: IWireWritable
 }

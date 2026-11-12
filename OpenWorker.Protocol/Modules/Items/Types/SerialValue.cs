@@ -67,11 +67,6 @@ public readonly struct SerialValue : IWireReadable<SerialValue>, IWireWritable
         Value = value;
     }
 
-    public SerialValue(BinaryReader reader)
-    {
-        Value = reader.ReadInt64();
-    }
-
     public static SerialValue Read(ref PacketReader reader) => new(reader.ReadInt64());
 
     public void Write(ref PacketWriter writer) => writer.WriteInt64(Value);

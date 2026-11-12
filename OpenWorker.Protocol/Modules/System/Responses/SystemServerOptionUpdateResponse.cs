@@ -1,13 +1,16 @@
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.System.Responses;
 
+/// <summary>
+/// The contents the server offers changed. They are a list of the server, not a value, so the writer is written by hand.
+/// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SystemServerOptionUpdateResponse : IResponseHotspotMessage
+public readonly struct SystemServerOptionUpdateResponse : IResponseHotspotMessage, IWireWritable
 {
 #region Interface: IHotspotMessage
 
@@ -24,12 +27,17 @@ public readonly struct SystemServerOptionUpdateResponse : IResponseHotspotMessag
 
 #endregion Message: Body
 
-#region Interface: IWritableData
+#region Interface: IWireWritable
+
+    public void Write(ref PacketWriter writer)
+    {
+        Contents.Write(ref writer);
+    }
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Contents);
+        WireBridge.Write(writer, this);
     }
 
-#endregion Interface: IWritableData
+#endregion Interface: IWireWritable
 }

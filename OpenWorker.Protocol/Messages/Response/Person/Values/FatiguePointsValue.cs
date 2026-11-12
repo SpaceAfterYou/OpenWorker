@@ -4,7 +4,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 [StructLayout(LayoutKind.Explicit, Size = sizeof(int))]
-public readonly struct FatiguePointsValue : IWireWritable
+public readonly struct FatiguePointsValue : IWireReadable<FatiguePointsValue>, IWireWritable
 {
     [field: FieldOffset(0)]
     public int Value { get; }
@@ -21,10 +21,12 @@ public readonly struct FatiguePointsValue : IWireWritable
         Bonus = bonus;
     }
 
-    public FatiguePointsValue(BinaryReader reader)
+    private FatiguePointsValue(int value)
     {
-        Value = reader.ReadInt32();
+        Value = value;
     }
+
+    public static FatiguePointsValue Read(ref PacketReader reader) => new(reader.ReadInt32());
 
     /// <summary>
     /// Both shorts as one 32-bit value.

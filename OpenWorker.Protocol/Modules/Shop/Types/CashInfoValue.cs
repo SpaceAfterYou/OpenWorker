@@ -1,27 +1,15 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Types;
 
-public readonly struct CashInfoValue : IWritableData
+/// <summary>
+/// A price of a cash item: how many come for it, the price before and after the discount.
+/// </summary>
+[WireMessage(WireMethods.Write)]
+public readonly partial struct CashInfoValue
 {
-#region Message: Body
-
     public required int Item { get; init; }
     public required short Count { get; init; }
     public required int BasePrice { get; init; }
     public required int Price { get; init; }
-
-#endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Item);
-        writer.Write(Count);
-        writer.Write(BasePrice);
-        writer.Write(Price);
-    }
-
-#endregion Interface: IWritableData
 }

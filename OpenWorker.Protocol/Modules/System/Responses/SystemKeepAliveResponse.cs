@@ -2,11 +2,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.System.Responses;
 
+/// <summary>
+/// The answer to a keep-alive. The time goes as 64-bit ticks, not as the seconds the generator writes a time in, so the
+/// writer is written by hand.
+/// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SystemKeepAliveResponse : IResponseHotspotMessage
+public readonly struct SystemKeepAliveResponse : IResponseHotspotMessage, IWireWritable
 {
 #region Interface: IHotspotMessage
 
@@ -23,13 +28,18 @@ public readonly struct SystemKeepAliveResponse : IResponseHotspotMessage
 
 #endregion Message: Body
 
-#region Interface: IWritableData
+#region Interface: IWireWritable
+
+    public void Write(ref PacketWriter writer)
+    {
+        // The client reads it and does nothing with it.
+        writer.WriteInt64(Time.Ticks);
+    }
 
     public void Write(BinaryWriter writer)
     {
-        // Client ignore response but read
-        writer.Write(Time.Ticks);
+        WireBridge.Write(writer, this);
     }
 
-#endregion Interface: IWritableData
+#endregion Interface: IWireWritable
 }

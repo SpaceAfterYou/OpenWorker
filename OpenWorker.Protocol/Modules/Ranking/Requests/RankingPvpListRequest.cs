@@ -2,7 +2,6 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Ranking.Extensions;
 using OpenWorker.Hotspot.Modules.Ranking.Types;
 using OpenWorker.Wire;
 

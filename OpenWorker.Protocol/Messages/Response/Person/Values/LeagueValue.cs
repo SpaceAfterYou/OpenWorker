@@ -5,7 +5,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 [WireMessage(WireMethods.Write)]
-public readonly partial struct LeagueValue
+public readonly partial struct LeagueValue : IWireReadable<LeagueValue>
 {
     public int Id { get; }
     [WireString(WireStringFormat.Utf16Unicode)]
@@ -20,10 +20,15 @@ public readonly partial struct LeagueValue
         Card = card;
     }
 
-    public LeagueValue(BinaryReader reader)
+    /// <summary>
+    /// What the client sends of a new character: the name of the league counted in bytes, not in characters as it is written.
+    /// </summary>
+    public static LeagueValue Read(ref PacketReader reader)
     {
-        Id = reader.ReadInt32();
-        Name = reader.ReadUtf8UnicodeString();
-        Card = new PersonLeagueCardValueEntry(reader);
+        var id = reader.ReadInt32();
+        var name = reader.ReadUtf8UnicodeString();
+        var card = PersonLeagueCardValueEntry.Read(ref reader);
+
+        return new LeagueValue(id, name, card);
     }
 }

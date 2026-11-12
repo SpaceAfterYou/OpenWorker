@@ -1,14 +1,15 @@
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.System.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.System.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct SystemXignCodeRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct SystemXignCodeRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,9 +22,13 @@ public readonly struct SystemXignCodeRequest(BinaryReader reader) : IRequestHots
 
 #region Message: Body
 
-    public int Session { get; } = reader.ReadInt32();
-    public Memory<byte> Buffer { get; } = reader.ReadBytes(SystemModuleDefines.XignCodeBufferSize);
-    public string Text { get; } = reader.ReadUtf8AsciiStringWithoutTerminator();
+    public int Session { get; }
+
+    [WireArray(Count = SystemModuleDefines.XignCodeBufferSize)]
+    public byte[] Buffer { get; }
+
+    [WireString(WireStringFormat.Utf8AsciiWithoutTerminator)]
+    public string Text { get; }
 
 #endregion Message: Body
 }

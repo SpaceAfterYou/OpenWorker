@@ -1,5 +1,6 @@
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot;
 
@@ -39,6 +40,17 @@ public sealed class ServerContent : List<bool>
         foreach (var content in contents)
         {
             this[content.Index] = content.State;
+        }
+    }
+
+    /// <summary>
+    /// The flags as the client reads them: one byte each, in the order of <see cref="ServerContentIndex"/>, no count.
+    /// </summary>
+    public void Write(ref PacketWriter writer)
+    {
+        foreach (var flag in this)
+        {
+            writer.WriteBoolean(flag);
         }
     }
 }

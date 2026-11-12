@@ -8,7 +8,7 @@ namespace OpenWorker.Hotspot.Modules.Trade.Requests;
 
 [WireMessage(WireMethods.Read)]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly partial struct TradePrivateShopStateRequest : IRequestHotspotMessage, IWritableData
+public readonly partial struct TradePrivateShopStateRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.PrivateShopState;
@@ -16,9 +16,4 @@ public readonly partial struct TradePrivateShopStateRequest : IRequestHotspotMes
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public byte State { get; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(State);
-    }
 }

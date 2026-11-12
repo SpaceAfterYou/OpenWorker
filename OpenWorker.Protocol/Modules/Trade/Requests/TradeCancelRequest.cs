@@ -8,7 +8,7 @@ namespace OpenWorker.Hotspot.Modules.Trade.Requests;
 
 [WireMessage(WireMethods.Read)]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly partial struct TradeCancelRequest : IRequestHotspotMessage, IWritableData
+public readonly partial struct TradeCancelRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.Cancel;
@@ -16,9 +16,4 @@ public readonly partial struct TradeCancelRequest : IRequestHotspotMessage, IWri
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public int Cause { get; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Cause);
-    }
 }

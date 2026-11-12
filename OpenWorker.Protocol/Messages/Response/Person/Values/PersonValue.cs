@@ -1,13 +1,13 @@
 ﻿using OpenWorker.Domain.Types;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
-public readonly struct PersonValue : IWireWritable
+public readonly struct PersonValue : IWireReadable<PersonValue>, IWireWritable
 {
     public PersonValue(
         ActorValue actor,
@@ -53,32 +53,56 @@ public readonly struct PersonValue : IWireWritable
 
     public PersonValue(BinaryReader reader)
     {
-        Actor = new ActorValue(reader);
-        InfoValue = new PersonInfoValue(reader);
-        Level = reader.ReadByte();
-        Faction = reader.ReadFactionGroup();
-        Account = reader.ReadInt32();
-        StuffLevel = reader.ReadStuffLevel();
-        PvPKillCount = reader.ReadInt32();
-        PrimaryWeapon = new EquipItemValueEntry(reader);
-        SecondaryWeapon = new EquipItemValueEntry(reader);
-        EquipItems = reader.ReadEquippedItems();
-        Title = new TitleValue(reader);
-        League = new LeagueValue(reader);
-        Ability = new AbilityValue(reader);
-        PrivateShop = new PrivateShopValue(reader);
-        FatiguePoints = new FatiguePointsValue(reader);
-        Rank = new RankValue(reader);
-        BattlePose = reader.ReadBoolean();
-        Status = reader.ReadInt32();
-
-        var statusEffectCount = reader.ReadByte();
-
-        StatusEffects = Enumerable
-            .Range(0, statusEffectCount)
-            .Select(_ => new StatusEffectValueEntry(reader))
-            .ToArray();
+        this = WireBridge.Read<PersonValue>(reader);
     }
+
+    /// <summary>
+    /// A character as the client sends it to be made, and as the bot of the load test reads it from the list: in the order
+    /// of the wire, the names counted in bytes, the worn items by their identifiers alone.
+    /// </summary>
+    public static PersonValue Read(ref PacketReader reader)
+    {
+        var actor = ActorValue.Read(ref reader);
+        var info = PersonInfoValue.Read(ref reader);
+        var level = reader.ReadByte();
+        var faction = (FactionGroup)reader.ReadByte();
+        var account = reader.ReadInt32();
+        var stuffLevel = (StuffLevel)reader.ReadByte();
+        var pvpKillCount = reader.ReadInt32();
+        var primaryWeapon = EquipItemValueEntry.Read(ref reader);
+        var secondaryWeapon = EquipItemValueEntry.Read(ref reader);
+
+        var equipItems = new EquipItemValueEntry[ItemModuleDefines.EquippedItemCount];
+
+        for (var index = 0; index < equipItems.Length; index++)
+        {
+            equipItems[index] = new EquipItemValueEntry(reader.ReadInt32());
+        }
+
+        var title = TitleValue.Read(ref reader);
+        var league = LeagueValue.Read(ref reader);
+        var ability = AbilityValue.Read(ref reader);
+        var privateShop = PrivateShopValue.Read(ref reader);
+        var fatiguePoints = FatiguePointsValue.Read(ref reader);
+        var rank = RankValue.Read(ref reader);
+        var battlePose = reader.ReadBoolean();
+        var status = reader.ReadInt32();
+
+        var statusEffects = new StatusEffectValueEntry[reader.ReadLength(WireLength.Byte, StatusEffectSize)];
+
+        for (var index = 0; index < statusEffects.Length; index++)
+        {
+            statusEffects[index] = StatusEffectValueEntry.Read(ref reader);
+        }
+
+        return new PersonValue(actor, info, account, level, faction, stuffLevel, pvpKillCount, primaryWeapon, secondaryWeapon,
+            equipItems, title, league, ability, privateShop, fatiguePoints, rank, battlePose, status, statusEffects);
+    }
+
+    /// <summary>
+    /// The bytes of a status effect: id, time, count, owner.
+    /// </summary>
+    private const int StatusEffectSize = sizeof(int) + sizeof(float) + sizeof(byte) + sizeof(int);
 
     public ActorValue Actor { get; }
     public PersonInfoValue InfoValue { get; }

@@ -8,7 +8,7 @@ namespace OpenWorker.Hotspot.Modules.Trade.Requests;
 
 [WireMessage(WireMethods.Read)]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly partial struct TradeUpdateMoneyRequest : IRequestHotspotMessage, IWritableData
+public readonly partial struct TradeUpdateMoneyRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.UpdateMoney;
@@ -16,9 +16,4 @@ public readonly partial struct TradeUpdateMoneyRequest : IRequestHotspotMessage,
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
     public long Money { get; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Money);
-    }
 }

@@ -1,14 +1,17 @@
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Shop.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Responses;
 
+/// <summary>
+/// The items of the cash shop. A flag that is always set goes before the list, so the writer is written by hand.
+/// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct ShopCashLoadResponse : IResponseHotspotMessage
+public readonly struct ShopCashLoadResponse : IResponseHotspotMessage, IWireWritable
 {
 #region Interface: IHotspotMessage
 
@@ -25,18 +28,26 @@ public readonly struct ShopCashLoadResponse : IResponseHotspotMessage
 
 #endregion Message: Body
 
-#region Interface: IWritableData
+#region Interface: IWireWritable
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
-        writer.Write(true); // idk
-        writer.Write(ItemList.Count);
+        var items = ItemList ?? [];
 
-        foreach (var item in ItemList)
+        // What the flag means is not known; it was always sent set.
+        writer.WriteBoolean(true);
+        writer.WriteLength(WireLength.Signed32, items.Count);
+
+        for (var index = 0; index < items.Count; index++)
         {
-            item.Write(writer);
+            items[index].Write(ref writer);
         }
     }
 
-#endregion Interface: IWritableData
+    public void Write(BinaryWriter writer)
+    {
+        WireBridge.Write(writer, this);
+    }
+
+#endregion Interface: IWireWritable
 }

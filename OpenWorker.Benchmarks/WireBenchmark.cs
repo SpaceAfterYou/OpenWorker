@@ -3,7 +3,6 @@ using BenchmarkDotNet.Attributes;
 using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
@@ -42,9 +41,11 @@ public sealed class LegacyMoveBroadcast(MovementMoveBtResponse move) : IResponse
 
     public void Write(BinaryWriter writer)
     {
-        writer.WriteActor(move.Actor);
-        writer.WriteMapValue(move.Map);
-        writer.Write(move.Pos);
+        writer.Write((int)move.Actor);
+        writer.Write((ulong)move.Map);
+        writer.Write(move.Pos.X);
+        writer.Write(move.Pos.Y);
+        writer.Write(move.Pos.Z);
         writer.Write(move.Yaw);
         writer.Write(move.TargetPosX);
         writer.Write(move.TargetPosY);
