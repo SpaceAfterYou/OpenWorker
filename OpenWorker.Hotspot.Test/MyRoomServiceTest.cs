@@ -87,7 +87,9 @@ public sealed class MyRoomServiceTest
 
             Catalog = new MyRoomCatalog(
                 new ReadOnlyCollection<MyroomInfoRow>([TestRows.Build<MyroomInfoRow>(("Id", 1), ("Maze", 20011), ("MaxVisitors", 19))]),
-                new ReadOnlyCollection<MyroomFurnitureRow>([TestRows.Build<MyroomFurnitureRow>(("Id", 1), ("ItemId", Bed), ("Seats", 1))]),
+                new ReadOnlyCollection<MyroomFurnitureRow>(
+                    [TestRows.Build<MyroomFurnitureRow>(("Id", 1), ("ItemId", Bed), ("Placement", 1), ("Width", 1), ("Depth", 1), ("Seats", 1))]),
+                new ReadOnlyCollection<MyroomGreedRow>([TestRows.Build<MyroomGreedRow>(("Id", 1), ("Width", 26), ("Depth", 28), ("Height", 8))]),
                 items);
 
             Inventory = new InventoryService(World, items, new LocalItemSerials());

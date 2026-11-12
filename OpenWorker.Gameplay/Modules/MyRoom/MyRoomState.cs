@@ -116,11 +116,21 @@ public sealed class MyRoomState
     public bool Has(long serial) => _furniture.Exists(e => e.Serial == serial);
 
     /// <summary>
-    /// Places a piece while the owner arranges. False for a serial that stands in the room already.
+    /// Whether the piece may be placed now: while the owner arranges, a serial the room does not have, on a cell of the grid
+    /// of the room it fits, and while the room has fewer pieces than the client can be told of.
+    /// </summary>
+    public bool CanPlace(MyRoomPiece piece)
+    {
+        return Arranging && !Has(piece.Serial) && _furniture.Count < MyRoomCatalog.MostPieces &&
+               _catalog.Fits(Room.Grid, piece.Item, piece.Rotation, piece.Grid);
+    }
+
+    /// <summary>
+    /// Places a piece while the owner arranges. False when it may not be placed (<see cref="CanPlace"/>).
     /// </summary>
     public bool Place(MyRoomPiece piece)
     {
-        if (!Arranging || Has(piece.Serial))
+        if (!CanPlace(piece))
         {
             return false;
         }
@@ -150,8 +160,8 @@ public sealed class MyRoomState
     }
 
     /// <summary>
-    /// Moves and turns the pieces of the room that are named, and tells which ones it moved; a serial the room does not have
-    /// is passed over.
+    /// Moves and turns the pieces of the room that are named, and tells which ones it moved; a serial the room does not have,
+    /// or a cell or a turn the piece does not fit, is passed over.
     /// </summary>
     public List<MyRoomPiece> Move(IEnumerable<MyRoomPiece> pieces)
     {
@@ -161,7 +171,7 @@ public sealed class MyRoomState
         {
             var index = _furniture.FindIndex(e => e.Serial == piece.Serial);
 
-            if (index < 0)
+            if (index < 0 || !_catalog.Fits(Room.Grid, _furniture[index].Item, piece.Rotation, piece.Grid))
             {
                 continue;
             }

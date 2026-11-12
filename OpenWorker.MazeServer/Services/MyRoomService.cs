@@ -333,14 +333,14 @@ public sealed partial class MyRoomService(
         var player = context.Player;
         var piece = request.Piece;
 
-        if (OwnRoom(player) is not { Arranging: true } room || room.Has(piece.Serial) || piece.Grid < 0 ||
+        var placed = new MyRoomPiece(piece.Serial, piece.Item, piece.Rotation, piece.Grid);
+
+        if (OwnRoom(player) is not { } room || !room.CanPlace(placed) ||
             FindInBag(player, piece.Serial) is not { } item || item.Item != piece.Item || item.Count != 1 ||
             !catalog.TryGetFurniture(item.Item, out _))
         {
             return;
         }
-
-        var placed = new MyRoomPiece(piece.Serial, piece.Item, piece.Rotation, piece.Grid);
 
         // The database takes the piece first: an item leaves the bag only for a piece that stands in the room. A refusal or an
         // error of the store leaves the item where it is.
