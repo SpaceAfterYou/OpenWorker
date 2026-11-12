@@ -5,7 +5,6 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Chat.Enums;
-using OpenWorker.Hotspot.Modules.Chat.Extensions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Chat.Responses;
