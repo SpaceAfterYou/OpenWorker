@@ -1,5 +1,14 @@
+using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
+using OpenWorker.Channel;
+using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Progress;
+using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Gameplay.Modules.State;
+using OpenWorker.Hotspot.Modules.World.Requests;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using System.Collections.ObjectModel;
@@ -55,7 +64,7 @@ public sealed class MazeRequestGuardTest
 
     private static ServiceHandleContext Context(Entity player) => new(player, CancellationToken.None);
 
-    private static MazeService Service(World world, Hotspot.Handler.HandlerExecutor? errors = null)
+    private static MazeService Service(World world, Hotspot.Handler.HandlerExecutor? errors = null, MazeAdmission? admission = null, MovementPace? pace = null)
     {
         // The handlers under test never reach Redis, the batches or the other server.
         return new MazeService(
@@ -69,11 +78,12 @@ public sealed class MazeRequestGuardTest
             null!,
             null!,
             null!,
-            null!,
+            pace!,
             errors!,
             null!,
             null!,
             null!,
+            admission!,
             NullLogger<MazeService>.Instance);
     }
 
@@ -127,6 +137,47 @@ public sealed class MazeRequestGuardTest
             await service.OnHandleAsync(Context(player), Read<SkillKeypressRequest>([1, 0, 0, 0, 1, 0, 0, 0, 0], (ref PacketReader r) => SkillKeypressRequest.Read(ref r)));
             await service.OnHandleAsync(Context(player), Read<SkillSyncPositionRequest>(new byte[28], (ref PacketReader r) => SkillSyncPositionRequest.Read(ref r)));
             await service.OnHandleAsync(Context(player), Read<SkillWarpPositionRequest>(new byte[12], (ref PacketReader r) => SkillWarpPositionRequest.Read(ref r)));
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A portal of a maze's map into another maze asks what the portal of a district asks: a player below the level of the
+    /// maze is refused with the code of the reference, on the error of 04/01, and goes nowhere (the service has no world
+    /// manager to send it with).
+    /// </summary>
+    [TestMethod]
+    public async Task AWayOutOfAMazeIsAskedWhatThePortalOfTheMazeAsks()
+    {
+        const short Other = 21311;
+
+        var world = World.Create();
+
+        try
+        {
+            var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Other, level: 30, fatigue: 0)]);
+            var fatigue = new FatigueService(world, mazes, TimeProvider.System, Options.Create(new DailyMissionOptions()), NullLogger<FatigueService>.Instance);
+            var progress = new SharePointManager(world, new PersonStateStore(null!), SharePointCatalog.Of([]), null!, NullLogger<SharePointManager>.Instance);
+            var admission = new MazeAdmission(world, mazes, fatigue, MazeResultsTest.Scoring(MazeResultsTest.None<MazePlayScoreRow>(), MazeResultsTest.None<MazeRuleRow>()), progress);
+            var connection = new RecordingConnection();
+            var player = world.Create(new LevelComponent(1, 0), new ServerSessionComponent(connection));
+
+            var body = new byte[4 + 4 + 4 + 2 + 2 + 4 + 4 + 8 + 2 + 1];
+
+            BinaryPrimitives.WriteInt16LittleEndian(body.AsSpan(12), Other);
+
+            await Service(world, admission: admission).OnHandleAsync(Context(player), Read<WorldEnterRequest>(body, (ref PacketReader r) => WorldEnterRequest.Read(ref r)));
+
+            await MetricAssertions.UntilAsync(() => connection.Frames.Length == 1, "The player is answered.");
+
+            var answer = PlayerFrame.Open(connection.Frames[0]);
+
+            Assert.IsTrue(answer.Is(GroupOpcode.World, (byte)WorldOpcode.EnterReq | 0x80), "The answer is the error of 04/01.");
+            Assert.AreEqual(MazeAdmission.LevelTooLow, BinaryPrimitives.ReadUInt16LittleEndian(answer.Body));
         }
 
         finally
