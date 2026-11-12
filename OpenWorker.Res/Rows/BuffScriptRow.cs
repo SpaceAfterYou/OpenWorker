@@ -9,9 +9,24 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Buff_Script")]
 public readonly partial struct BuffScriptRow(BinaryReader reader)
 {
-    public short Id { get; } = reader.ReadInt16();
-    public string Field1 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field2 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field3 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field4 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The id of the row, which tb_Buff names in its Script column. Ids go above 32767 (35000), so it is unsigned.
+    /// </summary>
+    public ushort Id { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The name of the buff.
+    /// </summary>
+    public string Name { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// What the buff does, shown in its tooltip.
+    /// </summary>
+    public string Description { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The icon of the buff in the list of buffs of an actor.
+    /// </summary>
+    public string Icon { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// A short label (attack up, health restored) the client shows over the carrier when the buff lands, if its ShowsLabel is 1. &quot;0&quot; on 47 rows.
+    /// </summary>
+    public string Label { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
 }

@@ -1287,11 +1287,11 @@
     "Single"
   ],
   "tb_Buff_Script": [
-    "Int16",
-    "String",
-    "String",
-    "String",
-    "String"
+    "UInt16 Id // The id of the row, which tb_Buff names in its Script column. Ids go above 32767 (35000), so it is unsigned.",
+    "String Name // The name of the buff.",
+    "String Description // What the buff does, shown in its tooltip.",
+    "String Icon // The icon of the buff in the list of buffs of an actor.",
+    "String Label // A short label (attack up, health restored) the client shows over the carrier when the buff lands, if its ShowsLabel is 1. \"0\" on 47 rows."
   ],
   "tb_FX_BattleMaterial_Link": [
     "Byte",
