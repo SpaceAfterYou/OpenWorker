@@ -61,12 +61,12 @@ public readonly partial struct ItemRow(BinaryReader reader)
     public byte CooldownSaved { get; } = reader.ReadByte();
     public short EffectType { get; } = reader.ReadInt16();
     public int EffectValue { get; } = reader.ReadInt32();
-    public short Field52 { get; } = reader.ReadInt16();
+    public short UseEffect { get; } = reader.ReadInt16();
     public byte Cash { get; } = reader.ReadByte();
     public byte UsePeriodType { get; } = reader.ReadByte();
     public int UsePeriodValue { get; } = reader.ReadInt32();
-    public byte Field56 { get; } = reader.ReadByte();
-    public int SimilarGroup { get; } = reader.ReadInt32();
+    public byte TuckedLook { get; } = reader.ReadByte();
+    public int OtherLookItem { get; } = reader.ReadInt32();
     public byte SealLimit { get; } = reader.ReadByte();
     public byte RestoreLimit { get; } = reader.ReadByte();
 }

@@ -78,7 +78,7 @@ public sealed class ItemEntry
 
     public required int UsePeriodValue { get; init; }
 
-    public required int SimilarGroup { get; init; }
+    public required int OtherLookItem { get; init; }
 
     public required byte SealLimit { get; init; }
 

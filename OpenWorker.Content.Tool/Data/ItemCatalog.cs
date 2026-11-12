@@ -59,7 +59,7 @@ internal static class ItemCatalog
                 Cash = item.Cash,
                 UsePeriodType = item.UsePeriodType,
                 UsePeriodValue = item.UsePeriodValue,
-                SimilarGroup = item.SimilarGroup,
+                OtherLookItem = item.OtherLookItem,
                 SealLimit = item.SealLimit,
                 RestoreLimit = item.RestoreLimit,
                 Properties = BuildProperties(item),
@@ -144,7 +144,9 @@ internal static class ItemCatalog
             Prop("Cash", item.Cash),
             Prop("Use period type", item.UsePeriodType),
             Prop("Use period value", item.UsePeriodValue),
-            Prop("Similar group", item.SimilarGroup),
+            Prop("Other look item", item.OtherLookItem),
+            Prop("Tucked look", item.TuckedLook),
+            Prop("Use effect", item.UseEffect),
             Prop("Seal limit", item.SealLimit),
             Prop("Restore limit", item.RestoreLimit)
         ];
