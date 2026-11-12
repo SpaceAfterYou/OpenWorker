@@ -6,7 +6,10 @@ public enum RankingKind : byte
     TimeAttack = 1,
 
     /// <summary>Kills in the arena, for a week or for a season.</summary>
-    Pvp = 2
+    Pvp = 2,
+
+    /// <summary>The fastest clear of a stage of the infinite tower; the scope is the maze of the stage.</summary>
+    InfiniteTower = 3
 }
 
 /// <summary>
@@ -19,7 +22,8 @@ public sealed class RankingEntryPersistent : BasicPersistent
     public required RankingKind Kind { get; init; }
 
     /// <summary>
-    /// The map of a time attack, the kind of period of the arena (1 for a week, 2 for a season).
+    /// The map of a time attack, the kind of period of the arena (1 for a week, 2 for a season), the maze of a stage of the
+    /// tower.
     /// </summary>
     public required int Scope { get; init; }
 

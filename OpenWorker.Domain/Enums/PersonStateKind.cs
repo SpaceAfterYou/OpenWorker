@@ -55,5 +55,10 @@ public enum PersonStateKind : byte
     /// <summary>
     /// The titles that have become visible in the list of the person, without being its own yet.
     /// </summary>
-    OpenTitles = 15
+    OpenTitles = 15,
+
+    /// <summary>
+    /// How far the person has climbed the infinite tower and how many chapters it entered today.
+    /// </summary>
+    InfiniteTower = 16
 }

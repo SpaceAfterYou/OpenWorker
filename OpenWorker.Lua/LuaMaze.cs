@@ -16,6 +16,7 @@ using OpenWorker.Gameplay.Combat;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Domain.Batch.Enums;
@@ -355,6 +356,11 @@ public partial class LuaMaze(
     /// The maze is won: its last sector has been cleared. Doors that open from now on say so to the client.
     /// </summary>
     public bool IsComplete { get; private set; }
+
+    /// <summary>
+    /// The whole seconds since the first player started the maze, 0 before.
+    /// </summary>
+    public int PlayedSeconds => Started ? (int)Stopwatch.GetElapsedTime(StartedAt).TotalSeconds : 0;
 
     public MazeState MazeState { get; private set; } = MazeState.None;
 
@@ -1626,11 +1632,12 @@ public partial class LuaMaze(
 
     /// <summary>
     /// The last sector is the one with the boss, or the one whose portal leads out of the maze. The maze is won
-    /// when it is cleared, even if a calm sector with the way out lies behind it.
+    /// when it is cleared, even if a calm sector with the way out lies behind it. A stage of the infinite tower is one sector,
+    /// whose portal only leads on within the batch the stages share: clearing it wins the stage.
     /// </summary>
     private bool IsLastSector(SectorBox box)
     {
-        if (box.Type == SectorType.Boss)
+        if (box.Type == SectorType.Boss || info.Type == InfiniteTower.TowerMazeKind)
         {
             return true;
         }

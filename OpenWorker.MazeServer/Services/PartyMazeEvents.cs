@@ -5,6 +5,7 @@ using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Party.Responses;
 using OpenWorker.Lua;
@@ -24,7 +25,8 @@ public sealed partial class PartyMazeEvents(
     PartyNotifier parties,
     ItemArrivals arrivals,
     QuestManager quests,
-    ILogger<PartyMazeEvents> logger
+    ILogger<PartyMazeEvents> logger,
+    InfiniteTower? tower = null
 ) : IEndOfPass, ICommunityModule
 {
     private bool _listening;
@@ -158,13 +160,24 @@ public sealed partial class PartyMazeEvents(
 
     /// <summary>
     /// The maze is won: every member in it gets the window with the whole party in it, and the members who are elsewhere
-    /// hear that their party has cleared a maze.
+    /// hear that their party has cleared a maze. A stage of the tower has no score: it gives its own reward instead.
     /// </summary>
     public void Completed(LuaMaze maze)
     {
         var members = maze.Members.Where(world.IsAlive).ToArray();
 
-        results.Complete(members);
+        if (tower is not null && tower.TryGetStage(maze.Maze, out _))
+        {
+            foreach (var member in members)
+            {
+                tower.Cleared(member, maze.Maze, maze.PlayedSeconds);
+            }
+        }
+
+        else
+        {
+            results.Complete(members);
+        }
 
         if (maze.Party != 0 && members.Length > 0)
         {
