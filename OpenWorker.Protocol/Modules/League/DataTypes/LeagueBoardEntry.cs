@@ -1,13 +1,13 @@
-using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.DataTypes;
 
 /// <summary>
-/// A note on the board of a league.
+/// A note on the board of a league. The client sends its texts with a length in bytes and the server writes them with a
+/// length in characters, so the reading is written by hand.
 /// </summary>
-public readonly struct LeagueBoardEntry
+[WireMessage(WireMethods.Write)]
+public readonly partial struct LeagueBoardEntry : IWireReadable<LeagueBoardEntry>
 {
     public const int MaxMessageLength = 61;
 
@@ -17,19 +17,13 @@ public readonly struct LeagueBoardEntry
         Message = string.Empty;
     }
 
-    public LeagueBoardEntry(BinaryReader reader)
-    {
-        Serial = reader.ReadInt32();
-        League = reader.ReadInt32();
-        Name = reader.ReadPersonName();
-        Message = reader.ReadUtf8UnicodeString(MaxMessageLength);
-        Date = reader.ReadInt64();
-        Result = reader.ReadInt32();
-    }
-
     public int Serial { get; init; }
     public int League { get; init; }
+
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; init; }
+
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Message { get; init; }
 
     /// <summary>
@@ -42,13 +36,16 @@ public readonly struct LeagueBoardEntry
     /// </summary>
     public int Result { get; init; }
 
-    public void Write(BinaryWriter writer)
+    public static LeagueBoardEntry Read(ref PacketReader reader)
     {
-        writer.Write(Serial);
-        writer.Write(League);
-        writer.WritePersonName(Name);
-        writer.WriteUtf16UnicodeString(Message, MaxMessageLength);
-        writer.Write(Date);
-        writer.Write(Result);
+        return new LeagueBoardEntry
+        {
+            Serial = reader.ReadInt32(),
+            League = reader.ReadInt32(),
+            Name = reader.ReadUtf8UnicodeString(),
+            Message = reader.ReadUtf8UnicodeString(),
+            Date = reader.ReadInt64(),
+            Result = reader.ReadInt32()
+        };
     }
 }

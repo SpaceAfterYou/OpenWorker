@@ -1,13 +1,14 @@
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct ShopCashSetRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ShopCashSetRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,18 +21,18 @@ public readonly struct ShopCashSetRequest(BinaryReader reader) : IRequestHotspot
 
 #region Message: Body
 
-    public byte SetNo { get; } = reader.ReadByte();
-    public string Name { get; } = reader.ReadUtf16UnicodeString();
+    private const int SetSize = 10;
 
-    public IReadOnlyList<int> IndexList { get; } = Enumerable
-        .Range(0, 10)
-        .Select(_ => reader.ReadInt32())
-        .ToArray();
+    public byte SetNo { get; }
 
-    public IReadOnlyList<int> ItemList { get; } = Enumerable
-        .Range(0, 10)
-        .Select(_ => reader.ReadInt32())
-        .ToArray();
+    [WireString(WireStringFormat.Utf16Unicode)]
+    public string Name { get; }
+
+    [WireArray(Count = SetSize)]
+    public IReadOnlyList<int> IndexList { get; }
+
+    [WireArray(Count = SetSize)]
+    public IReadOnlyList<int> ItemList { get; }
 
 #endregion Message: Body
 }

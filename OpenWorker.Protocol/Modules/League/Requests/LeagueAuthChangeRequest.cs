@@ -1,27 +1,26 @@
-using System.Diagnostics;
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
-using OpenWorker.Hotspot.Modules.League.Extensions;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
 /// <summary>
 /// Sets what each position may do.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct LeagueAuthChangeRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct LeagueAuthChangeRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.AuthChange;
 
-    public IReadOnlyList<LeagueRewardInfo> Rewards { get; } = Enumerable.Range(0, LeagueModuleDefines.LeagueRewardCount).Select(_ => new LeagueRewardInfo(reader)).ToArray();
-    public int Result { get; } = reader.ReadInt32();
+    [WireArray(Count = LeagueModuleDefines.LeagueRewardCount)]
+    public IReadOnlyList<LeagueRewardInfo> Rewards { get; }
+
+    public int Result { get; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }

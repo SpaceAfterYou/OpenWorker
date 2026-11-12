@@ -4,19 +4,21 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Trade.Requests;
 
+[WireMessage(WireMethods.Read)]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct TradeAcceptRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+public readonly partial struct TradeAcceptRequest : IRequestHotspotMessage, IWritableData
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.Accept;
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
-    public ActorValue Target { get; } = new(reader);
-    public byte IsAccept { get; } = reader.ReadByte();
+    public ActorValue Target { get; }
+    public byte IsAccept { get; }
 
     public void Write(BinaryWriter writer)
     {

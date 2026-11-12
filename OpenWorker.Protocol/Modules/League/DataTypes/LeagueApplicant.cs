@@ -1,32 +1,25 @@
-using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.DataTypes;
 
 /// <summary>
-/// Somebody who asked to join a league.
+/// Somebody who asked to join a league. The client sends its name with a length in bytes and the server writes it with
+/// a length in characters, so the reading is written by hand.
 /// </summary>
-public readonly struct LeagueApplicant
+[WireMessage(WireMethods.Write)]
+public readonly partial struct LeagueApplicant : IWireReadable<LeagueApplicant>
 {
     public LeagueApplicant()
     {
         Name = string.Empty;
     }
 
-    public LeagueApplicant(BinaryReader reader)
-    {
-        League = reader.ReadInt32();
-        Actor = reader.ReadInt32();
-        Name = reader.ReadPersonName();
-        Level = reader.ReadInt16();
-        Date = reader.ReadInt64();
-        Class = reader.ReadByte();
-        Result = reader.ReadInt32();
-    }
-
     public int League { get; init; }
     public int Actor { get; init; }
+
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; init; }
+
     public short Level { get; init; }
 
     /// <summary>
@@ -40,14 +33,17 @@ public readonly struct LeagueApplicant
     /// </summary>
     public int Result { get; init; }
 
-    public void Write(BinaryWriter writer)
+    public static LeagueApplicant Read(ref PacketReader reader)
     {
-        writer.Write(League);
-        writer.Write(Actor);
-        writer.WritePersonName(Name);
-        writer.Write(Level);
-        writer.Write(Date);
-        writer.Write(Class);
-        writer.Write(Result);
+        return new LeagueApplicant
+        {
+            League = reader.ReadInt32(),
+            Actor = reader.ReadInt32(),
+            Name = reader.ReadUtf8UnicodeString(),
+            Level = reader.ReadInt16(),
+            Date = reader.ReadInt64(),
+            Class = reader.ReadByte(),
+            Result = reader.ReadInt32()
+        };
     }
 }

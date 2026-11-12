@@ -1,30 +1,34 @@
-using System.Diagnostics;
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.League.DataTypes;
-using OpenWorker.Hotspot.Modules.League.Extensions;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.League.Requests;
 
 /// <summary>
 /// Looks for a league by its name or its master.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct LeagueSearchRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct LeagueSearchRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.Search;
 
-    public byte State { get; } = reader.ReadByte();
-    public string Name { get; } = reader.ReadLeagueName();
-    public string Master { get; } = reader.ReadPersonName();
-    public int Reserved { get; } = reader.ReadInt32();
-    public IReadOnlyList<LeagueInfo> Leagues { get; } = Enumerable.Range(0, reader.ReadByte()).Select(_ => new LeagueInfo(reader)).ToArray();
+    public byte State { get; }
+
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string Name { get; }
+
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string Master { get; }
+
+    public int Reserved { get; }
+
+    [WireArray(WireLength.Byte)]
+    public IReadOnlyList<LeagueInfo> Leagues { get; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }
