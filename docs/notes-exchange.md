@@ -32,8 +32,8 @@ answer (`sub | 0x80`, 52004).
 - **Giving an item** (`WaitRegister`): the trade password must be given on this login (52002), the item must exist (52004),
   the count fit its stack (52013), the storage be the common or costume bag (52001), the slot hold that item (52011), the
   item be free and not bound from the start nor broken (52405), gear of slot types 1 and 2 be at full endurance (52011).
-  At most ten waiting listings (58303). The item is taken from the bag before the listing is written and given back if the
-  store refuses or fails.
+  At most ten waiting listings (58303). The item is taken from the bag and written before the listing is (see "What a
+  crash leaves"), and given back if that write or the store refuses or fails.
 - **Putting on sale** (`SellRegister`): a price (58301), a total of at most 999,999,999 (16857), the fee of the kind of the
   item in gold (52288); at most ten listings on sale, more with the booster, a hundred with the ticket (58302). The sale
   runs a day, a day more for each step of the booster and two with the ticket; the exchange keeps 9 % of a sale, nothing
@@ -41,10 +41,10 @@ answer (`sub | 0x80`, 52004).
   changes something and only once the sale is written; one asked for and not held refuses the sale (52011).
 - **Buying** (`ItemBuy`): the trade password (52002); a count between one and the stack (52014); the listing must exist
   (58305), not be the buyer's (16860), be on sale with that item (52002), not have ended (58304) and hold the count
-  (52014); the gold (52288). The gold is taken first; one statement then takes the count off the listing only while all of
-  that still holds, so two buyers on two servers never both get the last item; the sale, the letter with the item to the
-  buyer, the letter with the gold less the commission to the seller and the end of a listing sold out go in the same
-  transaction. A refusal gives the gold back. The buyer is told of its letter; the seller is told wherever it plays of the
+  (52014); the gold (52288). The gold is taken and written first; one statement then takes the count off the listing only
+  while all of that still holds, so two buyers on two servers never both get the last item; the sale, the letter with the
+  item to the buyer, the letter with the gold less the commission to the seller and the end of a listing sold out go in the
+  same transaction. A refusal gives the gold back. The buyer is told of its letter; the seller is told wherever it plays of the
   listing as it is now and of its letter. Achievement 55 counts the purchase.
 - **Taking back** (`ItemRecall`): the listing is held for its transaction, so a purchase that comes meanwhile waits and then
   finds it gone; the letter says "taken back", or "ended" for a sale whose end is past.
@@ -53,6 +53,25 @@ answer (`sub | 0x80`, 52004).
 - The letters of the exchange are letters of the game to the person (sender "Exchange", main kind 2, sub kinds 1 bought,
   2 sold, 3 taken back, 4 ended, 5 sold without commission, as the client's table of system letters numbers them). They
   are written with the change of the listing and do not count against the box limit of 40.
+
+## What a crash leaves
+
+What a player pays (the item given to wait, the fee of a sale, the price of a purchase) is taken in memory and written to
+the database (`IPersonCommit`, an awaited write of the player through the write-behind) before the store writes what it pays
+for. A crash after that write and before the store loses what was paid; it never leaves an item both in the bags and at the
+exchange, nor a purchase whose price is still in the purse. When the write is not taken (the writer gives it up after its
+retries) the store is not asked, what was taken goes back, and the request is refused. When the store throws, what was taken
+goes back and the request is answered with its code: 52011 for giving an item and for a sale, 52002 for a purchase (the
+original answers a database result it does not name with 52011). A failure of the database is not counted against the
+session.
+
+Kept as they are:
+
+- The tickets of a sale are spent after the sale is written: they are spent only when the sale is, and a stack given back
+  would come with the attributes of the table, not its own. A crash in the few milliseconds between the sale and the next
+  write leaves a ticket unspent.
+- A store that commits and then fails to say so (the answer of the database lost) gets what was taken back to the player
+  as well: the outcome is not known, and it would take a read of the listing or the letter to know it.
 
 ## The tables
 
