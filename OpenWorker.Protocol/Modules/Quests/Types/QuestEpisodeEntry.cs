@@ -1,16 +1,10 @@
-﻿using OpenWorker.Hotspot.Messages.Abstractions;
+﻿using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Types;
 
-public readonly struct QuestEpisodeEntry : IWritableData
+[WireMessage(WireMethods.Write)]
+public readonly partial struct QuestEpisodeEntry
 {
     public required int Episode { get; init; }
     public required QuestInfoEntry Info { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Episode);
-
-        Info.Write(writer);
-    }
 }

@@ -3,13 +3,14 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
-using OpenWorker.Hotspot.Modules.Quests.Extensions;
 using OpenWorker.Hotspot.Modules.Quests.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct QuestEpisodeCompleteResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct QuestEpisodeCompleteResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,36 +23,16 @@ public readonly struct QuestEpisodeCompleteResponse(BinaryReader reader) : IResp
 
 #region Message: Body
 
-    public int Episode { get; init; } = reader.ReadInt32();
-    public int Exp { get; init; }  = reader.ReadInt32();
-    public int Money { get; init; }  = reader.ReadInt32();
-    public int BattlePoints { get; init; }  = reader.ReadInt32();
-    public int Ether { get; init; }  = reader.ReadInt32();
-    public TitleValue Title { get; init; } = new(reader);
-    public uint NpcHelper { get; init; } = reader.ReadUInt32();
-    public CreateItemValue[] Items { get; init; } = reader.ReadCreateItems();
+    public int Episode { get; init; }
+    public int Exp { get; init; }
+    public int Money { get; init; }
+    public int BattlePoints { get; init; }
+    public int Ether { get; init; }
+    public TitleValue Title { get; init; }
+    public uint NpcHelper { get; init; }
+
+    [WireArray(WireLength.Byte)]
+    public CreateItemValue[] Items { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Episode);
-        writer.Write(Exp);
-        writer.Write(Money);
-        writer.Write(BattlePoints);
-        writer.Write(Ether);
-        writer.Write(Title);
-        writer.Write(NpcHelper);
-        
-        writer.Write((byte)Items.Length);
-
-        foreach (var item in Items)
-        {
-            item.Write(writer);
-        }
-    }
-
-#endregion Interface: IWritableData
 }

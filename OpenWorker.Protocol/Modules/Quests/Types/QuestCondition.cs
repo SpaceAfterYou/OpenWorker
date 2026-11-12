@@ -1,15 +1,10 @@
-﻿using OpenWorker.Hotspot.Messages.Abstractions;
+﻿using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Types;
 
-public readonly struct QuestCondition : IWritableData
+[WireMessage(WireMethods.Write)]
+public readonly partial struct QuestCondition
 {
     public required int Condition { get; init; }
     public required byte Step { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Condition);
-        writer.Write(Step);
-    }
 }

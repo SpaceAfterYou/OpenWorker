@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Quests.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct QuestUpdateResponse : IResponseHotspotMessage
+public readonly partial struct QuestUpdateResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,22 +22,8 @@ public readonly struct QuestUpdateResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireArray(WireLength.Signed16)]
     public required IReadOnlyList<QuestCondition> ConditionList { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write((short)ConditionList.Count);
-
-        foreach (var value in ConditionList)
-        {
-            writer.Write(value.Condition);
-            writer.Write(value.Step);
-        }
-    }
-
-#endregion Interface: IWritableData
 }
