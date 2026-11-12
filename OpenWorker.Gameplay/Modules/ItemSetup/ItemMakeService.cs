@@ -113,7 +113,8 @@ public sealed class ItemMakeService(
             return;
         }
 
-        if (!inventory.CanGiveAll(player, [(row.Product, count)]))
+        // The product needs no slot the materials leave, so it is given first: a refused gift takes nothing.
+        if (!inventory.TryGive(player, row.Product, count))
         {
             answers.Refuse(player, command, NoRoom);
             return;
@@ -133,8 +134,6 @@ public sealed class ItemMakeService(
         {
             inventory.TryAddCurrency(player, ShopCurrency.Bp, -battlePoints);
         }
-
-        inventory.TryGive(player, row.Product, count);
 
         answers.Send(player, new ItemSetupMakeResponse());
 

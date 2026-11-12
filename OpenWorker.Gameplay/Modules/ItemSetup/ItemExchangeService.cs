@@ -67,15 +67,15 @@ public sealed class ItemExchangeService(
 
         var materials = count / row.ProductCount * row.MaterialCount;
 
+        // The product needs no slot the materials leave, so it is given first: a refused gift takes nothing.
         if (row.Material == 0 || materials <= 0 || inventory.CountOf(player, row.Material) < materials ||
-            !inventory.CanGiveAll(player, [(row.Product, count)]))
+            !inventory.TryGive(player, row.Product, count))
         {
             answers.Refuse(player, command, Failed);
             return;
         }
 
         inventory.TryTake(player, row.Material, materials);
-        inventory.TryGive(player, row.Product, count);
 
         answers.Send(player, new ItemSetupExchangeResponse());
 

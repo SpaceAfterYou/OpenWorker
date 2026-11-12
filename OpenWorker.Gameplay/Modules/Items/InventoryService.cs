@@ -105,21 +105,18 @@ public sealed class InventoryService(
     #region Giving and taking
 
     /// <summary>
-    /// How many of an item the person could still take, counting the free stack room and the empty slots of its storage.
+    /// The stacks of a storage that new items join when they are given: the same item, with room left, and bound as the new
+    /// items are (<see cref="ItemBinding.CanStack"/>: a free stack never takes bound items, nor the other way round). Giving
+    /// fills these and the empty slots, nothing else, and the check of room (<see cref="CanGiveAll"/>) counts these, so a
+    /// check never passes a gift that the giving then cannot place.
     /// </summary>
-    public long RoomFor(Entity player, int item)
+    private IEnumerable<ItemInstance> StacksJoined(ItemStorage storage, int item)
     {
-        var inventory = InventoryOf(player);
-        var storage = inventory?.Find(catalog.HomeOf(item));
-
-        if (storage is null)
-        {
-            return 0;
-        }
-
         var limit = catalog.StackLimit(item);
+        var rule = catalog.TryGet(item, out var row) ? (ItemBindType)row.BindType : ItemBindType.None;
+        var made = ItemBinding.OnMade(rule);
 
-        return storage.Slots.Sum(e => e is null ? limit : e.Item == item ? Math.Max(0, limit - e.Count) : 0L);
+        return storage.Slots.OfType<ItemInstance>().Where(e => e.Item == item && e.Count < limit && ItemBinding.CanStack(e.BindState, made, rule));
     }
 
     /// <summary>
@@ -132,12 +129,13 @@ public sealed class InventoryService(
     }
 
     /// <summary>
-    /// Whether the items fit, and the serials of the stacks they may start are ready (<see cref="IItemSerials.HasReady"/>):
-    /// a gift is refused here, before anything is taken for it, rather than halfway through.
+    /// Whether the items fit, and the serials of the stacks they start are ready (<see cref="IItemSerials.HasReady"/>): a
+    /// gift is refused here, before anything is taken for it, rather than halfway through. The same count as
+    /// <see cref="CanGiveAll"/>.
     /// </summary>
     public bool CanGive(Entity player, int item, int count)
     {
-        return count > 0 && catalog.Exists(item) && RoomFor(player, item) >= count && serials.HasReady(StacksOf(item, count));
+        return CanGiveAll(player, [(item, count)]);
     }
 
     /// <summary>
@@ -175,14 +173,21 @@ public sealed class InventoryService(
         var limit = catalog.StackLimit(item);
         var rest = count;
 
+        // Where the items go is settled before anything changes: when they would not all find a place, nothing is given.
+        var stacks = StacksJoined(storage, item).ToList();
+        var left = count - stacks.Sum(e => (long)(limit - e.Count));
+        var free = Enumerable.Range(0, storage.Slots.Length).Where(e => storage.Slots[e] is null).ToList();
+        var slots = left > 0 ? (left + limit - 1) / limit : 0;
+
+        if (slots > free.Count || !serials.HasReady((int)slots))
+        {
+            return false;
+        }
+
         var updated = new List<ItemInstance>();
         var created = new List<ItemInstance>();
 
-        // New items join the stacks that are bound as they are (a free stack never takes bound items, nor the other way round).
-        var rule = catalog.TryGet(item, out var row) ? (ItemBindType)row.BindType : ItemBindType.None;
-        var made = ItemBinding.OnMade(rule);
-
-        foreach (var stack in storage.Slots.OfType<ItemInstance>().Where(e => e.Item == item && e.Count < limit && ItemBinding.CanStack(e.BindState, made, rule)))
+        foreach (var stack in stacks)
         {
             var add = Math.Min(rest, limit - stack.Count);
 
@@ -198,12 +203,12 @@ public sealed class InventoryService(
             }
         }
 
-        while (rest > 0)
+        for (var next = 0; rest > 0; next++)
         {
             var add = Math.Min(rest, (int)limit);
             var instance = Create(item, add);
 
-            inventory.Place(storage.Group, storage.FirstFree(), instance);
+            inventory.Place(storage.Group, free[next], instance);
             created.Add(instance);
 
             rest -= add;
@@ -300,7 +305,8 @@ public sealed class InventoryService(
     }
 
     /// <summary>
-    /// Whether all of the items fit at once. An item that is about to be used up frees its slot.
+    /// Whether all of the items fit at once, given one after another as <see cref="TryGive(Entity, int, int)"/> gives them. An
+    /// item that is about to be used up (the last one of its stack) frees its slot, and its stack takes nothing.
     /// </summary>
     public bool CanGiveAll(Entity player, IReadOnlyCollection<(int Item, int Count)> items, ItemInstance? ignoring = null)
     {
@@ -311,7 +317,8 @@ public sealed class InventoryService(
             return false;
         }
 
-        var free = inventory.Storages.ToDictionary(e => e.Group, e => e.Slots.Count(x => x is null || (x == ignoring && x.Count == 1)));
+        var freed = ignoring is { Count: 1 } ? ignoring : null;
+        var free = inventory.Storages.ToDictionary(e => e.Group, e => e.Slots.Count(x => x is null || x == freed));
         var room = new Dictionary<int, long>();
         var stacks = 0;
 
@@ -327,7 +334,7 @@ public sealed class InventoryService(
 
             if (!room.TryGetValue(item, out var available))
             {
-                available = inventory.Find(home)!.Slots.Where(e => e is not null && e.Item == item).Sum(e => Math.Max(0, limit - e!.Count));
+                available = StacksJoined(inventory.Find(home)!, item).Where(e => e != freed).Sum(e => limit - e.Count);
             }
 
             var use = Math.Min(count, available);
