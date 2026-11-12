@@ -186,6 +186,26 @@ public sealed class HelperSquad
     }
 
     /// <summary>
+    /// What the helper wears has changed: it fights from now on with these stats, and those who come later hear of it as it
+    /// is now. Its life stays what it was, within its maximum. Nobody is told: items and orbs change only the attacks and the
+    /// defense, which the players do not see of a monster.
+    /// </summary>
+    internal void Refit(SummonedHelper helper, CombatStats stats, HelperValue record)
+    {
+        if (!_helpers.Contains(helper) || !_ecs.IsAlive(helper.Entity))
+        {
+            return;
+        }
+
+        var creature = _ecs.Get<CreatureComponent>(helper.Entity);
+
+        _ecs.Set(helper.Entity, _ecs.Get<MonsterCombatComponent>(helper.Entity) with { Stats = stats });
+        _ecs.Set(helper.Entity, creature with { Health = Math.Min(creature.Health, (int)Math.Max(1f, stats.MaxHealth)) });
+
+        helper.Record = record with { Summoned = true };
+    }
+
+    /// <summary>
     /// The helper goes: it falls with nothing to give (no drop, no experience), then everybody hears it was sent away.
     /// </summary>
     public void Release(SummonedHelper helper)

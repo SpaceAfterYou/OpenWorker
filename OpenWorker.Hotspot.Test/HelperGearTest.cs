@@ -93,20 +93,8 @@ public sealed class HelperGearTest
         public async Task<ushort> EquipAsync(ItemInstance? fromBag, ItemInstance? fromHelper, short helperSlot)
         {
             var before = Connection.Frames.Length;
-            var bytes = new byte[33];
 
-            bytes[0] = (byte)(fromBag?.Storage ?? StorageGroup.Common);
-            BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(1), fromBag?.Item ?? 0);
-            BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(5), fromBag?.Slot ?? 0);
-            BinaryPrimitives.WriteInt64LittleEndian(bytes.AsSpan(7), fromBag?.Serial ?? 0);
-            BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(15), Mirium);
-            BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(19), fromHelper?.Item ?? 0);
-            BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(23), helperSlot);
-            BinaryPrimitives.WriteInt64LittleEndian(bytes.AsSpan(25), fromHelper?.Serial ?? 0);
-
-            using var reader = new BinaryReader(new MemoryStream(bytes));
-
-            Gear.Equip(Player, new HelperEquipRequest(reader));
+            Gear.Equip(Player, Request(Mirium, fromBag, fromHelper, helperSlot));
 
             await MetricAssertions.UntilAsync(
                 () => Connection.Frames.Select(PlayerFrame.Open).Skip(before).Any(e => e.Opcode.Group == (byte)GroupOpcode.Helper),
@@ -127,6 +115,28 @@ public sealed class HelperGearTest
         }
 
         public void Dispose() => World.Dispose();
+    }
+
+    /// <summary>
+    /// The request to put an item of the bag on a helper, swap it for the worn one or take the worn one off, as the client
+    /// writes it.
+    /// </summary>
+    public static HelperEquipRequest Request(int helper, ItemInstance? fromBag, ItemInstance? fromHelper, short helperSlot)
+    {
+        var bytes = new byte[33];
+
+        bytes[0] = (byte)(fromBag?.Storage ?? StorageGroup.Common);
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(1), fromBag?.Item ?? 0);
+        BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(5), fromBag?.Slot ?? 0);
+        BinaryPrimitives.WriteInt64LittleEndian(bytes.AsSpan(7), fromBag?.Serial ?? 0);
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(15), helper);
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(19), fromHelper?.Item ?? 0);
+        BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(23), helperSlot);
+        BinaryPrimitives.WriteInt64LittleEndian(bytes.AsSpan(25), fromHelper?.Serial ?? 0);
+
+        using var reader = new BinaryReader(new MemoryStream(bytes));
+
+        return new HelperEquipRequest(reader);
     }
 
     /// <summary>

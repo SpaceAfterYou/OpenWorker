@@ -16,12 +16,19 @@ using OpenWorker.Hotspot.Modules.System.Responses;
 namespace OpenWorker.Gameplay.Modules.Helpers;
 
 /// <summary>
-/// Which helpers of a person are in the maze with it now. Helpers that are not called keep the orb of a friend when a maze is
-/// cleared.
+/// Which helpers of a person are in the maze with it now. A called helper is told to the client as called, fights with what
+/// it wears at every change of its items or its orb, and gives back the orb of a friend when the maze is cleared; helpers
+/// that are not called keep theirs.
 /// </summary>
 public interface ISummonedHelpers
 {
     bool IsSummoned(Entity player, int helper);
+
+    /// <summary>
+    /// What a called helper wears has changed: the helper in the maze fights from now on with what this record says it has.
+    /// Nothing for a helper that is not called.
+    /// </summary>
+    void Refit(Entity player, in HelperValue record);
 }
 
 /// <summary>
@@ -30,19 +37,24 @@ public interface ISummonedHelpers
 public sealed class NoSummonedHelpers : ISummonedHelpers
 {
     public bool IsSummoned(Entity player, int helper) => false;
+
+    public void Refit(Entity player, in HelperValue record)
+    {
+    }
 }
 
 /// <summary>
 /// What the helpers of a person wear: three items each, kept in the inventory of the person in a storage of their own and
 /// moved only through <see cref="InventoryService"/>, and the orb of a friend, kept on the helper in the book. Both add to the
-/// stats of the helper (<see cref="HelperStats"/>). Items are put on and taken off anywhere, in a district or in a maze.
+/// stats of the helper (<see cref="HelperStats"/>). Items are put on and taken off anywhere, in a district or in a maze; a
+/// helper that stands in the maze then fights with what it wears now, so an item taken off it is no longer in its blows.
 /// </summary>
 public sealed class HelperGear(
     World world,
     HelperCatalog catalog,
     InventoryService inventory,
     HelperStats stats,
-    ISummonedHelpers? summoned = null,
+    ISummonedHelpers? called = null,
     TimeProvider? time = null)
 {
     /// <summary>
@@ -62,10 +74,10 @@ public sealed class HelperGear(
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
     /// <summary>
-    /// The helper as the client reads it: what it wears, the orb of a friend while it counts, what it has by itself at the
-    /// level of its owner and what the items and the orb add.
+    /// The helper as the client reads it: what it wears, the orb of a friend while it counts, whether it stands in the maze
+    /// now (unless the caller says), what it has by itself at the level of its owner and what the items and the orb add.
     /// </summary>
-    public HelperValue Record(Entity player, HelperEntry entry, bool summoned = false)
+    public HelperValue Record(Entity player, HelperEntry entry, bool? summoned = null)
     {
         var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
         var worn = Worn(player, entry.Helper);
@@ -76,7 +88,7 @@ public sealed class HelperGear(
             Helper = entry.Helper,
             Items = worn.Select(e => e?.ToValue() ?? HelperValue.NoItem).ToArray(),
             Support = orb,
-            Summoned = summoned,
+            Summoned = summoned ?? called?.IsSummoned(player, entry.Helper) == true,
             Order = entry.Order,
             Origin = stats.Origin(entry.Helper, level),
             Additional = stats.Additional(worn.OfType<ItemInstance>().Select(e => e.Item), orb)
@@ -132,7 +144,7 @@ public sealed class HelperGear(
             return;
         }
 
-        world.Get<ServerSessionComponent>(player).Send(new HelperEquipResponse { Result = 0, Helper = Record(player, entry) });
+        world.Get<ServerSessionComponent>(player).Send(new HelperEquipResponse { Result = 0, Helper = Refit(player, entry) });
     }
 
     private ushort Swap(Entity player, in HelperEquipRequest request, int number)
@@ -216,7 +228,7 @@ public sealed class HelperGear(
 
         entry.Orb = orb;
         world.MarkDirty(player, PersonSections.MiscState);
-        record = Record(player, entry);
+        record = Refit(player, entry);
 
         return true;
     }
@@ -235,7 +247,7 @@ public sealed class HelperGear(
         entry.Orb = null;
         world.MarkDirty(player, PersonSections.MiscState);
 
-        world.Get<ServerSessionComponent>(player).Send(new HelperUpdateInfoResponse { Helper = Record(player, entry) });
+        world.Get<ServerSessionComponent>(player).Send(new HelperUpdateInfoResponse { Helper = Refit(player, entry) });
     }
 
     /// <summary>
@@ -243,15 +255,30 @@ public sealed class HelperGear(
     /// </summary>
     public void OnMazeCleared(Entity player)
     {
-        if (summoned is null || !world.IsAlive(player) || !world.TryGet<HelperComponent>(player, out var component) || component.Book is null)
+        if (called is null || !world.IsAlive(player) || !world.TryGet<HelperComponent>(player, out var component) || component.Book is null)
         {
             return;
         }
 
-        foreach (var entry in component.Book.Helpers.Where(e => e.Orb is not null && summoned.IsSummoned(player, e.Helper)).ToArray())
+        foreach (var entry in component.Book.Helpers.Where(e => e.Orb is not null && called.IsSummoned(player, e.Helper)).ToArray())
         {
             ReleaseOrb(player, entry.Helper);
         }
+    }
+
+    /// <summary>
+    /// The helper as it is now, after a change of what it wears; a helper that stands in the maze fights with it from now on.
+    /// </summary>
+    private HelperValue Refit(Entity player, HelperEntry entry)
+    {
+        var record = Record(player, entry);
+
+        if (record.Summoned)
+        {
+            called?.Refit(player, record);
+        }
+
+        return record;
     }
 
     /// <summary>
