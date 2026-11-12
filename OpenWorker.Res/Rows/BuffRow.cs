@@ -9,39 +9,144 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Buff")]
 public readonly partial struct BuffRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the buff, 1 to 65535.
+    /// </summary>
     public ushort Id { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// Where the buff may be put on someone, as bit flags: 1 anywhere, 2 a maze, 4 a district, 8 a battle zone (the server&apos;s rule; no client code that reads it was found).
+    /// </summary>
     public byte AllowedPlaces { get; } = reader.ReadByte();
+    /// <summary>
+    /// 0 a buff, 1 a debuff, 2 a combined one. The client counts the buffs and the debuffs of an actor by it.
+    /// </summary>
     public byte Kind { get; } = reader.ReadByte();
+    /// <summary>
+    /// What the buff does: 0 changes stats; 111 to 114 burn, poison, shock and bleed; 121 to 126 stun, paralysis, sleep, freeze, charm and confusion; 131 and 132 silence and weakness. The client tests several of these numbers.
+    /// </summary>
     public ushort Effect { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The group of the buff: an actor carries one buff of a group, and the client finds the slot of a buff by it.
+    /// </summary>
     public ushort Group { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The chance the buff lands, out of 10000, before resistances. The client rolls it too. Two rows hold -1.
+    /// </summary>
     public int SuccessRate { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The grade of the buff, 0 to 10: on the server a buff replaces another of its group only when its grade is high enough.
+    /// </summary>
     public byte Grade { get; } = reader.ReadByte();
+    /// <summary>
+    /// How long the buff lasts, in milliseconds; 0 for as long as nothing takes it away.
+    /// </summary>
     public int DurationMilliseconds { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How long the buff waits before it begins, in milliseconds. 0 in every row of this client.
+    /// </summary>
     public int StandByMilliseconds { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How often the buff acts while it lasts, in milliseconds; 0 for never.
+    /// </summary>
     public int TickMilliseconds { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How a second buff of the group counts on the server: 0 adds a part of its time, 1 starts the time again. 2 is on 59 rows and is not settled.
+    /// </summary>
     public byte OverlapType { get; } = reader.ReadByte();
+    /// <summary>
+    /// How many buffs of the group may stack: 1 for one that is only renewed, 0 for one that is never renewed. The client shows the stack up to it.
+    /// </summary>
     public byte OverlapCount { get; } = reader.ReadByte();
+    /// <summary>
+    /// What does not take the buff away, as bit flags: 1 death, 2 leaving the game (32 rows have both). The client clears the buff on an event whose bit is not set.
+    /// </summary>
     public byte DeleteType { get; } = reader.ReadByte();
+    /// <summary>
+    /// The animation the carrier plays while the buff lasts (a stun, a paralysis, running). &quot;0&quot; for none.
+    /// </summary>
     public string ActionName { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The buff that follows when this one runs out. Three rows have one.
+    /// </summary>
     public ushort CallOutBuff { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// A skill the buff calls when it ends: the client looks it up as a skill when the buff is taken away. 0 in every row of this client.
+    /// </summary>
     public int CallOutSkill { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A buff called on a hit. 0 in every row of this client; no client code that reads it was found.
+    /// </summary>
     public ushort HitCallBuff { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The buff this one turns into when its stack is full. One row has one.
+    /// </summary>
     public ushort ChangeBuff { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The stat the first value works on (the stat numbers of items and titles), or what it means for the other effects.
+    /// </summary>
     public byte Stat1 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The first value of the buff.
+    /// </summary>
     public int Value1 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The stat the second value works on.
+    /// </summary>
     public byte Stat2 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The second value of the buff.
+    /// </summary>
     public int Value2 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The stat the third value works on.
+    /// </summary>
     public byte Stat3 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The third value of the buff.
+    /// </summary>
     public int Value3 { get; } = reader.ReadInt32();
-    public short Field24 { get; } = reader.ReadInt16();
-    public short Field25 { get; } = reader.ReadInt16();
-    public short Field26 { get; } = reader.ReadInt16();
-    public short Field27 { get; } = reader.ReadInt16();
-    public short Field28 { get; } = reader.ReadInt16();
-    public short Field29 { get; } = reader.ReadInt16();
-    public string Field30 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public short Field31 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A visual effect, a row of tb_ResVFX, the client starts on the carrier when the buff lands (692 of 708 values are rows of it). 0 for none.
+    /// </summary>
+    public short StartEffect1 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A visual effect, a row of tb_ResVFX, the client starts on the carrier when the buff is taken away. 0 in every row of this client.
+    /// </summary>
+    public short EndEffect1 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A second effect started when the buff lands (11 rows, all rows of tb_ResVFX).
+    /// </summary>
+    public short StartEffect2 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A second effect started when the buff is taken away. 0 in every row of this client.
+    /// </summary>
+    public short EndEffect2 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A third effect started when the buff lands. 0 in every row of this client.
+    /// </summary>
+    public short StartEffect3 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A third effect started when the buff is taken away. 0 in every row of this client.
+    /// </summary>
+    public short EndEffect3 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A sound the client plays at the carrier when the buff lands (Common/Item_Use/HP and the like). &quot;0&quot; for none.
+    /// </summary>
+    public string Sound { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The row of tb_Buff_Script with the name, the texts and the icon. The client looks that row up by this column; ids go above 32767 (35000), so it is unsigned. 0 on 140 rows.
+    /// </summary>
+    public ushort Script { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// 0 in every row of this client. No client code that reads it was found.
+    /// </summary>
     public int Field32 { get; } = reader.ReadInt32();
-    public byte Field33 { get; } = reader.ReadByte();
+    /// <summary>
+    /// 1 when the client shows the label of the buff&apos;s script over the carrier as the buff lands (1048 rows).
+    /// </summary>
+    public byte ShowsLabel { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 1 on all but three rows (52063, 52073 and 52083). After a buff changes, the client lists it in a frame of the actor only when this is 1 or the actor passes a check of its own; not settled further.
+    /// </summary>
     public byte Field34 { get; } = reader.ReadByte();
 }
