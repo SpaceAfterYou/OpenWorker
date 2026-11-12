@@ -13,3 +13,11 @@ public interface IRankingStore
     /// </summary>
     Task SubmitAsync(RankingKind kind, int scope, int person, int time, int score, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// The fastest clear of a stage of the infinite tower by a person, with what the ranking window shows of the person.
+/// </summary>
+/// <param name="Maze">The maze of the stage.</param>
+/// <param name="Time">The clear in seconds.</param>
+/// <param name="Order">Which of two equal times came first: the lower one.</param>
+public sealed record TowerClear(int Person, string Name, byte Hero, byte Level, int Maze, int Time, int Order);

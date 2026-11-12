@@ -885,14 +885,23 @@ public sealed partial class MazeService(
             return;
         }
 
-        var claims = ecs.Get<ClaimsComponent>(context.Player);
-        var world = ecs.Get<WorldComponent>(context.Player);
+        await LeaveMazeAsync(context.Player, request.Portal);
+    }
 
-        var session = ecs.Get<ServerSessionComponent>(context.Player);
+    /// <summary>
+    /// The player leaves the maze for the district its way out leads to: the portal it names when that leads to a district, the
+    /// escape box of the maze otherwise. The client is told where to go; the maze goes on for the rest of the party.
+    /// </summary>
+    public async ValueTask LeaveMazeAsync(Entity player, int portal)
+    {
+        var claims = ecs.Get<ClaimsComponent>(player);
+        var world = ecs.Get<WorldComponent>(player);
+
+        var session = ecs.Get<ServerSessionComponent>(player);
 
         // The player leaves through the portal of the maze that leads out of it, or through the escape box.
         if (!batches.TryGetAndCache(world.Location, out var mazeBatch) ||
-            FindWayOut(mazeBatch, request.Portal) is not var (field, eventObject))
+            FindWayOut(mazeBatch, portal) is not var (field, eventObject))
         {
             session.Send(new WorldEnterResponse { Map = EnterMapResultValue.Error });
             return;
@@ -901,7 +910,7 @@ public sealed partial class MazeService(
         var placement = await worldManager.GetDistrictAsync(field);
 
         // The player may have left while the servers were looked up.
-        if (!ecs.IsAlive(context.Player))
+        if (!ecs.IsAlive(player))
         {
             return;
         }
@@ -954,7 +963,7 @@ public sealed partial class MazeService(
         {
             Zone = new ZoneValue
             {
-                Actor = ecs.Get<ActorComponent>(context.Player).Identifier,
+                Actor = ecs.Get<ActorComponent>(player).Identifier,
                 Account = claims,
                 World = location,
                 Jump = exit.Id,
@@ -970,7 +979,7 @@ public sealed partial class MazeService(
         var cache = new DistrictReserveCache
         {
             Account = claims,
-            Person = ecs.Get<ActorComponent>(context.Player).Identifier,
+            Person = ecs.Get<ActorComponent>(player).Identifier,
             District = districtCache.Guid,
             Channel = channelCache.Guid,
             Jump = exit.Id,
@@ -981,7 +990,7 @@ public sealed partial class MazeService(
         };
 
         // The district loads the person from the database: what the maze has must be there first.
-        await persons.FlushAsync(context.Player);
+        await persons.FlushAsync(player);
 
         await districtReserves
             .InsertAsync(cache, WorldManager.ReservationLifetime);
@@ -989,7 +998,7 @@ public sealed partial class MazeService(
         session.Send(new WorldEnterResponse { Map = enter });
 
         // The player is on the way out: the maze goes on for the rest of the party, and the last one out ends it.
-        await instances.LeaveAsync(context.Player);
+        await instances.LeaveAsync(player);
     }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, MazeEventSpawnBoxRequest request)

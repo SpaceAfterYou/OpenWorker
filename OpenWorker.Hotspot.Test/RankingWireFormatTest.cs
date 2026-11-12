@@ -129,15 +129,58 @@ public sealed class RankingWireFormatTest
     }
 
     [TestMethod]
-    public void AnEmptyTowerIsFifteenFloorsFiveRowsOfFourteenBytesAndAChapter()
+    public void ATowerIsFifteenChaptersThenFiveStagesOfMyTimeAndTheBestClearThenTheChapter()
     {
-        var bytes = Written(RankingInfiniteTowerListResponse.Create(4));
+        var bytes = Written(new RankingInfiniteTowerListResponse
+        {
+            Data = new RankingInfiniteTowerClearInfo
+            {
+                // Fewer chapters and stages than the client reads are filled with nothing.
+                FriendsClearedPerChapter = [3, 1],
+                Stages =
+                [
+                    new RankingInfiniteTowerRankingInfo
+                    {
+                        MyClearTime = 70, Chapter = 4, Stage = 1, Person = 9, Hero = Hero.Lily, Level = 30, Name = "Ab", ClearTime = 61
+                    }
+                ],
+                Chapter = 4
+            }
+        });
 
-        // A row is the clear time and the stage, the person, the hero and level, the name and the time of the best.
-        var row = 4 + 4 + 4 + 1 + 1 + 2 + 1 + 4;
+        using var stream = new MemoryStream();
+        using var expected = new BinaryWriter(stream);
 
-        Assert.HasCount(15 * 4 + 5 * row + 4, bytes);
-        Assert.AreEqual(4, BitConverter.ToInt32(bytes, bytes.Length - 4));
-        Assert.IsTrue(bytes[..(15 * 4)].All(e => e == 0));
+        expected.Write(3);
+        expected.Write(1);
+
+        for (var chapter = 2; chapter < 15; chapter++)
+        {
+            expected.Write(0);
+        }
+
+        void Stage(int mine, int chapter, int stage, int person, byte hero, byte level, string name, int time)
+        {
+            expected.Write(mine);
+            expected.Write(chapter);
+            expected.Write(stage);
+            expected.Write(person);
+            expected.Write(hero);
+            expected.Write(level);
+            WriteClientString(expected, name);
+            expected.Write(time);
+        }
+
+        Stage(70, 4, 1, 9, (byte)Hero.Lily, 30, "Ab", 61);
+
+        for (var stage = 1; stage < 5; stage++)
+        {
+            Stage(0, 0, 0, 0, 0, 0, string.Empty, 0);
+        }
+
+        expected.Write(4);
+        expected.Flush();
+
+        CollectionAssert.AreEqual(stream.ToArray(), bytes);
     }
 }

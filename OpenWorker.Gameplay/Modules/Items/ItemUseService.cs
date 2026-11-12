@@ -16,6 +16,7 @@ using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Res;
 using OpenWorker.Res.Types;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Gameplay.Modules.Tower;
 
 namespace OpenWorker.Gameplay.Modules.Items;
 
@@ -95,7 +96,8 @@ public sealed class ItemUseService(
     AkashicService? akashic = null,
     FatigueService? fatigue = null,
     IReviveItems? revive = null,
-    AchievementManager? achievements = null)
+    AchievementManager? achievements = null,
+    InfiniteTower? tower = null)
 {
     private readonly RowIndex<int, ItemPackageRow> _packages = packages.IndexBy(e => e.Id);
     private readonly RowIndex<int, ItemRandomBoxRow> _randomBoxes = randomBoxes.IndexBy(e => e.Id);
@@ -191,7 +193,7 @@ public sealed class ItemUseService(
                 UseBox(player, item, row, classify),
             ItemUseType.EFFECT => UseEffect(player, item, row, classify, place),
             ItemUseType.EQUIP_SLOT_OPEN => OpenEquipSlot(player, item, classify),
-            ItemUseType.INFINITE_TOWER => ItemUseResult.Refused(ItemUseCodes.NoTowerTicket),
+            ItemUseType.INFINITE_TOWER => UseTowerTicket(player, item),
             _ => ItemUseResult.Refused()
         };
 
@@ -215,6 +217,26 @@ public sealed class ItemUseService(
         return item is { Count: >= 1 } && Usable.Contains(group) && catalog.Classify(item.Item) is { } classify && classify.ItemUseType == type
             ? item
             : null;
+    }
+
+    /// <summary>
+    /// A ticket of the infinite tower clears the count of the day once its entries are used up, and is used up itself.
+    /// </summary>
+    private ItemUseResult UseTowerTicket(Entity player, ItemInstance item)
+    {
+        if (tower is null)
+        {
+            return ItemUseResult.Refused(ItemUseCodes.NoTowerTicket);
+        }
+
+        if (tower.UseTicket(player) is { } refused)
+        {
+            return ItemUseResult.Refused(refused);
+        }
+
+        inventory.Spend(player, item, 1);
+
+        return ItemUseResult.Used();
     }
 
     /// <summary>

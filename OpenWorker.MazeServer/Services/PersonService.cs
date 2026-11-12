@@ -48,6 +48,7 @@ using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.MyRoom;
+using OpenWorker.Gameplay.Modules.Tower;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -92,6 +93,7 @@ public sealed partial class PersonService(
     PlayerGauges gauges,
     HelperGear helperGear,
     MazeEntryLimits entryLimits,
+    InfiniteTower tower,
     MovementPace pace,
     MyRoomBook roomBook,
     MyRoomService roomService,
@@ -238,6 +240,14 @@ public sealed partial class PersonService(
             return;
         }
 
+        // The climb of the tower: a stage of it counts and moves the climb.
+        await tower.EnterAsync(context.Player, person.Id, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
+
         // The buffs the person left the last server with come with it into the instance.
         await buffMemory.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
@@ -305,6 +315,7 @@ public sealed partial class PersonService(
         if (world.IsAlive(context.Player))
         {
             entryLimits.TellCount(context.Player, mazeInfo.Id);
+            tower.Entered(context.Player, mazeInfo.Id);
         }
     }
 

@@ -2,6 +2,7 @@
 using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.MyRoom;
+using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Server.Common;
 using OpenWorker.Server.Common.Services;
 using OpenWorker.Hotspot.Cache;
@@ -85,6 +86,7 @@ public sealed partial class PersonService(
     NpcCreditManager npcCredit,
     ItemUseLimits itemUse,
     MazeEntryLimits entryLimits,
+    InfiniteTower tower,
     BuffMemory buffMemory,
     DistrictBuffs districtBuffs,
     MovementPace pace,
@@ -222,6 +224,10 @@ public sealed partial class PersonService(
         // How often the person entered the mazes today: the board shows what is left of the limits.
         await entryLimits.EnterAsync(context.Player, person.Id, context.CancellationToken);
         entryLimits.SendCounts(context.Player);
+
+        // How far the person has climbed the tower: its window opens the chapters up to the next one.
+        await tower.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        tower.Send(context.Player);
 
         // The buffs the person left the last server with, and the ones its clothes give.
         await buffMemory.EnterAsync(context.Player, person.Id, context.CancellationToken);

@@ -15,6 +15,11 @@ public static class RankingStore
     public const int PageSize = 50;
 
     /// <summary>
+    /// Whether the ranking is of the fastest clear (a time attack, a stage of the tower) rather than of the highest score.
+    /// </summary>
+    public static bool IsTimed(RankingKind kind) => kind is RankingKind.TimeAttack or RankingKind.InfiniteTower;
+
+    /// <summary>
     /// Records a result for the person, keeping the better of it and the old one. A faster clear is better in a time
     /// attack (and with the same time, a higher score); a higher score is better in the arena.
     /// </summary>
@@ -29,7 +34,7 @@ public static class RankingStore
             database.RankingEntries.Add(new RankingEntryPersistent { Kind = kind, Scope = scope, PersonId = person, Time = time, Score = score });
         }
 
-        else if (kind == RankingKind.TimeAttack
+        else if (IsTimed(kind)
                      ? time < entry.Time || (time == entry.Time && score > entry.Score)
                      : score > entry.Score)
         {
@@ -69,7 +74,7 @@ public static class RankingStore
             .Where(e => e.Kind == kind && e.Scope == scope)
             .Join(database.Persons.AsNoTracking(), e => e.PersonId, e => e.Id, (entry, person) => new { entry, person });
 
-        var ordered = kind == RankingKind.TimeAttack
+        var ordered = IsTimed(kind)
             ? query.OrderBy(e => e.entry.Time).ThenByDescending(e => e.entry.Score).ThenBy(e => e.entry.Id)
             : query.OrderByDescending(e => e.entry.Score).ThenBy(e => e.entry.Id);
 
@@ -90,7 +95,7 @@ public static class RankingStore
 
             if (own is not null)
             {
-                var better = kind == RankingKind.TimeAttack
+                var better = IsTimed(kind)
                     ? await database.RankingEntries.CountAsync(e => e.Kind == kind && e.Scope == scope && (e.Time < own.Time || (e.Time == own.Time && e.Score > own.Score)))
                     : await database.RankingEntries.CountAsync(e => e.Kind == kind && e.Scope == scope && e.Score > own.Score);
 
@@ -99,6 +104,32 @@ public static class RankingStore
         }
 
         return (top, mine);
+    }
+}
+
+/// <summary>
+/// The tower clears of a person and of its friends, for the ranking window of the tower.
+/// </summary>
+public static class TowerRankingStore
+{
+    /// <summary>
+    /// The fastest clear of every stage of the tower by the person and by each of its friends.
+    /// </summary>
+    public static async Task<List<TowerClear>> TowerClearsAsync(this IDbContextFactory<PersistenceContext> factory, int person)
+    {
+        await using var database = await factory.CreateDbContextAsync();
+
+        var friends = database.Friends
+            .AsNoTracking()
+            .Where(e => e.OwnerId == person && e.Kind == FriendKind.Friend)
+            .Select(e => e.TargetId);
+
+        return await database.RankingEntries
+            .AsNoTracking()
+            .Where(e => e.Kind == RankingKind.InfiniteTower && (e.PersonId == person || friends.Contains(e.PersonId)))
+            .Join(database.Persons.AsNoTracking(), e => e.PersonId, e => e.Id, (entry, owner) => new TowerClear(
+                owner.Id, owner.Name, (byte)owner.Hero, owner.Level, entry.Scope, entry.Time, entry.Id))
+            .ToListAsync();
     }
 }
 

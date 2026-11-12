@@ -116,6 +116,11 @@ public enum AchievementType : ushort
     EtherPicked = 45,
 
     /// <summary>
+    /// A stage of the infinite tower entered.
+    /// </summary>
+    TowerStageEntered = 46,
+
+    /// <summary>
     /// A maze of a kind other than the plain one cleared, about the kind.
     /// </summary>
     SpecialMazeCleared = 47,

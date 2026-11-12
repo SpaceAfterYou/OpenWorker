@@ -144,13 +144,21 @@ public sealed partial class WorldManager(
 
     /// <summary>
     /// Finds the requested start point, or the default one of the location when none was requested
-    /// or the requested one does not exist.
+    /// or the requested one does not exist. A batch several mazes share (the stages of the infinite tower) has one start point
+    /// for all of them, named after the first: a map with only one start point is entered by it.
     /// </summary>
     private static bool TryGetStart(VBatchFile batch, short location, int jump, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out StartEventBox? start)
     {
         var starts = batch.EventBox.StartEvents;
 
-        return (jump != 0 && starts.TryGet(jump, out start)) || starts.TryGet(location * 100 + 1, out start);
+        if ((jump != 0 && starts.TryGet(jump, out start)) || starts.TryGet(location * 100 + 1, out start))
+        {
+            return true;
+        }
+
+        start = starts.Count == 1 ? starts[0] : null;
+
+        return start is not null;
     }
 
     /// <summary>

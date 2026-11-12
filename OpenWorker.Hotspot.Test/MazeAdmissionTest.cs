@@ -36,7 +36,7 @@ public sealed class MazeAdmissionTest
     private const int Material = 710105001;
     private const int Weapon = 111000001;
 
-    private static ReadOnlyCollection<T> Load<T>(string table)
+    internal static ReadOnlyCollection<T> Load<T>(string table)
     {
         var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_RES");
 

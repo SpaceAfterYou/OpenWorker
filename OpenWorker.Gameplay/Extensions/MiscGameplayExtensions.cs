@@ -20,6 +20,7 @@ using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Gameplay.Modules.State;
+using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Gameplay.Modules.Vaccum;
 
 namespace OpenWorker.Gameplay.Extensions;
@@ -89,6 +90,7 @@ public static class MiscGameplayExtensions
         services.AddSingleton(MazeEntryLimits.Document);
         services.AddSingleton<IMazePortals, BatchMazePortals>();
         services.AddSingleton<MazeAdmission>();
+        services.AddInfiniteTower();
 
         // What the flush of the person writes when the managers mark their part.
         services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<SoulMetryComponent>(PersonStateKind.SoulMetry, PersonSections.MiscState, e => e.State));

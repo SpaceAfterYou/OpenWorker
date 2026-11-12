@@ -5,6 +5,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
@@ -19,9 +20,9 @@ namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
 /// The rankings, from what the servers recorded: a clear of a map and the kills in the arena. Where nothing is recorded the
-/// list is empty. The infinite tower has nothing to show yet.
+/// list is empty. The tower shows the clears of the person and its friends.
 /// </summary>
-public sealed class RankingService(World world, IDbContextFactory<PersistenceContext> factory) :
+public sealed class RankingService(World world, IDbContextFactory<PersistenceContext> factory, InfiniteTower tower) :
     IHotspotHandler<RankingTimeAttackListRequest>,
     IHotspotHandler<RankingPvpListRequest>,
     IHotspotHandler<RankingInfiniteTowerListRequest>
@@ -97,11 +98,24 @@ public sealed class RankingService(World world, IDbContextFactory<PersistenceCon
         });
     }
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, RankingInfiniteTowerListRequest request)
+    /// <summary>
+    /// The tower: the person's own clears and those of its friends (<see cref="InfiniteTowerRanking"/>). The person is the one of
+    /// the session; the chapter is the one the window shows, and one the tower does not have is answered with nothing in it.
+    /// </summary>
+    public async ValueTask OnHandleAsync(ServiceHandleContext context, RankingInfiniteTowerListRequest request)
     {
-        world.Get<ServerSessionComponent>(context.Player).Send(RankingInfiniteTowerListResponse.Create(request.Chapter));
+        var me = world.Get<ActorComponent>(context.Player).Identifier;
+        var clears = await factory.TowerClearsAsync(me);
 
-        return ValueTask.CompletedTask;
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
+
+        world.Get<ServerSessionComponent>(context.Player).Send(new RankingInfiniteTowerListResponse
+        {
+            Data = InfiniteTowerRanking.Build(tower, me, request.Chapter, clears)
+        });
     }
 
     /// <summary>
