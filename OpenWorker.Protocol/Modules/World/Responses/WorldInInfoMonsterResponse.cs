@@ -2,7 +2,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.World.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
 
@@ -10,8 +10,9 @@ namespace OpenWorker.Hotspot.Modules.World.Responses;
 /// Monsters that come into the world while the players are in it, such as a helper a player calls: a byte count, then each
 /// monster as in the list of the monsters already there (04/23).
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct WorldInInfoMonsterResponse : IResponseHotspotMessage
+public readonly partial struct WorldInInfoMonsterResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,15 +23,6 @@ public readonly struct WorldInInfoMonsterResponse : IResponseHotspotMessage
 
 #endregion Interface: IHotspotMessage
 
+    [WireArray(WireLength.Byte)]
     public required IReadOnlyList<STMonsterInfo> Monsters { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write((byte)Monsters.Count);
-
-        foreach (var item in Monsters)
-        {
-            writer.WriteMonster(item);
-        }
-    }
 }

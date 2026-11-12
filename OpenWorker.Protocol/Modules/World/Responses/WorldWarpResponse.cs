@@ -6,7 +6,6 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.World.Enums;
-using OpenWorker.Hotspot.Modules.World.Extensions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.World.Responses;
