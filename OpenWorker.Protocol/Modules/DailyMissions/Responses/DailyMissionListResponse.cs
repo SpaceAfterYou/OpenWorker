@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.DailyMissions.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.DailyMissions.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct DailyMissionListResponse : IResponseHotspotMessage
+public readonly partial struct DailyMissionListResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -25,22 +27,8 @@ public readonly struct DailyMissionListResponse : IResponseHotspotMessage
     /// </summary>
     public bool TodayInit { get; init; }
 
+    [WireArray(WireLength.Signed16)]
     public required IReadOnlyCollection<DailyMissionGroupValue> Groups { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(TodayInit);
-        writer.Write(checked((short)Groups.Count));
-
-        foreach (var group in Groups)
-        {
-            group.Write(writer);
-        }
-    }
-
-#endregion Interface: IWritableData
 }
