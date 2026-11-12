@@ -215,7 +215,8 @@ public sealed class PostTest
         var inventory = new InventoryService(server.World, catalog, new LocalItemSerials());
         var factory = new InventoryFactory(catalog, new([]), new LocalItemSerials());
 
-        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TimeProvider.System,
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TestPersonCommit.Written,
+            TimeProvider.System,
             NullLogger<PostService>.Instance);
 
         foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
@@ -323,7 +324,8 @@ public sealed class PostTest
         var inventory = new InventoryService(server.World, Catalog(), new LocalItemSerials());
         var factory = new InventoryFactory(Catalog(), new([]), new LocalItemSerials());
 
-        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TimeProvider.System,
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TestPersonCommit.Written,
+            TimeProvider.System,
             NullLogger<PostService>.Instance);
 
         foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
@@ -381,5 +383,74 @@ public sealed class PostTest
         Send(5);
 
         Assert.IsNull(bag.At(StorageGroup.Common, 5), "the free sword went");
+    }
+
+    /// <summary>
+    /// The gold and the items of a letter are written as gone from the sender before the letter is: when that write fails, the
+    /// letter does not go, the sender has them back and is answered. A crash after the write can then only lose them, never
+    /// leave them both with the sender and in the letter.
+    /// </summary>
+    [TestMethod]
+    public async Task ALetterWhoseGoldAndItemsAreNotWrittenFirstDoesNotGo()
+    {
+        var (fromAccount, from) = await CreatePersonAsync("usender");
+        await CreatePersonAsync("ureceiver");
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var sender = server.Join(from, "usender");
+
+        var inventory = new InventoryService(server.World, Catalog(), new LocalItemSerials());
+        var factory = new InventoryFactory(Catalog(), new([]), new LocalItemSerials());
+        var commit = new TestPersonCommit(false);
+
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, commit,
+            TimeProvider.System, NullLogger<PostService>.Instance);
+
+        var person = new PersonPersistent
+        {
+            Id = from, Name = "usender", Hero = Hero.Lily,
+            DefaultHairStyle = 0, DefaultHairColor = 0, DefaultEyeColor = 0, DefaultSkinColor = 0,
+            EquippedHairStyle = 0, EquippedHairColor = 0, EquippedEyeColor = 0, EquippedSkinColor = 0,
+            Location = 0, PositionX = 0, PositionY = 0, PositionZ = 0, RotationX = 0, FatiguePointCommon = 0,
+            Account = null!, Gate = null!
+        };
+
+        server.World.Add(sender.Entity, new InventoryComponent(factory.CreateNew(person)), new CurrencyComponent { Gold = 1_000 },
+            new ClaimsComponent(fromAccount, 0));
+
+        var bag = server.World.Get<InventoryComponent>(sender.Entity).Value!;
+
+        bag.Place(StorageGroup.Common, 3, new ItemInstance { Serial = 81, Item = Sword, Count = 1, Upgrade = 5 });
+
+        server.Run(async () => await service.OnHandleAsync(
+            new ServiceHandleContext(sender.Entity, CancellationToken.None),
+            new PostSendRequest(Body(w =>
+            {
+                w.Write(0);
+                Text(w, "ureceiver");
+                Text(w, "Hello");
+                Text(w, "A sword.");
+                w.Write(300L);
+
+                for (var i = 0; i < PostModuleDefines.ItemCount; i++)
+                {
+                    w.Write((byte)(i == 0 ? StorageGroup.Common : StorageGroup.None));
+                    w.Write((short)(i == 0 ? 3 : -1));
+                    w.Write((short)(i == 0 ? 1 : 0));
+                }
+            }))));
+
+        Assert.AreEqual(1, commit.Calls, "what the letter carries was written first");
+        Assert.AreEqual(1_000, server.World.Get<CurrencyComponent>(sender.Entity).Gold, "the gold came back");
+        Assert.AreEqual(5, bag.Items.Single(e => e.Item == Sword).Upgrade, "the sword came back as it was");
+
+        var answer = sender.Read().Single(e => e.Group == (byte)GroupOpcode.Post);
+
+        Assert.AreEqual((byte)PostOpcode.Send, answer.Command);
+        Assert.AreEqual(PostMessages.Deleted, BitConverter.ToInt32(answer.Content), "the sender is answered");
+
+        await using var database = await Factory.CreateDbContextAsync();
+
+        Assert.IsFalse(await database.Posts.AnyAsync(e => e.SenderId == from), "no letter was written");
     }
 }

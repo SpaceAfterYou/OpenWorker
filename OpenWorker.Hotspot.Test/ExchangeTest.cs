@@ -171,12 +171,12 @@ public sealed class ExchangeTest
             new TradePasswordComponent { Password = "hash", State = PasswordProtectionState.Authenticated });
     }
 
-    private static ExchangeService Service(TestServer server, ItemCatalog catalog, IExchangeStore? store = null)
+    private static ExchangeService Service(TestServer server, ItemCatalog catalog, IExchangeStore? store = null, IPersonCommit? commit = null)
     {
         var inventory = new InventoryService(server.World, catalog, new LocalItemSerials());
 
         return new ExchangeService(server.World, store ?? new ExchangeStore(Factory), new PostStore(Factory), inventory, server.Network,
-            NoPersonFlush.Instance, Fees(), NullLogger<ExchangeService>.Instance);
+            NoPersonFlush.Instance, commit ?? TestPersonCommit.Written, Fees(), NullLogger<ExchangeService>.Instance);
     }
 
     /// <summary>
@@ -198,7 +198,8 @@ public sealed class ExchangeTest
     }
 
     /// <summary>
-    /// The database fails in the middle of a purchase: nothing was sold, so the buyer keeps its gold.
+    /// The database fails in the middle of a purchase: nothing was sold, so the buyer keeps its gold, and is answered with the
+    /// code of the purchase rather than left waiting.
     /// </summary>
     [TestMethod]
     public async Task APurchaseTheDatabaseFailsCostsTheBuyerNothing()
@@ -223,20 +224,53 @@ public sealed class ExchangeTest
 
         var service = Service(server, catalog, failing);
 
-        try
-        {
-            Handle(server, player, c => service.OnHandleAsync(c, new ExchangeItemBuyRequest { Exchange = listing.Id, Item = Sword, Count = 1 }));
-        }
-        catch (Exception e) when (e is TimeoutException || e.InnerException is TimeoutException || e is AggregateException)
-        {
-            // The failure of the store goes on to the error budget of the session; the gold is what is asked here.
-        }
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeItemBuyRequest { Exchange = listing.Id, Item = Sword, Count = 1 }));
 
         Assert.AreEqual(5_000, server.World.Get<CurrencyComponent>(player.Entity).Gold);
         Assert.AreEqual((short)1, (await real.FindAsync(listing.Id))!.Count, "the listing is untouched");
 
+        var answer = player.Read().Single(e => e.Group == (byte)GroupOpcode.Exchange);
+
+        Assert.AreEqual((byte)ExchangeOpcode.ItemBuy, answer.Command);
+        Assert.AreEqual(ExchangeCodes.Mismatch, Result(answer), "the buyer is answered");
+
         // The tests of this class share one exchange: the listing leaves it again.
         await real.RecallAsync(listing.Serial, seller, e => ExchangeListings.ReturnLetter(e, DateTime.UtcNow));
+    }
+
+    /// <summary>
+    /// The price of a purchase is written before the store is asked: when that write fails, nothing is bought, the gold comes
+    /// back and the buyer is answered. A crash after the write can then only lose the price, never leave the item bought and
+    /// the price still in the purse.
+    /// </summary>
+    [TestMethod]
+    public async Task APurchaseWhosePriceIsNotWrittenFirstIsNotMade()
+    {
+        var (_, seller) = await CreatePersonAsync("unpaidseller");
+        var (buyerAccount, buyer) = await CreatePersonAsync("unpaidbuyer");
+
+        var store = new ExchangeStore(Factory);
+        var waiting = await store.AddWaitingAsync(Draft(seller), 10);
+        var listing = (await store.PutOnSaleAsync(waiting.Listing!.Serial, seller, 2_000, 9, DateTime.UtcNow.AddHours(1), 10)).Listing!;
+
+        var catalog = Catalog();
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var player = server.Join(buyer, "unpaidbuyer");
+
+        Equip(server, player, buyerAccount, catalog, 5_000);
+
+        var commit = new TestPersonCommit(false);
+        var service = Service(server, catalog, store, commit);
+
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeItemBuyRequest { Exchange = listing.Id, Item = Sword, Count = 1 }));
+
+        Assert.AreEqual(1, commit.Calls, "the price was written first");
+        Assert.AreEqual((short)1, (await store.FindAsync(listing.Id))!.Count, "the store was not asked");
+        Assert.AreEqual(5_000, server.World.Get<CurrencyComponent>(player.Entity).Gold);
+        Assert.AreEqual(ExchangeCodes.Mismatch, Result(player.Read().Single(e => e.Group == (byte)GroupOpcode.Exchange)));
+
+        await store.RecallAsync(listing.Serial, seller, e => ExchangeListings.ReturnLetter(e, DateTime.UtcNow));
     }
 
     private static void Handle(TestServer server, TestPlayer player, Func<ServiceHandleContext, ValueTask> handle) =>

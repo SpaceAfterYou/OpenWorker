@@ -39,9 +39,11 @@ namespace OpenWorker.Server.Common.Services;
 /// statement, the item goes to the buyer and the gold to the seller by letter, and the seller is told wherever it plays.
 /// </summary>
 /// <remarks>
-/// What leaves a player (an item given, a fee, the price of a purchase) is taken in memory first and given back when the
-/// store refuses or fails, and the player is flushed right after a change, so a listing and the item it took never both
-/// stay for long; a crash in between loses what moved, the store never writes it twice.
+/// What leaves a player (an item given, a fee, the price of a purchase) is taken in memory and written to the database
+/// (<see cref="IPersonCommit"/>) before the store is asked for what it pays for; it is given back when that write, or the
+/// store, refuses or fails, and the request is answered with its error code. A crash after the write loses what was paid; it
+/// never leaves an item both in the bags and on sale, nor a purchase unpaid. The tickets of a sale are spent after the sale
+/// is written, as they are spent only when it is.
 /// </remarks>
 public sealed partial class ExchangeService(
     World world,
@@ -50,6 +52,7 @@ public sealed partial class ExchangeService(
     InventoryService inventory,
     CommunityNetwork network,
     IPersonFlush persons,
+    IPersonCommit commit,
     ReadOnlyCollection<ItemClassifyFeeRow> fees,
     ILogger<ExchangeService> logger,
     BoosterManager? boosters = null,
@@ -145,31 +148,32 @@ public sealed partial class ExchangeService(
             level,
             row.Rank);
 
-        // Taken before the listing is written, so a listing never exists while its item is still in the bags.
+        // Taken, and written, before the listing is: a listing never exists while its item is still in the bags.
         inventory.Spend(player, item, request.Count);
 
-        ExchangeListingResult result = default;
+        ExchangeListingResult? result = null;
 
         try
         {
-            result = await store.AddWaitingAsync(draft, ExchangeRules.WaitingLimit, context.CancellationToken);
+            result = await PaidAsync(context, ExchangeOpcode.WaitRegister,
+                () => store.AddWaitingAsync(draft, ExchangeRules.WaitingLimit, context.CancellationToken));
         }
         finally
         {
-            if (result.Outcome != ExchangeOutcome.Done || result.Listing is null)
+            if (result is not { Outcome: ExchangeOutcome.Done, Listing: not null })
             {
                 await GiveBackAsync(context, account, 0, [draft.Goods]);
             }
         }
 
-        if (result.Listing is null || result.Outcome != ExchangeOutcome.Done)
+        if (result is not { Outcome: ExchangeOutcome.Done, Listing: { } listing })
         {
-            Send(context, new ExchangeWaitRegisterResponse { Result = ExchangeCodes.WaitingFull });
+            Send(context, new ExchangeWaitRegisterResponse { Result = result is null ? ExchangeCodes.ItemError : ExchangeCodes.WaitingFull });
             return;
         }
 
         Send(context, new ExchangeWaitRegisterResponse { Result = 0 });
-        Send(context, new ExchangeMyListResponse { Items = [ExchangeListings.Mine(result.Listing)] });
+        Send(context, new ExchangeMyListResponse { Items = [ExchangeListings.Mine(listing)] });
 
         await FlushAsync(context);
     }
@@ -252,37 +256,33 @@ public sealed partial class ExchangeService(
         var expiresAt = Now + ExchangeRules.DurationOf(boosterSteps, useExpire);
         var account = Account(context);
 
-        ExchangeListingResult result = default;
-
-        // Told apart from the default of the result, which reads as "done": a store that throws has put nothing on sale.
-        var listed = false;
+        // The fee is written before the sale is: a sale never exists while its fee is still in the purse.
+        ExchangeListingResult? result = null;
 
         try
         {
-            result = await store.PutOnSaleAsync(
+            result = await PaidAsync(context, ExchangeOpcode.SellRegister, () => store.PutOnSaleAsync(
                 request.Serial,
                 me,
                 request.Price,
                 rate,
                 expiresAt,
                 useCount ? ExchangeRules.SaleLimitWithTicket : limit,
-                context.CancellationToken);
-
-            listed = result.Outcome == ExchangeOutcome.Done;
+                context.CancellationToken));
         }
         finally
         {
-            if (!listed && fee > 0)
+            if (result is not { Outcome: ExchangeOutcome.Done } && fee > 0)
             {
                 await GiveBackAsync(context, account, fee, []);
             }
         }
 
-        if (result.Outcome != ExchangeOutcome.Done || result.Listing is null)
+        if (result is not { Outcome: ExchangeOutcome.Done, Listing: { } listed })
         {
             Send(context, new ExchangeSellRegisterResponse
             {
-                Result = result.Outcome switch
+                Result = result?.Outcome switch
                 {
                     ExchangeOutcome.Full => ExchangeCodes.SaleFull,
                     ExchangeOutcome.Missing => ExchangeCodes.Gone,
@@ -303,7 +303,7 @@ public sealed partial class ExchangeService(
         Spend(player, useExpire, ExchangeRules.ExpireTicket);
 
         Send(context, new ExchangeSellRegisterResponse { Result = 0 });
-        Send(context, new ExchangeMyListResponse { Items = [ExchangeListings.Mine(result.Listing)] });
+        Send(context, new ExchangeMyListResponse { Items = [ExchangeListings.Mine(listed)] });
 
         await FlushAsync(context);
     }
@@ -419,14 +419,12 @@ public sealed partial class ExchangeService(
         var info = world.Get<PersonInfoComponent>(player);
         var account = Account(context);
 
-        ExchangeBuyResult result = default;
-
-        // Told apart from the default of the result, which reads as "done": a store that throws has sold nothing.
-        var bought = false;
+        // The price is written before the purchase is: an item is never bought while its price is still in the purse.
+        ExchangeBuyResult? result = null;
 
         try
         {
-            result = await store.BuyAsync(
+            result = await PaidAsync(context, ExchangeOpcode.ItemBuy, () => store.BuyAsync(
                 request.Exchange,
                 me,
                 request.Item,
@@ -434,21 +432,19 @@ public sealed partial class ExchangeService(
                 priceOne,
                 now,
                 (sold, count) => ExchangeListings.SaleLetters(sold, count, me, info.Name, (byte)info.Hero, now),
-                context.CancellationToken);
-
-            bought = result.Outcome == ExchangeOutcome.Done;
+                context.CancellationToken));
         }
         finally
         {
-            if (!bought)
+            if (result is not { Outcome: ExchangeOutcome.Done })
             {
                 await GiveBackAsync(context, account, total, []);
             }
         }
 
-        if (result.Outcome != ExchangeOutcome.Done || result.Listing is null || result.ToBuyer is null || result.ToSeller is null)
+        if (result is not { Outcome: ExchangeOutcome.Done, Listing: { } soldFrom, ToBuyer: { } toBuyer, ToSeller: { } toSeller })
         {
-            Bought(context, request, result.Outcome switch
+            Bought(context, request, result?.Outcome switch
             {
                 ExchangeOutcome.Missing => ExchangeCodes.Gone,
                 ExchangeOutcome.Own => ExchangeCodes.OwnItem,
@@ -459,7 +455,7 @@ public sealed partial class ExchangeService(
             return;
         }
 
-        LogSold(logger, result.Listing.Id, request.Count, result.Listing.SellerId, me, total);
+        LogSold(logger, soldFrom.Id, request.Count, soldFrom.SellerId, me, total);
 
         Bought(context, request, 0);
 
@@ -469,13 +465,13 @@ public sealed partial class ExchangeService(
         }
 
         await FlushAsync(context);
-        await TellLetterAsync(me, account, result.ToBuyer, CancellationToken.None);
+        await TellLetterAsync(me, account, toBuyer, CancellationToken.None);
 
         // The seller is told wherever it plays: the listing as it is now, and the letter with the gold.
-        var seller = result.Listing.SellerId;
+        var seller = soldFrom.SellerId;
 
-        await network.SendAsync(seller, new ExchangeMyListResponse { Items = [ExchangeListings.Mine(result.Listing)] });
-        await TellLetterAsync(seller, 0, result.ToSeller, CancellationToken.None);
+        await network.SendAsync(seller, new ExchangeMyListResponse { Items = [ExchangeListings.Mine(soldFrom)] });
+        await TellLetterAsync(seller, 0, toSeller, CancellationToken.None);
     }
 
     #endregion
@@ -562,6 +558,33 @@ public sealed partial class ExchangeService(
     #endregion
 
     #region What moves
+
+    /// <summary>
+    /// Writes what was just taken from the player, then asks the store for what it pays for. Null when the write was not
+    /// taken or the store failed: nothing was bought or listed, what was taken goes back and the request is refused with its
+    /// code. A failure of the database is no fault of the client, so it is answered and not charged to the session; a server
+    /// that stops is not answered.
+    /// </summary>
+    private async ValueTask<T?> PaidAsync<T>(ServiceHandleContext context, ExchangeOpcode request, Func<Task<T>> call) where T : struct
+    {
+        var me = Me(context);
+
+        try
+        {
+            if (await commit.CommitAsync(context.Player))
+            {
+                return await call();
+            }
+
+            LogNotWritten(logger, request, me);
+        }
+        catch (Exception e) when (e is not OperationCanceledException || !context.CancellationToken.IsCancellationRequested)
+        {
+            LogStoreFailed(logger, e, request, me);
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// What was taken from the player goes back when the store refused or failed. A player who has left meanwhile, or whose
@@ -651,6 +674,12 @@ public sealed partial class ExchangeService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Exchange listing {Listing}: {Count} sold by {Seller} to {Buyer} for {Total} gold")]
     private static partial void LogSold(ILogger logger, int listing, short count, int seller, int buyer, long total);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Exchange request {Request} of person {Person} is refused: what it pays could not be written; it is given back")]
+    private static partial void LogNotWritten(ILogger logger, ExchangeOpcode request, int person);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Exchange request {Request} of person {Person} failed in the database and is refused; what it paid is given back")]
+    private static partial void LogStoreFailed(ILogger logger, Exception exception, ExchangeOpcode request, int person);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The exchange could not give back to its player: {Gold} gold and {Items} items go to the box of account {Account}")]
     private static partial void LogReturnedToAccount(ILogger logger, int account, long gold, int items);
