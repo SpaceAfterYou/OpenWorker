@@ -336,6 +336,61 @@ public sealed class BuffTest
     }
 
     /// <summary>
+    /// A burn hurts a monster that has not seen anybody: at the first tick it turns on the player who gave the burn, as a blow
+    /// would make it, and hates that player for the damage over time.
+    /// </summary>
+    [TestMethod]
+    public void ABurnWakesTheMonsterAndAngersItAtTheOneWhoGaveIt()
+    {
+        const int Monster = 1000;
+        var folder = Directory.CreateTempSubdirectory();
+        var world = World.Create();
+
+        try
+        {
+            // A monster that waits for a blow: it looks for nobody itself.
+            File.WriteAllText(Path.Join(folder.FullName, "Ai_Sleeper.lua"),
+                "function Initial_Normal(self, monster)\n  local ai = monster:GetAi()\n  ai:SetAiCheckTime(0.1)\n  ai:SetFindEnemyInfo(0, 1.0, 100.0)\nend\n");
+
+            var monsters = new ReadOnlyCollection<MonsterRow>([TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Sleeper"))]);
+            var skills = TestMazes.None<SkillRow>();
+            var combat = new CombatTables(monsters, TestMazes.None<StatusRow>(), skills, TestMazes.None<CharacterInfoRow>());
+            var services = new CreatureServices(new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, folder.FullName), new MonsterBehaviorTables(monsters, skills),
+                new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance), TestMazes.Clock(), new NavMeshProvider());
+            var batch = TestMazes.Map(PartyMazeTest.MapWithMonster(Monster));
+            var connection = new RecordingConnection();
+            var player = Player(world, connection);
+            var maze = TestMazes.Create(world, player, batch: batch, creatures: new LuaCreatureManager(world, batch, combat, services), buffs: new BuffManager(Buffs),
+                tables: combat);
+
+            maze.SpawnSector(Sector);
+
+            var monster = maze.Creatures.FindMonsters((_, _) => true).Single();
+            var mind = maze.Creatures.BodyOf(monster)!.Machine;
+            var giver = (int)world.Get<ActorComponent>(player);
+
+            world.Set(monster, world.Get<CreatureComponent>(monster) with { Health = 1000 });
+
+            Assert.AreEqual(AiMachine.NoTarget, mind.TargetId, "The player is far away and the monster looks for nobody.");
+            Assert.IsTrue(maze.Buffs.Give(monster, Burn, player));
+
+            maze.Buffs.Step(0.6f);
+            maze.Buffs.Step(0.6f);
+
+            Assert.AreEqual(990, world.Get<CreatureComponent>(monster).Health, "One tick.");
+            Assert.AreEqual(giver, mind.TargetId);
+            Assert.AreEqual(AiState.SelectAction, mind.State);
+            Assert.AreEqual(SkillAggro.OverTime(10), mind.AggroList.Single(e => e.Key == giver).Value);
+        }
+
+        finally
+        {
+            World.Destroy(world);
+            folder.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>
     /// What a monster has done that the clients saw: moves, turns, battle poses and skills.
     /// </summary>
     private static int Acts(RecordingConnection connection, int actor)

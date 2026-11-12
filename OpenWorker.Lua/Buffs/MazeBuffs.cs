@@ -693,6 +693,9 @@ public sealed partial class MazeBuffs
 
             left = Math.Max(0, creature.Health - change.Amount);
             _ecs.Set(carrier, creature with { Health = left });
+
+            // The monster is angered at the one who gave the burn and wakes, as a blow would wake it.
+            _creatures.BodyOf(carrier)?.Machine.OnHurtOverTime(change.Owner, change.Amount);
         }
 
         _creatures.Broadcast(new SkillBuffDamageBroadcastResponse { Target = actor, Buff = (short)change.Buff, Damage = change.Amount, Health = left, Owner = change.Owner });

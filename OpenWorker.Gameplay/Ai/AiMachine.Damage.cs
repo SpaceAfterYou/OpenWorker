@@ -36,6 +36,11 @@ public sealed partial class AiMachine
     private int _taunt = NoTarget;
 
     /// <summary>
+    /// What the last blow that landed was; a burn counts for the escape as that blow did.
+    /// </summary>
+    private AiHitKind _lastHitKind = AiHitKind.Skill;
+
+    /// <summary>
     /// The monsters of this one's group are called when it has an enemy and is hurt or has just seen one.
     /// </summary>
     public bool CallsGroup { get; set; }
@@ -59,6 +64,8 @@ public sealed partial class AiMachine
     /// </summary>
     public void OnDamaged(in AiHit hit)
     {
+        _lastHitKind = hit.Kind;
+
         CountEscapeBlow(hit.Kind);
 
         if (_targetId == NoTarget && _host.GetTarget(hit.Attacker) is not null)
@@ -88,6 +95,37 @@ public sealed partial class AiMachine
         }
 
         _lastDamageTime = 0f;
+    }
+
+    /// <summary>
+    /// A burn or a poison somebody gave the monster takes its life, in the order the original takes it: the escape points, as
+    /// many as the last blow that landed gave, the enemy of a monster that has none, the hate of the damage over time and the
+    /// count of hits. It is no blow of a skill: the counter of skill blows, the time of the last blow and the group stay as
+    /// they are.
+    /// </summary>
+    public void OnHurtOverTime(int attacker, int damage)
+    {
+        CountEscapeBlow(_lastHitKind);
+
+        var known = _host.GetTarget(attacker) is not null;
+
+        if (_targetId == NoTarget && known)
+        {
+            ChangeTarget(attacker);
+            ChangeState(AiState.SelectAction);
+        }
+
+        if (_host.Health <= 0)
+        {
+            return;
+        }
+
+        if (known)
+        {
+            AddAggro(attacker, SkillAggro.OverTime(damage));
+        }
+
+        _hitCount++;
     }
 
     /// <summary>
