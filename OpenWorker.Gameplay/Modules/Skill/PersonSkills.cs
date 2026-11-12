@@ -216,6 +216,7 @@ public static class PersonSkillsServiceCollectionExtensions
         services.TryAddSingleton<SkillLearning>();
         services.TryAddSingleton<PlayerGauges>();
         services.TryAddSingleton<SkillUse>();
+        services.TryAddSingleton<AkashicCalls>();
         services.AddSingleton<IPersonDocumentSource, SkillDocumentSource>();
 
         return services;

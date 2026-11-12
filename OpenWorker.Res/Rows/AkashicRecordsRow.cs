@@ -14,7 +14,7 @@ public readonly partial struct AkashicRecordsRow(BinaryReader reader)
     public int Field2 { get; } = reader.ReadInt32();
     public short Field3 { get; } = reader.ReadInt16();
     public short Position { get; } = reader.ReadInt16();
-    public byte Field5 { get; } = reader.ReadByte();
+    public byte Type { get; } = reader.ReadByte();
     public byte Field6 { get; } = reader.ReadByte();
     public byte Field7 { get; } = reader.ReadByte();
     public byte RarePoint { get; } = reader.ReadByte();
@@ -24,8 +24,8 @@ public readonly partial struct AkashicRecordsRow(BinaryReader reader)
     public short Field12 { get; } = reader.ReadInt16();
     public short Field13 { get; } = reader.ReadInt16();
     public short Field14 { get; } = reader.ReadInt16();
-    public string Field15 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public short Field16 { get; } = reader.ReadInt16();
+    public string CodeName { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public short ActionGroup { get; } = reader.ReadInt16();
     public int UseSkill { get; } = reader.ReadInt32();
     public byte InvokeCondition { get; } = reader.ReadByte();
     public short InvokeRate { get; } = reader.ReadInt16();

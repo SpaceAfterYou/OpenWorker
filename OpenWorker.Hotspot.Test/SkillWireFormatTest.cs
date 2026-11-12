@@ -156,4 +156,41 @@ public sealed class SkillWireFormatTest
         Assert.AreEqual(5, back.Actor.Identifier);
         Assert.AreEqual(8, back.ActorList[1].Identifier);
     }
+
+    /// <summary>
+    /// The answer to a card called into a fight is a code, then the card, the player and the place it was called from, as the
+    /// client reads them; the coming of the card is its owner, the card, how it appears, its offset and the switch of its turn.
+    /// </summary>
+    [TestMethod]
+    public void AkashicCallIsTheCodeTheCardThePlayerAndThePlace()
+    {
+        var data = Written(new SkillAkashicRecordResponse
+        {
+            Unknown = 0,
+            Card = default(SkillAkashicRecordValue) with
+            {
+                Akashic = 381000101,
+                Player = new ActorValue(5, ActorType.User),
+                SkillPosition = default(SkillPositionValue) with { Position = new Vector3(1, 2, 3), Angle = 90f, MotionClass = 4, HasInputFlag = true }
+            }
+        });
+
+        Assert.HasCount(2 + 4 + 4 + 12 + 4 + 2 + 1, data);
+        Assert.AreEqual(381000101u, BitConverter.ToUInt32(data, 2));
+        Assert.AreEqual(90f, BitConverter.ToSingle(data, 2 + 4 + 4 + 12));
+
+        var summon = Written(new SkillSummonAkashicResponse
+        {
+            Owner = new ActorValue(5, ActorType.User),
+            Creature = new ActorValue(9, ActorType.Akashic),
+            AlphaValuea = 1f,
+            BlendingTime = 1f,
+            Position = new Vector3(0f, -350f, 0f),
+            ApplyRotation = true
+        });
+
+        Assert.HasCount(4 + 4 + 4 + 4 + 12 + 1, summon);
+        Assert.AreEqual(-350f, BitConverter.ToSingle(summon, 20));
+        Assert.AreEqual(1, summon[28]);
+    }
 }

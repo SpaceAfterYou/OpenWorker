@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Enums;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -66,6 +67,11 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
 {
     private const string Extension = ".adf";
     private const string HeroFilePrefix = "PC_";
+
+    /// <summary>
+    /// The file of a hero that says what its akashic skill does with a called card.
+    /// </summary>
+    private const string AkashicSuffix = "_Akashic";
 
     /// <summary>
     /// The table says this when a skill has no animation for a step.
@@ -348,6 +354,59 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             .Take(row.ChargeCount)
             .Select(e => e / 1000f)
             .ToList();
+    }
+
+    /// <summary>
+    /// What the akashic skill of a hero does when a card of the given group is called: the events of the akashic file under
+    /// the card's group and the animation the skill plays, which take the place of the animation's own. Every hero uses the
+    /// file of the first hero, as the original does (the files of the others are empty). Empty when nothing is known.
+    /// </summary>
+    public IReadOnlyList<AkashicSummon> GetAkashicSummons(int skill, int group)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetSummons() is not { } summons)
+        {
+            return [];
+        }
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        {
+            if (!string.IsNullOrEmpty(name) && name != NoAnimation &&
+                summons.TryGetValue(string.Create(CultureInfo.InvariantCulture, $"{group}:{name}"), out var found))
+            {
+                return found;
+            }
+        }
+
+        return [];
+    }
+
+    private IReadOnlyDictionary<string, IReadOnlyList<AkashicSummon>>? _summons;
+    private bool _summonsRead;
+
+    private IReadOnlyDictionary<string, IReadOnlyList<AkashicSummon>>? GetSummons()
+    {
+        if (_summonsRead)
+        {
+            return _summons;
+        }
+
+        _summonsRead = true;
+
+        var path = Path.Join(Folder, HeroFilePrefix + "A" + AkashicSuffix + Extension);
+
+        try
+        {
+            using var stream = new MemoryStream(File.ReadAllBytes(path));
+
+            _summons = ActionFile.ReadSummons(stream);
+        }
+
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or EndOfStreamException)
+        {
+            LogUnreadable(logger, e, "the akashic skill", path);
+        }
+
+        return _summons;
     }
 
     /// <summary>

@@ -67,6 +67,10 @@ public sealed class SkillService(World world, SkillUse skillUse, IPlayerAudience
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// A card of the akashic records is called into a fight in a maze only: in a city the original answers nothing and calls
+    /// nothing, and the client waits for no answer.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillAkashicRecordRequest request) =>
         ValueTask.CompletedTask;
 

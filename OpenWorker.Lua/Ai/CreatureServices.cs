@@ -12,8 +12,15 @@ namespace OpenWorker.Lua.Ai;
 /// What every maze needs to give its monsters a mind. Everything in it is shared and does not change.
 /// </summary>
 public sealed class CreatureServices(AiScriptLoader scripts, MonsterBehaviorTables behaviors, SkillActionProvider actions, SimulationClock clock, NavMeshProvider meshes,
-    PlayerGauges? gauges = null, PlayerStatsService? stats = null, EnduranceWear? wear = null, PartyRevision? revision = null, SkillAggro? aggro = null, GameModes? modes = null)
+    PlayerGauges? gauges = null, PlayerStatsService? stats = null, EnduranceWear? wear = null, PartyRevision? revision = null, SkillAggro? aggro = null, GameModes? modes = null,
+    AkashicCalls? akashic = null)
 {
+    /// <summary>
+    /// The cards the players have called from their akashic records, which their akashic skill brings into the fight. A maze
+    /// without it brings no card in.
+    /// </summary>
+    public AkashicCalls? Akashic { get; } = akashic;
+
     /// <summary>
     /// Steps every maze of the server, its monsters with it, and runs what the mazes wait for.
     /// </summary>
