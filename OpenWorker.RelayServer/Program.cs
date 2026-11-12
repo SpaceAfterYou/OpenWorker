@@ -26,5 +26,4 @@ await Host
         services.AddHostedService<DiscordService>();
     })
     .Build()
-    .RunAsync()
-    .ConfigureAwait(false);
+    .RunAsync();

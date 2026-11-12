@@ -118,8 +118,11 @@ public sealed class WorldLoopTest
             "OpenWorker.Infrastructure.Redis",
             "OpenWorker.Lua",
             "OpenWorker.MazeServer",
+            "OpenWorker.Persistence",
             "OpenWorker.Protocol",
-            "OpenWorker.Runtime"
+            "OpenWorker.RelayServer",
+            "OpenWorker.Runtime",
+            "OpenWorker.Server.Common"
         ];
 
         var found = projects

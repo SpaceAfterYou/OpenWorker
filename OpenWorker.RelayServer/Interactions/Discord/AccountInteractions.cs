@@ -14,20 +14,19 @@ public sealed class AccountInteractions(IDbContextFactory<PersistenceContext> fa
     public async Task CreateAsync([Summary("password", "Your account password")] string password)
     {
         await using var context = await factory
-            .CreateDbContextAsync()
-            .ConfigureAwait(false);
+            .CreateDbContextAsync();
 
-        if (await context.Accounts.AnyAsync(x => x.Discord == Context.User.Id).ConfigureAwait(false))
+        if (await context.Accounts.AnyAsync(x => x.Discord == Context.User.Id))
         {
             var message = $"The account with your Discord ID already exists \"{Context.User.Id}\", but it doesn't seem to belong to you...";
-            await RespondAsync(message, ephemeral: true).ConfigureAwait(false);
+            await RespondAsync(message, ephemeral: true);
         }
 
-        else if (await context.Accounts.AnyAsync(x => x.Username == Context.User.Username).ConfigureAwait(false))
+        else if (await context.Accounts.AnyAsync(x => x.Username == Context.User.Username))
         {
             var message = $"The account with your username already exists \"{Context.User.Username}\", but it doesn't seem to belong to you...";
 
-            await RespondAsync(message, ephemeral: true).ConfigureAwait(false);
+            await RespondAsync(message, ephemeral: true);
         }
 
         else
@@ -40,21 +39,21 @@ public sealed class AccountInteractions(IDbContextFactory<PersistenceContext> fa
                 Discord = Context.User.Id,
                 PasswordHash = passwordHash,
                 SaltHash = saltHash
-            }).ConfigureAwait(false);
+            });
 
             try
             {
-                await context.SaveChangesAsync().ConfigureAwait(false);
+                await context.SaveChangesAsync();
             }
 
             // Somebody took the name between the check above and now.
             catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
-                await RespondAsync($"The account with your username already exists \"{Context.User.Username}\".", ephemeral: true).ConfigureAwait(false);
+                await RespondAsync($"The account with your username already exists \"{Context.User.Username}\".", ephemeral: true);
                 return;
             }
 
-            await RespondAsync($"Login: {Context.User.Username}.", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync($"Login: {Context.User.Username}.", ephemeral: true);
         }
     }
 
@@ -62,17 +61,15 @@ public sealed class AccountInteractions(IDbContextFactory<PersistenceContext> fa
     public async Task ChangePasswordAsync([Summary("password", "Your account password")] string password)
     {
         await using var context = await factory
-            .CreateDbContextAsync()
-            .ConfigureAwait(false);
+            .CreateDbContextAsync();
 
         var account = await context.Accounts
             .AsTracking()
-            .FirstOrDefaultAsync(x => x.Discord == Context.User.Id)
-            .ConfigureAwait(false);
+            .FirstOrDefaultAsync(x => x.Discord == Context.User.Id);
 
         if (account is null)
         {
-            await RespondAsync("Account not found", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync("Account not found", ephemeral: true);
         }
 
         else
@@ -83,10 +80,9 @@ public sealed class AccountInteractions(IDbContextFactory<PersistenceContext> fa
             account.SaltHash = saltHash;
 
             await context
-                .SaveChangesAsync()
-                .ConfigureAwait(false);
+                .SaveChangesAsync();
 
-            await RespondAsync("Password changed.", ephemeral: true).ConfigureAwait(false);
+            await RespondAsync("Password changed.", ephemeral: true);
         }
     }
 }
