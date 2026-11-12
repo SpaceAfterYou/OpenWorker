@@ -98,16 +98,43 @@ internal sealed class DistrictHarness : IDisposable
     }
 
     /// <summary>
-    /// Sends a message to the whole channel and waits until every player has it: whatever was queued before it has
-    /// arrived too, and what has not arrived by then was never sent.
+    /// Sends a marker to the whole channel and waits until every player has it: whatever was queued before it has
+    /// arrived too, and what has not arrived by then was never sent. The players wait for this marker, not for one an
+    /// earlier settle left among what they got.
     /// </summary>
     public async Task SettleAsync(params Player[] players)
     {
-        Channel.Broadcast(new Marker());
+        var marker = QueueMarker.Next();
 
-        await MetricAssertions.UntilAsync(
-            () => players.All(e => e.Received().Any(f => f.Opcode.Value == Marker.Code.Value)),
-            "Every player gets the marker.");
+        Channel.Broadcast(marker);
+
+        await WaitForAsync(marker, players);
+    }
+
+    /// <summary>
+    /// <see cref="SettleAsync(Player[])"/> for moves handled on the loop: the marker goes out at the end of a pass of the
+    /// loop, after the moves that pass has folded, which go out at its end too.
+    /// </summary>
+    public async Task SettleAsync(WorldLoop loop, params Player[] players)
+    {
+        var marker = QueueMarker.Next();
+
+        await loop.InvokeAsync(() => loop.AtEndOfPass(new Broadcast(Channel, marker)));
+
+        await WaitForAsync(marker, players);
+    }
+
+    private static Task WaitForAsync(QueueMarker marker, Player[] players)
+    {
+        return MetricAssertions.UntilAsync(() => players.All(e => e.Received().Any(marker.Is)), "Every player gets the marker.");
+    }
+
+    /// <summary>
+    /// Sends a message to the channel at the end of a pass of the loop.
+    /// </summary>
+    private sealed class Broadcast(ServiceChannel channel, IResponseHotspotMessage message) : IEndOfPass
+    {
+        public void EndOfPass() => channel.Broadcast(message);
     }
 
     /// <summary>
@@ -154,20 +181,6 @@ internal sealed class DistrictHarness : IDisposable
         foreach (var player in players)
         {
             player.Forget();
-        }
-    }
-
-    /// <summary>
-    /// A message on an opcode no real message uses, with an empty body.
-    /// </summary>
-    public sealed class Marker : IResponseHotspotMessage
-    {
-        public static readonly MessageOpcode Code = new(GroupOpcode.System, 0x7B);
-
-        public MessageOpcode Opcode => Code;
-
-        public void Write(BinaryWriter writer)
-        {
         }
     }
 }
@@ -358,8 +371,7 @@ public sealed class DistrictMovementTest
 
         await hold;
         await Task.WhenAll(moves);
-        await loop.InvokeAsync(() => district.Channel.Broadcast(new DistrictHarness.Marker()));
-        await district.SettleAsync(mover, observer);
+        await district.SettleAsync(loop, mover, observer);
 
         Assert.HasCount(1, observer.Moves(), "Three moves in one pass reach the observer once.");
         Assert.AreEqual(130f, observer.Moves()[0].X, "The move that goes out has the last place.");
