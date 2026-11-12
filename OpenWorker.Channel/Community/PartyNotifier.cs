@@ -25,6 +25,17 @@ public interface IPartyJoinListener
 }
 
 /// <summary>
+/// What else has to happen when the master of a party stops being its master: they left it, were dropped from it or handed
+/// it over. A recruitment they put up for it goes.
+/// </summary>
+public interface IPartyMasterListener
+{
+    /// <param name="party">The party as it was while they were its master.</param>
+    /// <param name="master">The master who is no longer one.</param>
+    ValueTask OnMasterGoneAsync(PartyRecord party, int master);
+}
+
+/// <summary>
 /// Changes parties and tells their members, wherever they are: the district and the maze servers both run it, and a message
 /// for a member on another server goes through the <see cref="CommunityNetwork"/>. The maze sends what it has to say to a
 /// party (the health of a member, a cleared maze) through <see cref="SendAsync"/> and <see cref="SendToOthersAsync"/>.
@@ -47,6 +58,8 @@ public sealed partial class PartyNotifier(
     public const string ResizedEvent = "party.resized";
 
     private IEnumerable<IPartyJoinListener> JoinListeners => services.GetServices<IPartyJoinListener>();
+
+    private IEnumerable<IPartyMasterListener> MasterListeners => services.GetServices<IPartyMasterListener>();
 
     #region For other parts of the game
 
@@ -269,6 +282,11 @@ public sealed partial class PartyNotifier(
 
         await network.PublishAsync(rest, ResizedEvent, body);
 
+        if (before.Master == person)
+        {
+            await OnMasterGoneAsync(before, person);
+        }
+
         return true;
     }
 
@@ -283,6 +301,8 @@ public sealed partial class PartyNotifier(
         }
 
         await network.SendAsync(party.Persons, new PartyChangeMasterResponse { Master = new ActorValue(next, ActorType.User) });
+
+        await OnMasterGoneAsync(party, party.Master);
 
         return true;
     }
@@ -299,6 +319,22 @@ public sealed partial class PartyNotifier(
             catch (Exception e)
             {
                 LogListenerFailed(logger, e, person);
+            }
+        }
+    }
+
+    private async ValueTask OnMasterGoneAsync(PartyRecord party, int master)
+    {
+        foreach (var listener in MasterListeners)
+        {
+            try
+            {
+                await listener.OnMasterGoneAsync(party, master);
+            }
+
+            catch (Exception e)
+            {
+                LogMasterListenerFailed(logger, e, master, party.Id);
             }
         }
     }
@@ -441,4 +477,7 @@ public sealed partial class PartyNotifier(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Could not finish the joining of person {Person} to a party.")]
     private static partial void LogListenerFailed(ILogger logger, Exception exception, int person);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Could not finish the going of person {Person} as the master of party {Party}.")]
+    private static partial void LogMasterListenerFailed(ILogger logger, Exception exception, int person, int party);
 }

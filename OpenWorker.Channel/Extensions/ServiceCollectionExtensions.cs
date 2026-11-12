@@ -84,6 +84,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<PartyAwaiterBoard>();
         services.AddSingleton<PartyRecruitNotifier>();
         services.AddSingleton<IPartyJoinListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
+        services.AddSingleton<IPartyMasterListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
         services.AddSingleton<ICommunityListener>(e => e.GetRequiredService<PartyRecruitNotifier>());
         services.AddSingleton<IPartyClock>(e => e.GetRequiredService<PartyRecruitNotifier>());
         services.AddSingleton<PartyMatching>();
