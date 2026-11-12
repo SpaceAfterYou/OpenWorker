@@ -57,6 +57,11 @@ public sealed class PlayerShotTest
     private const short ChargedShot = 1853;
 
     /// <summary>
+    /// Erwin's skill whose trap follows the mouse, placed as the loop held with the key begins.
+    /// </summary>
+    private const int MouseTrap = 24000111;
+
+    /// <summary>
     /// A skill of Stella whose loop, played while the key is held, lets its chains go as it begins (attack 1201 among them).
     /// </summary>
     private const int Chain = 52000711;
@@ -332,6 +337,42 @@ public sealed class PlayerShotTest
         var actions = new SkillActionProvider(TestTables.Load<SkillRow>("tb_Skill"), NullLogger<SkillActionProvider>.Instance) { Folder = folder };
 
         Assert.IsTrue(actions.TryGetProjectile(ChargedSkill, Hero.Haru, ChargedShot, out _));
+    }
+
+    /// <summary>
+    /// A trap dragged with the mouse follows it no faster than the client moves it: a place far from the trap is reached over
+    /// the next moments, not at once.
+    /// </summary>
+    [TestMethod]
+    public void ATrapFollowsTheMouseNoFasterThanTheClientMovesIt()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Erwin, 350f).Open();
+            var place = world.Get<WorldComponent>(arena.Player).Position;
+            var target = place + new Vector3(2000f, 0f, 0f);
+
+            arena.Maze.StartSkill(arena.Player, MouseTrap, default);
+            arena.Maze.PressKey(arena.Player, true);
+            arena.Run(1.7);
+
+            Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.MoveTrap(arena.Player, target, out var first));
+            Assert.IsLessThan(1000f, Vector3.Distance(first, place), $"The trap went part of the way: {first}.");
+
+            arena.Run(0.5);
+            arena.Maze.MoveTrap(arena.Player, target, out var second);
+
+            Assert.IsGreaterThan(Vector3.Distance(first, place), Vector3.Distance(second, place), "It goes on toward the mouse.");
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
     }
 
     private static SkillProjectileRequest Shot(int skill, short attack, Vector3 place)

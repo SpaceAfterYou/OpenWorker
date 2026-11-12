@@ -590,11 +590,11 @@ public sealed partial class MazeService(
             return ValueTask.CompletedTask;
         }
 
-        var verdict = ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position);
+        var verdict = ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position, out var taken);
 
         if (verdict == ClaimVerdict.Taken)
         {
-            relay.TrapMoved(context.Player, request.Skill, request.TriggerIndex, request.Position);
+            relay.TrapMoved(context.Player, request.Skill, request.TriggerIndex, taken);
         }
         else if (verdict == ClaimVerdict.Refused)
         {

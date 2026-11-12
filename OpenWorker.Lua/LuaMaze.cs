@@ -112,9 +112,19 @@ public partial class LuaMaze(
     /// <summary>
     /// Where a trap stands. It is a class because the player can move it while it hits.
     /// </summary>
-    private sealed class TrapSite(Vector3 position)
+    private sealed class TrapSite(Vector3 position, TimeSpan placed)
     {
         public Vector3 Position { get; set; } = position;
+
+        /// <summary>
+        /// When the player last moved it, on the clock of the maze.
+        /// </summary>
+        public TimeSpan MovedAt { get; set; } = placed;
+
+        /// <summary>
+        /// How far it may still go at once: the way the mouse saved up while it went slower than it may.
+        /// </summary>
+        public float Travel { get; set; }
     }
 
     /// <summary>
@@ -1038,7 +1048,7 @@ public partial class LuaMaze(
         var info = trigger.Projectile!;
         var attacker = Ecs.Get<WorldComponent>(member.Player);
         var (sin, cos) = MathF.SinCos(attacker.Rotation * MathF.PI / 180f);
-        var site = new TrapSite(attacker.Position);
+        var site = new TrapSite(attacker.Position, Clock.Time);
 
         if (actions.FollowsMouse(skill))
         {
@@ -1210,12 +1220,36 @@ public partial class LuaMaze(
     }
 
     /// <summary>
+    /// How fast the trap may follow the mouse, in units a second: the client moves it at most 700 a second; the rest lets a trap
+    /// the server held back on a burst of late messages catch up.
+    /// </summary>
+    private const float TrapSpeed = 875f;
+
+    /// <summary>
+    /// The most way a trap may save up while it goes slower than it may: one second of it.
+    /// </summary>
+    private const float TrapTravel = TrapSpeed;
+
+    /// <summary>
     /// The player drags the trap of a skill with the mouse. The trap hits where it is; the others see only the hits. A place out
     /// of the reach of the mouse from where the server has the player is refused, and the trap stays.
     /// </summary>
     [LuaIgnoreMember]
     public ClaimVerdict MoveTrap(Entity player, Vector3 place)
     {
+        return MoveTrap(player, place, out _);
+    }
+
+    /// <summary>
+    /// The player drags the trap of a skill with the mouse, as <see cref="MoveTrap(Entity, Vector3)"/>. The trap goes toward the
+    /// place no faster than the client moves it, so a place far from where it stands is reached over the next moments.
+    /// </summary>
+    /// <param name="taken">Where the trap stands now.</param>
+    [LuaIgnoreMember]
+    public ClaimVerdict MoveTrap(Entity player, Vector3 place, out Vector3 taken)
+    {
+        taken = place;
+
         if (!Started || Find(player) is not { } member || !creatureManager.Vitals.IsAlive(player))
         {
             return ClaimVerdict.Dropped;
@@ -1223,14 +1257,28 @@ public partial class LuaMaze(
 
         var from = Ecs.Get<WorldComponent>(player).Position;
 
-        if (!(Vector2.DistanceSquared(new Vector2(from.X, from.Y), new Vector2(place.X, place.Y)) <= MouseReach * MouseReach))
+        // The pointer meets the ground or what stands on it: high or low, it is within the reach of the mouse.
+        if (!(Vector3.DistanceSquared(from, place) <= MouseReach * MouseReach))
         {
             return Refuse(member);
         }
 
         if (member.MouseTrap is { } trap)
         {
+            var travel = Math.Min(TrapTravel, trap.Travel + ((float)(Clock.Time - trap.MovedAt).TotalSeconds * TrapSpeed));
+            var way = place - trap.Position;
+            var length = way.Length();
+
+            if (length > travel)
+            {
+                place = trap.Position + (way * (travel / length));
+                length = travel;
+            }
+
+            trap.Travel = travel - length;
+            trap.MovedAt = Clock.Time;
             trap.Position = place;
+            taken = place;
         }
 
         return ClaimVerdict.Taken;
