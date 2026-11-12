@@ -8,11 +8,32 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Akashic_Make")]
 public readonly partial struct AkashicMakeRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the recipe: the id of the card it makes in every row.
+    /// </summary>
     public int Id { get; } = reader.ReadInt32();
+    /// <summary>
+    /// What the main material is: 1 a card (166 rows), 0 an item.
+    /// </summary>
     public byte MaterialKind { get; } = reader.ReadByte();
+    /// <summary>
+    /// The main material: a card or an item, by MaterialKind. The client shows it in the window of the recipe.
+    /// </summary>
     public int Material { get; } = reader.ReadInt32();
+    /// <summary>
+    /// An item the recipe also takes (three kinds, all of one item class), 0 for none. The client shows it with the main material.
+    /// </summary>
     public int Card { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How many extra cards the recipe takes, 0 to 2. The client fills that many places for them.
+    /// </summary>
     public byte ExtraCount { get; } = reader.ReadByte();
+    /// <summary>
+    /// The gold the recipe costs. The client compares it with the money of the player.
+    /// </summary>
     public int Gold { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The card the recipe makes: the id of the recipe in every row.
+    /// </summary>
     public int Result { get; } = reader.ReadInt32();
 }

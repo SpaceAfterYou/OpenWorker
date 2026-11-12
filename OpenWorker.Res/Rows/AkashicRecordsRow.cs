@@ -9,37 +9,136 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Akashic_Records")]
 public readonly partial struct AkashicRecordsRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the card, which is also its item id in tb_Item (every row).
+    /// </summary>
     public int Id { get; } = reader.ReadInt32();
-    public short Field1 { get; } = reader.ReadInt16();
-    public int Field2 { get; } = reader.ReadInt32();
-    public short Field3 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The name of the card: a row of tb_UI_String (every row). The client looks the name up there. Ids above 32767 read negative here, as the ids of tb_UI_String do.
+    /// </summary>
+    public short Name { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The family of the card: the levels of one card share it, and it is the id without its last two digits on 252 rows. 0 on 46 rows. No client code that reads it was found.
+    /// </summary>
+    public int Family { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The name of the family, shared by the levels of a card: a row of tb_UI_String (every row). Ids above 32767 read negative, as in tb_UI_String.
+    /// </summary>
+    public short FamilyName { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The place of the card in the book of cards, 0 to 298, one per card. The server keeps a recorded card at this place; no client code that reads it was found.
+    /// </summary>
     public short Position { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The kind of card: 1 brings a creature in (a summon card), 4 gives its effect by itself (a passive card); 6 is on three rows and not settled.
+    /// </summary>
     public byte Type { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 1 on 140 cards. The client passes whether it is 1 to the view of a card. The original server&apos;s row has a flag of cards sold for cash at this place (every common row agrees).
+    /// </summary>
     public byte Field6 { get; } = reader.ReadByte();
-    public byte Field7 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The rank of the card, 1 to 3. The client passes it to the view of a card.
+    /// </summary>
+    public byte Rank { get; } = reader.ReadByte();
+    /// <summary>
+    /// The rarity of the card, 1 to 3. The client passes it to the view of a card; the server makes cards only from extras of the same rarity.
+    /// </summary>
     public byte RarePoint { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 1 on 70 cards. The client passes whether it is 1 to the view of a card. The original server&apos;s row has a flag of hidden cards at this place (every common row agrees).
+    /// </summary>
     public byte Field9 { get; } = reader.ReadByte();
-    public string Field10 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The picture of the card, a path under Akashic_Records/Illustration.
+    /// </summary>
+    public string Illustration { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The same path as Illustration in every row of this client. No client code that reads it was found.
+    /// </summary>
     public string Field11 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public short Field12 { get; } = reader.ReadInt16();
-    public short Field13 { get; } = reader.ReadInt16();
-    public short Field14 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The row of tb_Akashic_Parts with the model and the animations of the card&apos;s creature (every row; the passive cards share 20000 and 30000).
+    /// </summary>
+    public short Part { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A second row of tb_Akashic_Parts (12 rows). No client code that reads it was found.
+    /// </summary>
+    public short Part2 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A third row of tb_Akashic_Parts (3 rows). No client code that reads it was found.
+    /// </summary>
+    public short Part3 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The name of the creature&apos;s effect file (the client loads it under FXs with .XML) and of its action file. &quot;0&quot; on the passive cards.
+    /// </summary>
     public string CodeName { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// A number of the actions of the creature, on the summon cards only. No client code that reads it was found.
+    /// </summary>
     public short ActionGroup { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The skill the player uses to call the card: 30000 on every summon card, 0 on the others. The client starts it when the card is called.
+    /// </summary>
     public int UseSkill { get; } = reader.ReadInt32();
+    /// <summary>
+    /// When a passive card takes effect: the number of a condition. 0 for a card that does not take effect by itself.
+    /// </summary>
     public byte InvokeCondition { get; } = reader.ReadByte();
+    /// <summary>
+    /// The chance a passive card takes effect when its condition is met, out of 10000.
+    /// </summary>
     public short InvokeRate { get; } = reader.ReadInt16();
+    /// <summary>
+    /// What the card does: on a passive card the buff it gives; on a summon card the skill of the creature it brings in. The ids of the two overlap.
+    /// </summary>
     public int Buff { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How long the cooldown of the card lasts, in milliseconds.
+    /// </summary>
     public int Cooldown { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The cooldown group of the card: calling it starts the cooldown of every card of its group.
+    /// </summary>
     public int CooldownGroup { get; } = reader.ReadInt32();
+    /// <summary>
+    /// Not known: 2 on all but three rows. The original server&apos;s row has a flag about keeping the cooldown at this place, like CooldownSave of tb_Skill.
+    /// </summary>
     public byte Field23 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The cooldown a summon card puts on every card, in milliseconds (15000 on every summon card).
+    /// </summary>
     public short CooldownGlobal { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The row of tb_Akashic_Disassemble that says what taking the card apart gives: the id of the card itself in every row.
+    /// </summary>
     public int Disassemble { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The experience the card gives to another card when it is fed to it. The client sums it over the cards put in.
+    /// </summary>
     public int ExpGiven { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The experience a card needs before it can be made into the next one. The client shows how much of it a card has. 0 on 132 cards.
+    /// </summary>
     public int MakeExp { get; } = reader.ReadInt32();
+    /// <summary>
+    /// 1 in every row of this client. The original server&apos;s row has the highest level of a card at this place.
+    /// </summary>
     public byte Field28 { get; } = reader.ReadByte();
+    /// <summary>
+    /// 0 in every row of this client. No client code that reads it was found.
+    /// </summary>
     public int Field29 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// 0 in every row of this client. No client code that reads it was found.
+    /// </summary>
     public int Field30 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// 0 in every row of this client. No client code that reads it was found.
+    /// </summary>
     public int Field31 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// 0 in every row of this client. No client code that reads it was found.
+    /// </summary>
     public int Field32 { get; } = reader.ReadInt32();
 }

@@ -9,12 +9,36 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Skill_Script")]
 public readonly partial struct SkillScriptRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the row, which tb_Skill names in its Script column.
+    /// </summary>
     public short Id { get; } = reader.ReadInt16();
-    public string Field1 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field2 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field3 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field4 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public int Field5 { get; } = reader.ReadInt32();
-    public int Field6 { get; } = reader.ReadInt32();
-    public string Field7 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The name of the skill, shown in the skill window and the tooltip.
+    /// </summary>
+    public string Name { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// What the skill does, shown in the tooltip.
+    /// </summary>
+    public string Description { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// What this level of the skill gives, shown in the tooltip under its own heading. &quot;.&quot; and &quot;LvMax&quot; on many rows.
+    /// </summary>
+    public string LevelText { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The icon of the skill, a path without the extension (the client adds &quot;.png&quot;). &quot;0&quot; for none.
+    /// </summary>
+    public string Icon { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// A skill whose icon the tooltip shows in a section of its own. 0 in every row of this client, so what the section is for is not settled.
+    /// </summary>
+    public int ShownSkill1 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A second skill shown in that section of the tooltip (see ShownSkill1). 0 in every row of this client.
+    /// </summary>
+    public int ShownSkill2 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A picture the skill window shows, a path without the extension (the client adds &quot;.png&quot;). &quot;0&quot; on all but five rows.
+    /// </summary>
+    public string DescriptionImage { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
 }
