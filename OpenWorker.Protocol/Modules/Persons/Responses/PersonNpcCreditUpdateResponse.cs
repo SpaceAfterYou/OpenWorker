@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// Relations with one group of NPCs.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PersonNpcCreditUpdateResponse : IResponseHotspotMessage
+public readonly partial struct PersonNpcCreditUpdateResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -26,13 +28,4 @@ public readonly struct PersonNpcCreditUpdateResponse : IResponseHotspotMessage
     public NpcCreditValue Credit { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Credit.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -18,37 +18,7 @@ internal static class BinaryReaderExtension
     {
         return (StuffLevel)reader.ReadByte();
     }
-    
-    internal static ReviveType ReadReviveType(this BinaryReader reader)
-    {
-        return (ReviveType)reader.ReadByte();
-    }
-    
-    internal static PasswordCheckType ReadPasswordCheckType(this BinaryReader reader)
-    {
-        return (PasswordCheckType)reader.ReadByte();
-    }
-    
-    internal static CommunityState ReadCommunityState(this BinaryReader reader)
-    {
-        return (CommunityState)reader.ReadByte();
-    }
-    
-    internal static string ReadCommunityComment(this BinaryReader reader)
-    {
-        return reader.ReadUtf8UnicodeString(PersonModuleDefines.MaxCommunityCommentLength);
-    }
-    
-    internal static string ReadCommunityMemo(this BinaryReader reader)
-    {
-        return reader.ReadUtf8UnicodeString(PersonModuleDefines.MaxCommunityMemoLength);
-    }
-    
-    internal static ChangeServerType ReadChangeServerType(this BinaryReader reader)
-    {
-        return (ChangeServerType)reader.ReadByte();
-    }
-    
+
     internal static FactionGroup ReadFactionGroup(this BinaryReader reader)
     {
         return (FactionGroup)reader.ReadByte();

@@ -3,6 +3,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
@@ -10,8 +11,9 @@ namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 /// The share points of a district and of one of its groups of mazes that changed: a cleared maze, or a district entered
 /// for the first time (with an empty group, which the client skips).
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PersonUpdateSharePointResponse : IResponseHotspotMessage
+public readonly partial struct PersonUpdateSharePointResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -28,14 +30,4 @@ public readonly struct PersonUpdateSharePointResponse : IResponseHotspotMessage
     public MazeStateValue Maze { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        District.Write(writer);
-        Maze.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

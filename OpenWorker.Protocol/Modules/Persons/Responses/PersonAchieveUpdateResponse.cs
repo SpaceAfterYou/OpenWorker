@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// Achievements that have moved on.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PersonAchieveUpdateResponse : IResponseHotspotMessage
+public readonly partial struct PersonAchieveUpdateResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -23,30 +25,14 @@ public readonly struct PersonAchieveUpdateResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireArray(WireLength.Byte)]
     public IReadOnlyCollection<AchieveUpdateValue> Updates { get; init; }
+
+    [WireArray(Count = PersonModuleDefines.AchievementRewardBytes)]
     public byte[] RewardBits { get; init; }
+
+    [WireArray(Count = PersonModuleDefines.AchievementCategories)]
     public IReadOnlyList<ushort> Categories { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write((byte)Updates.Count);
-
-        foreach (var update in Updates)
-        {
-            update.Write(writer);
-        }
-
-        writer.Write(RewardBits);
-
-        foreach (var category in Categories)
-        {
-            writer.Write(category);
-        }
-    }
-
-#endregion Interface: IWritableData
 }
