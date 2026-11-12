@@ -7,20 +7,26 @@ using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Trade.Extensions;
 using OpenWorker.Hotspot.Modules.Trade.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Trade.Requests;
 
+[WireMessage(WireMethods.Read)]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct TradePrivateShopStartRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+public readonly partial struct TradePrivateShopStartRequest : IRequestHotspotMessage, IWritableData
 {
     private const GroupOpcode Group = GroupOpcode.Trade;
     private const TradeOpcode Command = TradeOpcode.PrivateShopStart;
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
-    public StorageSlot Slot { get; } = new(reader);
-    public string Title { get; } = reader.ReadUtf8UnicodeString(64);
-    public PrivateShopItemValue[] Items { get; } = reader.ReadPrivateShopItemList();
+    public StorageSlot Slot { get; }
+
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string Title { get; }
+
+    [WireArray(WireLength.Byte)]
+    public PrivateShopItemValue[] Items { get; }
 
     public void Write(BinaryWriter writer)
     {
