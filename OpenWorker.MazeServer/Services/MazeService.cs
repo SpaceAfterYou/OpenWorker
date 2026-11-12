@@ -404,16 +404,50 @@ public sealed partial class MazeService(
         return true;
     }
 
+    /// <summary>
+    /// The player evades, rolls, dashes or gets up: as the original server, the move must be the player's own, its cooldown over
+    /// and its stamina payable, and it is paid; a refusal is the answer 06/07 with the code. A move with an animation cuts the
+    /// skill the player plays, as on the client, which allows it only when the skill gives way to it no harder than the move
+    /// does (its skip priority); otherwise it is refused and the skill goes on.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request)
     {
-        ecs.Get<ServerSessionComponent>(context.Player).Send(new SkillPassiveResponse());
+        var player = context.Player;
+        var skill = request.Skill.Skill;
+        var session = ecs.Get<ServerSessionComponent>(player);
+        var now = clock.Time;
+        var refusal = skillUse.Check(player, skill, now);
+        var maze = IsFighting(player) ? ecs.Get<LuaMaze>(player) : null;
+
+        if (refusal == SkillRefusal.None && maze is not null && maze.PlaysAnimation(player, skill) &&
+            maze.PlayingSkill(player) is var playing and not 0 &&
+            skillUse.TryGetSkill(skill, out var move) && skillUse.TryGetSkill(playing, out var cut) &&
+            cut.SkipPriorityGroup > move.SkipPriorityGroup)
+        {
+            refusal = SkillRefusal.CannotAttack;
+        }
+
+        if (refusal != SkillRefusal.None)
+        {
+            LogSkillRefused(skill, refusal);
+
+            session.Send(new SkillPassiveResponse { Error = unchecked((short)refusal) });
+
+            return ValueTask.CompletedTask;
+        }
+
+        skillUse.Use(player, skill, now);
+
+        session.Send(new SkillPassiveResponse());
+
+        maze?.Evade(player, skill);
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// A passive move (evade, dash) ends where the client says, when the player could have got there. A fallen player does
-    /// not move, as with the other places a skill reports.
+    /// A passive move (evade, dash) ends where the client says, when the player could have got there, and the player may start
+    /// a skill again (the original ends the move here). A fallen player does not move, as with the other places a skill reports.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request)
     {
@@ -425,6 +459,9 @@ public sealed partial class MazeService(
         var place = request.Skill.Position;
 
         TakePlace(context.Player, place.Position, place.Angle, SkillOpcode.PassiveSkillEndReq);
+
+        // The move is over, and with it the hold it had on the skills of the player.
+        ecs.Get<LuaMaze>(context.Player).EndEvade(context.Player, request.Skill.Skill);
 
         return ValueTask.CompletedTask;
     }

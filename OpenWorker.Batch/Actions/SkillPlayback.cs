@@ -254,6 +254,22 @@ public sealed class SkillPlayback
         return began <= ahead && (next is null || began + Clock(next).CutOpens <= ahead);
     }
 
+    /// <summary>
+    /// Whether the skill is over, or ends within <see cref="ShotLeeway"/> with nothing after it, so that the client may already be
+    /// done with it. <see cref="Advance"/> has to run up to this moment first.
+    /// </summary>
+    public bool IsEnding(float now)
+    {
+        if (IsDone)
+        {
+            return true;
+        }
+
+        var (next, began) = Following();
+
+        return next is null && began <= now + ShotLeeway;
+    }
+
     private void Leave(float at)
     {
         switch (Step)

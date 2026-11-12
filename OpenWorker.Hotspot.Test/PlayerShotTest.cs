@@ -45,6 +45,11 @@ public sealed class PlayerShotTest
     private const double FlyingShotTime = 0.5;
 
     /// <summary>
+    /// Haru's evade.
+    /// </summary>
+    private const int Evade = 12040011;
+
+    /// <summary>
     /// A skill of Haru that charges, and a shot of the end of its third level.
     /// </summary>
     private const int ChargedSkill = 12000632;
@@ -270,6 +275,37 @@ public sealed class PlayerShotTest
             arena.Run(1.5);
 
             Assert.IsTrue(arena.Maze.MayStartSkill(arena.Player), "It is about to end.");
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// An evade ends the skill the player plays: its shots are no longer the player's to fire, and the evade plays in its place.
+    /// </summary>
+    [TestMethod]
+    public void AnEvadeEndsTheSkillThatPlays()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Haru, 350f).Open();
+            var place = world.Get<WorldComponent>(arena.Player).Position;
+
+            arena.Maze.StartSkill(arena.Player, Flying, default);
+            arena.Maze.Evade(arena.Player, Evade);
+
+            Assert.AreEqual(Evade, arena.Maze.PlayingSkill(arena.Player));
+
+            arena.Run(FlyingShotTime);
+
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)));
 
             arena.Maze.Close();
         }

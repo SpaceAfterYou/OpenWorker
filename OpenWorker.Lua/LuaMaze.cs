@@ -834,6 +834,72 @@ public partial class LuaMaze(
     }
 
     /// <summary>
+    /// The skill the player plays now, or zero when it plays none or the one it plays is about to end.
+    /// </summary>
+    [LuaIgnoreMember]
+    public int PlayingSkill(Entity player)
+    {
+        if (Find(player) is not { Playback: { } run } member)
+        {
+            return 0;
+        }
+
+        BringUp(member, run);
+
+        return member.Playback == run && !run.Playback.IsEnding(run.Last) ? run.Skill : 0;
+    }
+
+    /// <summary>
+    /// Whether the skill plays an animation on the hero of the player: a move that does cuts the skill the player plays.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool PlaysAnimation(Entity player, int skill)
+    {
+        return actions.GetAnimations(skill, Ecs.Get<PersonInfoComponent>(player).Hero) is { } animations && (animations.Start is not null || animations.End is not null);
+    }
+
+    /// <summary>
+    /// The player evades, rolls or dashes: the skill it plays ends there (with its attacks to come, its shots and its chains).
+    /// A move during which the client holds back the skills of the player until a moment of its animation plays in its place,
+    /// until it is over or the client says it ended; during the others (a dash) the player may start a skill at once.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void Evade(Entity player, int skill)
+    {
+        if (!Started || Find(player) is not { } member ||
+            actions.GetAnimations(skill, Ecs.Get<PersonInfoComponent>(player).Hero) is not { } animations || (animations.Start is null && animations.End is null))
+        {
+            return;
+        }
+
+        if (new[] { animations.Start, animations.Loop, animations.Extra, animations.End }.Any(e => e?.Cuts is { Count: > 0 }))
+        {
+            Begin(member, skill, default, false);
+
+            return;
+        }
+
+        member.SkillGeneration++;
+        member.CurrentSkill = skill;
+        member.Playback = null;
+        member.SkillWake.Cancel();
+    }
+
+    /// <summary>
+    /// The evade or the dash of the player is over.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void EndEvade(Entity player, int skill)
+    {
+        if (Find(player) is { Playback: { } run } member && run.Skill == skill)
+        {
+            member.SkillGeneration++;
+            member.Playback = null;
+            member.SkillWake.Cancel();
+        }
+    }
+
+    /// <summary>
     /// A new skill interrupts the previous one, along with the attacks it has not reached yet. The akashic skill with a called
     /// card plays the card's coming instead of its own attacks, when <paramref name="callsCards"/>.
     /// </summary>
