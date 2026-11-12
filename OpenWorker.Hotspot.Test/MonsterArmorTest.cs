@@ -91,6 +91,44 @@ public sealed class MonsterArmorTest
     }
 
     /// <summary>
+    /// An armor that broke is whole again for the first blow that lands after its time is up, before the maze steps: the
+    /// clients count that time themselves and break an armor they hold whole on a hit that says it is empty.
+    /// </summary>
+    [TestMethod]
+    public void ABlowAfterTheTimeOfABrokenArmorFindsItWhole()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var maze = TestMazes.Create(world, Player(world), map: PartyMazeTest.MapWithMonster(Monster));
+
+            maze.SpawnSector(1);
+
+            var monster = maze.Creatures.FindMonsters((_, _) => true).Single();
+
+            world.Set(monster, world.Get<MonsterCombatComponent>(monster) with { Defense = DefenseType.SuperArmor, MaxSuperArmor = 1000f, SuperArmor = 1000f, SuperArmorRecovery = 1 });
+
+            var broken = maze.Creatures.ReceiveBlow(monster, Strike(1), DefenseType.SuperArmor, 1000, 100f, true);
+
+            Assert.AreEqual((byte)DefenseType.Normal, broken.Defense);
+
+            Thread.Sleep(50);
+
+            var held = maze.Creatures.ReceiveBlow(monster, Strike(1), DefenseType.SuperArmor, 400, 100f, true);
+
+            Assert.AreEqual((byte)DefenseType.SuperArmor, held.Defense, "The armor that came back holds.");
+            Assert.AreEqual(600f, held.SuperArmor);
+            Assert.AreEqual(0L, world.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil);
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
     /// A hard blow breaks an armor that is full.
     /// </summary>
     [TestMethod]

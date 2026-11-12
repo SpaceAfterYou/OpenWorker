@@ -1647,6 +1647,9 @@ public partial class LuaMaze(
 
     private SkillDmgValue ApplyDamage(Entity attacker, Entity target, in CombatStats attackerStats, in SkillDamage skill, float attackRate, in AttackTrigger trigger, int skillId = 0, AiHitKind kind = AiHitKind.Skill, Vector3? origin = null)
     {
+        // An armor whose time is up is whole for this hit: what the hit deals and how it is taken are read after that.
+        creatureManager.RestoreSuperArmor(target);
+
         var creature = Ecs.Get<CreatureComponent>(target);
         var body = Ecs.Get<MonsterCombatComponent>(target);
         var defense = _buffs.DefenseOf(target, creatureManager.FrameDefenseOf(target, body.Defense));

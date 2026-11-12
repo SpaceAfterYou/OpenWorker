@@ -1013,6 +1013,10 @@ public sealed class LuaCreatureManager
     /// <param name="survives">The monster lives on.</param>
     public HitEffect ReceiveBlow(Entity monster, in Blow blow, DefenseType defense, int damage, float armorShare, bool survives)
     {
+        // The clients count the time of a broken armor themselves and break an armor they hold whole on a hit that says it
+        // is empty, so an armor whose time is up is whole for this blow, not from the next step of the maze on.
+        RestoreSuperArmor(monster);
+
         var combat = ecs.Get<MonsterCombatComponent>(monster);
         var broken = combat.SuperArmorBrokenUntil != 0;
         var seconds = 0f;
@@ -1121,15 +1125,15 @@ public sealed class LuaCreatureManager
     }
 
     /// <summary>
-    /// Armor that has had time to recover is whole again.
+    /// Armor that has had time to recover is whole again. Says whether it came back now.
     /// </summary>
-    private void RestoreSuperArmor(Entity monster)
+    internal bool RestoreSuperArmor(Entity monster)
     {
         var combat = ecs.Get<MonsterCombatComponent>(monster);
 
         if (combat.SuperArmorBrokenUntil == 0 || combat.SuperArmorBrokenUntil > Environment.TickCount64)
         {
-            return;
+            return false;
         }
 
         ecs.Set(monster, combat with { SuperArmor = combat.MaxSuperArmor, SuperArmorBrokenUntil = 0 });
@@ -1140,6 +1144,8 @@ public sealed class LuaCreatureManager
         {
             body.OnSuperArmorRestored();
         }
+
+        return true;
     }
 
     internal void SetInvincible(Entity monster, bool invincible)
