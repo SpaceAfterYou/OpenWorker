@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
+using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Items;
@@ -27,7 +28,22 @@ public interface IMazePortals
     /// Whether the map the player stands in has the portal.
     /// </summary>
     bool Exists(Entity player, int portal);
+
+    /// <summary>
+    /// Where the portal of the map the player stands in leads, as the map says; null when the map has no such portal.
+    /// </summary>
+    PortalWay? WayOf(Entity player, int portal);
 }
+
+/// <summary>
+/// Where a portal of a map leads, as the file of the map says and as the client reads it when the player steps in.
+/// </summary>
+/// <param name="Kind">How the client moves the player: into the location it names (with its start point or the first of
+/// the location), onto the maze board, to another place of the map, or into the tower's own dialog.</param>
+/// <param name="Location">The location the portal names, 0 for none (a board names its mazes instead).</param>
+/// <param name="Start">The start point of the location the portal names, 0 for none.</param>
+/// <param name="Board">The maze board the portal opens (the mazes whose row names it are offered there), 0 for none.</param>
+public readonly record struct PortalWay(JumpType Kind, short Location, int Start, int Board);
 
 /// <summary>
 /// What a maze asks of whoever takes its portal, checked in the order of the reference. A refusal is the error of the request
@@ -155,6 +171,86 @@ public sealed class MazeAdmission(
         }
 
         return CheckRules(player, row, out item);
+    }
+
+    /// <summary>
+    /// The way a player takes into a location (04/01) leads where the portal it names leads, as the map says: a client cannot
+    /// stand at one portal and name another place or another start point. Null when it does, with <paramref name="start"/>
+    /// the start point to enter by (0 for the first of the location); else the code of the refusal.
+    /// <list type="bullet">
+    /// <item>A portal into a district or out of a maze names the location and its start point, and the client sends both.</item>
+    /// <item>The portal into the map of an event names the location and the place each district comes out at; the client
+    /// sends no start point and the player comes out at the portal's.</item>
+    /// <item>A portal into a maze names the location, entered at its first start point.</item>
+    /// <item>A portal that opens the maze board leads into the mazes the board offers (<see cref="CheckBoard"/>), at their
+    /// first start point. The client asks for those by 04/41; asking by 04/01 leads nowhere else.</item>
+    /// <item>Any other portal (a move within the map, the dialog of the tower) does not lead out of the map.</item>
+    /// </list>
+    /// The tutorial mazes and the raid of the event are entered from wherever the story or the event puts the player, at the
+    /// first start point. A server without maps of districts judges nothing and keeps the start point asked for.
+    /// </summary>
+    public ushort? CheckWay(Entity player, short location, int portal, int jump, out int start)
+    {
+        start = 0;
+
+        if (portals is null)
+        {
+            start = jump;
+
+            return null;
+        }
+
+        if (location == EventRaid || (_mazes.TryGet(location, out var row) && row.Type == TutorialKind))
+        {
+            return null;
+        }
+
+        if (portals.WayOf(player, portal) is not { } way)
+        {
+            return NotOpened;
+        }
+
+        var named = way.Location != 0 && location == way.Location;
+
+        switch (way.Kind)
+        {
+            case JumpType.Field when named && jump == way.Start:
+            case JumpType.District6 when named && jump == 0:
+                start = way.Start;
+
+                return null;
+
+            case JumpType.Maze when way.Board == 0 && named && jump == 0:
+            case JumpType.Maze when way.Board != 0 && jump == 0 && Offers(way.Board, location):
+                return null;
+
+            default:
+                return NotOpened;
+        }
+    }
+
+    /// <summary>
+    /// The maze board (04/41) leads into a maze it offers: the player names a portal of its map that opens a board, and the
+    /// maze is one of the board's. Null when it does, else the code of the refusal. A member of a party that plays a maze is
+    /// offered that maze from anywhere; the caller asks the party before this.
+    /// </summary>
+    public ushort? CheckBoard(Entity player, short location, int portal)
+    {
+        if (portals is null)
+        {
+            return null;
+        }
+
+        return portals.WayOf(player, portal) is { Kind: JumpType.Maze, Board: not 0 } way && Offers(way.Board, location) ? null : NotOpened;
+    }
+
+    /// <summary>
+    /// Whether the board offers the maze: the server's row of every maze names the board it is entered by, which holds the
+    /// list the client shows (the client's own table of boards) and the casual raids each day of the portal brings.
+    /// </summary>
+    private bool Offers(int board, short location)
+    {
+        return IsMazeLocation(location) && _mazes.TryGet(location, out _) && scoring.TryGetRule(location, out var rule) && rule.PortalId == board;
     }
 
     /// <summary>

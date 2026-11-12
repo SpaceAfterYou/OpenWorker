@@ -122,11 +122,20 @@ public sealed partial class MazeService(
     /// The player takes a portal of the maze's map into a district or another maze, or the tutorial moves it on to its second
     /// maze. The way out asks what the portal of a district asks (<see cref="MazeAdmission"/>): the player stands at a portal
     /// of this map, and a maze asks its level, the maze before it, its daily limit, its fatigue and its item; the tutorial
-    /// mazes are entered from wherever the story puts the player. A refusal is the error of the request with the code.
+    /// mazes are entered from wherever the story puts the player. The portal leads where the map says, from the start point the
+    /// map says (<see cref="MazeAdmission.CheckWay"/>). A refusal is the error of the request with the code.
     /// </summary>
     public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
     {
-        if (admission.Check(context.Player, request.Location, request.Portal, out var item) is { } code)
+        if (!ecs.IsAlive(context.Player))
+        {
+            return;
+        }
+
+        var item = 0;
+
+        if ((admission.CheckWay(context.Player, request.Location, request.Portal, request.Jump, out var start) ??
+             admission.Check(context.Player, request.Location, request.Portal, out item)) is { } code)
         {
             ecs.Get<ServerSessionComponent>(context.Player)
                 .Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.World, WorldOpcode.EnterReq), code, item > 0 ? (uint)item : null));
@@ -135,7 +144,7 @@ public sealed partial class MazeService(
         }
 
         await worldManager
-            .EnterAsync(context.Player, request.Location, request.Jump);
+            .EnterAsync(context.Player, request.Location, start);
     }
 
     /// <summary>
