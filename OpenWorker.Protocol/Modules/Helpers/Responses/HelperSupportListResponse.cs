@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 
 /// <summary>
 /// The friends that offer support.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct HelperSupportListResponse : IResponseHotspotMessage
+public readonly partial struct HelperSupportListResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -23,21 +25,8 @@ public readonly struct HelperSupportListResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireArray(WireLength.Signed16)]
     public required IReadOnlyList<HelperSupportFriendValue> Friends { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(checked((short)Friends.Count));
-
-        foreach (var item in Friends)
-        {
-            item.Write(writer);
-        }
-    }
-
-#endregion Interface: IWritableData
 }
