@@ -55,6 +55,11 @@ public sealed class InventoryFactory(
     }
 
     /// <summary>
+    /// The most items a character is born with: one weapon and five pieces of clothes.
+    /// </summary>
+    public const int MostStartingItems = 6;
+
+    /// <summary>
     /// What a character is born with: the weapon of its class and the clothes it was made with.
     /// </summary>
     public Inventory CreateNew(PersonPersistent person)

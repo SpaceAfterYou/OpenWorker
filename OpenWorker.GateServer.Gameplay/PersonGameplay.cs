@@ -45,7 +45,8 @@ public sealed partial class PersonGameplay(
     WorldManager worldManager,
     PersonCreationCatalog catalog,
     PrologueEntry prologue,
-    IOptions<GameOptions> game)
+    IOptions<GameOptions> game,
+    IItemSerials serials)
 {
     private short Gate { get; } = gate.Value.Id;
 
@@ -171,6 +172,10 @@ public sealed partial class PersonGameplay(
             SendListError(context.Player, PersonErrorCode.NameInUse);
             return;
         }
+
+        // The first items take their serials below, in the middle of the world loop's turn: they are made ready here, where
+        // the creation holds no connection and can wait, so many creations at once never stop the loop for a query.
+        await serials.EnsureAsync(InventoryFactory.MostStartingItems);
 
         // The player may have left while the character was saved.
         if (!world.IsAlive(context.Player))

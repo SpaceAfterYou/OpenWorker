@@ -469,6 +469,19 @@ public sealed class PersistenceTest
     }
 
     [TestMethod]
+    public async Task SerialsAskedForAheadAreReadyWithoutWaitingForTheDatabase()
+    {
+        var serials = new DatabaseItemSerials(new PersonStore(Factory));
+
+        // More than one block: a creation of many items at once still finds them all.
+        await serials.EnsureAsync(600);
+
+        var taken = Enumerable.Range(0, 600).Select(_ => serials.NextSerial()).ToHashSet();
+
+        Assert.HasCount(600, taken, "every serial is given once");
+    }
+
+    [TestMethod]
     public async Task AFlushWritesTheDirtyPlayerAndNotTheCleanOne()
     {
         var (dirtyAccount, dirtyPerson) = await CreatePersonAsync("dirty");

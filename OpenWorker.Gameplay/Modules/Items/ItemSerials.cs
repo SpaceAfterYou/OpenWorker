@@ -9,6 +9,12 @@ namespace OpenWorker.Gameplay.Modules.Items;
 public interface IItemSerials
 {
     long NextSerial();
+
+    /// <summary>
+    /// Waits until that many serials are ready. A caller that is about to make several items at once, and can wait,
+    /// asks here first: <see cref="NextSerial"/> then never stops the world loop for the database.
+    /// </summary>
+    ValueTask EnsureAsync(int count);
 }
 
 /// <summary>
@@ -21,6 +27,11 @@ public sealed class LocalItemSerials : IItemSerials
     public long NextSerial()
     {
         return Interlocked.Increment(ref _next);
+    }
+
+    public ValueTask EnsureAsync(int count)
+    {
+        return ValueTask.CompletedTask;
     }
 }
 
@@ -57,6 +68,14 @@ public sealed class DatabaseItemSerials(IPersonStore store) : IItemSerials
         }
 
         return serial;
+    }
+
+    public async ValueTask EnsureAsync(int count)
+    {
+        while (_ready.Count < count)
+        {
+            await FetchAsync();
+        }
     }
 
     /// <summary>
