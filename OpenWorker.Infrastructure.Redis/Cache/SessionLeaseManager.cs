@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using Arch.Core;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenWorker.Hotspot.Cache.Types;
 using Redis.OM;
@@ -15,12 +16,13 @@ namespace OpenWorker.Hotspot.Cache;
 /// shortens the lease: the next server takes the session over before it expires. If a server
 /// crashes, its sessions expire because nothing renews them.
 /// </summary>
-public sealed class SessionLeaseManager(
+public sealed partial class SessionLeaseManager(
     IRedisCollection<SessionCache> sessions,
     IConnectionMultiplexer redis,
     World? world = null,
     WorldLoop? loop = null,
-    IOptions<SessionLeaseOptions>? options = null) : ISessionCloseHandler
+    IOptions<SessionLeaseOptions>? options = null,
+    ILogger<SessionLeaseManager>? logger = null) : ISessionCloseHandler
 {
     /// <summary>
     /// The channel on which a server asks the holder of a session to let its player go.
@@ -87,6 +89,12 @@ public sealed class SessionLeaseManager(
         """);
 
     private ConcurrentDictionary<Entity, Lease> Leases { get; } = new();
+
+    /// <summary>
+    /// The leases of connections that have closed while something of their person is still being finished, by owner: the
+    /// entity is gone and its number may already be another player's.
+    /// </summary>
+    private ConcurrentDictionary<string, Lease> Kept { get; } = new();
 
     /// <summary>
     /// Takes over a session that exists for the connection of the player. A person is in one world at a time: while a
@@ -197,7 +205,7 @@ public sealed class SessionLeaseManager(
     /// </summary>
     public async Task<int> RenewAsync()
     {
-        var leases = Leases.Values.ToArray();
+        var leases = Leases.Values.Concat(Kept.Values).ToArray();
         var renewed = 0;
 
         for (var start = 0; start < leases.Length; start += RenewBatch)
@@ -230,6 +238,49 @@ public sealed class SessionLeaseManager(
             return;
         }
 
+        // Something of the person is still being finished after the connection, such as what it changed and the database has
+        // not taken yet: the session stays held and renewed, so nobody loads the person, until that ends.
+        if (world is not null && world.IsAlive(player) && world.TryGet(player, out SessionHoldComponent hold) && !hold.Until.IsCompleted)
+        {
+            Kept[lease.Owner] = lease;
+
+            _ = GiveUpAfterAsync(lease, hold.Until);
+
+            return;
+        }
+
+        await GiveUpAsync(lease);
+    }
+
+    private async Task GiveUpAfterAsync(Lease lease, Task until)
+    {
+        try
+        {
+            try
+            {
+                await until;
+            }
+
+            finally
+            {
+                Kept.TryRemove(lease.Owner, out _);
+            }
+
+            await GiveUpAsync(lease);
+        }
+
+        catch (Exception e)
+        {
+            // The lease is no longer renewed and expires by itself.
+            if (logger is not null)
+            {
+                LogKeptNotGivenUp(logger, e, lease.Session);
+            }
+        }
+    }
+
+    private async Task GiveUpAsync(Lease lease)
+    {
         var current = await sessions
             .FindByIdAsync(lease.Session.ToString(CultureInfo.InvariantCulture));
 
@@ -238,6 +289,9 @@ public sealed class SessionLeaseManager(
             await WriteAsync(lease, false, DisconnectedLease);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Session {Session} could not be let go after its last writes; it expires by itself")]
+    private static partial void LogKeptNotGivenUp(ILogger logger, Exception exception, long session);
 
     private async Task WriteAsync(Lease lease, bool connected, TimeSpan duration)
     {

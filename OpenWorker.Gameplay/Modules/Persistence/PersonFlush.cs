@@ -26,7 +26,7 @@ public sealed class NoPersonFlush : IPersonFlush
 /// The flush of one player: on a move to another server and when its connection closes (logout, a kick, the drain of a
 /// stopping server). With nothing changed it still waits for the writes of the player that are queued already.
 /// </summary>
-public sealed class PersonFlush(PersonSnapshots snapshots, PersistenceWriter writer) : IPersonFlush, ISessionCloseHandler
+public sealed class PersonFlush(World world, PersonSnapshots snapshots, PersistenceWriter writer) : IPersonFlush, ISessionCloseHandler
 {
     public async ValueTask FlushAsync(Entity player)
     {
@@ -36,8 +36,26 @@ public sealed class PersonFlush(PersonSnapshots snapshots, PersistenceWriter wri
         await writer.EnqueueAsync(writes);
     }
 
-    public ValueTask OnSessionClosedAsync(Entity player)
+    /// <summary>
+    /// The last flush of the player. What the database does not take in time is kept by the writer after the player is
+    /// gone, and the session stays held until it is written or given up (<see cref="SessionHoldComponent"/>).
+    /// </summary>
+    public async ValueTask OnSessionClosedAsync(Entity player)
     {
-        return FlushAsync(player);
+        if (world.DirtyOf(player) is not { } dirty)
+        {
+            await FlushAsync(player);
+
+            return;
+        }
+
+        IReadOnlyList<PersonWrite> writes = snapshots.Take(player) is { } write ? [write] : [];
+
+        var kept = await writer.LeaveAsync(dirty.Person, writes);
+
+        if (!kept.IsCompleted && world.IsAlive(player))
+        {
+            world.Add(player, new SessionHoldComponent(kept));
+        }
     }
 }

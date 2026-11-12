@@ -370,6 +370,44 @@ public sealed class TestSessionLease
     }
 
     /// <summary>
+    /// A connection that closes while what its person changed still waits for the database keeps its session held and
+    /// renewed after the entity is gone: a new login and the next server wait until the write is in, or given up.
+    /// </summary>
+    [TestMethod]
+    public async Task ASessionStaysHeldWhileWhatItsPersonChangedWaitsForTheDatabase()
+    {
+        using var world = World.Create();
+        var play = Options.Create(new SessionLeaseOptions { Play = true });
+        var district = new SessionLeaseManager(Sessions, Redis, world, options: play);
+        var next = new SessionLeaseManager(Sessions, Redis, options: play);
+        var session = NewSession();
+        var player = world.Create();
+        var written = new TaskCompletionSource();
+
+        await district.AttachAsync(player, session, 1);
+
+        world.Add(player, new SessionHoldComponent(written.Task));
+
+        await district.OnSessionClosedAsync(player);
+
+        world.Destroy(player);
+
+        Assert.IsTrue((await FindAsync(session))!.Connected, "A new login is refused while the write waits");
+        Assert.AreEqual(1, await district.RenewAsync(), "The held session is renewed");
+
+        var entering = next.TakeOverAsync(world.Create(), session, 1);
+
+        await Task.Delay(TimeSpan.FromMilliseconds(400), TestContext.CancellationToken);
+
+        Assert.IsFalse(entering.IsCompleted, "The next server waits for the write");
+
+        written.SetResult();
+
+        Assert.IsTrue(await entering.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken), "The person is let go once the write is in");
+        Assert.AreEqual(0, await district.RenewAsync(), "The session is no longer this server's");
+    }
+
+    /// <summary>
     /// A name is not tried any more after its wrong passwords, and a right one before that forgets them.
     /// </summary>
     [TestMethod]
