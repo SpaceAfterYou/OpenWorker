@@ -1,12 +1,16 @@
 using System.Diagnostics;
+using System.Threading.Channels;
 using Arch.Core;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Hotspot.Telemetry;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -88,16 +92,17 @@ public sealed class LeftPersonWritesTest
         public World World { get; } = World.Create();
         public WorldLoop Loop { get; } = new(NullLogger<WorldLoop>.Instance);
         public MetricsHost Metrics { get; } = new();
+        public PersonSnapshots Snapshots { get; }
         public PersistenceWriter Writer { get; }
         public PersonFlush Flush { get; }
 
-        public Server(PersistenceOptions options)
+        public Server(PersistenceOptions options, IPersonStore? store = null, TimeProvider? time = null)
         {
-            var snapshots = new PersonSnapshots(World, [], [new NewPlace()]);
+            Snapshots = new PersonSnapshots(World, [], [new NewPlace()]);
 
-            Writer = new PersistenceWriter(Database, Loop, snapshots, NullLogger<PersistenceWriter>.Instance, Options.Create(options),
-                new PersistenceMetrics(Metrics.Factory));
-            Flush = new PersonFlush(World, snapshots, Writer);
+            Writer = new PersistenceWriter(store ?? Database, Loop, Snapshots, NullLogger<PersistenceWriter>.Instance, Options.Create(options),
+                new PersistenceMetrics(Metrics.Factory), time);
+            Flush = new PersonFlush(World, Snapshots, Writer);
         }
 
         public Task<Entity> EnterAsync(int person) => Loop.InvokeAsync(() => World.Create(new DirtyComponent(new PersonDirty(person))));
@@ -139,12 +144,14 @@ public sealed class LeftPersonWritesTest
         Assert.IsNotNull(until, "The session is held while the write waits");
         Assert.IsFalse(until.IsCompleted);
         Assert.IsEmpty(server.Database.Written);
+        Assert.IsTrue(server.Writer.Keeps(7), "The person may not enter this server again while its write waits");
 
         server.Database.Down = false;
 
         await until.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken);
 
         Assert.AreEqual(Place, server.Database.Written.Single().Place, "The write is in before the session is let go");
+        Assert.IsFalse(server.Writer.Keeps(7));
         Assert.AreEqual(1, ended.Sum("outcome", "written"));
 
         await server.Writer.StopAsync(CancellationToken.None);
@@ -205,6 +212,280 @@ public sealed class LeftPersonWritesTest
         Assert.IsGreaterThanOrEqualTo(900, timer.ElapsedMilliseconds, "The stop waited for the kept write");
         Assert.IsTrue(until.IsCompleted, "The session is let go when the stop gives up");
         Assert.AreEqual(1, ended.Sum("outcome", "lost"));
+    }
+
+    /// <summary>
+    /// What the writer does, in its order: a write it sends to the database, or a wait it begins.
+    /// </summary>
+    private abstract record Step;
+
+    private sealed record Saved(int[] Persons, DateTimeOffset At) : Step;
+
+    private sealed record Waiting : Step;
+
+    /// <summary>
+    /// The fake clock of the writer; it tells when the writer begins to wait.
+    /// </summary>
+    private sealed class Clock(ChannelWriter<Step> steps) : FakeTimeProvider
+    {
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+
+            steps.TryWrite(new Waiting());
+
+            return timer;
+        }
+    }
+
+    /// <summary>
+    /// A database whose answer to each write the test decides, and which tells the test of each write.
+    /// </summary>
+    private sealed class ScriptedDatabase(ChannelWriter<Step> steps, TimeProvider clock) : IPersonStore
+    {
+        public Func<int[], Task> Answer { get; set; } = _ => Task.CompletedTask;
+
+        public Task SaveChangesAsync(IReadOnlyList<PersonChanges> batch, CancellationToken cancellationToken = default)
+        {
+            var persons = batch.Select(e => e.Person).Distinct().Order().ToArray();
+
+            // The answer first: what it changes is seen by the test together with the write.
+            var answer = Answer(persons);
+
+            steps.TryWrite(new Saved(persons, clock.GetUtcNow()));
+
+            return answer;
+        }
+
+        public Task<List<ItemPersistent>> LoadItemsAsync(int person, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<long[]> ReserveSerialsAsync(int count, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<string?> LoadDocumentAsync(int person, PersonStateKind kind, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Dictionary<PersonStateKind, string>> LoadDocumentsAsync(int person, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Runs the writer step by step on the fake clock: every wait it begins passes at once, every write is recorded.
+    /// </summary>
+    private sealed class Script
+    {
+        private readonly Channel<Step> _steps = System.Threading.Channels.Channel.CreateUnbounded<Step>();
+
+        public Script()
+        {
+            Clock = new Clock(_steps.Writer);
+            Database = new ScriptedDatabase(_steps.Writer, Clock);
+        }
+
+        public Clock Clock { get; }
+
+        public ScriptedDatabase Database { get; }
+
+        public List<Saved> Saves { get; } = [];
+
+        /// <summary>
+        /// Takes the steps of the writer until <paramref name="done"/> holds; <paramref name="wake"/> ends when it may hold
+        /// while the writer does nothing.
+        /// </summary>
+        public async Task RunUntilAsync(Func<bool> done, Task? wake = null)
+        {
+            while (!done())
+            {
+                if (_steps.Reader.TryRead(out var step))
+                {
+                    if (step is Saved saved)
+                    {
+                        Saves.Add(saved);
+                    }
+
+                    else
+                    {
+                        Clock.Advance(PersistenceWriter.RetryDelay);
+                    }
+
+                    continue;
+                }
+
+                var next = _steps.Reader.WaitToReadAsync().AsTask();
+
+                // A liveness bound only: every wait of the writer passes on the fake clock.
+                await Task.WhenAny(next, wake ?? next).WaitAsync(TimeSpan.FromSeconds(10));
+            }
+        }
+    }
+
+    private static Task Unreachable() => Task.FromException(new InvalidOperationException("No answer.", new TimeoutException()));
+
+    /// <summary>
+    /// Players leave together before the writer starts, so that their writes go in one batch.
+    /// </summary>
+    private static async Task<Task<Task?[]>> LeaveTogetherAsync(Server server, params int[] persons)
+    {
+        var players = new List<Entity>();
+
+        foreach (var person in persons)
+        {
+            players.Add(await server.EnterAsync(person));
+        }
+
+        var leaving = Task.WhenAll(players.Select(server.LeaveAsync));
+
+        // The loop takes callbacks in order: after this one, every close has queued its writes.
+        await server.Loop.InvokeAsync(() => { });
+
+        return leaving;
+    }
+
+    /// <summary>
+    /// Players leave together while the database does not take their writes; the writer runs until it keeps them all, and
+    /// then the clock stands while their closes end, so that no bound passes before a close sees what holds its session.
+    /// Returns what holds each session.
+    /// </summary>
+    private static async Task<Task[]> LeaveAndKeepAsync(Script script, Server server, params int[] persons)
+    {
+        using var kept = server.Metrics.Listen<long>("persistence.kept");
+
+        var leaving = await LeaveTogetherAsync(server, persons);
+
+        await server.Writer.StartAsync(CancellationToken.None);
+        await script.RunUntilAsync(() => kept.GetMeasurementSnapshot().Count(e => e.Value > 0) == persons.Length);
+
+        var holds = await leaving.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.IsTrue(holds.All(e => e is { IsCompleted: false }), "Every session is held");
+
+        return [.. holds.Select(e => e!)];
+    }
+
+    /// <summary>
+    /// A database that does not answer costs the players who left one try together each round, never one each, and none at
+    /// all once their time is up: they are let go at the bound, not a try later.
+    /// </summary>
+    [TestMethod]
+    public async Task ADatabaseThatDoesNotAnswerCostsThePlayersWhoLeftOneTryARoundAndNoneAfterTheirTime()
+    {
+        var script = new Script();
+        var timeout = TimeSpan.FromSeconds(20);
+
+        using var server = new Server(new PersistenceOptions { KeepTimeout = timeout }, script.Database, script.Clock);
+        using var kept = new MetricCollector<long>(server.Metrics.Factory, OpenWorkerMeter.Name, "persistence.kept", script.Clock);
+        using var ended = server.Metrics.Listen<long>("persistence.kept.ended");
+
+        script.Database.Answer = _ => Unreachable();
+
+        var holds = await LeaveAndKeepAsync(script, server, 7, 8, 9);
+
+        await script.RunUntilAsync(() => holds.All(e => e.IsCompleted), Task.WhenAll(holds));
+
+        var keptAt = kept.GetMeasurementSnapshot().Where(e => e.Value > 0).Select(e => e.Timestamp).Distinct().Single();
+
+        Assert.IsTrue(script.Saves.All(e => e.Persons.SequenceEqual([7, 8, 9])), "No try of a person on its own after the database did not answer");
+        Assert.IsTrue(script.Saves.Any(e => e.At > keptAt), "The kept writes were tried");
+        Assert.IsTrue(script.Saves.All(e => e.At < keptAt + timeout), "No try once the time is up");
+        Assert.AreEqual(3, ended.Sum("outcome", "lost"));
+
+        await server.Writer.StopAsync(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// The players who left do not hold back the writes of the players still on the server: a round of them tried one by
+    /// one stops as soon as another write waits, and the next round begins with the one tried longest ago.
+    /// </summary>
+    [TestMethod]
+    public async Task ThePlayersWhoLeftDoNotHoldBackTheWritesOfThoseWhoStay()
+    {
+        var script = new Script();
+
+        using var server = new Server(new PersistenceOptions(), script.Database, script.Clock);
+
+        var staying = await server.EnterAsync(9);
+        var write = (await server.Loop.InvokeAsync(() => server.Snapshots.Take(staying)))!;
+        var tries = 0;
+        Task<bool>? flushed = null;
+
+        script.Database.Answer = persons =>
+        {
+            // The first try of person 7 on its own after it was kept: the player who stays flushes meanwhile.
+            if (persons is [7] && ++tries == PersistenceWriter.MaxAttempts + 1)
+            {
+                flushed = server.Writer.EnqueueAsync([write]);
+            }
+
+            return persons.Contains(7) || persons.Contains(8)
+                ? Task.FromException(new InvalidOperationException("The database refuses the rows."))
+                : Task.CompletedTask;
+        };
+
+        var leaving = await LeaveTogetherAsync(server, 7, 8);
+
+        await server.Writer.StartAsync(CancellationToken.None);
+
+        var first = -1;
+
+        await script.RunUntilAsync(() =>
+        {
+            first = flushed is null ? -1 : script.Saves.FindIndex(e => e.Persons is [9]) - 1;
+
+            return first >= 0 && script.Saves.Count >= first + 4;
+        });
+
+        Assert.IsTrue(await flushed!, "The write of the player who stays is in");
+        Assert.IsTrue(script.Saves[first].Persons is [7], "The round was stopped right after person 7");
+        Assert.IsTrue(script.Saves[first + 2].Persons is [7, 8], "The next round tries both together first");
+        Assert.IsTrue(script.Saves[first + 3].Persons is [8], "and then the one tried longest ago");
+
+        await server.Writer.StopAsync(new CancellationToken(true));
+    }
+
+    /// <summary>
+    /// A server that stops and gives up what it keeps writes nothing of it any more, lets a session go only once the database
+    /// has answered the write that was on its way, and does not keep a player who leaves after that.
+    /// </summary>
+    [TestMethod]
+    public async Task AStopThatGivesUpWritesNothingOfWhatItGaveUpAndKeepsNobodyAfter()
+    {
+        var script = new Script();
+
+        using var server = new Server(new PersistenceOptions(), script.Database, script.Clock);
+        using var ended = server.Metrics.Listen<long>("persistence.kept.ended");
+
+        script.Database.Answer = _ => Unreachable();
+
+        var holds = await LeaveAndKeepAsync(script, server, 7, 8);
+        var onItsWay = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sent = 0;
+
+        // The next write of the persons who left hangs on its way. The database is back for them after it: anything of them
+        // written later would land after their sessions went. Player 10 is never written.
+        script.Database.Answer = persons => persons.Contains(10)
+            ? Unreachable()
+            : Interlocked.Increment(ref sent) == 1 ? onItsWay.Task : Task.CompletedTask;
+
+        await script.RunUntilAsync(() => Volatile.Read(ref sent) > 0);
+
+        // A player leaves while the kept writes are on their way; the server stops before its writes are given up.
+        var player = await server.EnterAsync(10);
+        var last = server.LeaveAsync(player);
+
+        await server.Loop.InvokeAsync(() => { });
+        await server.Writer.StopAsync(new CancellationToken(true));
+
+        Assert.IsFalse(holds.Any(e => e.IsCompleted), "The sessions stay held while their write may still land");
+
+        onItsWay.SetException(new TimeoutException());
+
+        await script.RunUntilAsync(() => last.IsCompleted && holds.All(e => e.IsCompleted), Task.WhenAll([last, .. holds]));
+
+        Assert.IsFalse(holds.Any(e => ((Task<bool>)e).Result), "Lost, not written");
+        Assert.AreEqual(1, Volatile.Read(ref sent), "Nothing given up is written after the write that was on its way");
+        Assert.IsNull(await last, "A player who leaves after the stop gave up is not kept: its session goes at once");
+        Assert.AreEqual(3, ended.Sum("outcome", "lost"));
+
+        var stopped = server.Writer.StopAsync(CancellationToken.None);
+
+        await script.RunUntilAsync(() => stopped.IsCompleted, stopped);
     }
 
     public TestContext TestContext { get; set; } = null!;

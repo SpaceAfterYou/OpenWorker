@@ -43,6 +43,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 using Redis.OM.Searching;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Helpers;
@@ -97,6 +98,7 @@ public sealed partial class PersonService(
     MovementPace pace,
     MyRoomBook roomBook,
     MyRoomService roomService,
+    PersistenceWriter writes,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -170,6 +172,14 @@ public sealed partial class PersonService(
         // in one world at a time, and is read from the database only after that.
         if (!await leases.TakeOverAsync(context.Player, request.Session.Key, request.Session.Account) || !world.IsAlive(context.Player))
         {
+            session.Disconnect();
+            return;
+        }
+
+        // What the person changed when it last left this server still waits for the database: it would be read older here.
+        if (writes.Keeps(request.Actor.Identifier))
+        {
+            LogStillWritten(logger, request.Account, request.Actor.Identifier);
             session.Disconnect();
             return;
         }
@@ -453,6 +463,9 @@ public sealed partial class PersonService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person} with no reservation, or with one that has expired, and is turned away")]
     private static partial void LogNoReservation(ILogger logger, int account, int person);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Account {Account} came to a maze as person {Person} while what that person changed when it left this server still waits for the database, and is turned away: its session should have stayed held")]
+    private static partial void LogStillWritten(ILogger logger, int account, int person);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the reservation of that person belongs to account {ReservedAccount}, and it is turned away")]
     private static partial void LogForeignReservation(ILogger logger, int account, int person, int reservedAccount);

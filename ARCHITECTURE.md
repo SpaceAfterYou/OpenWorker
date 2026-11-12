@@ -271,7 +271,9 @@ readiness off, because `ServerState` listens to `ApplicationStopping`.
 4. The host stops the other services, the health endpoint among them, in the reverse order of their registration:
    `PersistenceFlushService` takes a last round of what is left (players the drain did not close in time), then
    `PersistenceWriter` writes what is queued and what it keeps of the players who left (see Database), and stops; the
-   time of the host bounds that wait, and what is still kept then is lost, with an error per player. Last the container
+   time of the host bounds that wait, and what is still kept then is lost, with an error per player, and is not tried any
+   more; a player whose write is on its way at that moment is let go only once the database answers it (or the lease
+   expires with the process), and a player who would be kept after that is lost at once. Last the container
    disposes the world loop.
    The loop runs through the whole drain and the last round, because the close handlers and the snapshots need it.
 
@@ -439,14 +441,21 @@ wrote last. A handler never waits for these writes.
 - **The write.** `PersistenceWriter` writes off the loop, one batch after another: everything queued while a batch is
   written goes into the next one, in one transaction of raw statements (an item and a document are upserts, a row an
   `UPDATE` by its key), a few hundred statements per round trip. The snapshot and the queue happen in one callback of
-  the loop, so the writes of a person reach the database in the order they were taken. A failed batch is written person by
-  person; a person whose write still fails is tried again (`PersistenceWriter.MaxAttempts`), then given up, with an error
-  in the log and its parts marked again if it is still on the server.
+  the loop, so the writes of a person reach the database in the order they were taken. A batch the database refused is
+  written person by person; one it did not answer (a timeout, a broken connection) is not, since each person would wait as
+  long again. A person whose write still fails is tried again (`PersistenceWriter.MaxAttempts`), then given up, with an
+  error in the log and its parts marked again if it is still on the server.
 - **A player who leaves while the database is down.** The flush of a closing connection (`PersistenceWriter.LeaveAsync`)
   does not give the parts back to the player, who is about to be destroyed: the writer keeps the snapshots, in order, and
-  tries them again every two seconds, off the loop; a later write of that person goes after them. `PersonFlush` puts a
+  tries them again every two seconds, off the loop; a later write of that person goes after them. A round tries every kept
+  person in one transaction; only when the database refused it, each person on its own, the one tried longest ago first,
+  and the round stops as soon as writes of the players still on the server wait. A person whose time is up is given up
+  before the round, without a try, so a session is held at most `Persistence:KeepTimeout` and one try. `PersonFlush` puts a
   `SessionHoldComponent` on the closing entity, and `SessionLeaseManager` keeps the session held and renewed after the
-  entity is gone, so no other server and no new login loads the person until the write is in. Bounds:
+  entity is gone, so no other server and no new login loads the person until the write is in. That hold rests on the
+  Redis record: the entry of the district and the maze also turns away a person this server still keeps
+  (`PersistenceWriter.Keeps`), and a held lease whose record could not be renewed (Redis lost it, or another holder took
+  it) is logged as an error and no longer renewed. Bounds:
   `Persistence:KeepTimeout` (10 min) per person and `Persistence:KeepLimit` (2000) persons per server; past either the
   changes are lost, with an error that names the person and the parts, and the session is let go. `persistence.kept`
   counts the players who wait.
@@ -493,7 +502,7 @@ or wrong setting stops the server with a message that names the key. A setting w
 - `Hotspot:EntryTimeout` is how long a connection may stay open before it enters (see "Read loop"): `00:01:00` unless set,
   which the gate, the districts and the mazes keep, since the client sends its entry the moment it connects to them; the
   auth server sets `00:10:00`, since the client connects to it when the program starts and a person types the password
-  into the login window on that connection, and the client quits when the server closes it.
+  into the login window on that connection, and the client quits when the server closes it. It is at most a day.
 - `Hotspot:RateLimits:Movement`, `:Chat`, `:Items` and `:Other`, each with `PerSecond` and `Burst`, are the token buckets of a
   session: 30 and 60, 5 and 10, 20 and 40, 60 and 200 unless set (a rate above 0, a burst from 1).
 - `World:VisibilityRadius` (5000 game units), `World:SpeedTolerance` (1.5), `World:MoveBurst` (`00:00:05`), `World:MaxMoveStep`

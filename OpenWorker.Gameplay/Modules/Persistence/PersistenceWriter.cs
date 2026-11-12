@@ -1,4 +1,5 @@
-using System.Diagnostics;
+using System.Data.Common;
+using System.Net.Sockets;
 using OpenWorker.Domain.Stores;
 using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
@@ -24,7 +25,8 @@ public sealed partial class PersistenceWriter(
     PersonSnapshots snapshots,
     ILogger<PersistenceWriter> logger,
     IOptions<PersistenceOptions>? options = null,
-    PersistenceMetrics? metrics = null) : IHostedService
+    PersistenceMetrics? metrics = null,
+    TimeProvider? time = null) : IHostedService
 {
     /// <summary>
     /// How often the writes of one person are tried before they are given up: a database that is down for a while
@@ -32,7 +34,12 @@ public sealed partial class PersistenceWriter(
     /// </summary>
     public const int MaxAttempts = 5;
 
-    private static TimeSpan RetryDelay { get; } = TimeSpan.FromSeconds(2);
+    /// <summary>
+    /// How long the writer waits before it tries again what failed, and between two rounds of what is kept.
+    /// </summary>
+    public static TimeSpan RetryDelay { get; } = TimeSpan.FromSeconds(2);
+
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
 
     private readonly Channel<Request> _queue = Channel.CreateUnbounded<Request>(new UnboundedChannelOptions { SingleReader = true });
 
@@ -54,6 +61,17 @@ public sealed partial class PersistenceWriter(
     private readonly Dictionary<int, Kept> _kept = [];
 
     private readonly Lock _keptLock = new();
+
+    /// <summary>
+    /// The stop of the server has given up what was kept: what would be kept after it is lost at once. Under
+    /// <see cref="_keptLock"/>.
+    /// </summary>
+    private bool _givenUp;
+
+    /// <summary>
+    /// Counts the tries of kept persons on their own, so that the one tried longest ago goes first. Writer only.
+    /// </summary>
+    private long _turn;
 
     private int KeptCount
     {
@@ -113,6 +131,19 @@ public sealed partial class PersistenceWriter(
         }
     }
 
+    /// <summary>
+    /// Whether what the person changed before it left this server still waits here for the database. Such a person may not
+    /// enter again until it is written or given up: its entry would read an older state, and the kept writes would land
+    /// over what it changes then.
+    /// </summary>
+    public bool Keeps(int person)
+    {
+        lock (_keptLock)
+        {
+            return _kept.ContainsKey(person);
+        }
+    }
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _consumer = Task.Run(ConsumeAsync, CancellationToken.None);
@@ -145,7 +176,7 @@ public sealed partial class PersistenceWriter(
     {
         var reader = _queue.Reader;
         var pending = new List<Pending>();
-        var keptTried = Stopwatch.GetTimestamp();
+        var keptTried = _time.GetTimestamp();
 
         while (pending.Count > 0 || KeptCount > 0 || await reader.WaitToReadAsync())
         {
@@ -183,11 +214,11 @@ public sealed partial class PersistenceWriter(
             {
                 await WriteAsync(batch, pending);
 
-                if (KeptCount > 0 && Stopwatch.GetElapsedTime(keptTried) >= RetryDelay)
+                if (KeptCount > 0 && _time.GetElapsedTime(keptTried) >= RetryDelay)
                 {
-                    keptTried = Stopwatch.GetTimestamp();
+                    keptTried = _time.GetTimestamp();
 
-                    await WriteKeptAsync();
+                    await WriteKeptAsync(reader);
                 }
             }
 
@@ -199,7 +230,7 @@ public sealed partial class PersistenceWriter(
 
             if (pending.Count > 0)
             {
-                await Task.Delay(RetryDelay);
+                await Task.Delay(RetryDelay, _time);
             }
 
             else if (KeptCount > 0)
@@ -212,16 +243,16 @@ public sealed partial class PersistenceWriter(
     /// <summary>
     /// Waits for the next request, or for the next try of what is kept, whichever comes first.
     /// </summary>
-    private static async Task WaitForRequestsAsync(ChannelReader<Request> reader)
+    private async Task WaitForRequestsAsync(ChannelReader<Request> reader)
     {
-        using var timeout = new CancellationTokenSource(RetryDelay);
+        using var timeout = new CancellationTokenSource(RetryDelay, _time);
 
         try
         {
             if (!await reader.WaitToReadAsync(timeout.Token))
             {
                 // Nothing more comes: the writer is stopping and waits only for what is kept.
-                await Task.Delay(RetryDelay, timeout.Token);
+                await Task.Delay(Timeout.InfiniteTimeSpan, timeout.Token);
             }
         }
 
@@ -242,6 +273,17 @@ public sealed partial class PersistenceWriter(
                 await store.SaveChangesAsync(writes.Select(e => e.Write!.Changes).ToList());
 
                 Complete(writes, true);
+            }
+
+            catch (Exception e) when (IsUnreachable(e))
+            {
+                // The database did not answer: one by one, each would wait as long again. All are tried in the next round.
+                LogBatchUnreachable(logger, e, writes.Count);
+
+                foreach (var person in writes.GroupBy(x => x.Write!.Changes.Person))
+                {
+                    await FailAsync(person.Key, [.. person], e, retry);
+                }
             }
 
             catch (Exception e)
@@ -287,30 +329,57 @@ public sealed partial class PersistenceWriter(
 
             catch (Exception e)
             {
-                var attempt = mine.Max(x => x.Attempt) + 1;
-
-                if (attempt < MaxAttempts)
-                {
-                    LogPersonFailed(logger, e, person.Key, attempt);
-
-                    retry.AddRange(mine.Select(x => x with { Attempt = attempt }));
-
-                    continue;
-                }
-
-                if (await GiveBackAsync(mine))
-                {
-                    Keep(person.Key, mine, e);
-                }
-
-                else
-                {
-                    LogPersonGivenUp(logger, e, person.Key, attempt);
-                }
-
-                Complete(mine, false);
+                await FailAsync(person.Key, mine, e, retry);
             }
         }
+    }
+
+    /// <summary>
+    /// The writes of one person failed: they are tried again, or after the last attempt given back to the player, or kept
+    /// when the player is leaving.
+    /// </summary>
+    private async Task FailAsync(int person, List<Pending> mine, Exception failure, List<Pending> retry)
+    {
+        var attempt = mine.Max(x => x.Attempt) + 1;
+
+        if (attempt < MaxAttempts)
+        {
+            LogPersonFailed(logger, failure, person, attempt);
+
+            retry.AddRange(mine.Select(x => x with { Attempt = attempt }));
+
+            return;
+        }
+
+        if (await GiveBackAsync(mine))
+        {
+            Keep(person, mine, failure);
+        }
+
+        else
+        {
+            LogPersonGivenUp(logger, failure, person, attempt);
+        }
+
+        Complete(mine, false);
+    }
+
+    /// <summary>
+    /// Whether a write failed because the database could not be reached or did not answer, rather than because it refused
+    /// the data: then every other write of the moment fails the same way, and trying them one by one only multiplies the
+    /// wait.
+    /// </summary>
+    private static bool IsUnreachable(Exception failure)
+    {
+        for (var cause = failure; cause is not null; cause = cause.InnerException)
+        {
+            if (cause is TimeoutException or SocketException or IOException or DbException { IsTransient: true })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -351,11 +420,12 @@ public sealed partial class PersistenceWriter(
     /// </summary>
     private void Keep(int person, List<Pending> given, Exception failure)
     {
-        var kept = new Kept(person);
+        var kept = new Kept(person, _time.GetTimestamp(), failure);
 
         kept.Writes.AddRange(given.Select(e => e.Write!));
 
         bool full;
+        bool stopped;
 
         lock (_keptLock)
         {
@@ -366,12 +436,23 @@ public sealed partial class PersistenceWriter(
                 return;
             }
 
+            stopped = _givenUp;
             full = _kept.Count >= _keepLimit;
 
-            if (!full)
+            if (!full && !stopped)
             {
                 _kept[person] = kept;
             }
+        }
+
+        if (stopped)
+        {
+            // The stop of the server has given up what was kept already; nothing would try this one any more.
+            LogKeptLostOnStop(logger, person, kept.Sections, kept.Items);
+
+            metrics?.Refused();
+
+            return;
         }
 
         if (full)
@@ -408,75 +489,164 @@ public sealed partial class PersistenceWriter(
     }
 
     /// <summary>
-    /// Tries what is kept: every person in one transaction, and when that fails each on its own, so that one the database
-    /// refuses does not hold back the others. A person still not written after <see cref="PersistenceOptions.KeepTimeout"/>
-    /// is given up.
+    /// A round of what is kept. A person whose time is up is given up first, without a try. The others are tried in one
+    /// transaction; when the database did not answer, that is all for the round, since each on its own would wait as long
+    /// again. When it refused the data, each person is tried on its own, the one tried longest ago first, so that one the
+    /// database refuses does not hold back the others; and the round stops as soon as new writes wait, so that the players
+    /// still on the server are not held back by those who left. The rest have their turn in the next round.
     /// </summary>
-    private async Task WriteKeptAsync()
+    private async Task WriteKeptAsync(ChannelReader<Request> reader)
     {
-        Kept[] kept;
+        EndExpired();
 
-        lock (_keptLock)
+        var kept = Begin(null);
+
+        if (kept.Length == 0)
         {
-            kept = [.. _kept.Values];
+            return;
         }
 
-        if (kept.Length > 1)
+        try
         {
-            try
+            await store.SaveChangesAsync(kept.SelectMany(e => e.Writes).Select(e => e.Changes).ToList());
+
+            foreach (var one in kept)
             {
-                await store.SaveChangesAsync(kept.SelectMany(e => e.Writes).Select(e => e.Changes).ToList());
+                Settle(one, null);
+            }
 
-                foreach (var one in kept)
-                {
-                    End(one, null);
-                }
+            return;
+        }
 
+        catch (Exception e)
+        {
+            foreach (var one in kept)
+            {
+                Settle(one, e);
+            }
+
+            if (kept.Length == 1 || IsUnreachable(e))
+            {
                 return;
             }
-
-            catch (Exception)
-            {
-                // Each on its own below; what failed is logged when a person is given up.
-            }
         }
 
-        foreach (var one in kept)
+        foreach (var one in kept.OrderBy(e => e.Turn))
         {
+            if (Begin(one).Length == 0)
+            {
+                // Given up meanwhile: its time is up, or the server stops.
+                continue;
+            }
+
+            one.Turn = ++_turn;
+
             try
             {
                 await store.SaveChangesAsync(one.Writes.Select(e => e.Changes).ToList());
 
-                End(one, null);
+                Settle(one, null);
             }
 
             catch (Exception e)
             {
-                if (Stopwatch.GetElapsedTime(one.Since) >= _keepTimeout)
-                {
-                    End(one, e);
-                }
+                Settle(one, e);
+            }
+
+            if (reader.TryPeek(out _))
+            {
+                return;
             }
         }
     }
 
     /// <summary>
-    /// What was kept of a person is written (<paramref name="failure"/> null) or lost: the session of the person is let go.
+    /// Gives up, without a try, every kept person whose time is up.
     /// </summary>
-    private void End(Kept kept, Exception? failure)
+    private void EndExpired()
+    {
+        Kept[] expired;
+
+        lock (_keptLock)
+        {
+            expired = [.. _kept.Values.Where(e => _time.GetElapsedTime(e.Since) >= _keepTimeout)];
+
+            foreach (var one in expired)
+            {
+                _kept.Remove(one.Person);
+            }
+        }
+
+        foreach (var one in expired)
+        {
+            End(one, one.Failure);
+        }
+    }
+
+    /// <summary>
+    /// Takes the persons about to be tried, <paramref name="one"/> or every kept person, and marks them as on their way to
+    /// the database, so that the stop of the server knows their outcome is not known yet. One no longer kept is left out.
+    /// </summary>
+    private Kept[] Begin(Kept? one)
     {
         lock (_keptLock)
         {
-            // The stop of the server may have given it up already.
-            if (!_kept.TryGetValue(kept.Person, out var found) || found != kept)
+            Kept[] taken = one is null
+                ? [.. _kept.Values]
+                : _kept.TryGetValue(one.Person, out var found) && found == one ? [one] : [];
+
+            foreach (var each in taken)
+            {
+                each.Writing = true;
+            }
+
+            return taken;
+        }
+    }
+
+    /// <summary>
+    /// A try of a kept person has answered: written (<paramref name="failure"/> null), or failed. The person is ended when
+    /// it is written, when its time is up, and when the stop of the server gave it up during the try; else it waits for the
+    /// next round.
+    /// </summary>
+    private void Settle(Kept kept, Exception? failure)
+    {
+        lock (_keptLock)
+        {
+            kept.Writing = false;
+            kept.Failure = failure ?? kept.Failure;
+
+            if (kept.GivenUpWhileWriting)
+            {
+                kept.GivenUpWhileWriting = false;
+            }
+
+            else if (!_kept.TryGetValue(kept.Person, out var found) || found != kept)
             {
                 return;
             }
 
-            _kept.Remove(kept.Person);
+            else if (failure is not null && _time.GetElapsedTime(kept.Since) < _keepTimeout)
+            {
+                return;
+            }
+
+            else
+            {
+                _kept.Remove(kept.Person);
+            }
         }
 
-        var elapsed = Stopwatch.GetElapsedTime(kept.Since);
+        End(kept, failure);
+    }
+
+    /// <summary>
+    /// What was kept of a person is written (<paramref name="failure"/> null) or lost: the session of the person is let go.
+    /// No longer kept when this is called.
+    /// </summary>
+    private void End(Kept kept, Exception? failure)
+    {
+        var elapsed = _time.GetElapsedTime(kept.Since);
 
         if (failure is null)
         {
@@ -494,22 +664,38 @@ public sealed partial class PersistenceWriter(
     }
 
     /// <summary>
-    /// The host stopped waiting: what is still kept is lost.
+    /// The host stopped waiting: what is still kept is lost, nothing of it is tried any more, and what would be kept from
+    /// now on is lost at once. A person whose try is on its way to the database at this moment may still land there: its
+    /// session is let go only when the database has answered, or expires by itself when the process ends first.
     /// </summary>
     private void GiveUpKept()
     {
-        Kept[] kept;
+        (Kept Kept, bool Writing, PersonSections Sections, int Items)[] kept;
 
         lock (_keptLock)
         {
-            kept = [.. _kept.Values];
+            _givenUp = true;
+
+            kept = [.. _kept.Values.Select(e => (e, e.Writing, e.Sections, e.Items))];
 
             _kept.Clear();
+
+            foreach (var (one, writing, _, _) in kept)
+            {
+                one.GivenUpWhileWriting = writing;
+            }
         }
 
-        foreach (var one in kept)
+        foreach (var (one, writing, sections, items) in kept)
         {
-            LogKeptLostOnStop(logger, one.Person, one.Sections, one.Items);
+            if (writing)
+            {
+                LogKeptUnsettledOnStop(logger, one.Person, sections, items);
+
+                continue;
+            }
+
+            LogKeptLostOnStop(logger, one.Person, sections, items);
 
             metrics?.Ended(false);
 
@@ -558,11 +744,32 @@ public sealed partial class PersistenceWriter(
     /// <summary>
     /// The writes of a person who has left, in their order, since the moment the first was kept.
     /// </summary>
-    private sealed class Kept(int person)
+    private sealed class Kept(int person, long since, Exception failure)
     {
         public int Person { get; } = person;
 
-        public long Since { get; } = Stopwatch.GetTimestamp();
+        public long Since { get; } = since;
+
+        /// <summary>
+        /// Why the last try failed: named when the person is given up.
+        /// </summary>
+        public Exception Failure { get; set; } = failure;
+
+        /// <summary>
+        /// The turn of its last try on its own: the person tried longest ago goes first. Writer only.
+        /// </summary>
+        public long Turn { get; set; }
+
+        /// <summary>
+        /// A try is on its way to the database. Under the lock of the kept persons.
+        /// </summary>
+        public bool Writing { get; set; }
+
+        /// <summary>
+        /// The stop of the server gave the person up while its try was on its way: it is ended when the try answers. Under the
+        /// lock of the kept persons.
+        /// </summary>
+        public bool GivenUpWhileWriting { get; set; }
 
         public List<PersonWrite> Writes { get; } = [];
 
@@ -578,6 +785,9 @@ public sealed partial class PersistenceWriter(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Writing the changes of {Count} persons together failed, they are written one by one")]
     private static partial void LogBatchFailed(ILogger logger, Exception exception, int count);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Writing the changes of {Count} persons together failed because the database did not answer; all are tried again later, not one by one")]
+    private static partial void LogBatchUnreachable(ILogger logger, Exception exception, int count);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Writing the changes of person {Person} failed (attempt {Attempt}), it is tried again")]
     private static partial void LogPersonFailed(ILogger logger, Exception exception, int person, int attempt);
@@ -605,6 +815,9 @@ public sealed partial class PersistenceWriter(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The server stopped before what person {Person} changed before it left could be written; it is lost: {Sections}, {Items} items")]
     private static partial void LogKeptLostOnStop(ILogger logger, int person, PersonSections sections, int items);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The server stopped while what person {Person} changed before it left was on its way to the database; whether it lands is not known: {Sections}, {Items} items. The session is let go when the database answers, or expires by itself")]
+    private static partial void LogKeptUnsettledOnStop(ILogger logger, int person, PersonSections sections, int items);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The writer of the changes of persons failed")]
     private static partial void LogWriterFailed(ILogger logger, Exception exception);

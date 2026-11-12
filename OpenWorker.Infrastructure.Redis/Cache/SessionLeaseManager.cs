@@ -74,15 +74,18 @@ public sealed partial class SessionLeaseManager(
     /// Renews every lease whose record still names this connection as its owner; another server that took the session
     /// over, or a new login that replaced it, keeps its own. The record holds the rest already (written by
     /// <see cref="AttachAsync"/>), so the renewal only moves the expiry. Each lease comes with the key of the trade password
-    /// state of its session, which lives exactly as long as the lease does (<see cref="RedisTradePasswordStates"/>).
+    /// state of its session, which lives exactly as long as the lease does (<see cref="RedisTradePasswordStates"/>). Returns
+    /// 1 for each lease renewed and 0 for each that is not, in the order given.
     /// </summary>
     private static RedisScript RenewIfOwner { get; } = new("""
-        local renewed = 0
+        local renewed = {}
         for index = 1, #KEYS, 2 do
             if redis.call('HGET', KEYS[index], 'Owner') == ARGV[(index + 1) / 2 + 1] then
                 redis.call('PEXPIRE', KEYS[index], ARGV[1])
                 redis.call('PEXPIRE', KEYS[index + 1], ARGV[1])
-                renewed = renewed + 1
+                renewed[#renewed + 1] = 1
+            else
+                renewed[#renewed + 1] = 0
             end
         end
         return renewed
@@ -202,10 +205,12 @@ public sealed partial class SessionLeaseManager(
 
     /// <summary>
     /// Renews the leases this server holds, <see cref="RenewBatch"/> in one round trip. Returns how many were renewed.
+    /// A held lease of a closed connection that could not be renewed is reported as an error and no longer renewed: its
+    /// record is gone or names another holder, so the hold of its person is broken.
     /// </summary>
     public async Task<int> RenewAsync()
     {
-        var leases = Leases.Values.Concat(Kept.Values).ToArray();
+        var leases = Leases.Values.Select(e => (Lease: e, Kept: false)).Concat(Kept.Values.Select(e => (Lease: e, Kept: true))).ToArray();
         var renewed = 0;
 
         for (var start = 0; start < leases.Length; start += RenewBatch)
@@ -218,17 +223,43 @@ public sealed partial class SessionLeaseManager(
 
             for (var index = 0; index < count; index++)
             {
-                var lease = leases[start + index];
+                var lease = leases[start + index].Lease;
 
                 keys[index * 2] = KeyPrefix + lease.Session.ToString(CultureInfo.InvariantCulture);
                 keys[(index * 2) + 1] = RedisTradePasswordStates.Key(lease.Session);
                 values[index + 1] = lease.Owner;
             }
 
-            renewed += (int)await RenewIfOwner.EvaluateAsync(redis, keys, values);
+            var results = (RedisResult[])(await RenewIfOwner.EvaluateAsync(redis, keys, values))!;
+
+            for (var index = 0; index < count; index++)
+            {
+                if ((int)results[index] == 1)
+                {
+                    renewed++;
+                }
+
+                else if (leases[start + index] is { Kept: true, Lease: var lease })
+                {
+                    LostHold(lease);
+                }
+            }
         }
 
         return renewed;
+    }
+
+    /// <summary>
+    /// The record of a session held for its person after the connection closed no longer names this server: Redis lost it,
+    /// or another holder took it. Nothing keeps the person from being loaded elsewhere before what it changed here is
+    /// written; the lease is no longer renewed. A lease whose hold ended meanwhile was let go as usual and is not reported.
+    /// </summary>
+    private void LostHold(Lease lease)
+    {
+        if (Kept.TryRemove(new KeyValuePair<string, Lease>(lease.Owner, lease)) && logger is not null)
+        {
+            LogHoldLost(logger, lease.Session, lease.Account);
+        }
     }
 
     public async ValueTask OnSessionClosedAsync(Entity player)
@@ -292,6 +323,9 @@ public sealed partial class SessionLeaseManager(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Session {Session} could not be let go after its last writes; it expires by itself")]
     private static partial void LogKeptNotGivenUp(ILogger logger, Exception exception, long session);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Session {Session} of account {Account} is held until what its person changed before it left is written, but its record could not be renewed: Redis lost it or another holder took it, and the person may be loaded elsewhere before the write lands")]
+    private static partial void LogHoldLost(ILogger logger, long session, int account);
 
     private async Task WriteAsync(Lease lease, bool connected, TimeSpan duration)
     {

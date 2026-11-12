@@ -51,6 +51,7 @@ using OpenWorker.Persistence;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Skill;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -91,6 +92,7 @@ public sealed partial class PersonService(
     DistrictBuffs districtBuffs,
     MovementPace pace,
     MyRoomBook rooms,
+    PersistenceWriter writes,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -147,6 +149,14 @@ public sealed partial class PersonService(
         // in one world at a time, and is read from the database only after that.
         if (!await leases.TakeOverAsync(context.Player, request.Session.Key, request.Session.Account) || !ecs.IsAlive(context.Player))
         {
+            session.Disconnect();
+            return;
+        }
+
+        // What the person changed when it last left this server still waits for the database: it would be read older here.
+        if (writes.Keeps(request.Actor.Identifier))
+        {
+            LogStillWritten(request.Account, request.Actor.Identifier);
             session.Disconnect();
             return;
         }
@@ -308,6 +318,9 @@ public sealed partial class PersonService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to district {Location} as person {Person} with no reservation, or with one that has expired, and is turned away")]
     private partial void LogNoReservation(int account, int person, short location);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Account {Account} came as person {Person} while what that person changed when it left this server still waits for the database, and is turned away: its session should have stayed held")]
+    private partial void LogStillWritten(int account, int person);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came as person {Person}, but its reservation is for person {ReservedPerson} in district {ReservedDistrict}, and it is turned away")]
     private partial void LogForeignReservation(int account, int person, int reservedPerson, Guid reservedDistrict);
