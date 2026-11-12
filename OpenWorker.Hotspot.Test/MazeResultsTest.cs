@@ -399,7 +399,11 @@ public sealed class MazeResultsTest
         f.Results.OnMonstersHit(first, 1, 100);
         f.Results.Complete([first, second]);
 
-        var windows = new[] { first, second }.Select(e => f.Received(e, MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO).Single().Body).ToArray();
+        var windows = new[]
+        {
+            (await f.ReceivedAsync(first, MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO, 1)).Single().Body,
+            (await f.ReceivedAsync(second, MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO, 1)).Single().Body
+        };
 
         Assert.AreEqual((byte)0, windows[0][0]);
         Assert.AreEqual((byte)4, windows[1][0], "the member with most of the damage ranks S");

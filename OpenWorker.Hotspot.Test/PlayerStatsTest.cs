@@ -206,7 +206,7 @@ public sealed class PlayerStatsTest
         Assert.AreEqual(HeroAttack, sent[STAT_TYPE.STAT_PATK_MAX]);
 
         f.Stats.Send(f.Player);
-        await Task.Delay(100);
+        await QueueMarker.SettleAsync(f.World.Get<ServerSessionComponent>(f.Player), f.Connection);
 
         Assert.AreEqual(3, f.Connection.Frames.Select(PlayerFrame.Open).Count(e => e.Is(GroupOpcode.Character, (byte)CharacterOpcode.UpdateStatList)),
             "nothing changed, nothing is sent");

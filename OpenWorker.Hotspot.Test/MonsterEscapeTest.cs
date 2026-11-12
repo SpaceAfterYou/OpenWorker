@@ -29,7 +29,7 @@ public sealed class MonsterEscapeTest
     private const int Blows = 120;
 
     [TestMethod]
-    public void AMonsterHurtOverAndOverEscapesWithTheSkillOfItsScriptAndThePlayersAreTold()
+    public async Task AMonsterHurtOverAndOverEscapesWithTheSkillOfItsScriptAndThePlayersAreTold()
     {
         var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_AI");
 
@@ -85,6 +85,10 @@ public sealed class MonsterEscapeTest
             {
                 maze.Creatures.OnMonsterHit(target, player, 50);
                 maze.Creatures.Step(TimeSpan.FromSeconds(0.6));
+
+                // The frames reach the connection through the queue of its writer: what the blow sent has arrived once
+                // the marker sent after it has.
+                await QueueMarker.SettleAsync(world.Get<ServerSessionComponent>(player), connection);
 
                 escaped = connection.Frames.Select(PlayerFrame.Open).Any(e => e.Is(GroupOpcode.Monster, (byte)MonsterOpcode.EscapeDamageBt));
             }
