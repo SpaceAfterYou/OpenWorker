@@ -43,11 +43,14 @@ public sealed class BuffTest
     private const ushort Burn = 902;
     private const ushort Rage = 910;
     private const ushort Fury = 911;
+    private const ushort FreeSkills = 920;
+    private const ushort Haste = 921;
     private const ushort Mend = 10000;
 
     private const byte FlatAttack = 33;
     private const byte FlatHealth = 13;
     private const byte HealthShare = 14;
+    private const byte FreeSkillsStat = 66;
 
     private static BuffRow Row(ushort id, BuffKind kind, BuffEffect effect, int duration, ushort? group = null, int tick = 0, byte overlapType = 0,
         byte overlapCount = 1, byte grade = 1, ushort change = 0, byte stat = 0, int value = 0) =>
@@ -63,6 +66,9 @@ public sealed class BuffTest
         Row(Burn, BuffKind.Debuff, BuffEffect.Burn, 3500, tick: 1000, stat: FlatHealth, value: 10),
         Row(Rage, BuffKind.Buff, BuffEffect.Stats, 5000, overlapType: 1, overlapCount: 3, grade: 2, change: Fury),
         Row(Fury, BuffKind.Buff, BuffEffect.Stats, 10000),
+        // Skills free of soul gauge and half as long to cool down; and a tenth off the cooldowns, in hundredths of a percent.
+        Row(FreeSkills, BuffKind.Buff, BuffEffect.FreeSkills, 10000, stat: FreeSkillsStat, value: 50),
+        Row(Haste, BuffKind.Buff, BuffEffect.Cooldown, 10000, value: 1000),
         // The tutorial's own: a share of the life back every half second, for as long as it is in the maze.
         Row(Mend, BuffKind.Buff, BuffEffect.Stats, 0, tick: 500, stat: HealthShare, value: 5)
     ]);
@@ -202,6 +208,30 @@ public sealed class BuffTest
         Assert.AreEqual(Fury, book.Buffs.Single().Buff, "The top of the stack turns into the change buff.");
         Assert.IsTrue(changes.Any(e => e.Kind == BuffChangeKind.Deleted && e.Buff == Rage));
         Assert.IsTrue(changes.Any(e => e.Kind == BuffChangeKind.Updated && e.Buff == Fury));
+    }
+
+    /// <summary>
+    /// The share of the cooldowns a buff of free skills takes off adds to what the other buffs take off, whichever came first.
+    /// </summary>
+    [TestMethod]
+    public void TheCooldownSharesOfTheBuffsAddUpInAnyOrder()
+    {
+        var catalog = new BuffCatalog(Buffs);
+        var carrier = new BuffCarrier(1, 100, 100, false);
+        var random = new Random(1);
+
+        foreach (var order in new[] { new[] { FreeSkills, Haste }, [Haste, FreeSkills] })
+        {
+            var book = new BuffBook();
+
+            foreach (var buff in order)
+            {
+                Assert.IsTrue(BuffRules.Give(book, catalog, buff, 7, carrier, random, []));
+            }
+
+            Assert.AreEqual(60f, book.CooldownRate, 0.001f, "Half of it free, and a tenth more.");
+            Assert.IsTrue(book.FreeSoulGauge);
+        }
     }
 
     /// <summary>
