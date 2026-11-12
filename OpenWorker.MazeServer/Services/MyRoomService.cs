@@ -288,20 +288,27 @@ public sealed partial class MyRoomService(
             return;
         }
 
-        // The piece comes into the bag before it leaves the room: a refused gift changes nothing.
-        if (!inventory.TryGive(player, piece.Item, 1))
+        if (!inventory.CanGive(player, piece.Item, 1))
         {
             Send(player, new ErrorMessageResponse(ItemDelOpcode, MyRoomCodes.BagFull));
             return;
         }
 
+        // The database decides whether the piece still stands: a room can be open in two places for a moment, and of two
+        // that take the same piece away only the one whose statement removes the row gets the item.
         room.TryRemove(piece.Serial, out _);
 
-        await store.RemoveAsync(room.Room.Account, room.Room.Gate, piece.Serial, context.CancellationToken);
+        var removed = await store.RemoveAsync(room.Room.Account, room.Room.Gate, piece.Serial, context.CancellationToken);
 
         if (!world.IsAlive(player))
         {
             return;
+        }
+
+        // The requests of one connection run one after another, so the room checked above is still there for the piece.
+        if (removed && !inventory.TryGive(player, piece.Item, 1))
+        {
+            LogPieceNotGiven(piece.Serial, room.Room.Account, piece.Item);
         }
 
         await persons.FlushAsync(player);
@@ -469,4 +476,7 @@ public sealed partial class MyRoomService(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The piece {Serial} placed in the room of account {Account} stands in a room already")]
     private partial void LogNotPlaced(long serial, int account);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The piece {Serial} left the room of account {Account} and its item {Item} did not fit the bag that had room for it")]
+    private partial void LogPieceNotGiven(long serial, int account, int item);
 }

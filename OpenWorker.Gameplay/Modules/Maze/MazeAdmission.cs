@@ -111,6 +111,12 @@ public sealed class MazeAdmission(
     /// <summary>The kind of the tutorial mazes.</summary>
     private const byte TutorialKind = 1;
 
+    /// <summary>The room of a player.</summary>
+    private const byte RoomKind = 6;
+
+    /// <summary>A stage of the infinite tower.</summary>
+    private const byte TowerKind = 7;
+
     /// <summary>The map of the raid of the event, which is entered from wherever the event puts the player.</summary>
     private const short EventRaid = 30031;
 
@@ -219,6 +225,13 @@ public sealed class MazeAdmission(
         if (!_mazes.TryGet(location, out var row))
         {
             return NoMaze;
+        }
+
+        // A stage of the tower and the room of a player are entered by their own requests, which count the day, keep the
+        // order of the stages and find the room: a portal or a maze board never leads into one.
+        if (row.Type is TowerKind or RoomKind)
+        {
+            return Closed;
         }
 
         if (limits is not null && !limits.IsOpen(row.Id))

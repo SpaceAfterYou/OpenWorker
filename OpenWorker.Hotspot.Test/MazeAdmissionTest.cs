@@ -32,6 +32,8 @@ public sealed class MazeAdmissionTest
 {
     private const int Maze = 21311;
     private const int Tutorial = 20001;
+    private const int TowerStage = 20325;
+    private const int Room = 20011;
     private const int District = 10021;
     private const int Material = 710105001;
     private const int Weapon = 111000001;
@@ -71,7 +73,8 @@ public sealed class MazeAdmissionTest
                 Load<BankSlotExtendRow>("tb_Bank_Slot_Extend"));
 
             var serials = new LocalItemSerials();
-            var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Maze, level, fatigue: 4), MazeResultsTest.MazeRow(Tutorial, 0, fatigue: 0, type: 1)]);
+            var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Maze, level, fatigue: 4), MazeResultsTest.MazeRow(Tutorial, 0, fatigue: 0, type: 1),
+                MazeResultsTest.MazeRow(TowerStage, 0, fatigue: 0, type: 7), MazeResultsTest.MazeRow(Room, 0, fatigue: 0, type: 6)]);
 
             Inventory = new InventoryService(World, catalog, serials);
             Factory = new InventoryFactory(catalog, Load<CreateClothRow>("tb_Create_Cloth"), serials);
@@ -181,6 +184,18 @@ public sealed class MazeAdmissionTest
         portals.InMap = true;
 
         Assert.IsNull(f.Admission.CheckParty(player, [player], Maze, 21511));
+    }
+
+    [TestMethod]
+    public void AStageOfTheTowerAndARoomAreNotEnteredThroughAPortal()
+    {
+        using var f = new Fixture(Rules(Rule(Maze)));
+
+        var player = f.Player();
+
+        // Their own requests lead into them: those count the day, keep the order of the stages and find the room.
+        Assert.AreEqual(MazeAdmission.Closed, f.Admission.Check(player, TowerStage));
+        Assert.AreEqual(MazeAdmission.Closed, f.Admission.Check(player, Room));
     }
 
     [TestMethod]
