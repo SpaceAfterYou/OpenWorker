@@ -29,7 +29,7 @@ public sealed class SessionMetrics : IFrameDrops
         _closed = meter.CreateCounter<long>(
             "sessions.closed",
             unit: "{session}",
-            description: "Connections that ended. Tag reason: client, server, backpressure, timeout, malformed, shutdown.");
+            description: "Connections that ended. Tag reason: client, server, backpressure, timeout, malformed, shutdown, no_entry.");
 
         // A sum that goes up and down costs nothing when no one listens, where a counter read by a gauge would
         // have to be an atomic operation on every frame.
@@ -71,6 +71,7 @@ public sealed class SessionMetrics : IFrameDrops
             SessionCloseReason.Timeout => "timeout",
             SessionCloseReason.Malformed => "malformed",
             SessionCloseReason.Shutdown => "shutdown",
+            SessionCloseReason.NoEntry => "no_entry",
             _ => "server"
         };
     }

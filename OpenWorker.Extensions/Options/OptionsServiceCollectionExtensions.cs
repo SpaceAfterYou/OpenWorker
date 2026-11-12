@@ -14,8 +14,9 @@ namespace OpenWorker.Extensions;
 public static class OptionsServiceCollectionExtensions
 {
     /// <summary>
-    /// The port the server listens on, the game version, the packet dumps, the errors a session may cause, the packets it
-    /// may send, the time the server takes to stop and where the metrics go: what every server has.
+    /// The port the server listens on, the game version, the packet dumps and the time a connection has to enter, the
+    /// errors a session may cause, the packets it may send, the time the server takes to stop and where the metrics go:
+    /// what every server has.
     /// </summary>
     public static IServiceCollection AddServerOptions(this IServiceCollection services)
     {
@@ -26,7 +27,7 @@ public static class OptionsServiceCollectionExtensions
         services.AddPacketRateLimitOptions();
         services.AddTelemetryOptions();
 
-        return services.AddBound<HotspotOptions>(HotspotOptions.SectionName);
+        return services.AddValidated<HotspotOptions, HotspotOptionsValidator>(HotspotOptions.SectionName);
     }
 
     /// <summary>

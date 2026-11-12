@@ -136,7 +136,10 @@ flowchart TB
   `ArrayPool<byte>.Shared` for its size, decrypts it and hands it to the world loop. It waits for the handler to finish
   before it hands over the next frame, so the packets of one connection are handled one after another, in order. A
   header that cannot be right (a length shorter than the header, a version past the key table) closes the connection
-  at once as `Malformed`.
+  at once as `Malformed`. A connection that has not entered (its `ClaimsComponent` still names no account: no login on the
+  auth server, no session taken on the others) when `Hotspot:EntryTimeout` runs out is closed as `NoEntry`: a timer of the
+  connection asks the world loop to look, and the close is the one of every connection. Nothing limits the connections of
+  one address yet.
 - **Write loop.** `SessionWriter` sends the frames of one connection on its own task, from a queue
   of at most 4096 frames. A client that falls that far behind is disconnected; it slows nobody else.
 - **Frames.** A message is encoded once into a `Frame` (header and encrypted body in an array of
@@ -302,7 +305,7 @@ the metrics class as the last, optional constructor parameter: `null` is a part 
 | `simulation.count` | gauge, simulations | | simulations (mazes) the clock steps |
 | `simulation.overbudget` | counter | | ticks longer than the 50 ms period |
 | `sessions.active` | up-down counter | | open connections |
-| `sessions.closed` | counter | `reason`: `client`, `server`, `backpressure`, `timeout`, `malformed`, `shutdown` | connections that ended, once each |
+| `sessions.closed` | counter | `reason`: `client`, `server`, `backpressure`, `timeout`, `malformed`, `shutdown`, `no_entry` | connections that ended, once each |
 | `writer.queue.length` | up-down counter, frames | | frames queued in the `SessionWriter`s of the process |
 | `frames.sent`, `bytes.sent`, `bytes.received` | counters | | frames written to sockets and bytes on the wire, headers included |
 | `frames.dropped` | counter | `opcode` | messages dropped because the body does not fit one frame |
@@ -313,7 +316,8 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
 
 - **Why a connection closed.** `SessionWriter` ends once per connection and counts it there; the first `SessionCloseReason` given to the
   writer is the one reported. `ServerSessionComponent.Disconnect(reason)` is how code gives one (`Timeout` in the keep-alive of a district or a maze,
-  `Malformed` in `HandlerExecutor` when the error budget runs out; `Disconnect()` alone is `Server`). The writer gives `Backpressure` for a
+  `Malformed` in `HandlerExecutor` when the error budget runs out, `NoEntry` in `ServerService` for a connection that has not entered
+  within `Hotspot:EntryTimeout`; `Disconnect()` alone is `Server`). The writer gives `Backpressure` for a
   full queue or a write that times out, and `Client` for a socket that fails; the read loop in `ServerService` gives `Client` for the end
   of the stream and `Shutdown` for a session the drain closes. The drain names `Shutdown` with `SetCloseReason` before the close
   handlers queue the kick-out, so a client that cannot take its last frames, or is cut off at the end of the drain, is still
@@ -474,6 +478,10 @@ or wrong setting stops the server with a message that names the key. A setting w
   by `RedisOptions.ToConfigurationOptions`).
 - `Hotspot:ErrorBudget:MaxErrors` and `Hotspot:ErrorBudget:Window` (`00:01:00` is a minute) say how many packets of one
   session may fail to parse or to handle before the server closes its connection; `HandlerErrorBudget` reads them.
+- `Hotspot:EntryTimeout` is how long a connection may stay open before it enters (see "Read loop"): `00:01:00` unless set,
+  which the gate, the districts and the mazes keep, since the client sends its entry the moment it connects to them; the
+  auth server sets `00:10:00`, since the client connects to it when the program starts and a person types the password
+  into the login window on that connection, and the client quits when the server closes it.
 - `Hotspot:RateLimits:Movement`, `:Chat`, `:Items` and `:Other`, each with `PerSecond` and `Burst`, are the token buckets of a
   session: 30 and 60, 5 and 10, 20 and 40, 60 and 200 unless set (a rate above 0, a burst from 1).
 - `World:VisibilityRadius` (5000 game units), `World:SpeedTolerance` (1.5), `World:MoveBurst` (`00:00:05`), `World:MaxMoveStep`

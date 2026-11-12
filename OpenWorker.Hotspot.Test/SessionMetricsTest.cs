@@ -52,8 +52,8 @@ public sealed class SessionMetricsTest
             .ToArray();
 
         CollectionAssert.AllItemsAreUnique(tags);
-        Assert.HasCount(6, tags);
-        Assert.IsTrue(tags.All(e => e is "client" or "server" or "backpressure" or "timeout" or "malformed" or "shutdown"));
+        Assert.HasCount(7, tags);
+        Assert.IsTrue(tags.All(e => e is "client" or "server" or "backpressure" or "timeout" or "malformed" or "shutdown" or "no_entry"));
     }
 
     [TestMethod]

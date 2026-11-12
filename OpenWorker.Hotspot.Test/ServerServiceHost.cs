@@ -10,6 +10,7 @@ using Microsoft.Extensions.Time.Testing;
 using OpenWorker.DependencyInjection;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.SoulWorker.Network;
@@ -65,10 +66,38 @@ internal sealed class ServerServiceHost : IAsyncDisposable
             new SessionTracker(),
             [],
             Metrics.Get<SessionMetrics>(),
+            Time,
             NullLogger<ServerService>.Instance);
     }
 
     public MetricsHost Metrics { get; }
+
+    /// <summary>
+    /// The clock of the server: nothing that waits on it happens until a test moves it on.
+    /// </summary>
+    public FakeTimeProvider Time { get; } = new();
+
+    /// <summary>
+    /// Every connection that has its entity now enters, as a login does: it gets the account it logs in with. Returns how
+    /// many entered.
+    /// </summary>
+    public Task<int> EnterAllAsync(int account)
+    {
+        return _loop.InvokeAsync(() =>
+        {
+            var sessions = new QueryDescription().WithAll<ServerSessionComponent, ClaimsComponent>();
+            var entered = new List<Entity>();
+
+            _ecs.Query(in sessions, entered.Add);
+
+            foreach (var entity in entered)
+            {
+                _ecs.Set(entity, new ClaimsComponent(account, 1));
+            }
+
+            return entered.Count;
+        });
+    }
 
     public int Port { get; }
 

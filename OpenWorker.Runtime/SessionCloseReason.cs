@@ -42,5 +42,11 @@ public enum SessionCloseReason : byte
     /// The server is stopping: the drain closed the connection (<c>ServerShutdownService</c>), after the notice of the
     /// shutdown and what was queued were sent, or after the drain ran out of time.
     /// </summary>
-    Shutdown
+    Shutdown,
+
+    /// <summary>
+    /// The connection did not enter within <c>Hotspot:EntryTimeout</c>: it never logged in, or never named the session it
+    /// came with, so the server does not know whose it is.
+    /// </summary>
+    NoEntry
 }

@@ -33,6 +33,7 @@ internal sealed partial class ServerService(
     SessionTracker sessions,
     IEnumerable<ISessionCloseHandler> closeHandlers,
     SessionMetrics metrics,
+    TimeProvider time,
     ILogger<ServerService> logger
 ) :
     BackgroundService
@@ -235,6 +236,11 @@ internal sealed partial class ServerService(
             // about this session begins the scope again, inside the callback (HandlerExecutor, CloseSessionAsync).
             using var readScope = logger.BeginScope(scope);
 
+            // A connection that has not entered when its time runs out is closed. The timer only asks the world loop to
+            // look; the close itself is the one of every connection, below, when the reader sees the socket end.
+            using var entry = time.CreateTimer(_ => loop.Post(_ => CloseUnlessEntered(entity, scope), null), null,
+                hotspot.Value.EntryTimeout, Timeout.InfiniteTimeSpan);
+
             // The reader of the socket ends the connection when the client does, or when the server has already closed it
             // and given its own reason first; the first reason of a connection is the one that counts.
             var reason = SessionCloseReason.Client;
@@ -411,6 +417,30 @@ internal sealed partial class ServerService(
     }
 
     /// <summary>
+    /// Closes a connection that has not entered: the auth server has not logged it in, the gate, the district or the maze
+    /// has not taken the session it came with, so nobody knows whose it is. Runs on the world loop. The connection may
+    /// have ended already, and its entity may belong to a newer connection: only the session it was asked for is closed.
+    /// </summary>
+    private void CloseUnlessEntered(Entity entity, SessionLogScope scope)
+    {
+        if (!world.IsAlive(entity) || !world.TryGet(entity, out ServerSessionComponent session) || !ReferenceEquals(session.LogScope, scope))
+        {
+            return;
+        }
+
+        if (world.TryGet(entity, out ClaimsComponent claims) && claims.Account != 0)
+        {
+            return;
+        }
+
+        using var logScope = logger.BeginScope(scope);
+
+        LogNoEntry(logger, hotspot.Value.EntryTimeout);
+
+        session.Disconnect(SessionCloseReason.NoEntry);
+    }
+
+    /// <summary>
     /// Runs on the world loop, as every close does: the close handlers of the modules, then the end of the entity.
     /// The lines of the close handlers carry the scope of the session, begun here, inside the callback of the loop.
     /// </summary>
@@ -538,6 +568,9 @@ internal sealed partial class ServerService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The client sent a header that cannot be right, and is cut off: {Reason}")]
     private static partial void LogMalformedHeader(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "A connection that did not enter within {Limit} is closed.")]
+    private static partial void LogNoEntry(ILogger logger, TimeSpan limit);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Session loop failed.")]
     private static partial void LogSessionLoopFailed(ILogger logger, Exception exception);
