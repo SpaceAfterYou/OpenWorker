@@ -49,6 +49,9 @@ playing the skill's own attacks:
   whose player has fallen or left strikes no more. It lives as long as its skill: nothing is sent when it is over.
 - The call is used up by the skill that brings the card in.
 
+The passive cards of the quick slots (`docs/notes-buffs.md`) now count only when they are in the book, as a call does: the client
+sets the slots (08/27) and the original refuses a slot of a card the book does not hold.
+
 ## Compared with the original
 
 | What | Original | Here | |
