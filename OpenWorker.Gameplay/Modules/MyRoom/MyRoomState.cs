@@ -95,7 +95,8 @@ public sealed class MyRoomState
     public bool Contains(Entity player) => _members.ContainsKey(player);
 
     /// <summary>
-    /// The owner starts arranging. False when it is arranging already. The owner's client gets up from where it sits by itself.
+    /// The owner starts arranging. False when it is arranging already. Nobody sits while the furniture moves: every place is
+    /// free again (the caller stands the owner up and sends the others out).
     /// </summary>
     public bool StartArranging()
     {
@@ -105,6 +106,7 @@ public sealed class MyRoomState
         }
 
         Arranging = true;
+        _seats.Clear();
 
         return true;
     }
@@ -155,6 +157,7 @@ public sealed class MyRoomState
 
         piece = _furniture[index];
         _furniture.RemoveAt(index);
+        _seats.RemoveAll(e => e.Serial == serial);
 
         return true;
     }
@@ -188,8 +191,8 @@ public sealed class MyRoomState
 
     /// <summary>
     /// A player sits or lies on a piece: one of the free places of it, at random, as many as the furniture table gives it. Null
-    /// while the room is arranged, for a piece the room does not have or one that is full. A player who sits elsewhere gets up
-    /// from there first.
+    /// while the room is arranged, for a piece the room does not have or one that is full; the player then keeps the place it
+    /// has. A player who sits elsewhere leaves that place for the new one.
     /// </summary>
     public MyRoomSeat? Sit(int actor, long serial, byte animation, Vector3 position, float rotation, Random random)
     {
@@ -200,15 +203,16 @@ public sealed class MyRoomState
 
         var seats = _catalog.SeatsOf(piece.Item);
 
-        _seats.RemoveAll(e => e.Actor == actor);
-
-        var taken = _seats.Where(e => e.Serial == serial).Select(e => (int)e.Index).ToHashSet();
+        // The place the player has on this piece is free for it.
+        var taken = _seats.Where(e => e.Serial == serial && e.Actor != actor).Select(e => (int)e.Index).ToHashSet();
         var free = Enumerable.Range(0, seats).Where(e => !taken.Contains(e)).ToArray();
 
         if (free.Length == 0)
         {
             return null;
         }
+
+        _seats.RemoveAll(e => e.Actor == actor);
 
         var seat = new MyRoomSeat(actor, serial, (byte)free[random.Next(free.Length)], animation, position, rotation);
 

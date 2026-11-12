@@ -179,4 +179,22 @@ public sealed class MyRoomTest
 
         Assert.IsFalse(room.CanPlace(new MyRoomPiece(999, Table, 0, 700)));
     }
+
+    [TestMethod]
+    public void ARefusedSitKeepsThePlaceThePlayerHasAndNoPlaceOutlivesItsPiece()
+    {
+        var room = Room(0, new MyRoomPiece(1, Bed, 0, 0), new MyRoomPiece(2, Sofa, 0, 30));
+        var random = new Random(5);
+
+        var sofa = room.Sit(10, 2, 0, Vector3.One, 0, random);
+
+        Assert.IsNotNull(room.Sit(11, 1, 0, Vector3.One, 0, random));
+        Assert.IsNull(room.Sit(10, 1, 0, Vector3.Zero, 0, random), "the bed is taken");
+        Assert.AreEqual(sofa, room.Seats.Single(e => e.Actor == 10), "the player who could not move keeps its place on the sofa");
+
+        // Arranging frees every place, and a piece taken away takes no place with it.
+        room.StartArranging();
+
+        Assert.IsEmpty(room.Seats);
+    }
 }

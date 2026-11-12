@@ -265,10 +265,18 @@ public sealed partial class MyRoomService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MyRoomEditStartRequest request)
     {
-        if (OwnRoom(context.Player) is not { } room || !room.StartArranging())
+        if (OwnRoom(context.Player) is not { Arranging: false } room)
         {
             return;
         }
+
+        // The owner gets up from where it sits, and everybody in the room sees it.
+        if (room.Stand(world.Get<ActorComponent>(context.Player).Identifier) is { } seat)
+        {
+            StandUp(context.Player, room, seat);
+        }
+
+        room.StartArranging();
 
         var instance = world.Get<LuaMaze>(context.Player).Instance;
 
@@ -507,6 +515,16 @@ public sealed partial class MyRoomService(
             return ValueTask.CompletedTask;
         }
 
+        StandUp(player, room, seat);
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The player who got up from its place stands where it stood before it sat down, and everybody in the room sees it.
+    /// </summary>
+    private void StandUp(Entity player, MyRoomState room, MyRoomSeat seat)
+    {
         world.Set(player, world.Get<WorldComponent>(player) with { Position = seat.Position, Rotation = seat.Rotation });
 
         Broadcast(room, new MyRoomItemReleaseUsedResponse
@@ -516,8 +534,6 @@ public sealed partial class MyRoomService(
             Position = seat.Position,
             Rotation = seat.Rotation
         });
-
-        return ValueTask.CompletedTask;
     }
 
     #endregion
