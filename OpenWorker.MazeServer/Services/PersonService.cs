@@ -34,8 +34,6 @@ using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Gameplay.Modules.Shop.Components;
-using OpenWorker.Hotspot.Modules.SoulMetry.Responses;
-using OpenWorker.Hotspot.Modules.SoulMetry.Types;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
@@ -54,7 +52,6 @@ namespace OpenWorker.MazeServer.Services;
 
 public sealed partial class PersonService(
     World world,
-    ReadOnlyCollection<SoulMetryRow> soulMetryCollection,
     ReadOnlyCollection<MazeInfoRow> mazeInfoCollection,
     ReadOnlyCollection<InteractionObjectRow> interactionCollection,
     IRedisCollection<SessionCache> sessions,
@@ -430,15 +427,6 @@ public sealed partial class PersonService(
     public static bool TryGetMazeInfo(RowIndex<short, MazeInfoRow> table, short location, out MazeInfoRow info)
     {
         return table.TryGet(location, out info);
-    }
-
-    private void SendSoulMetryList(ServerSessionComponent session)
-    {
-        var list = soulMetryCollection
-            .Select(e => new SoulMetryValue(e.Id, 0))
-            .ToArray();
-
-        session.Send(new SoulMetryListResponse { Values = list });
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person} with no reservation, or with one that has expired, and is turned away")]
