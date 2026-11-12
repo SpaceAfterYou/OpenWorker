@@ -25,8 +25,8 @@ namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
 /// What a player fires with a skill is bounded by the skill, with the client's tables and action files: a projectile leaves
-/// from where the server has the player, a skill fires no more shots than it lets go, a player who is down fires nothing, and a
-/// player who leaves lets go of what it carries.
+/// from where the server has the player, a skill fires no more shots or chains than it lets go, a player who is down fires
+/// nothing, and a player who leaves lets go of what it carries.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
@@ -38,6 +38,13 @@ public sealed class PlayerShotTest
     private const int Flying = 12000911;
 
     private const short FlyingAttack = 1701;
+
+    /// <summary>
+    /// A skill of Stella whose loop, played while the key is held, lets its chains go as it begins (attack 1201 among them).
+    /// </summary>
+    private const int Chain = 52000711;
+
+    private const short ChainAttack = 1201;
 
     /// <summary>
     /// A skill of Haru that carries away what stands before it, and a monster light enough to be carried.
@@ -81,7 +88,7 @@ public sealed class PlayerShotTest
 
     /// <summary>
     /// A skill fires the shots its animations let go and no more: the next one is refused and counts against the error budget,
-    /// the ones the client sends in the same second only do nothing.
+    /// the ones the client sends in the same second only do nothing. A chain is bounded the same way.
     /// </summary>
     [TestMethod]
     public void ASkillFiresNoMoreShotsThanItLetsGo()
@@ -106,6 +113,20 @@ public sealed class PlayerShotTest
             Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)), "Another skill has cut it.");
 
             arena.Maze.Close();
+
+            var stella = new Arena(world, Hero.Stella, 350f).Open();
+
+            stella.Maze.StartSkill(stella.Player, Chain, default);
+            stella.Maze.PressKey(stella.Player, true);
+
+            Assert.AreEqual(ClaimVerdict.Refused, stella.Maze.FireChain(stella.Player, ChainOf(Chain, ChainAttack)), "The loop that lets the chain go has not begun.");
+
+            stella.Run(1.2f);
+
+            Assert.AreEqual(ClaimVerdict.Taken, stella.Maze.FireChain(stella.Player, ChainOf(Chain, ChainAttack)));
+            Assert.AreEqual(ClaimVerdict.Refused, stella.Maze.FireChain(stella.Player, ChainOf(Chain, ChainAttack)), "The loop let one chain go.");
+
+            stella.Maze.Close();
         }
 
         finally
@@ -115,7 +136,7 @@ public sealed class PlayerShotTest
     }
 
     /// <summary>
-    /// A player who is down fires nothing: the request does nothing and is no fault.
+    /// A player who is down fires nothing and lets no chain go: the requests do nothing and are no fault.
     /// </summary>
     [TestMethod]
     public void APlayerWhoIsDownFiresNothing()
@@ -134,7 +155,7 @@ public sealed class PlayerShotTest
             world.Set(arena.Player, ability with { Health = ability.Health with { Current = 0 } });
 
             Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)));
-
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireChain(arena.Player, ChainOf(Flying, FlyingAttack)));
             arena.Maze.Close();
         }
 
@@ -212,6 +233,8 @@ public sealed class PlayerShotTest
 
         return SkillProjectileRequest.Read(ref reader);
     }
+
+    private static SkillProjectileValue ChainOf(int skill, short attack) => default(SkillProjectileValue) with { Skill = skill, TriggerIndex = attack };
 
     private static PlayerFrame[] Frames(RecordingConnection connection, SkillOpcode command) =>
         connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)command)).ToArray();

@@ -526,9 +526,10 @@ public sealed partial class MazeService(
     {
         var chain = request.Projectile;
 
-        if (Place.IsValid(chain.Position) && Place.IsValid(chain.Direction) && ecs.Has<LuaMaze>(context.Player))
+        if (Place.IsValid(chain.Position) && Place.IsValid(chain.Direction) && ecs.Has<LuaMaze>(context.Player) &&
+            ecs.Get<LuaMaze>(context.Player).FireChain(context.Player, chain) == ClaimVerdict.Refused)
         {
-            ecs.Get<LuaMaze>(context.Player).FireChain(context.Player, chain);
+            errors.Charge(context.Player, MessageOpcode.From(GroupOpcode.Skill, SkillOpcode.ChainReq), HandlerErrorReason.Violation);
         }
 
         return ValueTask.CompletedTask;

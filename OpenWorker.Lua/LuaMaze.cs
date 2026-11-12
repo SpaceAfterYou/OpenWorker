@@ -1097,22 +1097,29 @@ public partial class LuaMaze(
 
     /// <summary>
     /// The client lets a chain go when its animation gets there. The chain jumps between monsters on the server,
-    /// and the client draws it from what it is told: who it holds and when it lets go.
+    /// and the client draws it from what it is told: who it holds and when it lets go. As for a projectile, a player who is down
+    /// lets none go, and a skill no more than its animations let go.
     /// </summary>
     [LuaIgnoreMember]
-    public void FireChain(Entity player, SkillProjectileValue request)
+    public ClaimVerdict FireChain(Entity player, SkillProjectileValue request)
     {
-        if (!Started || Find(player) is not { } member)
+        if (!Started || Find(player) is not { } member || !creatureManager.Vitals.IsAlive(player))
         {
-            return;
+            return ClaimVerdict.Dropped;
         }
 
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
         // Only the skill that is being played may let a chain go.
-        if (request.Skill != member.CurrentSkill || !actions.TryGetChain(request.Skill, hero, request.TriggerIndex, out var trigger))
+        if (member.Playback is not { } run || run.Skill != request.Skill ||
+            !actions.TryGetChain(request.Skill, hero, request.TriggerIndex, out var trigger))
         {
-            return;
+            return ClaimVerdict.Dropped;
+        }
+
+        if (!TakeShot(member, run, trigger.Id))
+        {
+            return Refuse(member);
         }
 
         var attacker = Ecs.Get<WorldComponent>(player);
@@ -1137,6 +1144,8 @@ public partial class LuaMaze(
         var position = default(SkillPositionValue) with { Position = attacker.Position, Angle = attacker.Rotation };
 
         member.Chains.Add(new ChainRun(request.Skill, trigger, chain, session, position, member.SkillGeneration, Clock.Time));
+
+        return ClaimVerdict.Taken;
     }
 
     /// <summary>
