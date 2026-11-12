@@ -422,6 +422,7 @@ public sealed partial class SessionLogScopeTest
                 new SessionTracker(),
                 [new CloseHandler(logs.Factory.CreateLogger<CloseHandler>())],
                 _metrics.Get<SessionMetrics>(),
+                TimeProvider.System,
                 logs.Factory.CreateLogger<ServerService>());
         }
 
