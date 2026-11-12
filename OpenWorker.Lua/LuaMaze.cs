@@ -816,9 +816,6 @@ public partial class LuaMaze(
         var hero = Ecs.Get<PersonInfoComponent>(player).Hero;
 
         member.CurrentSkill = skill;
-
-        // A trap follows the cursor only while its skill is being played.
-        member.MouseTrap = null;
         member.Playback = null;
         member.SkillWake.Cancel();
 
@@ -897,12 +894,6 @@ public partial class LuaMaze(
                     run.Playback.Press(pressed, now);
                 }
             }
-
-            // The skill is over, and a trap that followed the cursor stays where it is.
-            if (run.Generation == member.SkillGeneration)
-            {
-                member.MouseTrap = null;
-            }
         }
 
         catch (Exception e)
@@ -932,13 +923,22 @@ public partial class LuaMaze(
 
         if (actions.FollowsMouse(skill))
         {
-            // One trap follows the cursor at a time, a second attack of the skill only keeps it company.
+            // One trap follows the cursor at a time, for as long as it lives: another attack of the skill, or another use of it,
+            // places none while it does.
             if (member.MouseTrap is not null)
             {
                 return;
             }
 
             member.MouseTrap = site;
+
+            _schedule.Schedule(Wait(info.LifeTime), () =>
+            {
+                if (member.MouseTrap == site)
+                {
+                    member.MouseTrap = null;
+                }
+            });
         }
 
         if (!actions.IsFlownByClient(skill))
@@ -991,6 +991,13 @@ public partial class LuaMaze(
     /// first was refused are the same fault.
     /// </summary>
     private static readonly TimeSpan RefusalInterval = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How far from the player the client puts a trap it drags with the mouse (the skill's table gives it no reach): the pointer
+    /// meets the ground at most 2500 from the camera, or lies 2500 from the player where it meets nothing, and the camera behind
+    /// the player and the moves the server has not heard of yet add to that.
+    /// </summary>
+    private const float MouseReach = 3500f;
 
     private ClaimVerdict Refuse(Fighter member)
     {
@@ -1084,15 +1091,30 @@ public partial class LuaMaze(
     }
 
     /// <summary>
-    /// The player drags the trap of a skill with the mouse. The trap hits where it is; the others see only the hits.
+    /// The player drags the trap of a skill with the mouse. The trap hits where it is; the others see only the hits. A place out
+    /// of the reach of the mouse from where the server has the player is refused, and the trap stays.
     /// </summary>
     [LuaIgnoreMember]
-    public void MoveTrap(Entity player, Vector3 place)
+    public ClaimVerdict MoveTrap(Entity player, Vector3 place)
     {
-        if (Started && Find(player) is { MouseTrap: { } trap })
+        if (!Started || Find(player) is not { } member || !creatureManager.Vitals.IsAlive(player))
+        {
+            return ClaimVerdict.Dropped;
+        }
+
+        var from = Ecs.Get<WorldComponent>(player).Position;
+
+        if (!(Vector2.DistanceSquared(new Vector2(from.X, from.Y), new Vector2(place.X, place.Y)) <= MouseReach * MouseReach))
+        {
+            return Refuse(member);
+        }
+
+        if (member.MouseTrap is { } trap)
         {
             trap.Position = place;
         }
+
+        return ClaimVerdict.Taken;
     }
 
     /// <summary>

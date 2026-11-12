@@ -536,14 +536,25 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// The player moves a trap with the mouse. The trap follows; the others see where it hits.
+    /// The player moves a trap with the mouse. The trap follows; the others see where it hits. A place out of the reach of the
+    /// mouse is refused: it counts against the error budget, once a second, and the others are not told.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillTrapPosUpdateRequest request)
     {
-        if (Place.IsValid(request.Position) && IsFighting(context.Player))
+        if (!Place.IsValid(request.Position) || !ecs.Has<LuaMaze>(context.Player))
         {
-            ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position);
+            return ValueTask.CompletedTask;
+        }
+
+        var verdict = ecs.Get<LuaMaze>(context.Player).MoveTrap(context.Player, request.Position);
+
+        if (verdict == ClaimVerdict.Taken)
+        {
             relay.TrapMoved(context.Player, request.Skill, request.TriggerIndex, request.Position);
+        }
+        else if (verdict == ClaimVerdict.Refused)
+        {
+            errors.Charge(context.Player, MessageOpcode.From(GroupOpcode.Skill, SkillOpcode.TrapPosUpdateReq), HandlerErrorReason.Violation);
         }
 
         return ValueTask.CompletedTask;

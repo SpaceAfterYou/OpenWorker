@@ -26,7 +26,7 @@ namespace OpenWorker.Hotspot.Test;
 /// <summary>
 /// What a player fires with a skill is bounded by the skill, with the client's tables and action files: a projectile leaves
 /// from where the server has the player, a skill fires no more shots or chains than it lets go, a player who is down fires
-/// nothing, and a player who leaves lets go of what it carries.
+/// nothing, a trap dragged with the mouse stays within the reach of the mouse, and a player who leaves lets go of what it carries.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
@@ -136,7 +136,7 @@ public sealed class PlayerShotTest
     }
 
     /// <summary>
-    /// A player who is down fires nothing and lets no chain go: the requests do nothing and are no fault.
+    /// A player who is down fires nothing, lets no chain go and drags no trap: the requests do nothing and are no fault.
     /// </summary>
     [TestMethod]
     public void APlayerWhoIsDownFiresNothing()
@@ -156,6 +156,39 @@ public sealed class PlayerShotTest
 
             Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)));
             Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireChain(arena.Player, ChainOf(Flying, FlyingAttack)));
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.MoveTrap(arena.Player, place));
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A trap dragged with the mouse goes where the client puts it within the reach of the mouse from where the server has the
+    /// player; a place beyond is refused, and counts against the error budget once a second.
+    /// </summary>
+    [TestMethod]
+    public void ATrapIsDraggedOnlyWithinTheReachOfTheMouse()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Erwin, 350f).Open();
+            var place = world.Get<WorldComponent>(arena.Player).Position;
+
+            Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.MoveTrap(arena.Player, place + new Vector3(2400f, 2400f, 0f)));
+            Assert.AreEqual(ClaimVerdict.Refused, arena.Maze.MoveTrap(arena.Player, place + new Vector3(3000f, 3000f, 0f)));
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.MoveTrap(arena.Player, place + new Vector3(float.MaxValue, 0f, 0f)), "The fault is counted once a second.");
+
+            arena.Run(1.1f);
+
+            Assert.AreEqual(ClaimVerdict.Refused, arena.Maze.MoveTrap(arena.Player, place + new Vector3(float.MaxValue, 0f, 0f)));
+
             arena.Maze.Close();
         }
 
