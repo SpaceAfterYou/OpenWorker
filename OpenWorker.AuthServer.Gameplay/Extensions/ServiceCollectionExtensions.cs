@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
         services.AddAuthOptions();
 
         services.AddSingleton<LoginGameplay>();
+        services.AddSingleton<GateDirectory>();
         services.AddSingleton<GateGameplay>();
     }
 }

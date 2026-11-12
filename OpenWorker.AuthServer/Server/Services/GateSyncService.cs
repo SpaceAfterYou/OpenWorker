@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Enums;
+using OpenWorker.AuthServer.App;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Modules.Login.Types;
@@ -11,9 +12,11 @@ namespace OpenWorker.AuthServer.Server.Services;
 
 /// <summary>
 /// Keeps the list of gates the login server shows: the names from the database, the address and the load from the
-/// records the gates renew in Redis. A gate whose record expired (it stopped or crashed) is shown offline.
+/// records the gates renew in Redis. A gate whose record expired (it stopped or crashed) is shown offline. Each round
+/// makes a new list and puts it in the <see cref="GateDirectory"/> whole: the world loop reads the list while this runs
+/// on a pool thread, so the list it reads is never changed.
 /// </summary>
-public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext> factory, IRedisCollection<GateCache> gateCache, List<GateInfo> registry, ILogger<GateSyncService> logger) : BackgroundService
+public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext> factory, IRedisCollection<GateCache> gateCache, GateDirectory directory, ILogger<GateSyncService> logger) : BackgroundService
 {
     /// <summary>
     /// The list changes when a gate starts or stops, and its load is a hint; a round every 15 s is two small queries.
@@ -59,27 +62,17 @@ public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext
 
         // The gates only: their persons are not part of the list.
         var persistentList = await database.Gates
+            .OrderBy(e => e.Id)
             .ToArrayAsync(cancellationToken);
 
-        foreach (var persistent in persistentList)
+        var known = directory.Gates.Select(e => e.Id).ToHashSet();
+
+        foreach (var persistent in persistentList.Where(e => !known.Contains(e.Id)))
         {
-            var gate = GetGateInfo(persistent, cacheList);
-
-            var index = registry.FindIndex(e => e.Id == persistent.Id);
-
-            if (index == -1)
-            {
-                LogNotInList(logger, persistent.Id);
-
-                registry.Add(gate);
-
-                LogAdded(logger, persistent.Id);
-
-                continue;
-            }
-
-            registry[index] = gate;
+            LogAdded(logger, persistent.Id);
         }
+
+        directory.Publish(persistentList.Select(e => GetGateInfo(e, cacheList)));
     }
 
     private GateInfo GetGateInfo(GatePersistent persistent, IReadOnlyCollection<GateCache> cacheList)
@@ -114,9 +107,6 @@ public sealed partial class GateSyncService(IDbContextFactory<PersistenceContext
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to synchronize the gates.")]
     private static partial void LogSyncFailed(ILogger logger, Exception exception);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Gate not found in list: {Gate}")]
-    private static partial void LogNotInList(ILogger logger, int gate);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Gate added: {Gate}")]
     private static partial void LogAdded(ILogger logger, int gate);
