@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Rewards.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Vaccum.Responses;
 
 /// <summary>
 /// A person has taken a cube and got the items. A result other than 0 tells why it did not work out.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct VaccumClickCompleteResponse : IResponseHotspotMessage
+public readonly partial struct VaccumClickCompleteResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -32,24 +34,10 @@ public readonly struct VaccumClickCompleteResponse : IResponseHotspotMessage
     /// </summary>
     public short Remain { get; init; }
 
+    [WireArray(WireLength.Byte)]
     public IReadOnlyCollection<RewardItemValue> Items { get; init; }
 
     public int Result { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Actor);
-        writer.Write(Cube);
-        writer.Write(Remain);
-
-        RewardItemValue.WriteList(writer, Items ?? []);
-
-        writer.Write(Result);
-    }
-
-#endregion Interface: IWritableData
 }
