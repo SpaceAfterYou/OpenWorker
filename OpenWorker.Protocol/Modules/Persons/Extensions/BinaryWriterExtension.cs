@@ -20,18 +20,4 @@ internal static class BinaryWriterExtension
         Debug.Assert(value.Length <= PersonModuleDefines.MaxNameLength);
         writer.WriteUtf16UnicodeString(value, PersonModuleDefines.MaxNameLength);
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void WriteCommunityComment(this BinaryWriter writer, string value)
-    {
-        Debug.Assert(value.Length <= PersonModuleDefines.MaxCommunityCommentLength);
-        writer.WriteUtf16UnicodeString(value, PersonModuleDefines.MaxCommunityCommentLength);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void WriteCommunityMemo(this BinaryWriter writer, string value)
-    {
-        Debug.Assert(value.Length <= PersonModuleDefines.MaxCommunityMemoLength);
-        writer.WriteUtf16UnicodeString(value, PersonModuleDefines.MaxCommunityMemoLength);
-    }
 }
