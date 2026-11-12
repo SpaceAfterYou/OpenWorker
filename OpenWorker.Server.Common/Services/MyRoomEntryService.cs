@@ -15,6 +15,7 @@ using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.MyRoom.Requests;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using Redis.OM;
 using Redis.OM.Searching;
 
 namespace OpenWorker.Server.Common.Services;
@@ -200,11 +201,14 @@ public sealed partial class MyRoomEntryService(
         var key = MyRoomCache.KeyOf(owner, gate);
 
         // A maze server that stopped without saying so has no record any more, and neither has its room.
-        if (await rooms.FindByIdAsync(key) is { } running &&
-            running.Server != Guid.Empty &&
-            await servers.FindByIdAsync(running.Server.ToString()) is not null)
+        if (await rooms.FindByIdAsync(key) is { } running)
         {
-            return running;
+            if (running.Server != Guid.Empty && await servers.FindByIdAsync(running.Server.ToString()) is not null)
+            {
+                return running;
+            }
+
+            await rooms.DeleteAsync(running);
         }
 
         var (server, host, port) = await manager.PickMazeServerAsync();
@@ -220,7 +224,12 @@ public sealed partial class MyRoomEntryService(
             Port = port
         };
 
-        await rooms.InsertAsync(record, MyRoomCache.Lifetime);
+        // Of two servers that open the room at once, the first record stands and both send their player into it.
+        if (await rooms.InsertAsync(record, WhenKey.NotExists, MyRoomCache.Lifetime) is null &&
+            await rooms.FindByIdAsync(key) is { } first)
+        {
+            return first;
+        }
 
         return record;
     }
