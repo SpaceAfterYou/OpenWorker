@@ -4,7 +4,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
 [WireMessage(WireMethods.Write)]
-public readonly partial struct StatusEffectValueEntry
+public readonly partial struct StatusEffectValueEntry : IWireReadable<StatusEffectValueEntry>
 {
     public int Id { get; }
     public float Time { get; }
@@ -19,11 +19,21 @@ public readonly partial struct StatusEffectValueEntry
         Owner = componentEntry.Owner;
     }
 
-    public StatusEffectValueEntry(BinaryReader reader)
+    private StatusEffectValueEntry(int id, float time, byte count, int owner)
     {
-        Id = reader.ReadInt32();
-        Time = reader.ReadSingle();
-        Count = reader.ReadByte();
-        Owner = reader.ReadInt32();
+        Id = id;
+        Time = time;
+        Count = count;
+        Owner = owner;
+    }
+
+    public static StatusEffectValueEntry Read(ref PacketReader reader)
+    {
+        var id = reader.ReadInt32();
+        var time = reader.ReadSingle();
+        var count = reader.ReadByte();
+        var owner = reader.ReadInt32();
+
+        return new StatusEffectValueEntry(id, time, count, owner);
     }
 }

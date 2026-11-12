@@ -21,11 +21,6 @@ public readonly struct TitleValue : IWireReadable<TitleValue>, IWireWritable
         Secondary = secondary;
     }
 
-    public TitleValue(BinaryReader reader)
-    {
-        Value = reader.ReadInt64();
-    }
-
     public static implicit operator long(TitleValue titleValue) => titleValue.Value;
     public static implicit operator TitleValue(long value) => new() { Value = value };
 

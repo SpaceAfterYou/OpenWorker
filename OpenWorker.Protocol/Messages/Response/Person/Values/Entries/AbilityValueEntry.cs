@@ -4,7 +4,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
 [StructLayout(LayoutKind.Explicit, Size = sizeof(ulong))]
-public readonly struct AbilityValueEntry : IWireWritable
+public readonly struct AbilityValueEntry : IWireReadable<AbilityValueEntry>, IWireWritable
 {
     [field: FieldOffset(0)]
     public ulong Value { get; }
@@ -21,10 +21,12 @@ public readonly struct AbilityValueEntry : IWireWritable
         Max = max;
     }
 
-    public AbilityValueEntry(BinaryReader reader)
+    private AbilityValueEntry(ulong value)
     {
-        Value = reader.ReadUInt64();
+        Value = value;
     }
+
+    public static AbilityValueEntry Read(ref PacketReader reader) => new(reader.ReadUInt64());
 
     /// <summary>
     /// The current and the largest value as one 64-bit value.

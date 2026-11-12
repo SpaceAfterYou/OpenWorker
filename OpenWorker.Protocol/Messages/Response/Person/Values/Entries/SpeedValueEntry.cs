@@ -4,7 +4,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
 [StructLayout(LayoutKind.Explicit, Size = sizeof(ulong))]
-public readonly struct SpeedValueEntry : IWireWritable
+public readonly struct SpeedValueEntry : IWireReadable<SpeedValueEntry>, IWireWritable
 {
     [field: FieldOffset(0)]
     public ulong Value { get; }
@@ -21,10 +21,12 @@ public readonly struct SpeedValueEntry : IWireWritable
         Attack = attack;
     }
 
-    public SpeedValueEntry(BinaryReader reader)
+    private SpeedValueEntry(ulong value)
     {
-        Value = reader.ReadUInt64();
+        Value = value;
     }
+
+    public static SpeedValueEntry Read(ref PacketReader reader) => new(reader.ReadUInt64());
 
     /// <summary>
     /// Both speeds as one 64-bit value.

@@ -3,7 +3,7 @@ using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
 
-public readonly struct EquipItemValueEntry : IWireWritable
+public readonly struct EquipItemValueEntry : IWireReadable<EquipItemValueEntry>, IWireWritable
 {
     public int Id { get; }
     public byte Upgrade { get; }
@@ -22,8 +22,18 @@ public readonly struct EquipItemValueEntry : IWireWritable
 
     public EquipItemValueEntry(BinaryReader reader)
     {
-        Upgrade = reader.ReadByte();
-        Id = reader.ReadInt32();
+        this = WireBridge.Read<EquipItemValueEntry>(reader);
+    }
+
+    /// <summary>
+    /// The upgrade first, then the item.
+    /// </summary>
+    public static EquipItemValueEntry Read(ref PacketReader reader)
+    {
+        var upgrade = reader.ReadByte();
+        var id = reader.ReadInt32();
+
+        return new EquipItemValueEntry(id, upgrade);
     }
 
     public EquipItemValueEntry(int id, byte upgrade = 0)

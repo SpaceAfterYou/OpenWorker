@@ -6,7 +6,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Messages.Response.Person.Values;
 
 [WireMessage(WireMethods.Write)]
-public readonly partial struct PersonInfoValue
+public readonly partial struct PersonInfoValue : IWireReadable<PersonInfoValue>
 {
     public PersonInfoValue(string name, Hero hero, AppearanceValue appearanceShape, AppearanceValue appearanceLook)
     {
@@ -16,13 +16,17 @@ public readonly partial struct PersonInfoValue
         AppearanceLook = appearanceLook;
     }
 
-    public PersonInfoValue(BinaryReader reader)
+    /// <summary>
+    /// What the client sends of a new character: the name counted in bytes, not in characters as it is written.
+    /// </summary>
+    public static PersonInfoValue Read(ref PacketReader reader)
     {
-        Name = reader.ReadUtf8UnicodeString();
-        Hero = reader.ReadHero();
+        var name = reader.ReadUtf8UnicodeString();
+        var hero = (Hero)reader.ReadByte();
+        var shape = AppearanceValue.Read(ref reader);
+        var look = AppearanceValue.Read(ref reader);
 
-        AppearanceShape = new AppearanceValue(reader);
-        AppearanceLook = new AppearanceValue(reader);
+        return new PersonInfoValue(name, hero, shape, look);
     }
 
     [WireString(WireStringFormat.Utf16Unicode)]
