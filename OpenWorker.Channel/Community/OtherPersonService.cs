@@ -105,7 +105,7 @@ public sealed partial class OtherPersonService(
         var person = world.Get<ActorComponent>(target).Identifier;
         var name = world.Get<PersonInfoComponent>(target).Name;
 
-        if (window == OtherInfoWindow.Character && checkOption && await RefusesAsync(viewer, person, world.Get<PersonOptionComponent>(target).Collection))
+        if (checkOption && await RefusesAsync(viewer, person, world.Get<PersonOptionComponent>(target).Collection))
         {
             await network.SendAsync(viewer, new PersonOtherInfoRefuseResponse { Error = Refused, Name = name });
             return;
@@ -131,7 +131,7 @@ public sealed partial class OtherPersonService(
         }
 
         if (profile is not { } target ||
-            (window == OtherInfoWindow.Character && checkOption && Refuses(target.OptionList, target.IsFriend)))
+            (checkOption && Refuses(target.OptionList, target.IsFriend)))
         {
             await network.SendAsync(viewerPerson, new PersonOtherInfoRefuseResponse { Error = Refused, Name = profile?.Name ?? string.Empty });
             return;

@@ -280,7 +280,8 @@ public abstract class FriendServiceBase(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, FriendInfoRequest request)
     {
-        await others.AskAsync(context.Player, request.Friend, OtherInfoWindow.Friend, checkOption: false, calculateStat: false);
+        // The friend's choice of who may look at them holds for the friends list too: "nobody" refuses a friend as well.
+        await others.AskAsync(context.Player, request.Friend, OtherInfoWindow.Friend, checkOption: true, calculateStat: false);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, FriendFindRequest request)
