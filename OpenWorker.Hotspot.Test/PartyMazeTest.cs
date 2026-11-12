@@ -323,6 +323,64 @@ public sealed class PartyMazeTest
     }
 
     /// <summary>
+    /// What the fight did to a monster is not in its table and stays when the party shrinks: an armor that is broken stays
+    /// broken until its time is up, and a defense its mind forced on it stays until the mind gives it its own back.
+    /// </summary>
+    [TestMethod]
+    public void WhenThePartyShrinksABrokenArmorAndAForcedDefenseStay()
+    {
+        const int Monster = 1000;
+        var monsters = new ReadOnlyCollection<MonsterRow>([TestRows.Build<MonsterRow>(("Id", Monster), ("DefenseType", (byte)DefenseType.SuperArmor), ("AddHealth", 1000))]);
+        var tables = new CombatTables(monsters, TestMazes.None<StatusRow>(), TestMazes.None<SkillRow>(), TestMazes.None<CharacterInfoRow>());
+        var revision = new Gameplay.Modules.Maze.PartyRevision(
+            PartyRevisionTest.Rows<MonsterReviseGroupRow>(PartyRevisionTest.Monster(Monster, 0, PartyRevisionTest.Group)),
+            PartyRevisionTest.Rows<PartyReviseRatesRow>(
+                PartyRevisionTest.Rates(1, 1, 1f, 1f, 1f, 20f, 3000),
+                PartyRevisionTest.Rates(2, 2, 2f, 1f, 1f, 20f, 3000)));
+        var world = World.Create();
+
+        try
+        {
+            var player = Player(world, 1, 20, new RecordingConnection());
+            var services = new Lua.Ai.CreatureServices(null!, new Gameplay.Ai.MonsterBehaviorTables(TestMazes.None<MonsterRow>(), TestMazes.None<SkillRow>()), null!, TestMazes.Clock(), new Navigation.NavMeshProvider(), revision: revision);
+            var batch = TestMazes.Map(MapWithMonster(Monster));
+            var creatures = new Lua.Managers.LuaCreatureManager(world, batch, tables, services);
+
+            creatures.StartParty(2);
+
+            var maze = TestMazes.Create(world, player, batch: batch, creatures: creatures, tables: tables);
+
+            maze.SpawnSector(Sector);
+
+            var body = creatures.FindMonsters((_, _) => true).Single();
+            var brokenUntil = Environment.TickCount64 + 60_000;
+
+            world.Set(body, world.Get<MonsterCombatComponent>(body) with { SuperArmor = 0f, SuperArmorBrokenUntil = brokenUntil });
+            creatures.ForceDefense(body, DefenseType.Invincible);
+
+            creatures.ResizeParty(1);
+
+            var combat = world.Get<MonsterCombatComponent>(body);
+
+            Assert.AreEqual(1000f, combat.Stats.MaxHealth, "One member makes it as strong as its table");
+            Assert.AreEqual(brokenUntil, combat.SuperArmorBrokenUntil, "The armor comes back in its own time");
+            Assert.AreEqual(0f, combat.SuperArmor);
+            Assert.AreEqual(DefenseType.Invincible, combat.Defense);
+
+            creatures.RestoreDefense(body);
+
+            Assert.AreEqual(DefenseType.SuperArmor, world.Get<MonsterCombatComponent>(body).Defense, "The mind gives it its own back");
+
+            maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
     /// A monster that dies in a maze counts for every player in it, and for the killer who has left meanwhile, once each.
     /// </summary>
     [TestMethod]

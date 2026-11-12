@@ -43,11 +43,14 @@ public sealed class BuffTest
     private const ushort Burn = 902;
     private const ushort Rage = 910;
     private const ushort Fury = 911;
+    private const ushort FreeSkills = 920;
+    private const ushort Haste = 921;
     private const ushort Mend = 10000;
 
     private const byte FlatAttack = 33;
     private const byte FlatHealth = 13;
     private const byte HealthShare = 14;
+    private const byte FreeSkillsStat = 66;
 
     private static BuffRow Row(ushort id, BuffKind kind, BuffEffect effect, int duration, ushort? group = null, int tick = 0, byte overlapType = 0,
         byte overlapCount = 1, byte grade = 1, ushort change = 0, byte stat = 0, int value = 0) =>
@@ -63,6 +66,9 @@ public sealed class BuffTest
         Row(Burn, BuffKind.Debuff, BuffEffect.Burn, 3500, tick: 1000, stat: FlatHealth, value: 10),
         Row(Rage, BuffKind.Buff, BuffEffect.Stats, 5000, overlapType: 1, overlapCount: 3, grade: 2, change: Fury),
         Row(Fury, BuffKind.Buff, BuffEffect.Stats, 10000),
+        // Skills free of soul gauge and half as long to cool down; and a tenth off the cooldowns, in hundredths of a percent.
+        Row(FreeSkills, BuffKind.Buff, BuffEffect.FreeSkills, 10000, stat: FreeSkillsStat, value: 50),
+        Row(Haste, BuffKind.Buff, BuffEffect.Cooldown, 10000, value: 1000),
         // The tutorial's own: a share of the life back every half second, for as long as it is in the maze.
         Row(Mend, BuffKind.Buff, BuffEffect.Stats, 0, tick: 500, stat: HealthShare, value: 5)
     ]);
@@ -205,6 +211,30 @@ public sealed class BuffTest
     }
 
     /// <summary>
+    /// The share of the cooldowns a buff of free skills takes off adds to what the other buffs take off, whichever came first.
+    /// </summary>
+    [TestMethod]
+    public void TheCooldownSharesOfTheBuffsAddUpInAnyOrder()
+    {
+        var catalog = new BuffCatalog(Buffs);
+        var carrier = new BuffCarrier(1, 100, 100, false);
+        var random = new Random(1);
+
+        foreach (var order in new[] { new[] { FreeSkills, Haste }, [Haste, FreeSkills] })
+        {
+            var book = new BuffBook();
+
+            foreach (var buff in order)
+            {
+                Assert.IsTrue(BuffRules.Give(book, catalog, buff, 7, carrier, random, []));
+            }
+
+            Assert.AreEqual(60f, book.CooldownRate, 0.001f, "Half of it free, and a tenth more.");
+            Assert.IsTrue(book.FreeSoulGauge);
+        }
+    }
+
+    /// <summary>
     /// A burn takes its value at every tick of the clock until it runs out; on a player it stops when the player falls.
     /// </summary>
     [TestMethod]
@@ -332,6 +362,61 @@ public sealed class BuffTest
         finally
         {
             World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A burn hurts a monster that has not seen anybody: at the first tick it turns on the player who gave the burn, as a blow
+    /// would make it, and hates that player for the damage over time.
+    /// </summary>
+    [TestMethod]
+    public void ABurnWakesTheMonsterAndAngersItAtTheOneWhoGaveIt()
+    {
+        const int Monster = 1000;
+        var folder = Directory.CreateTempSubdirectory();
+        var world = World.Create();
+
+        try
+        {
+            // A monster that waits for a blow: it looks for nobody itself.
+            File.WriteAllText(Path.Join(folder.FullName, "Ai_Sleeper.lua"),
+                "function Initial_Normal(self, monster)\n  local ai = monster:GetAi()\n  ai:SetAiCheckTime(0.1)\n  ai:SetFindEnemyInfo(0, 1.0, 100.0)\nend\n");
+
+            var monsters = new ReadOnlyCollection<MonsterRow>([TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Sleeper"))]);
+            var skills = TestMazes.None<SkillRow>();
+            var combat = new CombatTables(monsters, TestMazes.None<StatusRow>(), skills, TestMazes.None<CharacterInfoRow>());
+            var services = new CreatureServices(new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, folder.FullName), new MonsterBehaviorTables(monsters, skills),
+                new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance), TestMazes.Clock(), new NavMeshProvider());
+            var batch = TestMazes.Map(PartyMazeTest.MapWithMonster(Monster));
+            var connection = new RecordingConnection();
+            var player = Player(world, connection);
+            var maze = TestMazes.Create(world, player, batch: batch, creatures: new LuaCreatureManager(world, batch, combat, services), buffs: new BuffManager(Buffs),
+                tables: combat);
+
+            maze.SpawnSector(Sector);
+
+            var monster = maze.Creatures.FindMonsters((_, _) => true).Single();
+            var mind = maze.Creatures.BodyOf(monster)!.Machine;
+            var giver = (int)world.Get<ActorComponent>(player);
+
+            world.Set(monster, world.Get<CreatureComponent>(monster) with { Health = 1000 });
+
+            Assert.AreEqual(AiMachine.NoTarget, mind.TargetId, "The player is far away and the monster looks for nobody.");
+            Assert.IsTrue(maze.Buffs.Give(monster, Burn, player));
+
+            maze.Buffs.Step(0.6f);
+            maze.Buffs.Step(0.6f);
+
+            Assert.AreEqual(990, world.Get<CreatureComponent>(monster).Health, "One tick.");
+            Assert.AreEqual(giver, mind.TargetId);
+            Assert.AreEqual(AiState.SelectAction, mind.State);
+            Assert.AreEqual(SkillAggro.OverTime(10), mind.AggroList.Single(e => e.Key == giver).Value);
+        }
+
+        finally
+        {
+            World.Destroy(world);
+            folder.Delete(recursive: true);
         }
     }
 

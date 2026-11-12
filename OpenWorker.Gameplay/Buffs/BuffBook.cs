@@ -279,6 +279,7 @@ public sealed class BuffBook
         var control = BuffControl.None;
         DefenseType? defense = null;
         var cooldown = 0f;
+        var freeCooldown = 0f;
         var freeSoul = false;
         var stamina = 0f;
         var soul = 0f;
@@ -316,8 +317,9 @@ public sealed class BuffBook
                     defense = DefenseType.Invincible;
                     break;
 
+                // The share of the free skills is the strongest of them, added to what the other buffs take off.
                 case BuffEffect.FreeSkills when definition.Stat1.Type == FreeSkillsStat:
-                    cooldown = buff.Values[0];
+                    freeCooldown = Math.Max(freeCooldown, buff.Values[0]);
                     freeSoul = true;
                     break;
 
@@ -402,7 +404,7 @@ public sealed class BuffBook
 
         Control = control;
         Defense = defense;
-        CooldownRate = cooldown;
+        CooldownRate = cooldown + freeCooldown;
         FreeSoulGauge = freeSoul;
         StaminaCostDown = stamina;
         SoulCostDown = soul;

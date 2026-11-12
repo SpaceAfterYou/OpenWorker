@@ -497,12 +497,26 @@ public sealed class LuaCreatureManager
         var before = ecs.Get<MonsterCombatComponent>(creature);
         var after = revision.Apply(tables.GetMonster(state.Identifier), state.Identifier, PartyCount);
 
-        // The share of life the monster has left stays, and a super armor that was broken is whole again.
+        // The share of life the monster has left stays, and so does the share of its super armor.
         var share = state.Health > 0 && before.Stats.MaxHealth > 0f ? state.Health / before.Stats.MaxHealth : 1f;
         var armorShare = before.SuperArmor > 0f && before.MaxSuperArmor > 0f ? before.SuperArmor / before.MaxSuperArmor : 1f;
         var health = state.Health > 0 ? Math.Max(1, (int)(after.Stats.MaxHealth * share)) : 0;
 
-        after = after with { SuperArmor = (int)(after.MaxSuperArmor * armorShare) };
+        after = after with { SuperArmor = (int)(after.MaxSuperArmor * armorShare), LastCountedHit = before.LastCountedHit };
+
+        // What the fight did to the monster is not in its table: an armor that is broken stays broken until its time is up,
+        // then comes back whole at the new gauge, and a defense its mind forced on it (an escape, the way home) stays until the
+        // mind gives the monster its own back, which is the one of the new table.
+        if (before.SuperArmorBrokenUntil != 0)
+        {
+            after = after with { SuperArmor = 0f, SuperArmorBrokenUntil = before.SuperArmorBrokenUntil };
+        }
+
+        if (Defenses.ContainsKey(creature))
+        {
+            Defenses[creature] = after.Defense;
+            after = after with { Defense = before.Defense };
+        }
 
         ecs.Set(creature, after);
         ecs.Set(creature, state with { Health = health });
