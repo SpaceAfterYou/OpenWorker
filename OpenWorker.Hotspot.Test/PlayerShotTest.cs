@@ -40,6 +40,13 @@ public sealed class PlayerShotTest
     private const short FlyingAttack = 1701;
 
     /// <summary>
+    /// A skill of Haru that charges, and a shot of the end of its third level.
+    /// </summary>
+    private const int ChargedSkill = 12000632;
+
+    private const short ChargedShot = 1853;
+
+    /// <summary>
     /// A skill of Stella whose loop, played while the key is held, lets its chains go as it begins (attack 1201 among them).
     /// </summary>
     private const int Chain = 52000711;
@@ -234,6 +241,24 @@ public sealed class PlayerShotTest
         {
             World.Destroy(world);
         }
+    }
+
+    /// <summary>
+    /// A skill that charges ends with the animation of the level it reached, and the shots of that animation are the skill's.
+    /// </summary>
+    [TestMethod]
+    public void TheShotsOfAChargedEndAreTheSkills()
+    {
+        var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
+
+        if (string.IsNullOrEmpty(folder))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_ACTION is not set.");
+        }
+
+        var actions = new SkillActionProvider(TestTables.Load<SkillRow>("tb_Skill"), NullLogger<SkillActionProvider>.Instance) { Folder = folder };
+
+        Assert.IsTrue(actions.TryGetProjectile(ChargedSkill, Hero.Haru, ChargedShot, out _));
     }
 
     private static SkillProjectileRequest Shot(int skill, short attack, Vector3 place)

@@ -345,7 +345,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             row.LoopTime / 1000f,
             charging || row.ControlType == ChargingBothSides,
             steps,
-            Enumerable.Range(1, steps.Count).Select(level => Find(file, $"{row.AnimationEnd}_{level:00}", false)).ToArray());
+            Enumerable.Range(1, steps.Count).Select(level => Find(file, ChargedEnd(row, level), false)).ToArray());
     }
 
     private static List<float> ChargeSteps(SkillRow row)
@@ -466,17 +466,46 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
 
         foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationExtra, row.AnimationEnd])
         {
-            foreach (var candidate in Find(file, name)?.Attacks ?? [])
+            if (Find(file, name) is { } animation && TryFind(animation, attack, accepts, out trigger))
             {
-                if (candidate.Id == attack && accepts(candidate))
+                return true;
+            }
+        }
+
+        // A charged skill ends with the animation of the level its charge reached, which has shots of its own.
+        if (row.ControlType is Charging or ChargingToTheEnd)
+        {
+            for (var level = 1; level <= ChargeSteps(row).Count; level++)
+            {
+                if (Find(file, ChargedEnd(row, level), false) is { } animation && TryFind(animation, attack, accepts, out trigger))
                 {
-                    trigger = candidate;
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    private static bool TryFind(ActionAnimation animation, int attack, Func<AttackTrigger, bool> accepts, out AttackTrigger trigger)
+    {
+        foreach (var candidate in animation.Attacks)
+        {
+            if (candidate.Id == attack && accepts(candidate))
+            {
+                trigger = candidate;
+                return true;
+            }
+        }
+
+        trigger = default;
+
+        return false;
+    }
+
+    private static string ChargedEnd(SkillRow row, int level)
+    {
+        return string.Create(CultureInfo.InvariantCulture, $"{row.AnimationEnd}_{level:00}");
     }
 
     /// <summary>
