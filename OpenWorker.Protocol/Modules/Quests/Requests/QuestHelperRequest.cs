@@ -3,7 +3,6 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
-using OpenWorker.Hotspot.Modules.Quests.Extensions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Quests.Requests;

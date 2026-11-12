@@ -4,14 +4,16 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Boosters.Enums;
 using OpenWorker.Hotspot.Modules.Boosters.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Boosters.Responses;
 
 /// <summary>
 /// All the boosters of the person. The client forgets the ones it knew, so this also clears them.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct BoosterLoadResponse : IResponseHotspotMessage
+public readonly partial struct BoosterLoadResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -26,22 +28,8 @@ public readonly struct BoosterLoadResponse : IResponseHotspotMessage
 
     public BoosterConsumeArea Area { get; init; }
 
+    [WireArray(WireLength.Signed16)]
     public IReadOnlyList<BoosterLoadEntry> Entries { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write((byte)Area);
-        writer.Write(checked((short)Entries.Count));
-
-        foreach (var entry in Entries)
-        {
-            entry.Write(writer);
-        }
-    }
-
-#endregion Interface: IWritableData
 }

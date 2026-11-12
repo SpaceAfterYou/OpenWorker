@@ -1,12 +1,13 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Events.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Events.Types;
 
 /// <summary>
-/// The attendance of a person in a table: 45 bytes.
+/// The attendance of a person in a table: 45 bytes. Written by hand because a table of another number of days is refused,
+/// not padded or cut.
 /// </summary>
-public readonly struct AttendanceInfo : IWritableData
+public readonly struct AttendanceInfo : IWireWritable
 {
     public const int Days = 40;
 
@@ -22,20 +23,20 @@ public readonly struct AttendanceInfo : IWritableData
 
     public required int Table { get; init; }
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
         if (State.Length != Days)
         {
             throw new InvalidOperationException("The attendance has a fixed number of days.");
         }
 
-        writer.Write(CurrentDay);
+        writer.WriteByte(CurrentDay);
 
         foreach (var state in State)
         {
-            writer.Write((byte)state);
+            writer.WriteByte((byte)state);
         }
 
-        writer.Write(Table);
+        writer.WriteInt32(Table);
     }
 }
