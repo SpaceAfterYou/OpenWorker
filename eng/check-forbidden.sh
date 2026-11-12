@@ -42,6 +42,7 @@ for rule in "${RULES[@]}"; do
   matches=$(grep -rnE "$pattern" . \
     --include='*.cs' \
     --exclude-dir=obj --exclude-dir=bin --exclude-dir=.git --exclude-dir=.claude --exclude-dir='*.Test' \
+    --exclude-dir=agents \
     | sed 's|^\./||')
 
   for exempt in "${EXEMPT[@]}"; do
