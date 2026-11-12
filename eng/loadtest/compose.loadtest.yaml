@@ -10,6 +10,8 @@
 #   * No packet dumps.
 #   * The line each server logs about its garbage collector when it starts (RuntimeSettingsLogService) stays at
 #     Information, so a run shows which collector it was measured with.
+#   * The test commands of the chat open to every account in the districts: a bot that goes to a maze raises its character
+#     and records the maze before it as cleared (/exp, /maze-clear), since a new character is not admitted.
 #   * Twenty channels in a district instead of ten. A channel holds 65 players (it is Full above 64), so a thousand bots
 #     in one district need at least sixteen. Set LOADTEST_CHANNELS to change it.
 #
@@ -51,8 +53,14 @@ services:
   openworker.authserver:
     <<: [*server, *after-relay]
 
+  # The bots walk a new character straight into a district, not through the prologue maze.
   openworker.gateserver:
     <<: [*server, *after-relay]
+    environment:
+      - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
+      - Hotspot__PacketDumpPath=
+      - Game__Prologue=false
 
   openworker.mazeserver:
     <<: [*server, *after-relay]
@@ -67,6 +75,7 @@ services:
       - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Hotspot__PacketDumpPath=
       - Channel__To=${LOADTEST_CHANNELS:-20}
+      - Commands__OpenToEveryone=true
 
   openworker.districtserver-canduscity:
     <<: *after-relay
@@ -78,6 +87,7 @@ services:
       - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Hotspot__PacketDumpPath=
       - Channel__To=${LOADTEST_CHANNELS:-20}
+      - Commands__OpenToEveryone=true
 
   openworker.districtserver-gracecity:
     <<: *after-relay
@@ -89,6 +99,7 @@ services:
       - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Hotspot__PacketDumpPath=
       - Channel__To=${LOADTEST_CHANNELS:-20}
+      - Commands__OpenToEveryone=true
 
   openworker.districtserver-ruinfortress:
     <<: *after-relay
@@ -100,3 +111,4 @@ services:
       - Logging__LogLevel__OpenWorker.DependencyInjection.RuntimeSettingsLogService=Information
       - Hotspot__PacketDumpPath=
       - Channel__To=${LOADTEST_CHANNELS:-20}
+      - Commands__OpenToEveryone=true

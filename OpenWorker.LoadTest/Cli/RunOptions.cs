@@ -37,6 +37,18 @@ internal sealed class RunOptions
     public short MazeLocation { get; set; } = 21311;
 
     /// <summary>
+    /// The portal a bot takes into the maze. The server takes a portal only where it stands and only to its own maze: 21511 is
+    /// the portal of Rocco Town to 21311, near the place where a new character enters the district.
+    /// </summary>
+    public int MazePortal { get; set; } = 21511;
+
+    /// <summary>
+    /// When set, a bot raises its character and records the maze before it as cleared with the test commands of the chat
+    /// before it asks for the maze, since a new character is not admitted. The district must open the commands to everyone.
+    /// </summary>
+    public bool NoMazePrepare { get; set; }
+
+    /// <summary>
     /// How long a bot that goes to a maze plays in the district first; each bot adds up to as much again, so they do not leave together.
     /// </summary>
     public TimeSpan MazeDelay { get; set; } = TimeSpan.FromSeconds(3);
@@ -167,6 +179,8 @@ internal sealed class RunOptions
             Real(scenario, "chat-rate", "per-second", "Chat lines per second of every bot; the server lets one person say 5 in 3 s", 0.05, 0, 1.5, (o, v) => o.ChatRate = v),
             Real(scenario, "maze-share", "0..1", "Share of the bots that enter a maze and fight", 0.1, 0, 1, (o, v) => o.MazeShare = v),
             Whole(scenario, "maze-location", "Maze to enter, a location of the maze table of the client", 21311, 1, short.MaxValue, (o, v) => o.MazeLocation = (short)v),
+            Whole(scenario, "maze-portal", "Portal a bot takes into the maze; it must stand near the bots and lead to the maze", 21511, 0, int.MaxValue, (o, v) => o.MazePortal = v),
+            Switch(scenario, "no-maze-prepare", "Do not raise the character with /exp and record the maze before with /maze-clear before asking for the maze", o => o.NoMazePrepare = true),
             Time(scenario, "maze-delay", "How long a bot that goes to a maze plays in the district first; each adds up to as much again", TimeSpan.FromSeconds(3), TimeSpan.Zero, TimeSpan.FromHours(1), (o, v) => o.MazeDelay = v),
             Real(scenario, "skill-rate", "per-second", "Skills used per second by a bot in a maze", 1, 0, 30, (o, v) => o.SkillRate = v),
             Whole(scenario, "skill", "Skill a bot uses in a maze; 0 takes the first one its character has learned", 0, 0, int.MaxValue, (o, v) => o.Skill = v),

@@ -259,6 +259,21 @@ internal static class Requests
     }
 
     /// <summary>
+    /// A command of the chat (the line the client sends for text that starts with a slash), such as <c>/exp 100000</c>.
+    /// </summary>
+    public static void Command(ref FrameWriter writer, string text)
+    {
+        if (text.Length > MaxChatLength)
+        {
+            throw new ArgumentException($"A chat line holds at most {MaxChatLength} characters.", nameof(text));
+        }
+
+        writer.Begin(Opcodes.ChatCommand);
+        writer.WriteString(text);
+        writer.End();
+    }
+
+    /// <summary>
     /// A line said aloud to the ones around.
     /// </summary>
     public static void Chat(ref FrameWriter writer, string text)

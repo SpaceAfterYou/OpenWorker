@@ -28,6 +28,7 @@ using OpenWorker.Hotspot.Modules.Movement.Requests;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
+using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Hotspot.Modules.Skill;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
@@ -668,11 +669,10 @@ internal sealed class FakeWorld : IAsyncDisposable
         connection.Account = account;
         connection.Actor = request.Actor.Identifier;
 
-        connection.Send(new CharacterInfoResponse
+        // A client that comes from another server is answered with the place it is in, as the servers do.
+        connection.Send(new PersonEnterGameServerResponse2
         {
-            Person = Person(connection.Actor, _characters[account]),
-            World = new WorldValue(21311, new MapValue { Location = 21311, Server = 1 }, new Vector3(100f, 200f, 5f), 0f),
-            Gate = new CharacterInfoGatePayload { AccountId = "test" }
+            World = new WorldValue(21311, new MapValue { Location = 21311, Server = 1 }, new Vector3(100f, 200f, 5f), 0f)
         });
     }
 

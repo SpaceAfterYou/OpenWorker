@@ -13,6 +13,8 @@ internal sealed class DockerStatsSampler(IReadOnlyList<string> names, string pre
 {
     private const int MaxFailuresInARow = 3;
 
+    private const string StatsFormat = """{"Name":"{{.Name}}","CPUPerc":"{{.CPUPerc}}","MemUsage":"{{.MemUsage}}"}""";
+
     private static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(30);
 
     public override string Source => "docker stats";
@@ -83,8 +85,8 @@ internal sealed class DockerStatsSampler(IReadOnlyList<string> names, string pre
     }
 
     /// <summary>
-    /// Reads one line of <c>docker stats --format '{{json .}}'</c>, e.g.
-    /// <c>{"Name":"OpenWorker-Redis","CPUPerc":"0.45%","MemUsage":"12.5MiB / 15.5GiB"}</c>.
+    /// Reads one line that <see cref="StatsFormat"/> makes, e.g.
+    /// <c>{"Name":"OpenWorker-Redis","CPUPerc":"0.45%","MemUsage":"12.5MiB / 15.5GiB"}</c> (Podman writes <c>12.5MB</c>).
     /// </summary>
     internal static bool TryParseLine(string line, out string name, out double cpuPercent, out long memoryBytes)
     {
@@ -177,7 +179,9 @@ internal sealed class DockerStatsSampler(IReadOnlyList<string> names, string pre
             CreateNoWindow = true
         };
 
-        foreach (var argument in (string[])["stats", "--no-stream", "--format", "{{json .}}"])
+        // The three fields are named in the template: `{{json .}}` of Podman's docker command writes other fields (CPU as a
+        // number, memory in bytes), while these three come out the same from Docker and Podman.
+        foreach (var argument in (string[])["stats", "--no-stream", "--format", StatsFormat])
         {
             start.ArgumentList.Add(argument);
         }

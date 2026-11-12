@@ -41,6 +41,11 @@ internal sealed class Bot : IFrameSink, IDisposable
     /// </summary>
     private const long ImplausibleMicroseconds = 120_000_000;
 
+    /// <summary>
+    /// How long a bot waits after the commands that make its character fit for the maze, for the district to carry them out.
+    /// </summary>
+    private static readonly TimeSpan PrepareWait = TimeSpan.FromMilliseconds(500);
+
     private readonly RunContext _context;
     private readonly RunOptions _options;
     private readonly RunStats _stats;
@@ -457,7 +462,15 @@ internal sealed class Bot : IFrameSink, IDisposable
         {
             await StageAsync(BotStage.MazeEnter, async () =>
             {
-                var reply = await CallAsync(BotStage.MazeEnter, Opcodes.WorldEnter, (ref w) => Requests.MazeCreate(ref w, _options.MazeLocation, 0), stopping);
+                if (!_options.NoMazePrepare && _connection is { } district)
+                {
+                    // A new character is not admitted: the maze asks for a level and for the maze before it to be cleared.
+                    await SendAsync(district, (ref w) => Requests.Command(ref w, "/exp 100000"));
+                    await SendAsync(district, (ref w) => Requests.Command(ref w, "/maze-clear " + _options.MazeLocation.ToString(CultureInfo.InvariantCulture)));
+                    await Task.Delay(PrepareWait, stopping);
+                }
+
+                var reply = await CallAsync(BotStage.MazeEnter, Opcodes.WorldEnter, (ref w) => Requests.MazeCreate(ref w, _options.MazeLocation, _options.MazePortal), stopping);
                 var zone = Responses.ReadEnterMap(reply.Body);
 
                 if (zone.Result != 0 || !zone.ChangeServer || zone.Port <= 0 || zone.Type != (byte)EnterMapType.Maze)
@@ -481,8 +494,9 @@ internal sealed class Bot : IFrameSink, IDisposable
 
                 await ConnectAsync(BotStage.MazeEnter, zone.Address, zone.Port, stopping);
 
-                // A maze does not answer pings, so the entry is done when the character is described to the client.
-                await CallAsync(BotStage.MazeEnter, Opcodes.PersonInfo, (ref w) => Requests.PersonEnter(ref w, _account, _actor, _map, false, _session), stopping);
+                // A maze does not answer pings, so the entry is done when the server answers a client that came from another
+                // server (03/22; the character record, 03/32, goes to one that came from the character selection).
+                await CallAsync(BotStage.MazeEnter, Opcodes.PersonEnterAnswer, (ref w) => Requests.PersonEnter(ref w, _account, _actor, _map, false, _session), stopping);
 
                 await SendAsync(_connection!, (ref w) => Requests.MazeComplete(ref w));
             }, stopping);
