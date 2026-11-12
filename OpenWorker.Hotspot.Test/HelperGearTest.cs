@@ -92,6 +92,9 @@ public sealed class HelperGearTest
         /// </summary>
         public async Task<ushort> EquipAsync(ItemInstance? fromBag, ItemInstance? fromHelper, short helperSlot)
         {
+            // What the requests before sent has arrived once the marker after it has: the answer is in what comes next.
+            await QueueMarker.SettleAsync(World.Get<ServerSessionComponent>(Player), Connection);
+
             var before = Connection.Frames.Length;
 
             Gear.Equip(Player, Request(Mirium, fromBag, fromHelper, helperSlot));

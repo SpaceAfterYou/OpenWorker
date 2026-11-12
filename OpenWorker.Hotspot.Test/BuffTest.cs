@@ -290,7 +290,7 @@ public sealed class BuffTest
     /// again when the stun is over. It needs the tables, the AI scripts and the action files of the client.
     /// </summary>
     [TestMethod]
-    public void AStunnedMonsterDoesNotActUntilTheStunEnds()
+    public async Task AStunnedMonsterDoesNotActUntilTheStunEnds()
     {
         var scripts = Environment.GetEnvironmentVariable("OPENWORKER_TEST_AI");
         var actions = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
@@ -338,7 +338,7 @@ public sealed class BuffTest
 
             Assert.IsTrue(maze.Buffs.Give(body, Stun, player));
 
-            var before = Acts(connection, actor);
+            var before = await ActsAsync(world, player, connection, actor);
 
             // Two and a half seconds of the three of the stun.
             for (var step = 0; step < 50; step++)
@@ -346,17 +346,18 @@ public sealed class BuffTest
                 maze.Advance(TimeSpan.FromMilliseconds(50));
             }
 
-            Assert.AreEqual(before, Acts(connection, actor), "A held monster does nothing.");
+            Assert.AreEqual(before, await ActsAsync(world, player, connection, actor), "A held monster does nothing.");
 
-            // The stun ends, and the monster has ten seconds to act.
-            for (var step = 0; step < 200 && Acts(connection, actor) == before; step++)
+            // The stun ends, and the monster has ten seconds to act. Its body times its animations on the clock of the
+            // process, so each step takes about as long there too.
+            for (var step = 0; step < 200 && await ActsAsync(world, player, connection, actor) == before; step++)
             {
                 maze.Advance(TimeSpan.FromMilliseconds(50));
-                Thread.Sleep(5);
+                Thread.Sleep(50);
             }
 
             Assert.IsFalse(maze.Buffs.IsHeld(body));
-            Assert.IsGreaterThan(before, Acts(connection, actor), "Free again, the monster acts.");
+            Assert.IsGreaterThan(before, await ActsAsync(world, player, connection, actor), "Free again, the monster acts.");
         }
 
         finally
@@ -423,9 +424,10 @@ public sealed class BuffTest
     /// <summary>
     /// What a monster has done that the clients saw: moves, turns, battle poses and skills.
     /// </summary>
-    private static int Acts(RecordingConnection connection, int actor)
+    private static async Task<int> ActsAsync(World world, Entity player, RecordingConnection connection, int actor)
     {
-        Thread.Sleep(50);
+        // Everything sent to the player before has arrived once the marker sent after it has.
+        await QueueMarker.SettleAsync(world.Get<ServerSessionComponent>(player), connection);
 
         return connection.Frames.Select(PlayerFrame.Open)
             .Count(e => (e.Opcode.Group == (byte)GroupOpcode.Move || e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActiveSkillBt)) && e.Actor == actor);

@@ -216,7 +216,7 @@ public sealed class AkashicCallTest
             arena.Run(10f);
 
             // What a step sends is in the queue of the connection by then: wait for it to be written before looking.
-            await Task.Delay(300);
+            await QueueMarker.SettleAsync(world.Get<ServerSessionComponent>(arena.Player), arena.Connection);
 
             Assert.IsEmpty(Frames(arena.Connection, SkillOpcode.SkillSummonAkashic), "No card comes for a fallen player.");
             Assert.IsFalse(world.Has<AkashicCallComponent>(arena.Player));
