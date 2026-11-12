@@ -1,9 +1,11 @@
-using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Types;
 
-public readonly struct CashItemValue : IWritableData
+/// <summary>
+/// An item of the cash shop. The count of its prices goes first and the prices last, so the writer is written by hand.
+/// </summary>
+public readonly struct CashItemValue : IWireWritable
 {
 #region Message: Body
 
@@ -22,29 +24,31 @@ public readonly struct CashItemValue : IWritableData
 
 #endregion Message: Body
 
-#region Interface: IWritableData
+#region Interface: IWireWritable
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
-        writer.Write((byte)CashInfoList.Count);
+        var prices = CashInfoList ?? [];
 
-        writer.Write(Index);
-        writer.Write(SellActive);
-        writer.Write(Item);
-        writer.Write(Level);
-        writer.Write(Order);
-        writer.Write(NeedSlot);
-        writer.Write(CashInfo);
-        writer.Write(LimitTime1);
-        writer.Write(LimitTime2);
-        writer.Write(SellCount);
-        writer.Write(Billing);
+        writer.WriteLength(WireLength.Byte, prices.Count);
 
-        foreach (var info in CashInfoList)
+        writer.WriteInt32(Index);
+        writer.WriteByte(SellActive);
+        writer.WriteInt32(Item);
+        writer.WriteInt16(Level);
+        writer.WriteInt32(Order);
+        writer.WriteByte(NeedSlot);
+        writer.WriteInt16(CashInfo);
+        writer.WriteDateTimeOffset(LimitTime1);
+        writer.WriteDateTimeOffset(LimitTime2);
+        writer.WriteByte(SellCount);
+        writer.WriteInt32(Billing);
+
+        foreach (var price in prices)
         {
-            info.Write(writer);
+            price.Write(ref writer);
         }
     }
 
-#endregion Interface: IWritableData
+#endregion Interface: IWireWritable
 }
