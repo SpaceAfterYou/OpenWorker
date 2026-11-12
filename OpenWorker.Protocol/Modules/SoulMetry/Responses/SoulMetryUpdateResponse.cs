@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.SoulMetry.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.SoulMetry.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SoulMetryUpdateResponse : IResponseHotspotMessage
+public readonly partial struct SoulMetryUpdateResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -23,13 +25,4 @@ public readonly struct SoulMetryUpdateResponse : IResponseHotspotMessage
     public SoulMetryValue Data { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Data.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

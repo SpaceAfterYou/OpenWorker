@@ -1,23 +1,9 @@
-﻿using OpenWorker.Hotspot.Messages.Abstractions;
+﻿using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.SoulMetry.Types;
 
-public readonly struct SoulMetryValue(int identifier, short completionBit) : IWritableData
-{
-#region Message: Body
-
-    public int Identifier { get; } = identifier;
-    public short CompletionBit { get; } = completionBit;
-
-#endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Identifier);
-        writer.Write(CompletionBit);
-    }
-
-#endregion Interface: IWritableData
-}
+/// <summary>
+/// A soul metry in progress: its id and the bits of the objects already done.
+/// </summary>
+[WireMessage(WireMethods.Write)]
+public readonly partial record struct SoulMetryValue(int Identifier, short CompletionBit);
