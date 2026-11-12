@@ -2,8 +2,8 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
 using OpenWorker.Hotspot.Modules.Ranking.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Ranking.Responses;
 
@@ -12,8 +12,9 @@ namespace OpenWorker.Hotspot.Modules.Ranking.Responses;
 /// the time of the person and the fastest clear among the person and its friends. The client reads exactly fifteen chapters
 /// and five stages; fewer are filled with nothing, more are left out.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessage
+public readonly partial struct RankingInfiniteTowerListResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -39,38 +40,6 @@ public readonly struct RankingInfiniteTowerListResponse : IResponseHotspotMessag
     public RankingInfiniteTowerClearInfo Data { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        var chapters = Data.FriendsClearedPerChapter ?? [];
-
-        for (var index = 0; index < Chapters; index++)
-        {
-            writer.Write(index < chapters.Length ? chapters[index] : 0);
-        }
-
-        var stages = Data.Stages ?? [];
-
-        for (var index = 0; index < Stages; index++)
-        {
-            var stage = index < stages.Length ? stages[index] : Empty;
-
-            writer.Write(stage.MyClearTime);
-            writer.Write(stage.Chapter);
-            writer.Write(stage.Stage);
-            writer.Write(stage.Person);
-            writer.Write((byte)stage.Hero);
-            writer.Write(stage.Level);
-            writer.WritePersonName(stage.Name ?? string.Empty);
-            writer.Write(stage.ClearTime);
-        }
-
-        writer.Write(Data.Chapter);
-    }
-
-#endregion Interface: IWritableData
 
     /// <summary>
     /// A stage nobody has cleared.
