@@ -1,11 +1,13 @@
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Exchange.Types;
 
 /// <summary>
 /// A listing on sale as the search shows it to a buyer.
 /// </summary>
-public readonly struct ExchangeItemValue : IWritableData
+[WireMessage]
+public readonly partial struct ExchangeItemValue : IWritableData
 {
     public required int Exchange { get; init; }
     public required long PriceOne { get; init; }
@@ -17,13 +19,4 @@ public readonly struct ExchangeItemValue : IWritableData
 
     public required byte NoCommission { get; init; }
     public required ExchangeGoodsValue Goods { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Exchange);
-        writer.Write(PriceOne);
-        writer.Write(ExpiresAt);
-        writer.Write(NoCommission);
-        Goods.Write(writer);
-    }
 }

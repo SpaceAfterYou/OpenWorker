@@ -1,4 +1,5 @@
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Exchange.Types;
 
@@ -6,7 +7,8 @@ namespace OpenWorker.Hotspot.Modules.Exchange.Types;
 /// A listing of the player as its own list shows it. The client keeps the entries by the serial of the item: an entry
 /// with a count of 0 takes the listing off the list, any other replaces or adds it.
 /// </summary>
-public readonly struct ExchangeMyItemValue : IWritableData
+[WireMessage]
+public readonly partial struct ExchangeMyItemValue : IWritableData
 {
     public required int Exchange { get; init; }
 
@@ -23,14 +25,4 @@ public readonly struct ExchangeMyItemValue : IWritableData
     public required short InitialCount { get; init; }
     public required long PriceOne { get; init; }
     public required ExchangeGoodsValue Goods { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Exchange);
-        writer.Write(ExpiresAt);
-        writer.Write(State);
-        writer.Write(InitialCount);
-        writer.Write(PriceOne);
-        Goods.Write(writer);
-    }
 }
