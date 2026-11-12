@@ -4,14 +4,19 @@ using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Shop.Components;
+using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Hotspot.Modules.League.Requests;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// The growth of a league against a real Postgres. Each run migrates a database of its own and drops it after. Set
-/// OPENWORKER_TEST_POSTGRES to a connection string without a database. The levels are made here.
+/// Leagues against a real Postgres: their growth, and a founding the database fails. Each run migrates a database of its
+/// own and drops it after. Set OPENWORKER_TEST_POSTGRES to a connection string without a database. The levels are made here.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
@@ -131,5 +136,81 @@ public sealed class LeagueStoreTest
 
         Assert.AreEqual(2100, member!.Exp);
         Assert.AreEqual((byte)31, member.Level);
+    }
+
+    /// <summary>
+    /// The gold of a founding is taken before the league is written; when the database fails and no league is made, the
+    /// founder has it back and is told the founding failed.
+    /// </summary>
+    [TestMethod]
+    public async Task AFoundingTheDatabaseFailsGivesTheGoldBack()
+    {
+        const long gold = LeagueRules.CreateCost + 5;
+
+        var founder = await CreatePersonAsync("failfounder");
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var player = server.Join(founder, "failfounder");
+
+        server.World.Add(player.Entity, new LevelComponent(LeagueRules.MinLevel, 0), new CurrencyComponent { Gold = gold });
+        player.Read();
+
+        // The handler asks whether the founder is in a league, then founds it: the founding is what fails.
+        var service = new Founding(server, new FailingAt(Factory, 2));
+        var request = Create("Failing");
+
+        Assert.ThrowsExactly<TimeoutException>(() => server.Run(() => service.OnHandleAsync(new ServiceHandleContext(player.Entity, CancellationToken.None), request).AsTask()));
+
+        Assert.AreEqual(gold, server.World.Get<CurrencyComponent>(player.Entity).Gold);
+        Assert.IsNull(await Factory.MemberAsync(founder));
+
+        var error = player.Read().Single(e => e.Group == (byte)GroupOpcode.League && e.Command == ((byte)LeagueOpcode.Create | 0x80));
+
+        Assert.AreEqual(LeagueServiceBase.Text.CreateFailed, BitConverter.ToUInt16(error.Content, 0));
+    }
+
+    private static LeagueCreateRequest Create(string name)
+    {
+        var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, System.Text.Encoding.Unicode, leaveOpen: true))
+        {
+            writer.Write((short)(2 * name.Length + 1));
+            writer.Write(System.Text.Encoding.Unicode.GetBytes(name));
+            writer.Write((byte)0);
+            writer.Write(0);
+            writer.Write(0);
+            writer.Write(0);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        return new LeagueCreateRequest(reader);
+    }
+
+    /// <summary>
+    /// The handlers of leagues; founding needs none of the services given here as null.
+    /// </summary>
+    private sealed class Founding(TestServer server, IDbContextFactory<PersistenceContext> factory) :
+        LeagueServiceBase(server.World, server.Network, factory, null!, null!, null!, null!, null!);
+
+    /// <summary>
+    /// The database, until the context with the given number (from 1) is asked for: that one fails as a lost connection does.
+    /// </summary>
+    private sealed class FailingAt(IDbContextFactory<PersistenceContext> inner, int failing) : IDbContextFactory<PersistenceContext>
+    {
+        private int _asked;
+
+        public PersistenceContext CreateDbContext()
+        {
+            return ++_asked == failing ? throw new TimeoutException("The database did not answer.") : inner.CreateDbContext();
+        }
+
+        public Task<PersistenceContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        {
+            return ++_asked == failing ? throw new TimeoutException("The database did not answer.") : inner.CreateDbContextAsync(cancellationToken);
+        }
     }
 }

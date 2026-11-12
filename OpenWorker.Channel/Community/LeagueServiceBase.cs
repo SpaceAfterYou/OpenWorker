@@ -165,7 +165,26 @@ public abstract class LeagueServiceBase(
         // The gold is taken before the league is written, so it cannot be spent meanwhile, and given back when no league is made.
         Charge(context.Player, -LeagueRules.CreateCost);
 
-        var (outcome, remain, league) = await factory.CreateAsync(name, me, DefaultAuth);
+        LeagueCreateOutcome outcome;
+        TimeSpan remain;
+        LeagueRecord? league;
+
+        try
+        {
+            (outcome, remain, league) = await factory.CreateAsync(name, me, DefaultAuth);
+        }
+
+        catch (Exception)
+        {
+            // The database failed: the league may still have been written just before it did.
+            if (!await FoundedAsync(me) && Alive(context))
+            {
+                Charge(context.Player, LeagueRules.CreateCost);
+                Fail(context, LeagueOpcode.Create, Text.CreateFailed);
+            }
+
+            throw;
+        }
 
         if (outcome != LeagueCreateOutcome.Created && Alive(context))
         {
@@ -949,6 +968,23 @@ public abstract class LeagueServiceBase(
         }
 
         return Alive(context) ? (member, league) : null;
+    }
+
+    /// <summary>
+    /// Whether the person is the master of a league now: a founding that failed in the database may have written the league
+    /// before it failed. False when the database cannot tell either.
+    /// </summary>
+    private async Task<bool> FoundedAsync(int person)
+    {
+        try
+        {
+            return await factory.MemberAsync(person) is { Position: LeagueRules.Master };
+        }
+
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     /// <summary>
