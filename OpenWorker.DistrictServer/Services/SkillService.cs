@@ -83,17 +83,13 @@ public sealed class SkillService(World world, SkillUse skillUse, IPlayerAudience
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillKeypressRequest request) =>
         ValueTask.CompletedTask;
 
-    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request)
-    {
-        var place = request.Skill.Position;
-
-        if (Place.IsValid(place.Position, place.Angle))
-        {
-            world.Set(context.Player, world.Get<WorldComponent>(context.Player) with { Position = place.Position, Rotation = place.Angle });
-        }
-
-        return ValueTask.CompletedTask;
-    }
+    /// <summary>
+    /// The end of a dash or an evade moves a player in a maze only, as the original does: in a city the place the client
+    /// reports is not taken (the moves that follow carry it, under the rule of a move), as with the other places a skill
+    /// reports (06/45, 06/47).
+    /// </summary>
+    public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request) =>
+        ValueTask.CompletedTask;
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveRequest request)
     {

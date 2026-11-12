@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using OpenWorker.Batch.Entities.Basic;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
@@ -62,6 +63,7 @@ public sealed partial class MazeService(
     SimulationClock clock,
     IPlayerAudience audience,
     SkillInputRelay relay,
+    MazeAdmission admission,
     ILogger<MazeService> logger,
     MazeHelperField? helpers = null
 ) :
@@ -116,8 +118,22 @@ public sealed partial class MazeService(
 
     private short Gate { get; } = gate.Value.Id;
 
+    /// <summary>
+    /// The player takes a portal of the maze's map into a district or another maze, or the tutorial moves it on to its second
+    /// maze. The way out asks what the portal of a district asks (<see cref="MazeAdmission"/>): the player stands at a portal
+    /// of this map, and a maze asks its level, the maze before it, its daily limit, its fatigue and its item; the tutorial
+    /// mazes are entered from wherever the story puts the player. A refusal is the error of the request with the code.
+    /// </summary>
     public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
     {
+        if (admission.Check(context.Player, request.Location, request.Portal, out var item) is { } code)
+        {
+            ecs.Get<ServerSessionComponent>(context.Player)
+                .Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.World, WorldOpcode.EnterReq), code, item > 0 ? (uint)item : null));
+
+            return;
+        }
+
         await worldManager
             .EnterAsync(context.Player, request.Location, request.Jump);
     }
@@ -389,10 +405,16 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// A passive move (evade, dash) ends where the client says, when the player could have got there.
+    /// A passive move (evade, dash) ends where the client says, when the player could have got there. A fallen player does
+    /// not move, as with the other places a skill reports.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request)
     {
+        if (!IsFighting(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
         var place = request.Skill.Position;
 
         TakePlace(context.Player, place.Position, place.Angle, SkillOpcode.PassiveSkillEndReq);
