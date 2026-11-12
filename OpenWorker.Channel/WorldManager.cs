@@ -201,7 +201,25 @@ public sealed partial class WorldManager(
         await SendToMazeAsync(player, location, start, maze, Guid.Empty, 0, 0);
     }
 
-    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party, int members)
+    /// <summary>
+    /// Sends the player into the instance of the room of an account, the room being played in a maze; <paramref name="back"/> is
+    /// the district the player goes back to when it leaves. False when the location has no start to enter by.
+    /// </summary>
+    public async ValueTask<bool> SendToRoomAsync(Entity player, short location, (string Host, short Port) maze, Guid instance, int owner, short back)
+    {
+        if (!provider.TryGetAndCache(location, out var batch, out var type) ||
+            type != BatchType.Maze ||
+            !TryGetStart(batch, location, 0, out var start))
+        {
+            return false;
+        }
+
+        await SendToMazeAsync(player, location, start, maze, instance, 0, 0, owner, back);
+
+        return true;
+    }
+
+    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party, int members, int room = 0, short back = 0)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
@@ -248,7 +266,9 @@ public sealed partial class WorldManager(
             Jump = start.Id,
             Instance = instance,
             Party = party,
-            Members = (byte)Math.Clamp(members, 0, byte.MaxValue)
+            Members = (byte)Math.Clamp(members, 0, byte.MaxValue),
+            Room = room,
+            Return = back
         };
 
         // The maze loads the person from the database: what this server has must be there first.

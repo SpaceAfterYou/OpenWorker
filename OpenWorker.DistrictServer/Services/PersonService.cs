@@ -1,6 +1,7 @@
 ﻿using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Server.Common;
 using OpenWorker.Server.Common.Services;
 using OpenWorker.Hotspot.Cache;
@@ -85,6 +86,7 @@ public sealed partial class PersonService(
     BuffMemory buffMemory,
     DistrictBuffs districtBuffs,
     MovementPace pace,
+    MyRoomBook rooms,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -207,6 +209,7 @@ public sealed partial class PersonService(
         await attendance.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
         await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await rooms.EnterAsync(context.Player, context.CancellationToken);
         await sharePoints.EnterDistrictAsync(context.Player, person.Id, Location, context.CancellationToken);
         await npcCredit.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await itemUse.EnterAsync(context.Player, person.Id, context.CancellationToken);

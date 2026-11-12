@@ -151,6 +151,11 @@ public enum AchievementType : ushort
     MissionDone = 53,
 
     /// <summary>
+    /// The room of a friend entered.
+    /// </summary>
+    RoomVisited = 54,
+
+    /// <summary>
     /// A ride of an NPC of a transport.
     /// </summary>
     TransportTaken = 56,

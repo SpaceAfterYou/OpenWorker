@@ -15,6 +15,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Quests;
@@ -66,6 +67,7 @@ await Host
         services.AddSingleton<IPersonPlaceSource, PersonPlaceStore>();
         services.AddTrade();
         services.AddPartyMazeEntry();
+        services.AddMyRoom().AddSingleton<IMyRoomPlace, DistrictRoomPlace>();
 
         services.AddHotspot(context, EntityComponentService.District);
 
