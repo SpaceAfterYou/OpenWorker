@@ -127,7 +127,7 @@ public sealed class TestHealthChecks
         Assert.AreEqual(HealthStatus.Unhealthy, starting.Status);
         StringAssert.Contains(starting.Description, "not started");
 
-        state.MarkListening();
+        state.MarkListening(10000);
 
         Assert.AreEqual(HealthStatus.Healthy, (await check.CheckHealthAsync(Context(), TestContext.CancellationToken)).Status);
 

@@ -148,7 +148,7 @@ internal sealed partial class ServerService(
     {
         Listener.Start();
 
-        state.MarkListening();
+        state.MarkListening(((IPEndPoint)Listener.LocalEndpoint).Port);
 
         LogServerReady(logger);
 
