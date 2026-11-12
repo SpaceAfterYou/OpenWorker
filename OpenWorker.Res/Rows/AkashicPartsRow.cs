@@ -9,7 +9,16 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Akashic_Parts")]
 public readonly partial struct AkashicPartsRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the row, which tb_Akashic_Records names in its Part columns.
+    /// </summary>
     public short Id { get; } = reader.ReadInt16();
-    public string Field1 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field2 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The model of the card&apos;s creature: the client sets it as the model path of the item it builds for the creature.
+    /// </summary>
+    public string Model { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The base path of the creature&apos;s animations: the client loads it with .anim and .vTransition.
+    /// </summary>
+    public string Animation { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
 }

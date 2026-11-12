@@ -492,9 +492,9 @@
     "String"
   ],
   "tb_Akashic_Parts": [
-    "Int16",
-    "String",
-    "String"
+    "Int16 Id // The id of the row, which tb_Akashic_Records names in its Part columns.",
+    "String Model // The model of the card's creature: the client sets it as the model path of the item it builds for the creature.",
+    "String Animation // The base path of the creature's animations: the client loads it with .anim and .vTransition."
   ],
   "tb_Customize_Info": [
     "Byte",
