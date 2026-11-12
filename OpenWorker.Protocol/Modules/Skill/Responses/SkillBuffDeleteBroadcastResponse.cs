@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillBuffDeleteBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillBuffDeleteBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,24 +22,13 @@ public readonly struct SkillBuffDeleteBroadcastResponse(BinaryReader reader) : I
 
 #region Message: Body
 
-    public ActorValue Actor { get; init; } = new(reader);
-    public short Buff { get; init; } = reader.ReadInt16();
+    public ActorValue Actor { get; init; }
+    public short Buff { get; init; }
 
     /// <summary>
     /// Supernova anim?
     /// </summary>
-    public bool ExecuteOutSkill { get; init; } = reader.ReadBoolean();
+    public bool ExecuteOutSkill { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Actor);
-        writer.Write(Buff);
-        writer.Write(ExecuteOutSkill);
-    }
-
-#endregion Interface: IWritableData
 }

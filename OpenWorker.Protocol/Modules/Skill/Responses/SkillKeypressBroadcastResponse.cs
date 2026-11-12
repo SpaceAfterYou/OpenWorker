@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillKeypressBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillKeypressBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,18 +22,8 @@ public readonly struct SkillKeypressBroadcastResponse(BinaryReader reader) : IRe
 
 #region Message: Body
 
-    public ActorValue Target { get; init; } = new(reader);
-    public bool State { get; init; } = reader.ReadBoolean();
+    public ActorValue Target { get; init; }
+    public bool State { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Target);
-        writer.Write(State);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillBuffChangeBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillBuffChangeBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,26 +22,12 @@ public readonly struct SkillBuffChangeBroadcastResponse(BinaryReader reader) : I
 
 #region Message: Body
 
-    public ActorValue Target { get; init; } = new(reader);
-    public short Buff { get; init; } = reader.ReadInt16();
-    public short NewBuff { get; init; } = reader.ReadInt16();
-    public float Time { get; init; } = reader.ReadSingle();
-    public byte Count { get; init; } =  reader.ReadByte();
-    public ActorValue Owner { get; init; } = new(reader);
+    public ActorValue Target { get; init; }
+    public short Buff { get; init; }
+    public short NewBuff { get; init; }
+    public float Time { get; init; }
+    public byte Count { get; init; }
+    public ActorValue Owner { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Target);
-        writer.Write(Buff);
-        writer.Write(NewBuff);
-        writer.Write(Time);
-        writer.Write(Count);
-        writer.Write(Owner);
-    }
-
-#endregion Interface: IWritableData
 }

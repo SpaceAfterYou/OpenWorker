@@ -5,11 +5,13 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillActiveBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillActiveBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,16 +24,7 @@ public readonly struct SkillActiveBroadcastResponse(BinaryReader reader) : IResp
 
 #region Message: Body
 
-    public ActiveSkillValue Skill { get; init; } = new (reader);
+    public ActiveSkillValue Skill { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Skill.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

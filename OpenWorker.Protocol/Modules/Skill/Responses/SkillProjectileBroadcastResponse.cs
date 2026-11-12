@@ -4,11 +4,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillProjectileBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillProjectileBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,19 +23,8 @@ public readonly struct SkillProjectileBroadcastResponse(BinaryReader reader) : I
 
 #region Message: Body
 
-    public ActorValue Owner { get; init; } = new(reader);
-    public ProjectileShotValue Projectile { get; init; } = new(reader);
+    public ActorValue Owner { get; init; }
+    public ProjectileShotValue Projectile { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Owner);
-
-        Projectile.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

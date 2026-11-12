@@ -2,14 +2,15 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Skill.Extensions;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillActionBroadcastResponse : IResponseHotspotMessage
+public readonly partial struct SkillActionBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,19 +23,10 @@ public readonly struct SkillActionBroadcastResponse : IResponseHotspotMessage
 
 #region Message: Body
 
-public required SkillDmgValue[] SkillDmgValueList { get; init; }
-public SkillActionValue SkillAction { get; init; }
+    [WireArray(WireLength.Byte)]
+    public required SkillDmgValue[] SkillDmgValueList { get; init; }
+
+    public SkillActionValue SkillAction { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(SkillDmgValueList);
-
-        SkillAction.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

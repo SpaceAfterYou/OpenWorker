@@ -4,11 +4,14 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+// Read back too, by the test of its byte layout.
+[WireMessage(WireMethods.Both)]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillChainBroadcastResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillChainBroadcastResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,19 +24,8 @@ public readonly struct SkillChainBroadcastResponse(BinaryReader reader) : IRespo
 
 #region Message: Body
 
-    public ActorValue Owner { get; init; } = new(reader);
-    public SkillChainPosition SkillChainPosition { get; init; } = new(reader);
+    public ActorValue Owner { get; init; }
+    public SkillChainPosition SkillChainPosition { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Owner);
-
-        SkillChainPosition.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

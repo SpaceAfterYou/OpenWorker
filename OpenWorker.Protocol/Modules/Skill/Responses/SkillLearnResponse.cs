@@ -3,13 +3,14 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Skill.Enums;
-using OpenWorker.Hotspot.Modules.Skill.Extensions;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SkillLearnResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct SkillLearnResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,26 +23,14 @@ public readonly struct SkillLearnResponse(BinaryReader reader) : IResponseHotspo
 
 #region Message: Body
 
-    public SkillInfoValue Info { get; init; } = new(reader);
+    public SkillInfoValue Info { get; init; }
 
     /// <summary>
     /// TODO: Research, always zero.
     /// </summary>
-    public SkillType Type { get; init; } = reader.ReadSkillType();
+    public SkillType Type { get; init; }
 
-    public bool IsSuccessful { get; init; } = reader.ReadBoolean();
+    public bool IsSuccessful { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Info.Write(writer);
-
-        writer.Write(Type);
-        writer.Write(IsSuccessful);
-    }
-
-#endregion Interface: IWritableData
 }
