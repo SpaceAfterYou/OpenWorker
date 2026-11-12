@@ -8,7 +8,8 @@ namespace OpenWorker.DistrictServer.Trade;
 /// An item one side puts on the table: where it lies and what it was when it was put there. The item stays in the bag of
 /// its owner until the exchange, which takes it only if it is still the same (<see cref="TradeGoods.StillHolds"/>).
 /// </summary>
-public readonly record struct TradeOffer(StorageGroup Storage, short Slot, long Serial, int Item, short Count);
+/// <param name="Look">What the item was when it was offered, beyond its number: the other side agreed to exactly that.</param>
+public readonly record struct TradeOffer(StorageGroup Storage, short Slot, long Serial, int Item, short Count, string Look);
 
 /// <summary>
 /// What one player of a trade offers and how far it has agreed.

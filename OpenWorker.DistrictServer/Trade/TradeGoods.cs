@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Arch.Core;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot;
@@ -55,18 +57,55 @@ public sealed class TradeGoods(World world, InventoryService inventory)
 
     public static TradeOffer Describe(ItemInstance item)
     {
-        return new TradeOffer(item.Storage, item.Slot, item.Serial, item.Item, item.Count);
+        return new TradeOffer(item.Storage, item.Slot, item.Serial, item.Item, item.Count, LookOf(item));
     }
 
     /// <summary>
-    /// Whether the item offered is still where it was and still the same: not moved, split, used or sold since.
+    /// Everything of an item that the workshops can change while it lies on the table: its upgrade, whether it is broken
+    /// or bound, its wear, its sockets, options and broaches. Two items with the same text are the same to a buyer.
+    /// </summary>
+    private static string LookOf(ItemInstance item)
+    {
+        var text = new StringBuilder();
+
+        text.Append(CultureInfo.InvariantCulture,
+            $"{(int)item.BindState}|{item.Upgrade}|{item.Endurance}|{item.SocketActive}|{item.UpgradeCount}|{item.UpgradeLimit}|{item.Flag}|{item.Exp}|{item.BroachState}|{item.RestoreCount}|{item.SealCount}");
+
+        foreach (var option in item.Options)
+        {
+            text.Append(CultureInfo.InvariantCulture, $"|o{option.Type}:{option.Option}");
+        }
+
+        foreach (var socket in item.Sockets)
+        {
+            text.Append(CultureInfo.InvariantCulture, $"|s{socket.Gem}");
+
+            foreach (var option in socket.Options ?? [])
+            {
+                text.Append(CultureInfo.InvariantCulture, $",{option.Type}:{option.Option}");
+            }
+        }
+
+        foreach (var broach in item.Broaches)
+        {
+            text.Append(CultureInfo.InvariantCulture, $"|b{broach}");
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>
+    /// Whether the item offered is still where it was and still the same: not moved, split, used or sold since, and
+    /// not upgraded, broken, bound or fitted with anything at a workshop while it lay on the table.
     /// </summary>
     public bool StillHolds(Entity player, TradeOffer offer)
     {
         return inventory.InventoryOf(player)?.At(offer.Storage, offer.Slot) is { } item &&
                item.Serial == offer.Serial &&
                item.Item == offer.Item &&
-               item.Count == offer.Count;
+               item.Count == offer.Count &&
+               ItemBinding.HeldBack(item) == ItemHeldBack.Not &&
+               LookOf(item) == offer.Look;
     }
 
     /// <summary>

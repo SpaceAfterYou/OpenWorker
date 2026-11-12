@@ -264,6 +264,43 @@ public sealed class TradeTest
     }
 
     /// <summary>
+    /// An item offered and locked is changed at a workshop before the second confirmation (here it breaks, as a failed
+    /// upgrade leaves it): the other side agreed to the item it saw, so the exchange moves nothing.
+    /// </summary>
+    [TestMethod]
+    public async Task AnItemChangedAfterItWasOfferedIsNotHandedOver()
+    {
+        using var market = new Market();
+
+        var seller = market.Join(gold: 0);
+        var buyer = market.Join(gold: 500);
+        var cloth = market.Put(seller, 3, Cloth, 1);
+
+        await market.Send(seller, Invite(buyer));
+        await market.Send(buyer, Accept(seller));
+        await market.Send(seller, Offer(cloth));
+        await market.Send(buyer, Gold(500));
+        await market.Send(seller, Lock());
+        await market.Send(buyer, Lock());
+        await market.Send(seller, new TradeConfirmRequest());
+
+        cloth.Upgrade = 3;
+
+        await market.Send(buyer, new TradeConfirmRequest());
+
+        foreach (var player in new[] { seller, buyer })
+        {
+            var cancel = await WaitForAsync(player, TradeOpcode.Cancel);
+
+            Assert.AreEqual(TradeCodes.ItemsUnavailable, BitConverter.ToInt32(cancel.Body, 4));
+        }
+
+        Assert.IsNotNull(market.BagsOf(seller).At(StorageGroup.Common, 3), "the item stays with its owner");
+        Assert.IsEmpty(market.BagsOf(buyer).Items.ToList());
+        Assert.AreEqual(500, market.GoldOf(buyer));
+    }
+
+    /// <summary>
     /// A player opens a shop with one item; another opens the shop and buys it at the price it was shown: the item and
     /// the gold move, the owner is told of the sale, and the empty shop closes.
     /// </summary>
