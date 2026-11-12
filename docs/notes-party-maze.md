@@ -144,7 +144,7 @@ where the group is, and its `tb_PartyRevise` has only the group, the number and 
   when a member leaves the party (leaving, a kick, a member offline too long) or the party ends: the community event
   `party.resized` carries the party and the members left to the servers of those who remain, and a maze that has one of
   them in it makes its living plain monsters as strong as the new count makes them, each keeping the share of its life it
-  had (a broken super armor comes back whole), and tells its members: the changed stats of each monster (17/12) and the
+  had (a broken super armor stays broken until its time and then comes back whole at the new gauge; a defense the mind of the monster forced on it stays), and tells its members: the changed stats of each monster (17/12) and the
   notice 80 (11/51, `MazeNoticeResponse`), which the client has a text for. A member who joins the party or the instance
   later changes nothing, as in the original.
 
@@ -224,7 +224,7 @@ step of the maze, and a refusal (a portal that is shut, on another map or leadin
 | Strength of monsters | rates of the group of the monster by the members of the maze, one to four, one for a monster of another kind | the same | same |
 | Rates applied | life, attack, defence, attack speed, speed of movement, super armor gauge and times | the same; the speeds only change the stats shown, the scripts of the monsters set their pace | same (the speeds do not drive the monsters) |
 | Members counted | the members the maze was made for; the party's members when one leaves; one when the party ends | the same | same |
-| A monster already alive | recalculated with the share of life kept on a leave | the same, and a broken super armor comes back whole | same |
+| A monster already alive | recalculated with the share of life kept on a leave | the same; the break of an armor and a forced defense are untouched | same |
 | Notice of the change | the notice 80 to the maze | the same | same |
 | Group not in the table | nothing applied | nothing applied | same |
 | Portal that waits | all stand: at once; half or more: 6 seconds with the seconds told; checked when somebody steps in or out | the same; a player stands at one portal | kept different (fixes a stale list) |

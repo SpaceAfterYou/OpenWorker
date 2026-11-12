@@ -165,3 +165,16 @@ some events carry is not applied.
   one who hurt it most, a hidden monster, a projectile of a monster leaving at its side, a boss that grabs (the player is held at the bone,
   flies to the place, takes the blow and is put down; the grabbed one is not let to move), a monster that stands out of battle and plays its
   idle animation, a monster that turns before it walks.
+
+## Changes of 2026-11-12 (wave A, task X10)
+
+- **Damage over time.** Every tick of a buff that hurts a monster goes through the machine (`AiMachine.OnHurtOverTime`,
+  called from `MazeBuffs`): the escape points of the kind of the last blow, the giver as the enemy of a monster that
+  has none, hate of `damage * 0.0001`, and the hit counter. Not the counter of skill blows, the group call or the
+  last-damage time, which only a blow of a skill touches. Before this a burn hurt a monster without telling its mind.
+- **Suicide state.** In the original the monster dies with the death action of its script. Here it only writes a log
+  line, and that is kept: the 14 scripts that reach the state belong to 11 monsters named only by the summon events of
+  akashic and hero action files, which the server does not read (a called card is shown and plays its hits; it makes no
+  creature with a mind). Whoever builds summoned creatures makes `LuaCreatureManager.Kill` the usual death of a monster.
+- **A party that shrinks.** The stats and the gauge are recounted; a broken armor and a forced defense are untouched
+  (both were lost before).

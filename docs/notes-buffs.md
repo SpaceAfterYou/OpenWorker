@@ -294,3 +294,11 @@ difference is small.
 short job: 10 monsters 1.695 µs without, 1.950 µs with; 10 monsters and 100 timers 6.088 / 6.222 µs; 100 monsters 13.895 /
 16.440 µs; 100 monsters and 100 timers 18.192 / 20.802 µs. Without buffs the numbers are those of before (1.635, 6.069,
 13.571, 18.154 µs in `docs/notes-combat.md`).
+
+## Changes of 2026-11-12 (wave A, task X10)
+
+- Effect 7 (free skills): the carrier's skills cost no soul gauge and cool down shorter by the value, in percent, added
+  to the cooldown buffs (effect 17, in hundredths of a percent). With several free-skills buffs the strongest counts.
+- Kept different from the original: there effect 7 sets the rate at its start and puts 0 at its end while effect 17
+  adds and takes off its share, so the result depends on the order the buffs came in; here it is the sum of the
+  cooldown buffs plus the strongest free-skills buff, whatever the order.
