@@ -193,5 +193,27 @@ public sealed class ItemCraftTest
 
         CollectionAssert.AreEqual(items, f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray(), "The bag is as it was");
         Assert.AreEqual(recipe.Gold, f.Gold);
+
+        // Every material now, but no room for the product: the request is refused before anything is taken.
+        foreach (var (material, count) in recipe.Materials.Where(e => e.Item != 0))
+        {
+            f.Give(material, count);
+        }
+
+        var filler = ItemSetupFixture.Load<ItemRow>("tb_Item").First(e =>
+            f.Catalog.HomeOf(e.Id) == StorageGroup.Common && e.Id != recipe.Product && recipe.Materials.All(m => m.Item != e.Id)).Id;
+        var common = f.Bag.Find(StorageGroup.Common)!;
+
+        while (common.FirstFree() >= 0)
+        {
+            f.Give(filler, f.Catalog.StackLimit(filler));
+        }
+
+        items = f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray();
+
+        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest { Npc = f.NpcOffering(NpcFunction.Production, recipe.Group), MakeIndex = recipe.Id, MakeCount = 1 });
+
+        CollectionAssert.AreEqual(items, f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray(), "A product without room takes nothing");
+        Assert.AreEqual(recipe.Gold, f.Gold);
     }
 }

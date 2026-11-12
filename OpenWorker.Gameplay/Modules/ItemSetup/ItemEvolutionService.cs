@@ -117,13 +117,18 @@ public sealed class ItemEvolutionService(
 
         var upgrade = target.Upgrade;
 
-        Charge(player, row, material);
+        // The new item takes the slot the old one leaves (the room was counted so), and the price is paid once it is there.
+        // It comes out of its row as any new item does, bound or not by its own rule: only the upgrade carries over.
         inventory.Spend(player, target, 1);
 
         // The new item is told to the client once, with the upgrade it keeps.
-        inventory.TryGive(player, result, 1, out var changes, notify: false);
+        if (!inventory.TryGive(player, result, 1, out var changes, notify: false) || bag.At(changes[^1].Storage, changes[^1].Slot) is not { } evolved)
+        {
+            answers.Refuse(player, command, NoRoom);
+            return;
+        }
 
-        var evolved = bag.At(changes[0].Storage, changes[0].Slot)!;
+        Charge(player, row, material);
 
         evolved.Upgrade = upgrade;
         bag.Touch(evolved);

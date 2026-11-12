@@ -124,15 +124,14 @@ public sealed class NpcShopService(
             return;
         }
 
-        if (!inventory.CanGive(player, line.Item, count))
+        // The goods are given before the price is paid: a refused gift takes nothing.
+        if (!inventory.TryGive(player, line.Item, count, out var changes))
         {
             Refuse(player, request, NoRoom);
             return;
         }
 
         Pay(player, line.PriceType, price);
-
-        inventory.TryGive(player, line.Item, count, out var changes);
 
         var bag = inventory.InventoryOf(player)!;
 

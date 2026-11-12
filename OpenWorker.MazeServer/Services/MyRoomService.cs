@@ -288,14 +288,14 @@ public sealed partial class MyRoomService(
             return;
         }
 
-        if (!inventory.CanGive(player, piece.Item, 1))
+        // The piece comes into the bag before it leaves the room: a refused gift changes nothing.
+        if (!inventory.TryGive(player, piece.Item, 1))
         {
             Send(player, new ErrorMessageResponse(ItemDelOpcode, MyRoomCodes.BagFull));
             return;
         }
 
         room.TryRemove(piece.Serial, out _);
-        inventory.TryGive(player, piece.Item, 1);
 
         await store.RemoveAsync(room.Room.Account, room.Room.Gate, piece.Serial, context.CancellationToken);
 

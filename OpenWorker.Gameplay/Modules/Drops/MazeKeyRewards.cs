@@ -79,13 +79,13 @@ public sealed partial class MazeKeyRewards(
             return Refused;
         }
 
-        if (!inventory.CanGive(player, offer.Item, offer.Count))
+        // The reward is given before the keys are used: a refused gift takes nothing.
+        if (!inventory.TryGive(player, offer.Item, offer.Count))
         {
             return DoesNotFit;
         }
 
         inventory.Spend(player, key, offer.Keys);
-        inventory.TryGive(player, offer.Item, offer.Count);
 
         _offers.Remove(player);
         LogTaken(logger, offer.Item, offer.Count, offer.Keys);

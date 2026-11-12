@@ -133,11 +133,14 @@ public sealed class ItemBroachService(
     /// </summary>
     public void Compose(Entity player, StorageSlot toolSlot, IReadOnlyList<StorageSlot> materials)
     {
-        if (Pick(player, toolSlot, materials) is not { } pick || !inventory.CanGive(player, pick.Result, 1))
+        // The new broach needs no slot the five leave, so it is given first: a refused gift takes nothing.
+        if (Pick(player, toolSlot, materials) is not { } pick || !inventory.TryGive(player, pick.Result, 1, out var changes))
         {
             answers.Send(player, new ItemSetupBroachComposeResponse { Serial = 0 });
             return;
         }
+
+        var made = inventory.InventoryOf(player)?.At(changes[^1].Storage, changes[^1].Slot);
 
         foreach (var (item, count) in pick.Materials)
         {
@@ -145,9 +148,6 @@ public sealed class ItemBroachService(
         }
 
         inventory.Spend(player, pick.Tool, 1);
-        inventory.TryGive(player, pick.Result, 1, out var changes);
-
-        var made = changes.Count > 0 ? inventory.InventoryOf(player)?.At(changes[^1].Storage, changes[^1].Slot) : null;
 
         answers.Send(player, new ItemSetupBroachComposeResponse { Serial = made?.Serial ?? 0 });
     }
