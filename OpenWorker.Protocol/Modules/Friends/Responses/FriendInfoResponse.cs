@@ -4,14 +4,16 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
 /// <summary>
 /// What a friend looks like, for the window that shows another player.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct FriendInfoResponse : IResponseHotspotMessage
+public readonly partial struct FriendInfoResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -37,15 +39,4 @@ public readonly struct FriendInfoResponse : IResponseHotspotMessage
     public TitleValue Title { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Result);
-        Person.Write(writer);
-        writer.Write(Title.Value);
-    }
-
-#endregion Interface: IWritableData
 }
