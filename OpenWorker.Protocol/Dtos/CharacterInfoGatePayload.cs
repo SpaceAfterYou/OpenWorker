@@ -1,8 +1,13 @@
 using OpenWorker.Hotspot.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Dtos;
 
-public readonly struct CharacterInfoGatePayload
+/// <summary>
+/// What the gate adds to the info of a character: the money and points of the account and how the world is played.
+/// </summary>
+[WireMessage(WireMethods.Write)]
+public readonly partial struct CharacterInfoGatePayload
 {
     public int PlaceholderInt { get; init; }
     public long Gold { get; init; }
@@ -15,6 +20,7 @@ public readonly struct CharacterInfoGatePayload
     public long BattlePoint { get; init; }
     public long Ether { get; init; }
     public long FriendPoint { get; init; }
+    [WireString(WireStringFormat.Utf8Ascii)]
     public string AccountId { get; init; }
     public bool NetCafe { get; init; }
     public bool ClassScene { get; init; }

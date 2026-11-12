@@ -4,11 +4,13 @@ using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Messages.Response.Person;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct CharacterSelectResponse : IResponseHotspotMessage
+public readonly partial struct CharacterSelectResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -24,13 +26,4 @@ public readonly struct CharacterSelectResponse : IResponseHotspotMessage
     public EnterMapResultValue Zone { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Zone);
-    }
-
-#endregion Interface: IWritableData
 }
