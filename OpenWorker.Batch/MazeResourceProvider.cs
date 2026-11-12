@@ -17,6 +17,7 @@ public sealed class MazeResourceProvider(ReadOnlyCollection<MazeInfoRow> resourc
             return false;
         }
 
-        return VBatchFile.TryCreate(resource.Batch, out file);
+        // A batch holds the boxes of several difficulties or stages in layers: the maze plays its own.
+        return VBatchFile.TryCreate(resource.Batch, out file, VBatchFile.LayerOf(resource.Difficulty));
     }
 }
