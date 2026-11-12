@@ -1543,7 +1543,11 @@ public sealed partial class AiMachine
             _repathTime = 0f;
 
             var toward = Vector3.Normalize(target.Value.Position - _host.Position);
-            var wanted = Math.Clamp((_skill.RangeMin + _skill.RangeMax) / 2f, target.Value.Radius + _host.Radius + 10f, Math.Max(_skill.RangeMax - 10f, 1f));
+            // A wide monster with a short skill has its nearest stand beyond the skill's own range: the nearest stand wins
+            // (a clamp between the two would throw there).
+            var nearest = target.Value.Radius + _host.Radius + 10f;
+            var farthest = Math.Max(_skill.RangeMax - 10f, 1f);
+            var wanted = Math.Max(nearest, Math.Min((_skill.RangeMin + _skill.RangeMax) / 2f, farthest));
 
             if (!_host.MoveTo(target.Value.Position - toward * Math.Min(wanted, distance), true) && !_host.IsMoving)
             {
