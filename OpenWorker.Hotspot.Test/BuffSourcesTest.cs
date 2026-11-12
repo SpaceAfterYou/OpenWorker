@@ -262,7 +262,7 @@ public sealed class BuffSourcesTest
 
     /// <summary>
     /// A passive card in a quick slot gives its buff when its condition happens, by its chance, and then cools down; a card that
-    /// names no condition does nothing.
+    /// names no condition, or one the player has not put into its book, does nothing.
     /// </summary>
     [TestMethod]
     public void APassiveCardGivesItsBuffByItsConditionAndThenCoolsDown()
@@ -272,9 +272,16 @@ public sealed class BuffSourcesTest
         try
         {
             var cards = Rows(
-                TestRows.Build<AkashicRecordsRow>(("Id", Card), ("InvokeCondition", (byte)1), ("InvokeRate", (short)10000), ("Buff", (int)CardMight), ("Cooldown", 5000)),
-                TestRows.Build<AkashicRecordsRow>(("Id", Card + 1), ("Buff", (int)Haste)));
-            var bag = new Inventory(7) { QuickSlotCards = [Card, Card + 1, 0, 0, 0] };
+                TestRows.Build<AkashicRecordsRow>(("Id", Card), ("Position", (short)1), ("InvokeCondition", (byte)1), ("InvokeRate", (short)10000), ("Buff", (int)CardMight), ("Cooldown", 5000)),
+                TestRows.Build<AkashicRecordsRow>(("Id", Card + 1), ("Position", (short)2), ("Buff", (int)Haste)),
+                TestRows.Build<AkashicRecordsRow>(("Id", Card + 2), ("Position", (short)3), ("InvokeCondition", (byte)1), ("InvokeRate", (short)10000), ("Buff", (int)Haste)));
+
+            // The third card is in a quick slot but not in the book.
+            var bag = new Inventory(7) { QuickSlotCards = [Card, Card + 1, Card + 2, 0, 0] };
+
+            bag.AkashicRecords.Records.Add(new AkashicRecord { Card = Card, Position = 1 });
+            bag.AkashicRecords.Records.Add(new AkashicRecord { Card = Card + 1, Position = 2 });
+
             var player = Player(world, 100, Vector3.Zero, extra: new InventoryComponent(bag));
             var maze = Maze(world, player, Manager(cards: cards));
 
@@ -282,7 +289,7 @@ public sealed class BuffSourcesTest
 
             maze.Buffs.OnCondition(player, 1);
             Assert.IsTrue(Has(world, player, CardMight));
-            Assert.IsFalse(Has(world, player, Haste), "A card with no condition is not a passive one.");
+            Assert.IsFalse(Has(world, player, Haste), "A card with no condition is not a passive one, and a card outside the book counts for nothing.");
 
             maze.Buffs.OnCondition(player, 6);
             maze.Buffs.Step(1f);

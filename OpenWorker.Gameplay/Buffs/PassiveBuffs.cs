@@ -76,13 +76,14 @@ public sealed class PassiveBuffs
     public void Clothing(Inventory? inventory, List<ushort> buffs) => _gear?.BroachSetBuffs(inventory, buffs);
 
     /// <summary>
-    /// The cards in the quick slots of a person that do something by themselves: the ones whose card names a condition.
+    /// The cards in the quick slots of a person that do something by themselves: the ones whose card names a condition and that
+    /// the person has put into its book (the client sets the slots, and only cards of the book count).
     /// </summary>
-    public void CardsOf(ReadOnlySpan<int> slots, List<AkashicRecordsRow> cards)
+    public void CardsOf(ReadOnlySpan<int> slots, AkashicRecordBook book, List<AkashicRecordsRow> cards)
     {
         foreach (var slot in slots)
         {
-            if (slot != 0 && _cards.TryGet(slot, out var row) && row.InvokeCondition != 0 && row.Buff != 0)
+            if (slot != 0 && _cards.TryGet(slot, out var row) && row.InvokeCondition != 0 && row.Buff != 0 && book.At(row.Position)?.Card == slot)
             {
                 cards.Add(row);
             }
