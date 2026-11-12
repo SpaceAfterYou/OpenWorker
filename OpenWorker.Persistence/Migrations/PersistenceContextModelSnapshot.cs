@@ -92,6 +92,149 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("Accounts");
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.ExchangeInterestPersistent", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Item")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PersonId", "Item");
+
+                    b.ToTable("ExchangeInterests");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.ExchangeListingPersistent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<short>("Count")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Group")
+                        .HasColumnType("smallint");
+
+                    b.Property<short>("InitialCount")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("Item")
+                        .HasColumnType("integer");
+
+                    b.Property<short>("Level")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("PriceOne")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("Rank")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SaleRate")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SellerHero")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("SellerId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SellerName")
+                        .IsRequired()
+                        .HasMaxLength(21)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(21)");
+
+                    b.Property<long>("Serial")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValueSql("nextval('\"ItemSerial\"')");
+
+                    b.Property<byte>("State")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("SubGroup")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Upgrade")
+                        .HasColumnType("smallint");
+
+                    b.Property<byte>("UseClass")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Serial")
+                        .IsUnique();
+
+                    b.HasIndex("SellerId", "State");
+
+                    b.HasIndex("State", "Item", "PriceOne");
+
+                    b.HasIndex("State", "Group", "SubGroup", "PriceOne");
+
+                    b.ToTable("ExchangeListings", t =>
+                        {
+                            t.HasCheckConstraint("CK_ExchangeListings_Count", "\"Count\" >= 0 AND \"Count\" <= \"InitialCount\"");
+
+                            t.HasCheckConstraint("CK_ExchangeListings_OnSale", "\"State\" <> 2 OR (\"PriceOne\" > 0 AND \"ExpiresAt\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_ExchangeListings_Price", "\"PriceOne\" >= 0");
+
+                            t.HasCheckConstraint("CK_ExchangeListings_SaleRate", "\"SaleRate\" <= 100");
+                        });
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.ExchangeSalePersistent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<short>("Count")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("Item")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("PriceOne")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("SoldAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Item", "SoldAt");
+
+                    b.ToTable("ExchangeSales", t =>
+                        {
+                            t.HasCheckConstraint("CK_ExchangeSales_Count", "\"Count\" > 0");
+
+                            t.HasCheckConstraint("CK_ExchangeSales_Price", "\"PriceOne\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.FriendPersistent", b =>
                 {
                     b.Property<int>("Id")
@@ -518,6 +661,78 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("Leagues");
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.MyRoomFurniturePersistent", b =>
+                {
+                    b.Property<long>("Serial")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short>("GateId")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("Grid")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("Rotation")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Serial");
+
+                    b.HasIndex("AccountId", "GateId");
+
+                    b.ToTable("MyRoomFurniture");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.MyRoomPersistent", b =>
+                {
+                    b.Property<int>("AccountId")
+                        .HasColumnType("integer");
+
+                    b.Property<short>("GateId")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short>("Grid")
+                        .HasColumnType("smallint");
+
+                    b.Property<short>("Index")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<byte>("OpenLevel")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("AccountId", "GateId");
+
+                    b.HasIndex("GateId");
+
+                    b.ToTable("MyRooms");
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.PersonPersistent", b =>
                 {
                     b.Property<int>("Id")
@@ -882,6 +1097,86 @@ namespace OpenWorker.Persistence.Migrations
                     b.ToTable("ServerContents");
                 });
 
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.ExchangeInterestPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.ExchangeListingPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("SellerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("OpenWorker.Domain.Persistent.PostItemPersistent", "Goods", b1 =>
+                        {
+                            b1.Property<int>("ExchangeListingPersistentId");
+
+                            b1.Property<byte>("BindType");
+
+                            b1.Property<string>("BroachState")
+                                .IsRequired();
+
+                            b1.PrimitiveCollection<string>("Broaches");
+
+                            b1.Property<short>("Count");
+
+                            b1.Property<DateTime?>("DueTo");
+
+                            b1.Property<byte>("Endurance");
+
+                            b1.Property<int>("Exp");
+
+                            b1.Property<byte>("Flag");
+
+                            b1.Property<int>("Item");
+
+                            b1.PrimitiveCollection<string>("OptionType")
+                                .IsRequired();
+
+                            b1.PrimitiveCollection<string>("OptionValue")
+                                .IsRequired();
+
+                            b1.Property<byte>("RestoreCount");
+
+                            b1.Property<byte>("SealCount");
+
+                            b1.Property<byte>("SocketActive");
+
+                            b1.PrimitiveCollection<string>("SocketOptionType");
+
+                            b1.PrimitiveCollection<string>("SocketOptionValue");
+
+                            b1.PrimitiveCollection<string>("Sockets");
+
+                            b1.Property<byte>("Upgrade");
+
+                            b1.Property<byte>("UpgradeCount");
+
+                            b1.Property<byte>("UpgradeLimit");
+
+                            b1.HasKey("ExchangeListingPersistentId");
+
+                            b1.ToTable("ExchangeListings");
+
+                            b1
+                                .ToJson("Goods")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ExchangeListingPersistentId");
+                        });
+
+                    b.Navigation("Goods")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OpenWorker.Domain.Persistent.FriendPersistent", b =>
                 {
                     b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
@@ -973,6 +1268,30 @@ namespace OpenWorker.Persistence.Migrations
                     b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
                         .WithOne()
                         .HasForeignKey("OpenWorker.Domain.Persistent.LeagueMemberPersistent", "PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.MyRoomFurniturePersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.MyRoomPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId", "GateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.MyRoomPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.AccountPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OpenWorker.Domain.Persistent.GatePersistent", null)
+                        .WithMany()
+                        .HasForeignKey("GateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
