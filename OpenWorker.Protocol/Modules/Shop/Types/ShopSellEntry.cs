@@ -1,12 +1,13 @@
-﻿using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Modules.Items.Enums;
+﻿using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Types;
 
 /// <summary>
 /// A slot of the bags whose whole stack is sold.
 /// </summary>
-public readonly struct ShopSellEntry
+[WireMessage]
+public readonly partial struct ShopSellEntry
 {
     public ShopSellEntry(StorageGroup storage, short slot)
     {
@@ -14,11 +15,6 @@ public readonly struct ShopSellEntry
         Slot = slot;
     }
 
-    public ShopSellEntry(BinaryReader reader) : this(reader.ReadStorageGroup(), reader.ReadInt16())
-    {
-    }
-
     public StorageGroup Storage { get; }
-
     public short Slot { get; }
 }

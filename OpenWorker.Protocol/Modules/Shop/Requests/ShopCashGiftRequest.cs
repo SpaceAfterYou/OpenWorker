@@ -1,15 +1,15 @@
-using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Shop.Extensions;
 using OpenWorker.Hotspot.Modules.Shop.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct ShopCashGiftRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ShopCashGiftRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,8 +22,11 @@ public readonly struct ShopCashGiftRequest(BinaryReader reader) : IRequestHotspo
 
 #region Message: Body
 
-    public string Name { get; } = reader.ReadUtf16UnicodeString();
-    public IReadOnlyList<CashItemEntry> ItemList { get; } = reader.ReadCashItemList();
+    [WireString(WireStringFormat.Utf16Unicode)]
+    public string Name { get; }
+
+    [WireArray(WireLength.Signed32)]
+    public IReadOnlyList<CashItemEntry> ItemList { get; }
 
 #endregion Message: Body
 }

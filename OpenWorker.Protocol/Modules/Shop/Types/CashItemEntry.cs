@@ -1,7 +1,10 @@
-﻿namespace OpenWorker.Hotspot.Modules.Shop.Types;
+﻿using OpenWorker.Wire;
 
-public readonly struct CashItemEntry(BinaryReader reader)
+namespace OpenWorker.Hotspot.Modules.Shop.Types;
+
+[WireMessage]
+public readonly partial struct CashItemEntry
 {
-    public int Index { get; } = reader.ReadInt32();
-    public byte Select { get; } = reader.ReadByte();
+    public int Index { get; }
+    public byte Select { get; }
 }
