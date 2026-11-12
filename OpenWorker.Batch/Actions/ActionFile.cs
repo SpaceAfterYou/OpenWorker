@@ -70,6 +70,16 @@ public sealed record DetachEvent(float Start, float DropTime, string Animation, 
 public sealed record AttachEvent(float Start, float Duration, float Distance, float Angle, Vector3 Offset, int WeightRank);
 
 /// <summary>
+/// The moment the akashic skill of a hero brings a called card into the fight, and where.
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation, as the file has it.</param>
+/// <param name="Offset">Where the card appears, from the hero, before it is turned by the hero's yaw.</param>
+/// <param name="Alpha">How visible the card is when it appears, for the clients.</param>
+/// <param name="Blend">How long the card takes to appear, for the clients.</param>
+/// <param name="Rotate">Whether the card is turned the way the hero faces.</param>
+public sealed record AkashicSummon(float Start, Vector3 Offset, float Alpha, float Blend, bool Rotate);
+
+/// <summary>
 /// The monster disappears at a moment of an animation: for a time, or until its life is down to a share.
 /// </summary>
 /// <param name="Start">Seconds from the start of the animation.</param>
@@ -98,6 +108,7 @@ public sealed class ActionFile
     private const string SequenceTag = "SEQU";
     private const short AttackTriggerType = 3;
     private const short InvisibleTriggerType = 14;
+    private const short AkashicTriggerType = 18;
     private const short AttachTriggerType = 22;
     private const short DefenseTriggerType = 25;
     private const short DetachTriggerType = 30;
@@ -208,6 +219,66 @@ public sealed class ActionFile
         }
 
         return new ActionFile(animations, indexes);
+    }
+
+    /// <summary>
+    /// Reads the akashic file of a hero: for each card group and animation of the akashic skill (the key
+    /// <c>"group:animation"</c>), the events that bring the card in. It is built like an action file, with a list of events
+    /// under each key instead of animations.
+    /// </summary>
+    /// <exception cref="InvalidDataException">The stream is not an action file.</exception>
+    /// <exception cref="EndOfStreamException">The file ends too early.</exception>
+    public static IReadOnlyDictionary<string, IReadOnlyList<AkashicSummon>> ReadSummons(Stream stream)
+    {
+        using var reader = new BinaryReader(stream, Encoding.Latin1, leaveOpen: true);
+
+        if (Encoding.Latin1.GetString(reader.ReadBytes(Magic.Length)) != Magic)
+        {
+            throw new InvalidDataException("Not an action file.");
+        }
+
+        reader.ReadInt32();
+
+        Require(Open(reader), RootTag);
+
+        var version = reader.ReadInt16();
+
+        var head = Open(reader);
+        var count = reader.ReadInt32();
+        Close(reader, head);
+
+        Require(Open(reader), SequenceTag);
+
+        var summons = new Dictionary<string, IReadOnlyList<AkashicSummon>>(count, StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < count; i++)
+        {
+            var key = ReadString(reader);
+            var events = reader.ReadInt32();
+            var list = new List<AkashicSummon>();
+
+            for (var j = 0; j < events; j++)
+            {
+                var chunk = Open(reader);
+                var header = ReadHeader(reader, version);
+
+                if (header.Type == AkashicTriggerType)
+                {
+                    // Every number of the event is written as four bytes, the switch of the turn as one.
+                    var alpha = reader.ReadSingle();
+                    var blend = reader.ReadSingle();
+                    var offset = ReadVector3(reader);
+
+                    list.Add(new AkashicSummon(header.Start, offset, alpha, blend, reader.ReadBoolean()));
+                }
+
+                Close(reader, chunk);
+            }
+
+            summons.TryAdd(key, list);
+        }
+
+        return summons;
     }
 
     private static ActionAnimation ReadAnimation(BinaryReader reader, short version)

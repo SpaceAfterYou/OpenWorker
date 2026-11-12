@@ -69,7 +69,8 @@ public readonly struct MazeRuleRow
         // The portal the maze is entered by, then the place and the size, the way out, the quests that run in it and the
         // akashic records.
         PortalId = reader.ReadUInt16();
-        reader.ReadBytes(4 * sizeof(int) + sizeof(short) + sizeof(uint) + 5 * sizeof(uint) + 1);
+        reader.ReadBytes(4 * sizeof(int) + sizeof(short) + sizeof(uint) + 5 * sizeof(uint));
+        CardsBarred = reader.ReadByte() == 1;
         PotionLimit = reader.ReadByte();
 
         // The warp orb and whether the maze can be entered again.
@@ -77,6 +78,11 @@ public readonly struct MazeRuleRow
     }
 
     public ushort Id { get; }
+
+    /// <summary>
+    /// Whether the players of the maze may not call the cards of their akashic records into the fight.
+    /// </summary>
+    public bool CardsBarred { get; }
 
     /// <summary>
     /// 1 when the maze does not let its players use items (potions and the like); 0 for any other.

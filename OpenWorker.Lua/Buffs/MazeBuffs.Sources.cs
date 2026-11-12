@@ -311,7 +311,7 @@ public sealed partial class MazeBuffs
 
         if (slots is not null)
         {
-            _manager.Passives.CardsOf(slots, state.Cards);
+            _manager.Passives.CardsOf(slots, inventory.Value!.AkashicRecords, state.Cards);
         }
     }
 

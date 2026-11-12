@@ -23,7 +23,8 @@ internal static class MazeRuleRows
         byte revivalType = 0,
         byte revivalItems = 0,
         uint before = 0,
-        ushort portal = 0)
+        ushort portal = 0,
+        bool cardsBarred = false)
     {
         using var stream = new MemoryStream();
         using var w = new BinaryWriter(stream);
@@ -59,7 +60,9 @@ internal static class MazeRuleRows
         w.Write(0f);
         w.Write((ushort)0);
         w.Write(portal);
-        w.Write(new byte[49]);
+        w.Write(new byte[42]);
+        w.Write(cardsBarred ? (byte)1 : (byte)0);
+        w.Write(new byte[6]);
 
         stream.Position = 0;
 

@@ -808,6 +808,12 @@ public partial class LuaMaze(
         member.Playback = null;
         member.SkillWake.Cancel();
 
+        // The akashic skill with a called card plays the card's coming instead of its own attacks.
+        if (BringsCardIn(member, skill, generation))
+        {
+            return;
+        }
+
         if (actions.GetAnimations(skill, hero) is not { } animations)
         {
             return;
@@ -1207,7 +1213,9 @@ public partial class LuaMaze(
 
     /// <param name="shares">The share of the damage each target takes, by their place in the list. Everyone takes all of it without.</param>
     /// <param name="origin">Where the blow comes from when it is not the player: the place a shot burst at or a trap lies.</param>
-    private async ValueTask ApplyDamageAsync(Fighter member, int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null, Vector3? origin = null)
+    /// <param name="card">The card of the player that strikes, when it is not the player: the hit is shown as the card's.</param>
+    private async ValueTask ApplyDamageAsync(Fighter member, int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null, Vector3? origin = null,
+        CardStrike? card = null)
     {
         var player = member.Player;
 
@@ -1229,10 +1237,14 @@ public partial class LuaMaze(
         var skillDamage = combat.GetSkill(skill);
         var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, skill, HitKinds.Of(trigger), origin)).ToArray();
 
-        // The combo of the player goes into the message of the hit: the client shows it.
+        // The combo of the player goes into the message of the hit: the client shows it. The blows of a card do not count.
         var now = (long)Clock.Time.TotalMilliseconds;
-        member.Combo = Gameplay.Combat.Combo.Next(member.Combo, member.LastHit, hits.Length, now);
-        member.LastHit = now;
+
+        if (card is null)
+        {
+            member.Combo = Gameplay.Combat.Combo.Next(member.Combo, member.LastHit, hits.Length, now);
+            member.LastHit = now;
+        }
 
         MonstersHit?.Invoke(player, hits.Length, hits.Sum(e => (long)e.Damage));
 
@@ -1280,23 +1292,23 @@ public partial class LuaMaze(
             {
                 SkillActorInfo = default(SkillActorInfoValue) with
                 {
-                    UxActorId = Ecs.Get<ActorComponent>(player),
+                    UxActorId = card?.Actor ?? Ecs.Get<ActorComponent>(player),
                     SkillPosInfo = default(SkillActionPosInfoValue) with
                     {
-                        Position = attacker.Position,
-                        Angle = attacker.Rotation,
+                        Position = card?.Place ?? attacker.Position,
+                        Angle = card?.Yaw ?? attacker.Rotation,
                         MotionClass = position.MotionClass,
                         HasInputFlag = position.HasInputFlag
                     }
                 },
                 Skill = skill,
                 TriggerIndex = (short)trigger.Id,
-                ContinuousHit = (ushort)Math.Min(member.Combo, ushort.MaxValue)
+                ContinuousHit = card is null ? (ushort)Math.Min(member.Combo, ushort.MaxValue) : (ushort)0
             }
         });
 
-        // Every blow that lands may wear the weapon of the player.
-        if (creatureManager.Services?.Wear is { } wear)
+        // Every blow that lands may wear the weapon of the player; the blows of a card do not.
+        if (card is null && creatureManager.Services?.Wear is { } wear)
         {
             foreach (var hit in hits)
             {
