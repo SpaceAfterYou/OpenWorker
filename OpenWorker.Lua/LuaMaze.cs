@@ -463,6 +463,9 @@ public partial class LuaMaze(
         member.Chains.Clear();
         member.Playback = null;
 
+        // What the player carries is let go where it stands: nobody steps the carry of a player who is gone.
+        EndCarry(member);
+
         _members.Remove(member);
         creatureManager.Detach(player);
         _buffs.Detach(player);
