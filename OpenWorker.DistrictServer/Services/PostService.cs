@@ -33,10 +33,10 @@ namespace OpenWorker.DistrictServer.Services;
 /// </summary>
 /// <remarks>
 /// A letter is written by its store when it changes (see <see cref="IPostStore"/>). What it carries moves through
-/// <see cref="InventoryService"/>, which marks the inventory and the wallet for the flush, and the person is flushed at
-/// once after, so the database never holds a letter and the items it took for long. Sending takes the gold and the items
-/// first and gives them back if the letter does not go; taking what a letter carries claims it in the database first and
-/// puts the claim back if it cannot be given. A crash in between loses what moved, it never doubles it.
+/// <see cref="InventoryService"/>, which marks the inventory and the wallet for the flush. Sending takes the gold and the
+/// items and writes the sender (<see cref="IPersonCommit"/>) before the letter is written, and gives them back if that write
+/// or the letter fails; taking what a letter carries claims it in the database first, puts the claim back if it cannot be
+/// given, and flushes the person after. A crash in between loses what moved, it never doubles it.
 /// </remarks>
 public sealed partial class PostService(
     World world,
@@ -44,6 +44,7 @@ public sealed partial class PostService(
     InventoryService inventory,
     CommunityNetwork network,
     IPersonFlush persons,
+    IPersonCommit commit,
     TimeProvider time,
     ILogger<PostService> logger
 ) :
@@ -200,25 +201,39 @@ public sealed partial class PostService(
         // Read now: the sender may be gone when what was taken has to go back.
         var account = Account(context);
 
-        PostSendResult result = default;
-        var sent = false;
+        PostSendResult? result = null;
 
         try
         {
-            result = await store.SendAsync(draft, context.CancellationToken);
-            sent = result.Outcome == PostSendOutcome.Sent;
+            // What the letter carries is written as gone from the sender before the letter is written: a crash in between
+            // loses it, and never leaves it both with the sender and in the letter.
+            if (await commit.CommitAsync(player))
+            {
+                result = await store.SendAsync(draft, context.CancellationToken);
+            }
+
+            else
+            {
+                LogNotWritten(logger, draft.Sender);
+            }
+        }
+
+        // A failure of the database is no fault of the client: it is answered below, and not charged to the session.
+        catch (Exception e) when (e is not OperationCanceledException || !context.CancellationToken.IsCancellationRequested)
+        {
+            LogSendFailed(logger, e, draft.Sender);
         }
 
         finally
         {
-            // A letter that was refused, or a store that failed: what was taken goes back.
-            if (!sent)
+            // A letter that was refused, or a write that failed: what was taken goes back.
+            if (result is not { Outcome: PostSendOutcome.Sent })
             {
                 await GiveBackAsync(context, draft, price, account);
             }
         }
 
-        switch (result.Outcome)
+        switch (result?.Outcome)
         {
             case PostSendOutcome.Sent:
                 break;
@@ -227,16 +242,20 @@ public sealed partial class PostService(
                 RefuseSend(context, PostMessages.ToYourself);
                 return;
 
+            case null:
+                RefuseSend(context, PostMessages.Deleted);
+                return;
+
             default:
                 RefuseSend(context, PostMessages.NoReceiver);
                 return;
         }
 
-        var letter = result.Letter!;
+        var (_, letter, unread) = result.Value;
 
-        Send(context, new PostSendResponse { Result = 0, Value = PostLetters.Sent(letter, Now) });
+        Send(context, new PostSendResponse { Result = 0, Value = PostLetters.Sent(letter!, Now) });
 
-        await network.SendAsync(letter.ReceiverId!.Value, new PostRecvResponse { PostCount = Count(result.Unread), Value = PostLetters.Received(letter, Now) });
+        await network.SendAsync(letter!.ReceiverId!.Value, new PostRecvResponse { PostCount = Count(unread), Value = PostLetters.Received(letter, Now) });
 
         await FlushAsync(context);
     }
@@ -528,6 +547,12 @@ public sealed partial class PostService(
     {
         Send(context, new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Post, command), (ushort)code));
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A letter of person {Person} is refused: what it carries could not be written as gone from the sender; it is given back")]
+    private static partial void LogNotWritten(ILogger logger, int person);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A letter of person {Person} failed in the database and is refused; what it carried is given back")]
+    private static partial void LogSendFailed(ILogger logger, Exception exception, int person);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "A letter did not go and its sender has left: {Gold} gold and {Items} items go to the box of account {Account}")]
     private static partial void LogReturnedToAccount(ILogger logger, int account, long gold, int items);
