@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.System.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.System.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct SystemOptionUpdateRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct SystemOptionUpdateRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,7 +22,8 @@ public readonly struct SystemOptionUpdateRequest(BinaryReader reader) : IRequest
 
 #region Message: Body
 
-    public IReadOnlyCollection<byte> OptionList { get; } = reader.ReadBytes(SystemModuleDefines.OptionCount);
+    [WireArray(Count = SystemModuleDefines.OptionCount)]
+    public IReadOnlyCollection<byte> OptionList { get; }
 
 #endregion Message: Body
 }

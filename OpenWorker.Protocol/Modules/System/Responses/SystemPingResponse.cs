@@ -2,11 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.System.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct SystemPingResponse : IResponseHotspotMessage
+public readonly partial struct SystemPingResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -19,17 +21,10 @@ public readonly struct SystemPingResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    /// <summary>
+    /// The client takes this from its own tick count in milliseconds to show the ping.
+    /// </summary>
     public long KeepAlive { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        // In the client: GetTickCount64() - keepAlive = ping in ms
-        writer.Write(KeepAlive);
-    }
-
-#endregion Interface: IWritableData
 }
