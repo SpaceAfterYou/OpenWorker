@@ -3,6 +3,7 @@ using Arch.Core;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
@@ -31,6 +32,8 @@ namespace OpenWorker.Hotspot.Test;
 public sealed class MazeAdmissionTest
 {
     private const int Maze = 21311;
+    private const int OtherMaze = 21411;
+    private const int Board = 10033;
     private const int Tutorial = 20001;
     private const int TowerStage = 20325;
     private const int Room = 20011;
@@ -73,7 +76,8 @@ public sealed class MazeAdmissionTest
                 Load<BankSlotExtendRow>("tb_Bank_Slot_Extend"));
 
             var serials = new LocalItemSerials();
-            var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Maze, level, fatigue: 4), MazeResultsTest.MazeRow(Tutorial, 0, fatigue: 0, type: 1),
+            var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Maze, level, fatigue: 4), MazeResultsTest.MazeRow(OtherMaze, level, fatigue: 4),
+                MazeResultsTest.MazeRow(Tutorial, 0, fatigue: 0, type: 1),
                 MazeResultsTest.MazeRow(TowerStage, 0, fatigue: 0, type: 7), MazeResultsTest.MazeRow(Room, 0, fatigue: 0, type: 6)]);
 
             Inventory = new InventoryService(World, catalog, serials);
@@ -152,9 +156,78 @@ public sealed class MazeAdmissionTest
 
         public bool InMap { get; set; }
 
+        public Dictionary<int, PortalWay> Ways { get; } = [];
+
         public bool IsAt(Entity player, int portal) => At;
 
         public bool Exists(Entity player, int portal) => InMap;
+
+        public PortalWay? WayOf(Entity player, int portal) => Ways.TryGetValue(portal, out var way) ? way : null;
+    }
+
+    /// <summary>
+    /// A portal leads where its map says, from the start point the map says: a client that stands at one portal cannot name
+    /// another location or another start point (04/01). The map of the event is left at the place the portal names for the
+    /// district it stands in, which the client does not send; a maze is entered at its first start point.
+    /// </summary>
+    [TestMethod]
+    public void APortalLeadsWhereItsMapSaysFromTheStartPointItNames()
+    {
+        const int toDistrict = 30003, toEvent = 30021, toBoard = 21107, inside = 30101, eventMap = 30021;
+
+        var portals = new Portals();
+
+        portals.Ways[toDistrict] = new PortalWay(JumpType.Field, District, 1002102, 0);
+        portals.Ways[toEvent] = new PortalWay(JumpType.District6, eventMap, 3002102, 0);
+        portals.Ways[toBoard] = new PortalWay(JumpType.Maze, 0, 0, Board);
+        portals.Ways[inside] = new PortalWay(JumpType.JumpPos, 0, 3010102, 0);
+
+        using var f = new Fixture(Rules(Rule(Maze, portal: Board), Rule(OtherMaze, portal: Board + 1)), portals: portals);
+
+        var player = f.Player();
+
+        Assert.IsNull(f.Admission.CheckWay(player, District, toDistrict, 1002102, out var start));
+        Assert.AreEqual(1002102, start, "a district is entered at the start point of the portal");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckWay(player, District, toDistrict, 1002103, out _), "another start point");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckWay(player, eventMap, toDistrict, 1002102, out _), "another location");
+
+        Assert.IsNull(f.Admission.CheckWay(player, eventMap, toEvent, 0, out start));
+        Assert.AreEqual(3002102, start, "the map of the event is entered at the place of the portal");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckWay(player, eventMap, toEvent, 3002104, out _), "a start point the client does not send");
+
+        Assert.IsNull(f.Admission.CheckWay(player, Maze, toBoard, 0, out start), "a maze the board offers");
+        Assert.AreEqual(0, start, "at its first start point");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckWay(player, OtherMaze, toBoard, 0, out _), "a maze of another board");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckWay(player, District, toBoard, 0, out _), "a district at a board");
+
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckWay(player, District, inside, 3010102, out _), "a move within the map");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckWay(player, District, 12345, 0, out _), "a portal the map does not have");
+
+        Assert.IsNull(f.Admission.CheckWay(player, Tutorial, 0, 2000105, out start), "the tutorial from wherever the story puts the player");
+        Assert.AreEqual(0, start, "at its first start point");
+    }
+
+    /// <summary>
+    /// The maze board (04/41) leads into the mazes it offers: those whose row names the board.
+    /// </summary>
+    [TestMethod]
+    public void TheMazeBoardLeadsIntoTheMazesItOffers()
+    {
+        const int toBoard = 21107, toDistrict = 30003;
+
+        var portals = new Portals();
+
+        portals.Ways[toBoard] = new PortalWay(JumpType.Maze, 0, 0, Board);
+        portals.Ways[toDistrict] = new PortalWay(JumpType.Field, District, 1002102, 0);
+
+        using var f = new Fixture(Rules(Rule(Maze, portal: Board), Rule(OtherMaze, portal: Board + 1)), portals: portals);
+
+        var player = f.Player();
+
+        Assert.IsNull(f.Admission.CheckBoard(player, Maze, toBoard));
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckBoard(player, OtherMaze, toBoard), "a maze of another board");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckBoard(player, Maze, toDistrict), "a portal without a board");
+        Assert.AreEqual(MazeAdmission.NotOpened, f.Admission.CheckBoard(player, Maze, 12345), "a portal the map does not have");
     }
 
     [TestMethod]
