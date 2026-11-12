@@ -2,12 +2,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Skill.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct SkillDeckBonusRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+public readonly partial struct SkillDeckBonusRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,16 +21,8 @@ public readonly struct SkillDeckBonusRequest(BinaryReader reader) : IRequestHots
 
 #region Message: Body
 
-    public ushort[] Values { get; init; } = reader.ReadSkillDeckBonusList();
+    [WireArray(Count = SkillModuleDefines.SkillDeckBonusCount)]
+    public ushort[] Values { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteSkillDeckBonus(Values);
-    }
-
-#endregion Interface: IWritableData
 }

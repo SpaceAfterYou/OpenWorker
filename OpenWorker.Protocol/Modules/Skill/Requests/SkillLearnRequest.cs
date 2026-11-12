@@ -3,11 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct SkillLearnRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+public readonly partial struct SkillLearnRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -20,16 +22,7 @@ public readonly struct SkillLearnRequest(BinaryReader reader) : IRequestHotspotM
 
 #region Message: Body
 
-    public required SkillInfoValue Info { get; init; } = new(reader);
+    public required SkillInfoValue Info { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Info.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

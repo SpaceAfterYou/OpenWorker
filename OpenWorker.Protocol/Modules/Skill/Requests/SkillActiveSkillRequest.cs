@@ -9,7 +9,7 @@ namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
 [WireMessage(WireMethods.Read)]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly partial struct SkillActiveSkillRequest : IRequestHotspotMessage, IWritableData
+public readonly partial struct SkillActiveSkillRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -25,13 +25,4 @@ public readonly partial struct SkillActiveSkillRequest : IRequestHotspotMessage,
     public ActiveSkillValue Skill { get; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Skill.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

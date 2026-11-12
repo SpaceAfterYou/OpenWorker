@@ -4,11 +4,13 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct SkillChainRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+public readonly partial struct SkillChainRequest : IRequestHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,16 +23,7 @@ public readonly struct SkillChainRequest(BinaryReader reader) : IRequestHotspotM
 
 #region Message: Body
 
-    public SkillProjectileValue Projectile { get; init; } = new(reader);
+    public SkillProjectileValue Projectile { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Projectile.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }
