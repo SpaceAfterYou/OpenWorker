@@ -108,6 +108,32 @@ public static class RankingStore
 }
 
 /// <summary>
+/// The tower clears of a person and of its friends, for the ranking window of the tower.
+/// </summary>
+public static class TowerRankingStore
+{
+    /// <summary>
+    /// The fastest clear of every stage of the tower by the person and by each of its friends.
+    /// </summary>
+    public static async Task<List<TowerClear>> TowerClearsAsync(this IDbContextFactory<PersistenceContext> factory, int person)
+    {
+        await using var database = await factory.CreateDbContextAsync();
+
+        var friends = database.Friends
+            .AsNoTracking()
+            .Where(e => e.OwnerId == person && e.Kind == FriendKind.Friend)
+            .Select(e => e.TargetId);
+
+        return await database.RankingEntries
+            .AsNoTracking()
+            .Where(e => e.Kind == RankingKind.InfiniteTower && (e.PersonId == person || friends.Contains(e.PersonId)))
+            .Join(database.Persons.AsNoTracking(), e => e.PersonId, e => e.Id, (entry, owner) => new TowerClear(
+                owner.Id, owner.Name, (byte)owner.Hero, owner.Level, entry.Scope, entry.Time, entry.Id))
+            .ToListAsync();
+    }
+}
+
+/// <summary>
 /// The rankings as the game sees them (<see cref="IRankingStore"/>), over <see cref="RankingStore"/>.
 /// </summary>
 public sealed class RankingBook(IDbContextFactory<PersistenceContext> factory) : IRankingStore

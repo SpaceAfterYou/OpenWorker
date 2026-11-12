@@ -286,6 +286,34 @@ public sealed class InfiniteTowerTest
     }
 
     [TestMethod]
+    public void TheRankingCountsTheFriendsWhoClearedEachChapterAndShowsMyTimeAndTheFastestOfEachStage()
+    {
+        using var f = new Fixture();
+
+        const int Friend = 8;
+        const int Other = 9;
+
+        TowerClear Clear(int person, int maze, int time, int order) => new(person, $"P{person}", (byte)Hero.Lily, 30, maze, time, order);
+
+        var info = InfiniteTowerRanking.Build(f.Tower, Person, 1,
+        [
+            Clear(Person, 20101, 70, 1),
+            Clear(Friend, 20101, 61, 2),
+            Clear(Other, 20101, 61, 3),
+            Clear(Person, 20105, 90, 4),
+            Clear(Friend, 20105, 95, 5),
+            Clear(Friend, 20110, 99, 6)
+        ]);
+
+        CollectionAssert.AreEqual(new[] { 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, info.FriendsClearedPerChapter, "a friend's clear of the last stage of a chapter");
+        Assert.AreEqual((70, 1, 1, Friend, 61), (info.Stages[0].MyClearTime, info.Stages[0].Chapter, info.Stages[0].Stage, info.Stages[0].Person, info.Stages[0].ClearTime),
+            "my time and the fastest; of two equal times the first recorded");
+        Assert.AreEqual((0, 0), (info.Stages[1].MyClearTime, info.Stages[1].Stage), "a stage nobody cleared");
+        Assert.AreEqual((90, 5, Person), (info.Stages[4].MyClearTime, info.Stages[4].Stage, info.Stages[4].Person), "the person may be the fastest");
+        Assert.AreEqual(1, info.Chapter);
+    }
+
+    [TestMethod]
     public void ANewGameDayAndATicketOnceTheEntriesAreUsedUpClearTheCount()
     {
         using var f = new Fixture();
