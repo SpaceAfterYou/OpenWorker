@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Data.Common;
 using System.Numerics;
+using System.Text.Json.Nodes;
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -56,6 +59,11 @@ public sealed class PersistenceTest
 
     private static ServiceProvider? Services { get; set; }
 
+    /// <summary>
+    /// The reads of the progress documents that reached the database.
+    /// </summary>
+    private static DocumentReads Reads { get; } = new();
+
     [ClassInitialize]
     public static async Task InitializeAsync(TestContext _)
     {
@@ -71,7 +79,8 @@ public sealed class PersistenceTest
         Services = new ServiceCollection()
             .AddPooledDbContextFactory<PersistenceContext>(builder => builder
                 .UseNpgsql(connection + ";Database=" + database)
-                .UsePersistenceDefaults())
+                .UsePersistenceDefaults()
+                .AddInterceptors(Reads))
             .BuildServiceProvider();
 
         Factory = Services.GetRequiredService<IDbContextFactory<PersistenceContext>>();
@@ -151,6 +160,8 @@ public sealed class PersistenceTest
         {
             var entry = (await Factory.LoadPersonAtEntryAsync(account, person, CancellationToken.None))!;
 
+            using var documents = await States.ReadAtEntryAsync(person, CancellationToken.None);
+
             var player = World.Create(
                 Component.GetComponentType(typeof(ActorComponent)),
                 Component.GetComponentType(typeof(WorldComponent)),
@@ -229,6 +240,27 @@ public sealed class PersistenceTest
 
     private static ReadOnlyCollection<T> Empty<T>() => new([]);
 
+    /// <summary>
+    /// Counts the queries that read the progress documents.
+    /// </summary>
+    private sealed class DocumentReads : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData,
+            InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("\"PersonStates\"", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
+            }
+
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
     private static async Task<(int Account, int Person)> CreatePersonAsync(string name)
     {
         await using var database = await Factory.CreateDbContextAsync();
@@ -264,6 +296,40 @@ public sealed class PersistenceTest
 
     // When the fatigue was filled: today, to the microsecond the database keeps.
     private static readonly DateTime Refilled = new(DateTime.UtcNow.Ticks / 10 * 10, DateTimeKind.Utc);
+
+    [TestMethod]
+    public async Task AnEntryReadsEveryDocumentOfThePersonInOneQuery()
+    {
+        var (_, person) = await CreatePersonAsync("reader");
+        var states = new PersonStateStore(new PersonStore(Factory));
+
+        await states.SaveAsync(person, PersonStateKind.NpcCredit, new NpcCreditBook { Groups = [new NpcCreditEntry { Group = 1001, Point = 7 }] }, CancellationToken.None);
+        await states.SaveAsync(person, PersonStateKind.Quest, new QuestBook(), CancellationToken.None);
+
+        var before = Reads.Count;
+        var found = new List<PersonStateKind>();
+
+        // Every kind there is, as the features of a server load theirs while the person enters.
+        using (await states.ReadAtEntryAsync(person, CancellationToken.None))
+        {
+            foreach (var kind in Enum.GetValues<PersonStateKind>())
+            {
+                if (await states.LoadAsync<JsonObject>(person, kind, CancellationToken.None) is not null)
+                {
+                    found.Add(kind);
+                }
+            }
+        }
+
+        Assert.AreEqual(1, Reads.Count - before, "the documents of an entry are read in one query");
+        CollectionAssert.AreEquivalent(new[] { PersonStateKind.Quest, PersonStateKind.NpcCredit }, found);
+
+        // The entry is over: a load reads the row again.
+        var credit = await states.LoadAsync<NpcCreditBook>(person, PersonStateKind.NpcCredit, CancellationToken.None);
+
+        Assert.AreEqual(2, Reads.Count - before);
+        Assert.AreEqual(7, credit?.Find(1001)?.Point);
+    }
 
     [TestMethod]
     public async Task ALogoutAndANewLoginKeepWhatThePlayerHad()

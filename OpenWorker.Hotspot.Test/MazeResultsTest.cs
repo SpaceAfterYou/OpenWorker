@@ -559,6 +559,8 @@ public sealed class MazeResultsTest
 
         public Task<string?> LoadDocumentAsync(int person, PersonStateKind kind, CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
 
+        public Task<Dictionary<PersonStateKind, string>> LoadDocumentsAsync(int person, CancellationToken cancellationToken = default) => Task.FromResult(new Dictionary<PersonStateKind, string>());
+
         public Task SaveChangesAsync(IReadOnlyList<PersonChanges> batch, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }
