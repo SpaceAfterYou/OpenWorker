@@ -40,6 +40,11 @@ public sealed class InfiniteTowerTest
     private const int Item = 820000005;
 
     /// <summary>
+    /// One friend cleared the first chapter and the second, nobody the rest.
+    /// </summary>
+    private static readonly int[] FriendsOfTheFirstTwoChapters = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+    /// <summary>
     /// A chapter of the tower: five stages from the maze <paramref name="first"/> on, the item <see cref="Item"/> for each
     /// stage and the battle points 10 to 50.
     /// </summary>
@@ -305,7 +310,7 @@ public sealed class InfiniteTowerTest
             Clear(Friend, 20110, 99, 6)
         ]);
 
-        CollectionAssert.AreEqual(new[] { 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, info.FriendsClearedPerChapter, "a friend's clear of the last stage of a chapter");
+        CollectionAssert.AreEqual(FriendsOfTheFirstTwoChapters, info.FriendsClearedPerChapter, "a friend's clear of the last stage of a chapter");
         Assert.AreEqual((70, 1, 1, Friend, 61), (info.Stages[0].MyClearTime, info.Stages[0].Chapter, info.Stages[0].Stage, info.Stages[0].Person, info.Stages[0].ClearTime),
             "my time and the fastest; of two equal times the first recorded");
         Assert.AreEqual((0, 0), (info.Stages[1].MyClearTime, info.Stages[1].Stage), "a stage nobody cleared");
