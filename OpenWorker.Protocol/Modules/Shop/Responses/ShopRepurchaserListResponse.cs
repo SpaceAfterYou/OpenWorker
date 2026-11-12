@@ -2,8 +2,8 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Responses;
 
@@ -12,7 +12,7 @@ namespace OpenWorker.Hotspot.Modules.Shop.Responses;
 /// each item.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct ShopRepurchaserListResponse : IResponseHotspotMessage
+public readonly struct ShopRepurchaserListResponse : IResponseHotspotMessage, IWireWritable
 {
 #region Interface: IHotspotMessage
 
@@ -31,9 +31,14 @@ public readonly struct ShopRepurchaserListResponse : IResponseHotspotMessage
 
 #region Interface: IWritableData
 
+    public void Write(ref PacketWriter writer)
+    {
+        ShopRepurchaserAddResponse.WriteItems(ref writer, Items);
+    }
+
     public void Write(BinaryWriter writer)
     {
-        ShopRepurchaserAddResponse.WriteItems(writer, Items);
+        WireBridge.Write(writer, this);
     }
 
 #endregion Interface: IWritableData

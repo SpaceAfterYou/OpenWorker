@@ -1,6 +1,4 @@
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Wire;
 
@@ -23,17 +21,12 @@ public readonly partial record struct HelperSupportInfoValue(int Friend, byte Su
 /// A helper as the client reads it: the helper, the three items it wears, the friend whose orb it wears, whether it is
 /// called, two lists of stats and its place in the list.
 /// </summary>
-public readonly struct HelperValue : IWritableData
+public readonly struct HelperValue : IWritableData, IWireWritable
 {
     /// <summary>
     /// The number of items a helper can wear: a weapon, a gear and a third slot no item uses.
     /// </summary>
     public const int ItemSlots = 3;
-
-    /// <summary>
-    /// The state of the broach of an item that has none.
-    /// </summary>
-    private const string NoBroach = "000000000000000";
 
     /// <summary>
     /// A slot with nothing in it: no item and no serial number, nothing set. The client reads it as an empty slot.
@@ -44,7 +37,7 @@ public readonly struct HelperValue : IWritableData
         Serial = new SerialValue(-1),
         OptionList = Enumerable.Range(0, ItemModuleDefines.OptionCount).Select(_ => new ItemOption(0, 0)).ToList(),
         DueTo = DateTimeOffset.UnixEpoch,
-        BroachState = NoBroach
+        BroachState = ItemValue.NoBroaches
     };
 
     public int Helper { get; init; }
@@ -73,38 +66,48 @@ public readonly struct HelperValue : IWritableData
 
     public byte Order { get; init; }
 
-    public void Write(BinaryWriter writer)
+    /// <summary>
+    /// Written by hand: the missing slots are filled with <see cref="NoItem"/>, the orb goes without its reward and its
+    /// registration, and a helper without an orb has no date (zero, not the first day of the calendar).
+    /// </summary>
+    public void Write(ref PacketWriter writer)
     {
-        writer.Write(Helper);
+        writer.WriteInt32(Helper);
 
         for (var slot = 0; slot < ItemSlots; slot++)
         {
-            writer.Write(Items is { } items && slot < items.Count ? items[slot] : NoItem);
+            (Items is { } items && slot < items.Count ? items[slot] : NoItem).Write(ref writer);
         }
 
-        writer.Write(Support.Friend);
-        writer.Write(Support.SupportType);
-        writer.Write(Support.Value);
-        // A helper without an orb has no date: zero, not the first day of the calendar.
-        writer.Write(Support.Date == default ? 0L : Support.Date.ToUnixTimeSeconds());
-        writer.Write(Summoned);
+        writer.WriteInt32(Support.Friend);
+        writer.WriteByte(Support.SupportType);
+        writer.WriteSingle(Support.Value);
+        writer.WriteInt64(Support.Date == default ? 0L : Support.Date.ToUnixTimeSeconds());
+        writer.WriteBoolean(Summoned);
 
-        WriteStats(writer, Origin ?? []);
-        WriteStats(writer, Additional ?? []);
+        WriteStats(ref writer, Origin);
+        WriteStats(ref writer, Additional);
 
-        writer.Write(Order);
+        writer.WriteByte(Order);
     }
 
-    private static void WriteStats(BinaryWriter writer, IReadOnlyList<HelperStatValue> stats)
+    /// <summary>Writes through <see cref="Write(ref PacketWriter)"/>, for code that still holds a <see cref="BinaryWriter"/>.</summary>
+    public void Write(BinaryWriter writer) => WireBridge.Write(writer, this);
+
+    private static void WriteStats(ref PacketWriter writer, IReadOnlyList<HelperStatValue>? stats)
     {
-        writer.Write(checked((short)stats.Count));
+        writer.WriteLength(WireLength.Signed16, stats?.Count ?? 0);
 
-        foreach (var stat in stats)
+        if (stats is null)
         {
-            stat.Write(writer);
+            return;
+        }
+
+        for (var i = 0; i < stats.Count; i++)
+        {
+            stats[i].Write(ref writer);
         }
     }
-
 }
 
 /// <summary>

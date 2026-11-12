@@ -82,7 +82,7 @@ public sealed class ItemWireFormatTest
             stExtendOption = Enumerable.Range(0, 5).Select(_ => new ItemOption(1, 2)).ToList()
         };
 
-        var bytes = ToBytes(writer => writer.Write((IReadOnlyCollection<ST_SOCKET_DATA>)[socket]));
+        var bytes = ToBytes(new ItemSocketLoadResponse { Sockets = [socket] }.Write);
 
         Assert.HasCount(1 + 8 + 4 + 1 + 5 * 6, bytes);
         Assert.AreEqual(1, bytes[0]);
@@ -98,7 +98,7 @@ public sealed class ItemWireFormatTest
             dwItemID = Enumerable.Range(1, ST_ITEM_BROACH.ItemCount).ToArray()
         };
 
-        var bytes = ToBytes(writer => writer.Write((IReadOnlyCollection<ST_ITEM_BROACH>)[broach]));
+        var bytes = ToBytes(new ItemBroachLoadResponse { Broaches = [broach] }.Write);
 
         Assert.HasCount(1 + 8 + 15 * 4, bytes);
         Assert.AreEqual(1, bytes[0]);

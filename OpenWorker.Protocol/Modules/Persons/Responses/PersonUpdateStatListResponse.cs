@@ -1,18 +1,19 @@
 using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Persons.Responses;
 
 /// <summary>
 /// Changes several characteristics of a player or a monster.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PersonUpdateStatListResponse : IResponseHotspotMessage
+public readonly partial struct PersonUpdateStatListResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -27,18 +28,8 @@ public readonly struct PersonUpdateStatListResponse : IResponseHotspotMessage
 
     public byte Type { get; init; }
     public ActorValue Actor { get; init; }
+    [WireArray(WireLength.Byte)]
     public IReadOnlyCollection<ST_STAT> Stats { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Type);
-        writer.WriteActor(Actor);
-        writer.Write(Stats);
-    }
-
-#endregion Interface: IWritableData
 }

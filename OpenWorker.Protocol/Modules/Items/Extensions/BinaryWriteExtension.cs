@@ -1,79 +1,25 @@
-﻿using System.Runtime.CompilerServices;
-using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Modules.Chat.Enums;
-using OpenWorker.Hotspot.Modules.Items.Enums;
+using System.Runtime.CompilerServices;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Extensions;
 
+/// <summary>
+/// The writers of an item for code that still holds a <see cref="BinaryWriter"/> (the tests): through the span format, so
+/// the layout is declared once.
+/// </summary>
 public static class BinaryWriteExtension
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, MoneyEarnFlow value)
-    {
-        writer.Write((byte)value);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, UsableStorageType value)
-    {
-        writer.Write((byte)value);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, StorageGroup value)
-    {
-        writer.Write((byte)value);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, ItemBindState value)
-    {
-        writer.Write((byte)value);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Write(this BinaryWriter writer, IReadOnlyCollection<StorageValue> storageList)
-    {
-        writer.Write(storageList.Count);
-
-        foreach (var storage in storageList)
-        {
-            writer.Write(storage);
-        }
-    }
-    
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ItemValue value)
     {
-        writer.Write(value.Item);
-        writer.Write(value.Serial);
-        writer.Write(value.Count);
-        writer.Write(value.BindState);
-        writer.Write(value.OptionList);
-        writer.Write(value.Upgrade);
-        writer.Write(value.Endurance);
-        writer.Write(value.SocketActiveCount);
-        writer.Write(value.DueTo);
-        writer.Write(value.UpgradeCount);
-        writer.Write(value.UpgradeLimit);
-        writer.Write(value.Flag);
-        writer.Write(value.Exp);
-
-        // The client takes between one and fifteen characters here and has no room for a terminator.
-        writer.WriteUtf8AsciiStringWithoutTerminator(string.IsNullOrEmpty(value.BroachState) ? "000000000000000" : value.BroachState);
-        writer.Write(value.RestoreCount);
-        writer.Write(value.SealCount);
+        WireBridge.Write(writer, value);
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, StorageItemValue value)
     {
-        writer.Write(value.Group);
-        writer.Write(value.Index);
-        writer.Write(value.Item);
+        WireBridge.Write(writer, value);
     }
 }

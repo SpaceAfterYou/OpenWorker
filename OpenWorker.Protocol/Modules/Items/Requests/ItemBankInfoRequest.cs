@@ -3,17 +3,19 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
-using OpenWorker.Hotspot.Modules.Items.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct ItemBankInfoRequest(BinaryReader reader) : IRequestHotspotMessage
+public readonly partial struct ItemBankInfoRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.BankInfo;
 
-    public IReadOnlyCollection<StorageGroup> IdentifierList { get; } = reader.ReadStorageGroupList(reader.ReadByte());
-    
+    [WireArray(WireLength.Byte)]
+    public IReadOnlyCollection<StorageGroup> IdentifierList { get; }
+
     public MessageOpcode Opcode => new(Group, (byte)Command);
 }

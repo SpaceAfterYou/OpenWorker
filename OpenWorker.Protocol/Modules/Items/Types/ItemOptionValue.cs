@@ -1,6 +1,13 @@
-﻿namespace OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Wire;
 
-public readonly struct ItemOption
+namespace OpenWorker.Hotspot.Modules.Items.Types;
+
+/// <summary>
+/// One option of an item or of a gem: its type and its value. An item and a gem always carry
+/// <see cref="ItemModuleDefines.OptionCount"/> of them.
+/// </summary>
+[WireMessage(WireMethods.Both)]
+public readonly partial struct ItemOption
 {
     public short Type { get; init; }
     public int Option { get; init; }
@@ -9,11 +16,5 @@ public readonly struct ItemOption
     {
         Type = type;
         Option = option;
-    }
-
-    public ItemOption(BinaryReader reader)
-    {
-        Type = reader.ReadInt16();
-        Option = reader.ReadInt32();
     }
 }

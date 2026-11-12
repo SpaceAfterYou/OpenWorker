@@ -2,8 +2,8 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Shop.Responses;
 
@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot.Modules.Shop.Responses;
 /// Items just sold, which the shop window adds to what it would sell back: the layout of the list.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct ShopRepurchaserAddResponse : IResponseHotspotMessage
+public readonly struct ShopRepurchaserAddResponse : IResponseHotspotMessage, IWireWritable
 {
 #region Interface: IHotspotMessage
 
@@ -30,25 +30,31 @@ public readonly struct ShopRepurchaserAddResponse : IResponseHotspotMessage
 
 #region Interface: IWritableData
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
-        WriteItems(writer, Items);
+        WriteItems(ref writer, Items);
     }
 
-#endregion Interface: IWritableData
+    public void Write(BinaryWriter writer)
+    {
+        WireBridge.Write(writer, this);
+    }
 
     /// <summary>
-    /// A byte count and the items; the client reads the count as a signed byte, so no more than 127 go.
+    /// A byte count and the items; the client reads the count as a signed byte, so no more than 127 go. Written by hand:
+    /// a list of the generator would refuse the longer list instead of cutting it.
     /// </summary>
-    internal static void WriteItems(BinaryWriter writer, IReadOnlyList<ItemValue> items)
+    internal static void WriteItems(ref PacketWriter writer, IReadOnlyList<ItemValue>? items)
     {
-        var count = Math.Min(items.Count, sbyte.MaxValue);
+        var count = Math.Min(items?.Count ?? 0, sbyte.MaxValue);
 
-        writer.Write((byte)count);
+        writer.WriteByte((byte)count);
 
         for (var index = 0; index < count; index++)
         {
-            writer.Write(items[index]);
+            items![index].Write(ref writer);
         }
     }
+
+#endregion Interface: IWritableData
 }

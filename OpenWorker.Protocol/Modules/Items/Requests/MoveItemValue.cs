@@ -1,11 +1,16 @@
-﻿using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Modules.Items.Enums;
+﻿using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Requests;
 
-public readonly struct MoveItemValue(BinaryReader reader)
+/// <summary>
+/// One end of a move of an item: the storage, the item, the slot. Read in the requests to move, combine and divide,
+/// written in the answer to a move.
+/// </summary>
+[WireMessage(WireMethods.Both)]
+public readonly partial struct MoveItemValue
 {
-    public StorageGroup Storage { get; init; } = reader.ReadStorageGroup();
-    public int Item { get; init; } = reader.ReadInt32();
-    public short Index { get; init; } = reader.ReadInt16();
+    public StorageGroup Storage { get; init; }
+    public int Item { get; init; }
+    public short Index { get; init; }
 }

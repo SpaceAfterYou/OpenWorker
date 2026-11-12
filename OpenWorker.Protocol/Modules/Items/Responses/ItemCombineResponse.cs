@@ -1,18 +1,17 @@
 using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
-using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct ItemCombineResponse : IResponseHotspotMessage
+public readonly partial struct ItemCombineResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Item;
     private const ItemOpcode Command = ItemOpcode.Combine;
@@ -28,18 +27,8 @@ public readonly struct ItemCombineResponse : IResponseHotspotMessage
     public required short DestIndex { get; init; }
     public required ItemValue DestItem { get; init; }
 
-    private const bool SyncToClient = false;
-    
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(SrcActor);
-        writer.Write(SrcStorage);
-        writer.Write(SrcIndex);
-        writer.Write(SrcItem);
-        writer.WriteActor(DestActor);
-        writer.Write(DestStorage);
-        writer.Write(DestIndex);
-        writer.Write(DestItem);
-        writer.Write(SyncToClient);
-    }
+    /// <summary>
+    /// Whether the client syncs the two items again; the server always says no.
+    /// </summary>
+    public bool SyncToClient { get; init; }
 }

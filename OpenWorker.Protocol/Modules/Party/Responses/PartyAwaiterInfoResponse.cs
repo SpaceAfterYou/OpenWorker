@@ -4,14 +4,16 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person.Values;
 using OpenWorker.Hotspot.Modules.Persons.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
 /// <summary>
 /// What somebody who waits for a party looks like, for the window that shows another player.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PartyAwaiterInfoResponse : IResponseHotspotMessage
+public readonly partial struct PartyAwaiterInfoResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.AwaiterInfo;
@@ -24,10 +26,4 @@ public readonly struct PartyAwaiterInfoResponse : IResponseHotspotMessage
     /// The titles the window shows next to the name.
     /// </summary>
     public TitleValue Title { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        Person.Write(writer);
-        writer.Write(Title.Value);
-    }
 }

@@ -4,7 +4,6 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Messages.Response.Person.Values.Entries;
-using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.SoulWorker.Network.DataTypes.Enums;
 
@@ -22,12 +21,6 @@ public static class BinaryReaderExtension
     public static Hero ReadHero(this BinaryReader reader)
     {
         return (Hero)reader.ReadByte();
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static StorageGroup ReadStorageGroup(this BinaryReader reader)
-    {
-        return (StorageGroup)reader.ReadByte();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

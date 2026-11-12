@@ -1,7 +1,6 @@
 ﻿using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
-using OpenWorker.Hotspot.Modules.Post.Extensions;
 using OpenWorker.Hotspot.Modules.Post.Requests;
 using OpenWorker.Hotspot.Modules.Post.Responses;
 using OpenWorker.Hotspot.Modules.Post.Types;
@@ -96,11 +95,12 @@ public sealed class TradePostWireFormatTest
     [TestMethod]
     public void PostListsUseClientCountWidth()
     {
-        var posts = ToBytes(writer => writer.Write(Array.Empty<PostValue>()));
-        var accountPosts = ToBytes(writer => writer.Write(Array.Empty<PostAccountValue>()));
+        // The count, then the flag.
+        var posts = ToBytes(new PostRecvListResponse { Values = [], Flag = 0 }.Write);
+        var accountPosts = ToBytes(new PostAccountListResponse { Values = [], Flag = 0 }.Write);
 
-        Assert.HasCount(1, posts);
-        Assert.HasCount(2, accountPosts);
+        Assert.HasCount(1 + 1, posts);
+        Assert.HasCount(2 + 1, accountPosts);
     }
 
     [TestMethod]

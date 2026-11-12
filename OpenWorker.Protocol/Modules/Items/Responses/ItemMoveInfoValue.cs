@@ -1,8 +1,10 @@
 using OpenWorker.Hotspot.Modules.Items.Requests;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Responses;
 
-public readonly record struct ItemMoveInfoValue
+[WireMessage(WireMethods.Write)]
+public readonly partial record struct ItemMoveInfoValue
 {
     public required MoveItemValue Src { get; init; }
     public required MoveItemValue Dest { get; init; }
