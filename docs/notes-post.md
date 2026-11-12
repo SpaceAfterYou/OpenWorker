@@ -50,11 +50,11 @@ and the wallet dirty; the handler then flushes the person (`IPersonFlush`) at on
   (`SELECT ... FOR UPDATE`) while they count it and insert, so two servers cannot overfill it. The limit is 40 letters, kept
   ones included: a list of 40 letters at their longest (about 1.4 KB each) still fits one packet. The sent list shows the
   newest 40.
-- **Sending** takes the gold (money plus postage) and the items from the sender in memory first, then writes the letter, and
-  gives them back when the letter does not go or the store fails; an inventory that filled meanwhile gets the items as a
-  letter to the account instead. A crash between the write of the letter and the flush of the sender could double the
-  items; the flush right after the send makes that window a few milliseconds. A store that commits and then fails to say
-  so would double them too (the gold and items are given back while the letter exists).
+- **Sending** takes the gold (money plus postage) and the items from the sender in memory, writes the sender
+  (`IPersonCommit`) and only then the letter; when that write is not taken or the store fails, they are given back and
+  the sender is answered 55306; an inventory that filled meanwhile gets the items as a letter to the account instead. A
+  crash between the write and the letter loses them, it never doubles them. A store that commits and then fails to say
+  so still doubles them (the gold and items are given back while the letter exists).
 - **Taking** claims first and gives after: a crash in between loses what the letter carried, it never doubles it.
 - Items go to the receiver under new serials, so the flush of the sender (which deletes the old row) and the flush of the
   receiver never touch the same row. An item that stacks is given as the inventory gives stacks (its attributes are those
