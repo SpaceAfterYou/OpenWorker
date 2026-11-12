@@ -10,13 +10,12 @@ using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.MyRoom.Requests;
 using OpenWorker.Hotspot.Modules.System.Responses;
-using Redis.OM;
-using Redis.OM.Searching;
 
 namespace OpenWorker.Server.Common.Services;
 
@@ -33,8 +32,7 @@ public sealed partial class MyRoomEntryService(
     IMyRoomPlace place,
     WorldManager manager,
     IPersonRelations relations,
-    IRedisCollection<MyRoomCache> rooms,
-    IRedisCollection<MazeCache> servers,
+    MyRoomDirectory directory,
     ILogger<MyRoomEntryService> logger,
     AchievementManager? achievements = null
 ) :
@@ -194,44 +192,12 @@ public sealed partial class MyRoomEntryService(
     }
 
     /// <summary>
-    /// The instance the room plays in now, or a new one on the maze server with the fewest players when nobody is in it.
+    /// The instance the room plays in now, or a new one on the maze server with the fewest players when nobody plays it or the
+    /// server that did is gone. The record decides in one step, so two servers that send players in at once send them into one.
     /// </summary>
     private async ValueTask<MyRoomCache> RouteAsync(int owner, short gate)
     {
-        var key = MyRoomCache.KeyOf(owner, gate);
-
-        // A maze server that stopped without saying so has no record any more, and neither has its room.
-        if (await rooms.FindByIdAsync(key) is { } running)
-        {
-            if (running.Server != Guid.Empty && await servers.FindByIdAsync(running.Server.ToString()) is not null)
-            {
-                return running;
-            }
-
-            await rooms.DeleteAsync(running);
-        }
-
-        var (server, host, port) = await manager.PickMazeServerAsync();
-
-        var record = new MyRoomCache
-        {
-            Key = key,
-            Account = owner,
-            Gate = gate,
-            Instance = Guid.NewGuid(),
-            Server = server,
-            Host = host,
-            Port = port
-        };
-
-        // Of two servers that open the room at once, the first record stands and both send their player into it.
-        if (await rooms.InsertAsync(record, WhenKey.NotExists, MyRoomCache.Lifetime) is null &&
-            await rooms.FindByIdAsync(key) is { } first)
-        {
-            return first;
-        }
-
-        return record;
+        return await directory.RouteAsync(owner, gate, await manager.PickMazeServerAsync());
     }
 
     private void Refuse(Entity player, ushort code)

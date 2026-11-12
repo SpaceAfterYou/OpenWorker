@@ -22,7 +22,7 @@ public sealed class MyRoomTest
     private const int Sofa = 880000002;
     private const int Table = 880000003;
 
-    private static MyRoomCatalog Catalog()
+    internal static MyRoomCatalog Catalog()
     {
         var items = new ReadOnlyCollection<ItemRow>(
         [

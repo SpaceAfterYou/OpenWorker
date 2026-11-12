@@ -72,7 +72,7 @@ await Host
         services.AddPlayerTransfer();
         services.AddServerCommon<MazeAudience>();
         services.AddSingleton<MazeInstances>();
-        services.AddMyRoom().AddSingleton<MyRooms>().AddSingleton<IMyRoomPlace, MazeRoomPlace>();
+        services.AddMyRoom().AddSingleton<MyRooms>().AddSingleton<IMyRoomPlace, MazeRoomPlace>().AddHostedService<MyRoomKeeper>();
         services.AddSingleton<PartyMazeEvents>();
         services.AddSingleton<ICommunityModule>(provider => provider.GetRequiredService<PartyMazeEvents>());
         services.AddSingleton<MazeHelperField>();

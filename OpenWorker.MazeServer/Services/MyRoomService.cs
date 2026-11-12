@@ -11,6 +11,7 @@ using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache.Types;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -64,6 +65,7 @@ public sealed partial class MyRoomService(
     /// <summary>
     /// A player has come into the instance of a maze. When the maze is a room, the room is opened for the first one to come,
     /// the player is let in or sent back with the reason, and the client is told the room, its furniture and who sits where.
+    /// The room is opened only in the instance its record names: a player who comes into another one is sent on to it.
     /// </summary>
     public async ValueTask ArriveAsync(Entity player, LuaMaze maze, int owner, short back, CancellationToken cancellationToken)
     {
@@ -76,6 +78,26 @@ public sealed partial class MyRoomService(
 
         if (room is null)
         {
+            var claim = await rooms.ClaimAsync(maze.Instance, owner, book.Gate);
+
+            if (!world.IsAlive(player))
+            {
+                return;
+            }
+
+            if (claim is not { } taken)
+            {
+                await SendOutAsync(player, back, MyRoomCodes.EnterFailed);
+                return;
+            }
+
+            if (taken.Elsewhere is { } elsewhere)
+            {
+                LogSentOn(owner, maze.Instance, elsewhere.Instance);
+                await SendOnAsync(player, elsewhere, owner, back);
+                return;
+            }
+
             var record = await store.FindAsync(owner, book.Gate, cancellationToken);
             var furniture = await store.FurnitureAsync(owner, book.Gate, cancellationToken);
 
@@ -96,7 +118,7 @@ public sealed partial class MyRoomService(
             if (room is null)
             {
                 room = new MyRoomState(made, row.MaxVisitors, furniture, catalog);
-                rooms.Open(maze.Instance, room);
+                rooms.Open(maze.Instance, room, taken.Holder);
             }
         }
 
@@ -125,7 +147,63 @@ public sealed partial class MyRoomService(
 
         LogEntered(account, room.Room.Account, maze.Instance);
 
-        await rooms.PublishAsync(maze.Instance, room);
+        await KeepAsync(maze.Instance);
+    }
+
+    /// <summary>
+    /// Renews the record of every room this server runs; a room whose record names another instance moves there.
+    /// </summary>
+    public async ValueTask KeepAllAsync()
+    {
+        foreach (var instance in rooms.Instances.ToArray())
+        {
+            await KeepAsync(instance);
+        }
+    }
+
+    /// <summary>
+    /// Renews the record of the room of the instance with what the room is now. When the record names another instance (the
+    /// server of this one was taken for gone a moment), the room is given up here and everybody in it is sent on to that one, so
+    /// a room is never played in two places. False when the room is no longer here.
+    /// </summary>
+    private async ValueTask<bool> KeepAsync(Guid instance)
+    {
+        if (await rooms.KeepAsync(instance) is not { } elsewhere)
+        {
+            return rooms.Find(instance) is not null;
+        }
+
+        var owner = rooms.Find(instance)?.Room.Account ?? 0;
+
+        LogGivenUp(owner, instance, elsewhere.Instance);
+
+        foreach (var (player, back) in rooms.GiveUp(instance))
+        {
+            await SendOnAsync(player, elsewhere, owner, back);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Sends the player into the instance that plays the room; back to its district when that cannot be.
+    /// </summary>
+    private async ValueTask SendOnAsync(Entity player, MyRoomCache elsewhere, int owner, short back)
+    {
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
+        var location = world.Get<WorldComponent>(player).Location;
+
+        if (!await manager.SendToRoomAsync(player, location, (elsewhere.Host, elsewhere.Port), elsewhere.Instance, owner, back))
+        {
+            await SendOutAsync(player, back, MyRoomCodes.EnterFailed);
+            return;
+        }
+
+        await instances.LeaveAsync(player);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MyRoomExitRequest request)
@@ -208,7 +286,11 @@ public sealed partial class MyRoomService(
             return;
         }
 
-        await rooms.PublishAsync(instance, room);
+        // A room given up to the instance that plays it has sent the owner there too.
+        if (!await KeepAsync(instance))
+        {
+            return;
+        }
 
         Send(context.Player, new MyRoomEditStartResponse());
     }
@@ -235,7 +317,10 @@ public sealed partial class MyRoomService(
             return;
         }
 
-        await rooms.PublishAsync(instance, room);
+        if (!await KeepAsync(instance))
+        {
+            return;
+        }
 
         Send(context.Player, new MyRoomEditEndResponse());
     }
@@ -358,7 +443,7 @@ public sealed partial class MyRoomService(
             }
         }
 
-        await rooms.PublishAsync(instance, room);
+        await KeepAsync(instance);
     }
 
     #endregion
@@ -470,6 +555,12 @@ public sealed partial class MyRoomService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Account {Account} came into the room of account {Owner}, instance {Instance}")]
     private partial void LogEntered(int account, int owner, Guid instance);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "The room of account {Owner} is played in instance {Elsewhere}: a player who came into instance {Instance} is sent on")]
+    private partial void LogSentOn(int owner, Guid instance, Guid elsewhere);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The room of account {Owner} is played in instance {Elsewhere}: instance {Instance} gives it up and sends its players on")]
+    private partial void LogGivenUp(int owner, Guid instance, Guid elsewhere);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "A player in a room could not be sent back to district {District}")]
     private partial void LogNoWayBack(short district);
