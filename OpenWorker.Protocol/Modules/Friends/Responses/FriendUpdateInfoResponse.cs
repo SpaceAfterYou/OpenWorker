@@ -2,13 +2,14 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Friends.Extensions;
 using OpenWorker.Hotspot.Modules.Friends.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct FriendUpdateInfoResponse : IResponseHotspotMessage
+public readonly partial struct FriendUpdateInfoResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -24,13 +25,4 @@ public readonly struct FriendUpdateInfoResponse : IResponseHotspotMessage
     public FriendValue Value { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Value);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -2,13 +2,14 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Friends.Extensions;
 using OpenWorker.Hotspot.Modules.Friends.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct FriendLoadBlocklistResponse : IResponseHotspotMessage
+public readonly partial struct FriendLoadBlocklistResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -21,21 +22,8 @@ public readonly struct FriendLoadBlocklistResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireArray(WireLength.Byte)]
     public required IReadOnlyCollection<FriendBlockValue> List { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write((byte)List.Count);
-
-        foreach (var value in List)
-        {
-            writer.Write(value);
-        }
-    }
-
-#endregion Interface: IWritableData
 }

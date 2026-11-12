@@ -3,34 +3,26 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Persons.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Party.Requests;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Request)]
-public readonly struct PartyInviteRequest(BinaryReader reader) : IRequestHotspotMessage, IWritableData
+public readonly partial struct PartyInviteRequest : IRequestHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.Invite;
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
-    public string TargetName { get; } = reader.ReadPersonName();
-    public string RequesterName { get; } = reader.ReadPersonName();
-    public ActorValue RequesterActor { get; } = new(reader);
-    public ActorValue TargetActor { get; } = new(reader);
-    public int Server { get; } = reader.ReadInt32();
-    public int Result { get; } = reader.ReadInt32();
-    public byte Select { get; } = reader.ReadByte();
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WritePersonName(TargetName);
-        writer.WritePersonName(RequesterName);
-        writer.Write(RequesterActor);
-        writer.Write(TargetActor);
-        writer.Write(Server);
-        writer.Write(Result);
-        writer.Write(Select);
-    }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string TargetName { get; }
+    [WireString(WireStringFormat.Utf8Unicode)]
+    public string RequesterName { get; }
+    public ActorValue RequesterActor { get; }
+    public ActorValue TargetActor { get; }
+    public int Server { get; }
+    public int Result { get; }
+    public byte Select { get; }
 }

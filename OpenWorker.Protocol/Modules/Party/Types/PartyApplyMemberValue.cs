@@ -1,16 +1,10 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Party.Types;
 
-public readonly struct PartyApplyMemberValue(BinaryReader reader) : IWritableData
+[WireMessage(WireMethods.Write)]
+public readonly partial struct PartyApplyMemberValue
 {
-    public PartyMemberInfoValue Member { get; init; } = new(reader);
-    public int RegDate { get; init; } = reader.ReadInt32();
-
-    public void Write(BinaryWriter writer)
-    {
-        Member.Write(writer);
-
-        writer.Write(RegDate);
-    }
+    public PartyMemberInfoValue Member { get; init; }
+    public int RegDate { get; init; }
 }

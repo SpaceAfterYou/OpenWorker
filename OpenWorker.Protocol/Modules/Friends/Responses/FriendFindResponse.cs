@@ -1,15 +1,15 @@
-using System.Diagnostics;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Friends.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Friends.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct FriendFindResponse : IResponseHotspotMessage
+public readonly partial struct FriendFindResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -22,6 +22,7 @@ public readonly struct FriendFindResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireArray(WireLength.Signed16)]
     public required IReadOnlyCollection<FriendFindEntry> Values { get; init; }
 
     /// <summary>
@@ -30,29 +31,4 @@ public readonly struct FriendFindResponse : IResponseHotspotMessage
     public required bool IsLast { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        Debug.Assert(Values.Count < short.MaxValue);
-        writer.Write((short)Values.Count);
-
-        foreach (var value in Values)
-        {
-            writer.Write(value.Person);
-
-            Debug.Assert(value.Name.Length <= 21);
-            writer.WriteUtf16UnicodeString(value.Name);
-
-            writer.Write(value.Level);
-            writer.Write(value.Channel);
-            writer.Write(value.World);
-            writer.Write(value.IsLoggedIn);
-        }
-
-        writer.Write(IsLast);
-    }
-
-#endregion Interface: IWritableData
 }

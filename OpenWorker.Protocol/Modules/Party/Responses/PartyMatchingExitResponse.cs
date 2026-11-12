@@ -3,12 +3,13 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Party.Enums;
-using OpenWorker.Hotspot.Modules.Party.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PartyMatchingExitResponse : IResponseHotspotMessage
+public readonly partial struct PartyMatchingExitResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.MatchingExit;
@@ -20,10 +21,4 @@ public readonly struct PartyMatchingExitResponse : IResponseHotspotMessage
     /// </summary>
     public int Character { get; init; }
     public PartyMatchingExit Reason { get; init; }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Character);
-        writer.Write(Reason);
-    }
 }

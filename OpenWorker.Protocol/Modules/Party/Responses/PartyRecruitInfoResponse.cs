@@ -3,21 +3,18 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Party.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Party.Responses;
 
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct PartyRecruitInfoResponse(BinaryReader reader) : IResponseHotspotMessage
+public readonly partial struct PartyRecruitInfoResponse : IResponseHotspotMessage
 {
     private const GroupOpcode Group = GroupOpcode.Party;
     private const PartyOpcode Command = PartyOpcode.RecruitInfo;
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
-    public PartyRecruitMemberValue Recruit { get; init; } = new(reader);
-
-    public void Write(BinaryWriter writer)
-    {
-        Recruit.Write(writer);
-    }
+    public PartyRecruitMemberValue Recruit { get; init; }
 }

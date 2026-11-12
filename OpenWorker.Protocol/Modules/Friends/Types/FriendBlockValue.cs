@@ -1,3 +1,9 @@
-﻿namespace OpenWorker.Hotspot.Modules.Friends.Types;
+﻿using OpenWorker.Wire;
 
-public readonly record struct FriendBlockValue(int Person, string Name, byte Level);
+namespace OpenWorker.Hotspot.Modules.Friends.Types;
+
+[WireMessage(WireMethods.Write)]
+public readonly partial record struct FriendBlockValue(
+    int Person,
+    [property: WireString(WireStringFormat.Utf16Unicode)] string Name,
+    byte Level);
