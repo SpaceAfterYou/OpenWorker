@@ -124,6 +124,12 @@ public sealed partial class MazeInstances(World world, IRedisCollection<PartyMaz
             maze.Close();
         }
 
+        // A room opened in the instance for a player who was then sent back at the door ends with it.
+        if (rooms is not null)
+        {
+            await rooms.EndAsync(maze.Instance);
+        }
+
         if (maze.Party == 0)
         {
             return;

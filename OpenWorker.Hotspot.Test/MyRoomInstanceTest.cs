@@ -1,11 +1,16 @@
+using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Stores;
+using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Cache.Types;
+using OpenWorker.Lua;
 using OpenWorker.MazeServer.Services;
 using StackExchange.Redis;
 
@@ -124,5 +129,44 @@ public sealed class MyRoomInstanceTest
         CollectionAssert.AreEqual(new[] { (player, (short)7) }, rooms.GiveUp(first.Instance).ToArray());
         Assert.IsNull(rooms.Find(first.Instance));
         Assert.AreEqual(next.Instance, (await directory.RouteAsync(owner, Gate, Unregistered)).Instance, "the new instance keeps the record");
+    }
+
+    /// <summary>
+    /// A room opened for a player who is then sent back at the door, with nobody in it, ends with its instance and gives its
+    /// record back.
+    /// </summary>
+    [TestMethod]
+    public async Task ARoomNobodyGotIntoEndsWithItsInstance()
+    {
+        var redis = await PartyTest.RedisAsync();
+        var directory = new MyRoomDirectory(redis);
+        var rooms = Rooms(redis, Guid.Empty);
+        var owner = PartyTest.People(1)[0];
+        var world = World.Create();
+
+        try
+        {
+            var player = world.Create(
+                new ActorComponent(owner, ActorType.User),
+                new WorldComponent { Location = 0, Position = Vector3.Zero, Rotation = 0f, Jump = 0 });
+            var instances = new MazeInstances(world, null!, NullLogger<MazeInstances>.Instance, rooms);
+            var first = await directory.RouteAsync(owner, Gate, Unregistered);
+            var maze = (await instances.GetOrOpenAsync(first.Instance,
+                () => ValueTask.FromResult<LuaMaze?>(TestMazes.Create(world, player, instance: first.Instance))))!;
+
+            world.Add(player, maze);
+
+            await OpenAsync(rooms, first.Instance, owner);
+
+            await instances.LeaveAsync(player);
+
+            Assert.IsNull(rooms.Find(first.Instance));
+            Assert.AreNotEqual(first.Instance, (await directory.RouteAsync(owner, Gate, Unregistered)).Instance, "the record was given back");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
     }
 }
