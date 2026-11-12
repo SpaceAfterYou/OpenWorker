@@ -22,6 +22,9 @@ public static class PersistenceServiceCollectionExtensions
         services.AddPersistenceOptions();
         services.TryAddSingleton(TimeProvider.System);
 
+        services.AddMetrics();
+        services.TryAddSingleton<PersistenceMetrics>();
+
         services.AddSingleton<PersonSnapshots>();
         services.AddSingleton<PersistenceWriter>();
         services.AddHostedService(provider => provider.GetRequiredService<PersistenceWriter>());

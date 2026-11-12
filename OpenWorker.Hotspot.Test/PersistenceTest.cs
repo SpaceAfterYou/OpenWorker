@@ -148,7 +148,7 @@ public sealed class PersistenceTest
             Writer = new PersistenceWriter(store, Loop, snapshots, NullLogger<PersistenceWriter>.Instance);
             Flush = new PersistenceFlushService(Loop, snapshots, Writer, new DatabaseItemSerials(store),
                 Options.Create(new PersistenceOptions()), new FakeTimeProvider(), NullLogger<PersistenceFlushService>.Instance);
-            Close = new PersonFlush(snapshots, Writer);
+            Close = new PersonFlush(World, snapshots, Writer);
         }
 
         public Task StartAsync() => Writer.StartAsync(CancellationToken.None);

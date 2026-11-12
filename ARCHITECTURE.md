@@ -270,7 +270,9 @@ readiness off, because `ServerState` listens to `ApplicationStopping`.
    `CloseSessionAsync` marks a close caused by the shutdown, and `sessions.closed` counts it under the reason `shutdown`.
 4. The host stops the other services, the health endpoint among them, in the reverse order of their registration:
    `PersistenceFlushService` takes a last round of what is left (players the drain did not close in time), then
-   `PersistenceWriter` writes what is queued and stops. Last the container disposes the world loop.
+   `PersistenceWriter` writes what is queued and what it keeps of the players who left (see Database), and stops; the
+   time of the host bounds that wait, and what is still kept then is lost, with an error per player. Last the container
+   disposes the world loop.
    The loop runs through the whole drain and the last round, because the close handlers and the snapshots need it.
 
 `Shutdown:DrainTimeout` (15 s) bounds steps 1 to 3 as a whole and the wait for each writer: a client that does not
@@ -311,6 +313,8 @@ the metrics class as the last, optional constructor parameter: `null` is a part 
 | `frames.dropped` | counter | `opcode` | messages dropped because the body does not fit one frame |
 | `redis.call.duration` | histogram, s | `operation`: the Redis command | a command, from the moment it is made to its answer |
 | `postgres.call.duration` | histogram, s | `operation`: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `OTHER` | a command, until the database starts to answer |
+| `persistence.kept` | up-down counter, persons | | players who left while what they changed waits for the database; their sessions stay held |
+| `persistence.kept.ended` | counter, persons | `outcome`: `written`, `lost` | how such a wait ended: written late, or given up at a bound or at the stop |
 
 Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_total`, `handler.duration` is `handler_duration_seconds_bucket`.
 
@@ -438,6 +442,14 @@ wrote last. A handler never waits for these writes.
   the loop, so the writes of a person reach the database in the order they were taken. A failed batch is written person by
   person; a person whose write still fails is tried again (`PersistenceWriter.MaxAttempts`), then given up, with an error
   in the log and its parts marked again if it is still on the server.
+- **A player who leaves while the database is down.** The flush of a closing connection (`PersistenceWriter.LeaveAsync`)
+  does not give the parts back to the player, who is about to be destroyed: the writer keeps the snapshots, in order, and
+  tries them again every two seconds, off the loop; a later write of that person goes after them. `PersonFlush` puts a
+  `SessionHoldComponent` on the closing entity, and `SessionLeaseManager` keeps the session held and renewed after the
+  entity is gone, so no other server and no new login loads the person until the write is in. Bounds:
+  `Persistence:KeepTimeout` (10 min) per person and `Persistence:KeepLimit` (2000) persons per server; past either the
+  changes are lost, with an error that names the person and the parts, and the session is let go. `persistence.kept`
+  counts the players who wait.
 - **When.** Every `Persistence:FlushInterval` (30 s) for every player that changed (`PersistenceFlushService`); for
   one player (`PersonFlush`, awaited) when its connection closes and before a reservation sends it to another server or to
   the gate; once more when the host stops (see Stopping a server). A `kill -9` loses at most one interval of what the
@@ -506,7 +518,9 @@ or wrong setting stops the server with a message that names the key. A setting w
   would; false unless set, and only for a test stand. Otherwise a command runs for the access level of the account
   (`Accounts.AccessLevel`).
 - `Persistence:FlushInterval` of the district and the maze (`00:00:30`, from one second to five minutes) is how often the
-  changes of the players are written (see Database). `Maximum Pool Size` in `ConnectionStrings:Postgres` is the size of
+  changes of the players are written (see Database). `Persistence:KeepTimeout` (`00:10:00`, from one second to an hour)
+  and `Persistence:KeepLimit` (2000, 0 keeps none) bound how long and for how many players who left their changes are
+  still tried while the database does not take them. `Maximum Pool Size` in `ConnectionStrings:Postgres` is the size of
   the pool of connections of a server: 16 for the gate, a district and the maze, 8 for auth, 4 for the relay and the
   content loader in their `appsettings.json`.
 - **Table folders.** The client tables are read from `res/` in the working directory, the tables only the server has from
@@ -536,7 +550,8 @@ or wrong setting stops the server with a message that names the key. A setting w
   mode that fails is not known well enough to send.
 - **A maze reservation does not name its maze server.** Any maze server of the gate takes it.
 - **A crash loses one flush interval.** The changes of the players since the last round of `PersistenceFlushService`
-  (`Persistence:FlushInterval`) are lost when the process dies without stopping. A record of the server in Redis stays
+  (`Persistence:FlushInterval`) are lost when the process dies without stopping, and so is what the writer keeps of the
+  players who left while the database was down. A record of the server in Redis stays
   until it expires, half a minute at most.
 - **A changed index schema is rebuilt under the servers.** When a build changes the attributes of a document of the cache,
   the relay drops its index (not the records) and makes it again; for that moment, and until Redis has indexed the

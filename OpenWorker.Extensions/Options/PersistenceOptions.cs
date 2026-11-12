@@ -43,12 +43,42 @@ public sealed class PersistenceOptions : IValidatableObject
     /// </summary>
     public TimeSpan FlushInterval { get; set; } = TimeSpan.FromSeconds(30);
 
+    public static TimeSpan MinKeepTimeout { get; } = TimeSpan.FromSeconds(1);
+    public static TimeSpan MaxKeepTimeout { get; } = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// How long what a player changed is still tried when the database did not take it before the player left
+    /// (<c>Persistence:KeepTimeout</c>, <c>00:10:00</c> by default). Until then the session stays held and nobody loads the
+    /// person; after it the changes are lost, with an error that names them, and the session is let go.
+    /// </summary>
+    public TimeSpan KeepTimeout { get; set; } = TimeSpan.FromMinutes(10);
+
+    public const int MaxKeepLimit = 100_000;
+
+    /// <summary>
+    /// How many players who left a server keeps at most while their changes wait for the database
+    /// (<c>Persistence:KeepLimit</c>, 2000 by default; 0 keeps none). The changes of one more are lost at once, with an error.
+    /// </summary>
+    public int KeepLimit { get; set; } = 2000;
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (FlushInterval < MinFlushInterval || FlushInterval > MaxFlushInterval)
         {
             yield return new ValidationResult(
                 "Persistence:FlushInterval must be a time from 00:00:01 to 00:05:00, for example 00:00:30.", [nameof(FlushInterval)]);
+        }
+
+        if (KeepTimeout < MinKeepTimeout || KeepTimeout > MaxKeepTimeout)
+        {
+            yield return new ValidationResult(
+                "Persistence:KeepTimeout must be a time from 00:00:01 to 01:00:00, for example 00:10:00.", [nameof(KeepTimeout)]);
+        }
+
+        if (KeepLimit is < 0 or > MaxKeepLimit)
+        {
+            yield return new ValidationResult(
+                "Persistence:KeepLimit must be a number from 0 to 100000, for example 2000.", [nameof(KeepLimit)]);
         }
     }
 }
