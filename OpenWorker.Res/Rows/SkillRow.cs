@@ -9,86 +9,332 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Skill")]
 public readonly partial struct SkillRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the skill. 37 ids appear twice in this client&apos;s table.
+    /// </summary>
     public int Id { get; } = reader.ReadInt32();
-    public short Field1 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The row of tb_Skill_Script that gives the name, the texts and the icon. The client looks that row up by this column; every value is a row of it.
+    /// </summary>
+    public short Script { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The group the levels of one skill share: for most it is the id of the first level. 0 on most monster skills.
+    /// </summary>
     public int Group { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The skill this one turns into when the player swaps it (76 rows, every value a skill). 0 for none.
+    /// </summary>
     public int SwapSkill { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The level of the skill, 1 to 5 (0 on five rows).
+    /// </summary>
     public byte Level { get; } = reader.ReadByte();
+    /// <summary>
+    /// 2 for a basic skill every player has without learning it; 1 on the other skills, 0 on four rows.
+    /// </summary>
     public byte UsePosition { get; } = reader.ReadByte();
+    /// <summary>
+    /// The class that may learn the skill. 0 is every class (and every monster skill).
+    /// </summary>
     public byte UseClass { get; } = reader.ReadByte();
+    /// <summary>
+    /// The character level needed to learn this level of the skill.
+    /// </summary>
     public byte RequiredLevel { get; } = reader.ReadByte();
+    /// <summary>
+    /// The skill points this level costs to learn. The client compares it with the points the player has.
+    /// </summary>
     public byte RequiredPoints { get; } = reader.ReadByte();
+    /// <summary>
+    /// The highest level of the skill. The client compares the learned level with it.
+    /// </summary>
     public byte MaxLevel { get; } = reader.ReadByte();
+    /// <summary>
+    /// The skill points the player must have spent before learning it. The client compares it with the spent points; 0 in every row of this client.
+    /// </summary>
     public byte RequiredSpentPoints { get; } = reader.ReadByte();
+    /// <summary>
+    /// A skill that must be learned first. The client checks the player has it; 0 in every row of this client.
+    /// </summary>
     public int RequiredSkill { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The skill that is the next level of this one. The client walks the levels through it; every value is a skill.
+    /// </summary>
     public int NextLevel { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The first group of divergences (branches) the skill can take. 0 for none.
+    /// </summary>
     public int DivergenceGroup1 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The second group of divergences (branches) the skill can take. 0 for none.
+    /// </summary>
     public int DivergenceGroup2 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The priority of the skill when it cuts another one that plays: the client compares the two. 0 to 6.
+    /// </summary>
     public byte SkipPriorityGroup { get; } = reader.ReadByte();
+    /// <summary>
+    /// What kind of skill it is: 1 passive, 2 active, 8 a grab. 0 and 3 to 7 are rare and not settled.
+    /// </summary>
     public byte SkillType { get; } = reader.ReadByte();
+    /// <summary>
+    /// What a passive skill does: 0 for none. 13 gives the buff of PassiveValue.
+    /// </summary>
     public byte PassiveType { get; } = reader.ReadByte();
+    /// <summary>
+    /// 46 on the 115 skills of the akashic cards, 0 elsewhere. No client code that reads it was found.
+    /// </summary>
     public byte BehaviorCondition { get; } = reader.ReadByte();
-    public short PassiveValue { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The value a passive skill works with: for the kind that gives a buff, the id of the buff. Buff ids go up to 65535 (115 rows hold 50011 and above), so the column is unsigned, as the client reads it.
+    /// </summary>
+    public ushort PassiveValue { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// A fixed amount of damage the skill adds. The client shows it with AddDamage in the tooltip.
+    /// </summary>
     public float BasicDamage { get; } = reader.ReadSingle();
+    /// <summary>
+    /// A second fixed amount of damage, shown with BasicDamage in the tooltip. 0 in every row of this client.
+    /// </summary>
     public float AddDamage { get; } = reader.ReadSingle();
+    /// <summary>
+    /// The damage of the skill, in per cent of the attack. The tooltip shows it with a per cent sign.
+    /// </summary>
     public float DamageRate { get; } = reader.ReadSingle();
+    /// <summary>
+    /// How much soul gauge a hit of the skill gives back.
+    /// </summary>
     public float SoulGaugeAbsorb { get; } = reader.ReadSingle();
+    /// <summary>
+    /// How much the skill wears down the super armor of its target.
+    /// </summary>
     public float SuperArmorAttack { get; } = reader.ReadSingle();
+    /// <summary>
+    /// How many targets one hit of the skill may strike: 15 on almost every row, 50 on 82.
+    /// </summary>
     public byte TargetCount { get; } = reader.ReadByte();
-    public short Field26 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The speed the user moves at while the skill plays and the player moves: the client takes this value as the speed of the mover then. 22 rows have one (15 to 500).
+    /// </summary>
+    public ushort MoveSpeed { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// Not known: 1 on 50 monster skills, 0 elsewhere. The original server&apos;s row has a flag about the state of a monster&apos;s target at this place (every common row agrees); no client code that reads it was found.
+    /// </summary>
     public byte Field27 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The attribute of the skill: 1 on every row but one.
+    /// </summary>
     public byte Attribute { get; } = reader.ReadByte();
+    /// <summary>
+    /// What the skill costs: 0 nothing, 2 soul gauge, 3 stamina, 4 soul vapor (1 is health on the server, no row has it).
+    /// </summary>
     public byte CostAttribute { get; } = reader.ReadByte();
+    /// <summary>
+    /// How much of CostAttribute the skill costs.
+    /// </summary>
     public int Cost { get; } = reader.ReadInt32();
+    /// <summary>
+    /// 0 the cost is paid once, 1 it is drained for as long as the skill lasts (10 rows).
+    /// </summary>
     public byte CostType { get; } = reader.ReadByte();
+    /// <summary>
+    /// 0 in every row of this client.
+    /// </summary>
     public byte Direction { get; } = reader.ReadByte();
+    /// <summary>
+    /// How the player handles the skill: 2 charged, 4 a trap moved with the cursor, 5 charged to the end, 6 marking targets, 8 charged both ways. 0 and 1 are plain skills (the difference is not settled); 7 is not known.
+    /// </summary>
     public byte ControlType { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 11 on most class skills, 10 and 17 to 23 on others, 0 on monster skills. The original server&apos;s row has nothing at this place; no client code that reads it was found.
+    /// </summary>
     public byte Field34 { get; } = reader.ReadByte();
+    /// <summary>
+    /// How many charge steps the skill has, 0 to 3.
+    /// </summary>
     public byte ChargeCount { get; } = reader.ReadByte();
+    /// <summary>
+    /// The time of charge step 1, in milliseconds. For ControlType 6, how long the player may mark targets.
+    /// </summary>
     public int ChargeTime1 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The time of charge step 2, in milliseconds.
+    /// </summary>
     public int ChargeTime2 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The time of charge step 3, in milliseconds.
+    /// </summary>
     public int ChargeTime3 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The time of charge step 4, in milliseconds. 0 in every row of this client.
+    /// </summary>
     public int ChargeTime4 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// Not known: the client adds it, divided by the charge time, to a running amount while a skill charges. 0 in every row of this client.
+    /// </summary>
     public int Field40 { get; } = reader.ReadInt32();
-    public int Field41 { get; } = reader.ReadInt32();
-    public int Field42 { get; } = reader.ReadInt32();
-    public byte Field43 { get; } = reader.ReadByte();
-    public short RangeMin { get; } = reader.ReadInt16();
-    public short RangeMax { get; } = reader.ReadInt16();
+    /// <summary>
+    /// How far ahead a charged skill reaches with no charge. The client places the target marker this far ahead and moves it out to ChargeDistanceMax over ChargeTime1.
+    /// </summary>
+    public int ChargeDistanceMin { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How far ahead a charged skill reaches when fully charged (see ChargeDistanceMin).
+    /// </summary>
+    public int ChargeDistanceMax { get; } = reader.ReadInt32();
+    /// <summary>
+    /// For ControlType 6: how many targets the player may mark; the skill goes off when that many are marked. One row has it.
+    /// </summary>
+    public byte MaxMarkedTargets { get; } = reader.ReadByte();
+    /// <summary>
+    /// The nearest distance the skill is used from. The client reads it unsigned.
+    /// </summary>
+    public ushort RangeMin { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The farthest distance the skill reaches. The client reads it unsigned; 74 monster skills hold 50000, a reach over the whole map.
+    /// </summary>
+    public ushort RangeMax { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// How far, in degrees, the user may look away from its target when the skill starts.
+    /// </summary>
     public byte Angle { get; } = reader.ReadByte();
+    /// <summary>
+    /// 1 when the skill starts whatever way the user looks.
+    /// </summary>
     public byte RotationType { get; } = reader.ReadByte();
+    /// <summary>
+    /// The state the user must be in to start the skill: 1 any.
+    /// </summary>
     public byte UseState { get; } = reader.ReadByte();
+    /// <summary>
+    /// More states the skill may start in, as bit flags: 4 lying down, 0x10 only under a buff that allows it; 8 is not settled.
+    /// </summary>
     public byte NormalState { get; } = reader.ReadByte();
-    public byte Field50 { get; } = reader.ReadByte();
-    public int Field51 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// 1 when the user passes through others while the skill plays: the client turns the user&apos;s collision off at the start and on at the end.
+    /// </summary>
+    public byte NoCollision { get; } = reader.ReadByte();
+    /// <summary>
+    /// The skill the client asks to use next when this one ends. 0 for none; 95 of 101 values are skills of this table.
+    /// </summary>
+    public int ChainSkill { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How long the cooldown lasts, in milliseconds.
+    /// </summary>
     public int Cooldown { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The cooldown group: using the skill starts the cooldown of every skill of its group.
+    /// </summary>
     public int CooldownGroup { get; } = reader.ReadInt32();
+    /// <summary>
+    /// 2 on the 188 skills of the akashic cards, 0 elsewhere. Whether it keeps the cooldown over a logout is not settled.
+    /// </summary>
     public byte CooldownSave { get; } = reader.ReadByte();
+    /// <summary>
+    /// The cooldown the skill puts on every skill, in milliseconds.
+    /// </summary>
     public short GlobalCooldown { get; } = reader.ReadInt16();
+    /// <summary>
+    /// &quot;0&quot; in every row of this client. No client code that reads it was found.
+    /// </summary>
     public string Field56 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// 0 in every row of this client. No client code that reads it was found.
+    /// </summary>
     public short Field57 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// 0 in every row of this client. No client code that reads it was found.
+    /// </summary>
     public int Field58 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How the shots of the skill are kept in step: 2 the client flies them itself.
+    /// </summary>
     public byte BulletSyncType { get; } = reader.ReadByte();
+    /// <summary>
+    /// The animation the skill starts with.
+    /// </summary>
     public string AnimationStart { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The animation that loops while the skill is held.
+    /// </summary>
     public string AnimationLoop { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// An extra animation, mostly of charging.
+    /// </summary>
     public string AnimationExtra { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The animation the skill ends with (the attack).
+    /// </summary>
     public string AnimationEnd { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public byte Field64 { get; } = reader.ReadByte();
+    /// <summary>
+    /// 1 when pressing the skill&apos;s key again while it plays sends the key press to the server (39 rows). One row has 2, which is not known.
+    /// </summary>
+    public byte KeyPressFollowUp { get; } = reader.ReadByte();
+    /// <summary>
+    /// How long the loop animation plays, in milliseconds. 0 lets the animation&apos;s own length count.
+    /// </summary>
     public int LoopTime { get; } = reader.ReadInt32();
-    public short Duration { get; } = reader.ReadInt16();
+    /// <summary>
+    /// How long the skill plays, in milliseconds. Three rows hold more than 32767, so the column is unsigned.
+    /// </summary>
+    public ushort Duration { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// Not known: 1 on 9 skills. The client tests it against the state of the user (1 using a skill, 2 some motions, 3 always) in a check whose use was not found.
+    /// </summary>
     public byte Field67 { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 1 on 18 skills and 2 on 2. The client keeps it while the skill plays; with 2, a skill used in the air stops its animation.
+    /// </summary>
     public byte Field68 { get; } = reader.ReadByte();
+    /// <summary>
+    /// 0 in every row of this client. No client code that reads it was found.
+    /// </summary>
     public short Field69 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// &quot;none&quot; in every row of this client. No client code that reads it was found.
+    /// </summary>
     public string Field70 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field71 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field72 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// A camera file the client plays when the skill starts (40 rows).
+    /// </summary>
+    public string CameraFile { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The effect the client places as the target marker of a charged skill, at the distance of ChargeDistanceMin and ChargeDistanceMax.
+    /// </summary>
+    public string ChargeMarkerEffect { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// Not known: 1 on the one row with a Movie. When it is 2 the client places the Prefab.
+    /// </summary>
     public byte Field73 { get; } = reader.ReadByte();
-    public string Field74 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field75 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// A movie the client plays during the skill (one row).
+    /// </summary>
+    public string Movie { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// A prefab under World that the client places when column 73 is 2. &quot;0&quot; in every row of this client.
+    /// </summary>
+    public string Prefab { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// Not known: 1 on most player skills, 0, 2 and 16 on others. No client code that reads it was found.
+    /// </summary>
     public byte Field76 { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 1 on 161 skills. While it is 1 the client turns the user to its current facing, as it does under one of its own settings; not followed further.
+    /// </summary>
     public byte Field77 { get; } = reader.ReadByte();
+    /// <summary>
+    /// 1 when the skill is for the one who owns the user (a monster&apos;s owner), not for its enemy.
+    /// </summary>
     public byte TargetType { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 1 on 58 skills. The client passes it along when it plays CameraFile, but none of these rows has a camera file.
+    /// </summary>
     public byte Field79 { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 1 on 3 skills. The client takes another path when such a skill is used; not followed further.
+    /// </summary>
     public byte Field80 { get; } = reader.ReadByte();
+    /// <summary>
+    /// Not known: 1 and 2 on 38 skills each. When it is not 0 the client sets a state on each of six skill slots holding such a skill; what the state shows is not known.
+    /// </summary>
     public byte Field81 { get; } = reader.ReadByte();
 }
