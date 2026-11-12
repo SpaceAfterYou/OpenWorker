@@ -33,9 +33,17 @@ public partial class LuaMaze
             return false;
         }
 
+        // A card the akashic file has nothing for leaves the skill as it is, as the original does.
+        var summons = actions.GetAkashicSummons(skill, card.ActionGroup);
+
+        if (summons.Count == 0)
+        {
+            return false;
+        }
+
         var delay = Wait(calls.SummonDelay(member.Player));
 
-        foreach (var summon in actions.GetAkashicSummons(skill, card.ActionGroup))
+        foreach (var summon in summons)
         {
             _schedule.Schedule(delay, () => Summon(member, card, yaw, summon, generation));
         }
