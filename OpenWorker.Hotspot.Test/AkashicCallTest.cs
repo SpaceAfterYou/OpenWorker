@@ -160,75 +160,134 @@ public sealed class AkashicCallTest
     [TestMethod]
     public async Task TheAkashicSkillBringsTheCalledCardInAndItStrikesAsItself()
     {
-        var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
-        var skills = TestTables.Load<SkillRow>("tb_Skill");
-
-        if (string.IsNullOrEmpty(folder))
-        {
-            Assert.Inconclusive("OPENWORKER_TEST_ACTION is not set.");
-        }
-
-        var cards = TestTables.Load<AkashicRecordsRow>("tb_Akashic_Records");
-        var heroes = TestTables.Load<CharacterInfoRow>("tb_Character_Info");
-        var monsters = TestTables.Load<MonsterRow>("tb_Monster");
-        var tables = new CombatTables(monsters, TestTables.Load<StatusRow>("tb_Status"), skills, heroes);
-        var monster = monsters.First(e => e.Level is > 1 and < 20 && e.Type == 0 && e.Rank <= 6 && tables.GetMonster(e.Id).Stats.MaxHealth >= 100f);
-        var actions = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = folder };
         var world = World.Create();
 
         try
         {
-            var time = new FakeTimeProvider();
-            var clock = TestMazes.Clock(time);
-            var connection = new RecordingConnection();
-            var player = Player(world, connection, Card);
-            var calls = new AkashicCalls(world, cards, skills, Rules(), heroes);
-            var services = new CreatureServices(null!, new Gameplay.Ai.MonsterBehaviorTables(TestMazes.None<MonsterRow>(), TestMazes.None<SkillRow>()), actions, clock,
-                new Navigation.NavMeshProvider(), akashic: calls);
-            var batch = TestMazes.Map(PartyMazeTest.MapWithMonster(monster.Id));
-            var creatures = new LuaCreatureManager(world, batch, tables, services);
-            var maze = TestMazes.Create(world, player, clock: clock, batch: batch, creatures: creatures, actions: actions, tables: tables);
+            var arena = new Arena(world).Open();
 
-            Assert.IsTrue(maze.TryStart());
-            maze.MarkLoaded(player);
-            maze.SpawnSector(1);
+            Assert.AreEqual(AkashicRefusal.None, arena.Calls.Call(arena.Player, 0, Maze, 0f, arena.Clock.Time, out _));
 
-            // The card of the first slot comes 350 before the player, which faces along its yaw: right onto the monster.
-            var body = creatures.FindMonsters((_, _) => true).Single();
-            var target = world.Get<WorldComponent>(body).Position;
+            arena.Maze.StartSkill(arena.Player, AkashicSkill, default);
+            arena.Run(10f);
 
-            world.Set(player, world.Get<WorldComponent>(player) with { Position = target + new Vector3(0f, 350f, 0f) });
+            await MetricAssertions.UntilAsync(() => Frames(arena.Connection, SkillOpcode.SkillSummonAkashic).Length == 1, "The player sees the card come.");
 
-            Assert.AreEqual(AkashicRefusal.None, calls.Call(player, 0, Maze, 0f, clock.Time, out _));
-
-            maze.StartSkill(player, AkashicSkill, default);
-
-            for (var tick = 0; tick < 10 * 20; tick++)
-            {
-                time.Advance(SimulationClock.Period);
-                clock.Tick();
-            }
-
-            await MetricAssertions.UntilAsync(() => Frames(connection, SkillOpcode.SkillSummonAkashic).Length == 1, "The player sees the card come.");
-
-            var summon = Frames(connection, SkillOpcode.SkillSummonAkashic).Single().Body;
+            var summon = Frames(arena.Connection, SkillOpcode.SkillSummonAkashic).Single().Body;
             var creature = BinaryPrimitives.ReadInt32LittleEndian(summon.AsSpan(4));
 
             Assert.AreEqual(1, new ActorComponent(BinaryPrimitives.ReadInt32LittleEndian(summon)).Identifier, "The card is the player's.");
             Assert.AreEqual(ActorType.Akashic, new ActorComponent(creature).Type);
             Assert.AreEqual(-350f, BinaryPrimitives.ReadSingleLittleEndian(summon.AsSpan(4 + 4 + 4 + 4 + 4)), "The offset of the akashic file.");
 
-            await MetricAssertions.UntilAsync(() => Frames(connection, SkillOpcode.ActionSkillBt).Any(e => Holds(e.Body, creature) && Holds(e.Body, CardSkill)),
+            await MetricAssertions.UntilAsync(() => Frames(arena.Connection, SkillOpcode.ActionSkillBt).Any(e => Holds(e.Body, creature) && Holds(e.Body, CardSkill)),
                 "The card strikes with its own skill, as itself.");
 
-            Assert.IsFalse(world.Has<AkashicCallComponent>(player), "The call is used up.");
+            Assert.IsFalse(world.Has<AkashicCallComponent>(arena.Player), "The call is used up.");
 
-            maze.Close();
+            arena.Maze.Close();
         }
 
         finally
         {
             World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A player who falls before the card comes brings nothing in, and the call is spent all the same.
+    /// </summary>
+    [TestMethod]
+    public async Task AFallBeforeTheCardComesCallsItOff()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world).Open();
+
+            Assert.AreEqual(AkashicRefusal.None, arena.Calls.Call(arena.Player, 0, Maze, 0f, arena.Clock.Time, out _));
+
+            arena.Maze.StartSkill(arena.Player, AkashicSkill, default);
+
+            var ability = world.Get<AbilityComponent>(arena.Player);
+
+            world.Set(arena.Player, ability with { Health = ability.Health with { Current = 0 } });
+            arena.Run(10f);
+
+            // What a step sends is in the queue of the connection by then: wait for it to be written before looking.
+            await Task.Delay(300);
+
+            Assert.IsEmpty(Frames(arena.Connection, SkillOpcode.SkillSummonAkashic), "No card comes for a fallen player.");
+            Assert.IsFalse(world.Has<AkashicCallComponent>(arena.Player));
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A maze of the client's tables and files with one monster, and a player who stands 350 behind it, facing it along yaw 0,
+    /// with the first card of the client's table in its book and first quick slot: the card comes right onto the monster.
+    /// </summary>
+    private sealed class Arena(World world)
+    {
+        public FakeTimeProvider Time { get; } = new();
+        public RecordingConnection Connection { get; } = new();
+        public SimulationClock Clock { get; private set; } = null!;
+        public Entity Player { get; private set; }
+        public AkashicCalls Calls { get; private set; } = null!;
+        public Lua.LuaMaze Maze { get; private set; } = null!;
+
+        public Arena Open()
+        {
+            var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
+            var skills = TestTables.Load<SkillRow>("tb_Skill");
+
+            if (string.IsNullOrEmpty(folder))
+            {
+                Assert.Inconclusive("OPENWORKER_TEST_ACTION is not set.");
+            }
+
+            var heroes = TestTables.Load<CharacterInfoRow>("tb_Character_Info");
+            var monsters = TestTables.Load<MonsterRow>("tb_Monster");
+            var tables = new CombatTables(monsters, TestTables.Load<StatusRow>("tb_Status"), skills, heroes);
+            var monster = monsters.First(e => e.Level is > 1 and < 20 && e.Type == 0 && e.Rank <= 6 && tables.GetMonster(e.Id).Stats.MaxHealth >= 100f);
+            var actions = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = folder };
+
+            Clock = TestMazes.Clock(Time);
+            Player = AkashicCallTest.Player(world, Connection, Card);
+            Calls = new AkashicCalls(world, TestTables.Load<AkashicRecordsRow>("tb_Akashic_Records"), skills, Rules(), heroes);
+
+            var services = new CreatureServices(null!, new Gameplay.Ai.MonsterBehaviorTables(TestMazes.None<MonsterRow>(), TestMazes.None<SkillRow>()), actions, Clock,
+                new Navigation.NavMeshProvider(), akashic: Calls);
+            var batch = TestMazes.Map(PartyMazeTest.MapWithMonster(monster.Id));
+            var creatures = new LuaCreatureManager(world, batch, tables, services);
+
+            Maze = TestMazes.Create(world, Player, clock: Clock, batch: batch, creatures: creatures, actions: actions, tables: tables);
+
+            Assert.IsTrue(Maze.TryStart());
+            Maze.MarkLoaded(Player);
+            Maze.SpawnSector(1);
+
+            var target = world.Get<WorldComponent>(creatures.FindMonsters((_, _) => true).Single()).Position;
+
+            world.Set(Player, world.Get<WorldComponent>(Player) with { Position = target + new Vector3(0f, 350f, 0f) });
+
+            return this;
+        }
+
+        public void Run(float seconds)
+        {
+            for (var tick = 0; tick < seconds * 20; tick++)
+            {
+                Time.Advance(SimulationClock.Period);
+                Clock.Tick();
+            }
         }
     }
 
