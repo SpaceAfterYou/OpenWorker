@@ -45,7 +45,6 @@ public static class BinaryWriteExtension
             writer.Write(storage);
         }
     }
-    
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ItemValue value)
