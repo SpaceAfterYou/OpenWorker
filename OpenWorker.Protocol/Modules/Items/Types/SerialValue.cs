@@ -1,6 +1,11 @@
-﻿namespace OpenWorker.Hotspot.Modules.Items.Types;
+﻿using OpenWorker.Wire;
 
-public readonly struct SerialValue
+namespace OpenWorker.Hotspot.Modules.Items.Types;
+
+/// <summary>
+/// The serial of an item, one 64-bit number on the wire.
+/// </summary>
+public readonly struct SerialValue : IWireReadable<SerialValue>, IWireWritable
 {
     internal long Value { get; init; }
 
@@ -66,4 +71,8 @@ public readonly struct SerialValue
     {
         Value = reader.ReadInt64();
     }
+
+    public static SerialValue Read(ref PacketReader reader) => new(reader.ReadInt64());
+
+    public void Write(ref PacketWriter writer) => writer.WriteInt64(Value);
 }

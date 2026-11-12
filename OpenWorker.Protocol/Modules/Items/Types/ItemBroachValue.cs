@@ -1,33 +1,18 @@
 using OpenWorker.Hotspot.Messages.Abstractions;
-using System.Diagnostics;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Types;
 
-public readonly struct ItemBroachValue : IWritableData
+/// <summary>
+/// The broaches set into the gear with this serial, as a letter carries them: always <see cref="ItemCount"/> items.
+/// </summary>
+[WireMessage(WireMethods.Both)]
+public readonly partial struct ItemBroachValue : IWritableData
 {
     public const int ItemCount = 15;
 
     public long Serial { get; init; }
+
+    [WireArray(Count = ItemCount)]
     public int[] Items { get; init; }
-
-    public ItemBroachValue(BinaryReader reader)
-    {
-        Serial = reader.ReadInt64();
-        Items = Enumerable
-            .Range(0, ItemCount)
-            .Select(_ => reader.ReadInt32())
-            .ToArray();
-    }
-
-    public void Write(BinaryWriter writer)
-    {
-        Debug.Assert(Items.Length is ItemCount);
-
-        writer.Write(Serial);
-
-        foreach (var item in Items)
-        {
-            writer.Write(item);
-        }
-    }
 }

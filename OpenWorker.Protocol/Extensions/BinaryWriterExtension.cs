@@ -74,22 +74,13 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, StorageValue value)
     {
-        writer.Write(value.Storage);
-        writer.Write(value.Slot);
-        writer.Write(value.Item);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ST_ITEM_BROACH value)
     {
-        Debug.Assert(value.dwItemID is { Length: ST_ITEM_BROACH.ItemCount });
-
-        writer.Write(value.biSerial);
-
-        foreach (var item in value.dwItemID)
-        {
-            writer.Write(item);
-        }
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -105,10 +96,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ST_SOCKET_DATA value)
     {
-        writer.Write(value.biEquipSerial);
-        writer.Write(value.dwSocketID);
-        writer.Write(value.bySocketPos);
-        writer.Write(value.stExtendOption);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -142,8 +130,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ItemOption value)
     {
-        writer.Write(value.Type);
-        writer.Write(value.Option);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -166,8 +153,7 @@ public static class BinaryWriterExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(this BinaryWriter writer, ST_STAT value)
     {
-        writer.Write(value.fValue);
-        writer.Write(value.wStatID);
+        WireBridge.Write(writer, value);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

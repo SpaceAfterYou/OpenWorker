@@ -1,31 +1,18 @@
-using OpenWorker.Hotspot.Extensions;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Types;
 
-public readonly struct ItemSocketValue : IWritableData
+/// <summary>
+/// A gem in a socket of the gear with this serial, and its options, as a letter carries it.
+/// </summary>
+[WireMessage(WireMethods.Both)]
+public readonly partial struct ItemSocketValue : IWritableData
 {
     public long EquipSerial { get; init; }
     public int Socket { get; init; }
     public byte Position { get; init; }
+
+    [WireArray(Count = ItemModuleDefines.OptionCount)]
     public List<ItemOption> Options { get; init; }
-
-    public ItemSocketValue(BinaryReader reader)
-    {
-        EquipSerial = reader.ReadInt64();
-        Socket = reader.ReadInt32();
-        Position = reader.ReadByte();
-        Options = Enumerable
-            .Range(0, ItemModuleDefines.OptionCount)
-            .Select(_ => new ItemOption(reader))
-            .ToList();
-    }
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(EquipSerial);
-        writer.Write(Socket);
-        writer.Write(Position);
-        writer.Write(Options);
-    }
 }
