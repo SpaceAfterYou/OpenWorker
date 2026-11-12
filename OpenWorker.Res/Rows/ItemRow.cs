@@ -9,64 +9,244 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Item")]
 public readonly partial struct ItemRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the item.
+    /// </summary>
     public int Id { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The row of tb_Item_Classify: the kind of the item, where it is kept and how it is used.
+    /// </summary>
     public int Classify { get; } = reader.ReadInt32();
+    /// <summary>
+    /// Not known. 3 on weapons and gear, 6 on akashic cards, 2 on blueprints of weapons and gear, 1 on the blueprints of one family of costumes, 0 on the rest. No client code that reads it was found.
+    /// </summary>
     public byte Field2 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The rank (rarity) of the item, 0 to 6.
+    /// </summary>
     public byte Rank { get; } = reader.ReadByte();
+    /// <summary>
+    /// The level of the item itself: repair and upgrade prices count with it.
+    /// </summary>
     public short Level { get; } = reader.ReadInt16();
+    /// <summary>
+    /// What a merchant pays for one.
+    /// </summary>
     public int SellPrice { get; } = reader.ReadInt32();
+    /// <summary>
+    /// What one costs at a merchant.
+    /// </summary>
     public int Price { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How many fit in one slot.
+    /// </summary>
     public short Stack { get; } = reader.ReadInt16();
+    /// <summary>
+    /// When the item is bound to its owner: 0 never, 1 when it is put on, 2 when it is picked up.
+    /// </summary>
     public byte BindType { get; } = reader.ReadByte();
+    /// <summary>
+    /// The row of tb_item_model: what the item looks like when worn. 0 for an item that is not worn.
+    /// </summary>
     public int Model { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A second row of tb_item_model, on six costume pieces only.
+    /// </summary>
     public int SubModel { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The item whose row of tb_item_script gives the name and the icons: the item itself on most rows.
+    /// </summary>
     public int ScriptItem { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The level a character needs to use or wear it.
+    /// </summary>
     public short LevelLimit { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The class that may use or wear it. 0 is every class.
+    /// </summary>
     public byte ClassLimit { get; } = reader.ReadByte();
+    /// <summary>
+    /// Limits on selling and storing: 1, 3, 6 and 7 cannot be sold to a merchant; 4, 5, 6 and 7 cannot be put in the bank.
+    /// </summary>
     public byte SellLimit { get; } = reader.ReadByte();
+    /// <summary>
+    /// A variant inside the kind of use: for the items that raise a fallen player it tells whom they raise.
+    /// </summary>
     public byte SubType { get; } = reader.ReadByte();
+    /// <summary>
+    /// Whether the item is a piece of a costume set. 0 in every row of this client.
+    /// </summary>
     public byte CostumeSet { get; } = reader.ReadByte();
+    /// <summary>
+    /// The row of tb_Item_CostumeSet. 0 in every row of this client.
+    /// </summary>
     public int CostumeSetId { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The equipment slots the item closes while it is worn: &quot;0&quot;, or thirteen digits, one per slot, 1 for a closed one.
+    /// </summary>
     public string SlotDisable { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The endurance of a new item. 0 for an item that does not wear out.
+    /// </summary>
     public byte Endurance { get; } = reader.ReadByte();
+    /// <summary>
+    /// An amount for the use of the item: the fatigue a use gives back, the restore counts a tool takes off.
+    /// </summary>
     public byte UseValue { get; } = reader.ReadByte();
+    /// <summary>
+    /// Physical attack the item adds. Weapons carry it.
+    /// </summary>
     public int PhysicalAttack { get; } = reader.ReadInt32();
+    /// <summary>
+    /// Magical attack the item adds. Set on test rows only.
+    /// </summary>
     public int MagicalAttack { get; } = reader.ReadInt32();
+    /// <summary>
+    /// Physical defence the item adds. Gear carries it.
+    /// </summary>
     public int PhysicalDefense { get; } = reader.ReadInt32();
+    /// <summary>
+    /// Magical defence the item adds. Set on test rows only.
+    /// </summary>
     public int MagicalDefense { get; } = reader.ReadInt32();
+    /// <summary>
+    /// What option 1 works on: 0 a stat, another value a skill or a function.
+    /// </summary>
     public byte StatClass1 { get; } = reader.ReadByte();
+    /// <summary>
+    /// What option 2 works on: 0 a stat, another value a skill or a function.
+    /// </summary>
     public byte StatClass2 { get; } = reader.ReadByte();
+    /// <summary>
+    /// What option 3 works on: 0 a stat, another value a skill or a function.
+    /// </summary>
     public byte StatClass3 { get; } = reader.ReadByte();
+    /// <summary>
+    /// What option 4 works on: 0 a stat, another value a skill or a function.
+    /// </summary>
     public byte StatClass4 { get; } = reader.ReadByte();
+    /// <summary>
+    /// What option 5 works on: 0 a stat, another value a skill or a function.
+    /// </summary>
     public byte StatClass5 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The effect of option 1: the number of the stat when the class is 0. 0 ends the list.
+    /// </summary>
     public short StatType1 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The effect of option 2: the number of the stat when the class is 0. 0 ends the list.
+    /// </summary>
     public short StatType2 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The effect of option 3: the number of the stat when the class is 0. 0 ends the list.
+    /// </summary>
     public short StatType3 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The effect of option 4: the number of the stat when the class is 0. 0 ends the list.
+    /// </summary>
     public short StatType4 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The effect of option 5: the number of the stat when the class is 0. 0 ends the list.
+    /// </summary>
     public short StatType5 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The value of option 1.
+    /// </summary>
     public int StatValue1 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The value of option 2.
+    /// </summary>
     public int StatValue2 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The value of option 3.
+    /// </summary>
     public int StatValue3 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The value of option 4.
+    /// </summary>
     public int StatValue4 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The value of option 5.
+    /// </summary>
     public int StatValue5 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The row of tb_Random_Option: the random stats a new item of this kind is rolled from.
+    /// </summary>
     public int Option { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The sockets of the item: a short id on weapons, a row of tb_Costume_Socket on costumes.
+    /// </summary>
     public int Socket { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The row of tb_Item_SetItem: the set this piece belongs to.
+    /// </summary>
     public int SetItem { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The row of the upgrade table that prices and limits upgrading the item.
+    /// </summary>
     public short Reinforce { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The row of tb_Item_Evolution: what the item can evolve into. One row of this client has it.
+    /// </summary>
     public int Evolution { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The row of tb_Disassemble: what taking the item apart gives.
+    /// </summary>
     public short Disassemble { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The furniture of a room this item places, 1 to 547. 0 for an item that is not furniture.
+    /// </summary>
     public int Furniture { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The cooldown group: using one item starts the cooldown of every item of its group.
+    /// </summary>
     public byte CooldownGroup { get; } = reader.ReadByte();
+    /// <summary>
+    /// How long the cooldown lasts, in milliseconds.
+    /// </summary>
     public int CooldownMilliseconds { get; } = reader.ReadInt32();
+    /// <summary>
+    /// Whether the cooldown is kept over a logout. 0 in every row of this client.
+    /// </summary>
     public byte CooldownSaved { get; } = reader.ReadByte();
+    /// <summary>
+    /// What using the item does: the kind of effect.
+    /// </summary>
     public short EffectType { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The number the effect works with: a row of another table or an amount, by the kind.
+    /// </summary>
     public int EffectValue { get; } = reader.ReadInt32();
+    /// <summary>
+    /// What the client starts on a player who is told to have used the item (08/13). 0 in every row of this client, so nothing is shown.
+    /// </summary>
     public short UseEffect { get; } = reader.ReadInt16();
+    /// <summary>
+    /// 1 for an item of the cash shop.
+    /// </summary>
     public byte Cash { get; } = reader.ReadByte();
+    /// <summary>
+    /// How the time the item lasts is counted: 0 for an item that does not expire; 1 and 3 are in use.
+    /// </summary>
     public byte UsePeriodType { get; } = reader.ReadByte();
+    /// <summary>
+    /// The time the item lasts, in minutes.
+    /// </summary>
     public int UsePeriodValue { get; } = reader.ReadInt32();
+    /// <summary>
+    /// 1 on tall boots and on the look of a lower piece made to be worn inside them. When this differs between the shoes and the lower piece of a character, the client draws the lower piece as OtherLookItem.
+    /// </summary>
     public byte TuckedLook { get; } = reader.ReadByte();
+    /// <summary>
+    /// The same lower piece in its other look (inside boots, or over shoes): an id of tb_Item. Read together with TuckedLook.
+    /// </summary>
     public int OtherLookItem { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How many times the item can be sealed, which makes a bound item free to trade again. 255 is no limit.
+    /// </summary>
     public byte SealLimit { get; } = reader.ReadByte();
+    /// <summary>
+    /// How many times a broken item can be restored.
+    /// </summary>
     public byte RestoreLimit { get; } = reader.ReadByte();
 }

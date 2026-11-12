@@ -164,7 +164,8 @@ flowchart TB
 - **Client tables.** A table of the client (`res/<table>.res`) is read whole when the container is built (`AddRes`) and
   registered as a `ReadOnlyCollection<TRow>`. Its row is a struct of `OpenWorker.Res/Rows` written by
   `OpenWorker.SourceGenerator.ResourceStructures` from `Structures.json`, the one place the columns are declared: one string per
-  column, `"Int16"`, `"Int32 Classify"` or `"Byte OptionType as OpenWorker.Res.DivergenceVariant"`. A column has a name when the
+  column, `"Int16"`, `"Int32 Classify"` or `"Byte OptionType as OpenWorker.Res.DivergenceVariant"`; what follows `//` in the
+  string says what the column means and becomes the summary of the property. A column has a name when the
   game reads it and its meaning is known, and keeps `Field` and its place otherwise; to name one, change the definition and run
   the generator (`dotnet run --project OpenWorker.SourceGenerator.ResourceStructures`); `ResourceRowsTest` fails on a row that
   differs from what it writes. What a row gives beyond its columns is a partial struct in `OpenWorker.Res/Members`. The tables

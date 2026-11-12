@@ -5,10 +5,14 @@ namespace OpenWorker.SourceGenerator.ResourceStructures;
 /// <summary>
 /// One column of a client table, as <c>Structures.json</c> declares it: the type the file stores, then the name, then the
 /// enum it is read as: <c>"Int16"</c>, <c>"Int32 Classify"</c>, <c>"Byte OptionType as OpenWorker.Res.DivergenceVariant"</c>.
-/// A column without a name is <c>Id</c> when it is the first, <c>Field</c> and its place otherwise.
+/// A column without a name is <c>Id</c> when it is the first, <c>Field</c> and its place otherwise. What follows
+/// <c>//</c> says what the column means and becomes the summary of the property:
+/// <c>"Byte BindType // When the item is bound."</c>.
 /// </summary>
-public sealed record ColumnDefinition(string Type, string Name, string? As)
+public sealed record ColumnDefinition(string Type, string Name, string? As, string? Comment = null)
 {
+    private const string CommentMark = "//";
+
     private static readonly Dictionary<string, string> Keywords = new(StringComparer.Ordinal)
     {
         ["Boolean"] = "bool",
@@ -32,7 +36,15 @@ public sealed record ColumnDefinition(string Type, string Name, string? As)
 
     public static ColumnDefinition Parse(string text, int place)
     {
-        var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var mark = text.IndexOf(CommentMark, StringComparison.Ordinal);
+        var comment = mark < 0 ? null : text[(mark + CommentMark.Length)..].Trim();
+
+        if (comment is { Length: 0 })
+        {
+            comment = null;
+        }
+
+        var parts = (mark < 0 ? text : text[..mark]).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
         if (parts.Length is not (1 or 2 or 4) || !Keywords.ContainsKey(parts[0]) || parts.Length == 4 && parts[2] != "as")
         {
@@ -41,7 +53,7 @@ public sealed record ColumnDefinition(string Type, string Name, string? As)
 
         var name = parts.Length > 1 ? parts[1] : place == 0 ? "Id" : $"Field{place}";
 
-        return new ColumnDefinition(parts[0], name, parts.Length == 4 ? parts[3] : null);
+        return new ColumnDefinition(parts[0], name, parts.Length == 4 ? parts[3] : null, comment);
     }
 }
 

@@ -8,22 +8,76 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Make")]
 public readonly partial struct MakeRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the recipe: the id of its blueprint item in tb_Item.
+    /// </summary>
     public int Id { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The first level of the crafting menu, 1 to 5.
+    /// </summary>
     public int Group { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The second level of the crafting menu.
+    /// </summary>
     public int Category { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The third level of the crafting menu.
+    /// </summary>
     public int SubCategory { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The item that is made.
+    /// </summary>
     public int Product { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A second item that is made. 0 in every row of this client.
+    /// </summary>
     public int Product2 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A third item that is made. 0 in every row of this client.
+    /// </summary>
     public int Product3 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The first material: an item id. It is the blueprint on most rows.
+    /// </summary>
     public int Material1 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The second material.
+    /// </summary>
     public int Material2 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The third material.
+    /// </summary>
     public int Material3 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The fourth material. 0 when the recipe takes three.
+    /// </summary>
     public int Material4 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How many of the first material.
+    /// </summary>
     public short MaterialCount1 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// How many of the second material.
+    /// </summary>
     public short MaterialCount2 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// How many of the third material.
+    /// </summary>
     public short MaterialCount3 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// How many of the fourth material.
+    /// </summary>
     public short MaterialCount4 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// A cost in a second currency. 0 in every row of this client, so which currency is not settled.
+    /// </summary>
     public short BattlePoint { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The gold the making costs.
+    /// </summary>
     public int Gold { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The order in the list. 9999 in every row of this client.
+    /// </summary>
     public short Priority { get; } = reader.ReadInt16();
 }

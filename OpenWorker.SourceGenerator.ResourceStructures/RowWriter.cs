@@ -68,6 +68,13 @@ public static class RowWriter
                 read = $"({column.PropertyType}){read}";
             }
 
+            if (column.Comment is { } comment)
+            {
+                builder.Append("    /// <summary>\n");
+                builder.Append(CultureInfo.InvariantCulture, $"    /// {System.Security.SecurityElement.Escape(comment)}\n");
+                builder.Append("    /// </summary>\n");
+            }
+
             builder.Append(CultureInfo.InvariantCulture, $"    public {column.PropertyType} {column.Name} {{ get; }} = {read};\n");
         }
 
