@@ -3,14 +3,16 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Vaccum.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Vaccum.Responses;
 
 /// <summary>
 /// All the cubes that can be taken now; a byte tells how many.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct VaccumInfosResponse : IResponseHotspotMessage
+public readonly partial struct VaccumInfosResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -23,21 +25,8 @@ public readonly struct VaccumInfosResponse : IResponseHotspotMessage
 
 #region Message: Body
 
+    [WireArray(WireLength.Byte)]
     public required IReadOnlyList<VaccumCubeValue> Cubes { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(checked((byte)Cubes.Count));
-
-        foreach (var cube in Cubes)
-        {
-            cube.Write(writer);
-        }
-    }
-
-#endregion Interface: IWritableData
 }
