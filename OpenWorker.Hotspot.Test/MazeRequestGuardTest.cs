@@ -186,6 +186,64 @@ public sealed class MazeRequestGuardTest
         }
     }
 
+    /// <summary>
+    /// The end of a dash or an evade (06/05) moves a player in a maze who is on its feet, as the other places a skill reports
+    /// do; a fallen player stays where it fell, and in a city the place is not taken at all (as the original does).
+    /// </summary>
+    [TestMethod]
+    public async Task TheEndOfADashMovesOnlyAPlayerOnItsFeetInAMaze()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var start = new System.Numerics.Vector3(1000f, 1000f, 0f);
+            var player = world.Create(
+                new AbilityComponent
+                {
+                    Health = new AbilityComponentEntry { Current = 100, Max = 100 },
+                    SoulGain = default, SoulVapor = default, Stamina = default, SuperArmor = default,
+                    Speed = new SpeedComponentEntry { Attack = 1, Move = 1 }
+                },
+                new Gameplay.Messages.Response.Person.WorldComponent { Location = 1, Position = start, Rotation = 0f, Jump = 0 });
+            var maze = Maze(world, player, NullLogger<LuaMaze>.Instance);
+            var pace = new MovementPace(new Dictionary<Hero, float>(), new WorldOptions(), TimeProvider.System);
+            var service = Service(world, pace: pace);
+
+            world.Add(player, maze);
+
+            // The dash ends 500 units away.
+            var body = new byte[4 + 4 + 12 + 4 + 2 + 1 + 4 + 4 + 1 + 4];
+
+            BinaryPrimitives.WriteSingleLittleEndian(body.AsSpan(8), 1500f);
+            BinaryPrimitives.WriteSingleLittleEndian(body.AsSpan(12), 1000f);
+
+            var dash = Read<SkillPassiveEndRequest>(body, (ref PacketReader r) => SkillPassiveEndRequest.Read(ref r));
+            System.Numerics.Vector3 Place() => world.Get<Gameplay.Messages.Response.Person.WorldComponent>(player).Position;
+
+            await new DistrictServer.Services.SkillService(world, null!, null!).OnHandleAsync(Context(player), dash);
+
+            Assert.AreEqual(start, Place(), "A city takes no place from the end of a dash.");
+
+            maze.Creatures.Vitals.Hurt(player, 1000);
+
+            await service.OnHandleAsync(Context(player), dash);
+
+            Assert.AreEqual(start, Place(), "A fallen player stays where it fell.");
+
+            maze.Creatures.Vitals.Restore(player);
+
+            await service.OnHandleAsync(Context(player), dash);
+
+            Assert.AreEqual(1500f, Place().X, "A player on its feet ends the dash where the client says.");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
     private delegate T Reading<out T>(ref PacketReader reader);
 
     private static T Read<T>(byte[] bytes, Reading<T> read)

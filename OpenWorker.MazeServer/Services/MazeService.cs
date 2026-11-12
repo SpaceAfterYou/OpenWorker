@@ -405,10 +405,16 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// A passive move (evade, dash) ends where the client says, when the player could have got there.
+    /// A passive move (evade, dash) ends where the client says, when the player could have got there. A fallen player does
+    /// not move, as with the other places a skill reports.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillPassiveEndRequest request)
     {
+        if (!IsFighting(context.Player))
+        {
+            return ValueTask.CompletedTask;
+        }
+
         var place = request.Skill.Position;
 
         TakePlace(context.Player, place.Position, place.Angle, SkillOpcode.PassiveSkillEndReq);
