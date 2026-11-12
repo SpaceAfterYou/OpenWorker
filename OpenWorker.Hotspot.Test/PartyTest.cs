@@ -81,6 +81,28 @@ public sealed class PartyTest
     }
 
     [TestMethod]
+    public async Task AMasterWhoLeftCannotTakeThePartyBackWithTheNumberKeptForIt()
+    {
+        var redis = await RedisAsync();
+        var book = new PartyBook(redis, TimeProvider.System);
+        var people = People(4);
+        var master = people[3];
+
+        var (_, party) = await book.JoinAsync(Card(master), Card(people[0]));
+
+        await book.JoinAsync(Card(master), Card(people[1]));
+        await book.LeaveAsync(master);
+
+        // The recruitment of the old master still carries the number of the party that goes on without it.
+        var again = await book.JoinAsync(Card(master), Card(people[2]), keep: party);
+
+        Assert.AreEqual(PartyJoinOutcome.NotMaster, again.Outcome);
+        Assert.AreEqual(people[0], (await book.OfAsync(people[1]))!.Master, "the party keeps its new master");
+        Assert.IsNull(await book.OfAsync(master));
+        Assert.IsNull(await book.OfAsync(people[2]));
+    }
+
+    [TestMethod]
     public async Task TheMasterWhoLeavesHandsThePartyOverAndTheLastButOneOutEndsIt()
     {
         var redis = await RedisAsync();

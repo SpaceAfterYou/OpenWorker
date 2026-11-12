@@ -133,6 +133,10 @@ public sealed class PartyBook(IConnectionMultiplexer redis, TimeProvider time) :
             id = ARGV[8]
             if id == '0' then
                 id = tostring(redis.call('INCR', KEYS[3]))
+            elseif redis.call('EXISTS', ARGV[9] .. id) == 1 then
+                -- The number was kept for a party that lives on without this master (it left or was dropped):
+                -- it is not the master's to fill any more.
+                return {-2}
             end
             local key = ARGV[9] .. id
             redis.call('HSET', key, 'master', ARGV[1], 'type', ARGV[7], 'm:' .. ARGV[1], ARGV[3], 'm:' .. ARGV[2], ARGV[4])
