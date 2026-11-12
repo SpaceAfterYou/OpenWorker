@@ -64,14 +64,24 @@ playing the skill's own attacks:
 | Buffs and auras of the creature's attacks | on the targets hit, from the creature | through the player's own path: on the monsters hit; a buff for the side of the player reaches the allies around the player | approximately |
 | Projectiles of the creature's skill | fired by the creature | not fired | not done |
 | The creature's end | at the end of its animation, no message seen | same | same |
-| Option effects of the condition "uses an akashic card" | fired for type 1 | not fired | not done (no effect of the client's tables names it as far as checked) |
+| Option effects of the condition "uses an akashic card" | fired for type 1 | not fired | not done: the server has no option effects of items yet (08/64) |
 
 ## Tests
 
 `AkashicCallTest`: a called card waits for its cooldowns; only a card of the book is called where cards are allowed; a passive
 card is answered and calls nothing; with the client's tables and files, the akashic skill brings the called card in (06/7B with
-the offset of the file) and the card strikes the monster it stands on with blows shown as its own (06/13). `SkillWireFormatTest`:
-the layout of 06/21 and 06/7B.
+the offset of the file) and the card strikes the monster it stands on with blows shown as its own (06/13); a fall before the card's
+moment calls it off. `SkillWireFormatTest`: the layout of 06/21 and 06/7B.
+
+All 72 cards of types 1 and 2 of the client's table have their key in the akashic file and their action file.
+
+## Special effects of gear still open
+
+Looked at again for this round (`docs/notes-combat.md`, "Special effects of gear"): of the effects not counted, no stat of an item
+of the client's `tb_Item` and no stat of its `tb_Buff` names 101, 102, 119, 123 to 125 or 143 to 150 (the random options of
+items were not looked through); 118 and 120 have no reader in the original; 115 to 117 (more experience, gold and soul vapor of a
+kill) belong to the rewards of the maze. 149 and 150 (move speed in a city or a maze) only raise the highest speed of the
+original's pace check, which ours already allows half again over. Nothing was added for them.
 
 ## To check with the real client
 
