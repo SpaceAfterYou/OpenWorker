@@ -9,6 +9,8 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Defenses">The stretches of the animation in which the defense type changes.</param>
 /// <param name="Detaches">The moments at which the animation lets go of a grabbed target.</param>
 /// <param name="Attaches">The moments at which the animation starts to carry away what stands before it.</param>
+/// <param name="Cuts">The stretches of the animation in which the player may cut it with another skill.</param>
+/// <param name="Speeds">The stretches of the animation that play faster or slower than the rest.</param>
 public sealed record ActionAnimation(
     string Name,
     float Length,
@@ -18,7 +20,33 @@ public sealed record ActionAnimation(
     byte Defense = ActionDefense.Unchanged,
     IReadOnlyList<DefenseEvent>? Defenses = null,
     IReadOnlyList<DetachEvent>? Detaches = null,
-    IReadOnlyList<AttachEvent>? Attaches = null);
+    IReadOnlyList<AttachEvent>? Attaches = null,
+    IReadOnlyList<CutEvent>? Cuts = null,
+    IReadOnlyList<SpeedEvent>? Speeds = null);
+
+/// <summary>
+/// A stretch of an animation in which the client takes the input of another skill: a key pressed in it starts the next skill
+/// once the moment to cut has come (before that the client keeps the key and starts the skill then).
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="End">Seconds from the start of the animation.</param>
+/// <param name="Cut">The moment from which the animation may be cut, in seconds from its start; zero when it may from the start of the stretch.</param>
+public sealed record CutEvent(float Start, float End, float Cut)
+{
+    /// <summary>
+    /// The first moment of the animation at which another skill may cut it.
+    /// </summary>
+    public float Opens => Math.Max(Start, Cut);
+}
+
+/// <summary>
+/// A stretch of an animation that plays at its own speed, whatever the speed of the one who plays it.
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="End">Seconds from the start of the animation.</param>
+/// <param name="Speed">How many times faster than its own time the stretch plays.</param>
+/// <param name="Filtered">The event is for some modes of the character only.</param>
+public sealed record SpeedEvent(float Start, float End, float Speed, bool Filtered);
 
 /// <summary>
 /// What an animation says about the defense type of whoever plays it. The numbers are the ones of the file.
@@ -106,7 +134,9 @@ public sealed class ActionFile
     private const string Magic = "VBIN";
     private const string RootTag = "TRIG";
     private const string SequenceTag = "SEQU";
+    private const short CutTriggerType = 2;
     private const short AttackTriggerType = 3;
+    private const short SpeedTriggerType = 23;
     private const short InvisibleTriggerType = 14;
     private const short AkashicTriggerType = 18;
     private const short AttachTriggerType = 22;
@@ -309,6 +339,8 @@ public sealed class ActionFile
         var defenses = new List<DefenseEvent>();
         var detaches = new List<DetachEvent>();
         var attaches = new List<AttachEvent>();
+        var cuts = new List<CutEvent>();
+        var speeds = new List<SpeedEvent>();
         var events = reader.ReadInt32();
 
         for (var i = 0; i < events; i++)
@@ -337,6 +369,14 @@ public sealed class ActionFile
                 case AttachTriggerType:
                     attaches.Add(ReadAttach(reader, version, header));
                     break;
+
+                case CutTriggerType:
+                    cuts.Add(ReadCut(reader, header));
+                    break;
+
+                case SpeedTriggerType:
+                    speeds.Add(ReadSpeed(reader, header));
+                    break;
             }
 
             Close(reader, chunk);
@@ -350,14 +390,15 @@ public sealed class ActionFile
             SkipFrames(reader);
         }
 
-        return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches);
+        return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches,
+            cuts, speeds);
     }
 
     /// <summary>
     /// What every event starts with: its kind, name, number, the moments it begins and ends, and the filters of the modes it
     /// is for.
     /// </summary>
-    private readonly record struct EventHeader(short Type, int Id, float Start, float End);
+    private readonly record struct EventHeader(short Type, int Id, float Start, float End, bool Filtered = false);
 
     private static EventHeader ReadHeader(BinaryReader reader, short version)
     {
@@ -368,17 +409,34 @@ public sealed class ActionFile
         var id = reader.ReadInt32();
         var start = reader.ReadSingle();
         var end = reader.ReadSingle();
+        var filters = version >= ThirdFilterSinceVersion ? 3 : version >= FiltersSinceVersion ? 2 : 0;
+        var filtered = false;
 
-        if (version >= ThirdFilterSinceVersion)
+        for (var i = 0; i < filters; i++)
         {
-            Skip(reader, 3 * sizeof(int));
-        }
-        else if (version >= FiltersSinceVersion)
-        {
-            Skip(reader, 2 * sizeof(int));
+            filtered |= reader.ReadInt32() != 0;
         }
 
-        return new EventHeader(type, id, start, end);
+        return new EventHeader(type, id, start, end, filtered);
+    }
+
+    /// <summary>
+    /// The stretch in which another skill may cut the animation: two numbers the client does not read, then the moment to cut and
+    /// a moment of replay that nothing here needs.
+    /// </summary>
+    private static CutEvent ReadCut(BinaryReader reader, in EventHeader header)
+    {
+        Skip(reader, 2 * sizeof(int));
+
+        return new CutEvent(header.Start, header.End, reader.ReadSingle());
+    }
+
+    /// <summary>
+    /// A stretch that plays at its own speed. One whose end comes before its start lasts no time and changes nothing.
+    /// </summary>
+    private static SpeedEvent ReadSpeed(BinaryReader reader, in EventHeader header)
+    {
+        return new SpeedEvent(header.Start, header.End, reader.ReadSingle(), header.Filtered);
     }
 
     /// <summary>

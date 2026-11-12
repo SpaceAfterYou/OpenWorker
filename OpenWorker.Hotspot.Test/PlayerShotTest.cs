@@ -40,6 +40,28 @@ public sealed class PlayerShotTest
     private const short FlyingAttack = 1701;
 
     /// <summary>
+    /// When the shot of that skill comes, in seconds after the start, near enough.
+    /// </summary>
+    private const double FlyingShotTime = 0.5;
+
+    /// <summary>
+    /// Haru's evade.
+    /// </summary>
+    private const int Evade = 12040011;
+
+    /// <summary>
+    /// A skill of Haru that charges, and a shot of the end of its third level.
+    /// </summary>
+    private const int ChargedSkill = 12000632;
+
+    private const short ChargedShot = 1853;
+
+    /// <summary>
+    /// Erwin's skill whose trap follows the mouse, placed as the loop held with the key begins.
+    /// </summary>
+    private const int MouseTrap = 24000111;
+
+    /// <summary>
     /// A skill of Stella whose loop, played while the key is held, lets its chains go as it begins (attack 1201 among them).
     /// </summary>
     private const int Chain = 52000711;
@@ -67,6 +89,7 @@ public sealed class PlayerShotTest
             var player = world.Get<WorldComponent>(arena.Player).Position;
 
             arena.Maze.StartSkill(arena.Player, Flying, default);
+            arena.Run(FlyingShotTime);
 
             Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, player + new Vector3(5000f, 5000f, 0f))));
 
@@ -101,6 +124,7 @@ public sealed class PlayerShotTest
             var place = world.Get<WorldComponent>(arena.Player).Position;
 
             arena.Maze.StartSkill(arena.Player, Flying, default);
+            arena.Run(FlyingShotTime);
 
             Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)));
             Assert.AreEqual(ClaimVerdict.Refused, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)), "The animation let one shot go.");
@@ -236,6 +260,121 @@ public sealed class PlayerShotTest
         }
     }
 
+    /// <summary>
+    /// The skill a player plays is cut by another only once it may be: Haru's skill that throws gives way to no other before it
+    /// is about to end, so the client cannot start it again to fire its shot over and over.
+    /// </summary>
+    [TestMethod]
+    public void ASkillIsCutOnlyOnceItMayBe()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Haru, 350f).Open();
+
+            arena.Maze.StartSkill(arena.Player, Flying, default);
+
+            Assert.IsFalse(arena.Maze.MayStartSkill(arena.Player), "The skill has just begun.");
+
+            arena.Run(1.5);
+
+            Assert.IsTrue(arena.Maze.MayStartSkill(arena.Player), "It is about to end.");
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// An evade ends the skill the player plays: its shots are no longer the player's to fire, and the evade plays in its place.
+    /// </summary>
+    [TestMethod]
+    public void AnEvadeEndsTheSkillThatPlays()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Haru, 350f).Open();
+            var place = world.Get<WorldComponent>(arena.Player).Position;
+
+            arena.Maze.StartSkill(arena.Player, Flying, default);
+            arena.Maze.Evade(arena.Player, Evade);
+
+            Assert.AreEqual(Evade, arena.Maze.PlayingSkill(arena.Player));
+
+            arena.Run(FlyingShotTime);
+
+            Assert.AreEqual(ClaimVerdict.Dropped, arena.Maze.FireProjectile(arena.Player, Shot(Flying, FlyingAttack, place)));
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A skill that charges ends with the animation of the level it reached, and the shots of that animation are the skill's.
+    /// </summary>
+    [TestMethod]
+    public void TheShotsOfAChargedEndAreTheSkills()
+    {
+        var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
+
+        if (string.IsNullOrEmpty(folder))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_ACTION is not set.");
+        }
+
+        var actions = new SkillActionProvider(TestTables.Load<SkillRow>("tb_Skill"), NullLogger<SkillActionProvider>.Instance) { Folder = folder };
+
+        Assert.IsTrue(actions.TryGetProjectile(ChargedSkill, Hero.Haru, ChargedShot, out _));
+    }
+
+    /// <summary>
+    /// A trap dragged with the mouse follows it no faster than the client moves it: a place far from the trap is reached over
+    /// the next moments, not at once.
+    /// </summary>
+    [TestMethod]
+    public void ATrapFollowsTheMouseNoFasterThanTheClientMovesIt()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Erwin, 350f).Open();
+            var place = world.Get<WorldComponent>(arena.Player).Position;
+            var target = place + new Vector3(2000f, 0f, 0f);
+
+            arena.Maze.StartSkill(arena.Player, MouseTrap, default);
+            arena.Maze.PressKey(arena.Player, true);
+            arena.Run(1.7);
+
+            Assert.AreEqual(ClaimVerdict.Taken, arena.Maze.MoveTrap(arena.Player, target, out var first));
+            Assert.IsLessThan(1000f, Vector3.Distance(first, place), $"The trap went part of the way: {first}.");
+
+            arena.Run(0.5);
+            arena.Maze.MoveTrap(arena.Player, target, out var second);
+
+            Assert.IsGreaterThan(Vector3.Distance(first, place), Vector3.Distance(second, place), "It goes on toward the mouse.");
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
     private static SkillProjectileRequest Shot(int skill, short attack, Vector3 place)
     {
         Span<byte> bytes = stackalloc byte[4 + 2 + (12 * 3) + 4 + 4 + 2 + 2 + 4 + 4];
@@ -346,7 +485,7 @@ public sealed class PlayerShotTest
                 new WorldComponent { Location = 0, Position = Vector3.Zero, Rotation = 0f, Jump = 0 },
                 new LevelComponent(20, 0),
                 new PersonInfoComponent { Name = "Shooter" + person, Hero = hero },
-                new AbilityComponent { Health = life, SoulGain = life, SoulVapor = life, Stamina = life, SuperArmor = life, Speed = new SpeedComponentEntry { Move = 1f, Attack = 1f } });
+                new AbilityComponent { Health = life, SoulGain = life, SoulVapor = life, Stamina = life, SuperArmor = life, Speed = new SpeedComponentEntry { Move = 1f, Attack = 100f } });
         }
 
         public void Run(double seconds)
