@@ -255,8 +255,14 @@ public sealed partial class DropService(
 
         foreach (var (thing, count, bonus) in things)
         {
+            // A drop is made in the middle of a simulation step, which cannot wait: with no serial ready the thing is not dropped.
+            if (!serials.TryNextSerial(out var serial))
+            {
+                continue;
+            }
+
             var spot = position + new Vector3(Random.Shared.Next(-60, 61), Random.Shared.Next(-60, 61), 0);
-            var drop = new DropObject(serials.NextSerial(), group, thing, count, bonus, spot, expires);
+            var drop = new DropObject(serial, group, thing, count, bonus, spot, expires);
 
             field.Objects[drop.Serial] = drop;
             values.Add(new DropObjectValue(spot, thing, (short)Math.Min(count, short.MaxValue), (short)Math.Min(bonus, short.MaxValue), drop.Serial));

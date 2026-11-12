@@ -474,11 +474,13 @@ public sealed class PersistenceTest
         var serials = new DatabaseItemSerials(new PersonStore(Factory));
 
         // More than one block: a creation of many items at once still finds them all.
-        await serials.EnsureAsync(600);
+        const int many = DatabaseItemSerials.Block + 100;
 
-        var taken = Enumerable.Range(0, 600).Select(_ => serials.NextSerial()).ToHashSet();
+        await serials.EnsureAsync(many);
 
-        Assert.HasCount(600, taken, "every serial is given once");
+        var taken = Enumerable.Range(0, many).Select(_ => serials.NextSerial()).ToHashSet();
+
+        Assert.HasCount(many, taken, "every serial is given once");
     }
 
     [TestMethod]

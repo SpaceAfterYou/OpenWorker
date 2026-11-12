@@ -122,9 +122,30 @@ public sealed class InventoryService(
         return storage.Slots.Sum(e => e is null ? limit : e.Item == item ? Math.Max(0, limit - e.Count) : 0L);
     }
 
+    /// <summary>
+    /// Whether the items fit, and the serials of the stacks they may start are ready (<see cref="IItemSerials.HasReady"/>):
+    /// a gift is refused here, before anything is taken for it, rather than halfway through.
+    /// </summary>
     public bool CanGive(Entity player, int item, int count)
     {
-        return count > 0 && catalog.Exists(item) && RoomFor(player, item) >= count;
+        return count > 0 && catalog.Exists(item) && RoomFor(player, item) >= count && serials.HasReady(StacksOf(item, count));
+    }
+
+    /// <summary>
+    /// Waits until the serials of these items are ready, one for every stack each may start. A request that is about to give
+    /// several items at once, and can wait, asks here first; after the wait it checks the player again, and
+    /// <see cref="CanGive"/> or <see cref="CanGiveAll"/> refuse the gift if the database did not answer.
+    /// </summary>
+    public ValueTask EnsureSerialsAsync(IEnumerable<(int Item, int Count)> items)
+    {
+        return serials.EnsureAsync(items.Sum(e => StacksOf(e.Item, e.Count)));
+    }
+
+    private int StacksOf(int item, int count)
+    {
+        var limit = catalog.StackLimit(item);
+
+        return (int)(((long)Math.Max(0, count) + limit - 1) / limit);
     }
 
     /// <summary>
@@ -283,6 +304,7 @@ public sealed class InventoryService(
 
         var free = inventory.Storages.ToDictionary(e => e.Group, e => e.Slots.Count(x => x is null || (x == ignoring && x.Count == 1)));
         var room = new Dictionary<int, long>();
+        var stacks = 0;
 
         foreach (var (item, count) in items)
         {
@@ -309,10 +331,11 @@ public sealed class InventoryService(
             }
 
             free[home] -= (int)slots;
+            stacks += (int)slots;
             room[item] = available - use + slots * limit - rest;
         }
 
-        return true;
+        return serials.HasReady(stacks);
     }
 
     /// <summary>
