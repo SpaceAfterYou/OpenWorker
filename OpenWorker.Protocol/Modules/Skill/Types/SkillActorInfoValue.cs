@@ -1,27 +1,16 @@
 using OpenWorker.Domain.Types;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillActorInfoValue(BinaryReader reader) : IWritableData
+[WireMessage]
+public readonly partial struct SkillActorInfoValue
 {
 #region Message: Body
 
-    public ActorValue UxActorId { get; init; } = new(reader);
+    public ActorValue UxActorId { get; init; }
 
-    public SkillActionPosInfoValue SkillPosInfo { get; init; } = new(reader);
+    public SkillActionPosInfoValue SkillPosInfo { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.WriteActor(UxActorId);
-
-        SkillPosInfo.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }

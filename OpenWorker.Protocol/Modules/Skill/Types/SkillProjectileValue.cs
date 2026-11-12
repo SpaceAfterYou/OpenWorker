@@ -1,34 +1,20 @@
 using System.Numerics;
 using OpenWorker.Domain.Types;
-using OpenWorker.Hotspot.Extensions;
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillProjectileValue(BinaryReader reader) : IWritableData
+[WireMessage]
+public readonly partial struct SkillProjectileValue
 {
 #region Message: Body
 
-    public int Skill { get; init; } = reader.ReadInt32();
-    public short TriggerIndex { get; init; } = reader.ReadInt16();
-    public Vector3 Position { get; init; } = reader.ReadVector3();
-    public Vector3 Direction { get; init; } = reader.ReadVector3();
-    public uint Session { get; init; } = reader.ReadUInt32();
-    public ActorValue Target { get; init; } = new(reader);
+    public int Skill { get; init; }
+    public short TriggerIndex { get; init; }
+    public Vector3 Position { get; init; }
+    public Vector3 Direction { get; init; }
+    public uint Session { get; init; }
+    public ActorValue Target { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Skill);
-        writer.Write(TriggerIndex);
-        writer.Write(Position);
-        writer.Write(Direction);
-        writer.Write(Session);
-        writer.Write(Target);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -1,35 +1,22 @@
 using OpenWorker.Domain.Types;
-using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Hotspot.Modules.Skill.Extensions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillSnapshotValue(BinaryReader reader) : IWritableData
+[WireMessage]
+public readonly partial struct SkillSnapshotValue
 {
 #region Message: Body
 
-    public ActorValue Target { get; init; } = new(reader);
-    public SkillPointValue SkillPoint { get; init; } = new(reader);
-    public short DeckSlotCount { get; init; } = reader.ReadInt16();
-    public SkillInfoValue[] SkillList { get; init; } = reader.ReadSkillInfoValueList();
-    public SkillDeckValue[] DeckSlotList { get; init; } = reader.ReadSkillDeckValueList();
-    public ushort[] DeckBonus { get; init; } = reader.ReadSkillDeckBonusList();
+    public ActorValue Target { get; init; }
+    public SkillPointValue SkillPoint { get; init; }
+    public short DeckSlotCount { get; init; }
+    [WireArray(WireLength.Byte)]
+    public SkillInfoValue[] SkillList { get; init; }
+    [WireArray(WireLength.Byte)]
+    public SkillDeckValue[] DeckSlotList { get; init; }
+    [WireArray(Count = SkillModuleDefines.SkillDeckBonusCount)]
+    public ushort[] DeckBonus { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Target);
-
-        SkillPoint.Write(writer);
-
-        writer.Write(DeckSlotCount);
-        writer.Write(SkillList);
-        writer.Write(DeckSlotList);
-        writer.WriteSkillDeckBonus(DeckBonus);
-    }
-
-#endregion Interface: IWritableData
 }

@@ -1,27 +1,16 @@
 using OpenWorker.Domain.Types;
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
 
-public readonly struct SkillAkashicRecordValue(BinaryReader reader) : IWritableData
+[WireMessage]
+public readonly partial struct SkillAkashicRecordValue
 {
 #region Message: Body
 
-    public uint Akashic { get; init; } = reader.ReadUInt32();
-    public ActorValue Player { get; init; } = new(reader);
-    public SkillPositionValue SkillPosition { get; init; } = new(reader);
+    public uint Akashic { get; init; }
+    public ActorValue Player { get; init; }
+    public SkillPositionValue SkillPosition { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Akashic);
-        writer.Write(Player);
-
-        SkillPosition.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }
