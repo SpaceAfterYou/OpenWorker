@@ -36,6 +36,7 @@ using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Buffs;
 using OpenWorker.Lua.Helpers;
 using OpenWorker.Navigation;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Lua.Managers;
 
@@ -1301,6 +1302,21 @@ public sealed class LuaCreatureManager
         }
 
         using var frame = Frame.Encode(message);
+
+        Broadcast(frame, Entity.Null);
+    }
+
+    /// <summary>
+    /// Tells every player of the maze, written once for all of them, without boxing a message that writes itself over spans.
+    /// </summary>
+    public void Broadcast<T>(in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    {
+        if (Players.Count == 0)
+        {
+            return;
+        }
+
+        using var frame = Frame.Encode(in message);
 
         Broadcast(frame, Entity.Null);
     }
