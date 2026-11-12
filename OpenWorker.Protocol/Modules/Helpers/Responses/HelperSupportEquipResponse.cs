@@ -3,6 +3,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Helpers.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 
@@ -10,8 +11,9 @@ namespace OpenWorker.Hotspot.Modules.Helpers.Responses;
 /// A helper was given the orb of a friend: the result (0 when it was done), the helper, and the helper as it is now. The
 /// client refreshes the window when the helper is the one it shows.
 /// </summary>
+[WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
-public readonly struct HelperSupportEquipResponse : IResponseHotspotMessage
+public readonly partial struct HelperSupportEquipResponse : IResponseHotspotMessage
 {
 #region Interface: IHotspotMessage
 
@@ -31,15 +33,4 @@ public readonly struct HelperSupportEquipResponse : IResponseHotspotMessage
     public required HelperValue Record { get; init; }
 
 #endregion Message: Body
-
-#region Interface: IWritableData
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write(Result);
-        writer.Write(Helper);
-        Record.Write(writer);
-    }
-
-#endregion Interface: IWritableData
 }
