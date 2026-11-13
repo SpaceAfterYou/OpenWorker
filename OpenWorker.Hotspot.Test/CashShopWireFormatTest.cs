@@ -1,6 +1,8 @@
 using System.Text;
+using OpenWorker.Hotspot.Modules.Shop.Requests;
 using OpenWorker.Hotspot.Modules.Shop.Responses;
 using OpenWorker.Hotspot.Modules.Shop.Types;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -65,5 +67,33 @@ public sealed class CashShopWireFormatTest
         var drawn = WireBytes.Of(new ShopGachaResResponse { Results = [new GachaResultValue { Item = 7, Type = 2 }] });
 
         CollectionAssert.AreEqual(new byte[] { 1, 0, 0, 0, 7, 0, 0, 0, 2, 0, 0, 0 }, drawn);
+    }
+
+    /// <summary>
+    /// The basket the real client saves after a purchase (09/23): the set, its name as a length of twice the characters
+    /// plus one, the characters and one zero byte, then ten products and ten items. A named set the same way.
+    /// </summary>
+    [TestMethod]
+    public void TheSetTheClientSavesIsReadToItsName()
+    {
+        byte[] basket = [0x00, 0x01, 0x00, 0x00, .. new byte[80]];
+
+        var reader = new PacketReader(basket);
+        var saved = ShopCashSetRequest.Read(ref reader);
+
+        Assert.AreEqual(0, saved.SetNo);
+        Assert.AreEqual(string.Empty, saved.Name);
+        Assert.HasCount(10, saved.ItemList);
+        Assert.AreEqual(0, reader.Remaining);
+
+        byte[] named = [0x03, 0x05, 0x00, 0x41, 0x00, 0x42, 0x00, 0x00, .. BitConverter.GetBytes(30_004), .. new byte[76]];
+
+        reader = new PacketReader(named);
+        saved = ShopCashSetRequest.Read(ref reader);
+
+        Assert.AreEqual(3, saved.SetNo);
+        Assert.AreEqual("AB", saved.Name);
+        Assert.AreEqual(30_004, saved.IndexList[0]);
+        Assert.AreEqual(0, reader.Remaining);
     }
 }

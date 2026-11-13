@@ -20,6 +20,6 @@ public readonly partial struct MyRoomSetupRequest : IRequestHotspotMessage
 
     public byte OpenLevel { get; }
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
 }

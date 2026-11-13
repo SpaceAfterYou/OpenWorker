@@ -14,7 +14,7 @@ public readonly partial struct FriendFindRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Friend;
     private const FriendOpcode Command = FriendOpcode.Find;
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);

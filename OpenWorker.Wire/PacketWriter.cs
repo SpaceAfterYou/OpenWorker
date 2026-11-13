@@ -333,10 +333,9 @@ public ref struct PacketWriter
 
 #region Strings
 
-    // The formats are the ones of the helpers of BinaryWriter of the same names, quirks included: the "Utf8" and "Utf16"
-    // of a name say how the length is counted, the "Ascii" and "Unicode" how the characters are encoded (one byte, or two
-    // little endian), and a terminator is one zero byte even after two-byte characters. A missing string is written as an
-    // empty one.
+    // The "Utf8" and "Utf16" of a name say how the length is counted, the "Ascii" and "Unicode" how the characters are
+    // encoded (one byte, or two little endian), and a terminator is one zero byte even after two-byte characters. A missing
+    // string is written as an empty one.
 
     /// <summary>
     /// The characters in ASCII, then one zero byte; no length.
@@ -367,17 +366,6 @@ public ref struct PacketWriter
     }
 
     /// <summary>
-    /// A 16-bit length, twice the characters plus one; the characters in ASCII; one zero byte.
-    /// </summary>
-    public void WriteUtf16AsciiString(string? value)
-    {
-        value ??= string.Empty;
-
-        WriteInt16((short)(value.Length * 2 + 1));
-        WriteAsciiString(value);
-    }
-
-    /// <summary>
     /// A 16-bit length, the characters; the characters in ASCII.
     /// </summary>
     public void WriteUtf8AsciiStringWithoutTerminator(string? value)
@@ -389,19 +377,7 @@ public ref struct PacketWriter
     }
 
     /// <summary>
-    /// A 16-bit length, the characters plus one; the characters in UTF-16; one zero byte.
-    /// </summary>
-    public void WriteUtf8UnicodeString(string? value)
-    {
-        value ??= string.Empty;
-
-        WriteInt16((short)(value.Length + 1));
-        WriteUnicode(value);
-        WriteByte(0);
-    }
-
-    /// <summary>
-    /// A 16-bit length, twice the characters plus one; the characters in UTF-16; one zero byte.
+    /// A 16-bit length in bytes, twice the characters plus one; the characters in UTF-16; one zero byte.
     /// </summary>
     public void WriteUtf16UnicodeString(string? value)
     {
@@ -410,26 +386,6 @@ public ref struct PacketWriter
         WriteInt16((short)(2 * value.Length + 1));
         WriteUnicode(value);
         WriteByte(0);
-    }
-
-    /// <summary>
-    /// A 16-bit length, the characters; the characters in UTF-16.
-    /// </summary>
-    public void WriteUtf8UnicodeStringWithoutTerminator(string? value)
-    {
-        value ??= string.Empty;
-
-        WriteInt16((short)value.Length);
-        WriteUnicode(value);
-    }
-
-    /// <summary>
-    /// A 16-bit count of characters, then the characters in UTF-16: the layout <c>ReadUtf16UnicodeStringWithoutTerminator</c>
-    /// reads, the same bytes as <see cref="WriteUtf8UnicodeStringWithoutTerminator"/>.
-    /// </summary>
-    public void WriteUtf16UnicodeStringWithoutTerminator(string? value)
-    {
-        WriteUtf8UnicodeStringWithoutTerminator(value);
     }
 
     private void WriteAscii(string? value)

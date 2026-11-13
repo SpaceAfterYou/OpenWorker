@@ -16,11 +16,11 @@ public readonly partial struct PersonInfoValue : IWireReadable<PersonInfoValue>
     }
 
     /// <summary>
-    /// What the client sends of a new character: the name counted in bytes, not in characters as it is written.
+    /// What the client sends of a new character.
     /// </summary>
     public static PersonInfoValue Read(ref PacketReader reader)
     {
-        var name = reader.ReadUtf8UnicodeString();
+        var name = reader.ReadUtf16UnicodeString();
         var hero = (Hero)reader.ReadByte();
         var shape = AppearanceValue.Read(ref reader);
         var look = AppearanceValue.Read(ref reader);

@@ -42,9 +42,8 @@ public enum WireLength
 }
 
 /// <summary>
-/// How a string goes on the wire. The names are the ones of the helpers of <c>BinaryWriter</c> and <c>BinaryReader</c>, and
-/// so are the layouts: "Utf8" and "Utf16" say how the 16-bit length is counted, "Ascii" and "Unicode" how the characters are
-/// encoded (one byte or two little endian), and a terminator is one zero byte.
+/// How a string goes on the wire, read and written the same way: "Utf8" and "Utf16" say how the 16-bit length is counted,
+/// "Ascii" and "Unicode" how the characters are encoded (one byte or two little endian), and a terminator is one zero byte.
 /// </summary>
 public enum WireStringFormat
 {
@@ -64,35 +63,14 @@ public enum WireStringFormat
     Utf8Ascii,
 
     /// <summary>
-    /// Length = 2 × characters + 1, ASCII, a zero byte.
-    /// </summary>
-    Utf16Ascii,
-
-    /// <summary>
     /// Length = characters, ASCII.
     /// </summary>
     Utf8AsciiWithoutTerminator,
 
     /// <summary>
-    /// Written: length = characters + 1, UTF-16, a zero byte. Read: the length in bytes, the terminator included.
+    /// Length = 2 × characters + 1 bytes, UTF-16, one zero byte: the one text string of the client, in both directions.
     /// </summary>
-    Utf8Unicode,
-
-    /// <summary>
-    /// Written: length = 2 × characters + 1, UTF-16, a zero byte. Read: the length in characters, a two-byte terminator
-    /// included.
-    /// </summary>
-    Utf16Unicode,
-
-    /// <summary>
-    /// Written: length = characters, UTF-16. Read: the length in bytes.
-    /// </summary>
-    Utf8UnicodeWithoutTerminator,
-
-    /// <summary>
-    /// Length = characters, UTF-16.
-    /// </summary>
-    Utf16UnicodeWithoutTerminator
+    Utf16Unicode
 }
 
 /// <summary>

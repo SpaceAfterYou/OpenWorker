@@ -14,11 +14,11 @@ public readonly partial struct ChatWhisperRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Chat;
     private const ChatOpcode Command = ChatOpcode.Whisper;
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Sender { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Receiver { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Message { get; }
     public int Result { get; }
 

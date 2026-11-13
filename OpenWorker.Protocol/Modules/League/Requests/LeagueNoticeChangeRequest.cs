@@ -21,7 +21,7 @@ public readonly partial struct LeagueNoticeChangeRequest : IRequestHotspotMessag
     private const LeagueOpcode Command = LeagueOpcode.NoticeChange;
 
     public int League { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Notice { get; }
     public long Date { get; }
     public int Result { get; }

@@ -20,7 +20,7 @@ public readonly partial struct LeagueOverlapNameRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.OverlapName;
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);

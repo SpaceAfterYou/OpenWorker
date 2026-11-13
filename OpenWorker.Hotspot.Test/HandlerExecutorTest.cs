@@ -54,7 +54,7 @@ public readonly struct ProbeRequest : IRequestHotspotMessage, IWireReadable<Prob
 
         if (mode == ReadsText)
         {
-            _ = reader.ReadUtf8UnicodeString();
+            _ = reader.ReadUtf16UnicodeString();
         }
 
         return new ProbeRequest { Mode = mode, Rest = mode == Records ? reader.ReadByteArray(reader.Remaining) : [] };

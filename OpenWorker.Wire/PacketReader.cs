@@ -270,21 +270,6 @@ public ref struct PacketReader
     }
 
     /// <summary>
-    /// A 16-bit length, twice the characters plus one; the characters in ASCII; one zero byte.
-    /// </summary>
-    public string ReadUtf16AsciiString()
-    {
-        int length = ReadInt16();
-
-        if (length <= 0 || length % 2 == 0)
-        {
-            ThrowBadStringLength(nameof(ReadUtf16AsciiString), length);
-        }
-
-        return ReadTerminated((length - 1) / 2 + 1, (length - 1) / 2, Encoding.ASCII, nameof(ReadUtf16AsciiString));
-    }
-
-    /// <summary>
     /// A 16-bit length, the characters; the characters in ASCII.
     /// </summary>
     public string ReadUtf8AsciiStringWithoutTerminator()
@@ -297,49 +282,37 @@ public ref struct PacketReader
     }
 
     /// <summary>
-    /// A 16-bit length in bytes, then UTF-16 of that many bytes.
+    /// The text the client writes: a 16-bit length in bytes, twice the characters plus one; the characters in UTF-16; one
+    /// zero byte, which is dropped.
     /// </summary>
-    public string ReadUtf8UnicodeStringWithoutTerminator()
-    {
-        int length = ReadInt16();
-
-        CheckLength(length, 1, nameof(ReadUtf8UnicodeStringWithoutTerminator));
-
-        return Encoding.Unicode.GetString(Take(length));
-    }
-
-    /// <summary>
-    /// A 16-bit count of characters, then the characters in UTF-16.
-    /// </summary>
-    public string ReadUtf16UnicodeStringWithoutTerminator()
-    {
-        int length = ReadInt16();
-
-        CheckLength(length, 2, nameof(ReadUtf16UnicodeStringWithoutTerminator));
-
-        return Encoding.Unicode.GetString(Take(length * 2));
-    }
-
-    /// <summary>
-    /// A 16-bit length in bytes that counts a one-byte terminator, then UTF-16 and the terminator, which is dropped.
-    /// </summary>
-    public string ReadUtf8UnicodeString()
-    {
-        int length = ReadInt16();
-
-        return ReadTerminated(length, length - 1, Encoding.Unicode, nameof(ReadUtf8UnicodeString));
-    }
-
-    /// <summary>
-    /// A 16-bit count of characters that counts a two-byte terminator, then UTF-16 and the terminator, which is dropped.
-    /// </summary>
-    /// <remarks>The reader of <c>BinaryReader</c> drops one byte of the terminator and leaves the other in the string, as a
-    /// U+FFFD at its end; this one drops both. The bytes it reads are the same.</remarks>
+    /// <remarks>The client never writes an even length, a last byte that is not zero or a zero character inside the text,
+    /// so each of them is refused as malformed.</remarks>
     public string ReadUtf16UnicodeString()
     {
-        var length = ReadInt16() * 2;
+        int length = ReadInt16();
 
-        return ReadTerminated(length, length - 2, Encoding.Unicode, nameof(ReadUtf16UnicodeString));
+        if (length <= 0 || length % 2 == 0)
+        {
+            ThrowBadTextLength(length);
+        }
+
+        CheckLength(length, 1, nameof(ReadUtf16UnicodeString));
+
+        var bytes = Take(length);
+
+        if (bytes[^1] != 0)
+        {
+            ThrowNoTerminator(nameof(ReadUtf16UnicodeString), length);
+        }
+
+        var value = Encoding.Unicode.GetString(bytes[..^1]);
+
+        if (value.Contains('\0', StringComparison.Ordinal))
+        {
+            ThrowZeroInsideText();
+        }
+
+        return value;
     }
 
     /// <summary>
@@ -418,6 +391,18 @@ public ref struct PacketReader
     private static void ThrowBadStringLength(string method, int length)
     {
         throw new InvalidDataException($"{method}: a string of {length} bytes cannot hold its terminator.");
+    }
+
+    [DoesNotReturn]
+    private static void ThrowBadTextLength(int length)
+    {
+        throw new InvalidDataException($"{nameof(ReadUtf16UnicodeString)}: the length {length} is not twice the characters plus one.");
+    }
+
+    [DoesNotReturn]
+    private static void ThrowZeroInsideText()
+    {
+        throw new InvalidDataException($"{nameof(ReadUtf16UnicodeString)}: the text holds a zero character.");
     }
 
     [DoesNotReturn]

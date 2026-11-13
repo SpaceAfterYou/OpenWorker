@@ -17,7 +17,7 @@ public readonly partial struct FriendInviteAcceptRequest : IRequestHotspotMessag
 
     public int PersonRequested { get; }
     public int PersonTarget { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string TargetName { get; }
     public bool IsAccepted { get; }
 

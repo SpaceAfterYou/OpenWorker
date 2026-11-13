@@ -17,12 +17,12 @@ public readonly partial struct PrivateShopValue : IWireReadable<PrivateShopValue
     }
 
     /// <summary>
-    /// What the client sends of a new character: the name of the shop counted in bytes, not in characters as it is written.
+    /// What the client sends of a new character.
     /// </summary>
     public static PrivateShopValue Read(ref PacketReader reader)
     {
         var type = reader.ReadByte();
-        var name = reader.ReadUtf8UnicodeString();
+        var name = reader.ReadUtf16UnicodeString();
 
         return new PrivateShopValue(type, name);
     }

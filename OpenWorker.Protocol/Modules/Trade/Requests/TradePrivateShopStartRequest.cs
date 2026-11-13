@@ -20,7 +20,7 @@ public readonly partial struct TradePrivateShopStartRequest : IRequestHotspotMes
 
     public StorageSlot Slot { get; }
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Title { get; }
 
     [WireArray(WireLength.Byte)]

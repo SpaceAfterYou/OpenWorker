@@ -21,7 +21,7 @@ public readonly partial struct LeagueApplicantAcceptRequest : IRequestHotspotMes
     private const LeagueOpcode Command = LeagueOpcode.ApplicantAccept;
 
     public int Actor { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
     public int League { get; }
     public long JoinDate { get; }

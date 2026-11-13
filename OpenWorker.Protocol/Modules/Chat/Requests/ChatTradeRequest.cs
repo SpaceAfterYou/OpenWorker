@@ -14,7 +14,7 @@ public readonly partial struct ChatTradeRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Chat;
     private const ChatOpcode Command = ChatOpcode.Trade;
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Message { get; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);

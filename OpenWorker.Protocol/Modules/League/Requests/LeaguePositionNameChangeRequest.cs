@@ -21,10 +21,10 @@ public readonly partial struct LeaguePositionNameChangeRequest : IRequestHotspot
     private const LeagueOpcode Command = LeagueOpcode.PositionNameChange;
 
     public int Position { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
     public int Result { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string PreviousName { get; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);

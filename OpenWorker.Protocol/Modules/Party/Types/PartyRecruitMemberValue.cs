@@ -3,9 +3,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Party.Types;
 
 /// <summary>
-/// A party on the recruit board. The client sends it when it puts a party up and reads it in the board, and the two
-/// count the length of a text differently: in bytes when the client sends it, in characters when the server does. So the
-/// reader and the writer are written by hand, with the field order of the properties.
+/// A party on the recruit board. The client sends it when it puts a party up and reads it in the board.
 /// </summary>
 public readonly struct PartyRecruitMemberValue : IWireReadable<PartyRecruitMemberValue>, IWireWritable
 {
@@ -22,11 +20,11 @@ public readonly struct PartyRecruitMemberValue : IWireReadable<PartyRecruitMembe
     public static PartyRecruitMemberValue Read(ref PacketReader reader) => new()
     {
         Party = reader.ReadInt32(),
-        Message = reader.ReadUtf8UnicodeString(),
+        Message = reader.ReadUtf16UnicodeString(),
         MinLevel = reader.ReadInt16(),
         MaxLevel = reader.ReadInt16(),
         Purpose = reader.ReadByte(),
-        MasterName = reader.ReadUtf8UnicodeString(),
+        MasterName = reader.ReadUtf16UnicodeString(),
         MemberCount = reader.ReadByte(),
         RemainTime = reader.ReadInt32(),
         PurposeLocation = reader.ReadInt32()

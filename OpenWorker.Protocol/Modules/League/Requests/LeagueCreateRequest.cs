@@ -20,7 +20,7 @@ public readonly partial struct LeagueCreateRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.Create;
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
     public int Npc { get; }
     public int League { get; }

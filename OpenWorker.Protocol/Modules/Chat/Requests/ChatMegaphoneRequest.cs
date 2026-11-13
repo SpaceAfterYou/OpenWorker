@@ -17,9 +17,9 @@ public readonly partial struct ChatMegaphoneRequest : IRequestHotspotMessage
 
     public UseItemFrom Item { get; }
     public int Person { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Message { get; }
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
