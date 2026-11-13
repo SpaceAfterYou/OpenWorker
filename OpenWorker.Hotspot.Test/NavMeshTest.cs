@@ -223,6 +223,16 @@ public sealed class NavMeshTest
     }
 
     [TestMethod]
+    public void AWayToTheEdgeOfTheGroundEndsARadiusBeforeIt()
+    {
+        var path = new List<Vector3>();
+
+        Assert.IsTrue(new NavField(Squares((0, 0), (1, 0))).TryFindPath(new Vector3(500, 500, 0), new Vector3(1990, 500, 0), 100f, path));
+        Assert.AreEqual(1900f, path[^1].X, 1f);
+        Assert.AreEqual(500f, path[^1].Y, 1f);
+    }
+
+    [TestMethod]
     public void NoWayLeadsToAnIslandOrOffTheGround()
     {
         var field = new NavField(Squares((0, 0), (1, 0), (5, 5)));

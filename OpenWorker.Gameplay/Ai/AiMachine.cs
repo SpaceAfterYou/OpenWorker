@@ -1608,22 +1608,19 @@ public sealed partial class AiMachine
             return;
         }
 
+        // A way home that is not found now is looked for again until the time is up and the monster is put there.
         if (AiMath.Distance2D(_host.Position, _host.HomePosition) >= _host.Radius + ReturnArrival)
         {
             if (_host.MoveTo(_host.HomePosition, true))
             {
                 ClearTarget();
             }
-            else
-            {
-                ChangeState(AiState.Wait);
-            }
 
             return;
         }
 
-        _host.Teleport(_host.HomePosition);
-        ChangeState(AiState.SelectAction);
+        // Near its home is home: the monster stays where it stopped and waits.
+        ChangeState(AiState.Wait);
     }
 
     private void StartRunaway()

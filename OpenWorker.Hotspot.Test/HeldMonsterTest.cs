@@ -37,7 +37,7 @@ public sealed class HeldMonsterTest
     private const float StunSeconds = 1f;
     private static readonly float Step = (float)SimulationClock.Period.TotalSeconds;
 
-    private sealed class Arena(World world, LuaMaze maze, Entity monster, MonsterBody body, RecordingConnection connection, FakeTimeProvider time, SimulationClock clock) : IDisposable
+    internal sealed class Arena(World world, LuaMaze maze, Entity monster, MonsterBody body, RecordingConnection connection, FakeTimeProvider time, SimulationClock clock) : IDisposable
     {
         public World World { get; } = world;
         public LuaMaze Maze { get; } = maze;
@@ -64,7 +64,7 @@ public sealed class HeldMonsterTest
         }
     }
 
-    private static Arena Open(DirectoryInfo folder)
+    internal static Arena Open(DirectoryInfo folder)
     {
         // A monster that looks for nobody: only the test makes it walk.
         File.WriteAllText(Path.Join(folder.FullName, "Ai_Still.lua"),
@@ -112,7 +112,7 @@ public sealed class HeldMonsterTest
         return new Arena(world, maze, monster, maze.Creatures.BodyOf(monster)!, connection, time, clock);
     }
 
-    private static async Task WithArenaAsync(Func<Arena, Task> test)
+    internal static async Task WithArenaAsync(Func<Arena, Task> test)
     {
         var folder = Directory.CreateTempSubdirectory();
 
@@ -129,7 +129,7 @@ public sealed class HeldMonsterTest
         }
     }
 
-    private static PlayerFrame[] Stops(Arena arena) => arena.Connection.Frames.Select(PlayerFrame.Open)
+    internal static PlayerFrame[] Stops(Arena arena) => arena.Connection.Frames.Select(PlayerFrame.Open)
         .Where(e => e.Is(GroupOpcode.Move, (byte)MoveOpcode.StopBt) && e.Actor == ActorOf(arena)).ToArray();
 
     private static int ActorOf(Arena arena) => arena.World.Get<ActorComponent>(arena.Monster).Identifier;
