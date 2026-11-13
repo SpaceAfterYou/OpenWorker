@@ -13,6 +13,7 @@ using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Modules.Shop.Types;
+using OpenWorker.Hotspot.Modules.System.Responses;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -284,10 +285,91 @@ public sealed class CashShopTest
     /// <summary>
     /// The window of the client cannot open before it has the products, so a client from the character selection is given
     /// the banners, the products in parts with the last one marked, the balance and the lists at the entry, while the cash shop
-    /// is open; a client that moves between servers keeps them, and a closed shop gives nothing.
+    /// is open; a closed shop gives nothing, and a login given them is not given them again at its next entry.
     /// </summary>
     [TestMethod]
-    public async Task AClientFromTheCharacterSelectionIsGivenTheShopAtTheEntryWhileItIsOpen()
+    public async Task AClientFromTheCharacterSelectionIsGivenTheShopAtTheEntryOncePerLogin()
+    {
+        using var world = World.Create();
+        var (window, contents) = Window(world, new MemoryCashShopLogins());
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+
+        await window.EnterAsync(player, true, CancellationToken.None);
+
+        contents[ServerContentIndex.CashShop] = true;
+
+        await window.EnterAsync(player, true, CancellationToken.None);
+        await window.EnterAsync(player, false, CancellationToken.None);
+
+        var sent = Drain(world, player, connection);
+
+        CollectionAssert.AreEqual(ShopBurst, sent.Select(e => e.Opcode).ToArray(), "only the entry from the character selection with the shop open");
+        Assert.AreEqual((0, CashShopCatalog.PartSize), (sent[1].Body[0], BitConverter.ToInt32(sent[1].Body, 1)));
+        Assert.AreEqual((1, 1), (sent[2].Body[0], BitConverter.ToInt32(sent[2].Body, 1)));
+        Assert.AreEqual(1234, BitConverter.ToInt32(sent[3].Body));
+    }
+
+    /// <summary>
+    /// A login that came in while the shop was closed has no products: once the shop has opened, its next entry into a
+    /// district gives them, though it does not come from the character selection.
+    /// </summary>
+    [TestMethod]
+    public async Task ALoginThatCameWhileTheShopWasClosedIsGivenItAtItsNextEntry()
+    {
+        using var world = World.Create();
+        var (window, contents) = Window(world, new MemoryCashShopLogins());
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+
+        await window.EnterAsync(player, true, CancellationToken.None);
+
+        contents[ServerContentIndex.CashShop] = true;
+
+        await window.EnterAsync(player, false, CancellationToken.None);
+
+        CollectionAssert.AreEqual(ShopBurst, Drain(world, player, connection).Select(e => e.Opcode).ToArray());
+    }
+
+    /// <summary>
+    /// When the shop opens, the notice that enables the entry of the menu reaches a player only after the products: a login
+    /// without them is given them first, one that has them gets the notice alone.
+    /// </summary>
+    [TestMethod]
+    public async Task TheShopIsQueuedBeforeTheNoticeThatItHasOpened()
+    {
+        using var world = World.Create();
+        var logins = new MemoryCashShopLogins();
+        var (window, contents) = Window(world, logins);
+        var lacking = new RecordingConnection();
+        var given = new RecordingConnection();
+        var players = new[] { Player(world, lacking, 3), Player(world, given, 4) };
+
+        await logins.GiveAsync(world.Get<ClaimsComponent>(players[1]).Key);
+
+        contents[ServerContentIndex.CashShop] = true;
+
+        await window.OpenAsync(players, new SystemServerOptionUpdateResponse { Contents = contents }, CancellationToken.None);
+
+        var notice = MessageOpcode.From(GroupOpcode.System, SystemOpcode.ServerOptionUpdate);
+
+        CollectionAssert.AreEqual(ShopBurst.Append(notice).ToArray(), Wait(lacking, 6).Select(e => e.Opcode).ToArray());
+        CollectionAssert.AreEqual(new[] { notice }, Wait(given, 1).Select(e => e.Opcode).ToArray());
+    }
+
+    private static readonly MessageOpcode[] ShopBurst =
+    [
+        MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.BannerLoad),
+        MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashLoad),
+        MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashLoad),
+        MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateCash),
+        MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashSetLoad)
+    ];
+
+    /// <summary>
+    /// A window over two parts of products, the second of one, with a balance of 1234, and the server's contents it reads.
+    /// </summary>
+    private static (CashShopWindow Window, ServerContent Contents) Window(World world, ICashShopLogins logins)
     {
         var rows = Enumerable.Range(1, CashShopCatalog.PartSize + 1)
             .Select(e => TestRows.Build<CashShopRow>(("Id", e), ("Item", Ticket), ("SellActive", (byte)1), ("Billing", (short)9)))
@@ -299,42 +381,75 @@ public sealed class CashShopTest
             new ReadOnlyCollection<CashBillingRow>([ServerPrices(9, (Ticket, 1, 300))]),
             Items());
 
-        using var world = World.Create();
-        var connection = new RecordingConnection();
-        var player = world.Create(new ActorComponent(7, ActorType.User), new ClaimsComponent(3, 0), new ServerSessionComponent(connection));
         var contents = new ServerContent();
-        var window = new CashShopWindow(world, catalog, new Balances(1234), contents, NullLogger<CashShopWindow>.Instance);
 
-        await window.EnterAsync(player, true, CancellationToken.None);
+        return (new CashShopWindow(world, catalog, new Balances(1234), logins, contents, NullLogger<CashShopWindow>.Instance), contents);
+    }
 
-        contents[ServerContentIndex.CashShop] = true;
+    /// <summary>
+    /// A window with nothing to sell, for a test that only needs one to exist.
+    /// </summary>
+    internal static CashShopWindow EmptyWindow(World world, ServerContent contents)
+    {
+        return new CashShopWindow(
+            world,
+            new CashShopCatalog(new ReadOnlyCollection<CashShopRow>([]), new ReadOnlyCollection<CashBillingInfoRow>([]), new ReadOnlyCollection<CashBillingRow>([]), Items()),
+            new Balances(0),
+            new MemoryCashShopLogins(),
+            contents,
+            NullLogger<CashShopWindow>.Instance);
+    }
 
-        await window.EnterAsync(player, false, CancellationToken.None);
-        await window.EnterAsync(player, true, CancellationToken.None);
+    private static Entity Player(World world, RecordingConnection connection, int account)
+    {
+        return world.Create(new ActorComponent(account + 4, ActorType.User), new ClaimsComponent(account, 0), new ServerSessionComponent(connection));
+    }
+
+    /// <summary>
+    /// The frames sent to the player so far: a marker is queued after them, and they are all written once it is.
+    /// </summary>
+    private static PlayerFrame[] Drain(World world, Entity player, RecordingConnection connection)
+    {
+        var marker = MessageOpcode.From(GroupOpcode.System, SystemOpcode.ServerOptionUpdate);
+
+        world.Get<ServerSessionComponent>(player).Send(new SystemServerOptionUpdateResponse { Contents = new ServerContent() });
 
         var until = DateTime.UtcNow.AddSeconds(5);
 
-        while (connection.Frames.Length < 5 && DateTime.UtcNow < until)
+        while (!connection.Frames.Select(PlayerFrame.Open).Any(e => e.Opcode.Equals(marker)) && DateTime.UtcNow < until)
         {
             Thread.Sleep(10);
         }
 
-        var sent = connection.Frames.Select(PlayerFrame.Open).ToArray();
+        return connection.Frames.Select(PlayerFrame.Open).TakeWhile(e => !e.Opcode.Equals(marker)).ToArray();
+    }
 
-        CollectionAssert.AreEqual(
-            new[]
-            {
-                MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.BannerLoad),
-                MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashLoad),
-                MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashLoad),
-                MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateCash),
-                MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashSetLoad)
-            },
-            sent.Select(e => e.Opcode).ToArray(),
-            "only the entry from the character selection with the shop open");
-        Assert.AreEqual((0, CashShopCatalog.PartSize), (sent[1].Body[0], BitConverter.ToInt32(sent[1].Body, 1)));
-        Assert.AreEqual((1, 1), (sent[2].Body[0], BitConverter.ToInt32(sent[2].Body, 1)));
-        Assert.AreEqual(1234, BitConverter.ToInt32(sent[3].Body));
+    private static PlayerFrame[] Wait(RecordingConnection connection, int count)
+    {
+        var until = DateTime.UtcNow.AddSeconds(5);
+
+        while (connection.Frames.Length < count && DateTime.UtcNow < until)
+        {
+            Thread.Sleep(10);
+        }
+
+        Thread.Sleep(50);
+
+        return connection.Frames.Select(PlayerFrame.Open).ToArray();
+    }
+
+    private sealed class MemoryCashShopLogins : ICashShopLogins
+    {
+        private readonly HashSet<long> _given = [];
+
+        public Task<bool> IsGivenAsync(long session, CancellationToken cancellationToken = default) => Task.FromResult(_given.Contains(session));
+
+        public Task GiveAsync(long session, CancellationToken cancellationToken = default)
+        {
+            _given.Add(session);
+
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class Balances(long balance) : ICashShopStore

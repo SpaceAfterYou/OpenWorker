@@ -20,6 +20,7 @@ using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.UnityPoints;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Extensions;
+using OpenWorker.Gameplay.Modules.CashShop;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Npcs;
@@ -82,6 +83,9 @@ public static class MazeServerHost
         services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());
 
         services.AddCommandManager();
+
+        // The option of the cash shop gives a maze's players its window before it opens the entry of their menu.
+        services.AddCashShop();
 
         services.AddGateOptions();
         services.AddPlayerTransfer();
