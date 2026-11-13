@@ -89,6 +89,22 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
         var bag = inventory.InventoryOf(context.Player);
         var moving = bag?.At(request.Src.Storage, request.Src.Index);
 
+        // A memory place of the equipment takes no item, and gives none, until an item has opened it.
+        foreach (var (storage, slot) in (ReadOnlySpan<(StorageGroup, short)>)[(request.Src.Storage, request.Src.Index), (request.Dest.Storage, request.Dest.Index)])
+        {
+            if (ItemUseService.IsMemoryPlace(storage, slot) && !use.IsMemoryPlaceOpen(context.Player, slot))
+            {
+                if (world.Has<ServerSessionComponent>(context.Player))
+                {
+                    world.Get<ServerSessionComponent>(context.Player).Send(new ErrorMessageResponse(
+                        MessageOpcode.From(GroupOpcode.Item, ItemOpcode.Move),
+                        ItemUseService.PlaceShut));
+                }
+
+                return ValueTask.CompletedTask;
+            }
+        }
+
         inventory.Move(context.Player, request.Src, request.Dest);
 
         // The others see what the player wears: the worn slots of a move that took place.
