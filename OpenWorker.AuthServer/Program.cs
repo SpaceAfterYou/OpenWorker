@@ -1,24 +1,3 @@
-using OpenWorker.AuthServer.App.Extensions;
-using OpenWorker.AuthServer.Server.Extensions;
-using OpenWorker.DependencyInjection;
-using OpenWorker.DependencyInjection.Health;
-using OpenWorker.Domain.Enums;
+using OpenWorker.AuthServer;
 
-await Host
-    .CreateDefaultBuilder(args)
-    .UseHealthEndpoint()
-    .ConfigureServices((context, services) =>
-    {
-        services.AddCache();
-        services.AddSessionCache();
-        services.AddGateCache();
-
-        services.AddPersistence();
-        
-        services.AddGameplay();
-        services.AddGateSyncService();
-        
-        services.AddHotspot(context, EntityComponentService.Auth);
-    })
-    .Build()
-    .RunAsync();
+await AuthServerHost.CreateBuilder(args).Build().RunAsync();
