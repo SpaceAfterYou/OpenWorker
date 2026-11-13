@@ -55,6 +55,7 @@ public partial class LuaMaze
 
         // The hidden event is decided before the rewards of the clear, which carry its item.
         DecideHiddenEvent();
+        PayUnityPoints();
 
         Completed?.Invoke();
 

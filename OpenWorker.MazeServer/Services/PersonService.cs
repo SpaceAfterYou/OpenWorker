@@ -1,4 +1,5 @@
 ﻿using OpenWorker.Gameplay.Modules.HiddenEvents;
+using OpenWorker.Gameplay.Modules.UnityPoints;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Batch;
 using OpenWorker.Server.Common;
@@ -102,7 +103,8 @@ public sealed partial class PersonService(
     MyRoomService roomService,
     PersistenceWriter writes,
     ILogger<PersonService> logger,
-    HiddenEventCatalog? hiddenEvents = null
+    HiddenEventCatalog? hiddenEvents = null,
+    UnityEvents? unityEvents = null
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
@@ -428,7 +430,8 @@ public sealed partial class PersonService(
             Instance = instance,
             Party = party,
             HiddenEvents = hiddenEvents,
-            SceneAttacker = mazeInfo.Id > 0 && _rules.TryGet((ushort)mazeInfo.Id, out var rule) ? (int)rule.SceneAttacker : 0
+            SceneAttacker = mazeInfo.Id > 0 && _rules.TryGet((ushort)mazeInfo.Id, out var rule) ? (int)rule.SceneAttacker : 0,
+            UnityEvents = unityEvents
         };
 
         // What happens in the instance is wired once, for every player who is in it then.

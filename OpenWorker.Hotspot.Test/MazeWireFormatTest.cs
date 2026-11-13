@@ -168,6 +168,14 @@ public sealed class MazeWireFormatTest
     }
 
     [TestMethod]
+    public void UnityPointIsTheBattlePointsThenTheDsPoints()
+    {
+        var bytes = Written(new MazeUnityPointResponse { BattlePoints = 40, DsPoints = 0x0102 });
+
+        CollectionAssert.AreEqual(new byte[] { 0x28, 0x00, 0x00, 0x00, 0x02, 0x01, 0x00, 0x00 }, bytes);
+    }
+
+    [TestMethod]
     public void WarpInSectorIsAPlaceAndAYaw()
     {
         var bytes = Written(new MazeWarpInSectorResponse { Position = new Vector3(1, 2, 3), Rotation = 90f });

@@ -284,6 +284,7 @@ public partial class LuaMaze(
         EndControl(member);
 
         LeavePartyQuest(player);
+        PayUnityPoints(player);
 
         _members.Remove(member);
         creatureManager.Detach(player);
@@ -323,6 +324,7 @@ public partial class LuaMaze(
 
         JoinPartyQuest(player);
         TellHiddenEvent(player);
+        TellUnity(player);
 
         return true;
     }
