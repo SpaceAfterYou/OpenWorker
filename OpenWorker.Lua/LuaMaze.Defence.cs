@@ -123,7 +123,7 @@ public partial class LuaMaze
                 var spot = box.GetRandomPosition();
                 var position = new Vector3(spot.X, spot.Y, box.PosTopLeft.Z);
 
-                Maze.Ecs.Set(member.Player, Maze.Ecs.Get<WorldComponent>(member.Player) with { Position = position, Rotation = box.Rotation });
+                OpenWorker.Gameplay.Modules.Movement.ServerPlace.Put(Maze.Ecs, member.Player, position, box.Rotation);
 
                 if (member.Loaded)
                 {

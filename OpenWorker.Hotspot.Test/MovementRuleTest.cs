@@ -1,9 +1,11 @@
+using System.Numerics;
 using Arch.Core;
 using OpenWorker.Channel;
 using OpenWorker.Domain.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Modules.Movement;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
@@ -108,6 +110,41 @@ public sealed class MovementRuleTest
         await district.MoveAsync(mover, 68_000f, 100f);
 
         Assert.AreEqual(2, district.Ecs.Get<HandlerErrorsComponent>(mover.Entity).Count, "After the grace a far move is refused.");
+    }
+
+    /// <summary>
+    /// The server puts a player at another place of its map: the next move is measured from there. An honest step from the
+    /// new place is taken; a move from the old place is never taken, and the one the client sent before it took the new place
+    /// is no fault.
+    /// </summary>
+    [TestMethod]
+    public async Task AMoveIsMeasuredFromThePlaceTheServerPutThePlayerAt()
+    {
+        using var metrics = new MetricsHost();
+        using var collector = metrics.Listen<long>("movement.too_fast");
+        using var district = new DistrictHarness(Speeds, maxErrors: 10, metrics: metrics.Get<MovementMetrics>());
+
+        var mover = district.Join(100f, 100f);
+
+        ServerPlace.Put(district.Ecs, mover.Entity, new Vector3(20_000f, 100f, 0f), 1.5f);
+
+        await district.MoveAsync(mover, 300f, 100f);
+
+        Assert.AreEqual(20_000f, district.Ecs.Get<WorldComponent>(mover.Entity).Position.X, "A move from the old place is not taken.");
+        Assert.AreEqual(0, district.Ecs.TryGet(mover.Entity, out HandlerErrorsComponent none) ? none.Count : 0, "It was in flight: no fault.");
+
+        district.Time.Advance(TimeSpan.FromSeconds(1));
+        await district.MoveAsync(mover, 20_400f, 100f);
+
+        Assert.AreEqual(20_400f, district.Ecs.Get<WorldComponent>(mover.Entity).Position.X, "An honest step from the new place is taken.");
+        Assert.AreEqual(0, collector.Sum(), "It is not too fast.");
+
+        // The client has taken the new place: the old one cannot carry it across the map.
+        district.Time.Advance(TimeSpan.FromSeconds(1));
+        await district.MoveAsync(mover, 2_000f, 100f);
+
+        Assert.AreEqual(20_400f, district.Ecs.Get<WorldComponent>(mover.Entity).Position.X);
+        Assert.AreEqual(1, district.Ecs.Get<HandlerErrorsComponent>(mover.Entity).Count, "It is refused.");
     }
 
     /// <summary>

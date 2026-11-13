@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Movement;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot.Telemetry;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -24,7 +25,8 @@ namespace OpenWorker.Channel;
 /// navigation data.<br/>
 /// A client that has been told a place by the server (<see cref="PlaceTold"/>) keeps sending the places of the map it left
 /// until it has taken the new one. Such a move, too far from the place the server keeps, is dropped without a fault for
-/// <see cref="WorldOptions.PlaceGrace"/>.
+/// <see cref="WorldOptions.PlaceGrace"/>. A place the server puts the player at within its map
+/// (<see cref="ServerPlace.Put"/>) is told the same way, its grace starting with the first move after it.
 /// </summary>
 public sealed class MovementPace
 {
@@ -90,9 +92,23 @@ public sealed class MovementPace
 
         EnsureComponent(world, player);
 
+        var now = _time.GetTimestamp();
+        var placed = world.TryGet(player, out PlaceToldComponent told) && told.Pending;
+
+        if (placed)
+        {
+            world.Set(player, new PlaceToldComponent(false));
+        }
+
         ref var pace = ref world.Get<MovementPaceComponent>(player);
 
-        var now = _time.GetTimestamp();
+        // The server has put the player at a place since its last move: the grace starts with the first move after it.
+        if (placed)
+        {
+            pace.Told = true;
+            pace.ToldAt = now;
+        }
+
         var dx = to.X - from.X;
         var dy = to.Y - from.Y;
 
