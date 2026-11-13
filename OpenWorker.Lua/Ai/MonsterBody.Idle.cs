@@ -117,7 +117,7 @@ internal partial class MonsterBody
     /// </summary>
     private void CheckIdleTime(double now)
     {
-        if (IsMoving || IsAttacking || _battlePose || IsStaggered || _carried || _hidden is not null || _grab.IsHolding || _reaction is { IsBusy: true } || now < _idleEnd)
+        if (IsMoving || IsAttacking || _battlePose || IsStaggered || _carried || _hiding.IsHidden || _grab.IsHolding || _reaction is { IsBusy: true } || now < _idleEnd)
         {
             _lastChange = now;
 

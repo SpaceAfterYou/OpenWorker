@@ -38,7 +38,7 @@ using OpenWorker.Navigation;
 
 namespace OpenWorker.Lua.Managers;
 
-public sealed class LuaCreatureManager
+public sealed partial class LuaCreatureManager
 {
     private static ComponentType[] Archetype { get; } = [
         ComponentRegistry.Add<ActorComponent>(),
@@ -366,6 +366,7 @@ public sealed class LuaCreatureManager
             session.Send(new WorldOtherInfosNpcResponse { List = npcs.Select(ToNpcEntry).ToArray() });
         }
 
+        ShowHidingsTo(session, monsters);
         Buffs?.ShowTo(session);
     }
 
@@ -643,7 +644,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     private bool IsHidden(Entity creature)
     {
-        return Bodies.TryGetValue(creature, out var body) && body.IsHidden || Helpers.Defended.Contains(creature);
+        return Bodies.TryGetValue(creature, out var body) && body.IsOutOfReach || Helpers.Defended.Contains(creature);
     }
 
     public Entity? FindMonster(int identifier)
