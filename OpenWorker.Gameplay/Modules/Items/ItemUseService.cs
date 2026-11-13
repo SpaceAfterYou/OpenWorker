@@ -94,7 +94,9 @@ public sealed partial class ItemUseService(
     FatigueService? fatigue = null,
     IReviveItems? revive = null,
     AchievementManager? achievements = null,
-    InfiniteTower? tower = null)
+    InfiniteTower? tower = null,
+    ReadOnlyCollection<ItemPackageUnpackRow>? unpacking = null,
+    ReadOnlyCollection<ReinforceRow>? reinforces = null)
 {
     // The group of the classify table that holds the items taken at a meal: potions and fatigue items.
     private const int ConsumableGroup = 17;
