@@ -41,6 +41,7 @@ using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Gameplay.Modules.Attendance;
 using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.CashShop;
 using OpenWorker.Hotspot.Modules.Boosters.Enums;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Helpers;
@@ -92,6 +93,7 @@ public sealed partial class PersonService(
     DistrictBuffs districtBuffs,
     MyRoomBook rooms,
     PersistenceWriter writes,
+    CashShopWindow cashShop,
     ILogger<PersonService> logger
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
@@ -266,6 +268,11 @@ public sealed partial class PersonService(
         });
 
         await community.EnterAsync(context.Player);
+
+        if (ecs.IsAlive(context.Player))
+        {
+            await cashShop.EnterAsync(context.Player, request.FirstConnect, context.CancellationToken);
+        }
     }
 
     /// <summary>

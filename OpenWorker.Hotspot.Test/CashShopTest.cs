@@ -1,11 +1,17 @@
 using System.Collections.ObjectModel;
+using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.CashShop;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Modules.Shop.Types;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -273,5 +279,84 @@ public sealed class CashShopTest
 
             await context.Database.EnsureDeletedAsync();
         }
+    }
+
+    /// <summary>
+    /// The window of the client cannot open before it has the products, so a client from the character selection is given
+    /// the banners, the products in parts with the last one marked, the balance and the lists at the entry, while the cash shop
+    /// is open; a client that moves between servers keeps them, and a closed shop gives nothing.
+    /// </summary>
+    [TestMethod]
+    public async Task AClientFromTheCharacterSelectionIsGivenTheShopAtTheEntryWhileItIsOpen()
+    {
+        var rows = Enumerable.Range(1, CashShopCatalog.PartSize + 1)
+            .Select(e => TestRows.Build<CashShopRow>(("Id", e), ("Item", Ticket), ("SellActive", (byte)1), ("Billing", (short)9)))
+            .ToList();
+
+        var catalog = new CashShopCatalog(
+            new ReadOnlyCollection<CashShopRow>(rows),
+            new ReadOnlyCollection<CashBillingInfoRow>([TestRows.Build<CashBillingInfoRow>(("Id", (short)9), ("Item1", Ticket), ("Count1", 1))]),
+            new ReadOnlyCollection<CashBillingRow>([ServerPrices(9, (Ticket, 1, 300))]),
+            Items());
+
+        using var world = World.Create();
+        var connection = new RecordingConnection();
+        var player = world.Create(new ActorComponent(7, ActorType.User), new ClaimsComponent(3, 0), new ServerSessionComponent(connection));
+        var contents = new ServerContent();
+        var window = new CashShopWindow(world, catalog, new Balances(1234), contents, NullLogger<CashShopWindow>.Instance);
+
+        await window.EnterAsync(player, true, CancellationToken.None);
+
+        contents[ServerContentIndex.CashShop] = true;
+
+        await window.EnterAsync(player, false, CancellationToken.None);
+        await window.EnterAsync(player, true, CancellationToken.None);
+
+        var until = DateTime.UtcNow.AddSeconds(5);
+
+        while (connection.Frames.Length < 5 && DateTime.UtcNow < until)
+        {
+            Thread.Sleep(10);
+        }
+
+        var sent = connection.Frames.Select(PlayerFrame.Open).ToArray();
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.BannerLoad),
+                MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashLoad),
+                MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashLoad),
+                MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateCash),
+                MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashSetLoad)
+            },
+            sent.Select(e => e.Opcode).ToArray(),
+            "only the entry from the character selection with the shop open");
+        Assert.AreEqual((0, CashShopCatalog.PartSize), (sent[1].Body[0], BitConverter.ToInt32(sent[1].Body, 1)));
+        Assert.AreEqual((1, 1), (sent[2].Body[0], BitConverter.ToInt32(sent[2].Body, 1)));
+        Assert.AreEqual(1234, BitConverter.ToInt32(sent[3].Body));
+    }
+
+    private sealed class Balances(long balance) : ICashShopStore
+    {
+        public Task<long> BalanceAsync(int account, CancellationToken cancellationToken = default) => Task.FromResult(balance);
+
+        public Task<List<CashShopSetPersistent>> ListSetsAsync(int person, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new List<CashShopSetPersistent>());
+
+        public Task<long?> GiveAsync(int account, long amount, long limit, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<CashPurchaseResult> BuyAsync(CashPurchaseDraft draft, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<CashReceiver?> FindPersonAsync(string name, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task SaveSetAsync(CashShopSetPersistent list, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> DeleteSetAsync(int person, byte setNo, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }
