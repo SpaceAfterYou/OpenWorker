@@ -241,6 +241,16 @@ public partial class LuaMaze(
     }
 
     /// <summary>
+    /// The session of a player whose entity is still in the world; false for one that has gone.
+    /// </summary>
+    internal bool TrySession(Entity player, out ServerSessionComponent session)
+    {
+        session = default;
+
+        return Ecs.IsAlive(player) && Ecs.TryGet(player, out session);
+    }
+
+    /// <summary>
     /// A player of the party comes into the maze where it stands. False when the maze is over or the player is in already.
     /// </summary>
     [LuaIgnoreMember]
@@ -436,7 +446,7 @@ public partial class LuaMaze(
                 Ecs.Remove<LuaMaze>(player);
             }
 
-            if (Ecs.TryGet(player, out ServerSessionComponent session))
+            if (TrySession(player, out var session))
             {
                 session.Send(new ChatNoticeResponse { Type = 0, Message = FailureNotice, Color = "" });
             }

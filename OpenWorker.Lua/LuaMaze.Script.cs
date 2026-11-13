@@ -1,4 +1,3 @@
-using Arch.Core.Extensions;
 using Lua;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Components;
@@ -40,9 +39,9 @@ public partial class LuaMaze
 
         foreach (var member in _members)
         {
-            if (user == (int)Ecs.Get<ActorComponent>(member.Player))
+            if (TrySession(member.Player, out var session) && user == (int)Ecs.Get<ActorComponent>(member.Player))
             {
-                member.Player.Get<ServerSessionComponent>().Send(notice);
+                session.Send(notice);
             }
         }
     }

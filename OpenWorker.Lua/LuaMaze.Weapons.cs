@@ -206,7 +206,7 @@ public partial class LuaMaze
     [LuaIgnoreMember]
     public void ShowRidesTo(Entity player)
     {
-        if (!Ecs.IsAlive(player) || !Ecs.TryGet(player, out ServerSessionComponent session))
+        if (!TrySession(player, out var session))
         {
             return;
         }

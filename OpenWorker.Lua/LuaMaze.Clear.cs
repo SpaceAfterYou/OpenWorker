@@ -1,4 +1,3 @@
-using Arch.Core.Extensions;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot.Modules.Persons.Types;
@@ -27,13 +26,16 @@ public partial class LuaMaze
     /// The client learns which maze of its group is cleared, and that the next episode is open. The mazes cleared
     /// before are not kept anywhere yet, so only this one is told.
     /// </summary>
-    private void SendClearInfo()
+    internal void SendClearInfo()
     {
         var group = new MazeClearValue(info.Group, (byte)Math.Min(info.Episode + 1, MaxEpisode), [(info.Id, 1)]);
 
         foreach (var member in _members)
         {
-            member.Player.Get<ServerSessionComponent>().Send(new MazeClearInfoResponse { Groups = [group], Person = Ecs.Get<ActorComponent>(member.Player), IsReset = false });
+            if (TrySession(member.Player, out var session))
+            {
+                session.Send(new MazeClearInfoResponse { Groups = [group], Person = Ecs.Get<ActorComponent>(member.Player), IsReset = false });
+            }
         }
     }
 

@@ -1,5 +1,4 @@
 using Arch.Core;
-using Arch.Core.Extensions;
 using Lua;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
@@ -10,10 +9,6 @@ public partial class LuaMaze
 {
     private const byte CutsceneStopped = 0;
     private const byte CutscenePlaying = 2;
-
-    /// <summary>
-    /// What the quests of the player do, for a script that follows them; none for a script that does not.
-    /// </summary>
 
     /// <summary>
     /// The cutscene the player is watching, if any.
@@ -27,12 +22,10 @@ public partial class LuaMaze
     [LuaIgnoreMember]
     public async ValueTask UpdateCutsceneAsync(Entity player, bool play, string name)
     {
-        if (!Started || Find(player) is null)
+        if (!Started || Find(player) is null || !TrySession(player, out var session))
         {
             return;
         }
-
-        var session = player.Get<ServerSessionComponent>();
 
         if (play)
         {
