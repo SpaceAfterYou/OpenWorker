@@ -62,7 +62,7 @@ public readonly struct MazeRuleRow
         reader.ReadUtf16UnicodeStringWithoutTerminator();
 
         // The monster of the attacks of the scene, the share of the points and the name.
-        reader.ReadUInt32();
+        SceneAttacker = reader.ReadUInt32();
         reader.ReadSingle();
         reader.ReadUtf16UnicodeStringWithoutTerminator();
 
@@ -164,6 +164,11 @@ public readonly struct MazeRuleRow
     /// The seconds a run is measured against: the time left of it adds to the score.
     /// </summary>
     public ushort ClearTime { get; }
+
+    /// <summary>
+    /// The monster that owns the traps the script of the maze lays; 0 for none.
+    /// </summary>
+    public uint SceneAttacker { get; }
 
     /// <summary>
     /// The experience of a clear, before the rank and the party share it out.
