@@ -22,6 +22,7 @@ using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Gameplay.Modules.Vaccum;
+using OpenWorker.Hotspot;
 
 namespace OpenWorker.Gameplay.Extensions;
 
@@ -78,6 +79,8 @@ public static class MiscGameplayExtensions
         services.AddSingleton<AttendanceCatalog>();
         services.AddSingleton<AttendanceManager>();
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<AttendanceManager>());
+        // Before the handler that writes the person: the last seconds played are counted first.
+        services.Insert(0, ServiceDescriptor.Singleton<ISessionCloseHandler>(provider => provider.GetRequiredService<AttendanceManager>()));
 
         services.AddProgressGameplay();
 

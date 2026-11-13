@@ -135,35 +135,25 @@ public sealed class AttendanceTest
     }
 
     [TestMethod]
-    public void PlayTimeReachesTheStepsInOrder()
+    public void PlayTimeStepsAreReachedByTheTimePlayedToday()
     {
         var book = new AttendanceBook();
 
-        Assert.HasCount(0, AttendanceRules.AddPlayTime(book, Catalog, 1000));
-        Assert.AreEqual(1000, book.PlaySeconds);
+        AttendanceRules.AddPlayTime(book, Catalog, 1799);
+        Assert.IsFalse(AttendanceRules.IsReady(book, Catalog));
 
-        CollectionAssert.AreEqual(new[] { 0 }, AttendanceRules.AddPlayTime(book, Catalog, 800));
-        Assert.AreEqual(1, book.PlayStep);
-        Assert.AreEqual(0, book.PlaySeconds);
-    }
+        AttendanceRules.AddPlayTime(book, Catalog, 1);
+        Assert.IsTrue(AttendanceRules.IsReady(book, Catalog));
 
-    [TestMethod]
-    public void PlayTimeIsNotCarriedToTheNextStep()
-    {
-        var book = new AttendanceBook();
+        // The second step is at an hour of the day, not an hour after the first.
+        book.PlayStep = 1;
+        AttendanceRules.AddPlayTime(book, Catalog, 1800);
+        Assert.IsTrue(AttendanceRules.IsReady(book, Catalog));
+        Assert.AreEqual(3600, book.ToPlayTime().Seconds, "the client counts down from the time of the day");
 
-        CollectionAssert.AreEqual(new[] { 0, 1 }, AttendanceRules.AddPlayTime(book, Catalog, 1800 + 3600 + 5));
-        Assert.AreEqual(2, book.PlayStep);
-        Assert.AreEqual(5, book.PlaySeconds);
-    }
-
-    [TestMethod]
-    public void PlayTimeStopsAfterTheLastStep()
-    {
-        var book = new AttendanceBook { PlayStep = 3 };
-
-        Assert.HasCount(0, AttendanceRules.AddPlayTime(book, Catalog, 100_000));
-        Assert.AreEqual(0, book.PlaySeconds);
+        // Counting stops at the time of the last step.
+        AttendanceRules.AddPlayTime(book, Catalog, 100_000);
+        Assert.AreEqual(5400, book.PlaySeconds);
     }
 
     [TestMethod]
@@ -173,6 +163,7 @@ public sealed class AttendanceTest
 
         AttendanceRules.Advance(book, Catalog, At(7, 12), Reset);
         AttendanceRules.AddPlayTime(book, Catalog, 2000);
+        book.PlayStep = 1;
 
         var same = AttendanceRules.Advance(book, Catalog, At(7, 20), Reset);
 
@@ -184,6 +175,21 @@ public sealed class AttendanceTest
         Assert.IsTrue(next.PlayTimeReset);
         Assert.AreEqual(0, book.PlayStep);
         Assert.AreEqual(0, book.PlaySeconds);
+    }
+
+    [TestMethod]
+    public void StepsReachedAndNotClaimedAreHandedOverWhenTheDayEnds()
+    {
+        var book = new AttendanceBook();
+
+        AttendanceRules.Advance(book, Catalog, At(7, 12), Reset);
+        AttendanceRules.AddPlayTime(book, Catalog, 4000);
+        book.PlayStep = 1;
+
+        Assert.HasCount(0, AttendanceRules.Advance(book, Catalog, At(7, 20), Reset).Unclaimed);
+
+        CollectionAssert.AreEqual(new[] { 1 }, AttendanceRules.Advance(book, Catalog, At(8, 9), Reset).Unclaimed);
+        Assert.HasCount(0, AttendanceRules.Advance(book, Catalog, At(8, 10), Reset).Unclaimed, "once");
     }
 
     [TestMethod]

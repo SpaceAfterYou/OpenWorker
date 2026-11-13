@@ -10,7 +10,7 @@ namespace OpenWorker.Gameplay.Modules.Attendance;
 public readonly record struct AttendanceTable(int Id, int Days);
 
 /// <summary>
-/// The reward for staying in the game: after every wait the person gets an item.
+/// The reward for staying in the game: an item once the person has played this long today.
 /// </summary>
 public readonly record struct PlayTimeStep(int Seconds, int Item);
 
@@ -35,6 +35,7 @@ public sealed class AttendanceCatalog
         _tables = tables.ToDictionary(e => e.Id);
         _rewards = rewards;
         PlayTime = steps;
+        LastPlayTimeSeconds = steps.Where(e => e.Seconds > 0).Select(e => e.Seconds).DefaultIfEmpty(0).Max();
     }
 
     public static AttendanceCatalog From(IEnumerable<AttendanceTable> tables, IReadOnlyDictionary<int, Reward> rewards, PlayTimeStep[] steps)
@@ -46,6 +47,11 @@ public sealed class AttendanceCatalog
     /// What the person gets for staying in the game, in the order of the steps.
     /// </summary>
     public IReadOnlyList<PlayTimeStep> PlayTime { get; }
+
+    /// <summary>
+    /// The time of the day after which counting gives nothing more.
+    /// </summary>
+    public int LastPlayTimeSeconds { get; }
 
     /// <summary>
     /// The table of the month, or the only one when the tables do not go by month.

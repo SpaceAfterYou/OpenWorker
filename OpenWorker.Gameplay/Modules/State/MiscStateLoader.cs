@@ -1,4 +1,5 @@
 using Arch.Core;
+using OpenWorker.Gameplay.Modules.Attendance;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Helpers;
@@ -17,7 +18,8 @@ public sealed class MiscStateLoader(
     DailyMissionManager dailyMissions,
     BoosterManager boosters,
     HelperManager helpers,
-    ItemUseLimits itemUse)
+    ItemUseLimits itemUse,
+    AttendanceManager attendance)
 {
     public async ValueTask EnterMazeAsync(Entity player, int person, CancellationToken cancellationToken)
     {
@@ -26,5 +28,6 @@ public sealed class MiscStateLoader(
         await dailyMissions.EnterAsync(player, person, cancellationToken);
         await helpers.EnterMazeAsync(player, person, cancellationToken);
         await boosters.EnterAsync(player, person, BoosterConsumeArea.Maze, cancellationToken);
+        await attendance.EnterAsync(player, person, cancellationToken);
     }
 }

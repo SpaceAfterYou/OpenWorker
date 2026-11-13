@@ -21,10 +21,13 @@ public sealed class AttendanceBook
     public DateTimeOffset LastDay { get; set; }
 
     /// <summary>
-    /// The reward for the time played that the person is waiting for.
+    /// The reward for the time played that the person is waiting for: how many were taken today.
     /// </summary>
     public int PlayStep { get; set; }
 
+    /// <summary>
+    /// The time played today, which the client counts down against the time of each step.
+    /// </summary>
     public int PlaySeconds { get; set; }
 
     /// <summary>
