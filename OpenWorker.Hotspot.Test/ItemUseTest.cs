@@ -31,7 +31,16 @@ public sealed class ItemUseTest
 
         public List<int> Given { get; } = [];
 
+        public List<int> Auras { get; } = [];
+
         public ItemPlace PlaceOf(Entity player) => Place;
+
+        public bool GiveAura(Entity player, int aura)
+        {
+            Auras.Add(aura);
+
+            return true;
+        }
 
         public bool GiveBuff(Entity player, int buff)
         {
@@ -163,6 +172,15 @@ public sealed class ItemUseTest
         Assert.IsTrue((await rig.UseAsync(buffs)).Ok, "The buff is used when the cooldown is over");
         CollectionAssert.AreEqual(new[] { buff.EffectValue }, rig.Field.Given, "It gives its buff and gets nobody up");
         Assert.AreEqual(1, rig.Revives.GotUp.Count);
+
+        // The item of the party's buff puts its aura on the player.
+        var aura = rig.Items.First(e => rig.Fixture.Catalog.Classify(e.Id) is { ItemUseType: ItemUseType.EFFECT } && e is { SubType: 1, EffectType: 2 });
+        var auras = rig.Fixture.Give(aura.Id, 1);
+
+        rig.Time.Advance(TimeSpan.FromMilliseconds(aura.CooldownMilliseconds));
+
+        Assert.IsTrue((await rig.UseAsync(auras)).Ok);
+        CollectionAssert.AreEqual(new[] { aura.EffectValue }, rig.Field.Auras, "An aura item gives its aura");
     }
 
     [TestMethod]
