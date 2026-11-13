@@ -12,7 +12,6 @@ using OpenWorker.Hotspot.Modules.Channels.Enums;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
-using OpenWorker.Wire;
 
 namespace OpenWorker.Channel;
 
@@ -103,14 +102,14 @@ public sealed class ServiceChannel : IEndOfPass
     /// <summary>
     /// Sends the message to every member, encoded once. For what concerns the whole channel, such as its chat.
     /// </summary>
-    public void Broadcast(IResponseHotspotMessage message)
+    public void Broadcast<T>(in T message) where T : IResponseHotspotMessage
     {
         if (_members.Count == 0)
         {
             return;
         }
 
-        using var frame = Frame.Encode(message);
+        using var frame = Frame.Encode(in message);
 
         if (frame is null)
         {
@@ -126,14 +125,14 @@ public sealed class ServiceChannel : IEndOfPass
     /// <summary>
     /// Sends the message to every member but the player, encoded once.
     /// </summary>
-    public void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
+    public void BroadcastToOthers<T>(Entity player, in T message) where T : IResponseHotspotMessage
     {
         if (_members.Count == 0)
         {
             return;
         }
 
-        using var frame = Frame.Encode(message);
+        using var frame = Frame.Encode(in message);
 
         if (frame is null)
         {
@@ -150,10 +149,10 @@ public sealed class ServiceChannel : IEndOfPass
     }
 
     /// <summary>
-    /// Sends what the player does to everybody who sees it, the player included, encoded once and without a box. Nobody
-    /// hears a player that is not in the channel. A move of the player that waits for the end of the pass goes first.
+    /// Sends what the player does to everybody who sees it, the player included, encoded once (a struct without a box).
+    /// Nobody hears a player that is not in the channel. A move of the player that waits for the end of the pass goes first.
     /// </summary>
-    public void BroadcastNearby<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    public void BroadcastNearby<T>(Entity player, in T message) where T : IResponseHotspotMessage
     {
         if (_members.TryGetValue(player, out var member))
         {
@@ -165,38 +164,12 @@ public sealed class ServiceChannel : IEndOfPass
     /// <summary>
     /// The same to everybody who sees the player but the player.
     /// </summary>
-    public void BroadcastNearbyToOthers<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    public void BroadcastNearbyToOthers<T>(Entity player, in T message) where T : IResponseHotspotMessage
     {
         if (_members.TryGetValue(player, out var member))
         {
             SendMove(member);
             SendNearby(member, in message, others: true);
-        }
-    }
-
-    /// <inheritdoc cref="BroadcastNearby{T}"/>
-    public void BroadcastNearby(Entity player, IResponseHotspotMessage message)
-    {
-        if (_members.TryGetValue(player, out var member))
-        {
-            SendMove(member);
-
-            using var frame = Frame.Encode(message);
-
-            SendNearby(member, frame, others: false);
-        }
-    }
-
-    /// <inheritdoc cref="BroadcastNearbyToOthers{T}"/>
-    public void BroadcastNearbyToOthers(Entity player, IResponseHotspotMessage message)
-    {
-        if (_members.TryGetValue(player, out var member))
-        {
-            SendMove(member);
-
-            using var frame = Frame.Encode(message);
-
-            SendNearby(member, frame, others: true);
         }
     }
 
@@ -455,7 +428,7 @@ public sealed class ServiceChannel : IEndOfPass
         SendNearby(member, in member.Move, others: false);
     }
 
-    private void SendNearby<T>(Member member, in T message, bool others) where T : struct, IResponseHotspotMessage, IWireWritable
+    private void SendNearby<T>(Member member, in T message, bool others) where T : IResponseHotspotMessage
     {
         using var frame = Frame.Encode(in message);
 

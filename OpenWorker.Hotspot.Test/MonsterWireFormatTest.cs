@@ -19,16 +19,7 @@ public sealed class MonsterWireFormatTest
 {
     private static readonly ActorValue Monster = new(0x123456, ActorType.Monster);
 
-    private static byte[] Written(IResponseHotspotMessage message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
     private static byte[] Expected(Action<BinaryWriter> write)
     {

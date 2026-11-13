@@ -166,7 +166,7 @@ public sealed class TestGateProtocol
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
 
-        message.Write(writer);
+        WireBridge.Write(writer, message);
 
         Assert.AreEqual((byte)GroupOpcode.Character, message.Opcode.Group);
         Assert.AreEqual(0x12 | 0x80, message.Opcode.Command);

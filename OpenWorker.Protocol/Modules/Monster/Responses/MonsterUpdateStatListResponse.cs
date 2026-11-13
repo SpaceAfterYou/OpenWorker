@@ -28,9 +28,4 @@ public readonly struct MonsterUpdateStatListResponse : IResponseHotspotMessage, 
         Actor.Write(ref writer);
         StatKeyValuePair.WriteValueFirst(ref writer, Stats);
     }
-
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
 }

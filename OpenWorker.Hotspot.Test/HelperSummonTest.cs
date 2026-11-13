@@ -113,16 +113,7 @@ public sealed class HelperSummonTest
         CollectionAssert.AreEqual(there[2..], coming[1..]);
     }
 
-    private static byte[] Written(Messages.Abstractions.IResponseHotspotMessage message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(Messages.Abstractions.IResponseHotspotMessage message) => WireBytes.Of(message);
 
     /// <summary>
     /// A called helper appears to every player of the maze (04/15) with its owner as its parent, then everybody hears whose

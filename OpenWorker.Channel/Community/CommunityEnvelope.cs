@@ -1,5 +1,7 @@
+using System.Buffers;
 using System.Text;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Channel.Community;
 
@@ -28,17 +30,36 @@ public sealed record CommunityEnvelope(
 {
     private const int MaxTargets = 4096;
 
+    /// <summary>
+    /// What the writer of a packet starts with; a longer message grows it as it is written.
+    /// </summary>
+    private const int PacketCapacity = 256;
+
+    /// <summary>
+    /// The opcode and the body of the message, as the client gets them, for the servers of the targets to hand over.
+    /// </summary>
     public static CommunityEnvelope ForPacket(Guid origin, IReadOnlyList<int> targets, IResponseHotspotMessage message)
     {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
+        var writer = new PacketWriter(ArrayPool<byte>.Shared, PacketCapacity, Array.MaxLength);
 
-        writer.Write(message.Opcode.Group);
-        writer.Write(message.Opcode.Command);
-        message.Write(writer);
-        writer.Flush();
+        try
+        {
+            writer.WriteByte(message.Opcode.Group);
+            writer.WriteByte(message.Opcode.Command);
+            message.Write(ref writer);
 
-        return new CommunityEnvelope(CommunityEnvelopeKind.Packet, origin, targets, string.Empty, stream.ToArray());
+            if (writer.Overflowed)
+            {
+                throw new InvalidOperationException($"The message {message.Opcode} does not fit an array.");
+            }
+
+            return new CommunityEnvelope(CommunityEnvelopeKind.Packet, origin, targets, string.Empty, writer.Written.ToArray());
+        }
+
+        finally
+        {
+            writer.Dispose();
+        }
     }
 
     public byte[] ToBytes()

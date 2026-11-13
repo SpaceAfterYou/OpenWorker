@@ -217,16 +217,7 @@ public sealed class MazeEntryLimitsTest
     {
         var actor = new ActorValue(Actor, ActorType.User);
 
-        static byte[] Written(IResponseHotspotMessage message)
-        {
-            using var stream = new MemoryStream();
-            using var writer = new BinaryWriter(stream);
-
-            message.Write(writer);
-            writer.Flush();
-
-            return stream.ToArray();
-        }
+        static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
         // A count of the list in a byte, then an actor, a maze and a count for each.
         var load = Written(new WorldEnterMazeLimitCountLoadResponse

@@ -42,9 +42,4 @@ public readonly struct LeagueRecruitNoticeResponse : IResponseHotspotMessage, IW
             writer.WriteInt64(Remain);
         }
     }
-
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
 }

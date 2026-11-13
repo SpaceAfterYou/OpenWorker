@@ -1,9 +1,7 @@
 using System.Numerics;
 using BenchmarkDotNet.Attributes;
 using OpenWorker.Domain.Types;
-using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
@@ -32,33 +30,8 @@ public readonly struct LegacyMoveRequest(BinaryReader reader)
 }
 
 /// <summary>
-/// The movement broadcast as it was written before the generator: <see cref="MovementMoveBtResponse"/>'s
-/// hand-written <c>Write(BinaryWriter)</c>, so the encoder takes the path of the <see cref="BinaryWriter"/>.
-/// </summary>
-public sealed class LegacyMoveBroadcast(MovementMoveBtResponse move) : IResponseHotspotMessage
-{
-    public MessageOpcode Opcode => move.Opcode;
-
-    public void Write(BinaryWriter writer)
-    {
-        writer.Write((int)move.Actor);
-        writer.Write((ulong)move.Map);
-        writer.Write(move.Pos.X);
-        writer.Write(move.Pos.Y);
-        writer.Write(move.Pos.Z);
-        writer.Write(move.Yaw);
-        writer.Write(move.TargetPosX);
-        writer.Write(move.TargetPosY);
-        writer.Write(move.RunBit);
-        writer.Write(move.Pitch);
-        writer.Write(move.MoveSpeed);
-        writer.Write(move.ChangeMotion);
-    }
-}
-
-/// <summary>
-/// The two halves of the wire format on the hot path, each by the old way and the new: a move request parsed from the
-/// body of a packet, and the movement broadcast encoded into a frame (opcode, body, encryption, header).
+/// The two halves of the wire format on the hot path: a move request parsed from the body of a packet, by the old way and
+/// the new, and the movement broadcast encoded into a frame (opcode, body, encryption, header).
 /// </summary>
 [MemoryDiagnoser]
 public class WireBenchmark : IDisposable
@@ -66,9 +39,8 @@ public class WireBenchmark : IDisposable
     // The body after the opcode, as the handler gets it.
     private readonly byte[] _body = Movement.Request()[2..];
 
-    // Boxed once each, as the handler boxes its response itself.
-    private readonly IResponseHotspotMessage _generated = Movement.Response();
-    private readonly IResponseHotspotMessage _legacy = new LegacyMoveBroadcast(Movement.Response());
+    // The struct, as a handler sends it: nothing is boxed on the way.
+    private readonly MovementMoveBtResponse _generated = Movement.Response();
 
     private MemoryStream _stream = null!;
     private BinaryReader _reader = null!;
@@ -79,14 +51,6 @@ public class WireBenchmark : IDisposable
         // One stream and one reader for every packet, as the executor reuses them.
         _stream = new MemoryStream(_body, writable: false);
         _reader = new BinaryReader(_stream);
-
-        using var legacy = Frame.Encode(_legacy)!;
-        using var generated = Frame.Encode(_generated)!;
-
-        if (!legacy.Memory.Span.SequenceEqual(generated.Memory.Span))
-        {
-            throw new InvalidOperationException("The two writers do not give the same frame.");
-        }
 
         if (ParseWithBinaryReader() != ParseWithPacketReader())
         {
@@ -114,17 +78,9 @@ public class WireBenchmark : IDisposable
     }
 
     [Benchmark]
-    public int EncodeWithBinaryWriter()
-    {
-        using var frame = Frame.Encode(_legacy)!;
-
-        return frame.Length;
-    }
-
-    [Benchmark]
     public int EncodeWithPacketWriter()
     {
-        using var frame = Frame.Encode(_generated)!;
+        using var frame = Frame.Encode(in _generated)!;
 
         return frame.Length;
     }

@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -26,9 +27,9 @@ internal sealed class QueueMarker(int number) : IResponseHotspotMessage
     /// </summary>
     public static QueueMarker Next() => new(Interlocked.Increment(ref _last));
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
-        writer.Write(Number);
+        writer.WriteInt32(Number);
     }
 
     /// <summary>

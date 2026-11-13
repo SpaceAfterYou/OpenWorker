@@ -61,13 +61,13 @@ public sealed class TradePostWireFormatTest
     [TestMethod]
     public void SocketStartsWithEquipSerial()
     {
-        var bytes = ToBytes(writer => new ItemSocketValue
+        var bytes = WireBytes.Of(new ItemSocketValue
         {
             EquipSerial = 0x0102030405060708,
             Socket = 0x11121314,
             Position = 0x21,
             Options = Enumerable.Range(0, 5).Select(_ => new ItemOption(0, 0)).ToList()
-        }.Write(writer));
+        });
 
         Assert.HasCount(8 + 4 + 1 + 5 * 6, bytes);
         Assert.AreEqual(0x08, bytes[0]);
@@ -78,7 +78,7 @@ public sealed class TradePostWireFormatTest
     [TestMethod]
     public void BroachHasFifteenItems()
     {
-        var bytes = ToBytes(writer => new ItemBroachValue { Serial = 1, Items = new int[15] }.Write(writer));
+        var bytes = WireBytes.Of(new ItemBroachValue { Serial = 1, Items = new int[15] });
 
         Assert.HasCount(8 + 15 * 4, bytes);
     }
@@ -97,8 +97,8 @@ public sealed class TradePostWireFormatTest
     public void PostListsUseClientCountWidth()
     {
         // The count, then the flag.
-        var posts = ToBytes(new PostRecvListResponse { Values = [], Flag = 0 }.Write);
-        var accountPosts = ToBytes(new PostAccountListResponse { Values = [], Flag = 0 }.Write);
+        var posts = WireBytes.Of(new PostRecvListResponse { Values = [], Flag = 0 });
+        var accountPosts = WireBytes.Of(new PostAccountListResponse { Values = [], Flag = 0 });
 
         Assert.HasCount(1 + 1, posts);
         Assert.HasCount(2 + 1, accountPosts);
@@ -107,7 +107,7 @@ public sealed class TradePostWireFormatTest
     [TestMethod]
     public void PostValueRoundTrips()
     {
-        var bytes = ToBytes(writer => new PostValue
+        var bytes = WireBytes.Of(new PostValue
         {
             Serial = 1,
             Character = new PostCharacterValue { Character = 2, Class = 3, Name = "Name" },
@@ -123,7 +123,7 @@ public sealed class TradePostWireFormatTest
             Event = 10,
             Sockets = [],
             Broaches = []
-        }.Write(writer));
+        });
 
         using var stream = new MemoryStream(bytes);
         using var reader = new BinaryReader(stream);
@@ -174,7 +174,7 @@ public sealed class TradePostWireFormatTest
     [TestMethod]
     public void PostReceiptResponseUsesClientLayout()
     {
-        var bytes = ToBytes(new PostReceiptResponse { Serial = 1, PostFlag = 2, RemainTime = 3 }.Write);
+        var bytes = WireBytes.Of(new PostReceiptResponse { Serial = 1, PostFlag = 2, RemainTime = 3 });
 
         Assert.HasCount(8 + 1 + 8, bytes);
         Assert.AreEqual(2, bytes[8]);

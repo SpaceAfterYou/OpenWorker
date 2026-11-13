@@ -1,4 +1,3 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
 using OpenWorker.Wire;
 
@@ -11,7 +10,7 @@ namespace OpenWorker.Hotspot.Modules.Post.Types;
 /// letter back: it takes the length of the name in bytes, which no one <c>[WireString]</c> says together with how it is
 /// written.</remarks>
 [WireMessage(WireMethods.Write)]
-public readonly partial struct PostCharacterValue : IWritableData
+public readonly partial struct PostCharacterValue
 {
     public int Character { get; init; }
     public byte Class { get; init; }

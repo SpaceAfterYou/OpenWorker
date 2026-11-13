@@ -1,5 +1,6 @@
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Channel.Community;
 
@@ -10,9 +11,9 @@ public readonly struct RawResponse(byte group, byte command, ReadOnlyMemory<byte
 {
     public MessageOpcode Opcode => new(group, command);
 
-    public void Write(BinaryWriter writer)
+    public void Write(ref PacketWriter writer)
     {
-        writer.Write(content.Span);
+        writer.WriteBytes(content.Span);
     }
 
     /// <summary>

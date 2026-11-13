@@ -63,9 +63,4 @@ public readonly struct LoginResponse : IResponseHotspotMessage, IWireWritable
 
         Session.Write(ref writer);
     }
-
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
 }

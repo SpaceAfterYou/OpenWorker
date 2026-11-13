@@ -58,17 +58,18 @@ public readonly struct ServerSessionComponent
     /// Queues the message for this connection. Never waits for the client, and a connection that is
     /// already gone just drops the message.
     /// </summary>
-    /// <remarks>To send one message to many connections, encode it once with <see cref="Frame.Encode"/> and send the frame.</remarks>
-    public void Send(IResponseHotspotMessage message)
+    /// <remarks>To send one message to many connections, encode it once with <see cref="Frame.Encode"/> and send the frame.
+    /// A message given as its struct is not boxed.</remarks>
+    public void Send<T>(in T message) where T : IResponseHotspotMessage
     {
-        TrySend(message);
+        TrySend(in message);
     }
 
     /// <returns><see langword="false"/> when the message is not queued: the connection is gone or too far behind, or the
     /// body of the message does not fit one frame (the connection stays open then).</returns>
-    public bool TrySend(IResponseHotspotMessage message)
+    public bool TrySend<T>(in T message) where T : IResponseHotspotMessage
     {
-        using var frame = Frame.Encode(message);
+        using var frame = Frame.Encode(in message);
 
         return frame is not null && _writer.TryEnqueue(frame);
     }

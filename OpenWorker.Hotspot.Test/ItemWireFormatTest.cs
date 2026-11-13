@@ -39,7 +39,7 @@ public sealed class ItemWireFormatTest
             }
         };
 
-        var bytes = ToBytes(writer => answer.Write(writer));
+        var bytes = WireBytes.Of(answer);
 
         // The item, seven numbers of four bytes, then the count of items as one byte and each item as four bytes and two.
         Assert.HasCount(4 + 7 * 4 + 1 + 4 + 2, bytes);
@@ -51,15 +51,15 @@ public sealed class ItemWireFormatTest
     [TestMethod]
     public void TheMotionOfAnItemIsTheActorTheItemAndTheSlotAndTheLimitsOfADayAreTheirCountedList()
     {
-        var motion = ToBytes(writer => new ItemUseBtResponse { Actor = 1, Item = 2, Slot = 3 }.Write(writer));
+        var motion = WireBytes.Of(new ItemUseBtResponse { Actor = 1, Item = 2, Slot = 3 });
 
         CollectionAssert.AreEqual(new byte[] { 1, 0, 0, 0, 2, 0, 0, 0, 3, 0 }, motion);
 
-        var list = ToBytes(writer => new ItemUseInfoListResponse
+        var list = WireBytes.Of(new ItemUseInfoListResponse
         {
             UpdatedAt = 5,
             List = [new ItemUseInfoValue { Type = 12, Count = 2, UsedAt = 9 }]
-        }.Write(writer));
+        });
 
         // When it was updated, the count of entries as one byte, then the kind, how often and when each was used.
         Assert.HasCount(8 + 1 + 4 + 1 + 8, list);
@@ -81,7 +81,7 @@ public sealed class ItemWireFormatTest
             stExtendOption = Enumerable.Range(0, 5).Select(_ => new ItemOption(1, 2)).ToList()
         };
 
-        var bytes = ToBytes(new ItemSocketLoadResponse { Sockets = [socket] }.Write);
+        var bytes = WireBytes.Of(new ItemSocketLoadResponse { Sockets = [socket] });
 
         Assert.HasCount(1 + 8 + 4 + 1 + 5 * 6, bytes);
         Assert.AreEqual(1, bytes[0]);
@@ -97,7 +97,7 @@ public sealed class ItemWireFormatTest
             dwItemID = Enumerable.Range(1, ST_ITEM_BROACH.ItemCount).ToArray()
         };
 
-        var bytes = ToBytes(new ItemBroachLoadResponse { Broaches = [broach] }.Write);
+        var bytes = WireBytes.Of(new ItemBroachLoadResponse { Broaches = [broach] });
 
         Assert.HasCount(1 + 8 + 15 * 4, bytes);
         Assert.AreEqual(1, bytes[0]);
@@ -112,7 +112,7 @@ public sealed class ItemWireFormatTest
             dwItemID = Enumerable.Repeat(-1, ST_ITEM_BROACH.ItemCount).ToArray()
         };
 
-        var bytes = ToBytes(new ItemSetupBroachEquipResponse { Broach = broach }.Write);
+        var bytes = WireBytes.Of(new ItemSetupBroachEquipResponse { Broach = broach });
 
         Assert.HasCount(8 + 15 * 4, bytes);
         Assert.AreEqual(0x08, bytes[0]);
@@ -124,7 +124,7 @@ public sealed class ItemWireFormatTest
     {
         var response = new ItemLineUpResponse { Entries = [new ItemLineUpEntry(StorageGroup.Common, 3, 77, 5)] };
 
-        var bytes = ToBytes(response.Write);
+        var bytes = WireBytes.Of(response);
 
         Assert.HasCount(2 + 1 + 2 + 8 + 2, bytes);
         Assert.AreEqual(1, bytes[0]);
@@ -133,22 +133,22 @@ public sealed class ItemWireFormatTest
     [TestMethod]
     public void QuickSlotsHaveTheNumbersTheClientReads()
     {
-        Assert.HasCount(8 * 4, ToBytes(new ItemLoadQuickslotResponse { Cards = [1], Items = [2] }.Write));
-        Assert.HasCount(5 * 4, ToBytes(new ItemUpdateQuickslotCardResponse { Cards = [1, 2, 3, 4, 5] }.Write));
-        Assert.HasCount(2 * 4, ToBytes(new ItemUpdateQuickslotItemResponse { Items = [1, 2] }.Write));
+        Assert.HasCount(8 * 4, WireBytes.Of(new ItemLoadQuickslotResponse { Cards = [1], Items = [2] }));
+        Assert.HasCount(5 * 4, WireBytes.Of(new ItemUpdateQuickslotCardResponse { Cards = [1, 2, 3, 4, 5] }));
+        Assert.HasCount(2 * 4, WireBytes.Of(new ItemUpdateQuickslotItemResponse { Items = [1, 2] }));
     }
 
     [TestMethod]
     public void BankAnswerListsItemsLikeTheBags()
     {
-        Assert.HasCount(4, ToBytes(new ItemBankInfoResponse { List = [] }.Write));
-        Assert.HasCount(4, ToBytes(new ItemUpdateResponse { List = [] }.Write));
+        Assert.HasCount(4, WireBytes.Of(new ItemBankInfoResponse { List = [] }));
+        Assert.HasCount(4, WireBytes.Of(new ItemUpdateResponse { List = [] }));
     }
 
     [TestMethod]
     public void MazeRewardWindowPutsEachFieldWhereTheClientReadsIt()
     {
-        var bytes = ToBytes(new MazeRewardInfoResponse { Rank = 5, ClearTime = 3661, TotalCombo = 7, PlayGold = 9, CashItem = 1234, CashItemCount = 2 }.Write);
+        var bytes = WireBytes.Of(new MazeRewardInfoResponse { Rank = 5, ClearTime = 3661, TotalCombo = 7, PlayGold = 9, CashItem = 1234, CashItemCount = 2 });
 
         // A byte, two numbers, the time as a short, eight numbers, three pairs of an item and its count, and a byte.
         Assert.HasCount(1 + 4 + 4 + 2 + 8 * 4 + 3 * (4 + 2) + 1, bytes);
@@ -166,7 +166,7 @@ public sealed class ItemWireFormatTest
     [TestMethod]
     public void MazeRewardGroupListsEachMember()
     {
-        var bytes = ToBytes(new MazeRewardPartyInfoResponse { Members = [new MazeRewardPartyMember(1, 5, 7, "Haru", 100)] }.Write);
+        var bytes = WireBytes.Of(new MazeRewardPartyInfoResponse { Members = [new MazeRewardPartyMember(1, 5, 7, "Haru", 100)] });
 
         Assert.AreEqual(1, bytes[0]);
         Assert.AreEqual(1, bytes[1]);

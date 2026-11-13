@@ -1,4 +1,3 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Exchange.Types;
@@ -6,8 +5,8 @@ namespace OpenWorker.Hotspot.Modules.Exchange.Types;
 /// <summary>
 /// A listing on sale as the search shows it to a buyer.
 /// </summary>
-[WireMessage]
-public readonly partial struct ExchangeItemValue : IWritableData
+[WireMessage(WireMethods.Write)]
+public readonly partial struct ExchangeItemValue
 {
     public required int Exchange { get; init; }
     public required long PriceOne { get; init; }

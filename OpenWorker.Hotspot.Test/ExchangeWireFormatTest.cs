@@ -47,12 +47,12 @@ public sealed class ExchangeWireFormatTest
     [TestMethod]
     public void TheSearchHasTheClientLayout()
     {
-        var bytes = ToBytes(new ExchangeSearchResponse
+        var bytes = WireBytes.Of(new ExchangeSearchResponse
         {
             Page = 2,
             PageMax = 5,
             Items = [new ExchangeItemValue { Exchange = 7, PriceOne = 1_000, ExpiresAt = 1_800_000_000, NoCommission = 1, Goods = Goods() }]
-        }.Write);
+        });
 
         Assert.HasCount(4 + 4 + 2 + 4 + 8 + 8 + 1 + GoodsSize, bytes);
         Assert.AreEqual(2, BitConverter.ToInt32(bytes, 0));
@@ -70,10 +70,10 @@ public sealed class ExchangeWireFormatTest
     [TestMethod]
     public void TheListOfThePlayerHasTheClientLayout()
     {
-        var bytes = ToBytes(new ExchangeMyListResponse
+        var bytes = WireBytes.Of(new ExchangeMyListResponse
         {
             Items = [new ExchangeMyItemValue { Exchange = 7, ExpiresAt = 1_800_000_000, State = 2, InitialCount = 5, PriceOne = 1_000, Goods = Goods() }]
-        }.Write);
+        });
 
         Assert.HasCount(2 + 4 + 8 + 1 + 2 + 8 + GoodsSize, bytes, "no trailing byte after the list");
         Assert.AreEqual(1, BitConverter.ToInt16(bytes, 0));

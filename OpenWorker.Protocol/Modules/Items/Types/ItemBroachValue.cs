@@ -1,4 +1,3 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Types;
@@ -7,7 +6,7 @@ namespace OpenWorker.Hotspot.Modules.Items.Types;
 /// The broaches set into the gear with this serial, as a letter carries them: always <see cref="ItemCount"/> items.
 /// </summary>
 [WireMessage(WireMethods.Both)]
-public readonly partial struct ItemBroachValue : IWritableData
+public readonly partial struct ItemBroachValue
 {
     public const int ItemCount = 15;
 

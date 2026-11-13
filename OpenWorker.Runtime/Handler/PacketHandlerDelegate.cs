@@ -5,9 +5,9 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Handler;
 
 /// <summary>
-/// The second shape of a handler, for a request that reads itself through <see cref="PacketReader"/>
-/// (<see cref="IWireReadable{TSelf}"/>, generated for a <c>[WireMessage]</c>): it takes the body of the packet after the
-/// opcode as a span. The request is parsed whole before the handler runs, because a <see langword="ref struct"/> cannot
+/// The shape of every handler: the request reads itself through <see cref="PacketReader"/>
+/// (<see cref="IWireReadable{TSelf}"/>, generated for a <c>[WireMessage]</c>), and the handler takes the body of the packet
+/// after the opcode as a span. The request is parsed whole before the handler runs, because a <see langword="ref struct"/> cannot
 /// live across the awaits of the handler; then only the parsed struct goes on.
 /// </summary>
 internal delegate ValueTask PacketHandlerDelegate(

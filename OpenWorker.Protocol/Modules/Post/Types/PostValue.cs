@@ -1,5 +1,4 @@
 using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Wire;
@@ -14,7 +13,7 @@ namespace OpenWorker.Hotspot.Modules.Post.Types;
 /// letter back: it takes the lengths of the texts in bytes, which no one <c>[WireString]</c> says together with how they
 /// are written.</remarks>
 [WireMessage(WireMethods.Write)]
-public readonly partial struct PostValue : IWritableData
+public readonly partial struct PostValue
 {
     public long Serial { get; init; }
     public PostCharacterValue Character { get; init; }

@@ -33,9 +33,4 @@ public readonly struct LoginOptionLoadResponse : IResponseHotspotMessage, IWireW
         writer.WriteBytes(options);
         Contents.Write(ref writer);
     }
-
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
 }

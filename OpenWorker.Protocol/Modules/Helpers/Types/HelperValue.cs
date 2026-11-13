@@ -1,4 +1,3 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Wire;
 
@@ -9,19 +8,19 @@ namespace OpenWorker.Hotspot.Modules.Helpers.Types;
 /// stat, so the number has to be below 61.
 /// </summary>
 [WireMessage(WireMethods.Write)]
-public readonly partial record struct HelperStatValue(byte Type, float Value) : IWritableData;
+public readonly partial record struct HelperStatValue(byte Type, float Value);
 
 /// <summary>
 /// What a friend adds to the helpers of the person.
 /// </summary>
 [WireMessage(WireMethods.Write)]
-public readonly partial record struct HelperSupportInfoValue(int Friend, byte SupportType, float Value, DateTimeOffset Date, byte RewardType, bool Register) : IWritableData;
+public readonly partial record struct HelperSupportInfoValue(int Friend, byte SupportType, float Value, DateTimeOffset Date, byte RewardType, bool Register);
 
 /// <summary>
 /// A helper as the client reads it: the helper, the three items it wears, the friend whose orb it wears, whether it is
 /// called, two lists of stats and its place in the list.
 /// </summary>
-public readonly struct HelperValue : IWritableData, IWireWritable
+public readonly struct HelperValue : IWireWritable
 {
     /// <summary>
     /// The number of items a helper can wear: a weapon, a gear and a third slot no item uses.
@@ -91,9 +90,6 @@ public readonly struct HelperValue : IWritableData, IWireWritable
         writer.WriteByte(Order);
     }
 
-    /// <summary>Writes through <see cref="Write(ref PacketWriter)"/>, for code that still holds a <see cref="BinaryWriter"/>.</summary>
-    public void Write(BinaryWriter writer) => WireBridge.Write(writer, this);
-
     private static void WriteStats(ref PacketWriter writer, IReadOnlyList<HelperStatValue>? stats)
     {
         writer.WriteLength(WireLength.Signed16, stats?.Count ?? 0);
@@ -114,7 +110,7 @@ public readonly struct HelperValue : IWritableData, IWireWritable
 /// The values the stats of one helper add up to.
 /// </summary>
 [WireMessage(WireMethods.Write)]
-public readonly partial record struct HelperStatUpdateValue(int Helper, [property: WireArray(WireLength.Signed16)] IReadOnlyList<HelperStatValue> Stats) : IWritableData;
+public readonly partial record struct HelperStatUpdateValue(int Helper, [property: WireArray(WireLength.Signed16)] IReadOnlyList<HelperStatValue> Stats);
 
 /// <summary>
 /// A friend that offers its orb, as the list of the client shows it. The value is what the orb gives the reader, which is
@@ -129,4 +125,4 @@ public readonly partial record struct HelperSupportFriendValue(
     float OriginalValue,
     [property: WireString(WireStringFormat.Utf16Unicode)] string Name,
     byte Level,
-    byte Class) : IWritableData;
+    byte Class);

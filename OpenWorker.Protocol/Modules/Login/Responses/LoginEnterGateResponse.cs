@@ -27,10 +27,5 @@ public readonly struct LoginEnterGateResponse : IResponseHotspotMessage, IWireWr
         writer.WriteInt32(HasError ? -1 : Account);
     }
 
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
-
     public static LoginEnterGateResponse Error => new() { HasError = true, Account = -1 };
 }

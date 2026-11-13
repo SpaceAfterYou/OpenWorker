@@ -34,10 +34,5 @@ public readonly struct SystemServerOptionUpdateResponse : IResponseHotspotMessag
         Contents.Write(ref writer);
     }
 
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
-
 #endregion Interface: IWireWritable
 }

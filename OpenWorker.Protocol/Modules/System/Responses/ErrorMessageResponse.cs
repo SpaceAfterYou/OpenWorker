@@ -29,9 +29,4 @@ public readonly struct ErrorMessageResponse(MessageOpcode source, ushort code, u
             writer.WriteUInt32(value);
         }
     }
-
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
 }

@@ -35,16 +35,7 @@ public sealed class SocialWireFormatTest
     private static int RecruitSize(string message, string master) =>
         4 + TextSize(message) + 2 + 2 + 1 + TextSize(master) + 1 + 4 + 4;
 
-    private static byte[] Written(IResponseHotspotMessage message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
     private static PartyMemberInfoValue Member(string name) => new()
     {

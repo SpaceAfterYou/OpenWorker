@@ -2,6 +2,7 @@ using OpenWorker.Channel.Community;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -13,9 +14,9 @@ public sealed class CommunityNetworkTest
     {
         public MessageOpcode Opcode => new(GroupOpcode.Chat, (byte)ChatOpcode.Notify);
 
-        public void Write(BinaryWriter writer)
+        public void Write(ref PacketWriter writer)
         {
-            writer.Write(value);
+            writer.WriteInt32(value);
         }
     }
 

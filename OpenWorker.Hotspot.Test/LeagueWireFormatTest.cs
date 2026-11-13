@@ -17,16 +17,7 @@ public sealed class LeagueWireFormatTest
     // Two bytes of length, UTF-16 and a terminator of one byte.
     private static int TextSize(string value) => 2 + 2 * value.Length + 1;
 
-    private static byte[] Written(IResponseHotspotMessage message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
     private static BinaryReader Request(Action<BinaryWriter> write)
     {

@@ -340,13 +340,7 @@ public sealed class KeepAliveTest
 
         Assert.AreEqual(ClientTickCount, request.TickCount);
 
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        new SystemKeepAliveResponse { Time = new TimeSpan(ClientTickCount) }.Write(writer);
-        writer.Flush();
-
-        CollectionAssert.AreEqual(bytes, stream.ToArray());
+        CollectionAssert.AreEqual(bytes, WireBytes.Of(new SystemKeepAliveResponse { Time = new TimeSpan(ClientTickCount) }));
     }
 
     [TestMethod]

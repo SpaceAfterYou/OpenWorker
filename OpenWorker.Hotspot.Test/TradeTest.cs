@@ -157,7 +157,7 @@ public sealed class TradeTest
 
         foreach (var item in items)
         {
-            item.Write(writer);
+            writer.Write(WireBytes.Of(item));
         }
     }
 

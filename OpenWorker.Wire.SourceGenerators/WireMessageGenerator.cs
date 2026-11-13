@@ -6,7 +6,7 @@ namespace OpenWorker.Wire.SourceGenerators;
 
 /// <summary>
 /// For every <see langword="partial"/> struct marked <c>[WireMessage]</c>: <c>Read(ref PacketReader)</c>,
-/// <c>Write(ref PacketWriter)</c> and their bridges to <c>BinaryReader</c> and <c>BinaryWriter</c>, from the fields of the
+/// <c>Write(ref PacketWriter)</c> and the bridge of the reader to <c>BinaryReader</c> (a constructor), from the fields of the
 /// struct in the order they are declared. The rules are in <see cref="WireModel"/> and on the attributes of
 /// <c>OpenWorker.Wire</c>.
 /// </summary>

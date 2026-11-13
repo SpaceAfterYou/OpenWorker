@@ -44,10 +44,5 @@ public readonly struct ShopCashLoadResponse : IResponseHotspotMessage, IWireWrit
         }
     }
 
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
-
 #endregion Interface: IWireWritable
 }

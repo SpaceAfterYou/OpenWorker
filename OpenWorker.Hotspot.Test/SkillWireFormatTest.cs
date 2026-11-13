@@ -11,16 +11,7 @@ namespace OpenWorker.Hotspot.Test;
 [TestClass]
 public sealed class SkillWireFormatTest
 {
-    private static byte[] Written(IResponseHotspotMessage message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
     private static T Read<T>(byte[] data, Func<BinaryReader, T> create)
     {
@@ -88,15 +79,11 @@ public sealed class SkillWireFormatTest
     {
         var request = default(SkillProjectileValue) with { Skill = 52000711, TriggerIndex = 105, Target = new ActorValue(7, ActorType.Monster) };
 
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
+        var bytes = WireBytes.Of(request);
 
-        request.Write(writer);
-        writer.Flush();
+        Assert.HasCount(38, bytes);
 
-        Assert.HasCount(38, stream.ToArray());
-
-        var back = Read(stream.ToArray(), e => new SkillChainRequest(e));
+        var back = Read(bytes, e => new SkillChainRequest(e));
 
         Assert.AreEqual(52000711, back.Projectile.Skill);
         Assert.AreEqual((short)105, back.Projectile.TriggerIndex);
