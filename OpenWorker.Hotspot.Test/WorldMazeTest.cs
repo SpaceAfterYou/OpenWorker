@@ -121,9 +121,47 @@ public sealed class WorldMazeTest
         return text.ToString();
     }
 
+    private static string StartBox(int id, Vector3 low) =>
+        $"""<VStartEventBox boxtype="eEventBoxType_Start"> {Basic(id, low, low + new Vector3(10f))} <m_eSpawnType type="4" value="Random" /> </VStartEventBox>""";
+
     private static string Map() =>
         "<root><Batchs eventtype=\"EventBox\">" + SectorBox() + SpawnBox(Returning, 1000f) + SpawnBox(Staying, 0f) +
+        StartBox(FirstStart, new Vector3(1000f, 1000f, 0f)) + StartBox(SecondStart, new Vector3(5000f, 5000f, 0f)) +
         "</Batchs><Batchs eventtype=\"EventPoint\"/></root>";
+
+    private const int FirstStart = 3002101;
+    private const int SecondStart = 3002102;
+
+    /// <summary>
+    /// A player who gets up at its safe place stands at the start box it came in by.
+    /// </summary>
+    [TestMethod]
+    public void TheSafePlaceIsTheStartBoxThePlayerCameInBy()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var player = world.Create(
+                new ActorComponent(1, ActorType.User),
+                new ServerSessionComponent(new RecordingConnection()),
+                new WorldComponent { Location = 0, Position = new Vector3(100f, 100f, 0f), Rotation = 0f, Jump = SecondStart });
+            var maze = TestMazes.Create(world, player, map: Map(), channel: 1);
+
+            maze.ReturnToStart(player);
+
+            var place = world.Get<WorldComponent>(player).Position;
+
+            Assert.IsTrue(place.X is >= 5000f and <= 5010f && place.Y is >= 5000f and <= 5010f, $"stands in the box it came in by, at {place}");
+
+            maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
 
     /// <summary>
     /// What the map brings comes out as the first player arrives; a monster of a box with a respawn time comes back that many

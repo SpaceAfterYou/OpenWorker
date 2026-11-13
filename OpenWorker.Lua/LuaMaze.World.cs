@@ -1,5 +1,8 @@
+using Arch.Core;
 using Lua;
+using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
+using OpenWorker.Gameplay.Messages.Response.Person;
 
 namespace OpenWorker.Lua;
 
@@ -58,5 +61,27 @@ public partial class LuaMaze
 
             return ValueTask.CompletedTask;
         });
+    }
+
+    /// <summary>
+    /// A player who gets up at its safe place stands at the start box it came into the map by, or at the first start of the map.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void ReturnToStart(Entity player)
+    {
+        if (!IsWorld || !Ecs.IsAlive(player) || !Ecs.TryGet(player, out WorldComponent place))
+        {
+            return;
+        }
+
+        var starts = Batch.EventBox.StartEvents;
+        var start = place.Jump != 0 ? starts.Find(place.Jump) : null;
+
+        start ??= starts.Count > 0 ? starts[0] : null;
+
+        if (start is not null)
+        {
+            Ecs.Set(player, place with { Position = start.GetPosition(), Rotation = start.Rotation });
+        }
     }
 }

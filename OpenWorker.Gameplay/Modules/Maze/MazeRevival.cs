@@ -55,6 +55,8 @@ public interface IReviveItems
 /// <item>By an item: as many as the maze allows (<c>RevivalItemCount</c>, none for as many as the player has):
 /// <see cref="ItemsOver"/> after that.</item>
 /// </list>
+/// An open maze of the world (District 6) is no maze for this: a player gets up there by a buff or at its safe place (the start
+/// box it came in by), not free, not for cash (<see cref="NoFreeRevive"/>) and not by the mode (<see cref="NotInThisMode"/>).
 /// A server without the table of the mazes lets everybody get up.
 /// </summary>
 public sealed class MazeRevival(ReadOnlyCollection<MazeRuleRow> rules, MazeEntryLimits limits) : ISessionCloseHandler
@@ -91,7 +93,8 @@ public sealed class MazeRevival(ReadOnlyCollection<MazeRuleRow> rules, MazeEntry
     /// up by the check that lets it through.
     /// </summary>
     /// <param name="revivable">The player carries a buff that lets it get up.</param>
-    public ushort? Check(Entity player, int maze, bool fallen, ReviveType type, bool revivable = false)
+    /// <param name="world">The maze is an open maze of the world.</param>
+    public ushort? Check(Entity player, int maze, bool fallen, ReviveType type, bool revivable = false, bool world = false)
     {
         var rule = RuleOf(maze);
 
@@ -103,6 +106,18 @@ public sealed class MazeRevival(ReadOnlyCollection<MazeRuleRow> rules, MazeEntry
         if (!fallen)
         {
             return NotFallen;
+        }
+
+        if (world)
+        {
+            return type switch
+            {
+                ReviveType.Buff => revivable ? null : NotAllowed,
+                ReviveType.SafetyZone => null,
+                ReviveType.MazeFree or ReviveType.Cash => NoFreeRevive,
+                ReviveType.ModeMazeAuto => NotInThisMode,
+                _ => NotAllowed
+            };
         }
 
         switch (type)
