@@ -6,13 +6,14 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.CashShop;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Hotspot.Modules.Shop.Types;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// The cash shop: where a price comes from, the periods limited products are counted in, and the
+/// The cash shop: where a price comes from, the periods limited products are counted in, the draw of a gacha, and the
 /// purchase that takes the balance, counts the limits and writes the letters in one transaction (against a real Postgres,
 /// OPENWORKER_TEST_POSTGRES).
 /// </summary>
@@ -103,6 +104,88 @@ public sealed class CashShopTest
         Assert.AreEqual(new DateTimeOffset(2026, 10, 1, 9, 0, 0, offset).UtcDateTime,
             CashLimits.PeriodOf(CashLimitKind.AccountMonth, new DateTimeOffset(2026, 11, 1, 8, 59, 0, offset)));
         Assert.AreEqual(CashLimits.Always, CashLimits.PeriodOf(CashLimitKind.Character, mondayMorning));
+    }
+
+    /// <summary>
+    /// A roll falls on the first chance it does not pass, the chances taken in order, for the group and then for the item.
+    /// </summary>
+    [TestMethod]
+    public void AGachaGivesTheItemTheRollFallsOn()
+    {
+        static T Read<T>(Action<BinaryWriter> write) where T : struct
+        {
+            using var stream = new MemoryStream();
+            using var writer = new BinaryWriter(stream);
+
+            write(writer);
+            writer.Flush();
+            stream.Position = 0;
+
+            return (T)Activator.CreateInstance(typeof(T), new BinaryReader(stream))!;
+        }
+
+        var chances = Read<GachaGroupRow>(writer =>
+        {
+            writer.Write((ushort)1);
+            writer.Write((short)0);
+            writer.Write((ushort)7);
+            writer.Write((byte)1);
+
+            for (var index = 0; index < GachaGroupRow.Groups; index++)
+            {
+                writer.Write((ushort)(index < 2 ? 5000 : 0));
+            }
+        });
+
+        var gacha = Read<GachaRow>(writer =>
+        {
+            writer.Write((ushort)11);
+            writer.Write(Ticket);
+            writer.Write((byte)0);
+            writer.Write((byte)0);
+            writer.Write(new byte[8]);
+            writer.Write((ushort)7);
+
+            for (var index = 0; index < GachaGroupRow.Groups; index++)
+            {
+                writer.Write((ushort)(index switch { 0 => 100, 1 => 200, _ => 0 }));
+            }
+        });
+
+        GachaDrawRow Draw(ushort id, int item, byte type) => Read<GachaDrawRow>(writer =>
+        {
+            writer.Write(id);
+
+            for (var index = 0; index < GachaDrawRow.Items; index++)
+            {
+                writer.Write(index < 2 ? item + index : 0);
+            }
+
+            for (var index = 0; index < GachaDrawRow.Items; index++)
+            {
+                writer.Write((ushort)(index < 2 ? 5000 : 0));
+            }
+
+            for (var index = 0; index < GachaDrawRow.Items; index++)
+            {
+                writer.Write(type);
+            }
+        });
+
+        var rolls = new Queue<int>([5001, 5000, 1, 10_000]);
+
+        var draws = new CashShopGacha(
+            new ReadOnlyCollection<GachaGroupRow>([chances]),
+            new ReadOnlyCollection<GachaRow>([gacha]),
+            new ReadOnlyCollection<GachaDrawRow>([Draw(100, Ticket, 1), Draw(200, Ticket, 2)]),
+            Items(),
+            (_, _) => rolls.Dequeue());
+
+        var results = draws.Draw(gacha, 2);
+
+        Assert.IsNotNull(results);
+        Assert.AreEqual(new GachaResultValue { Item = Ticket, Type = 2 }, results[0], "5001 passes the first group; 5000 is the first item");
+        Assert.AreEqual(new GachaResultValue { Item = Pack, Type = 1 }, results[1], "1 is the first group; 10000 the second item");
     }
 
     /// <summary>

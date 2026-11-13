@@ -37,4 +37,19 @@ public static class CashShopCodes
 
     /// <summary>The product may not be bought more in its period.</summary>
     public const int LimitReached = 52323;
+
+    /// <summary>A gacha item to open is missing from the bags, or fewer of it than asked.</summary>
+    public const int CountMismatch = 52014;
+
+    /// <summary>The bags have not enough free places.</summary>
+    public const int NoRoom = 52010;
+
+    /// <summary>Not a gacha item, or a wrong count of it.</summary>
+    public const int NotGacha = 52011;
+
+    /// <summary>The gacha may not be opened today; the original's code, whose text speaks of the bank.</summary>
+    public const int GachaClosed = 52043;
+
+    /// <summary>The draw of a gacha failed.</summary>
+    public const int GachaFailed = 59100;
 }
