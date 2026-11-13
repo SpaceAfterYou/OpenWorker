@@ -301,6 +301,24 @@ public sealed partial class AiMachineTest
         Assert.IsLessThan(200f, Vector3.Distance(host.Position, host.Player!.Value.Position));
     }
 
+    /// <summary>
+    /// A target a little above or below is in reach as if it stood level: the height between the two is taken off the distance.
+    /// </summary>
+    [TestMethod]
+    public void TheReachOfASkillTakesOffTheHeightOfATargetOnNearlyOneLevel()
+    {
+        var host = new Host { Player = Player(new Vector3(150, 0, 150)), IsRooted = true };
+
+        host.Skills[0] = Skill(11, max: 150);
+
+        var machine = Create(Fighter(), host);
+
+        machine.Start();
+        Run(machine, host, 2f);
+
+        Assert.IsNotEmpty(host.Used, "212 away and 150 above is 62 for the reach.");
+    }
+
     [TestMethod]
     public void AnEnemyBeyondSightIsLeftAlone()
     {
