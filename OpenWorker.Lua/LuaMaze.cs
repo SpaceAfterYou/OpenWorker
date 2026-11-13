@@ -203,6 +203,7 @@ public partial class LuaMaze(
             _buffs.Detach(member.Player);
         }
 
+        RemoveSceneAttacker();
         creatureManager.Close();
     }
 
