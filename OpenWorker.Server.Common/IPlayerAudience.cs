@@ -8,8 +8,8 @@ namespace OpenWorker.Server.Common;
 
 /// <summary>
 /// Who hears what a player does: the one thing the handlers of this assembly leave to the server. A district tells the
-/// players of the channel (the chat) or those who see the player (everything else); a maze, where every player has a maze
-/// of their own for now, tells the player alone. A server registers its audience with <c>AddServerCommon</c>.
+/// players of the channel (the chat) or those who see the player (everything else); a maze tells the players of its
+/// instance. A server registers its audience with <c>AddServerCommon</c>.
 /// </summary>
 public interface IPlayerAudience
 {
