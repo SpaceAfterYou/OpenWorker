@@ -280,6 +280,7 @@ public partial class LuaMaze(
 
         // What the player carries is let go where it stands: nobody steps the carry of a player who is gone.
         EndCarry(member);
+        EndControl(member);
 
         LeavePartyQuest(player);
 

@@ -11,6 +11,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Attaches">The moments at which the animation starts to carry away what stands before it.</param>
 /// <param name="Cuts">The stretches of the animation in which the player may cut it with another skill.</param>
 /// <param name="Speeds">The stretches of the animation that play faster or slower than the rest.</param>
+/// <param name="Controls">The moments at which the one who plays the animation takes control of a monster or lets it go.</param>
 public sealed record ActionAnimation(
     string Name,
     float Length,
@@ -22,7 +23,20 @@ public sealed record ActionAnimation(
     IReadOnlyList<DetachEvent>? Detaches = null,
     IReadOnlyList<AttachEvent>? Attaches = null,
     IReadOnlyList<CutEvent>? Cuts = null,
-    IReadOnlyList<SpeedEvent>? Speeds = null);
+    IReadOnlyList<SpeedEvent>? Speeds = null,
+    IReadOnlyList<ControlEvent>? Controls = null);
+
+/// <summary>
+/// The player takes control of a monster that comes in beside it, or lets the one it controls go (a monster of zero).
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="Monster">The row of the table of monsters; zero lets the controlled monster go.</param>
+/// <param name="Animation">The animation the monster comes in with.</param>
+/// <param name="Offset">Where the monster comes in, from the player, before it is turned by the player's yaw.</param>
+/// <param name="Alpha">How visible the monster is as it comes in, for the clients.</param>
+/// <param name="Blend">How long the monster takes to come in, for the clients.</param>
+/// <param name="Follows">Whether the monster goes where the player goes.</param>
+public sealed record ControlEvent(float Start, int Monster, string Animation, Vector3 Offset, float Alpha, float Blend, bool Follows);
 
 /// <summary>
 /// A stretch of an animation in which the client takes the input of another skill: a key pressed in it starts the next skill
@@ -142,6 +156,12 @@ public sealed class ActionFile
     private const short AttachTriggerType = 22;
     private const short DefenseTriggerType = 25;
     private const short DetachTriggerType = 30;
+    private const short SummonTriggerType = 16;
+
+    /// <summary>
+    /// The kind of summon by which the player controls the monster it brings in.
+    /// </summary>
+    private const int ControlSummon = 2;
 
     private const short FiltersSinceVersion = 204;
     private const short CollisionRangeSinceVersion = 205;
@@ -341,6 +361,7 @@ public sealed class ActionFile
         var attaches = new List<AttachEvent>();
         var cuts = new List<CutEvent>();
         var speeds = new List<SpeedEvent>();
+        var controls = new List<ControlEvent>();
         var events = reader.ReadInt32();
 
         for (var i = 0; i < events; i++)
@@ -377,6 +398,10 @@ public sealed class ActionFile
                 case SpeedTriggerType:
                     speeds.Add(ReadSpeed(reader, header));
                     break;
+
+                case SummonTriggerType when ReadControl(reader, header) is { } control:
+                    controls.Add(control);
+                    break;
             }
 
             Close(reader, chunk);
@@ -391,7 +416,7 @@ public sealed class ActionFile
         }
 
         return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches,
-            cuts, speeds);
+            cuts, speeds, controls.Count > 0 ? controls : null);
     }
 
     /// <summary>
@@ -429,6 +454,31 @@ public sealed class ActionFile
         Skip(reader, 2 * sizeof(int));
 
         return new CutEvent(header.Start, header.End, reader.ReadSingle());
+    }
+
+    /// <summary>
+    /// A summon event: only the kind by which the player controls the monster is kept.
+    /// </summary>
+    private static ControlEvent? ReadControl(BinaryReader reader, in EventHeader header)
+    {
+        var alpha = reader.ReadSingle();
+        var blend = reader.ReadSingle();
+        var monster = reader.ReadInt32();
+        var animation = ReadString(reader);
+        var offset = ReadVector3(reader);
+
+        // Whether the monster is turned by the yaw, then the kind of summon.
+        reader.ReadBoolean();
+
+        if (reader.ReadInt32() != ControlSummon)
+        {
+            return null;
+        }
+
+        // The chance and the number of the summon, whether it stays on the ground, then whether it follows.
+        Skip(reader, 2 * sizeof(int) + 1);
+
+        return new ControlEvent(header.Start, monster, animation, offset, alpha, blend, reader.ReadBoolean());
     }
 
     /// <summary>

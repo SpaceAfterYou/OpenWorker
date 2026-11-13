@@ -4,6 +4,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Monster.Requests;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
@@ -72,6 +73,50 @@ public sealed class MonsterWireFormatTest
             w.Write(place.Z);
             w.Write(45f);
         }), Written(default(SkillSyncPositionBroadcastResponse) with { Actor = Monster, Position = place, Yaw = 45f }));
+    }
+
+    /// <summary>
+    /// A player takes control of a monster: the owner, the monster, its place, the owner's yaw, the row, how it comes in, the
+    /// animation and whether it follows. The attack key of the player names the monster and which skill of its row.
+    /// </summary>
+    [TestMethod]
+    public void ControlNamesOwnerMonsterPlaceAndHowItComes()
+    {
+        var owner = new ActorValue(5, ActorType.User);
+        var bytes = Written(new MonsterControlResponse
+        {
+            Owner = owner,
+            Monster = Monster,
+            Position = new Vector3(1, 2, 3),
+            Yaw = 4,
+            Table = 1030101,
+            Alpha = 0.5f,
+            Blend = 0.4f,
+            Animation = 7,
+            Follows = true
+        });
+
+        CollectionAssert.AreEqual(Expected(w =>
+        {
+            w.Write((int)owner);
+            w.Write(Raw);
+            w.Write(1f);
+            w.Write(2f);
+            w.Write(3f);
+            w.Write(4f);
+            w.Write(1030101);
+            w.Write(0.5f);
+            w.Write(0.4f);
+            w.Write(7);
+            w.Write(true);
+        }), bytes);
+
+        using var attack = new BinaryReader(new MemoryStream([9, 0, 0, 0, 1]));
+        var request = new MonsterControlAttackRequest(attack);
+
+        Assert.AreEqual(9, request.Monster);
+        Assert.AreEqual((byte)1, request.Attack);
+        Assert.AreEqual(attack.BaseStream.Length, attack.BaseStream.Position);
     }
 
     [TestMethod]
