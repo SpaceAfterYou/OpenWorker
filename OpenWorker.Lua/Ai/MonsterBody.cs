@@ -57,10 +57,6 @@ internal partial class MonsterBody : IAiHost
     private string _spawnAction = string.Empty;
     private int _idleAnimation;
     private double _idleEnd;
-    private InvisibleEvent? _hidden;
-    private double _hiddenEnd;
-    private readonly List<(double Time, InvisibleEvent Event)> _hidings = [];
-    private double _nextHideLook;
     private readonly List<(double Start, double End, ActionAnimation Clip)> _clips = [];
     private double _lastMoveSent;
     private float _lastYawSent = float.NaN;
@@ -134,7 +130,7 @@ internal partial class MonsterBody : IAiHost
         _forcedDefenseEnd = 0;
         _spawnAction = string.Empty;
         _idleEnd = 0;
-        _hidden = null;
+        _hiding.Clear();
         _hidings.Clear();
         Group = default;
         _lastMoveSent = 0;
@@ -184,7 +180,7 @@ internal partial class MonsterBody : IAiHost
 
     public bool IsAttacking => _manager.Now < _attackEnd;
 
-    public bool CanMove => !IsHeld && !IsAttacking && !IsStaggered && !_carried && !IsReactionBlockingMove && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
+    public bool CanMove => !IsHeld && !IsAttacking && !IsStaggered && !_carried && !IsReactionBlockingMove && !Behavior.IsRooted && _hiding.CanMove && (_battlePose || !Behavior.WalksOnlyInBattle);
 
     private bool IsStaggered => _manager.Now < _staggerEnd;
 
@@ -309,7 +305,7 @@ internal partial class MonsterBody : IAiHost
         Fly(elapsed);
 
         // A monster that has hidden thinks no more, unless its animation leaves the mind on.
-        if (!_carried && (_hidden is null || (_hidden.Flags & InvisibleEvent.KeepsMind) != 0))
+        if (!_carried && _hiding.CanThink)
         {
             Machine.Update(elapsed);
         }
@@ -922,80 +918,6 @@ internal partial class MonsterBody : IAiHost
         }
 
         _flights.RemoveAll(static e => e.Projectile.IsOver);
-    }
-
-    // ---- Hiding -------------------------------------------------------------------------------
-
-    /// <summary>
-    /// The monster is gone from sight and cannot be hit or aimed at.
-    /// </summary>
-    public bool IsHidden => _hidden is not null;
-
-    private void ResolveHidings(double now)
-    {
-        if (_hidden is { } hidden && IsHidingOver(hidden, now))
-        {
-            _hidden = null;
-
-            Broadcast(new MonsterInvisibleResponse { Actor = Actor, Invisible = false });
-        }
-
-        while (_hidings.Count > 0 && _hidings[0].Time <= now)
-        {
-            var hide = _hidings[0].Event;
-
-            _hidings.RemoveAt(0);
-
-            _hidden = hide;
-            _hiddenEnd = now + hide.Value * 0.001;
-            _nextHideLook = now + HideLook;
-
-            Broadcast(new MonsterInvisibleResponse { Actor = Actor, Invisible = true, Flags = hide.Flags, Type = hide.ConditionType, Value = hide.Value });
-        }
-    }
-
-    /// <summary>
-    /// How often a monster that hides until others die looks whether they have, in seconds.
-    /// </summary>
-    private const double HideLook = 1.0;
-
-    /// <summary>
-    /// The kinds of hiding the body follows. The kind that waits for the monsters it summoned is not: nothing summons in a maze yet.
-    /// </summary>
-    internal static bool IsFollowed(InvisibleEvent hide)
-    {
-        return hide.ConditionType is InvisibleEvent.ForTime or InvisibleEvent.UntilHurt or InvisibleEvent.UntilMonstersDie;
-    }
-
-    private bool IsHidingOver(InvisibleEvent hide, double now)
-    {
-        switch (hide.ConditionType)
-        {
-            case InvisibleEvent.ForTime:
-                return now >= _hiddenEnd;
-
-            case InvisibleEvent.UntilMonstersDie:
-                // Looked at once a second: it shows itself when none of the monsters it waits for lives.
-                if (now < _nextHideLook)
-                {
-                    return false;
-                }
-
-                _nextHideLook = now + HideLook;
-
-                return !(hide.Waits ?? []).Any(_manager.IsMonsterAlive);
-
-            default:
-                return IsHurtTo(hide.Value);
-        }
-    }
-
-    /// <summary>
-    /// Whether the life of the monster is down to a share, in thousandths.
-    /// </summary>
-    private bool IsHurtTo(int thousandths)
-    {
-        return MaxHealth > 0 && (long)Health * 1000 / MaxHealth <= thousandths;
     }
 
     // ---- Telling the clients ------------------------------------------------------------------
