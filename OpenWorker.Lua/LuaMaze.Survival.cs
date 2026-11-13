@@ -95,4 +95,13 @@ public partial class LuaMaze
             return true;
         }
     }
+
+    /// <summary>
+    /// Waves of monsters come and the mode is won when the last is dead (<c>LuaMaze.Survival.cs</c>).
+    /// </summary>
+    [LuaMember]
+    public void StartSurvivalMode(int table)
+    {
+        BeginSurvival(table);
+    }
 }

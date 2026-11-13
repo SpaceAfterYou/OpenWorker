@@ -9,6 +9,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.World.Types;
+using OpenWorker.Hotspot.Modules.Maze.Responses;
 
 namespace OpenWorker.Lua;
 
@@ -146,6 +147,33 @@ public partial class LuaMaze
         if (portal is not { NextSector: > 0 } && SectorAt(position) is { } arrived)
         {
             SpawnSector(arrived.Id);
+        }
+    }
+
+    [LuaMember]
+    public void AllUserWarpInSector(VVector3 position, float rotation)
+    {
+        var place = new Vector3(position.X, position.Y, position.Z);
+
+        foreach (var member in _members)
+        {
+            Ecs.Set(member.Player, Ecs.Get<WorldComponent>(member.Player) with { Position = place, Rotation = rotation });
+        }
+
+        creatureManager.Broadcast(new MazeWarpInSectorResponse { Position = place, Rotation = rotation });
+    }
+
+    [LuaMember]
+    public void SetPotalFlag(int box, bool flag)
+    {
+        if (Progress.SetPortal(box, flag))
+        {
+            creatureManager.Broadcast(new WorldWarpEnableResponse { Box = box, Open = flag, IsMazeComplete = IsComplete });
+
+            if (flag && Batch.EventBox.Portals.Find(box) is { NextSector: > 0 } portal)
+            {
+                SpawnSector(portal.NextSector);
+            }
         }
     }
 }

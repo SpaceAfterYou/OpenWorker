@@ -52,7 +52,7 @@ dotnet_diagnostic.CA1051.severity = none
 # What a maze script calls on the server is named by the scripts of the client: AddTimerEx, RemoveTimerEx and CreateTrapEx
 # keep the names the scripts call, and a member a script calls on its helper object is an instance member even when it
 # needs nothing of the object. CA1711: the suffix Ex. CA1822: a member that could be static.
-[OpenWorker.Lua/{LuaMaze,LuaGameHelper}.cs]
+[OpenWorker.Lua/{LuaMaze,LuaMaze.Timers,LuaGameHelper}.cs]
 dotnet_diagnostic.CA1711.severity = none
 dotnet_diagnostic.CA1822.severity = none
 
