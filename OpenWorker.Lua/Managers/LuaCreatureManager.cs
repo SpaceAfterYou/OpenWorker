@@ -640,11 +640,13 @@ public sealed partial class LuaCreatureManager
     }
 
     /// <summary>
-    /// A monster that has hidden cannot be hit while it is gone, and one the players are asked to defend cannot be hit by them at all.
+    /// A monster that has hidden cannot be hit while it is gone, and one the players are asked to defend, or a defensive weapon,
+    /// cannot be hit by them at all.
     /// </summary>
     private bool IsHidden(Entity creature)
     {
-        return Bodies.TryGetValue(creature, out var body) && body.IsOutOfReach || Helpers.Defended.Contains(creature);
+        return Bodies.TryGetValue(creature, out var body) && body.IsOutOfReach || Helpers.Defended.Contains(creature) ||
+               ecs.Get<MonsterCombatComponent>(creature).IsDefensiveWeapon;
     }
 
     public Entity? FindMonster(int identifier)

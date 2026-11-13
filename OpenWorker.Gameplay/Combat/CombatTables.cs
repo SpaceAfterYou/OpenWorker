@@ -89,6 +89,11 @@ public readonly record struct MonsterCombatComponent
     /// How the monster stands: 2 and 3 are fixed in their place for good, 1 waits for a fight.
     /// </summary>
     public byte StandType { get; init; }
+
+    /// <summary>
+    /// A defensive weapon: a player gets on it and fires it. Nothing can hurt it.
+    /// </summary>
+    public bool IsDefensiveWeapon { get; init; }
 }
 
 public sealed class CombatTables(
@@ -112,6 +117,7 @@ public sealed class CombatTables(
     private const byte EquippedMonster = 3;
     private const byte BrokenPartsMonster = 11;
     private const byte HitCountingMonster = 14;
+    private const byte DefensiveWeaponMonster = 5;
     private const byte ArmorBreakMotionType = 1;
 
     private const float DefaultBodyRadius = 50f;
@@ -312,7 +318,7 @@ public sealed class CombatTables(
         return new MonsterCombatComponent
         {
             Stats = stats,
-            Defense = (DefenseType)row.DefenseType,
+            Defense = row.Type == DefensiveWeaponMonster ? DefenseType.Invincible : (DefenseType)row.DefenseType,
             BodyRadius = row.CollisionRadius > 0 ? row.CollisionRadius : DefaultBodyRadius,
             BodyHeight = row.CollisionHeight > 0 ? row.CollisionHeight : DefaultBodyHeight,
             CountsHits = row.Type == HitCountingMonster,
@@ -323,7 +329,8 @@ public sealed class CombatTables(
             WeightRank = row.WeightRank,
             ReactionLimit = (ReactionLimit)(row.ReactionLimit & (byte)ReactionLimit.Immovable),
             ArmorBreakMotion = row.SuperArmorBreakMotion == ArmorBreakMotionType,
-            StandType = (byte)row.StandType
+            StandType = (byte)row.StandType,
+            IsDefensiveWeapon = row.Type == DefensiveWeaponMonster
         };
     }
 
