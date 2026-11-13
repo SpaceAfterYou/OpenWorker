@@ -57,9 +57,9 @@ public sealed partial class MazeResults(
     AchievementManager? achievements = null,
     ILogger<MazeResults>? logger = null) : ISessionCloseHandler
 {
-    // What the reference names a letter of the rewards of a maze.
-    private const byte RewardLetter = 5;
-    private const byte MazeRewardLetter = 1;
+    // A letter of the game whose row of the system letters is the maze reward kept for want of room.
+    private const byte GameLetter = 4;
+    private const byte KeptRewardLetter = 11;
 
     private readonly ILogger _logger = logger ?? NullLogger<MazeResults>.Instance;
 
@@ -363,8 +363,8 @@ public sealed partial class MazeResults(
                 "The reward of a maze that did not fit.",
                 gold,
                 items,
-                RewardLetter,
-                MazeRewardLetter));
+                GameLetter,
+                KeptRewardLetter));
 
             var (_, unread) = await post.CountUnreadAsync(0, account);
 

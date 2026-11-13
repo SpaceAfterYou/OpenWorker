@@ -92,9 +92,9 @@ public sealed partial class InfiniteTower : IMiscTick
     /// <summary>A ticket of the tower is used while entries of the day remain.</summary>
     public const ushort EntriesLeft = 52613;
 
-    // What the reference names a letter of the rewards of a maze.
-    private const byte RewardLetter = 5;
-    private const byte MazeRewardLetter = 1;
+    // A letter of the game whose row of the system letters is the maze reward kept for want of room.
+    private const byte GameLetter = 4;
+    private const byte KeptRewardLetter = 11;
 
     public static readonly MessageOpcode EnterChapterRequest = MessageOpcode.From(GroupOpcode.InfiniteTower, InfiniteTowerOpcode.EnterChapter);
     public static readonly MessageOpcode WorldEnterRequest = MessageOpcode.From(GroupOpcode.World, WorldOpcode.EnterReq);
@@ -484,8 +484,8 @@ public sealed partial class InfiniteTower : IMiscTick
                 "The reward of a stage that did not fit.",
                 0,
                 [new PostItemPersistent { Item = item, Count = (short)Math.Clamp(count, 0, short.MaxValue), Endurance = 100 }],
-                RewardLetter,
-                MazeRewardLetter));
+                GameLetter,
+                KeptRewardLetter));
 
             var (_, unread) = await _post.CountUnreadAsync(0, account);
 
