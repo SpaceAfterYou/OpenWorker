@@ -75,7 +75,8 @@ public sealed class MovementRuleTest
     /// <summary>
     /// After the server tells the client a place, the client sends the place of the map it left until it has taken the new
     /// one. Those moves are no fault; the first move from near the new place ends the grace, and a far move after that is
-    /// refused. The grace is short: a client that keeps sending a far place is refused.
+    /// refused. The grace starts with the first move after the place was told, however long the client loaded the map, and
+    /// is short: a client that keeps sending a far place is refused.
     /// </summary>
     [TestMethod]
     public async Task TheMovesOfThePlaceTheClientLeftAreDroppedUntilItTakesTheTold()
@@ -84,7 +85,7 @@ public sealed class MovementRuleTest
 
         var mover = district.Join(100f, 100f);
 
-        district.Pace.PlaceTold(district.Ecs, mover.Entity);
+        MovementPace.PlaceTold(district.Ecs, mover.Entity);
 
         await district.MoveAsync(mover, 68_000f, 100f);
         district.Time.Advance(TimeSpan.FromSeconds(1));
@@ -103,8 +104,15 @@ public sealed class MovementRuleTest
 
         Assert.AreEqual(1, district.Ecs.Get<HandlerErrorsComponent>(mover.Entity).Count, "Once it has taken the place, a far move is refused.");
 
+        // A place told to a client that loads the map for longer than the grace: the grace starts with its first move.
+        MovementPace.PlaceTold(district.Ecs, mover.Entity);
+        district.Time.Advance(TimeSpan.FromSeconds(6));
+
+        await district.MoveAsync(mover, 68_000f, 100f);
+
+        Assert.AreEqual(1, district.Ecs.Get<HandlerErrorsComponent>(mover.Entity).Count, "The first move after a long load is no fault.");
+
         // A place told and never taken: the grace is over.
-        district.Pace.PlaceTold(district.Ecs, mover.Entity);
         district.Time.Advance(TimeSpan.FromSeconds(6));
 
         await district.MoveAsync(mover, 68_000f, 100f);

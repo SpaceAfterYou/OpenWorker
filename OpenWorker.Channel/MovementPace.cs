@@ -25,8 +25,9 @@ namespace OpenWorker.Channel;
 /// navigation data.<br/>
 /// A client that has been told a place by the server (<see cref="PlaceTold"/>) keeps sending the places of the map it left
 /// until it has taken the new one. Such a move, too far from the place the server keeps, is dropped without a fault for
-/// <see cref="WorldOptions.PlaceGrace"/>. A place the server puts the player at within its map
-/// (<see cref="ServerPlace.Put"/>) is told the same way, its grace starting with the first move after it.
+/// <see cref="WorldOptions.PlaceGrace"/> from the first move after the place was told: a client that enters a map loads it
+/// first, for as long as that takes, and only then sends the place it had in the map it left. A place the server puts the
+/// player at within its map (<see cref="ServerPlace.Put"/>) is told the same way.
 /// </summary>
 public sealed class MovementPace
 {
@@ -69,16 +70,18 @@ public sealed class MovementPace
     public bool Enabled => _fallback > 0f;
 
     /// <summary>
-    /// The server has told the client of the player a place: the moves it sent before it took the place are not faults.
+    /// The server has told the client of the player a place: the moves it sends before it takes the place are not faults.
     /// </summary>
-    public void PlaceTold(World world, Entity player)
+    public static void PlaceTold(World world, Entity player)
     {
-        EnsureComponent(world, player);
-
-        ref var pace = ref world.Get<MovementPaceComponent>(player);
-
-        pace.Told = true;
-        pace.ToldAt = _time.GetTimestamp();
+        if (world.Has<PlaceToldComponent>(player))
+        {
+            world.Set(player, new PlaceToldComponent(true));
+        }
+        else
+        {
+            world.Add(player, new PlaceToldComponent(true));
+        }
     }
 
     /// <summary>
