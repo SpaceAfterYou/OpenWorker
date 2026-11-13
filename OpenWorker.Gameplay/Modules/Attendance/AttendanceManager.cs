@@ -164,6 +164,9 @@ public sealed partial class AttendanceManager(
     /// </summary>
     public async ValueTask ClaimPlayTimeAsync(Entity player, CancellationToken cancellationToken)
     {
+        // A claim after the start of a new day is a claim of that day.
+        await RefreshAsync(player, cancellationToken);
+
         CountPlayTime(player);
 
         if (!TryGet(player, out var component) || !contents[ServerContentIndex.Attendance])
