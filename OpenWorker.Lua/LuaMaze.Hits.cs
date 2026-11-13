@@ -23,8 +23,9 @@ public partial class LuaMaze
     /// <param name="shares">The share of the damage each target takes, by their place in the list. Everyone takes all of it without.</param>
     /// <param name="origin">Where the blow comes from when it is not the player: the place a shot burst at or a trap lies.</param>
     /// <param name="card">The card of the player that strikes, when it is not the player: the hit is shown as the card's.</param>
+    /// <param name="strength">The stats the blow is dealt with when they are not the player's: those of the weapon it fires.</param>
     private async ValueTask ApplyDamageAsync(Fighter member, int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null, Vector3? origin = null,
-        CardStrike? card = null)
+        CardStrike? card = null, CombatStats? strength = null)
     {
         var player = member.Player;
 
@@ -44,7 +45,8 @@ public partial class LuaMaze
 
         var attackerStats = combat.GetPlayer(Ecs, player);
         var skillDamage = combat.GetSkill(skill);
-        var hits = targets.Select((target, i) => ApplyDamage(player, target, attackerStats, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, skill, HitKinds.Of(trigger), origin)).ToArray();
+        var dealt = strength ?? attackerStats;
+        var hits = targets.Select((target, i) => ApplyDamage(player, target, dealt, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, skill, HitKinds.Of(trigger), origin)).ToArray();
 
         // The combo of the player goes into the message of the hit: the client shows it. The blows of a card do not count.
         var now = (long)Clock.Time.TotalMilliseconds;
