@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot.Modules.Skill.Types;
@@ -27,10 +28,6 @@ public sealed class HiddenEventCatalog
     private const byte PeakSkillType = 4;
     private const byte ErosionSkillType = 5;
     private const byte JumpAttackPassive = 16;
-
-    // The rows of a deck on the page the client uses, and the places of a row that link to the skill before them.
-    private const int DeckRows = 6;
-    private const int DeckPlaces = 4;
 
     private static readonly HashSet<HiddenEventTarget> Counted =
     [
@@ -200,40 +197,14 @@ public sealed class HiddenEventCatalog
     }
 
     /// <summary>
-    /// Whether the skill is used linked from the deck: it stands in the row of the deck the client names, after the first place,
-    /// and the player has chosen a bonus of the table for that place.
+    /// Whether the skill is used linked from the deck: the place it holds in the row the client names has a bonus of the table.
     /// </summary>
     public bool IsDeckLink(SkillDeckValue[]? decks, ushort[]? bonuses, int skill, byte row)
     {
-        if (row >= DeckRows || decks is null || bonuses is null || skill == 0)
-        {
-            return false;
-        }
-
         var swap = _skills.TryGetValue(skill, out var kind) ? kind.Swap : 0;
+        var bonus = DeckLink.BonusOf(decks, bonuses, row, skill, swap);
 
-        foreach (var deck in decks)
-        {
-            if (deck.Position != row)
-            {
-                continue;
-            }
-
-            var place = 0;
-
-            foreach (var standing in deck.GetList())
-            {
-                if (standing != 0 && (standing == skill || standing == swap))
-                {
-                    return place is > 0 and < DeckPlaces && place - 1 < bonuses.Length && bonuses[place - 1] is var bonus and > 0 &&
-                           bonus <= short.MaxValue && _deckBonuses.TryGet((short)bonus, out _);
-                }
-
-                place++;
-            }
-        }
-
-        return false;
+        return bonus is > 0 and <= (ushort)short.MaxValue && _deckBonuses.TryGet((short)bonus, out _);
     }
 
     private bool CountsAnyItem(int item)

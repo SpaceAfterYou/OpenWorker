@@ -269,6 +269,8 @@ public sealed partial class MazeService(
         var position = PlaceOfSkill(context.Player, skill.Position);
         var now = clock.Time;
 
+        skillUse.Link(context.Player, skill.Skill, skill.SkillDeckIndex);
+
         var refusal = skillUse.Check(context.Player, skill.Skill, now);
 
         // The skill that plays is cut only once it may be, as the client lets the player.

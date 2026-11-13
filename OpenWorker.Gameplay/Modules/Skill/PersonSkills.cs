@@ -59,7 +59,10 @@ public sealed class PersonSkills(World world, PersonStateStore store, ReadOnlyCo
 
     private const byte ActiveSkill = 2;
 
-    private static ushort[] StartDeckBonus => [1, 2, 3, 4];
+    /// <summary>
+    /// The first damage bonus of each place that links, as the client shows before any is chosen.
+    /// </summary>
+    private static ushort[] StartDeckBonus => [1, 11, 21, 0];
 
     public async ValueTask LoadAsync(Entity player, int person, Hero hero, CancellationToken cancellationToken)
     {

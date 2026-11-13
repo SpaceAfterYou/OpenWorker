@@ -7,6 +7,7 @@ using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Hotspot.Modules.Skill;
 using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -256,7 +257,7 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
 
         if (kind == SkillCostKind.SoulGauge)
         {
-            var reduction = (buffs?.SoulCostDown ?? 0f) + DeckBonus(player, row, DeckBonusKind.SoulCost) + Special(player).Of(SpecialEffect.SoulCostDown) * 0.01f;
+            var reduction = (buffs?.SoulCostDown ?? 0f) + DeckBonus(player, DeckBonusKind.SoulCost) + Special(player).Of(SpecialEffect.SoulCostDown) * 0.01f;
 
             cost -= cost * reduction;
         }
@@ -339,7 +340,7 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
 
     /// <summary>
     /// How much shorter the cooldown of a skill is, in percent from 0 to 100: the buffs of the player and the cooldown bonus of
-    /// its deck. A passive skill keeps its whole cooldown.
+    /// the deck place the skill was linked from. A passive skill keeps its whole cooldown.
     /// </summary>
     public float CooldownRate(Entity player, in SkillRow row)
     {
@@ -348,7 +349,7 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
             return 0f;
         }
 
-        var rate = (BuffBook.Of(world, player)?.CooldownRate ?? 0f) + Special(player).Of(SpecialEffect.CooldownShare) + DeckBonus(player, row, DeckBonusKind.Cooldown) * 100f;
+        var rate = (BuffBook.Of(world, player)?.CooldownRate ?? 0f) + Special(player).Of(SpecialEffect.CooldownShare) + DeckBonus(player, DeckBonusKind.Cooldown) * 100f;
 
         return Math.Clamp(rate, 0f, 100f);
     }
@@ -362,21 +363,58 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
     }
 
     /// <summary>
-    /// The value of the bonus the player chose for the page of the deck a skill stands in, when it is of the kind asked for
-    /// and the player has its level. Skills outside the deck have no bonus. The client 1.4.2.3 uses the first page only.
+    /// The player starts a skill from a row of its deck: the bonus of the place the skill holds there is the bonus of this skill,
+    /// for its cost, its cooldown and its blows, until the next one starts. A skill at the first place, or outside the row, has
+    /// none.
     /// </summary>
-    private float DeckBonus(Entity player, in SkillRow skill, DeckBonusKind kind)
+    public void Link(Entity player, int skill, byte row)
     {
-        if (IsDeckless(skill) || !StandsInDeck(player, skill) ||
-            !world.TryGet<SkillDeckBonusComponent>(player, out var chosen) || chosen.Values is not [var bonus, ..] ||
-            !_deckBonuses.TryGet((short)bonus, out var row) || (DeckBonusKind)row.BonusType != kind)
+        var link = default(SkillDeckLinkComponent);
+
+        if (world.TryGet<SkillDeckComponent>(player, out var deck) && world.TryGet<SkillDeckBonusComponent>(player, out var chosen) &&
+            DeckLink.BonusOf(deck.SlotList, chosen.Values, row, skill, _skills.TryGet(skill, out var own) ? own.SwapSkill : 0) is var bonus and > 0 and <= (ushort)short.MaxValue &&
+            _deckBonuses.TryGet((short)bonus, out var found))
         {
-            return 0f;
+            link = new SkillDeckLinkComponent((DeckBonusKind)found.BonusType, found.BonusValue);
         }
 
-        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
+        if (world.Has<SkillDeckLinkComponent>(player))
+        {
+            world.Set(player, link);
+        }
+        else
+        {
+            world.Add(player, link);
+        }
+    }
 
-        return level >= row.RequiredLevel ? row.BonusValue : 0f;
+    /// <summary>
+    /// The bonuses the player may keep for the places of its deck page: each must be a row of the table for that place, of a
+    /// level the player has reached. Any other is none.
+    /// </summary>
+    public ushort[] ChooseDeckBonus(Entity player, ushort[] requested)
+    {
+        var level = world.TryGet<LevelComponent>(player, out var reached) ? reached.Level : (byte)1;
+        var kept = new ushort[SkillModuleDefines.SkillDeckBonusCount];
+
+        for (var place = 0; place < kept.Length && place < requested.Length; place++)
+        {
+            if (requested[place] is var bonus and > 0 and <= (ushort)short.MaxValue && _deckBonuses.TryGet((short)bonus, out var row) &&
+                row.Phase == place && row.RequiredLevel <= level)
+            {
+                kept[place] = bonus;
+            }
+        }
+
+        return kept;
+    }
+
+    /// <summary>
+    /// The value of the deck bonus of the skill the player started last, when it is of the kind asked for.
+    /// </summary>
+    private float DeckBonus(Entity player, DeckBonusKind kind)
+    {
+        return world.TryGet<SkillDeckLinkComponent>(player, out var link) && link.Kind == kind ? link.Value : 0f;
     }
 
     /// <summary>

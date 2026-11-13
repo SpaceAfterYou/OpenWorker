@@ -27,7 +27,7 @@ namespace OpenWorker.Server.Common.Services;
 /// skills, which the flush writes from either server. Forgetting all, forgetting one step of one skill and a new place in the
 /// deck each use up an item of their kind, which the request names by its slot.
 /// </summary>
-public sealed class SkillWindowService(World world, SkillLearning learning, PersonSkills book, ItemUseService use, InventoryService inventory) :
+public sealed class SkillWindowService(World world, SkillLearning learning, PersonSkills book, ItemUseService use, InventoryService inventory, SkillUse skills) :
     IHotspotHandler<SkillDeckBonusRequest>,
     IHotspotHandler<SkillAddDeckSlotRequest>,
     IHotspotHandler<SkillDivergenceLearnRequest>,
@@ -69,19 +69,24 @@ public sealed class SkillWindowService(World world, SkillLearning learning, Pers
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// The bonuses of the places of the deck page: a bonus not of its place or above the player's level is none. The answer tells
+    /// what is kept.
+    /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillDeckBonusRequest request)
     {
         var session = world.Get<ServerSessionComponent>(context.Player);
+        var kept = skills.ChooseDeckBonus(context.Player, request.Values ?? []);
 
         world.Set(context.Player, new SkillDeckBonusComponent
         {
-            Values = request.Values
+            Values = kept
         });
         world.MarkDirty(context.Player, PersonSections.Skills);
 
         session.Send(new SkillDeckBonusResponse
         {
-            Values = request.Values,
+            Values = kept,
         });
 
         return ValueTask.CompletedTask;
