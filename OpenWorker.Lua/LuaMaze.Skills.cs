@@ -1,6 +1,7 @@
 using Arch.Core;
 using Lua;
 using OpenWorker.Batch.Actions;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Skill.Types;
@@ -44,6 +45,8 @@ public partial class LuaMaze
         Run(State.OnActionSkill(skill, this));
 
         _buffs.OnCondition(player, MazeBuffs.OnSkill);
+
+        CountHiddenEventSkill(skill);
 
         Begin(member, skill, position, true);
     }
@@ -116,6 +119,8 @@ public partial class LuaMaze
         {
             return;
         }
+
+        CountHiddenEvent(HiddenEventTarget.Evade, 0, 1);
 
         if (clips.Any(e => e?.Cuts is { Count: > 0 }))
         {

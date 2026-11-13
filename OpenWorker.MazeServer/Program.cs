@@ -1,3 +1,4 @@
+using Arch.Core;
 using OpenWorker.Hotspot.Cache;
 ﻿using OpenWorker.Batch;
 using OpenWorker.Channel.Community;
@@ -15,6 +16,7 @@ using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Modules.Drops;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
@@ -99,6 +101,24 @@ await Host
         services.AddSingleton<KillRewards>();
         services.AddSingleton<MazeKeyRewards>();
         services.AddSingleton<MazeResults>();
+
+        // A hidden event counts what the players of its maze do, wherever the server hears of it.
+        services.AddSingleton<HiddenEventCatalog>();
+        services.AddSingleton(provider =>
+        {
+            var world = provider.GetRequiredService<World>();
+
+            return new HiddenEventCounter
+            {
+                Route = (player, target, what, amount) =>
+                {
+                    if (world.IsAlive(player) && world.TryGet(player, out LuaMaze? maze) && maze is { IsClosed: false })
+                    {
+                        maze.CountHiddenEvent(target, what, amount);
+                    }
+                }
+            };
+        });
         services.AddSingleton<PrologueService>();
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<MazeResults>());
 

@@ -41,6 +41,10 @@ public partial class MazeReporter(
     private const byte CasualMaze = 2;
     private const byte DistrictRaid = 8;
 
+    // A hidden event met: the target of its chain of achievements, and the kind of event the quests that ask for one name.
+    private const int HiddenEventAchievement = 1;
+    private const int HiddenEventQuest = 2;
+
     // The kinds of attack the table calls plain, from the ground, thrown and skills proper.
     private const byte PlainAttack = 1;
     private const byte ThrownWeapon = 3;
@@ -116,6 +120,25 @@ public partial class MazeReporter(
         catch (Exception e)
         {
             LogReportFailed(logger, e, "MazeCleared");
+        }
+    }
+
+    /// <summary>
+    /// The hidden event of the maze the person cleared was met: the achievements of hidden events and the quests that ask for
+    /// one count it.
+    /// </summary>
+    public async ValueTask HiddenEventMetAsync(Entity player)
+    {
+        try
+        {
+            achievements?.Count(player, AchievementType.MissionDone, 1, HiddenEventAchievement);
+
+            await quests.OnEventAsync(player, HiddenEventQuest, CancellationToken.None);
+        }
+
+        catch (Exception e)
+        {
+            LogReportFailed(logger, e, "HiddenEventMet");
         }
     }
 

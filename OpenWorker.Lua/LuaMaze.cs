@@ -317,6 +317,8 @@ public partial class LuaMaze(
         member.Loaded = true;
         _countdown.Arrived();
 
+        TellHiddenEvent(player);
+
         return true;
     }
 
