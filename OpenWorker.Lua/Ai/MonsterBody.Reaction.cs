@@ -94,6 +94,7 @@ internal partial class MonsterBody
         _attackEnd = 0;
         _pending.Clear();
         _clips.Clear();
+        _moves.Clear();
         ReleaseGrab(true);
 
         StopMoving(false);

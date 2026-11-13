@@ -122,6 +122,7 @@ internal partial class MonsterBody : IAiHost
         _grab.Release();
         _detaches.Clear();
         _clips.Clear();
+        _moves.Clear();
         _carried = false;
         _lastChange = 0;
         _holdUntil = 0;
@@ -281,6 +282,7 @@ internal partial class MonsterBody : IAiHost
         _attackEnd = 0;
         _pending.Clear();
         _clips.Clear();
+        _moves.Clear();
         ReleaseGrab(true);
 
         if (IsMoving)
@@ -305,6 +307,7 @@ internal partial class MonsterBody : IAiHost
 
         Advance(now, elapsed);
         ResolveHits(now);
+        MoveWithSkill(now);
         ResolveGrab(now);
         ResolveHidings(now);
         CheckIdleTime(now);
@@ -758,6 +761,7 @@ internal partial class MonsterBody : IAiHost
         _hidings.Clear();
         _detaches.Clear();
         _clips.Clear();
+        _moves.Clear();
         _staged = false;
         _freezes = start is null;
 
@@ -788,6 +792,8 @@ internal partial class MonsterBody : IAiHost
 
             _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
+            AddMoves(timeline.Moves, now, timeline.Clips.Count);
+
             foreach (var hiding in timeline.Hidings)
             {
                 // The kinds that wait for other monsters to die are not followed.
@@ -817,6 +823,9 @@ internal partial class MonsterBody : IAiHost
         while (_pending.Count > 0 && _pending[0].Time <= now)
         {
             var pending = _pending[0];
+
+            // The blow is dealt from where the skill has carried the monster by its moment.
+            MoveWithSkill(pending.Time);
 
             _pending.RemoveAt(0);
 
@@ -869,6 +878,11 @@ internal partial class MonsterBody : IAiHost
         for (var i = 0; i < _hidings.Count; i++)
         {
             _hidings[i] = (_hidings[i].Time + seconds, _hidings[i].Event);
+        }
+
+        for (var i = 0; i < _moves.Count; i++)
+        {
+            _moves[i] = _moves[i] with { Time = _moves[i].Time + seconds };
         }
     }
 
