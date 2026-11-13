@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.TryAddSingleton<IRankingStore, RankingBook>();
         services.TryAddSingleton<ITradePasswordTries, TradePasswordTriesStore>();
         services.TryAddSingleton<IMyRoomStore, MyRoomStore>();
+        services.TryAddSingleton<ICashShopStore, CashShopStore>();
 
         return services;
     }

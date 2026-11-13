@@ -1,0 +1,194 @@
+using System.Collections.ObjectModel;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using OpenWorker.Domain.Enums;
+using OpenWorker.Domain.Persistent;
+using OpenWorker.Domain.Stores;
+using OpenWorker.Gameplay.Modules.CashShop;
+using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Persistence;
+using OpenWorker.UpdateContent.Res.Rows;
+
+namespace OpenWorker.Hotspot.Test;
+
+/// <summary>
+/// The cash shop: where a price comes from, the periods limited products are counted in, and the
+/// purchase that takes the balance, counts the limits and writes the letters in one transaction (against a real Postgres,
+/// OPENWORKER_TEST_POSTGRES).
+/// </summary>
+[TestClass]
+[DoNotParallelize]
+public sealed class CashShopTest
+{
+    private const string Variable = "OPENWORKER_TEST_POSTGRES";
+
+    private const int Ticket = 837_000_044;
+    private const int Pack = 837_000_045;
+    private const int CashKind = 1;
+
+    private static ItemCatalog Items()
+    {
+        return new ItemCatalog(
+            new ReadOnlyCollection<ItemRow>(
+            [
+                TestRows.Build<ItemRow>(("Id", Ticket), ("Classify", CashKind), ("Stack", (short)99)),
+                TestRows.Build<ItemRow>(("Id", Pack), ("Classify", CashKind), ("Stack", (short)99))
+            ]),
+            new ReadOnlyCollection<ItemClassifyRow>([TestRows.Build<ItemClassifyRow>(("Id", CashKind), ("Group", (byte)18), ("StorageKind", (byte)13))]),
+            new([]),
+            new([]));
+    }
+
+    private static CashBillingRow ServerPrices(ushort id, params (int Item, int Count, int Price)[] choices)
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+
+        writer.Write(id);
+        writer.Write((short)0);
+
+        foreach (var column in new Func<(int Item, int Count, int Price), int>[] { e => e.Item, e => e.Count, e => e.Price, e => e.Price })
+        {
+            for (var index = 0; index < CashBillingRow.Choices; index++)
+            {
+                writer.Write(index < choices.Length ? column(choices[index]) : 0);
+            }
+        }
+
+        for (var index = 1; index < CashBillingRow.Choices; index++)
+        {
+            writer.Write((short)0);
+        }
+
+        writer.Flush();
+        stream.Position = 0;
+
+        return new CashBillingRow(new BinaryReader(stream));
+    }
+
+    /// <summary>
+    /// The client's table says what a product gives, the server's what it costs: a choice is sold while the two tables agree on
+    /// its item and count and the price is not 0, and the choices end at the first that is not, as the client counts them.
+    /// </summary>
+    [TestMethod]
+    public void AChoiceIsSoldWhileBothTablesAgreeOnItAndItHasAPrice()
+    {
+        var catalog = new CashShopCatalog(
+            new ReadOnlyCollection<CashShopRow>([TestRows.Build<CashShopRow>(("Id", 9), ("Item", Ticket), ("SellActive", (byte)1), ("Billing", (short)9))]),
+            new ReadOnlyCollection<CashBillingInfoRow>([TestRows.Build<CashBillingInfoRow>(
+                ("Id", (short)9), ("Item1", Ticket), ("Count1", 1), ("Item2", Pack), ("Count2", 5), ("Item3", Ticket), ("Count3", 10))]),
+            new ReadOnlyCollection<CashBillingRow>([ServerPrices(9, (Ticket, 1, 300), (Pack, 6, 1000), (Ticket, 10, 2500))]),
+            Items());
+
+        Assert.IsTrue(catalog.TryGet(9, out var product));
+        Assert.HasCount(1, product.Choices, "the second choice gives another count in each table, so it and all after it are not sold");
+        Assert.AreEqual(300, product.Choices[0].Price);
+        Assert.AreEqual(300, catalog.Listing[0].CashInfoList[0].Price);
+    }
+
+    /// <summary>
+    /// A day of the counts starts at 09:00, a week on Tuesday at 09:00, a month on its first day at 09:00; a count for good has
+    /// one period.
+    /// </summary>
+    [TestMethod]
+    public void LimitedProductsAreCountedInPeriodsThatStartAtNine()
+    {
+        var offset = TimeSpan.FromHours(9);
+        var mondayMorning = new DateTimeOffset(2026, 11, 2, 8, 0, 0, offset);
+
+        Assert.AreEqual(new DateTimeOffset(2026, 11, 1, 9, 0, 0, offset).UtcDateTime, CashLimits.PeriodOf(CashLimitKind.AccountDay, mondayMorning));
+        Assert.AreEqual(new DateTimeOffset(2026, 10, 27, 9, 0, 0, offset).UtcDateTime, CashLimits.PeriodOf(CashLimitKind.CharacterWeek, mondayMorning));
+        Assert.AreEqual(new DateTimeOffset(2026, 11, 3, 9, 0, 0, offset).UtcDateTime,
+            CashLimits.PeriodOf(CashLimitKind.CharacterWeek, new DateTimeOffset(2026, 11, 3, 9, 0, 0, offset)));
+        Assert.AreEqual(new DateTimeOffset(2026, 10, 1, 9, 0, 0, offset).UtcDateTime,
+            CashLimits.PeriodOf(CashLimitKind.AccountMonth, new DateTimeOffset(2026, 11, 1, 8, 59, 0, offset)));
+        Assert.AreEqual(CashLimits.Always, CashLimits.PeriodOf(CashLimitKind.Character, mondayMorning));
+    }
+
+    /// <summary>
+    /// A purchase takes the price, adds to the count of a limited product and writes the letter at once; one that the balance
+    /// or the limit refuses changes none of them.
+    /// </summary>
+    [TestMethod]
+    public async Task APurchaseTakesTheBalanceCountsAndWritesTheLetterOrNothing()
+    {
+        var connection = Environment.GetEnvironmentVariable(Variable);
+
+        if (string.IsNullOrEmpty(connection))
+        {
+            Assert.Inconclusive($"{Variable} is not set.");
+        }
+
+        await using var services = new ServiceCollection()
+            .AddPooledDbContextFactory<PersistenceContext>(builder => builder
+                .UseNpgsql(connection + ";Database=openworker_test_" + Guid.NewGuid().ToString("N"))
+                .UsePersistenceDefaults())
+            .BuildServiceProvider();
+
+        var factory = services.GetRequiredService<IDbContextFactory<PersistenceContext>>();
+
+        await using (var context = await factory.CreateDbContextAsync())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        try
+        {
+            int person, account;
+
+            await using (var database = await factory.CreateDbContextAsync())
+            {
+                var row = new PersonPersistent
+                {
+                    Name = "buyer",
+                    Hero = Hero.Haru,
+                    Level = 1,
+                    DefaultHairStyle = 0, DefaultHairColor = 0, DefaultEyeColor = 0, DefaultSkinColor = 0,
+                    EquippedHairStyle = 0, EquippedHairColor = 0, EquippedEyeColor = 0, EquippedSkinColor = 0,
+                    Location = 10003, PositionX = 0, PositionY = 0, PositionZ = 0, RotationX = 0, FatiguePointCommon = 0,
+                    Account = new AccountPersistent { Username = "buyer", PasswordHash = [], SaltHash = [] },
+                    Gate = new GatePersistent { Name = "buyer" }
+                };
+
+                database.Add(row);
+                await database.SaveChangesAsync();
+
+                (person, account) = (row.Id, row.Account.Id);
+            }
+
+            var store = new CashShopStore(factory);
+            var buyer = new CashBuyer(person, account, "buyer", (byte)Hero.Haru);
+            var order = new CashOrder(300, [new CashLimitDraft(9, false, CashLimits.Always, 1, 1)],
+                [new PostItemPersistent { Item = Ticket, Count = 1, Endurance = 100 }]);
+
+            Assert.AreEqual(1000, await store.GiveAsync(account, 1000, InventoryService.CashLimit));
+
+            var bought = await store.BuyAsync(new CashPurchaseDraft(account, person, order.Price, order.Limits,
+                CashShopOrders.Letters(order, buyer, null, DateTime.UtcNow)));
+
+            Assert.AreEqual(new CashPurchaseResult(CashPurchaseOutcome.Done, 700), bought);
+
+            var again = await store.BuyAsync(new CashPurchaseDraft(account, person, order.Price, order.Limits,
+                CashShopOrders.Letters(order, buyer, null, DateTime.UtcNow)));
+
+            Assert.AreEqual(new CashPurchaseResult(CashPurchaseOutcome.Limit, 700), again, "the limit of one is reached: the price stays");
+
+            var tooDear = await store.BuyAsync(new CashPurchaseDraft(account, person, 701, [],
+                CashShopOrders.Letters(order, buyer, null, DateTime.UtcNow)));
+
+            Assert.AreEqual(new CashPurchaseResult(CashPurchaseOutcome.NotEnough, 700), tooDear);
+            Assert.IsNull(await store.GiveAsync(account, -701, InventoryService.CashLimit), "the balance never goes below zero");
+
+            await using var check = await factory.CreateDbContextAsync();
+
+            Assert.AreEqual(1, await check.Posts.CountAsync(e => e.ReceiverId == person), "one letter for the one purchase");
+            Assert.AreEqual(1, await check.CashShopPurchases.Where(e => e.AccountId == account).SumAsync(e => e.Count));
+        }
+        finally
+        {
+            await using var context = await factory.CreateDbContextAsync();
+
+            await context.Database.EnsureDeletedAsync();
+        }
+    }
+}

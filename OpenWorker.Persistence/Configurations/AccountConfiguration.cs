@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Persistence.Utils;
@@ -28,6 +28,9 @@ public sealed class AccountConfiguration : IEntityTypeConfiguration<AccountPersi
         builder.Property(x => x.SaltHash)
             .IsRequired()
             .HasMaxLength(PasswordHash.PasswordSaltSize);
+
+        // A purchase takes the balance only while enough is left.
+        builder.ToTable(table => table.HasCheckConstraint("CK_Accounts_Cash", "\"Cash\" >= 0"));
 
         builder.HasMany(x => x.Persons)
             .WithOne(x => x.Account)
