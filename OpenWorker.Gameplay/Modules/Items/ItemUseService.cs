@@ -163,6 +163,7 @@ public sealed partial class ItemUseService(
             ItemUseType.EFFECT => UseEffect(player, item, row, classify, place),
             ItemUseType.EQUIP_SLOT_OPEN => OpenEquipSlot(player, item, classify),
             ItemUseType.INFINITE_TOWER => UseTowerTicket(player, item),
+            ItemUseType.FEVER => UseFever(),
             _ => ItemUseResult.Refused()
         };
 
