@@ -152,6 +152,11 @@ public static class LuaStateExtensions
     {
         await CallDieAsync(state, "OnDie", monster, box, maze, cancellationToken);
         await CallDieAsync(state, "OnRealDie", monster, box, maze, cancellationToken);
+
+        if (!maze.IsClosed && maze.TakeFallenGroup(box) is var group and > 0)
+        {
+            await CallAsync(state, maze, "OnRealDieEx", [new LuaValue(group), new LuaValue(maze)], cancellationToken);
+        }
     }
 
     private static async ValueTask CallDieAsync(LuaState state, string name, int monster, int box, LuaMaze maze, CancellationToken cancellationToken)

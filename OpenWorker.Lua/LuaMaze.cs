@@ -315,6 +315,7 @@ public partial class LuaMaze(
         }
 
         member.Loaded = true;
+        _countdown.Arrived();
 
         return true;
     }

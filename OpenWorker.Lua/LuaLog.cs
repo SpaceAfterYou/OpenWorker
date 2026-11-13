@@ -80,9 +80,6 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CompleteTimerStep: {Function}, step {Step}")]
     public static partial void IgnoredCompleteTimerStep(this ILogger logger, string function, int step);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call ExcutEventSpawnGroupLua: group {Group}")]
-    public static partial void IgnoredExecuteEventSpawnGroup(this ILogger logger, int group);
-
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call ExecuteDestroy: type {Type}, table {Table}, animation {Animation}, suicide {Suicide}")]
     public static partial void IgnoredExecuteDestroy(this ILogger logger, int type, string table, string animation, bool suicide);
 
