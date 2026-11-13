@@ -178,6 +178,7 @@ public partial class LuaMaze
         member.PressedKeys.Clear();
 
         PlanCarries(member, skill, hero, generation, run.Began);
+        PlanControls(member, skill, hero, generation, run.Began);
         Play(member, run);
     }
 
