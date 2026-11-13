@@ -65,6 +65,8 @@ internal partial class MonsterBody
         {
             _detaches.Add((at + detach.Time, detach));
         }
+
+        AddMoves(stage.Moves, at, 1);
     }
 
     /// <summary>

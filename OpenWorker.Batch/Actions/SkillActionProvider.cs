@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Numerics;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Enums;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -25,6 +26,12 @@ public readonly record struct SkillHiding(float Time, InvisibleEvent Event);
 public readonly record struct SkillDetach(float Time, float DropTime, AttackTrigger? FollowUp);
 
 /// <summary>
+/// A move the animation of a skill carries its mover by: the moment, from the start of the skill, the move in the mover's own
+/// frame (forward is -Y), and the animation it belongs to, counted in the order the skill plays them.
+/// </summary>
+public readonly record struct SkillMove(float Time, Vector3 Offset, int Clip);
+
+/// <summary>
 /// The parts of a grabbing skill.
 /// </summary>
 public enum GrabStage
@@ -48,6 +55,11 @@ public enum GrabStage
 public sealed record SkillStage(float Length, IReadOnlyList<SkillHit> Hits, IReadOnlyList<SkillHit> Shots, IReadOnlyList<SkillHiding> Hidings, IReadOnlyList<SkillDetach> Detaches, ActionAnimation? Clip = null)
 {
     public static SkillStage Empty { get; } = new(0f, [], [], [], []);
+
+    /// <summary>
+    /// How the animation carries the monster, in the order of time.
+    /// </summary>
+    public IReadOnlyList<SkillMove> Moves { get; init; } = [];
 }
 
 /// <summary>
@@ -62,6 +74,12 @@ public readonly record struct TimedClip(float Began, float Length, ActionAnimati
 public sealed record SkillTimeline(float Length, IReadOnlyList<TimedClip> Clips, IReadOnlyList<SkillHit> Hits, IReadOnlyList<SkillHit> Shots, IReadOnlyList<SkillHiding> Hidings)
 {
     public static SkillTimeline Empty { get; } = new(0f, [], [], [], []);
+
+    /// <summary>
+    /// How the animations carry the monster, on the same clock, in the order of time. <see cref="SkillMove.Clip"/> is the place of
+    /// the animation in <see cref="Clips"/>.
+    /// </summary>
+    public IReadOnlyList<SkillMove> Moves { get; init; } = [];
 }
 
 /// <summary>
@@ -145,6 +163,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         var hits = new List<SkillHit>();
         var shots = new List<SkillHit>();
         var hidings = new List<SkillHiding>();
+        var moves = new List<SkillMove>();
         var offset = 0f;
 
         // The extra animation plays only on input from the player.
@@ -165,6 +184,17 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             do
             {
                 clips.Add(new TimedClip(round, Math.Min(clock.Length, end - round), animation));
+
+                // A round after the first goes on from the end of the one before, and takes the move of the frame at its start.
+                foreach (var frame in Frames(animation, round > offset))
+                {
+                    var time = round + clock.Wall(frame.Time);
+
+                    if (!rounds || time < end)
+                    {
+                        moves.Add(new SkillMove(time, frame.Offset, clips.Count - 1));
+                    }
+                }
 
                 foreach (var attack in animation.Attacks)
                 {
@@ -199,7 +229,19 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             clips,
             hits.OrderBy(e => e.Time).ToArray(),
             shots.OrderBy(e => e.Time).ToArray(),
-            hidings.OrderBy(e => e.Time).ToArray());
+            hidings.OrderBy(e => e.Time).ToArray())
+        {
+            Moves = moves
+        };
+    }
+
+    /// <summary>
+    /// The frames of the way an animation carries its mover as it plays once from its start: a frame counts once its moment is
+    /// passed, so the one at the very start counts only when the animation goes on from the end of a round before.
+    /// </summary>
+    private static IEnumerable<MoveFrame> Frames(ActionAnimation animation, bool goesOn)
+    {
+        return (animation.Moves ?? []).Where(e => (goesOn ? e.Time >= 0f : e.Time > 0f) && e.Time <= animation.Length);
     }
 
     public IReadOnlyList<SkillHit> GetHits(int skill, Hero hero)
@@ -344,7 +386,10 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             animation.Attacks.Where(e => e.IsProjectile).Select(e => new SkillHit(e.Start, e)).ToArray(),
             (animation.Hides ?? []).Select(e => new SkillHiding(e.Start, e)).ToArray(),
             detaches,
-            animation);
+            animation)
+        {
+            Moves = Frames(animation, false).Select(e => new SkillMove(e.Time, e.Offset, 0)).ToArray()
+        };
     }
 
     /// <summary>

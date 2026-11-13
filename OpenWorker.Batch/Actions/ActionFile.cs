@@ -12,6 +12,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Cuts">The stretches of the animation in which the player may cut it with another skill.</param>
 /// <param name="Speeds">The stretches of the animation that play faster or slower than the rest.</param>
 /// <param name="Controls">The moments at which the one who plays the animation takes control of a monster or lets it go.</param>
+/// <param name="Moves">How the animation carries the one who plays it, frame by frame, in the order of time.</param>
 public sealed record ActionAnimation(
     string Name,
     float Length,
@@ -24,7 +25,15 @@ public sealed record ActionAnimation(
     IReadOnlyList<AttachEvent>? Attaches = null,
     IReadOnlyList<CutEvent>? Cuts = null,
     IReadOnlyList<SpeedEvent>? Speeds = null,
-    IReadOnlyList<ControlEvent>? Controls = null);
+    IReadOnlyList<ControlEvent>? Controls = null,
+    IReadOnlyList<MoveFrame>? Moves = null);
+
+/// <summary>
+/// One frame of the way an animation carries the one who plays it: the move since the frame before, in the mover's own frame,
+/// where forward is -Y.
+/// </summary>
+/// <param name="Time">Seconds from the start of the animation.</param>
+public readonly record struct MoveFrame(float Time, Vector3 Offset);
 
 /// <summary>
 /// The player takes control of a monster that comes in beside it, or lets the one it controls go (a monster of zero).
@@ -148,6 +157,8 @@ public sealed class ActionFile
     private const string Magic = "VBIN";
     private const string RootTag = "TRIG";
     private const string SequenceTag = "SEQU";
+    private const string MovesTag = "OSDT";
+    private const int MoveFrameSize = 4 * sizeof(float);
     private const short CutTriggerType = 2;
     private const short AttackTriggerType = 3;
     private const short SpeedTriggerType = 23;
@@ -407,7 +418,8 @@ public sealed class ActionFile
             Close(reader, chunk);
         }
 
-        SkipFrames(reader);
+        var moves = ReadMoves(reader);
+
         SkipFrames(reader);
 
         if (version >= RotationFramesSinceVersion)
@@ -416,7 +428,48 @@ public sealed class ActionFile
         }
 
         return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches,
-            cuts, speeds, controls.Count > 0 ? controls : null);
+            cuts, speeds, controls.Count > 0 ? controls : null, moves);
+    }
+
+    /// <summary>
+    /// The way the animation carries its mover: the number of frames, then a chunk of four numbers each, the moment and the move.
+    /// A frame that is not a number is left out.
+    /// </summary>
+    private static MoveFrame[]? ReadMoves(BinaryReader reader)
+    {
+        var count = reader.ReadInt32();
+
+        if (count <= 0)
+        {
+            return null;
+        }
+
+        var chunk = Open(reader);
+        MoveFrame[]? moves = null;
+
+        if (chunk.Tag == MovesTag && chunk.End - reader.BaseStream.Position == (long)count * MoveFrameSize)
+        {
+            moves = new MoveFrame[count];
+
+            var kept = 0;
+
+            for (var i = 0; i < count; i++)
+            {
+                var frame = new MoveFrame(reader.ReadSingle(), ReadVector3(reader));
+
+                if (float.IsFinite(frame.Time) && float.IsFinite(frame.Offset.X) && float.IsFinite(frame.Offset.Y) && float.IsFinite(frame.Offset.Z))
+                {
+                    moves[kept++] = frame;
+                }
+            }
+
+            Array.Resize(ref moves, kept);
+            Array.Sort(moves, static (a, b) => a.Time.CompareTo(b.Time));
+        }
+
+        Close(reader, chunk);
+
+        return moves;
     }
 
     /// <summary>

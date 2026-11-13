@@ -24,6 +24,7 @@ internal partial class MonsterBody
         _carried = true;
         _attackEnd = 0;
         _pending.Clear();
+        _moves.Clear();
         _destination = null;
 
         ReleaseGrab(true);
