@@ -23,6 +23,24 @@ public static class PersonOptionStore
         return options ?? [];
     }
 
+    /// <summary>
+    /// The options of the account a person belongs to, for a choice that holds while the person is away too.
+    /// </summary>
+    public static async Task<byte[]> LoadOptionsOfPersonAsync(
+        this IDbContextFactory<PersistenceContext> factory,
+        int person,
+        CancellationToken cancellationToken)
+    {
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
+
+        var options = await database.Persons
+            .Where(e => e.Id == person)
+            .Select(e => e.Account.OptionList)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return options ?? [];
+    }
+
     public static async Task SavePersonOptionsAsync(
         this IDbContextFactory<PersistenceContext> factory,
         int account,
