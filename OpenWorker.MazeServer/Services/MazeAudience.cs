@@ -29,17 +29,17 @@ public sealed class MazeAudience(World world) : IPlayerAudience, IEndOfPass
         return world.IsAlive(player) && world.TryGet(player, out LuaMaze? maze) && maze is { MemberCount: > 1 } ? maze : null;
     }
 
-    public void Chat(Entity player, IResponseHotspotMessage message)
+    public void Chat<T>(Entity player, in T message) where T : IResponseHotspotMessage
     {
         if (Shared(player) is { } maze)
         {
             SendMove(player);
-            maze.Creatures.Broadcast(message);
+            maze.Creatures.Broadcast(in message);
 
             return;
         }
 
-        world.Get<ServerSessionComponent>(player).Send(message);
+        world.Get<ServerSessionComponent>(player).Send(in message);
     }
 
     public void Nearby<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable
@@ -62,7 +62,7 @@ public sealed class MazeAudience(World world) : IPlayerAudience, IEndOfPass
         world.Get<ServerSessionComponent>(player).Send(frame);
     }
 
-    public void NearbyToOthers<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    public void NearbyToOthers<T>(Entity player, in T message) where T : IResponseHotspotMessage
     {
         if (Shared(player) is not { } maze)
         {
@@ -74,17 +74,6 @@ public sealed class MazeAudience(World world) : IPlayerAudience, IEndOfPass
         using var frame = Frame.Encode(in message);
 
         maze.Creatures.Broadcast(frame, player);
-    }
-
-    public void NearbyToOthers(Entity player, IResponseHotspotMessage message)
-    {
-        if (Shared(player) is not { } maze)
-        {
-            return;
-        }
-
-        SendMove(player);
-        maze.Creatures.BroadcastToOthers(player, message);
     }
 
     /// <summary>

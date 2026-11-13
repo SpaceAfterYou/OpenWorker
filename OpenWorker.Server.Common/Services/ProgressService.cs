@@ -58,11 +58,11 @@ public sealed class ProgressService(World world, AchievementManager achievements
         return ValueTask.CompletedTask;
     }
 
-    private void Send(Entity player, IResponseHotspotMessage message)
+    private void Send<T>(Entity player, in T message) where T : IResponseHotspotMessage
     {
         if (world.IsAlive(player) && world.TryGet<ServerSessionComponent>(player, out var session))
         {
-            session.Send(message);
+            session.Send(in message);
         }
     }
 }

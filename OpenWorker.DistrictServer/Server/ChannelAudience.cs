@@ -14,9 +14,9 @@ namespace OpenWorker.DistrictServer.Server;
 /// </summary>
 public sealed class ChannelAudience(World world, ServiceChannels channels) : IPlayerAudience
 {
-    public void Chat(Entity player, IResponseHotspotMessage message)
+    public void Chat<T>(Entity player, in T message) where T : IResponseHotspotMessage
     {
-        channels.Get(player).Broadcast(message);
+        channels.Get(player).Broadcast(in message);
     }
 
     public void Nearby<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable
@@ -24,14 +24,9 @@ public sealed class ChannelAudience(World world, ServiceChannels channels) : IPl
         channels.Get(player).BroadcastNearby(player, in message);
     }
 
-    public void NearbyToOthers<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    public void NearbyToOthers<T>(Entity player, in T message) where T : IResponseHotspotMessage
     {
         channels.Get(player).BroadcastNearbyToOthers(player, in message);
-    }
-
-    public void NearbyToOthers(Entity player, IResponseHotspotMessage message)
-    {
-        channels.Get(player).BroadcastNearbyToOthers(player, message);
     }
 
     public void Move(Entity player, in MovementMoveBtResponse message)

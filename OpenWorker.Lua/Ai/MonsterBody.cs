@@ -1044,11 +1044,11 @@ internal partial class MonsterBody : IAiHost
         });
     }
 
-    protected void Broadcast(OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage message)
+    protected void Broadcast<T>(in T message) where T : OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage
     {
-        if (IsRevealed && !IsSilencedByReaction(message))
+        if (IsRevealed && !IsSilencedByReaction(in message))
         {
-            _manager.Broadcast(message);
+            _manager.Broadcast(in message);
         }
     }
 }

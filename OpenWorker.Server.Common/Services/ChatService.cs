@@ -19,9 +19,9 @@ public sealed class ChatService(
 ) :
     ChatServiceBase(world, network, throttle, parties, leagues, relations, megaphones)
 {
-    protected override void SendNearby(Entity player, IResponseHotspotMessage message)
+    protected override void SendNearby<T>(Entity player, in T message)
     {
-        audience.Chat(player, message);
+        audience.Chat(player, in message);
     }
 
     protected override ValueTask<bool> TryCommandAsync(Entity player, string text)

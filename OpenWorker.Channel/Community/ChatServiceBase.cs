@@ -62,7 +62,7 @@ public abstract class ChatServiceBase(
     /// <summary>
     /// Sends to the ones who are close to the player on this server, the player too.
     /// </summary>
-    protected abstract void SendNearby(Entity player, IResponseHotspotMessage message);
+    protected abstract void SendNearby<T>(Entity player, in T message) where T : IResponseHotspotMessage;
 
     /// <summary>
     /// Runs a command written in the chat. Returns whether the text was one.
@@ -267,7 +267,7 @@ public abstract class ChatServiceBase(
     /// <summary>
     /// The sender hears it too, even when nobody else is there to.
     /// </summary>
-    private ValueTask ToWithSenderAsync(int sender, IReadOnlyList<int> others, IResponseHotspotMessage message)
+    private ValueTask ToWithSenderAsync<T>(int sender, IReadOnlyList<int> others, T message) where T : IResponseHotspotMessage
     {
         return network.SendAsync(others.Append(sender), message);
     }

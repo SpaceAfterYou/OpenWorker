@@ -36,7 +36,7 @@ public abstract class PersonProfileServiceBase(
     private const int MaxCommentCharacters = PersonModuleDefines.MaxCommunityCommentLength - 1;
     private const int MaxMemoCharacters = PersonModuleDefines.MaxCommunityMemoLength - 1;
 
-    protected abstract void BroadcastToOthers(Entity player, IResponseHotspotMessage message);
+    protected abstract void BroadcastToOthers<T>(Entity player, in T message) where T : IResponseHotspotMessage;
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonLoadTitleRequest request)
     {

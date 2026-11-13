@@ -223,7 +223,7 @@ public sealed partial class CommunityNetwork(
 
 #region Sending
 
-    public ValueTask SendAsync(int person, IResponseHotspotMessage message)
+    public ValueTask SendAsync<T>(int person, T message) where T : IResponseHotspotMessage
     {
         return SendAsync([person], message);
     }
@@ -231,7 +231,7 @@ public sealed partial class CommunityNetwork(
     /// <summary>
     /// Sends the message to each of the persons that is online, on this server or on another.
     /// </summary>
-    public async ValueTask SendAsync(IEnumerable<int> persons, IResponseHotspotMessage message)
+    public async ValueTask SendAsync<T>(IEnumerable<int> persons, T message) where T : IResponseHotspotMessage
     {
         var remote = new List<int>();
 
@@ -264,7 +264,7 @@ public sealed partial class CommunityNetwork(
     /// <summary>
     /// Sends the message to everybody connected to any server.
     /// </summary>
-    public async ValueTask BroadcastAsync(IResponseHotspotMessage message)
+    public async ValueTask BroadcastAsync<T>(T message) where T : IResponseHotspotMessage
     {
         foreach (var player in Players.Values)
         {

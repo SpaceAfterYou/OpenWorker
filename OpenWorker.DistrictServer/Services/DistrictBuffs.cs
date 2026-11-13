@@ -193,14 +193,14 @@ public sealed class DistrictBuffs(World world, BuffManager manager, IPlayerAudie
         }
     }
 
-    private void Show(Entity player, OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage message)
+    private void Show<T>(Entity player, in T message) where T : OpenWorker.Hotspot.Messages.Abstractions.IResponseHotspotMessage
     {
         if (world.TryGet<ServerSessionComponent>(player, out var session))
         {
-            session.Send(message);
+            session.Send(in message);
         }
 
-        audience.NearbyToOthers(player, message);
+        audience.NearbyToOthers(player, in message);
     }
 }
 

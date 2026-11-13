@@ -66,7 +66,7 @@ public sealed partial class PartyNotifier(
     /// <summary>
     /// Sends the message to everybody in the party of the person, the person too. Nothing when they are alone.
     /// </summary>
-    public async ValueTask SendAsync(int person, IResponseHotspotMessage message)
+    public async ValueTask SendAsync<T>(int person, T message) where T : IResponseHotspotMessage
     {
         if (await book.OfAsync(person) is { } party)
         {
@@ -77,7 +77,7 @@ public sealed partial class PartyNotifier(
     /// <summary>
     /// Sends the message to the others in the party of the person.
     /// </summary>
-    public async ValueTask SendToOthersAsync(int person, IResponseHotspotMessage message)
+    public async ValueTask SendToOthersAsync<T>(int person, T message) where T : IResponseHotspotMessage
     {
         if (await book.OfAsync(person) is { } party)
         {
