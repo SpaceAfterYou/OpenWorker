@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
@@ -64,7 +63,7 @@ public sealed class LuaCreatureManager
 
         Services = services;
         Navigation = mesh is null ? OpenNavigation.Instance : new NavMeshNavigation(mesh, batch);
-        Vitals = new PlayerVitals(ecs, tables);
+        Vitals = new PlayerVitals(ecs, tables, () => Time);
         Logger = logger ?? NullLogger.Instance;
         Helpers = new HelperSquad(ecs, this, tables);
     }
@@ -96,6 +95,11 @@ public sealed class LuaCreatureManager
     /// </summary>
     public ScheduleGroup? Schedule { get; set; }
 
+    /// <summary>
+    /// The clock that steps the maze; the game time of the monsters is read from it.
+    /// </summary>
+    public SimulationClock? Clock { get; set; }
+
     internal ILogger Logger { get; }
 
     /// <summary>
@@ -124,11 +128,16 @@ public sealed class LuaCreatureManager
     internal Random Random { get; } = new();
 
     /// <summary>
-    /// Seconds since the maze was made.
+    /// The game time: the time of the maze's clock, or the steps added up for a manager no clock steps.
     /// </summary>
-    internal double Now => Stopwatch.GetElapsedTime(_started).TotalSeconds;
+    internal TimeSpan Time => Clock?.Time ?? _stepped;
 
-    private readonly long _started = Stopwatch.GetTimestamp();
+    /// <summary>
+    /// <see cref="Time"/> in seconds.
+    /// </summary>
+    internal double Now => Time.TotalSeconds;
+
+    private TimeSpan _stepped;
     private int Offset { get; set; } = 1;
     private HashSet<int> SpawnedBoxes { get; } = [];
     private HashSet<Entity> Scenery { get; } = [];
@@ -508,7 +517,7 @@ public sealed class LuaCreatureManager
         // What the fight did to the monster is not in its table: an armor that is broken stays broken until its time is up,
         // then comes back whole at the new gauge, and a defense its mind forced on it (an escape, the way home) stays until the
         // mind gives the monster its own back, which is the one of the new table.
-        if (before.SuperArmorBrokenUntil != 0)
+        if (before.SuperArmorBrokenUntil is not null)
         {
             after = after with { SuperArmor = 0f, SuperArmorBrokenUntil = before.SuperArmorBrokenUntil };
         }
@@ -874,6 +883,8 @@ public sealed class LuaCreatureManager
             return;
         }
 
+        _stepped += elapsed;
+
         var seconds = (float)elapsed.TotalSeconds;
         var now = Now;
         var count = Minds.BeginStep();
@@ -1018,7 +1029,7 @@ public sealed class LuaCreatureManager
         RestoreSuperArmor(monster);
 
         var combat = ecs.Get<MonsterCombatComponent>(monster);
-        var broken = combat.SuperArmorBrokenUntil != 0;
+        var broken = combat.SuperArmorBrokenUntil is not null;
         var seconds = 0f;
         var gauge = combat.MaxSuperArmor > 0f ? combat.SuperArmor : 0f;
         _ = Bodies.TryGetValue(monster, out var body);
@@ -1039,7 +1050,7 @@ public sealed class LuaCreatureManager
                 {
                     defense = DefenseType.Normal;
                     seconds = SuperArmorRules.BreakSeconds(Animation(body, "B_SABreak_Start"), Animation(body, "B_SABreak_End"), combat.SuperArmorRecovery);
-                    combat = combat with { SuperArmorBrokenUntil = Environment.TickCount64 + (long)(seconds * 1000f) };
+                    combat = combat with { SuperArmorBrokenUntil = Time + TimeSpan.FromSeconds(seconds) };
                 }
 
                 ecs.Set(monster, combat with { SuperArmor = gauge });
@@ -1131,12 +1142,12 @@ public sealed class LuaCreatureManager
     {
         var combat = ecs.Get<MonsterCombatComponent>(monster);
 
-        if (combat.SuperArmorBrokenUntil == 0 || combat.SuperArmorBrokenUntil > Environment.TickCount64)
+        if (combat.SuperArmorBrokenUntil is not { } until || until > Time)
         {
             return false;
         }
 
-        ecs.Set(monster, combat with { SuperArmor = combat.MaxSuperArmor, SuperArmorBrokenUntil = 0 });
+        ecs.Set(monster, combat with { SuperArmor = combat.MaxSuperArmor, SuperArmorBrokenUntil = null });
         Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(monster), Current = combat.MaxSuperArmor, Max = combat.MaxSuperArmor });
 
         // The mind may have a skill it casts when its armor is whole again.
@@ -1442,7 +1453,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     private void Posture(Entity player, long milliseconds)
     {
-        var until = new PlayerPostureComponent(Environment.TickCount64 + milliseconds);
+        var until = new PlayerPostureComponent(Time + TimeSpan.FromMilliseconds(milliseconds));
 
         if (ecs.Has<PlayerPostureComponent>(player))
         {
@@ -1474,7 +1485,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     internal DefenseType FrameDefenseOf(Entity monster, DefenseType own)
     {
-        return Bodies.TryGetValue(monster, out var body) ? body.FrameDefense(own, ecs.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil != 0) : own;
+        return Bodies.TryGetValue(monster, out var body) ? body.FrameDefense(own, ecs.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil is not null) : own;
     }
 
     internal MonsterBody? BodyOf(Entity monster) => Bodies.GetValueOrDefault(monster);

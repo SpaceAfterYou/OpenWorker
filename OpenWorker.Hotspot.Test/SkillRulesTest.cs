@@ -117,15 +117,13 @@ public sealed class SkillRulesTest
 
             Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.Zero));
 
-            world.Add(player, new PlayerPostureComponent(Environment.TickCount64 + 5000));
+            world.Add(player, new PlayerPostureComponent(TimeSpan.FromSeconds(5)));
 
             Assert.AreEqual(SkillStates.NotForThisState, use.Check(player, Strike, TimeSpan.Zero), "a plain skill");
             Assert.AreEqual(SkillStates.NotForThisState, use.Check(player, Evade, TimeSpan.Zero), "a move of the plain kind");
             Assert.AreEqual(SkillRefusal.None, use.Check(player, AirMove, TimeSpan.Zero), "a move for any state");
 
-            world.Set(player, new PlayerPostureComponent(Environment.TickCount64 - 1));
-
-            Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.Zero), "the flight is over");
+            Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.FromSeconds(5)), "the flight is over");
             Assert.IsTrue(SkillStates.CanStartInTheAir(1, 0), "a skill for any state");
             Assert.IsTrue(SkillStates.CanStartInTheAir(0, 4), "a skill whose normal state allows a hit");
             Assert.AreEqual(SkillRefusal.CannotAttack, SkillStates.Refusal(4, 0));

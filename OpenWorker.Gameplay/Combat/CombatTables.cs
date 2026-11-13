@@ -29,7 +29,10 @@ public readonly record struct MonsterCombatComponent
     /// </summary>
     public bool CountsHits { get; init; }
 
-    public long LastCountedHit { get; init; }
+    /// <summary>
+    /// The game time of the last hit that took a point; none before the first.
+    /// </summary>
+    public TimeSpan? LastCountedHit { get; init; }
 
     /// <summary>
     /// What is left of the super armor of the monster. It takes hits without flinching while there is some.
@@ -39,9 +42,9 @@ public readonly record struct MonsterCombatComponent
     public float MaxSuperArmor { get; init; }
 
     /// <summary>
-    /// When a broken super armor comes back, in milliseconds of the clock of the process. Zero while it holds.
+    /// The game time a broken super armor comes back at; none while it holds.
     /// </summary>
-    public long SuperArmorBrokenUntil { get; init; }
+    public TimeSpan? SuperArmorBrokenUntil { get; init; }
 
     /// <summary>
     /// How long a broken super armor takes to come back, in milliseconds; zero for the time every monster has by default.

@@ -17,7 +17,7 @@ namespace OpenWorker.Lua;
 public partial class LuaMaze
 {
     // A monster that counts hits takes them no faster than this.
-    private const long CountedHitMilliseconds = 500;
+    private static readonly TimeSpan CountedHitGap = TimeSpan.FromMilliseconds(500);
 
     /// <param name="shares">The share of the damage each target takes, by their place in the list. Everyone takes all of it without.</param>
     /// <param name="origin">Where the blow comes from when it is not the player: the place a shot burst at or a trap lies.</param>
@@ -189,19 +189,7 @@ public partial class LuaMaze
 
         result = result with { Damage = _buffs.Adjust(attacker, target, result.Damage) };
 
-        var lost = result.Damage;
-
-        if (body.CountsHits)
-        {
-            var now = Environment.TickCount64;
-
-            lost = result.Damage > 0 && now - body.LastCountedHit >= CountedHitMilliseconds ? 1 : 0;
-
-            if (lost > 0)
-            {
-                Ecs.Set(target, body with { LastCountedHit = now });
-            }
-        }
+        var lost = LifeTaken(target, result.Damage);
 
         var health = Math.Max(0, creature.Health - lost);
 
@@ -224,6 +212,31 @@ public partial class LuaMaze
             DefenseType = effect.Defense,
             CurSuperArmorGauge = effect.SuperArmor
         };
+    }
+
+    /// <summary>
+    /// The life a hit takes from a monster: the damage, or one point for a monster that counts hits, no sooner than the gap
+    /// after the last one on the maze's clock.
+    /// </summary>
+    internal int LifeTaken(Entity target, int damage)
+    {
+        var body = Ecs.Get<MonsterCombatComponent>(target);
+
+        if (!body.CountsHits)
+        {
+            return damage;
+        }
+
+        var now = Clock.Time;
+
+        if (damage <= 0 || body.LastCountedHit is { } last && now - last < CountedHitGap)
+        {
+            return 0;
+        }
+
+        Ecs.Set(target, body with { LastCountedHit = now });
+
+        return 1;
     }
 
     /// <summary>

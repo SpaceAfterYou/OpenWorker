@@ -66,7 +66,7 @@ public sealed class PlayerVitalsTest
             new LevelComponent(25, 0),
             new WorldComponent { Location = 1, Position = new Vector3(1, 2, 3), Rotation = 0, Jump = 0 });
 
-        return (world, player, new PlayerVitals(world, Tables()));
+        return (world, player, new PlayerVitals(world, Tables(), () => TimeSpan.Zero));
     }
 
     [TestMethod]

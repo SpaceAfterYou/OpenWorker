@@ -1,5 +1,6 @@
 using System.Numerics;
 using Arch.Core;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
@@ -22,7 +23,7 @@ public sealed class MonsterArmorTest
 {
     private const int Monster = 99001;
 
-    private static Entity Player(World world)
+    internal static Entity Player(World world)
     {
         var life = new AbilityComponentEntry { Current = 100, Max = 100 };
 
@@ -70,13 +71,13 @@ public sealed class MonsterArmorTest
             var place = world.Get<WorldComponent>(monster).Position;
 
             Assert.AreEqual(new Vector3(place.X, place.Y, 0f), held.ExtraMove, "A monster whose armor holds is told to stay where it is.");
-            Assert.AreEqual(0L, world.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil);
+            Assert.IsNull(world.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil);
 
             var broken = maze.Creatures.ReceiveBlow(monster, Strike(1), DefenseType.SuperArmor, 700, 100f, true);
 
             Assert.AreEqual((byte)DefenseType.Normal, broken.Defense, "The armor is gone.");
             Assert.AreEqual(0f, broken.SuperArmor);
-            Assert.AreNotEqual(0L, world.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil, "The armor takes its time to come back.");
+            Assert.IsNotNull(world.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil, "The armor takes its time to come back.");
 
             var after = maze.Creatures.ReceiveBlow(monster, Strike(1), DefenseType.SuperArmor, 100, 100f, true);
 
@@ -92,7 +93,8 @@ public sealed class MonsterArmorTest
 
     /// <summary>
     /// An armor that broke is whole again for the first blow that lands after its time is up, before the maze steps: the
-    /// clients count that time themselves and break an armor they hold whole on a hit that says it is empty.
+    /// clients count that time themselves and break an armor they hold whole on a hit that says it is empty. The time is the
+    /// maze's: while its clock stands, the armor stays broken.
     /// </summary>
     [TestMethod]
     public void ABlowAfterTheTimeOfABrokenArmorFindsItWhole()
@@ -101,7 +103,8 @@ public sealed class MonsterArmorTest
 
         try
         {
-            var maze = TestMazes.Create(world, Player(world), map: PartyMazeTest.MapWithMonster(Monster));
+            var time = new FakeTimeProvider();
+            var maze = TestMazes.Create(world, Player(world), map: PartyMazeTest.MapWithMonster(Monster), clock: TestMazes.Clock(time));
 
             maze.SpawnSector(1);
 
@@ -115,11 +118,16 @@ public sealed class MonsterArmorTest
 
             Thread.Sleep(50);
 
+            Assert.AreEqual((byte)DefenseType.Normal, maze.Creatures.ReceiveBlow(monster, Strike(1), DefenseType.SuperArmor, 400, 100f, true).Defense,
+                "The clock of the maze has not moved.");
+
+            time.Advance(TimeSpan.FromMilliseconds(50));
+
             var held = maze.Creatures.ReceiveBlow(monster, Strike(1), DefenseType.SuperArmor, 400, 100f, true);
 
             Assert.AreEqual((byte)DefenseType.SuperArmor, held.Defense, "The armor that came back holds.");
             Assert.AreEqual(600f, held.SuperArmor);
-            Assert.AreEqual(0L, world.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil);
+            Assert.IsNull(world.Get<MonsterCombatComponent>(monster).SuperArmorBrokenUntil);
         }
 
         finally

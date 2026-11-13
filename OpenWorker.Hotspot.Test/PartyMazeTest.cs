@@ -353,7 +353,7 @@ public sealed class PartyMazeTest
             maze.SpawnSector(Sector);
 
             var body = creatures.FindMonsters((_, _) => true).Single();
-            var brokenUntil = Environment.TickCount64 + 60_000;
+            var brokenUntil = TimeSpan.FromMinutes(1);
 
             world.Set(body, world.Get<MonsterCombatComponent>(body) with { SuperArmor = 0f, SuperArmorBrokenUntil = brokenUntil });
             creatures.ForceDefense(body, DefenseType.Invincible);

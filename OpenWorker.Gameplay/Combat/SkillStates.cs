@@ -4,8 +4,8 @@ namespace OpenWorker.Gameplay.Combat;
 /// A player who has been thrown into the air by a blow, until the moment the server knows it lands. The server only knows the
 /// flight: it does not follow the player on the ground, where the client lets it get up when it likes.
 /// </summary>
-/// <param name="DownUntil">The moment the flight is over, in milliseconds of the clock of the process.</param>
-public readonly record struct PlayerPostureComponent(long DownUntil);
+/// <param name="DownUntil">The game time the flight is over at.</param>
+public readonly record struct PlayerPostureComponent(TimeSpan DownUntil);
 
 /// <summary>
 /// What the state of a player says about the skills it may start, as the original decides it. A skill names the state it is for:

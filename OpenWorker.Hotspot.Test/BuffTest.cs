@@ -4,6 +4,7 @@ using System.Numerics;
 using Arch.Core;
 using Lua;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Gameplay.Ai;
 using OpenWorker.Lua.Ai;
@@ -310,7 +311,8 @@ public sealed class BuffTest
         var combat = new CombatTables(monsters, TestTables.Load<StatusRow>("tb_Status"), skills, TestTables.Load<CharacterInfoRow>("tb_Character_Info"));
         var behaviors = new MonsterBehaviorTables(monsters, skills);
         var loader = new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, scripts);
-        var clock = TestMazes.Clock();
+        var time = new FakeTimeProvider();
+        var clock = TestMazes.Clock(time);
         var provider = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions };
         var services = new CreatureServices(loader, behaviors, provider, clock, new NavMeshProvider());
 
@@ -340,20 +342,26 @@ public sealed class BuffTest
 
             var before = await ActsAsync(world, player, connection, actor);
 
+            // One step of the maze on its clock.
+            void Step()
+            {
+                time.Advance(SimulationClock.Period);
+                clock.Tick();
+                maze.Advance(SimulationClock.Period);
+            }
+
             // Two and a half seconds of the three of the stun.
             for (var step = 0; step < 50; step++)
             {
-                maze.Advance(TimeSpan.FromMilliseconds(50));
+                Step();
             }
 
             Assert.AreEqual(before, await ActsAsync(world, player, connection, actor), "A held monster does nothing.");
 
-            // The stun ends, and the monster has ten seconds to act. Its body times its animations on the clock of the
-            // process, so each step takes about as long there too.
+            // The stun ends, and the monster has ten seconds to act.
             for (var step = 0; step < 200 && await ActsAsync(world, player, connection, actor) == before; step++)
             {
-                maze.Advance(TimeSpan.FromMilliseconds(50));
-                Thread.Sleep(50);
+                Step();
             }
 
             Assert.IsFalse(maze.Buffs.IsHeld(body));

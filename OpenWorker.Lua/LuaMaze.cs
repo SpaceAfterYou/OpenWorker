@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Arch.Core;
+﻿using Arch.Core;
 using Lua;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Batch;
@@ -50,11 +49,14 @@ public partial class LuaMaze(
     /// Everything the maze waits for: delayed actions of its script, the next moment of a skill, the hits of a trap,
     /// the creatures that appear later. <see cref="Close"/> calls all of it off.
     /// </summary>
-    private readonly ScheduleGroup _schedule = Share(creatureManager, clock.CreateGroup());
+    private readonly ScheduleGroup _schedule = Share(creatureManager, clock);
 
-    private static ScheduleGroup Share(LuaCreatureManager creatures, ScheduleGroup schedule)
+    private static ScheduleGroup Share(LuaCreatureManager creatures, SimulationClock clock)
     {
+        var schedule = clock.CreateGroup();
+
         creatures.Schedule = schedule;
+        creatures.Clock = clock;
 
         return schedule;
     }
@@ -169,13 +171,13 @@ public partial class LuaMaze(
     public event Action<Entity, int, long>? MonstersHit;
 
     private bool Started { get; set; }
-    private long StartedAt { get; set; }
+    private TimeSpan StartedAt { get; set; }
     private bool Closed { get; set; }
 
     /// <summary>
-    /// The whole seconds since the first player started the maze, 0 before.
+    /// The whole seconds of game time since the first player started the maze, 0 before.
     /// </summary>
-    public int PlayedSeconds => Started ? (int)Stopwatch.GetElapsedTime(StartedAt).TotalSeconds : 0;
+    public int PlayedSeconds => Started ? (int)(Clock.Time - StartedAt).TotalSeconds : 0;
 
     public MazeState MazeState { get; private set; } = MazeState.None;
 
@@ -507,7 +509,7 @@ public partial class LuaMaze(
         }
 
         Started = true;
-        StartedAt = Stopwatch.GetTimestamp();
+        StartedAt = Clock.Time;
         _buffs.MonsterKilled += OnBuffKill;
         creatureManager.PlayerFrames = FrameDefenseOf;
 
