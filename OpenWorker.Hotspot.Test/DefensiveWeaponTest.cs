@@ -220,6 +220,25 @@ public sealed class DefensiveWeaponTest
     }
 
     /// <summary>
+    /// The clients have no model for a defensive weapon and fail when shown one, so a game master's command brings none in,
+    /// neither to fight nor to control.
+    /// </summary>
+    [TestMethod]
+    public void ACommandBringsNoWeaponIn()
+    {
+        using var arena = new Arena();
+        var maze = arena.Maze;
+        var before = arena.Creatures.Living.Count;
+
+        Assert.IsTrue(maze.IsDefensiveWeapon(Weapon));
+        Assert.IsFalse(maze.IsDefensiveWeapon(Plain));
+        Assert.IsFalse(maze.CallMonsters(arena.Rider, Weapon, 1));
+        Assert.IsFalse(maze.ControlMonster(arena.Rider, Weapon));
+        Assert.HasCount(before, arena.Creatures.Living);
+        Assert.IsTrue(maze.CallMonsters(arena.Rider, Plain, 1));
+    }
+
+    /// <summary>
     /// Only the player on a weapon fires it, a skill its row has, and not again before the last one is over; everybody sees the
     /// weapon play the skill.
     /// </summary>

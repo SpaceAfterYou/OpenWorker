@@ -39,13 +39,22 @@ public partial class LuaMaze
     }
 
     /// <summary>
+    /// A defensive weapon: the clients have no model for any, and a client shown one fails and closes. Commands bring none in.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool IsDefensiveWeapon(int monster)
+    {
+        return creatureManager.Services?.Behaviors.Get(monster) is not null && combat.GetMonster(monster).IsDefensiveWeapon;
+    }
+
+    /// <summary>
     /// Brings monsters of that row in where the player stands, facing as it faces, the others of the group scattered around
-    /// the first. False when the table has no such monster.
+    /// the first. False when the table has no such monster, or it is a defensive weapon.
     /// </summary>
     [LuaIgnoreMember]
     public bool CallMonsters(Entity player, int monster, int count)
     {
-        if (Closed || Find(player) is null || creatureManager.Services?.Behaviors.Get(monster) is null)
+        if (Closed || Find(player) is null || creatureManager.Services?.Behaviors.Get(monster) is null || IsDefensiveWeapon(monster))
         {
             return false;
         }
@@ -63,7 +72,7 @@ public partial class LuaMaze
 
     /// <summary>
     /// The player takes a monster of that row as a skill would give it, where it stands; row 0 lets its monster go. False
-    /// when the table has no such monster, the player has fallen, or it has no monster to let go.
+    /// when the table has no such monster, it is a defensive weapon, the player has fallen, or it has no monster to let go.
     /// </summary>
     [LuaIgnoreMember]
     public bool ControlMonster(Entity player, int monster)
@@ -82,7 +91,7 @@ public partial class LuaMaze
             return had;
         }
 
-        if (!creatureManager.Vitals.IsAlive(player) || creatureManager.Services?.Behaviors.Get(monster) is not { } behavior)
+        if (!creatureManager.Vitals.IsAlive(player) || creatureManager.Services?.Behaviors.Get(monster) is not { } behavior || IsDefensiveWeapon(monster))
         {
             return false;
         }

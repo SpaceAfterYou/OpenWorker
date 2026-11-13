@@ -8,7 +8,7 @@ namespace OpenWorker.Commands.MazeEventCommands;
 
 /// <summary>
 /// Shows the casual raid countdown to the maze: <c>/casual-timer 60 [added]</c> counts 60 seconds down (with the seconds
-/// added shown); <c>/casual-timer -1</c> hides it.
+/// added shown); <c>/casual-timer -1</c> hides it as the maze scripts do: the window stops and plays its closing.
 /// </summary>
 [CommandTrigger("casual", "timer")]
 [CommandDescription("Show the casual raid countdown for some seconds, or hide it with -1")]
@@ -16,6 +16,11 @@ internal sealed partial class CasualTimerCommand : ICommand
 {
     private const float MaxSeconds = 86_400f;
     private const float Hidden = -1f;
+
+    /// <summary>
+    /// The text of the window the scripts name when they show or hide it.
+    /// </summary>
+    private const int ScriptText = 0;
 
     [ExternalDependency]
     private World World { get; }
@@ -33,7 +38,7 @@ internal sealed partial class CasualTimerCommand : ICommand
 
         if (seconds < 0f)
         {
-            maze.ShowCasualRaidTimer((int)Hidden, Hidden);
+            maze.ShowCasualRaidTimer(ScriptText, Hidden);
 
             return ValueTask.FromResult(true);
         }
@@ -46,7 +51,7 @@ internal sealed partial class CasualTimerCommand : ICommand
             return ValueTask.FromResult(false);
         }
 
-        maze.ShowCasualRaidTimer(0, seconds, added);
+        maze.ShowCasualRaidTimer(ScriptText, seconds, added);
 
         return ValueTask.FromResult(true);
     }
