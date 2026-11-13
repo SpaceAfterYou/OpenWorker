@@ -183,6 +183,7 @@ public sealed partial class MazeService(
 
         ShowMembers(context.Player, maze);
         maze.ShowRidesTo(context.Player);
+        maze.ShowClientSyncsTo(context.Player);
 
         maze.RegisterCubes(context.Player);
 
