@@ -62,8 +62,18 @@ public partial class LuaMaze
 
     private MazeTimers Timers => _timers ??= new MazeTimers(new TimerHost(this));
 
+    /// <summary>
+    /// The countdown shown last; a player who loads the maze while it runs is shown it too.
+    /// </summary>
+    private readonly CasualRaidCountdown _countdown = new();
+
     private void StepTimers(float seconds)
     {
+        if (_countdown.Step(seconds))
+        {
+            ShowTimer(_countdown.Value, _countdown.Left, 0f);
+        }
+
         if (_timers is null || _timers.IsEmpty)
         {
             return;
@@ -176,8 +186,8 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// A countdown on the screen: nothing counts without the client's own clock, so the number is the time to show.
-    /// A negative value hides it.
+    /// A countdown on the screen; a negative time hides it. The maze keeps counting it so that a player who comes in
+    /// later is shown what is left.
     /// </summary>
     [LuaMember]
     public void ShowCasualRaidTimer(int value, float time, float next = 0f)
@@ -194,5 +204,7 @@ public partial class LuaMaze
     private void ShowTimer(int value, float time, float next)
     {
         creatureManager.Broadcast(new MazeTimerResponse { Value = value, Time = time, Next = next });
+
+        _countdown.Shown(value, time);
     }
 }
