@@ -329,11 +329,11 @@ public abstract class PartyRecruitServiceBase(
 
     private bool Alive(ServiceHandleContext context) => world.IsAlive(context.Player);
 
-    private void Send(ServiceHandleContext context, IResponseHotspotMessage message)
+    private void Send<T>(ServiceHandleContext context, in T message) where T : IResponseHotspotMessage
     {
         if (Alive(context))
         {
-            world.Get<ServerSessionComponent>(context.Player).Send(message);
+            world.Get<ServerSessionComponent>(context.Player).Send(in message);
         }
     }
 

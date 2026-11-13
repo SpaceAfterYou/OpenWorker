@@ -16,7 +16,7 @@ public interface IPlayerAudience
     /// <summary>
     /// What the player says aloud in the chat, to everybody who hears it, the player too.
     /// </summary>
-    void Chat(Entity player, IResponseHotspotMessage message);
+    void Chat<T>(Entity player, in T message) where T : IResponseHotspotMessage;
 
     /// <summary>
     /// To everybody who sees the player, the player too.
@@ -26,10 +26,7 @@ public interface IPlayerAudience
     /// <summary>
     /// To everybody who sees the player, but not the player.
     /// </summary>
-    void NearbyToOthers<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable;
-
-    /// <inheritdoc cref="NearbyToOthers{T}(Entity, in T)" />
-    void NearbyToOthers(Entity player, IResponseHotspotMessage message);
+    void NearbyToOthers<T>(Entity player, in T message) where T : IResponseHotspotMessage;
 
     /// <summary>
     /// A move of the player, which a later move may replace before it goes out.

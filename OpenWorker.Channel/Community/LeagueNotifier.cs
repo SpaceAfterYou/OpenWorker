@@ -144,7 +144,7 @@ public sealed class LeagueNotifier(
         }
     }
 
-    private async ValueTask Others(int league, int except, IResponseHotspotMessage message)
+    private async ValueTask Others<T>(int league, int except, T message) where T : IResponseHotspotMessage
     {
         var members = await factory.MemberIdsAsync(league);
 

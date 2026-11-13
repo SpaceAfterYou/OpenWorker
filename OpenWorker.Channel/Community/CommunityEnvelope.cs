@@ -38,7 +38,7 @@ public sealed record CommunityEnvelope(
     /// <summary>
     /// The opcode and the body of the message, as the client gets them, for the servers of the targets to hand over.
     /// </summary>
-    public static CommunityEnvelope ForPacket(Guid origin, IReadOnlyList<int> targets, IResponseHotspotMessage message)
+    public static CommunityEnvelope ForPacket<T>(Guid origin, IReadOnlyList<int> targets, in T message) where T : IResponseHotspotMessage
     {
         var writer = new PacketWriter(ArrayPool<byte>.Shared, PacketCapacity, Array.MaxLength);
 

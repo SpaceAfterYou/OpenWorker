@@ -35,7 +35,6 @@ using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Buffs;
 using OpenWorker.Lua.Helpers;
 using OpenWorker.Navigation;
-using OpenWorker.Wire;
 
 namespace OpenWorker.Lua.Managers;
 
@@ -1309,24 +1308,9 @@ public sealed class LuaCreatureManager
     }
 
     /// <summary>
-    /// Tells every player of the maze, written once for all of them.
+    /// Tells every player of the maze, written once for all of them; a message given as its struct is not boxed.
     /// </summary>
-    public void Broadcast(IResponseHotspotMessage message)
-    {
-        if (Players.Count == 0)
-        {
-            return;
-        }
-
-        using var frame = Frame.Encode(message);
-
-        Broadcast(frame, Entity.Null);
-    }
-
-    /// <summary>
-    /// Tells every player of the maze, written once for all of them, without boxing a message that writes itself over spans.
-    /// </summary>
-    public void Broadcast<T>(in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    public void Broadcast<T>(in T message) where T : IResponseHotspotMessage
     {
         if (Players.Count == 0)
         {
@@ -1341,14 +1325,14 @@ public sealed class LuaCreatureManager
     /// <summary>
     /// Tells every player of the maze but one.
     /// </summary>
-    public void BroadcastToOthers(Entity except, IResponseHotspotMessage message)
+    public void BroadcastToOthers<T>(Entity except, in T message) where T : IResponseHotspotMessage
     {
         if (Players.Count < 2)
         {
             return;
         }
 
-        using var frame = Frame.Encode(message);
+        using var frame = Frame.Encode(in message);
 
         Broadcast(frame, except);
     }

@@ -51,7 +51,7 @@ internal partial class MonsterBody
     /// A monster in a reaction is silent about walking: the clients start a walk at once whatever the monster does, so a word
     /// about one would lift it out of its fall.
     /// </summary>
-    private bool IsSilencedByReaction(IResponseHotspotMessage message)
+    private bool IsSilencedByReaction<T>(in T message) where T : IResponseHotspotMessage
     {
         return _reaction is { IsBusy: true } && message is MovementMoveBtResponse or MovementStopBtResponse or MovementIdleBtResponse;
     }

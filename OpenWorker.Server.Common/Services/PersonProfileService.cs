@@ -15,8 +15,8 @@ public sealed class PersonProfileService(
     FriendNotifier friends,
     IPlayerAudience audience) : PersonProfileServiceBase(world, titles, factory, others, friends)
 {
-    protected override void BroadcastToOthers(Entity player, IResponseHotspotMessage message)
+    protected override void BroadcastToOthers<T>(Entity player, in T message)
     {
-        audience.NearbyToOthers(player, message);
+        audience.NearbyToOthers(player, in message);
     }
 }

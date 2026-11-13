@@ -66,11 +66,11 @@ public sealed class ChatTest
             relations ?? new Relations(),
             megaphones ?? new Megaphone(0))
     {
-        protected override void SendNearby(Entity player, IResponseHotspotMessage message)
+        protected override void SendNearby<T>(Entity player, in T message)
         {
             foreach (var other in server.Network.Online)
             {
-                server.World.Get<ServerSessionComponent>(other).Send(message);
+                server.World.Get<ServerSessionComponent>(other).Send(in message);
             }
         }
 
