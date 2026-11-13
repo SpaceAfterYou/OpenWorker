@@ -256,25 +256,38 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         var airborne = IsAirborne;
         var thrown = ExtraMove.Of(blow, new Struck(position, profile.Weight, profile.Limit, profile.StandType, defense, airborne), rolls);
         var vector = thrown.Vector;
-        var kind = Limited(blow.Kind, push.Grade);
-        var motion = DamageMotion(kind);
-        var displayed = Displayed(push.Hardness, defense);
-        var enabled = defense is not (DefenseType.SuperArmor or DefenseType.Invincible or DefenseType.NoReaction) || displayed;
+        var kind = blow.Kind;
 
-        if (!enabled)
+        // The limit of the monster changes only the animation; the throw and the way it is told follow the blow.
+        var motion = DamageMotion(Limited(kind, push.Grade));
+        var displayed = Displayed(push.Hardness, defense);
+
+        // An invincible monster, or one that shows no reaction, takes nothing of the throw, which is told as it was rolled.
+        var untouched = defense is DefenseType.Invincible or DefenseType.NoReaction;
+        var enabled = !untouched && (defense != DefenseType.SuperArmor || displayed);
+
+        if (!enabled && !untouched)
         {
             vector = Vector3.Zero;
         }
 
         // A throw with no height is no throw, though the animation of one plays.
         var physical = enabled && IsLaunch(kind) && vector.Z <= 0f ? ReactionKind.Flinch : kind;
-        var flyAction = enabled && IsLaunch(physical);
+        var launched = enabled && IsLaunch(physical);
+
+        // A monster that cannot be launched flinches: the clients lift it where it stands and carry it only in a fall.
+        var flies = launched && MotionClass.IsKnockedDown(motion);
         var shown = motion != MotionClass.None && displayed;
         var facing = survives && shown && enabled && !IsFixed && !IsDown ? Facing(thrown.Yaw) : float.NaN;
 
+        if (launched)
+        {
+            _flySpeed = LaunchSpeed(push.Speed, vector);
+        }
+
         if (survives && shown && enabled)
         {
-            if (flyAction)
+            if (flies)
             {
                 Launch(physical, vector, thrown.Yaw, push.Speed, motion, airborne);
 
@@ -289,13 +302,8 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
                 React(motion);
             }
         }
-        else if (flyAction)
-        {
-            // The monster does not fly, but the clients are told the speed it would have.
-            _flySpeed = LaunchSpeed(push.Speed, vector);
-        }
 
-        if (survives && !flyAction && defense == DefenseType.Normal && !IsFixed)
+        if (survives && !launched && defense == DefenseType.Normal && !IsFixed)
         {
             var offset = IsLaunch(kind) ? AiMath.Rotate(new Vector2(vector.X, vector.Y), thrown.Yaw) : new Vector2(vector.X, vector.Y);
 
@@ -305,7 +313,8 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
             }
         }
 
-        // When the throw only slides the monster, the clients are told where the slide ends.
+        // A throw is told in the frame of the attacker; when the blow only slides the monster, the clients are told where the
+        // slide ends.
         var told = vector;
 
         if (push.Moves && !IsLaunch(physical))
@@ -350,8 +359,8 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
     }
 
     /// <summary>
-    /// A blow of a grade below the rank of a monster, on a monster that is not fixed in its place, only makes it flinch if the
-    /// table says it cannot be thrown.
+    /// The kind of reaction a monster shows: a blow of a grade below its rank, on a monster that is not fixed in its place,
+    /// only makes it flinch if the table says it cannot be thrown.
     /// </summary>
     private ReactionKind Limited(ReactionKind kind, int grade)
     {
