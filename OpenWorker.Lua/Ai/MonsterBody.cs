@@ -592,7 +592,7 @@ internal partial class MonsterBody : IAiHost
     /// <summary>
     /// The super armor of the monster is broken and has not mended yet.
     /// </summary>
-    public bool IsArmorBroken => _ecs.Get<MonsterCombatComponent>(Entity).SuperArmorBrokenUntil != 0;
+    public bool IsArmorBroken => _ecs.Get<MonsterCombatComponent>(Entity).SuperArmorBrokenUntil is not null;
 
     /// <summary>
     /// Whether the monster is in the air after a throw.

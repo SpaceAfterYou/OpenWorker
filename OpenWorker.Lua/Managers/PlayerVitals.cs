@@ -12,7 +12,8 @@ namespace OpenWorker.Lua.Managers;
 /// <summary>
 /// How much life a player in a maze has left, and whether they can be hurt.
 /// </summary>
-public sealed class PlayerVitals(World ecs, CombatTables tables)
+/// <param name="time">The game time of the maze.</param>
+public sealed class PlayerVitals(World ecs, CombatTables tables, Func<TimeSpan> time)
 {
     /// <summary>
     /// The size of a player as a monster hits it: a standing cylinder.
@@ -32,7 +33,7 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
     /// </summary>
     public static readonly TimeSpan ReviveProtection = TimeSpan.FromSeconds(5);
 
-    private Dictionary<Entity, long> Protected { get; } = [];
+    private Dictionary<Entity, TimeSpan> Protected { get; } = [];
 
     /// <summary>
     /// The life of a player has changed: the others of a party in the maze are told.
@@ -65,7 +66,7 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
     /// </summary>
     public bool IsProtected(Entity player)
     {
-        return Protected.TryGetValue(player, out var until) && Environment.TickCount64 < until;
+        return Protected.TryGetValue(player, out var until) && time() < until;
     }
 
     public void Protect(Entity player)
@@ -78,7 +79,7 @@ public sealed class PlayerVitals(World ecs, CombatTables tables)
     /// </summary>
     public void Protect(Entity player, TimeSpan length)
     {
-        Protected[player] = Environment.TickCount64 + (long)length.TotalMilliseconds;
+        Protected[player] = time() + length;
     }
 
     public void Forget(Entity player)

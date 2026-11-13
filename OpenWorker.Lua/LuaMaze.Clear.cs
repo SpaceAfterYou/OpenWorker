@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Arch.Core.Extensions;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Domain.Components;
@@ -71,7 +70,7 @@ public partial class LuaMaze
             await reports.MazeClearedAsync(
                 player,
                 info,
-                (int)Stopwatch.GetElapsedTime(StartedAt).TotalSeconds,
+                PlayedSeconds,
                 (int)Ecs.Get<PersonInfoComponent>(player).Hero,
                 Ecs.TryGet<LevelComponent>(player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel);
         }

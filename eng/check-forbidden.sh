@@ -23,6 +23,7 @@ RULES=(
 SCOPED=(
   $'OpenWorker.Lua\tTask\\.Delay\\(|new +(System\\.Threading\\.)?Timer\\(|System\\.Threading\\.Timer\\b\tGame logic waits on the simulation clock (SimulationClock.Schedule), not on Task.Delay or a Timer.'
   $'OpenWorker.MazeServer\tTask\\.Delay\\(|new +(System\\.Threading\\.)?Timer\\(|System\\.Threading\\.Timer\\b\tGame logic waits on the simulation clock (SimulationClock.Schedule), not on Task.Delay or a Timer.'
+  $'OpenWorker.Lua\tEnvironment\\.TickCount|\\bStopwatch\\b|DateTime(Offset)?\\.(Utc)?Now\\b|TimeProvider\\.System\\b\tA maze reads the time of its simulation clock (SimulationClock.Time), which stands while the maze stands; the clock of the process does not.'
 )
 
 # The load test is a tool whose product is the report it prints. Program.cs is the one place of it that touches the
