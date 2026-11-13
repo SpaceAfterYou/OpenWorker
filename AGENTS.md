@@ -153,6 +153,10 @@ The full list is in `ARCHITECTURE.md`. The ones that are broken most often:
   - An error answer is `sub | 0x80` followed by a `u16` code.
   - A new message gets a test of its exact byte layout.
 - **Comments and names** describe what the code does in game terms.
+- **Comments are short and to the point.** Code never refers to documentation: no file names of documents, no
+  "see the notes", no plan phases or principle numbers. This holds for comments, tests, build files and scripts.
+- **Scripts find their paths at run time**: from their own location, an argument or an environment variable. Never
+  write an absolute path of this machine into a script.
 
 ### Research data stays out of git
 
