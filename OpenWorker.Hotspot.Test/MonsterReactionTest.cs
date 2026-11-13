@@ -53,10 +53,17 @@ public sealed class MonsterReactionTest
         }
     }
 
-    private static MonsterReaction Create(INavigation? ground = null, int standType = 0, ReactionLimit limit = ReactionLimit.None)
+    private static MonsterReaction Create(INavigation? ground = null, int standType = 0, ReactionLimit limit = ReactionLimit.None, int rank = 0)
     {
-        return new MonsterReaction(new ReactionProfile(0, limit, standType, 0, 40f), ground ?? OpenNavigation.Instance, name => Lengths.GetValueOrDefault(name), new Random(1));
+        return new MonsterReaction(new ReactionProfile(0, limit, standType, rank, 40f), ground ?? OpenNavigation.Instance, name => Lengths.GetValueOrDefault(name), new Random(1));
     }
+
+    /// <summary>
+    /// Where the discus puppet stood when a straight knock down of the Power Slash reached it.
+    /// </summary>
+    private static readonly Vector3 PuppetPlace = new(40007.70f, 27991.25f, 0f);
+
+    private static Blow PowerSlash(short hardness = 1) => Strike(ReactionKind.KnockDownStraight, 480f, height: 60f, speed: 1150f, hardness: hardness);
 
     private static Blow Strike(ReactionKind kind, float distance, float height = 0f, float speed = 0f, short hardness = 1)
     {
@@ -228,5 +235,68 @@ public sealed class MonsterReactionTest
         var (seconds, _, _) = RunOut(reaction, Vector3.Zero);
 
         Assert.AreEqual(1f, seconds, Tick * 1.5f);
+    }
+
+    /// <summary>
+    /// A monster that cannot be launched flinches at a launch, where it stands; the clients are told the throw of the blow in the
+    /// frame of the attacker all the same, never a place in the world.
+    /// </summary>
+    [TestMethod]
+    public void ALaunchTheLimitForbidsIsToldAsAThrowAndMovesNobody()
+    {
+        var reaction = Create(limit: ReactionLimit.NoLaunch, rank: 1);
+
+        var outcome = reaction.Hit(PowerSlash(), DefenseType.Normal, true, PuppetPlace, new BlowRolls(0, 0));
+
+        Assert.IsTrue(outcome.Shown);
+        Assert.IsTrue(MotionClass.IsFlinch(outcome.Motion), "The monster shows a flinch.");
+        Assert.AreEqual(new Vector3(0, -480, 60), outcome.ExtraMove);
+        Assert.AreEqual(1150f, outcome.FlySpeed);
+
+        var (seconds, _, end) = RunOut(reaction, outcome.Position);
+
+        Assert.AreEqual(0.7f, seconds, Tick * 1.5f, "It is lost for the flinch only.");
+        Assert.AreEqual(PuppetPlace.X, end.X, 0.01f);
+        Assert.AreEqual(PuppetPlace.Y, end.Y, 0.01f);
+    }
+
+    /// <summary>
+    /// A launch on a monster whose armor holds shows nothing and moves nothing, and the clients are told a throw of zero.
+    /// </summary>
+    [TestMethod]
+    public void ALaunchOnArmorThatHoldsIsToldAsNoThrow()
+    {
+        var reaction = Create(limit: ReactionLimit.Immovable, rank: 1);
+
+        var outcome = reaction.Hit(PowerSlash(), DefenseType.SuperArmor, true, PuppetPlace, new BlowRolls(0, 0));
+
+        Assert.IsFalse(outcome.Shown);
+        Assert.AreEqual(Vector3.Zero, outcome.ExtraMove);
+        Assert.AreEqual(0f, outcome.FlySpeed);
+        Assert.IsFalse(reaction.IsBusy);
+    }
+
+    /// <summary>
+    /// An invincible monster takes nothing of a launch: the clients are told the throw as it was rolled, which is none for a
+    /// monster nothing moves.
+    /// </summary>
+    [TestMethod]
+    public void ALaunchOnAnInvincibleMonsterIsToldAsRolled()
+    {
+        var immovable = Create(limit: ReactionLimit.Immovable, rank: 1);
+
+        var still = immovable.Hit(PowerSlash(hardness: 3), DefenseType.Invincible, true, PuppetPlace, new BlowRolls(0, 0));
+
+        Assert.IsFalse(still.Shown);
+        Assert.AreEqual(Vector3.Zero, still.ExtraMove);
+
+        var plain = Create();
+
+        var rolled = plain.Hit(PowerSlash(hardness: 3), DefenseType.Invincible, true, PuppetPlace, new BlowRolls(0, 0));
+
+        Assert.IsFalse(rolled.Shown);
+        Assert.AreEqual(new Vector3(0, -480, 60), rolled.ExtraMove);
+        Assert.AreEqual(PuppetPlace, rolled.Position);
+        Assert.IsFalse(plain.IsBusy);
     }
 }
