@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Arch.Core;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Res;
 using OpenWorker.Res.Types;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -13,7 +14,7 @@ namespace OpenWorker.Gameplay.Modules.HiddenEvents;
 /// steps in, by its chance out of ten thousand, or by the chance of a booster of hidden events when the player has one; the
 /// event is the row of <c>tb_Hidden_Event</c> under the id of the box, and its condition is picked by the weights of the row.
 /// The conditions and their counts are the client's, which its window shows; the reward is the server's when its table has the
-/// row. A condition of a kind the server does not count is never picked: it could only fail, or only be met.
+/// row. A condition of a kind the server does not know is never picked: it could only fail, or only be met.
 /// </summary>
 public sealed class HiddenEventCatalog
 {
@@ -27,9 +28,15 @@ public sealed class HiddenEventCatalog
     private const byte ErosionSkillType = 5;
     private const byte JumpAttackPassive = 16;
 
+    // The rows of a deck on the page the client uses, and the places of a row that link to the skill before them.
+    private const int DeckRows = 6;
+    private const int DeckPlaces = 4;
+
     private static readonly HashSet<HiddenEventTarget> Counted =
     [
         HiddenEventTarget.Monster,
+        HiddenEventTarget.Jump,
+        HiddenEventTarget.Stamina,
         HiddenEventTarget.Gold,
         HiddenEventTarget.Ether,
         HiddenEventTarget.Soul,
@@ -37,15 +44,19 @@ public sealed class HiddenEventCatalog
         HiddenEventTarget.ErosionSkill,
         HiddenEventTarget.PeakSkill,
         HiddenEventTarget.ItemUsed,
+        HiddenEventTarget.ArmorBreak,
+        HiddenEventTarget.SkillLink,
         HiddenEventTarget.JumpAttack,
         HiddenEventTarget.Evade,
-        HiddenEventTarget.JumpAttackHit
+        HiddenEventTarget.KillInAir,
+        HiddenEventTarget.JumpAttackKill
     ];
 
     private readonly RowIndex<short, HiddenEventRow> _events;
     private readonly RowIndex<int, EventConditionRow> _conditions;
     private readonly RowIndex<ushort, HiddenEventRewardRow> _rewards;
-    private readonly Dictionary<int, (byte Type, byte Passive)> _skills;
+    private readonly RowIndex<short, DeckBonusRow> _deckBonuses;
+    private readonly Dictionary<int, (byte Type, byte Passive, int Swap)> _skills;
     private readonly ItemCatalog? _items;
     private readonly BoosterManager? _boosters;
     private readonly Random _random;
@@ -55,6 +66,7 @@ public sealed class HiddenEventCatalog
         ReadOnlyCollection<EventConditionRow> conditions,
         ReadOnlyCollection<HiddenEventRewardRow> rewards,
         ReadOnlyCollection<SkillRow> skills,
+        ReadOnlyCollection<DeckBonusRow>? deckBonuses = null,
         ItemCatalog? items = null,
         BoosterManager? boosters = null,
         Random? random = null)
@@ -62,7 +74,8 @@ public sealed class HiddenEventCatalog
         _events = events.IndexBy(e => e.Id);
         _conditions = conditions.IndexBy(e => e.Id);
         _rewards = rewards.IndexBy(e => e.Id);
-        _skills = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id, e => (e.SkillType, e.PassiveType));
+        _deckBonuses = (deckBonuses ?? new ReadOnlyCollection<DeckBonusRow>([])).IndexBy(e => e.Id);
+        _skills = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id, e => (e.SkillType, e.PassiveType, e.SwapSkill));
         _items = items;
         _boosters = boosters;
         _random = random ?? Random.Shared;
@@ -160,11 +173,67 @@ public sealed class HiddenEventCatalog
     }
 
     /// <summary>
-    /// Whether a hit of the skill counts as a hit of a jump attack.
+    /// What a blow of a player with the skill counts: the armor of the monster it broke, the monster it killed while the monster
+    /// was in the air, the monster a jump attack killed.
     /// </summary>
-    public bool IsJumpAttack(int skill)
+    public IEnumerable<HiddenEventTarget> BlowTargets(int skill, bool brokeArmor, bool killed, bool aloft)
     {
-        return _skills.TryGetValue(skill, out var kind) && kind.Passive == JumpAttackPassive;
+        if (brokeArmor)
+        {
+            yield return HiddenEventTarget.ArmorBreak;
+        }
+
+        if (!killed || skill <= 0)
+        {
+            yield break;
+        }
+
+        if (_skills.TryGetValue(skill, out var kind) && kind.Passive == JumpAttackPassive)
+        {
+            yield return HiddenEventTarget.JumpAttackKill;
+        }
+
+        if (aloft)
+        {
+            yield return HiddenEventTarget.KillInAir;
+        }
+    }
+
+    /// <summary>
+    /// Whether the skill is used linked from the deck: it stands in the row of the deck the client names, after the first place,
+    /// and the player has chosen a bonus of the table for that place.
+    /// </summary>
+    public bool IsDeckLink(SkillDeckValue[]? decks, ushort[]? bonuses, int skill, byte row)
+    {
+        if (row >= DeckRows || decks is null || bonuses is null || skill == 0)
+        {
+            return false;
+        }
+
+        var swap = _skills.TryGetValue(skill, out var kind) ? kind.Swap : 0;
+
+        foreach (var deck in decks)
+        {
+            if (deck.Position != row)
+            {
+                continue;
+            }
+
+            var place = 0;
+
+            foreach (var standing in deck.GetList())
+            {
+                if (standing != 0 && (standing == skill || standing == swap))
+                {
+                    return place is > 0 and < DeckPlaces && place - 1 < bonuses.Length && bonuses[place - 1] is var bonus and > 0 &&
+                           bonus <= short.MaxValue && _deckBonuses.TryGet((short)bonus, out _);
+                }
+
+                place++;
+            }
+        }
+
+        return false;
     }
 
     private bool CountsAnyItem(int item)

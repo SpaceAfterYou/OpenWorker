@@ -4,6 +4,7 @@ using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Res;
@@ -71,7 +72,8 @@ public static class SkillRefusal
 /// the skill is the player's own and in its deck, the level, the hero, the cost, the cooldown. Using it takes the cost
 /// and starts the cooldown of its group and the global cooldown.
 /// </summary>
-public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, PlayerGauges gauges, ReadOnlyCollection<DeckBonusRow>? deckBonuses = null, CombatTables? combat = null)
+public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, PlayerGauges gauges, ReadOnlyCollection<DeckBonusRow>? deckBonuses = null, CombatTables? combat = null,
+    HiddenEventCounter? hiddenEvents = null)
 {
     private readonly RowIndex<short, DeckBonusRow> _deckBonuses = (deckBonuses ?? new ReadOnlyCollection<DeckBonusRow>([])).IndexBy(e => e.Id);
 
@@ -223,11 +225,17 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
         }
 
         var kind = (SkillCostKind)row.CostAttribute;
+        var cost = Cost(player, row);
 
         // A buff can make the skills cost no soul gauge, though the player must still have it.
         if (kind != SkillCostKind.SoulGauge || BuffBook.Of(world, player) is not { FreeSoulGauge: true })
         {
-            gauges.Pay(player, kind, Cost(player, row));
+            gauges.Pay(player, kind, cost);
+        }
+
+        if (kind == SkillCostKind.Stamina)
+        {
+            hiddenEvents?.Count(player, HiddenEventTarget.Stamina, 0, (int)cost);
         }
 
         gauges.Rest(player, row.SkipPriorityGroup);

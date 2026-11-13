@@ -1,7 +1,9 @@
 using Arch.Core;
 using Lua;
 using OpenWorker.Hotspot;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.HiddenEvents;
+using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 
 namespace OpenWorker.Lua;
@@ -69,6 +71,39 @@ public partial class LuaMaze
         foreach (var target in HiddenEvents.SkillTargets(skill))
         {
             CountHiddenEvent(target, 0, 1);
+        }
+    }
+
+    /// <summary>
+    /// A skill the player started counts when it was used linked from the row of the deck the client names.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void CountHiddenEventDeckSkill(Entity player, int skill, byte row)
+    {
+        if (HiddenEvent is not null && HiddenEvents is not null && Ecs.IsAlive(player) &&
+            Ecs.TryGet(player, out SkillDeckComponent deck) && Ecs.TryGet(player, out SkillDeckBonusComponent bonus) &&
+            HiddenEvents.IsDeckLink(deck.SlotList, bonus.Values, skill, row))
+        {
+            CountHiddenEvent(HiddenEventTarget.SkillLink, 0, 1);
+        }
+    }
+
+    /// <summary>
+    /// A blow of a player on a monster: the armor it broke, the monster it killed in the air or with a jump attack. The blows of
+    /// helpers count nothing.
+    /// </summary>
+    internal void CountHiddenEventBlow(Entity attacker, Entity target, int skill, bool armorWasBroken, bool killed, bool aloft)
+    {
+        if (HiddenEvent is null || HiddenEvents is null || Ecs.Has<MonsterCombatComponent>(attacker))
+        {
+            return;
+        }
+
+        var brokeArmor = !armorWasBroken && Ecs.TryGet(target, out MonsterCombatComponent body) && body.SuperArmorBrokenUntil is not null;
+
+        foreach (var counted in HiddenEvents.BlowTargets(skill, brokeArmor, killed, aloft))
+        {
+            CountHiddenEvent(counted, 0, 1);
         }
     }
 
