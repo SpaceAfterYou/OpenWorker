@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Numerics;
+using OpenWorker.Batch.Entities.Basic;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Res;
 using OpenWorker.UpdateContent.Res.Rows;
@@ -30,6 +33,11 @@ public sealed class MyRoomCatalog
     /// The cells of a room are numbered by plane: the floor from zero, then each of the four walls from a million on.
     /// </summary>
     private const int Plane = 1_000_000;
+
+    /// <summary>
+    /// The side of a cell of the grid, in units of the map.
+    /// </summary>
+    public const float Cell = 50;
 
     private readonly RowIndex<int, MyroomInfoRow> _rooms;
     private readonly RowIndex<int, MyroomFurnitureRow> _furniture;
@@ -107,4 +115,57 @@ public sealed class MyRoomCatalog
             return width >= 1 && depth >= 1 && column + width <= across && row + depth <= along;
         }
     }
+
+    /// <summary>
+    /// Where the grid of a room lies in its map: on the box the grid's row names, turned as the box is. Nothing when the map
+    /// has no such box.
+    /// </summary>
+    public MyRoomFrame? FrameOf(short grid, IEnumerable<BasicEntity> boxes)
+    {
+        if (!_grids.TryGet(grid, out var room) || boxes.FirstOrDefault(e => e.Id == room.Box) is not { } box)
+        {
+            return null;
+        }
+
+        var middle = (box.PosTopLeft + box.PosBottomRight) / 2;
+
+        return new MyRoomFrame(middle with { Z = MathF.Min(box.PosTopLeft.Z, box.PosBottomRight.Z) }, box.Rotation);
+    }
+
+    /// <summary>
+    /// The middle of the cells a piece covers, in the map: on the floor, at the height of the floor; on a wall, against it. Nothing
+    /// for a piece that stands on no cell of the grid.
+    /// </summary>
+    public Vector3? PlaceOf(short grid, MyRoomPiece piece, MyRoomFrame frame)
+    {
+        if (!Fits(grid, piece.Item, piece.Rotation, piece.Grid) || !TryGetFurniture(piece.Item, out var row) || row.Placement is not (1 or 8 or 2 or 9) ||
+            !_grids.TryGet(grid, out var room))
+        {
+            return null;
+        }
+
+        var (width, depth) = piece.Rotation % 2 == 0 ? (row.Width, row.Depth) : (row.Depth, row.Width);
+        var (plane, index) = Math.DivRem(piece.Grid, Plane);
+        var halfWidth = room.Width * Cell / 2;
+        var halfDepth = room.Depth * Cell / 2;
+
+        // The middle of a run of cells along an edge of the grid that starts from its corner.
+        float Across(int first, int count, float half) => -half + Cell * first + Cell * count / 2;
+
+        var local = plane switch
+        {
+            0 => new Vector3(Across(index % room.Width, width, halfWidth), Across(index / room.Width, depth, halfDepth), 0),
+            1 or 2 => new Vector3(Across(index % room.Width, width, halfWidth), plane == 1 ? -halfDepth : halfDepth,
+                Cell * (index / room.Width) + Cell * depth / 2),
+            _ => new Vector3(plane == 3 ? -halfWidth : halfWidth, Across(index % room.Depth, width, halfDepth),
+                Cell * (index / room.Depth) + Cell * depth / 2)
+        };
+
+        return frame.Middle + Vector3.Transform(local, Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -frame.Yaw * MathF.PI / 180));
+    }
 }
+
+/// <summary>
+/// Where the grid of a room lies in its map: the middle of its floor and the way it is turned, in degrees.
+/// </summary>
+public readonly record struct MyRoomFrame(Vector3 Middle, float Yaw);

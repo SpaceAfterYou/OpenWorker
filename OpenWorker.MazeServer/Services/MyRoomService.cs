@@ -1,4 +1,3 @@
-using System.Numerics;
 using Arch.Core;
 using OpenWorker.Channel;
 using OpenWorker.Domain.Components;
@@ -8,6 +7,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Movement;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Progress;
@@ -119,7 +119,7 @@ public sealed partial class MyRoomService(
 
             if (room is null)
             {
-                room = new MyRoomState(made, row.MaxVisitors, furniture, catalog);
+                room = new MyRoomState(made, row.MaxVisitors, furniture, catalog, catalog.FrameOf(made.Grid, maze.Batch.EventBox.AllBoxes));
                 rooms.Open(maze.Instance, room, taken.Holder);
             }
         }
@@ -472,8 +472,9 @@ public sealed partial class MyRoomService(
     #region Sitting
 
     /// <summary>
-    /// A player sits or lies on a piece: it takes a free place of it and stands where the piece is; everybody in the room sees
-    /// it. The player who asks is the one who sits, whatever actor the request names.
+    /// A player sits or lies on a piece: it takes a free place of it and is put where the piece stands; everybody in the room
+    /// sees it. The request only names the piece: the player who asks is the one who sits, whatever actor the request names, and
+    /// where it stood and where the piece stands are the server's, whatever places the request carries.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, MyRoomItemUseRequest request)
     {
@@ -485,24 +486,22 @@ public sealed partial class MyRoomService(
         }
 
         var place = world.Get<WorldComponent>(player);
-        var position = IsFinite(request.Position) ? request.Position : place.Position;
-        var rotation = float.IsFinite(request.Rotation) ? request.Rotation : place.Rotation;
         var actor = world.Get<ActorComponent>(player).Identifier;
 
-        if (request.Animation >= Animations || !IsFinite(request.FurniturePosition) || !float.IsFinite(request.FurnitureRotation) ||
-            room.Sit(actor, request.Serial, request.Animation, position, rotation, Random.Shared) is not { } seat)
+        if (request.Animation >= Animations ||
+            room.Sit(actor, request.Serial, request.Animation, place.Position, place.Rotation, Random.Shared) is not { } seat)
         {
             Send(player, new ErrorMessageResponse(ItemUseOpcode, MyRoomCodes.NoSeat));
             return ValueTask.CompletedTask;
         }
 
-        world.Set(player, place with { Position = request.FurniturePosition, Rotation = request.FurnitureRotation });
+        ServerPlace.Put(world, player, room.PlaceOf(seat.Serial) ?? place.Position);
 
         Broadcast(room, new MyRoomItemUseResponse
         {
             Actor = actor,
             Serial = seat.Serial,
-            Position = position,
+            Position = seat.Position,
             Index = seat.Index,
             Animation = seat.Animation
         });
@@ -533,7 +532,7 @@ public sealed partial class MyRoomService(
     /// </summary>
     private void StandUp(Entity player, MyRoomState room, MyRoomSeat seat)
     {
-        world.Set(player, world.Get<WorldComponent>(player) with { Position = seat.Position, Rotation = seat.Rotation });
+        ServerPlace.Put(world, player, seat.Position, seat.Rotation);
 
         Broadcast(room, new MyRoomItemReleaseUsedResponse
         {
@@ -563,8 +562,6 @@ public sealed partial class MyRoomService(
     }
 
     private static MyRoomFurnitureValue ToValue(MyRoomPiece piece) => new(piece.Serial, piece.Item, piece.Rotation, piece.Grid);
-
-    private static bool IsFinite(Vector3 value) => float.IsFinite(value.X) && float.IsFinite(value.Y) && float.IsFinite(value.Z);
 
     private void Send<T>(Entity player, T message) where T : IResponseHotspotMessage
     {

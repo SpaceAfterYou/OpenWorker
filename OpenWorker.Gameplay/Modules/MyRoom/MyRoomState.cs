@@ -20,13 +20,16 @@ public sealed class MyRoomState
     private readonly List<MyRoomPiece> _furniture;
     private readonly Dictionary<Entity, int> _members = [];
     private readonly List<MyRoomSeat> _seats = [];
+    private readonly MyRoomFrame? _frame;
 
-    public MyRoomState(MyRoomRecord room, int maxVisitors, IEnumerable<MyRoomPiece> furniture, MyRoomCatalog catalog)
+    /// <param name="frame">Where the grid of the room lies in its map; with none, a player who sits stays where it stands.</param>
+    public MyRoomState(MyRoomRecord room, int maxVisitors, IEnumerable<MyRoomPiece> furniture, MyRoomCatalog catalog, MyRoomFrame? frame = null)
     {
         Room = room;
         MaxVisitors = maxVisitors;
         _furniture = furniture.ToList();
         _catalog = catalog;
+        _frame = frame;
     }
 
     public MyRoomRecord Room { get; private set; }
@@ -192,7 +195,7 @@ public sealed class MyRoomState
     /// <summary>
     /// A player sits or lies on a piece: one of the free places of it, at random, as many as the furniture table gives it. Null
     /// while the room is arranged, for a piece the room does not have or one that is full; the player then keeps the place it
-    /// has. A player who sits elsewhere leaves that place for the new one.
+    /// has. A player who sits elsewhere leaves that place for the new one, and still gets up where it stood before it first sat.
     /// </summary>
     public MyRoomSeat? Sit(int actor, long serial, byte animation, Vector3 position, float rotation, Random random)
     {
@@ -212,13 +215,28 @@ public sealed class MyRoomState
             return null;
         }
 
-        _seats.RemoveAll(e => e.Actor == actor);
+        if (_seats.FindIndex(e => e.Actor == actor) is >= 0 and var before)
+        {
+            (position, rotation) = (_seats[before].Position, _seats[before].Rotation);
+            _seats.RemoveAt(before);
+        }
 
         var seat = new MyRoomSeat(actor, serial, (byte)free[random.Next(free.Length)], animation, position, rotation);
 
         _seats.Add(seat);
 
         return seat;
+    }
+
+    /// <summary>
+    /// Where a player who sits on the piece is put: the middle of the cells it covers. Nothing for a piece the room does not
+    /// have, or when the room does not know where its grid lies.
+    /// </summary>
+    public Vector3? PlaceOf(long serial)
+    {
+        return _frame is { } frame && _furniture.Find(e => e.Serial == serial) is { Serial: not 0 } piece
+            ? _catalog.PlaceOf(Room.Grid, piece, frame)
+            : null;
     }
 
     /// <summary>
