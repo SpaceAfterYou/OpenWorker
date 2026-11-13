@@ -14,6 +14,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Extensions;
+using OpenWorker.Gameplay.Modules.CashShop;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Npcs;
@@ -78,6 +79,7 @@ public static class DistrictServerHost
         services.Replace(ServiceDescriptor.Singleton<IQuestNpcs, DistrictQuestNpcs>());
         services.AddSingleton<INpcPlaces, DistrictNpcPlaces>();
         services.AddNpcServices();
+        services.AddCashShop();
         services.AddServerCommon<ChannelAudience>();
         services.AddSingleton<IPersonPlaceSource, PersonPlaceStore>();
         services.AddTrade();

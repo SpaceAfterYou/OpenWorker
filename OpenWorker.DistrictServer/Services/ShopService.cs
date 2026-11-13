@@ -10,7 +10,6 @@ namespace OpenWorker.DistrictServer.Services;
 /// </summary>
 public sealed class ShopService(NpcShopService shops) :
     IHotspotHandler<ShopBuyRequest>,
-    IHotspotHandler<ShopGachaRequest>,
     IHotspotHandler<ShopRepurchaserListRequest>,
     IHotspotHandler<ShopRepurchaserRequest>,
     IHotspotHandler<ShopSellRequest>
@@ -19,14 +18,6 @@ public sealed class ShopService(NpcShopService shops) :
     {
         shops.Buy(context.Player, request.Npc, request.Index, request.Count);
 
-        return ValueTask.CompletedTask;
-    }
-
-    /// <summary>
-    /// A draw of the cash shop, which this server does not run.
-    /// </summary>
-    public ValueTask OnHandleAsync(ServiceHandleContext context, ShopGachaRequest request)
-    {
         return ValueTask.CompletedTask;
     }
 

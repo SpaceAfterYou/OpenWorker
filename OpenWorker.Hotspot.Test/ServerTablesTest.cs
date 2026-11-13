@@ -91,7 +91,11 @@ public sealed class ServerTablesTest
             ("tb_Interaction_Object", typeof(CubeObjectRow)),
             ("tb_Interaction_Item", typeof(CubeRewardRow)),
             ("tb_Item_Package", typeof(ItemPackageUnpackRow)),
-            ("tb_Hidden_Event", typeof(HiddenEventRewardRow))
+            ("tb_Hidden_Event", typeof(HiddenEventRewardRow)),
+            ("tb_CashBilling_Info", typeof(CashBillingRow)),
+            ("tb_Gacha_Group", typeof(GachaGroupRow)),
+            ("tb_Random_Get_Group", typeof(GachaRow)),
+            ("tb_Random_Get", typeof(GachaDrawRow))
         ];
 
         foreach (var (table, row) in tables)

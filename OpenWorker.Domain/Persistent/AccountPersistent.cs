@@ -1,4 +1,4 @@
-﻿namespace OpenWorker.Domain.Persistent;
+namespace OpenWorker.Domain.Persistent;
 
 public sealed class AccountPersistent : BasicPersistent
 {
@@ -36,6 +36,11 @@ public sealed class AccountPersistent : BasicPersistent
     public DateTime? TradePasswordFailedAt { get; set; }
 
     public string SecondPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The currency of the cash shop, shared by the characters of the account. Only a game master gives it.
+    /// </summary>
+    public long Cash { get; set; }
 
     /// <summary>
     /// The options of the client (the system menu). The client treats them as one set for the account.

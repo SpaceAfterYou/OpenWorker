@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using OpenWorker.Domain.Persistent;
 
@@ -7,6 +7,8 @@ namespace OpenWorker.Persistence;
 public sealed class PersistenceContext(DbContextOptions<PersistenceContext> options) : DbContext(options)
 {
     public DbSet<AccountPersistent> Accounts { get; init; }
+    public DbSet<CashShopPurchasePersistent> CashShopPurchases { get; init; }
+    public DbSet<CashShopSetPersistent> CashShopSets { get; init; }
     public DbSet<ExchangeInterestPersistent> ExchangeInterests { get; init; }
     public DbSet<ExchangeListingPersistent> ExchangeListings { get; init; }
     public DbSet<ExchangeSalePersistent> ExchangeSales { get; init; }
