@@ -96,6 +96,31 @@ public sealed class AccountStateTest
     }
 
     /// <summary>
+    /// Whether a person takes requests to be friends is the choice of the account, read by the person whether they are in the
+    /// game or not: taken until the player has saved the options, then as the player chose.
+    /// </summary>
+    [TestMethod]
+    public async Task APersonTakesFriendRequestsAsTheAccountChose()
+    {
+        var (person, account) = await PersonAsync("friendless");
+
+        Assert.IsTrue(PersonOptions.TakesFriendRequests(await Factory.LoadOptionsOfPersonAsync(person, CancellationToken.None)));
+
+        var options = Enumerable.Repeat((byte)'0', 64).ToArray();
+        options[0] = (byte)'5';
+
+        await Factory.SavePersonOptionsAsync(account, options, CancellationToken.None);
+
+        Assert.IsFalse(PersonOptions.TakesFriendRequests(await Factory.LoadOptionsOfPersonAsync(person, CancellationToken.None)));
+
+        options[PersonOptions.FriendRequest] = (byte)'1';
+
+        await Factory.SavePersonOptionsAsync(account, options, CancellationToken.None);
+
+        Assert.IsTrue(PersonOptions.TakesFriendRequests(await Factory.LoadOptionsOfPersonAsync(person, CancellationToken.None)));
+    }
+
+    /// <summary>
     /// The options window of the game saves the options of the account, as the gate does: the next entry, which reads them
     /// from the account, finds them, and the others see the new choice of who may whisper at once.
     /// </summary>

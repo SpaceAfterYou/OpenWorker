@@ -97,6 +97,20 @@ public abstract class FriendServiceBase(
             return;
         }
 
+        // The choice is the account's, so it holds while the person is away too.
+        var options = await factory.LoadOptionsOfPersonAsync(target.Person, context.CancellationToken);
+
+        if (!world.IsAlive(context.Player))
+        {
+            return;
+        }
+
+        if (!PersonOptions.TakesFriendRequests(options))
+        {
+            Session(context).Send(new FriendInviteResponse { Result = FriendMessages.DoesNotTakeFriends, Name = target.Name });
+            return;
+        }
+
         var outcome = await factory.InviteAsync(me, target.Person);
 
         if (!world.IsAlive(context.Player))
