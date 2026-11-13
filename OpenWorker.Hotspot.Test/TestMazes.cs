@@ -9,6 +9,7 @@ using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Gameplay.Modules.UnityPoints;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Managers;
 using OpenWorker.Res;
@@ -68,7 +69,7 @@ internal static class TestMazes
 
     public static LuaMaze Create(World world, Entity player, ILogger<LuaMaze>? logger = null, SimulationClock? clock = null, LuaState? state = null, string map = EmptyMap,
         VBatchFile? batch = null, QuestManager? quests = null, MazeReporter? reports = null, Guid instance = default, BuffManager? buffs = null,
-        LuaCreatureManager? creatures = null, SkillActionProvider? actions = null, CombatTables? tables = null, int sceneAttacker = 0)
+        LuaCreatureManager? creatures = null, SkillActionProvider? actions = null, CombatTables? tables = null, int sceneAttacker = 0, UnityEvents? unity = null)
     {
         batch ??= Map(map);
         tables ??= new CombatTables(None<MonsterRow>(), None<StatusRow>(), None<SkillRow>(), None<CharacterInfoRow>());
@@ -91,7 +92,8 @@ internal static class TestMazes
             logger ?? NullLogger<LuaMaze>.Instance)
         {
             Instance = instance,
-            SceneAttacker = sceneAttacker
+            SceneAttacker = sceneAttacker,
+            UnityEvents = unity
         };
     }
 }
