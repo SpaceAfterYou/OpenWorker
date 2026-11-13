@@ -7,6 +7,7 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Maze;
@@ -314,9 +315,10 @@ public sealed partial class InfiniteTower : IMiscTick
 
     /// <summary>
     /// The person has cleared a stage of the tower in <paramref name="seconds"/>: it gets the reward of the stage, the client
-    /// shows it (28/04), the climb goes up and the time is kept for the ranking. False for a maze that is no stage.
+    /// shows it (28/04) with the item of the hidden event of the stage when it was met, the climb goes up and the time is kept
+    /// for the ranking. False for a maze that is no stage.
     /// </summary>
-    public bool Cleared(Entity player, int maze, int seconds)
+    public bool Cleared(Entity player, int maze, int seconds, HiddenEventReward? hidden = null)
     {
         if (!TryGetStage(maze, out var stage) || !_world.IsAlive(player) || !_world.Has<ServerSessionComponent>(player))
         {
@@ -331,6 +333,12 @@ public sealed partial class InfiniteTower : IMiscTick
             _ = MailAsync(player, claims.Account, stage.Item, stage.Count);
         }
 
+        if (hidden is { } paid && _inventory is not null && !_inventory.TryGive(player, paid.Item, paid.Count) &&
+            _post is not null && _world.TryGet<ClaimsComponent>(player, out var account))
+        {
+            _ = MailAsync(player, account.Account, paid.Item, paid.Count);
+        }
+
         if (stage.BattlePoint > 0)
         {
             _inventory?.AddUpToLimit(player, ShopCurrency.Bp, stage.BattlePoint);
@@ -341,6 +349,8 @@ public sealed partial class InfiniteTower : IMiscTick
             Item = stage.Item,
             Count = (short)Math.Clamp(stage.Count, 0, short.MaxValue),
             BattlePoint = stage.BattlePoint,
+            ExtraItem = hidden?.Item ?? 0,
+            ExtraCount = hidden?.Count ?? 0,
             ClearTime = seconds
         });
 

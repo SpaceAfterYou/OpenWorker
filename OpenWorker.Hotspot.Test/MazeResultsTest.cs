@@ -12,6 +12,7 @@ using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Drops;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.Maze.Components;
@@ -395,6 +396,28 @@ public sealed class MazeResultsTest
         Assert.AreEqual(0, f.Inventory.CountOf(player, f.ItemAbove), "F never reaches the buckets above it");
         Assert.AreEqual((byte)0, f.Results.LastClear(player)!.Value.Rank);
         Assert.IsEmpty(f.Received(player, MazeOpcode.eSUB_CMD_MAZE_REWARD_PARTY_INFO), "a player alone gets no list of members");
+    }
+
+    [TestMethod]
+    public async Task TheItemOfAMetHiddenEventIsGivenToEveryMemberAndShownInItsWindow()
+    {
+        using var f = new Fixture();
+        var first = f.Player(7, "Haru");
+        var second = f.Player(8, "Lily");
+
+        f.Results.Start(first, Maze);
+        f.Results.Start(second, Maze);
+        f.Results.Complete([first, second], TimeSpan.FromSeconds(60), new HiddenEventReward(f.ItemAbove, 3));
+
+        foreach (var member in new[] { first, second })
+        {
+            var window = (await f.ReceivedAsync(member, MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO, 1)).Single().Body;
+
+            Assert.AreEqual(f.ItemAbove, BinaryPrimitives.ReadInt32LittleEndian(window.AsSpan(55)), "the item of the hidden event");
+            Assert.AreEqual(3, BinaryPrimitives.ReadInt16LittleEndian(window.AsSpan(59)));
+            Assert.AreEqual(0, window[61], "it fit, so nothing went by post");
+            Assert.AreEqual(3, f.Inventory.CountOf(member, f.ItemAbove));
+        }
     }
 
     [TestMethod]
