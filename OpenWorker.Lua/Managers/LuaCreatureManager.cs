@@ -1546,6 +1546,14 @@ public sealed partial class LuaCreatureManager
     /// <returns>The actor of the first player the clients are told was hit, zero when none was.</returns>
     internal int HitPlayers(MonsterBody attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims)
     {
+        // A blow of a monster that deals no damage neither hurts nor throws: only its buff lands, if it has one.
+        if (trigger.DamageRate <= 0f)
+        {
+            Buffs?.GiveFromAttack(attacker.Entity, trigger, victims);
+
+            return 0;
+        }
+
         return HitPlayers(attacker.Entity, skillId, trigger, victims);
     }
 
