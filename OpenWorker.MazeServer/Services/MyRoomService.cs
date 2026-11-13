@@ -473,7 +473,7 @@ public sealed partial class MyRoomService(
 
     /// <summary>
     /// A player sits or lies on a piece: it takes a free place of it and is put where the piece stands; everybody in the room
-    /// sees it. The request only names the piece: the player who asks is the one who sits, whatever actor the request names, and
+    /// sees it, told where the piece stands. The request only names the piece: the player who asks is the one who sits, whatever actor the request names, and
     /// where it stood and where the piece stands are the server's, whatever places the request carries.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, MyRoomItemUseRequest request)
@@ -495,13 +495,16 @@ public sealed partial class MyRoomService(
             return ValueTask.CompletedTask;
         }
 
-        ServerPlace.Put(world, player, room.PlaceOf(seat.Serial) ?? place.Position);
+        // The others draw the sitter here until they find the seat on the piece's model; the place to get up to stays the server's.
+        var sits = room.PlaceOf(seat.Serial) ?? place.Position;
+
+        ServerPlace.Put(world, player, sits);
 
         Broadcast(room, new MyRoomItemUseResponse
         {
             Actor = actor,
             Serial = seat.Serial,
-            Position = seat.Position,
+            Position = sits,
             Index = seat.Index,
             Animation = seat.Animation
         });

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
@@ -8,6 +9,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Extensions;
+using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
@@ -112,7 +114,7 @@ public sealed class MyRoomServiceTest
 
             Player = World.Create(
                 new ActorComponent(1, ActorType.User),
-                new ServerSessionComponent(new RecordingConnection()),
+                new ServerSessionComponent(Connection),
                 new WorldComponent { Location = 20011, Position = Vector3.Zero, Rotation = 0f, Jump = 0 },
                 new ClaimsComponent(Account, 0),
                 new LevelComponent(10, 0),
@@ -146,6 +148,8 @@ public sealed class MyRoomServiceTest
         public static MyRoomFrame Frame { get; } = new(new Vector3(1000, 500, 3700), -180);
 
         public World World { get; } = World.Create();
+
+        public RecordingConnection Connection { get; } = new();
 
         public Guid Instance { get; } = Guid.NewGuid();
 
@@ -307,6 +311,19 @@ public sealed class MyRoomServiceTest
         Assert.IsLessThan(0.01f, Vector3.Distance(new Vector3(1475, 1075, 3700), sits), $"the player sits at {sits}");
         Assert.IsTrue(harness.World.Get<PlaceToldComponent>(harness.Player).Pending, "the pace check knows the server moved the player");
         Assert.AreEqual(stood, harness.Room.Seats.Single().Position, "where the player stood is the server's");
+
+        // Everybody in the room is told the place on the piece; where the player gets up to is not told.
+        var connection = harness.Connection;
+
+        await MetricAssertions.UntilAsync(
+            () => connection.Frames.Select(PlayerFrame.Open).Any(e => e.Is(GroupOpcode.MyRoom, (byte)MyRoomOpcode.ItemUse)), "the room is told who sits");
+
+        var told = connection.Frames.Select(PlayerFrame.Open).Single(e => e.Is(GroupOpcode.MyRoom, (byte)MyRoomOpcode.ItemUse)).Body;
+
+        Assert.AreEqual(sits, new Vector3(
+            BinaryPrimitives.ReadSingleLittleEndian(told.AsSpan(12)),
+            BinaryPrimitives.ReadSingleLittleEndian(told.AsSpan(16)),
+            BinaryPrimitives.ReadSingleLittleEndian(told.AsSpan(20))));
 
         await harness.Service.OnHandleAsync(harness.Context, Harness.GetUp(5));
 
