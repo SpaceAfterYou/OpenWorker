@@ -65,7 +65,7 @@ internal sealed class HelperBody : MonsterBody
         return used;
     }
 
-    protected override void Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
+    protected override bool Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
     {
         var targets = colliderOnly ? [] : _squad.EnemiesTouching(this, area);
 
@@ -80,20 +80,24 @@ internal sealed class HelperBody : MonsterBody
         {
             _squad.GiveToAllies(Helper, trigger);
 
-            return;
+            return false;
         }
 
         if (trigger.Buff > 0 && trigger.DamageRate <= 0f)
         {
             Manager.Buffs?.GiveFromHit(Entity, trigger, targets);
 
-            return;
+            return false;
         }
 
         if (targets.Length > 0 && trigger.AffectsTargets)
         {
             _squad.Queue(new HelperStrike(Helper, skill, trigger, targets));
+
+            return true;
         }
+
+        return false;
     }
 
     protected override FlightTarget[] FlightTargets() => _squad.EnemyFlightTargets(this);

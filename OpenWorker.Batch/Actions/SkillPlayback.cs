@@ -584,7 +584,7 @@ public sealed class SkillPlayback
     /// stretches that have one. A stretch that begins while another lasts takes its place, and once it is over the animation
     /// plays at the attack speed again, as on the client.
     /// </summary>
-    private sealed class ClipClock
+    internal sealed class ClipClock
     {
         private readonly List<(float From, float To, float Speed)> _stretches = [];
         private readonly float _speed;
