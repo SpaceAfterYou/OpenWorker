@@ -462,4 +462,40 @@ public sealed class PartyMazeTest
             World.Destroy(world);
         }
     }
+
+    private const string SectorMap =
+        """<root><Batchs eventtype="EventBox"><VSectorBox boxtype="eEventBoxType_Sector"> <m_ID type="0" value="1" /> <m_iGenerateID type="0" value="1" /> <iLayerBitmask type="4" value="Common" /> <m_vPosTopLeft type="7" value="0.000,0.000,0.000" /> <m_vPosBottomRight type="7" value="1000.000,1000.000,1000.000" /> <m_fRotation type="2" value="0.0000" /> <m_vSize type="7" value="1000.000,1000.000,1000.000" /> <m_bShowCustomEntity type="5" value="TRUE" /> <m_ColorLDR type="132" value="0,0,0,255" /> <m_eType type="4" value="General" /> <m_szEnterLua type="12" value="" /> <m_eClearType type="4" value="None" /> <m_iClearKillRatio type="0" value="0" /> <m_szClearLua type="12" value="" /> <m_iSectorTitle type="0" value="0" /> <m_iSectorExitType type="4" value="Portal" /> <m_iSectorExitID type="0" value="0" /> <m_iRelativeSectorID type="0" value="0" /> <m_iConditionKillRatio_1Step type="0" value="0" /> <m_iConditionKillRatio_2Step type="0" value="0" /> <m_iConditionKillRatio_3Step type="0" value="0" /> <m_iConditionKillRatio_4Step type="0" value="0" /> <m_iConditionKillRatio_5Step type="0" value="0" /> </VSectorBox></Batchs><Batchs eventtype="EventPoint"/></root>""";
+
+    /// <summary>
+    /// The current sector of a maze is the one the first member who is still there stands in: a member whose entity is gone is
+    /// passed over.
+    /// </summary>
+    [TestMethod]
+    public void TheCurrentSectorPassesOverAMemberWhoseEntityIsGone()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var master = Player(world, 1, 20, new RecordingConnection());
+            var member = Player(world, 2, 15, new RecordingConnection());
+
+            world.Set(master, world.Get<WorldComponent>(master) with { Position = new Vector3(-500f, -500f, 0f) });
+            world.Set(member, world.Get<WorldComponent>(member) with { Position = new Vector3(500f, 500f, 0f) });
+
+            var maze = TestMazes.Create(world, master, map: SectorMap);
+
+            Assert.IsTrue(maze.Join(member));
+
+            world.Destroy(master);
+            maze.TerminateSpawn(0);
+
+            Assert.IsTrue(maze.Creatures.GetKillProgress(Sector).Stopped, "the sector of the member who is still there");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
 }

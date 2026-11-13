@@ -167,11 +167,11 @@ public sealed class SkillRulesTest
     }
 
     /// <summary>
-    /// The bonus a deck page gives shortens the cooldown of the skills in the deck, and a buff lowers what a skill costs in soul
-    /// gauge.
+    /// A skill started from the second place of its deck row gets the bonus chosen for that place, which shortens its cooldown;
+    /// started from the first place it gets none. A buff lowers what a skill costs in soul gauge either way.
     /// </summary>
     [TestMethod]
-    public void TheDeckBonusAndBuffsShortenCooldownsAndLowerCosts()
+    public void TheBonusOfTheDeckPlaceASkillIsLinkedFromShortensItsCooldown()
     {
         var (world, player) = Create();
 
@@ -179,7 +179,8 @@ public sealed class SkillRulesTest
         {
             var bonuses = new ReadOnlyCollection<DeckBonusRow>(
             [
-                TestRows.Build<DeckBonusRow>(("Id", 2), ("BonusType", (byte)DeckBonusKind.Cooldown), ("RequiredLevel", 1), ("BonusValue", 0.5f))
+                TestRows.Build<DeckBonusRow>(("Id", (short)12), ("Phase", (byte)0), ("BonusType", (byte)DeckBonusKind.Cooldown), ("RequiredLevel", (byte)1), ("BonusValue", 0.5f)),
+                TestRows.Build<DeckBonusRow>(("Id", (short)2), ("Phase", (byte)1), ("BonusType", (byte)DeckBonusKind.Damage), ("RequiredLevel", (byte)1), ("BonusValue", 0.1f))
             ]);
             var use = new SkillUse(world, Skills, new PlayerGauges(world, EmptyTables()), bonuses);
             var book = new BuffBook();
@@ -187,13 +188,62 @@ public sealed class SkillRulesTest
 
             BuffRules.Apply(book, new BuffCatalog([thrift]), thrift, 0, new BuffCarrier(1, 100, 100, false), []);
             world.Add(player, new BuffBookComponent { Book = book });
-            world.Add(player, new SkillDeckBonusComponent { Values = [2] });
+            world.Add(player, new SkillDeckBonusComponent { Values = [12, 2, 0, 0] });
 
+            use.Link(player, Strike, 0);
             use.Use(player, Strike, TimeSpan.Zero);
 
             Assert.AreEqual(72f, world.Get<GaugeComponent>(player).SoulGauge, "35 less a fifth.");
+            Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.FromMilliseconds(5000)), "the first place: the whole 5 s.");
+            Assert.AreEqual(SkillRefusal.Cooldown, use.Check(player, Strike, TimeSpan.FromMilliseconds(4999)));
+
+            world.Set(player, world.Get<SkillDeckComponent>(player) with { SlotList = [new SkillDeckValue { Position = 0, Skill1 = Unlearned, Skill2 = Strike }] });
+            world.Set(player, new SkillCooldownComponent());
+
+            use.Link(player, Strike, 0);
+            use.Use(player, Strike, TimeSpan.Zero);
+
             Assert.AreEqual(SkillRefusal.Cooldown, use.Check(player, Strike, TimeSpan.FromMilliseconds(2499)));
-            Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.FromMilliseconds(2500)), "Half of 5 s.");
+            Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.FromMilliseconds(2500)), "the second place: half of 5 s.");
+            Assert.AreEqual(0f, DeckLink.DamageShare(world, player), "the bonus of the second place is not the damage of the third");
+
+            world.Set(player, world.Get<SkillDeckComponent>(player) with { SlotList = [new SkillDeckValue { Position = 0, Skill1 = Unlearned, Skill2 = Evade, Skill3 = Strike }] });
+            use.Link(player, Strike, 0);
+
+            Assert.AreEqual(0.1f, DeckLink.DamageShare(world, player), "the third place adds a tenth to each blow");
+
+            use.Link(player, Strike, 1);
+
+            Assert.AreEqual(0f, use.CooldownRate(player, Skills[0]), "another row links nothing");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// The bonuses chosen for a deck page are kept only for the place their row is for and from the level it needs; any other is
+    /// none, and the answer tells what was kept.
+    /// </summary>
+    [TestMethod]
+    public void ADeckBonusIsKeptOnlyForItsPlaceAndFromItsLevel()
+    {
+        var (world, player) = Create(level: 10);
+
+        try
+        {
+            var bonuses = new ReadOnlyCollection<DeckBonusRow>(
+            [
+                TestRows.Build<DeckBonusRow>(("Id", (short)1), ("Phase", (byte)0), ("RequiredLevel", (byte)1), ("BonusValue", 0.04f)),
+                TestRows.Build<DeckBonusRow>(("Id", (short)11), ("Phase", (byte)1), ("RequiredLevel", (byte)1), ("BonusValue", 0.08f)),
+                TestRows.Build<DeckBonusRow>(("Id", (short)21), ("Phase", (byte)2), ("RequiredLevel", (byte)20), ("BonusValue", 0.15f))
+            ]);
+            var use = new SkillUse(world, Skills, new PlayerGauges(world, EmptyTables()), bonuses);
+
+            CollectionAssert.AreEqual(new ushort[] { 1, 11, 0, 0 }, use.ChooseDeckBonus(player, [1, 11, 21, 0]), "the third needs level 20");
+            CollectionAssert.AreEqual(new ushort[] { 0, 0, 0, 0 }, use.ChooseDeckBonus(player, [11, 1, 99, 1]), "the wrong places and a row the table lacks");
         }
 
         finally

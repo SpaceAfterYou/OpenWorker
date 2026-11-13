@@ -46,7 +46,8 @@ public partial class LuaMaze
         var attackerStats = combat.GetPlayer(Ecs, player);
         var skillDamage = combat.GetSkill(skill);
         var dealt = strength ?? attackerStats;
-        var hits = targets.Select((target, i) => ApplyDamage(player, target, dealt, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, skill, HitKinds.Of(trigger), origin)).ToArray();
+        var deck = card is null ? DeckLink.DamageShare(Ecs, player) : 0f;
+        var hits = targets.Select((target, i) => ApplyDamage(player, target, dealt, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, skill, HitKinds.Of(trigger), origin, deck)).ToArray();
 
         // The combo of the player goes into the message of the hit: the client shows it. The blows of a card do not count.
         var now = (long)Clock.Time.TotalMilliseconds;
@@ -180,7 +181,8 @@ public partial class LuaMaze
         }
     }
 
-    private SkillDmgValue ApplyDamage(Entity attacker, Entity target, in CombatStats attackerStats, in SkillDamage skill, float attackRate, in AttackTrigger trigger, int skillId = 0, AiHitKind kind = AiHitKind.Skill, Vector3? origin = null)
+    private SkillDmgValue ApplyDamage(Entity attacker, Entity target, in CombatStats attackerStats, in SkillDamage skill, float attackRate, in AttackTrigger trigger, int skillId = 0, AiHitKind kind = AiHitKind.Skill, Vector3? origin = null,
+        float deckShare = 0f)
     {
         // An armor whose time is up is whole for this hit: what the hit deals and how it is taken are read after that.
         creatureManager.RestoreSuperArmor(target);
@@ -192,6 +194,12 @@ public partial class LuaMaze
         var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
         var context = creatureManager.ContextOf(target);
         var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken, context);
+
+        // The damage bonus of the deck place the skill was linked from.
+        if (deckShare > 0f)
+        {
+            result = result with { Damage = result.Damage + (int)(result.Damage * deckShare) };
+        }
 
         result = result with { Damage = _buffs.Adjust(attacker, target, result.Damage) };
 
