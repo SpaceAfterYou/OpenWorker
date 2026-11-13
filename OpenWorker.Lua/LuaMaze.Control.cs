@@ -24,6 +24,11 @@ public partial class LuaMaze
     private const short ControlNoMotion = -1;
 
     /// <summary>
+    /// The widest a controlled monster is taken to be against walls when its skill carries it.
+    /// </summary>
+    private const float ControlCarryRadius = 100f;
+
+    /// <summary>
     /// The monster a player controls.
     /// </summary>
     private sealed class Controlled(ActorValue actor, MonsterBehavior behavior, Vector3 place, bool follows, int generation)
@@ -47,6 +52,52 @@ public partial class LuaMaze
         /// Until when the skill it plays lasts: it takes no other before.
         /// </summary>
         public TimeSpan BusyUntil { get; set; }
+
+        /// <summary>
+        /// The skill it plays now.
+        /// </summary>
+        public ControlPlay? Play { get; set; }
+    }
+
+    /// <summary>
+    /// A skill the controlled monster plays: it starts where the key found it, and the moves of its animations carry it the way it
+    /// faces, short of walls.
+    /// </summary>
+    private sealed class ControlPlay(int skill, SkillTimeline timeline, SkillPositionValue position, float radius)
+    {
+        private int _move;
+        private bool _stopped;
+
+        public int Skill { get; } = skill;
+        public SkillTimeline Timeline { get; } = timeline;
+        public SkillPositionValue Position { get; } = position;
+        public Vector3 Place { get; private set; } = position.Position;
+
+        /// <summary>
+        /// Carries it by the moves due up to this moment of the skill; a wall ends the carry for the rest of the skill.
+        /// </summary>
+        public Vector3 CarryTo(float time, INavigation navigation)
+        {
+            var offset = Vector2.Zero;
+
+            for (; _move < Timeline.Moves.Count && Timeline.Moves[_move].Time <= time; _move++)
+            {
+                offset += new Vector2(Timeline.Moves[_move].Offset.X, Timeline.Moves[_move].Offset.Y);
+            }
+
+            if (_stopped || offset == Vector2.Zero)
+            {
+                return Place;
+            }
+
+            var (sin, cos) = MathF.SinCos(Position.Angle * (MathF.PI / 180f));
+            var wanted = Place + new Vector3(offset.X * cos - offset.Y * sin, offset.X * sin + offset.Y * cos, 0f);
+
+            Place = navigation.Clamp(Place, wanted, radius, out var reached);
+            _stopped = !reached;
+
+            return Place;
+        }
     }
 
     private readonly Dictionary<Fighter, Controlled> _controlled = new(ReferenceEqualityComparer.Instance);
@@ -179,10 +230,10 @@ public partial class LuaMaze
         }
 
         var skill = skills[attack];
-        var hits = actions.GetHits(skill, controlled.Behavior.ActionFile);
-        var length = creatureManager.Services?.Behaviors.GetSkillDuration(skill) ?? 0f;
+        var timeline = actions.GetTimeline(skill, controlled.Behavior.ActionFile);
+        var length = timeline.Length > 0f ? timeline.Length : creatureManager.Services?.Behaviors.GetSkillDuration(skill) ?? 0f;
 
-        controlled.BusyUntil = Clock.Time + Wait(Math.Max(length, hits.Count > 0 ? hits[^1].Time : 0f));
+        controlled.BusyUntil = Clock.Time + Wait(length);
 
         var (place, yaw) = PlaceOf(member, controlled);
         var position = new SkillPositionValue { Position = place, Angle = yaw, MotionClass = ControlNoMotion };
@@ -198,30 +249,50 @@ public partial class LuaMaze
             }
         });
 
-        foreach (var hit in hits)
+        var play = new ControlPlay(skill, timeline, position, Math.Min(combat.GetMonster(controlled.Behavior.Id).BodyRadius, ControlCarryRadius));
+
+        controlled.Play = play;
+
+        if (timeline.Hits.Count > 0)
         {
-            _schedule.Schedule(Wait(hit.Time), () => ControlStrike(member, controlled, skill, hit.Trigger, position));
+            _schedule.Schedule(Wait(timeline.Hits[0].Time), () => ControlStrike(member, controlled, play, 0));
         }
 
         return ClaimVerdict.Taken;
     }
 
     /// <summary>
-    /// One blow of the controlled monster, from where it stands now. A monster let go strikes no more.
+    /// One blow of the controlled monster, at the moment the clients play it and from where its skill has carried it by then. A blow
+    /// that lands holds the skill for its freeze, so what is still to come comes that much later. A monster let go, or one that
+    /// began another skill, strikes no more for this one.
     /// </summary>
-    private void ControlStrike(Fighter member, Controlled controlled, int skill, AttackTrigger trigger, SkillPositionValue position)
+    private void ControlStrike(Fighter member, Controlled controlled, ControlPlay play, int index)
     {
-        if (Closed || member.Gone || !_controlled.TryGetValue(member, out var now) || now != controlled ||
+        if (Closed || member.Gone || !_controlled.TryGetValue(member, out var now) || now != controlled || controlled.Play != play ||
             !creatureManager.Vitals.IsAlive(member.Player))
         {
             return;
         }
 
-        var (place, yaw) = PlaceOf(member, controlled);
-        var area = new AttackArea(trigger, place, yaw);
+        var hit = play.Timeline.Hits[index];
+        var place = play.CarryTo(hit.Time, creatureManager.Navigation);
+        var yaw = play.Position.Angle;
+        var area = new AttackArea(hit.Trigger, place, yaw);
         var targets = creatureManager.FindMonsters((at, body) => area.Touches(at, body.BodyRadius, body.BodyHeight));
 
-        Run(ApplyDamageAsync(member, skill, trigger, targets, position, origin: place, card: new CardStrike(controlled.Actor, place, yaw)));
+        Logger.ControlledStrike((int)controlled.Actor, play.Skill, hit.Trigger.Id, hit.Trigger.RangeType, hit.Trigger.Radius, hit.Trigger.Angle, hit.Trigger.Center,
+            hit.Trigger.Height, place, yaw, targets.Length);
+
+        var freeze = targets.Length > 0 && float.IsFinite(hit.Trigger.Reaction.HitFreeze) ? Math.Max(hit.Trigger.Reaction.HitFreeze, 0f) : 0f;
+
+        controlled.BusyUntil += Wait(freeze);
+
+        if (index + 1 < play.Timeline.Hits.Count)
+        {
+            _schedule.Schedule(Wait(play.Timeline.Hits[index + 1].Time - hit.Time + freeze), () => ControlStrike(member, controlled, play, index + 1));
+        }
+
+        Run(ApplyDamageAsync(member, play.Skill, hit.Trigger, targets, play.Position, origin: place, card: new CardStrike(controlled.Actor, place, yaw)));
     }
 
     private (Vector3 Place, float Yaw) PlaceOf(Fighter member, Controlled controlled)
