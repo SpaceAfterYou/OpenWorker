@@ -10,6 +10,11 @@ using OpenWorker.Gameplay.Modules.Attendance.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.State;
+using OpenWorker.DistrictServer;
+using OpenWorker.Hotspot.Handler.Abstractions;
+using OpenWorker.Hotspot.Modules.Events.Requests;
+using OpenWorker.MazeServer;
+using OpenWorker.Server.Common.Services;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -60,6 +65,22 @@ public sealed class PlayTimeClaimTest
 
         Assert.AreEqual(20, f.Book.PlaySeconds, "the seconds since the last count are counted at the close");
         Assert.AreEqual(PersonSections.MiscState, dirty.Sections & PersonSections.MiscState, "and written by the flush that follows");
+    }
+
+    [TestMethod]
+    public void AMazeCountsAndAnswersPlayTimeAsTheDistrictDoes()
+    {
+        var shared = typeof(EventService).Assembly.GetName().Name;
+
+        Assert.IsTrue(typeof(IHotspotHandler<EventAttendancePlayTimeRewardRequest>).IsAssignableFrom(typeof(EventService)));
+
+        foreach (var server in new[] { typeof(MazeServerHost), typeof(DistrictServerHost) })
+        {
+            Assert.IsTrue(server.Assembly.GetReferencedAssemblies().Any(e => e.Name == shared), server.Name);
+        }
+
+        Assert.IsTrue(typeof(MiscStateLoader).GetConstructors().Single().GetParameters().Any(e => e.ParameterType == typeof(AttendanceManager)),
+            "a maze loads the book of the person");
     }
 
     private sealed class Fixture : IDisposable

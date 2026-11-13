@@ -4,7 +4,7 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Events.Requests;
 
-namespace OpenWorker.DistrictServer.Services;
+namespace OpenWorker.Server.Common.Services;
 
 /// <summary>
 /// The reward of a day of attendance goes to the person by itself, so its request only makes the server look again; the
