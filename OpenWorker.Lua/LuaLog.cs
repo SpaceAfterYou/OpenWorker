@@ -1,3 +1,4 @@
+using System.Numerics;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Lua.Enums;
@@ -211,4 +212,10 @@ internal static partial class LuaLog
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} wants to die, which a maze script has to finish")]
     public static partial void MonsterWantsToDie(this ILogger logger, int monster);
+
+    [LoggerMessage(Level = LogLevel.Debug,
+        Message = "Controlled monster {Monster} strikes with skill {Skill}, attack {Attack}: range {Range}, radius {Radius}, angle {Angle}, center {Center}, height {Height}, laid from {Place} facing {Yaw}, touched {Touched}")]
+    public static partial void ControlledStrike(this ILogger logger, int monster, int skill, int attack, short range, float radius, float angle, Vector3 center, float height,
+        Vector3 place, float yaw, int touched);
+
 }
