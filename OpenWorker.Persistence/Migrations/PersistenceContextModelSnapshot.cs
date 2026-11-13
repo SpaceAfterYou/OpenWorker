@@ -852,10 +852,6 @@ namespace OpenWorker.Persistence.Migrations
                         .IsUnicode(true)
                         .HasColumnType("character varying(12)");
 
-                    b.Property<byte[]>("OptionList")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
                     b.Property<int>("Outfit")
                         .HasColumnType("integer");
 
@@ -1020,6 +1016,8 @@ namespace OpenWorker.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
 
                     b.HasIndex("ReceiverAccountId");
 
