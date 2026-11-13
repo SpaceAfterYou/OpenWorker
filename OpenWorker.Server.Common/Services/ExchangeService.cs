@@ -622,7 +622,8 @@ public sealed partial class ExchangeService(
         LogReturnedToAccount(logger, account, gold, items.Count);
 
         await post.SendToAccountAsync(
-            new PostAccountDraft(account, ExchangeListings.Sender, "[Exchange] Returned", "What the exchange could not take.", gold, items),
+            new PostAccountDraft(account, ExchangeListings.Sender, "[Exchange] Returned", "What the exchange could not take.", gold, items,
+                ExchangeListings.AccountLetterKind, ExchangeListings.TakenBack),
             CancellationToken.None);
     }
 

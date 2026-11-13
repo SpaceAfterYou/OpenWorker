@@ -486,6 +486,9 @@ public sealed class ExchangeTest
 
         Assert.AreEqual(ExchangeRules.SellerGets(2_000, 9), gold.Money);
         Assert.AreEqual(1_820, gold.Money, "the exchange keeps nine in a hundred");
+        Assert.AreEqual((byte)6, gold.SubType, "the row of a sale");
+        Assert.AreEqual(Sword.ToString(System.Globalization.CultureInfo.InvariantCulture), gold.Title, "the client names the item by the title");
+        Assert.AreEqual("1", gold.Body, "and the count by the text");
         Assert.AreEqual(5, (await new PostStore(Factory).ListReceivedAsync(buyer, saved: false)).Single().Items.Single().Upgrade);
 
         // Sold out: the next buyer finds nothing, and keeps its gold.
@@ -493,6 +496,44 @@ public sealed class ExchangeTest
 
         Assert.AreEqual(ExchangeCodes.Gone, Result(buyerPlayer.Read().Single()));
         Assert.AreEqual(3_000, far.World.Get<CurrencyComponent>(buyerPlayer.Entity).Gold);
+    }
+
+    /// <summary>
+    /// What the exchange owes a person goes to its box whatever the box holds: a box of forty letters still gets the letter
+    /// that returns a listing, a letter of the game with the row of the client's table, and it is the first one listed.
+    /// </summary>
+    [TestMethod]
+    public async Task ALetterOfTheExchangeReachesAFullBox()
+    {
+        var store = new ExchangeStore(Factory);
+
+        var (_, seller) = await CreatePersonAsync("fullbox");
+
+        await using (var database = await Factory.CreateDbContextAsync())
+        {
+            var now = DateTime.UtcNow;
+
+            database.Posts.AddRange(Enumerable.Range(0, PostLimits.MaxLetters).Select(_ => new PostPersistent
+            {
+                Kind = PostKind.Person, SenderName = "friend", ReceiverId = seller, ReceiverName = "fullbox",
+                Title = "Hello", Body = "Hello", Items = [], CreatedAt = now, UpdatedAt = now, ExpiresAt = now + PostLimits.Lifetime
+            }));
+
+            await database.SaveChangesAsync();
+        }
+
+        var waiting = await store.AddWaitingAsync(Draft(seller), 10);
+        var recall = await store.RecallAsync(waiting.Listing!.Serial, seller, e => ExchangeListings.ReturnLetter(e, DateTime.UtcNow));
+
+        Assert.AreEqual(ExchangeOutcome.Done, recall.Outcome);
+
+        var listed = await new PostStore(Factory).ListReceivedAsync(seller, saved: false);
+
+        Assert.HasCount(PostLimits.MaxLetters, listed);
+        Assert.AreEqual(recall.Letter!.Id, listed[0].Id, "the letter of the exchange is in the box");
+        Assert.AreEqual((byte)1, listed[0].MainType, "a letter of the game");
+        Assert.AreEqual((byte)7, listed[0].SubType, "the row of a listing taken back");
+        Assert.AreEqual(1, listed[0].Items.Single().Count);
     }
 
     /// <summary>

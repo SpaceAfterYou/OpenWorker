@@ -18,15 +18,23 @@ public static class ExchangeListings
     public const string Sender = "Exchange";
 
     /// <summary>
-    /// The kind of the letters of the exchange in the client's table of system letters; the sub kinds follow.
+    /// The kind of the letters of the exchange: a letter of the game, whose sender, title and text the client takes from the
+    /// row of its table of system letters named by the sub kind. Such a letter goes to the box of the person whatever the box
+    /// holds.
     /// </summary>
-    public const byte LetterKind = 2;
+    public const byte LetterKind = 1;
 
-    public const byte Bought = 1;
-    public const byte Sold = 2;
-    public const byte TakenBack = 3;
-    public const byte Ended = 4;
-    public const byte SoldWithoutCommission = 5;
+    /// <summary>
+    /// The kind of a letter of the game to an account; the client takes only the icon from the row.
+    /// </summary>
+    public const byte AccountLetterKind = 4;
+
+    // The rows of the client's table of system letters.
+    public const byte Bought = 5;
+    public const byte Sold = 6;
+    public const byte TakenBack = 7;
+    public const byte Ended = 16;
+    public const byte SoldWithoutCommission = 18;
 
     #region As the client sees them
 
@@ -130,7 +138,8 @@ public static class ExchangeListings
     #region Letters
 
     /// <summary>
-    /// The letters of a sale: the item to the buyer, the gold less the share of the exchange to the seller.
+    /// The letters of a sale: the item to the buyer, the gold less the share of the exchange to the seller. The client fills
+    /// the text of the row with the item named by the title and the count written as the text.
     /// </summary>
     public static (PostPersistent ToBuyer, PostPersistent ToSeller) SaleLetters(
         ExchangeListingPersistent listing,
@@ -140,38 +149,27 @@ public static class ExchangeListings
         byte buyerHero,
         DateTime now)
     {
-        var total = listing.PriceOne * count;
-        var gets = ExchangeRules.SellerGets(total, listing.SaleRate);
-        var name = listing.Item.ToString(CultureInfo.InvariantCulture);
+        var gets = ExchangeRules.SellerGets(listing.PriceOne * count, listing.SaleRate);
+        var item = listing.Item.ToString(CultureInfo.InvariantCulture);
+        var sold = count.ToString(CultureInfo.InvariantCulture);
 
-        var toBuyer = Letter(buyer, buyerName, buyerHero, Bought, "[Exchange] Purchase complete",
-            string.Create(CultureInfo.InvariantCulture, $"You bought {count} of item {name} for {total} gold. It is attached to this letter."),
-            0, Part(listing, count), now);
+        var toBuyer = Letter(buyer, buyerName, buyerHero, Bought, item, sold, 0, Part(listing, count), now);
 
         var toSeller = Letter(listing.SellerId, listing.SellerName, listing.SellerHero,
-            listing.SaleRate == 0 ? SoldWithoutCommission : Sold, "[Exchange] Sale complete",
-            string.Create(CultureInfo.InvariantCulture,
-                $"{count} of item {name} sold for {total} gold. The exchange kept {total - gets} gold; {gets} gold is attached to this letter."),
-            gets, null, now);
+            listing.SaleRate == 0 ? SoldWithoutCommission : Sold, item, sold, gets, null, now);
 
         return (toBuyer, toSeller);
     }
 
     /// <summary>
-    /// The letter that returns what is left of a listing taken back: before its end, or after it.
+    /// The letter that returns what is left of a listing taken back: before its end, or after it. The row says it all.
     /// </summary>
     public static PostPersistent ReturnLetter(ExchangeListingPersistent listing, DateTime now)
     {
         var ended = listing.State == ExchangeListingState.OnSale && listing.ExpiresAt <= now;
-        var name = listing.Item.ToString(CultureInfo.InvariantCulture);
 
-        return ended
-            ? Letter(listing.SellerId, listing.SellerName, listing.SellerHero, Ended, "[Exchange] Listing ended",
-                string.Create(CultureInfo.InvariantCulture, $"The sale of {listing.Count} of item {name} has ended. They are attached to this letter."),
-                0, Part(listing, listing.Count), now)
-            : Letter(listing.SellerId, listing.SellerName, listing.SellerHero, TakenBack, "[Exchange] Listing taken back",
-                string.Create(CultureInfo.InvariantCulture, $"You took back {listing.Count} of item {name}. They are attached to this letter."),
-                0, Part(listing, listing.Count), now);
+        return Letter(listing.SellerId, listing.SellerName, listing.SellerHero, ended ? Ended : TakenBack, string.Empty, string.Empty,
+            0, Part(listing, listing.Count), now);
     }
 
     /// <summary>
