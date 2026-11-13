@@ -184,13 +184,18 @@ internal partial class MonsterBody : IAiHost
 
     public bool IsAttacking => _manager.Now < _attackEnd;
 
-    public bool CanMove => !IsAttacking && !IsStaggered && !_carried && !IsReactionBlockingMove && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
+    public bool CanMove => !IsHeld && !IsAttacking && !IsStaggered && !_carried && !IsReactionBlockingMove && !Behavior.IsRooted && (_battlePose || !Behavior.WalksOnlyInBattle);
 
     private bool IsStaggered => _manager.Now < _staggerEnd;
 
+    /// <summary>
+    /// A stun, a paralysis, a sleep or a freeze holds the monster: whatever asks, it neither walks nor attacks.
+    /// </summary>
+    private bool IsHeld => _manager.Buffs?.IsHeld(Entity) == true;
+
     public bool IsRooted => Behavior.IsRooted;
 
-    public bool CanAttack => !IsAttacking && !IsStaggered && !_carried && !IsReactionBlockingAttack;
+    public bool CanAttack => !IsHeld && !IsAttacking && !IsStaggered && !_carried && !IsReactionBlockingAttack;
 
     public bool IsMoving => _destination is not null;
 
@@ -718,6 +723,11 @@ internal partial class MonsterBody : IAiHost
 
     public virtual bool UseSkill(AiSkill skill, AiTarget target)
     {
+        if (IsHeld)
+        {
+            return false;
+        }
+
         var now = _manager.Now;
 
         // A skill that grabs plays its start, and what follows depends on whether the start took somebody.
