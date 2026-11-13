@@ -1,53 +1,53 @@
 using Arch.Core;
-using Arch.Core.Extensions;
+using OpenWorker.Channel.Community;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Commands.Attributes;
-using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Modules.Login.Responses;
+using OpenWorker.Hotspot.Modules.System.Responses;
 
 namespace OpenWorker.Commands;
 
+/// <summary>
+/// Switches a content of this server on or off, as <c>/option index true|false</c>. Everybody on the server is told at once:
+/// the client in the game reads the server options only from 01/07.
+/// </summary>
 [CommandTrigger("option")]
-[CommandDescription("Set player option")]
+[CommandDescription("Switch a content of this server on or off")]
 internal sealed partial class OptionCommand : ICommand
 {
     [ExternalDependency]
     private World World { get; }
-    
+
     [ExternalDependency]
     private ServerContent Contents { get; }
-    
+
+    [ExternalDependency]
+    private CommunityNetwork Network { get; }
+
     ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
         if (!int.TryParse(tokens.ElementAtOrDefault(0), out var index) || index < 0 || index >= Contents.Count)
         {
-            // TODO: Failed parser message
             return ValueTask.FromResult(false);
         }
-        
+
         if (!bool.TryParse(tokens.ElementAtOrDefault(1), out var flag))
         {
-            // TODO: Failed parser message
             return ValueTask.FromResult(false);
         }
-        
-        PrivateExecute(player, index, flag);
-        
-        return ValueTask.FromResult(true);
-    }
-    
-    private void PrivateExecute(Entity player, int index, bool flag)
-    {
-        var session = World.Get<ServerSessionComponent>(player);
-        
-        Contents[index] = flag;
-        
-        var personOptions = World.Has<PersonOptionComponent>(player)
-            ? World.Get<PersonOptionComponent>(player).Collection
-            : [];
 
-        var response = new LoginOptionLoadResponse { PersonOptions = personOptions, Contents = Contents };
-        session.Send(response);
+        Contents[index] = flag;
+
+        var update = new SystemServerOptionUpdateResponse { Contents = Contents };
+
+        foreach (var person in Network.Online)
+        {
+            if (World.IsAlive(person) && World.TryGet(person, out ServerSessionComponent session))
+            {
+                session.Send(update);
+            }
+        }
+
+        return ValueTask.FromResult(true);
     }
 }
