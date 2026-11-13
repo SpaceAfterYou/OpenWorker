@@ -27,7 +27,11 @@ public enum HiddenEventKind : byte
 public enum HiddenEventTarget : byte
 {
     Monster = 1,
+
+    /// <summary>A jump of a player.</summary>
     Jump = 2,
+
+    /// <summary>The stamina a player spends on its skills and moves.</summary>
     Stamina = 3,
     Gold = 4,
     Ether = 5,
@@ -40,12 +44,20 @@ public enum HiddenEventTarget : byte
     /// <summary>A skill of the kind the table numbers 4: the skill before it.</summary>
     PeakSkill = 9,
     ItemUsed = 10,
+
+    /// <summary>The super armor of a monster broken by a player.</summary>
     ArmorBreak = 11,
+
+    /// <summary>A skill used linked from the deck: after the first place of its row, with a bonus chosen for the place.</summary>
     SkillLink = 12,
     JumpAttack = 13,
     Evade = 14,
-    MonsterHitInAir = 15,
-    JumpAttackHit = 16
+
+    /// <summary>A monster killed by a skill while it was in the air.</summary>
+    KillInAir = 15,
+
+    /// <summary>A monster killed by a jump attack.</summary>
+    JumpAttackKill = 16
 }
 
 /// <summary>

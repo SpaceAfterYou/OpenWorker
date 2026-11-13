@@ -2,6 +2,7 @@ using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Channel;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
 
@@ -16,7 +17,8 @@ public sealed class MovementService(
     IPlayerAudience audience,
     MovementPace pace,
     HandlerExecutor errors,
-    ILogger<MovementService> logger
+    ILogger<MovementService> logger,
+    HiddenEventCounter? hiddenEvents = null
 ) :
     MovementServiceBase(world, pace, errors, logger)
 {
@@ -38,5 +40,10 @@ public sealed class MovementService(
     protected override void OnPlaced(Entity player, Vector3 position)
     {
         audience.Relocate(player, position);
+    }
+
+    protected override void OnJumped(Entity player)
+    {
+        hiddenEvents?.Count(player, HiddenEventTarget.Jump, 0, 1);
     }
 }

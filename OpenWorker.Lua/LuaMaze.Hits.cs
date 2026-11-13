@@ -57,11 +57,6 @@ public partial class LuaMaze
             member.LastHit = now;
 
             CountHiddenEvent(HiddenEventTarget.MaxCombo, 0, member.Combo);
-
-            if (HiddenEvents?.IsJumpAttack(skill) == true)
-            {
-                CountHiddenEvent(HiddenEventTarget.JumpAttackHit, 0, hits.Length);
-            }
         }
 
         MonstersHit?.Invoke(player, hits.Length, hits.Sum(e => (long)e.Damage));
@@ -195,7 +190,8 @@ public partial class LuaMaze
         var defense = _buffs.DefenseOf(target, creatureManager.FrameDefenseOf(target, body.Defense));
         // A super armor that was broken before this hit lets half as much again through.
         var broken = body.MaxSuperArmor > 0f && body.SuperArmor <= 0f;
-        var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken, creatureManager.ContextOf(target));
+        var context = creatureManager.ContextOf(target);
+        var result = DamageCalculator.Calculate(attackerStats, _buffs.StatsOf(target, body.Stats), skill, defense, attackRate, Random.Shared, broken, context);
 
         result = result with { Damage = _buffs.Adjust(attacker, target, result.Damage) };
 
@@ -209,6 +205,8 @@ public partial class LuaMaze
 
         var armorShare = skill.SuperArmorAttack * (1f + attackerStats.Special.Of(SpecialEffect.SuperArmorDamage) * 0.01f);
         var effect = creatureManager.ReceiveBlow(target, BlowOf(attacker, trigger, origin), defense, result.Damage, armorShare, health > 0);
+
+        CountHiddenEventBlow(attacker, target, skillId, body.SuperArmorBrokenUntil is not null, creature.Health > 0 && health == 0, context.Flying);
 
         return default(SkillDmgValue) with
         {

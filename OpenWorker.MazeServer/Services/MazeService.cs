@@ -298,6 +298,7 @@ public sealed partial class MazeService(
         if (ecs.Has<LuaMaze>(context.Player))
         {
             ecs.Get<LuaMaze>(context.Player).StartSkill(context.Player, skill.Skill, position);
+            ecs.Get<LuaMaze>(context.Player).CountHiddenEventDeckSkill(context.Player, skill.Skill, skill.SkillDeckIndex);
         }
 
         return ValueTask.CompletedTask;

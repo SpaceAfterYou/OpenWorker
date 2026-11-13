@@ -73,6 +73,13 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
     {
     }
 
+    /// <summary>
+    /// The player jumped, and the others were told.
+    /// </summary>
+    protected virtual void OnJumped(Entity player)
+    {
+    }
+
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeMotionReqRequest request)
     {
         BroadcastToOthers(context.Player, new PersonChangeMotionBroadcastResponse
@@ -153,6 +160,8 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
                 JumpingMove = request.bJumpingMove,
                 JumpDrop = request.bJumpDrop
             });
+
+            OnJumped(context.Player);
         }
 
         return ValueTask.CompletedTask;
