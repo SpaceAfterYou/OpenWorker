@@ -87,13 +87,12 @@ internal partial class MonsterBody
 
     /// <summary>
     /// A reaction that shows ends whatever the monster was doing: its attack, with the blows and shots it had still to deal,
-    /// and its walk.
+    /// and its walk. A shot already on its way flies on.
     /// </summary>
     private void Interrupt()
     {
         _attackEnd = 0;
         _pending.Clear();
-        _flights.Clear();
         _clips.Clear();
         ReleaseGrab(true);
 

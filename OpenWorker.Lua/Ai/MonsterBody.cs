@@ -280,7 +280,6 @@ internal partial class MonsterBody : IAiHost
         _staggerEnd = _manager.Now + seconds;
         _attackEnd = 0;
         _pending.Clear();
-        _flights.Clear();
         _clips.Clear();
         ReleaseGrab(true);
 
