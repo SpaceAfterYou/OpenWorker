@@ -96,8 +96,18 @@ public sealed partial class AiMachineTest
             Log.Add("stop");
         }
 
+        /// <summary>
+        /// No way can be found to anywhere.
+        /// </summary>
+        public bool NoWay { get; set; }
+
         public bool MoveTo(Vector3 destination, bool run)
         {
+            if (NoWay)
+            {
+                return false;
+            }
+
             Destination = destination;
             Log.Add(run ? "run" : "walk");
 
@@ -153,6 +163,7 @@ public sealed partial class AiMachineTest
 
         public void Teleport(Vector3 position)
         {
+            Log.Add("teleport");
             Position = position;
             Destination = null;
         }
@@ -477,6 +488,52 @@ public sealed partial class AiMachineTest
         Assert.IsTrue(host.Restored);
         Assert.IsFalse(host.Invincible);
         Assert.IsLessThan(200f, Vector3.Distance(host.Position, host.HomePosition));
+    }
+
+    [TestMethod]
+    public void AMonsterThatComesHomeStopsNearItAndWaits()
+    {
+        var host = new Host { Player = Player(new Vector3(9000, 0, 0)) };
+        var builder = Fighter();
+
+        builder.SetReturnDistance(500f);
+        builder.RegisterStateFunctions(AiState.Return);
+
+        host.Position = new Vector3(2000, 0, 0);
+        host.HomePosition = Vector3.Zero;
+
+        var machine = Create(builder, host);
+
+        machine.Start(AiState.Return);
+        Run(machine, host, 10f);
+
+        Assert.AreEqual(AiState.Wait, machine.State);
+        Assert.DoesNotContain("teleport", host.Log);
+    }
+
+    [TestMethod]
+    public void AMonsterWithNoWayHomeKeepsLookingAndIsPutThereWhenTheTimeIsUp()
+    {
+        var host = new Host { Player = Player(new Vector3(9000, 0, 0)), NoWay = true };
+        var builder = Fighter();
+
+        builder.SetReturnDistance(500f);
+        builder.RegisterStateFunctions(AiState.Return);
+
+        host.Position = new Vector3(2000, 0, 0);
+        host.HomePosition = Vector3.Zero;
+
+        var machine = Create(builder, host);
+
+        machine.Start(AiState.Return);
+        Run(machine, host, 20f);
+
+        Assert.AreEqual(AiState.Return, machine.State);
+
+        Run(machine, host, 15f);
+
+        Assert.Contains("teleport", host.Log);
+        Assert.AreEqual(Vector3.Zero, host.Position);
     }
 
     [TestMethod]
