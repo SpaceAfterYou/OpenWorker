@@ -30,7 +30,6 @@ SCOPED=(
 # Console itself, so the rules still hold for the rest of the project.
 EXEMPT=(
   $'OpenWorker.LoadTest/Program.cs\tThe load test prints its report to the standard output and its progress to the standard error; this file hands both on.'
-  $'docs/phase-5/entry-cost/Program.cs\tA scratch measurement kept with its figures, not part of the solution: it prints what it measured.'
 )
 
 status=0
