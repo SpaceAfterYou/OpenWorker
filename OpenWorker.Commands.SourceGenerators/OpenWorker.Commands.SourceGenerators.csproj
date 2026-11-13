@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <IsPackable>false</IsPackable>
         <!-- A generator targets netstandard2.0 and keeps its usings explicit. -->
         <ImplicitUsings>disable</ImplicitUsings>

@@ -10,7 +10,7 @@ using OpenWorker.Extensions;
 
 namespace OpenWorker.DependencyInjection;
 
-public sealed class ArchComponentProvider(IConfiguration configuration, ILogger<ArchComponentProvider> logger)
+public sealed partial class ArchComponentProvider(IConfiguration configuration, ILogger<ArchComponentProvider> logger)
 {
     private ComponentType[] Components { get; } = PrivateGetComponents(configuration, logger);
 
@@ -40,7 +40,7 @@ public sealed class ArchComponentProvider(IConfiguration configuration, ILogger<
         var target = configuration.GetValue<EntityComponentService>(ConfigurationUtils.InstanceTargetKey);
         Debug.Assert(target != EntityComponentService.All);
 
-        logger.LogDebug("Getting components for {Target}", target);
+        LogGettingComponents(logger, target);
 
         var values = AppDomain.CurrentDomain
             .GetAssemblies()
@@ -58,11 +58,20 @@ public sealed class ArchComponentProvider(IConfiguration configuration, ILogger<
             .Select(Component.GetComponentType)
             .ToArray();
 
-        foreach (var value in values)
+        if (logger.IsEnabled(LogLevel.Debug))
         {
-            logger.LogDebug("Found component: {Name}", value.Type.Name);
+            foreach (var value in values)
+            {
+                LogFoundComponent(logger, value.Type.Name);
+            }
         }
 
         return values;
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Getting components for {Target}")]
+    private static partial void LogGettingComponents(ILogger logger, EntityComponentService target);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Found component: {Name}")]
+    private static partial void LogFoundComponent(ILogger logger, string name);
 }

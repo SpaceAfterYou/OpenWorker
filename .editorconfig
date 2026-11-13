@@ -75,3 +75,8 @@ dotnet_diagnostic.CA1069.severity = none
 # CA1720: an identifier that names a type.
 [OpenWorker.Extensions/BinaryWriterExtension.cs]
 dotnet_diagnostic.CA1720.severity = none
+
+# The kinds of data and the tags of a Havok tag file are named by the types they hold, as the format names them (an integer,
+# an object). CA1720: an identifier that names a type.
+[OpenWorker.Havok/Enums/{HavokLegacyType,TagType}.cs]
+dotnet_diagnostic.CA1720.severity = none

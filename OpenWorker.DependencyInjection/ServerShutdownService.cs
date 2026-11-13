@@ -68,6 +68,8 @@ internal sealed partial class ServerShutdownService(
 
             await withdrawing.WaitAsync(budget.Token);
 
+            var elapsed = Stopwatch.GetElapsedTime(started);
+
             if (left > 0)
             {
                 LogDrainTimedOut(logger, left, options.Value.DrainTimeout);
@@ -75,7 +77,7 @@ internal sealed partial class ServerShutdownService(
 
             else
             {
-                LogDrained(logger, Stopwatch.GetElapsedTime(started));
+                LogDrained(logger, elapsed);
             }
         }
 
