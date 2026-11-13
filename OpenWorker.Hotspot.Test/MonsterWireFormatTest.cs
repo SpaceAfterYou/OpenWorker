@@ -119,6 +119,35 @@ public sealed class MonsterWireFormatTest
         Assert.AreEqual(attack.BaseStream.Length, attack.BaseStream.Position);
     }
 
+    /// <summary>
+    /// Getting on and off a defensive weapon names the rider, then the weapon. The requests name the weapon, and the attack
+    /// key which skill of its row.
+    /// </summary>
+    [TestMethod]
+    public void WeaponRideNamesRiderThenWeapon()
+    {
+        var rider = new ActorValue(5, ActorType.User);
+        var expected = Expected(w =>
+        {
+            w.Write((int)rider);
+            w.Write(Raw);
+        });
+
+        CollectionAssert.AreEqual(expected, Written(new MonsterWeaponMountResponse { Rider = rider, Weapon = Monster }));
+        CollectionAssert.AreEqual(expected, Written(new MonsterWeaponDismountResponse { Rider = rider, Weapon = Monster }));
+
+        using var mount = new BinaryReader(new MemoryStream([9, 0, 0, 0]));
+        using var dismount = new BinaryReader(new MemoryStream([9, 0, 0, 0]));
+        using var attack = new BinaryReader(new MemoryStream([9, 0, 0, 0, 1]));
+        var fire = new MonsterWeaponAttackRequest(attack);
+
+        Assert.AreEqual(9, new MonsterWeaponMountRequest(mount).Weapon);
+        Assert.AreEqual(9, new MonsterWeaponDismountRequest(dismount).Weapon);
+        Assert.AreEqual(9, fire.Weapon);
+        Assert.AreEqual((byte)1, fire.Attack);
+        Assert.AreEqual(attack.BaseStream.Length, attack.BaseStream.Position);
+    }
+
     [TestMethod]
     public void ChangeMotionHasTwoShorts()
     {
