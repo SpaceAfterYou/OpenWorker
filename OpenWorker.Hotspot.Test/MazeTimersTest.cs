@@ -173,7 +173,7 @@ public sealed class MazeTimersTest
         await RunAsync(timers, 0.3f);
 
         Assert.IsTrue(host.Calls.Contains("OnStep(1,0,0)"), "the early finish goes to its own function");
-        Assert.IsFalse(host.Calls.Any(e => e.StartsWith("OnFinish")));
+        Assert.IsFalse(host.Calls.Any(e => e.StartsWith("OnFinish", StringComparison.Ordinal)));
 
         timers.Start("OnFinish");
         host.Calls.Clear();
@@ -181,7 +181,7 @@ public sealed class MazeTimersTest
         await RunAsync(timers, 1.5f);
 
         // About seven seconds were left of the first step, and the next one has them on top of its own ten.
-        var shown = host.Calls.First(e => e.StartsWith("show(0,"));
+        var shown = host.Calls.First(e => e.StartsWith("show(0,", StringComparison.Ordinal));
 
         StringAssert.StartsWith(shown, "show(0,16,");
     }

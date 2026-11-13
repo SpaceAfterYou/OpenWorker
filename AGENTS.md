@@ -65,9 +65,8 @@ dotnet test --solution OpenWorker.slnx
   - a Release build;
   - `dotnet tool restore && dotnet ef migrations has-pending-model-changes --project OpenWorker.Persistence`;
   - the tests.
-- **Warnings are errors** in `Domain`, `Extensions`, `Res`, `Batch`, `SourceGenerator.ResourceStructures`, `Protocol`,
-  `Runtime`, `Infrastructure.Redis`, `Channel`, `Server.Common`, `Gameplay`, `Persistence`, `Navigation`, `Lua` and
-  `MazeServer`. Do not suppress an analyzer without a reason in `.editorconfig`.
+- **Warnings are errors** in every project of `OpenWorker.slnx`, the tests included; a new project sets
+  `TreatWarningsAsErrors` too. Do not suppress an analyzer without a reason in `.editorconfig`.
 - **Layers.** A project references its own layer and the ones below it (`ARCHITECTURE.md`, "Projects and their layers");
   `ProjectLayersTest` fails otherwise. A new project gets its layer in that test. The code that came out of
   `OpenWorker.Hotspot` kept its namespaces (`OpenWorker.Hotspot.*`).

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -163,7 +164,7 @@ public sealed class TestLeaveManager
 
         Assert.AreEqual(new Answer(harness.Person, harness.Account, AuthHost, AuthPort, 0, true), answer);
 
-        var session = await Sessions.FindByIdAsync(harness.Session.Key.ToString());
+        var session = await Sessions.FindByIdAsync(harness.Session.Key.ToString(CultureInfo.InvariantCulture));
 
         Assert.IsNotNull(session);
         Assert.IsTrue(session.ReturnToAuth);
@@ -191,7 +192,7 @@ public sealed class TestLeaveManager
 
         Assert.AreEqual(new Answer(harness.Person, harness.Account, GateHost, GatePort, 1, true), answer);
 
-        var session = await Sessions.FindByIdAsync(harness.Session.Key.ToString());
+        var session = await Sessions.FindByIdAsync(harness.Session.Key.ToString(CultureInfo.InvariantCulture));
 
         Assert.IsNotNull(session);
         Assert.IsFalse(session.ReturnToAuth, "The auth server must not resume a session that went to the gate.");

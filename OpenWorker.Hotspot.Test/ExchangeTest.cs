@@ -186,14 +186,14 @@ public sealed class ExchangeTest
     {
         public IExchangeStore Inner { get; set; } = null!;
 
-        protected override object? Invoke(System.Reflection.MethodInfo? method, object?[]? args)
+        protected override object? Invoke(System.Reflection.MethodInfo? targetMethod, object?[]? args)
         {
-            if (method!.Name == nameof(IExchangeStore.BuyAsync))
+            if (targetMethod!.Name == nameof(IExchangeStore.BuyAsync))
             {
                 return Task.FromException<ExchangeBuyResult>(new TimeoutException("the database does not answer"));
             }
 
-            return method.Invoke(Inner, args);
+            return targetMethod.Invoke(Inner, args);
         }
     }
 

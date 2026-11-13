@@ -75,7 +75,7 @@ public sealed class TitleTest
         return new CombatTables(Empty<MonsterRow>(), Empty<StatusRow>(), Empty<SkillRow>(), Empty<CharacterInfoRow>(), catalog);
     }
 
-    private static byte[] Written(IResponseHotspotMessage message)
+    private static byte[] Written(PersonLoadTitleResponse message)
     {
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);

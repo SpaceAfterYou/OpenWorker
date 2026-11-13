@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using Arch.Core;
+﻿using Arch.Core;
 using Arch.Core.Extensions;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
@@ -9,11 +8,10 @@ using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Requests;
 using OpenWorker.Hotspot.Modules.Shop.Responses;
 using OpenWorker.Hotspot.Modules.Shop.Types;
-using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.DistrictServer.Services;
 
-public sealed class CashShopService(World world, ReadOnlyCollection<CashShopRow> cashShop) :
+public sealed class CashShopService(World world) :
     IHotspotHandler<ShopCashBuyRequest>,
     IHotspotHandler<ShopCashGiftRequest>,
     IHotspotHandler<ShopCashLoadRequest>,

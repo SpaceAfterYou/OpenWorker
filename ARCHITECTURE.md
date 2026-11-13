@@ -399,9 +399,8 @@ Prometheus renames them on the way in: `sessions.closed` is `sessions_closed_tot
    the rows of a client table, the keys of a settings file or one case per message; one representative case stands
    for them, and the number of tests is not a goal.
 
-The build enforces part of this: `Directory.Build.props` turns on the analyzers (`latest-recommended`), the
-projects `Domain`, `Extensions`, `Res`, `Batch`, `SourceGenerator.ResourceStructures`, `Protocol`, `Runtime`, `Infrastructure.Redis`,
-`Channel`, `Server.Common`, `Gameplay`, `Persistence`, `Navigation`, `Lua` and `MazeServer` treat warnings as errors,
+The build enforces part of this: `Directory.Build.props` turns on the analyzers (`latest-recommended`), every
+project of `OpenWorker.slnx`, the tests included, treats warnings as errors,
 `ProjectLayersTest` holds the projects to their layers, `ResourceRowsTest` holds the rows of the client tables to `Structures.json`,
 `eng/check-forbidden.sh` (run by CI) fails on `Task.Factory.StartNew` and `Console` in product code, and on `Task.Delay` and
 `Timer` in `OpenWorker.Lua` and `OpenWorker.MazeServer` (its `SCOPED` rules, checked under one path), and `eng/check-duplicates.py`

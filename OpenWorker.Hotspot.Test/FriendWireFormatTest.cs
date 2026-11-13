@@ -159,10 +159,12 @@ public sealed class FriendWireFormatTest
     [TestMethod]
     public void WaitingAndAskedMapToTheNumbersTheClientKnows()
     {
-        Assert.AreEqual((byte)FriendState.Friend, (byte)FriendKind.Friend);
-        Assert.AreEqual((byte)FriendState.Wait, (byte)FriendKind.Wait);
-        Assert.AreEqual((byte)FriendState.Invite, (byte)FriendKind.Invite);
-        Assert.AreEqual((byte)FriendState.Block, (byte)FriendKind.Block);
+        var entry = new FriendEntry(7, "Bob", 3, FriendKind.Friend, 0, 0, "", null, DateTime.UnixEpoch);
+
+        Assert.AreEqual(FriendState.Friend, FriendBook.ToValue(entry with { Kind = FriendKind.Friend }, null).State);
+        Assert.AreEqual(FriendState.Wait, FriendBook.ToValue(entry with { Kind = FriendKind.Wait }, null).State);
+        Assert.AreEqual(FriendState.Invite, FriendBook.ToValue(entry with { Kind = FriendKind.Invite }, null).State);
+        Assert.AreEqual(FriendState.Block, FriendBook.ToValue(entry with { Kind = FriendKind.Block }, null).State);
     }
 
     [TestMethod]

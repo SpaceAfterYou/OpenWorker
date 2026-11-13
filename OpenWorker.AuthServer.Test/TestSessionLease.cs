@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using Arch.Core;
@@ -70,7 +71,7 @@ public sealed class TestSessionLease
 
     private static Task<SessionCache?> FindAsync(long session)
     {
-        return Sessions.FindByIdAsync(session.ToString());
+        return Sessions.FindByIdAsync(session.ToString(CultureInfo.InvariantCulture));
     }
 
     private static long NewSession()
@@ -584,7 +585,7 @@ public sealed class TestSessionLease
             {
                 foreach (var key in keys)
                 {
-                    Assert.IsNotNull(await Sessions.FindByIdAsync(key.ToString()));
+                    Assert.IsNotNull(await Sessions.FindByIdAsync(key.ToString(CultureInfo.InvariantCulture)));
                 }
             });
     }
