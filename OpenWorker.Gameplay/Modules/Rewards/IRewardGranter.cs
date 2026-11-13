@@ -38,9 +38,10 @@ public enum RewardSource : byte
 public interface IRewardGranter
 {
     /// <summary>
-    /// Gives all of the reward or none of it. False means it does not fit or the grant failed, and
-    /// the caller must not count the reward as taken. Some rewards are meant to go by post (daily missions
-    /// do), which is up to the implementation.
+    /// Gives the reward, or none of it. False means nothing was given, and the caller must not count the reward as
+    /// taken. Where what the bags cannot hold goes is up to the implementation and the source: some rewards are refused
+    /// when they do not fit, some go by letter in part (attendance) or whole (daily missions). The reward is settled when
+    /// this returns, so the caller can count it as taken at once.
     /// </summary>
     ValueTask<bool> TryGrantAsync(
         Entity player,
