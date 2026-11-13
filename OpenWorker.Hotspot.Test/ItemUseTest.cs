@@ -184,7 +184,7 @@ public sealed class ItemUseTest
     }
 
     [TestMethod]
-    public async Task OnlyAnItemThatIsUsedCountsForTheAchievements()
+    public async Task OnlyAPotionOrAFatigueItemThatIsUsedCountsForTheAchievements()
     {
         using var rig = new Rig(counting: true);
 
@@ -197,6 +197,12 @@ public sealed class ItemUseTest
 
         // Inside the cooldown the use is refused and counts for nothing.
         Assert.AreEqual(ItemUseCodes.Cooling, (await rig.UseAsync(item)).Error);
+        Assert.AreEqual(1, rig.Chains.Counted(rig.Fixture.Player, AchievementType.ItemUsed));
+
+        // An item of another kind is used without counting.
+        var place = rig.Items.First(e => rig.Fixture.Catalog.Classify(e.Id) is { ItemUseType: ItemUseType.EQUIP_SLOT_OPEN } && e.LevelLimit <= 1);
+
+        Assert.IsTrue((await rig.UseAsync(rig.Fixture.Give(place.Id, 1))).Ok);
         Assert.AreEqual(1, rig.Chains.Counted(rig.Fixture.Player, AchievementType.ItemUsed));
     }
 

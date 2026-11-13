@@ -1,5 +1,6 @@
 using Arch.Core;
 using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Modules.Items;
@@ -69,6 +70,7 @@ public sealed partial class ItemUseService
         var slot = item.Slot;
 
         inventory.Spend(player, item, 1);
+        achievements?.Count(player, AchievementType.ItemUsed);
 
         return ItemUseResult.Used(item.Item, slot, motion: true);
     }

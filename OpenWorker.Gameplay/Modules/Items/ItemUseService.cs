@@ -165,7 +165,6 @@ public sealed partial class ItemUseService(
         if (result.Ok)
         {
             limits.StartCooldown(player, row);
-            achievements?.Count(player, AchievementType.ItemUsed);
         }
 
         return result;
