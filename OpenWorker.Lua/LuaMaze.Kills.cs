@@ -6,7 +6,8 @@ namespace OpenWorker.Lua;
 
 /// <summary>
 /// What a kill counts for. A monster that dies in a maze counts for every player in the maze: the quests that hunt it, its
-/// group and the maze, the daily missions and the achievements of each of them, not only of the one who landed the blow.
+/// group and the maze, the daily missions and the achievements of each of them, not only of the one who landed the blow. In an
+/// open maze of the world it counts for the killer alone.
 /// </summary>
 public partial class LuaMaze
 {
@@ -19,7 +20,8 @@ public partial class LuaMaze
     {
         CountHiddenEvent(HiddenEventTarget.Monster, monster, 1);
 
-        var heard = _members.Select(e => e.Player).ToList();
+        // In an open maze of the world a kill is the killer's alone.
+        var heard = IsWorld ? new List<Entity>() : _members.Select(e => e.Player).ToList();
 
         if (!heard.Contains(killer))
         {

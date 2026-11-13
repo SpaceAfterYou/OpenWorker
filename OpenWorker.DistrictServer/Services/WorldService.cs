@@ -21,7 +21,8 @@ public sealed class WorldService(
     PartyMazeEntry party,
     MazeAdmission admission,
     IPartyRoster roster,
-    IPartyMazeRoutes routes) :
+    IPartyMazeRoutes routes,
+    WorldMazes? worlds = null) :
     IHotspotHandler<MazeCreateRequest>,
     IHotspotHandler<WorldEnterRequest>,
     IHotspotHandler<MazeEnterPartyAnswerRequest>
@@ -74,7 +75,10 @@ public sealed class WorldService(
             return;
         }
 
-        if (await party.TryEnterAsync(context.Player, request.Location, start, opcode, request.Portal) ||
+        // The open maze of the world takes everybody of the channel, a party or not.
+        var open = worlds?.IsWorld(request.Location) == true;
+
+        if ((!open && await party.TryEnterAsync(context.Player, request.Location, start, opcode, request.Portal)) ||
             Refused(context, request.Location, request.Portal, opcode))
         {
             return;

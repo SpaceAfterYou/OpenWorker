@@ -32,6 +32,7 @@ public static class Cache
             .AddCacheCollection<MazeCache>()
             .AddSingleton<MazeDirectory>()
             .AddSingleton<MyRoomDirectory>()
+            .AddSingleton<WorldMazeDirectory>()
             .AddCacheCollection<ChannelChatCache>();
     }
 

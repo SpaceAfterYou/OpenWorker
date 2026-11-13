@@ -49,7 +49,7 @@ public sealed partial class PartyMazeEvents(
 
     private void OnItemsArrived(Entity player, int item, int count)
     {
-        if (!world.IsAlive(player) || !world.TryGet(player, out LuaMaze? maze) || maze is not { MemberCount: > 1, IsClosed: false })
+        if (!world.IsAlive(player) || !world.TryGet(player, out LuaMaze? maze) || maze is not { MemberCount: > 1, IsClosed: false, IsWorld: false })
         {
             return;
         }
@@ -105,7 +105,7 @@ public sealed partial class PartyMazeEvents(
     /// </summary>
     public void HealthChanged(Entity player)
     {
-        if (!world.IsAlive(player) || !world.TryGet(player, out LuaMaze? maze) || maze is not { MemberCount: > 1 })
+        if (!world.IsAlive(player) || !world.TryGet(player, out LuaMaze? maze) || maze is not { MemberCount: > 1, IsWorld: false })
         {
             return;
         }

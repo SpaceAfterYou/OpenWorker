@@ -17,6 +17,12 @@ public partial class LuaMaze
 {
     private async ValueTask CheckSectorAsync(int sector)
     {
+        // An open maze of the world has nothing to clear and no waves.
+        if (IsWorld)
+        {
+            return;
+        }
+
         var kills = creatureManager.GetKillProgress(sector);
 
         if (kills.IsCleared(creatureManager.CountBoxesToCome(sector)))
@@ -60,8 +66,9 @@ public partial class LuaMaze
     {
         var box = Batch.EventBox.Sectors.Find(sector);
 
-        // Sectors of other kinds are finished by their script, or by the quests of the player.
-        if (box is null || !Progress.ClearSector(sector))
+        // Sectors of other kinds are finished by their script, or by the quests of the player; an open maze of the world
+        // finishes none.
+        if (IsWorld || box is null || !Progress.ClearSector(sector))
         {
             return;
         }

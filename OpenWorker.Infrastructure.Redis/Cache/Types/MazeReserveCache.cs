@@ -50,6 +50,12 @@ public sealed class MazeReserveCache
     public byte Members { get; set; }
 
     /// <summary>
+    /// The channel of the open maze of the world the person goes into, or zero for any other maze.
+    /// </summary>
+    [RedisField]
+    public byte World { get; set; }
+
+    /// <summary>
     /// The account whose room the maze is, or zero for a maze that is no room.
     /// </summary>
     [RedisField]
