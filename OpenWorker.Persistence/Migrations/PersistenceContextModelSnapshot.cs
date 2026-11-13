@@ -36,6 +36,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<byte>("AccessLevel")
                         .HasColumnType("smallint");
 
+                    b.Property<long>("Cash")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone");
@@ -89,7 +92,65 @@ namespace OpenWorker.Persistence.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Accounts");
+                    b.ToTable("Accounts", t =>
+                        {
+                            t.HasCheckConstraint("CK_Accounts_Cash", "\"Cash\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.CashShopPurchasePersistent", b =>
+                {
+                    b.Property<int>("AccountId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Product")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Period")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.HasKey("AccountId", "PersonId", "Product", "Period");
+
+                    b.ToTable("CashShopPurchases", t =>
+                        {
+                            t.HasCheckConstraint("CK_CashShopPurchases_Count", "\"Count\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.CashShopSetPersistent", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("SetNo")
+                        .HasColumnType("smallint");
+
+                    b.PrimitiveCollection<int[]>("Items")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .IsUnicode(true)
+                        .HasColumnType("character varying(10)");
+
+                    b.PrimitiveCollection<int[]>("Products")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.HasKey("PersonId", "SetNo");
+
+                    b.ToTable("CashShopSets", t =>
+                        {
+                            t.HasCheckConstraint("CK_CashShopSets_SetNo", "\"SetNo\" <= 8");
+                        });
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.ExchangeInterestPersistent", b =>
@@ -1093,6 +1154,24 @@ namespace OpenWorker.Persistence.Migrations
                     b.HasKey("Index");
 
                     b.ToTable("ServerContents");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.CashShopPurchasePersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.AccountPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.CashShopSetPersistent", b =>
+                {
+                    b.HasOne("OpenWorker.Domain.Persistent.PersonPersistent", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.ExchangeInterestPersistent", b =>
