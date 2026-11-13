@@ -377,7 +377,39 @@ public sealed class NavField
             }
         }
 
+        KeepEndInside(path, radius);
+
         return true;
+    }
+
+    /// <summary>
+    /// A creature's body stays on the ground: a way that ends at the edge of the ground ends a radius before it, along the
+    /// last stretch.
+    /// </summary>
+    private void KeepEndInside(List<Vector3> path, float radius)
+    {
+        if (radius <= 0f || path.Count < 2)
+        {
+            return;
+        }
+
+        var from = path[^2];
+        var end = path[^1];
+        var leg = new Vector2(end.X - from.X, end.Y - from.Y);
+        var length = leg.Length();
+
+        if (length < MinimumWay)
+        {
+            return;
+        }
+
+        var beyond = end + new Vector3(leg / length * radius, 0f);
+        var stop = Clamp(from, beyond, radius, out var reached);
+
+        if (!reached && Vector2.Distance(new Vector2(from.X, from.Y), new Vector2(stop.X, stop.Y)) < length)
+        {
+            path[^1] = stop;
+        }
     }
 
     /// <summary>
