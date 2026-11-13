@@ -759,6 +759,11 @@ public sealed partial class MazeService(
 
         if (maze.Progress.TryUseBox(box.Id))
         {
+            if (box.EventType == EventType.Hidden)
+            {
+                maze.OnHiddenEventBox(context.Player, box.Id, box.EventRate);
+            }
+
             foreach (var spawn in box.SpawnBoxList.Where(e => e != 0))
             {
                 maze.ExecuteEventSpawnLua(spawn);

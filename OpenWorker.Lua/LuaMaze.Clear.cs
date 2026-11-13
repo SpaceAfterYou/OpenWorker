@@ -38,8 +38,8 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// What happens once, when the last sector is cleared: the rest of its monsters go, the clock stops and the
-    /// client is told that the maze is won.
+    /// What happens once, when the last sector is cleared: the rest of its monsters go, the clock stops, the hidden event is
+    /// decided and the client is told that the maze is won.
     /// </summary>
     private async ValueTask CompleteMazeAsync(SectorBox last)
     {
@@ -52,6 +52,9 @@ public partial class LuaMaze
         MazeState = MazeState.None;
 
         SendClearInfo();
+
+        // The hidden event is decided before the rewards of the clear, which carry its item.
+        DecideHiddenEvent();
 
         Completed?.Invoke();
 
@@ -73,6 +76,11 @@ public partial class LuaMaze
                 PlayedSeconds,
                 (int)Ecs.Get<PersonInfoComponent>(player).Hero,
                 Ecs.TryGet<LevelComponent>(player, out var level) ? level.Level : PersonModuleDefines.DefaultLevel);
+
+            if (HiddenEventMet && !Closed && Ecs.IsAlive(player))
+            {
+                await reports.HiddenEventMetAsync(player);
+            }
         }
 
         if (Closed)

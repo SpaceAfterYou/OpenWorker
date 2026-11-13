@@ -6,6 +6,7 @@ using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.League;
 using OpenWorker.Gameplay.Modules.Login.Components;
@@ -199,9 +200,10 @@ public sealed partial class MazeResults(
     /// <summary>
     /// The maze is finished by everybody in it: each member is scored, the members are put in the order of their scores,
     /// and each gets its rewards and its window; the members of a party also get the list of all of them with their ranks.
-    /// Only once for a maze. <paramref name="played"/> is the played time of the maze, which every member is scored and shown.
+    /// Only once for a maze. <paramref name="played"/> is the played time of the maze, which every member is scored and shown;
+    /// <paramref name="hidden"/> is the item of the hidden event of the maze when it was met, which every member gets.
     /// </summary>
-    public void Complete(IReadOnlyList<Entity> members, TimeSpan played)
+    public void Complete(IReadOnlyList<Entity> members, TimeSpan played, HiddenEventReward? hidden = null)
     {
         var runs = new List<(Entity Player, Tally Tally)>(members.Count);
 
@@ -231,7 +233,7 @@ public sealed partial class MazeResults(
         {
             var (player, tally, score) = ordered[place - 1];
 
-            Reward(player, tally, score, seconds, ordered.Count, place);
+            Reward(player, tally, score, seconds, ordered.Count, place, hidden);
 
             list.Add(new MazeRewardPartyMember(
                 (byte)place,
@@ -270,7 +272,7 @@ public sealed partial class MazeResults(
         return scoring.Score(new MazeRun(tally.Maze, hero, level, tally.MaxCombo, tally.Kills, share, tally.HitsTaken, partySize, milliseconds));
     }
 
-    private void Reward(Entity player, Tally tally, MazeScore score, int seconds, int members, int place)
+    private void Reward(Entity player, Tally tally, MazeScore score, int seconds, int members, int place, HiddenEventReward? hidden)
     {
         var (partyExperience, partyGold) = scoring?.PartyShare(members, place) ?? (0f, 0f);
         var (mazeExperience, mazeGold) = scoring is not null && scoring.TryGetRule(tally.Maze, out var rule) ? (rule.RewardExperience, rule.RewardGold) : (0u, 0u);
@@ -314,6 +316,15 @@ public sealed partial class MazeResults(
             mail.Add(new PostItemPersistent { Item = given.Item, Count = given.Count, Endurance = 100 });
         }
 
+        // The item of a met hidden event goes by post too when it does not fit, and the window says so.
+        var eventItemByPost = false;
+
+        if (hidden is { } paid && inventory is not null && !inventory.TryGive(player, paid.Item, paid.Count))
+        {
+            mail.Add(new PostItemPersistent { Item = paid.Item, Count = paid.Count, Endurance = 100 });
+            eventItemByPost = true;
+        }
+
         var offer = keys?.Roll(player, tally.Maze);
 
         fatigue?.SpendHalf(player, tally.Maze, entering: false);
@@ -340,7 +351,10 @@ public sealed partial class MazeResults(
             BaseItem = item?.Item ?? 0,
             BaseItemCount = item?.Count ?? 0,
             CashItem = offer?.Item ?? 0,
-            CashItemCount = offer?.Count ?? 0
+            CashItemCount = offer?.Count ?? 0,
+            EventItem = hidden?.Item ?? 0,
+            EventItemCount = hidden?.Count ?? 0,
+            EventItemByPost = (byte)(eventItemByPost ? 1 : 0)
         });
 
         if ((mail.Count > 0 || mailGold > 0) && post is not null && world.TryGet<ClaimsComponent>(player, out var claims))

@@ -151,7 +151,7 @@ public enum AchievementType : ushort
     ItemDisassembled = 52,
 
     /// <summary>
-    /// A daily mission finished, about the kind of mission (0).
+    /// A daily mission finished (target 0) or a hidden event of a maze met (target 1).
     /// </summary>
     MissionDone = 53,
 

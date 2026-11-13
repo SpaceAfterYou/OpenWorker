@@ -8,17 +8,56 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Hidden_Event")]
 public readonly partial struct HiddenEventRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the hidden event: the id of the box of the map that starts it.
+    /// </summary>
     public short Id { get; } = reader.ReadInt16();
-    public int Field1 { get; } = reader.ReadInt32();
-    public int Field2 { get; } = reader.ReadInt32();
-    public int Field3 { get; } = reader.ReadInt32();
-    public int Field4 { get; } = reader.ReadInt32();
-    public int Field5 { get; } = reader.ReadInt32();
-    public short Field6 { get; } = reader.ReadInt16();
-    public short Field7 { get; } = reader.ReadInt16();
-    public short Field8 { get; } = reader.ReadInt16();
-    public short Field9 { get; } = reader.ReadInt16();
-    public short Field10 { get; } = reader.ReadInt16();
-    public int Field11 { get; } = reader.ReadInt32();
-    public byte Field12 { get; } = reader.ReadByte();
+    /// <summary>
+    /// A row of tb_Event_Condition the event may ask for, 0 for none.
+    /// </summary>
+    public int Condition1 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A row of tb_Event_Condition the event may ask for, 0 for none.
+    /// </summary>
+    public int Condition2 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A row of tb_Event_Condition the event may ask for, 0 for none.
+    /// </summary>
+    public int Condition3 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A row of tb_Event_Condition the event may ask for, 0 for none.
+    /// </summary>
+    public int Condition4 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// A row of tb_Event_Condition the event may ask for, 0 for none.
+    /// </summary>
+    public int Condition5 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The weight of Condition1 when the condition is picked.
+    /// </summary>
+    public short Rate1 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The weight of Condition2 when the condition is picked.
+    /// </summary>
+    public short Rate2 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The weight of Condition3 when the condition is picked.
+    /// </summary>
+    public short Rate3 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The weight of Condition4 when the condition is picked.
+    /// </summary>
+    public short Rate4 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The weight of Condition5 when the condition is picked.
+    /// </summary>
+    public short Rate5 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The item a met event gives. The server&apos;s own table gives other items.
+    /// </summary>
+    public int RewardItem { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How many of the item.
+    /// </summary>
+    public byte RewardCount { get; } = reader.ReadByte();
 }

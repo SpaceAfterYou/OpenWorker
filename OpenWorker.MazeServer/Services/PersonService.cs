@@ -1,4 +1,5 @@
-﻿using OpenWorker.Gameplay.Modules.Persons.Components;
+﻿using OpenWorker.Gameplay.Modules.HiddenEvents;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Batch;
 using OpenWorker.Server.Common;
 using OpenWorker.Server.Common.Services;
@@ -99,7 +100,8 @@ public sealed partial class PersonService(
     MyRoomBook roomBook,
     MyRoomService roomService,
     PersistenceWriter writes,
-    ILogger<PersonService> logger
+    ILogger<PersonService> logger,
+    HiddenEventCatalog? hiddenEvents = null
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
@@ -422,7 +424,8 @@ public sealed partial class PersonService(
         var maze = new LuaMaze(state, world, player, creatures, buffManager, questManager, batch, _interactions, skillActions, combatTables, mazeInfo, reports, creatureServices.Clock, mazeLogger)
         {
             Instance = instance,
-            Party = party
+            Party = party,
+            HiddenEvents = hiddenEvents
         };
 
         // What happens in the instance is wired once, for every player who is in it then.

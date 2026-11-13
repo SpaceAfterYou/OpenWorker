@@ -170,13 +170,13 @@ public sealed partial class PartyMazeEvents(
         {
             foreach (var member in members)
             {
-                tower.Cleared(member, maze.Maze, maze.PlayedSeconds);
+                tower.Cleared(member, maze.Maze, maze.PlayedSeconds, maze.HiddenEventReward);
             }
         }
 
         else
         {
-            results.Complete(members, TimeSpan.FromSeconds(maze.PlayedSeconds));
+            results.Complete(members, TimeSpan.FromSeconds(maze.PlayedSeconds), maze.HiddenEventReward);
         }
 
         if (maze.Party != 0 && members.Length > 0)

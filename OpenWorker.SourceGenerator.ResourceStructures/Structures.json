@@ -463,19 +463,19 @@
     "String"
   ],
   "tb_Hidden_Event": [
-    "Int16",
-    "Int32",
-    "Int32",
-    "Int32",
-    "Int32",
-    "Int32",
-    "Int16",
-    "Int16",
-    "Int16",
-    "Int16",
-    "Int16",
-    "Int32",
-    "Byte"
+    "Int16 Id // The id of the hidden event: the id of the box of the map that starts it.",
+    "Int32 Condition1 // A row of tb_Event_Condition the event may ask for, 0 for none.",
+    "Int32 Condition2 // A row of tb_Event_Condition the event may ask for, 0 for none.",
+    "Int32 Condition3 // A row of tb_Event_Condition the event may ask for, 0 for none.",
+    "Int32 Condition4 // A row of tb_Event_Condition the event may ask for, 0 for none.",
+    "Int32 Condition5 // A row of tb_Event_Condition the event may ask for, 0 for none.",
+    "Int16 Rate1 // The weight of Condition1 when the condition is picked.",
+    "Int16 Rate2 // The weight of Condition2 when the condition is picked.",
+    "Int16 Rate3 // The weight of Condition3 when the condition is picked.",
+    "Int16 Rate4 // The weight of Condition4 when the condition is picked.",
+    "Int16 Rate5 // The weight of Condition5 when the condition is picked.",
+    "Int32 RewardItem // The item a met event gives. The server's own table gives other items.",
+    "Byte RewardCount // How many of the item."
   ],
   "tb_MazeReward_Normal": [
     "Int16"
@@ -584,12 +584,12 @@
     "Int32 // 0 in every row of this client. No client code that reads it was found."
   ],
   "tb_Event_Condition": [
-    "Int32",
-    "Int16",
-    "Byte",
-    "Byte",
-    "Int32",
-    "Int32"
+    "Int32 Id // The id of the condition.",
+    "Int16 Text // The text the window of the event shows for the condition.",
+    "Byte Kind // How the condition counts: 1 kills, 2 a number reached, 3 an amount collected, 4 uses, 5 at most so many uses.",
+    "Byte Target // What the condition counts: a monster, jumps, gold, the longest combo, items used and so on.",
+    "Int32 TargetId // The monster or the item counted, 0 for any.",
+    "Int32 Count // How many the condition asks for, or the most it allows."
   ],
   "tb_League_Info": [
     "Int32",

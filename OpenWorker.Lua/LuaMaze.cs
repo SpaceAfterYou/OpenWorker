@@ -320,6 +320,7 @@ public partial class LuaMaze(
         _countdown.Arrived();
 
         JoinPartyQuest(player);
+        TellHiddenEvent(player);
 
         return true;
     }

@@ -1,5 +1,6 @@
 using Arch.Core;
 using Lua;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 
 namespace OpenWorker.Lua;
 
@@ -16,6 +17,8 @@ public partial class LuaMaze
     [LuaIgnoreMember]
     public async ValueTask ReportKillAsync(Entity killer, int monster, uint conditions)
     {
+        CountHiddenEvent(HiddenEventTarget.Monster, monster, 1);
+
         var heard = _members.Select(e => e.Player).ToList();
 
         if (!heard.Contains(killer))

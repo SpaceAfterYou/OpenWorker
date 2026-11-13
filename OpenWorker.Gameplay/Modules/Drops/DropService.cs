@@ -4,6 +4,7 @@ using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -54,7 +55,8 @@ public sealed partial class DropService(
     ReadOnlyCollection<DropRateLevelRow>? levelRates = null,
     ReadOnlyCollection<DropRateMemberRow>? memberRates = null,
     BoosterManager? boosters = null,
-    ItemUseService? use = null)
+    ItemUseService? use = null,
+    HiddenEventCounter? hiddenEvents = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -331,11 +333,17 @@ public sealed partial class DropService(
         {
             results?.AddGold(player, (int)added);
             achievements?.OnGoldPicked(player, (int)added);
+            hiddenEvents?.Count(player, HiddenEventTarget.Gold, drop.ObjectId, (int)added);
         }
         else if (drop.ObjectId == EtherObject)
         {
             results?.AddEther(player, (int)added);
             achievements?.OnEtherPicked(player, (int)added);
+            hiddenEvents?.Count(player, HiddenEventTarget.Ether, drop.ObjectId, (int)added);
+        }
+        else if (drop.ObjectId == SoulObject)
+        {
+            hiddenEvents?.Count(player, HiddenEventTarget.Soul, drop.ObjectId, drop.Count);
         }
 
         // The quests and the missions hear of the item from the inventory, as of every item that comes into the bags.

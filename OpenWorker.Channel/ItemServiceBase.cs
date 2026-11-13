@@ -168,6 +168,13 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
     /// </summary>
     protected abstract void ItemUsed(Entity player, ItemUseBtResponse notice);
 
+    /// <summary>
+    /// The player has used up an item, whether the others see it or not.
+    /// </summary>
+    protected virtual void ItemSpent(Entity player, int item)
+    {
+    }
+
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ItemUseRequest request)
     {
         var result = await use.UseAsync(context.Player, request.Storage, request.Slot, request.Serial.Number, context.CancellationToken);
@@ -185,6 +192,8 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
 
             return;
         }
+
+        ItemSpent(context.Player, result.Item);
 
         if (result.Motion)
         {

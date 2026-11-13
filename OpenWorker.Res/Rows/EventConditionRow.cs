@@ -8,10 +8,28 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Event_Condition")]
 public readonly partial struct EventConditionRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The id of the condition.
+    /// </summary>
     public int Id { get; } = reader.ReadInt32();
-    public short Field1 { get; } = reader.ReadInt16();
-    public byte Field2 { get; } = reader.ReadByte();
-    public byte Field3 { get; } = reader.ReadByte();
-    public int Field4 { get; } = reader.ReadInt32();
-    public int Field5 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The text the window of the event shows for the condition.
+    /// </summary>
+    public short Text { get; } = reader.ReadInt16();
+    /// <summary>
+    /// How the condition counts: 1 kills, 2 a number reached, 3 an amount collected, 4 uses, 5 at most so many uses.
+    /// </summary>
+    public byte Kind { get; } = reader.ReadByte();
+    /// <summary>
+    /// What the condition counts: a monster, jumps, gold, the longest combo, items used and so on.
+    /// </summary>
+    public byte Target { get; } = reader.ReadByte();
+    /// <summary>
+    /// The monster or the item counted, 0 for any.
+    /// </summary>
+    public int TargetId { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How many the condition asks for, or the most it allows.
+    /// </summary>
+    public int Count { get; } = reader.ReadInt32();
 }

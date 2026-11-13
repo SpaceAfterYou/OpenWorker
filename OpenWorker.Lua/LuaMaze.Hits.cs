@@ -3,6 +3,7 @@ using Arch.Core;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Combat;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.Skill.Types;
@@ -52,6 +53,13 @@ public partial class LuaMaze
         {
             member.Combo = Gameplay.Combat.Combo.Next(member.Combo, member.LastHit, hits.Length, now);
             member.LastHit = now;
+
+            CountHiddenEvent(HiddenEventTarget.MaxCombo, 0, member.Combo);
+
+            if (HiddenEvents?.IsJumpAttack(skill) == true)
+            {
+                CountHiddenEvent(HiddenEventTarget.JumpAttackHit, 0, hits.Length);
+            }
         }
 
         MonstersHit?.Invoke(player, hits.Length, hits.Sum(e => (long)e.Damage));
