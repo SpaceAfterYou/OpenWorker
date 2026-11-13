@@ -15,7 +15,9 @@ public static class TradeServiceCollectionExtensions
         services.AddSingleton<TradeGoods>();
         services.AddSingleton<Trades>();
         services.AddSingleton<PrivateShops>();
-        services.AddSingleton<IItemLocks, TradeItemLocks>();
+        services.AddSingleton<IItemLocks>(provider => new TradeItemLocks(
+            provider.GetRequiredService<Trades>(),
+            new Lazy<PrivateShops>(provider.GetRequiredService<PrivateShops>)));
         services.AddSingleton<TradeCloseHandler>();
         services.Insert(0, ServiceDescriptor.Singleton<ISessionCloseHandler>(provider => provider.GetRequiredService<TradeCloseHandler>()));
         services.AddHostedService<TradeExpiryService>();
