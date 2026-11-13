@@ -18,4 +18,10 @@ public readonly partial struct ShopCashSetDelResponse : IResponseHotspotMessage
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    public required byte SetNo { get; init; }
+
+#endregion Message: Body
 }

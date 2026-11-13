@@ -10,18 +10,54 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct CashShopRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public short Field1 { get; } = reader.ReadInt16();
-    public short Field2 { get; } = reader.ReadInt16();
-    public byte Field3 { get; } = reader.ReadByte();
-    public int Field4 { get; } = reader.ReadInt32();
-    public byte Field5 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The tab of the shop window.
+    /// </summary>
+    public short MainTab { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The page of the tab.
+    /// </summary>
+    public short SubTab { get; } = reader.ReadInt16();
+    /// <summary>
+    /// 1 while the product is on sale.
+    /// </summary>
+    public byte SellActive { get; } = reader.ReadByte();
+    public int Item { get; } = reader.ReadInt32();
+    /// <summary>
+    /// Free slots the product takes.
+    /// </summary>
+    public byte NeedSlot { get; } = reader.ReadByte();
     public byte Field6 { get; } = reader.ReadByte();
-    public byte Field7 { get; } = reader.ReadByte();
-    public byte Field8 { get; } = reader.ReadByte();
-    public string Field9 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field10 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public byte Field11 { get; } = reader.ReadByte();
-    public short Field12 { get; } = reader.ReadInt16();
-    public byte Field13 { get; } = reader.ReadByte();
-    public short Field14 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// 1 when the product may be sent as a present.
+    /// </summary>
+    public byte Gift { get; } = reader.ReadByte();
+    /// <summary>
+    /// 1 when the product is sold only between its start and end.
+    /// </summary>
+    public byte LimitType { get; } = reader.ReadByte();
+    /// <summary>
+    /// The first moment of the sale, &quot;yyyy-mm-dd hh:mm:ss&quot;, or &quot;0&quot;.
+    /// </summary>
+    public string LimitStart { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The last moment of the sale, or &quot;0&quot;.
+    /// </summary>
+    public string LimitEnd { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// How purchases are counted: 0 not at all, 1 a character, 2 an account, 3 to 8 the same a day, a week, a month.
+    /// </summary>
+    public byte NumberType { get; } = reader.ReadByte();
+    /// <summary>
+    /// How many may be bought within the count.
+    /// </summary>
+    public short NumberValue { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The level the buyer needs.
+    /// </summary>
+    public byte Level { get; } = reader.ReadByte();
+    /// <summary>
+    /// The row of the prices (tb_CashBilling_Info).
+    /// </summary>
+    public short Billing { get; } = reader.ReadInt16();
 }

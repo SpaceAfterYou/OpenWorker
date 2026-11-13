@@ -18,4 +18,14 @@ public readonly partial struct ShopCashGiftResponse : IResponseHotspotMessage
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
 #endregion Interface: IHotspotMessage
+
+#region Message: Body
+
+    /// <summary>
+    /// The products that were not sent.
+    /// </summary>
+    [WireArray(WireLength.Byte)]
+    public required IReadOnlyList<int> Failed { get; init; }
+
+#endregion Message: Body
 }

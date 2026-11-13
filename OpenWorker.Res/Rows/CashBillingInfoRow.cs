@@ -9,16 +9,16 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct CashBillingInfoRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public int Field1 { get; } = reader.ReadInt32();
-    public int Field2 { get; } = reader.ReadInt32();
-    public int Field3 { get; } = reader.ReadInt32();
-    public int Field4 { get; } = reader.ReadInt32();
-    public int Field5 { get; } = reader.ReadInt32();
-    public int Field6 { get; } = reader.ReadInt32();
-    public int Field7 { get; } = reader.ReadInt32();
-    public int Field8 { get; } = reader.ReadInt32();
-    public int Field9 { get; } = reader.ReadInt32();
-    public int Field10 { get; } = reader.ReadInt32();
+    public int Item1 { get; } = reader.ReadInt32();
+    public int Item2 { get; } = reader.ReadInt32();
+    public int Item3 { get; } = reader.ReadInt32();
+    public int Item4 { get; } = reader.ReadInt32();
+    public int Item5 { get; } = reader.ReadInt32();
+    public int Count1 { get; } = reader.ReadInt32();
+    public int Count2 { get; } = reader.ReadInt32();
+    public int Count3 { get; } = reader.ReadInt32();
+    public int Count4 { get; } = reader.ReadInt32();
+    public int Count5 { get; } = reader.ReadInt32();
     public int Field11 { get; } = reader.ReadInt32();
     public int Field12 { get; } = reader.ReadInt32();
     public int Field13 { get; } = reader.ReadInt32();

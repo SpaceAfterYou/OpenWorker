@@ -8,7 +8,8 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Shop.Responses;
 
 /// <summary>
-/// The items of the cash shop. A flag that is always set goes before the list, so the writer is written by hand.
+/// The products of the cash shop, in parts: a flag before each part says whether it is the last. Written by hand, as the
+/// products are.
 /// </summary>
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
 public readonly struct ShopCashLoadResponse : IResponseHotspotMessage, IWireWritable
@@ -24,6 +25,11 @@ public readonly struct ShopCashLoadResponse : IResponseHotspotMessage, IWireWrit
 
 #region Message: Body
 
+    /// <summary>
+    /// The last part of the list.
+    /// </summary>
+    public bool Last { get; init; }
+
     public IReadOnlyList<CashItemValue> ItemList { get; init; }
 
 #endregion Message: Body
@@ -34,8 +40,7 @@ public readonly struct ShopCashLoadResponse : IResponseHotspotMessage, IWireWrit
     {
         var items = ItemList ?? [];
 
-        // What the flag means is not known; it was always sent set.
-        writer.WriteBoolean(true);
+        writer.WriteBoolean(Last);
         writer.WriteLength(WireLength.Signed32, items.Count);
 
         for (var index = 0; index < items.Count; index++)
