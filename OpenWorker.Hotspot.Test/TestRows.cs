@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 
@@ -35,15 +36,15 @@ internal static class TestRows
                 writer.Write((short)text.Length);
                 writer.Write(Encoding.Unicode.GetBytes(text));
             }
-            else if (type == typeof(byte)) writer.Write(Convert.ToByte(value ?? 0));
-            else if (type == typeof(sbyte)) writer.Write(Convert.ToSByte(value ?? 0));
-            else if (type == typeof(short)) writer.Write(Convert.ToInt16(value ?? 0));
-            else if (type == typeof(ushort)) writer.Write(Convert.ToUInt16(value ?? 0));
-            else if (type == typeof(int)) writer.Write(Convert.ToInt32(value ?? 0));
-            else if (type == typeof(uint)) writer.Write(Convert.ToUInt32(value ?? 0));
-            else if (type == typeof(long)) writer.Write(Convert.ToInt64(value ?? 0));
-            else if (type == typeof(float)) writer.Write(Convert.ToSingle(value ?? 0f));
-            else if (type == typeof(bool)) writer.Write(Convert.ToBoolean(value ?? false));
+            else if (type == typeof(byte)) writer.Write(Convert.ToByte(value ?? 0, CultureInfo.InvariantCulture));
+            else if (type == typeof(sbyte)) writer.Write(Convert.ToSByte(value ?? 0, CultureInfo.InvariantCulture));
+            else if (type == typeof(short)) writer.Write(Convert.ToInt16(value ?? 0, CultureInfo.InvariantCulture));
+            else if (type == typeof(ushort)) writer.Write(Convert.ToUInt16(value ?? 0, CultureInfo.InvariantCulture));
+            else if (type == typeof(int)) writer.Write(Convert.ToInt32(value ?? 0, CultureInfo.InvariantCulture));
+            else if (type == typeof(uint)) writer.Write(Convert.ToUInt32(value ?? 0, CultureInfo.InvariantCulture));
+            else if (type == typeof(long)) writer.Write(Convert.ToInt64(value ?? 0, CultureInfo.InvariantCulture));
+            else if (type == typeof(float)) writer.Write(Convert.ToSingle(value ?? 0f, CultureInfo.InvariantCulture));
+            else if (type == typeof(bool)) writer.Write(Convert.ToBoolean(value ?? false, CultureInfo.InvariantCulture));
             else throw new NotSupportedException($"{typeof(T).Name}.{name} is a {type.Name}");
         }
 

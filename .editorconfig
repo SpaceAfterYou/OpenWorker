@@ -80,3 +80,9 @@ dotnet_diagnostic.CA1720.severity = none
 # an object). CA1720: an identifier that names a type.
 [OpenWorker.Havok/Enums/{HavokLegacyType,TagType}.cs]
 dotnet_diagnostic.CA1720.severity = none
+
+# A test passes the values it expects as an array next to the assertion that compares them. The array is made once per run of
+# the test, so a static field would cost nothing less and would only move the expected value away from the check.
+# CA1861: constant arrays as arguments.
+[{OpenWorker.Hotspot.Test,OpenWorker.AuthServer.Test}/**.cs]
+dotnet_diagnostic.CA1861.severity = none

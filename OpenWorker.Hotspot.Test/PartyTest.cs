@@ -70,7 +70,7 @@ public sealed class PartyTest
 
         Assert.AreEqual(PartyJoinOutcome.Created, outcome);
 
-        IPartyRoster roster = here;
+        var roster = here;
         var view = await roster.PartyAsync(member);
 
         Assert.IsNotNull(view);
