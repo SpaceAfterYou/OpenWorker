@@ -53,6 +53,9 @@ public static class ExchangeCodes
 
     /// <summary>The list of the items the player keeps an eye on is full.</summary>
     public const int InterestFull = 58306;
+
+    /// <summary>A game master may not sell or buy.</summary>
+    public const int GameMaster = 52415;
 }
 
 /// <summary>
@@ -95,6 +98,9 @@ public static class ExchangeRules
 
     /// <summary>The ticket that makes a sale run <see cref="TicketExtension"/> longer.</summary>
     public const int ExpireTicket = 834000010;
+
+    /// <summary>The least time between two searches of a player; a search sooner is dropped without an answer.</summary>
+    public static TimeSpan SearchInterval { get; } = TimeSpan.FromSeconds(1);
 
     /// <summary>How long a sale runs.</summary>
     public static TimeSpan Duration { get; } = TimeSpan.FromHours(24);

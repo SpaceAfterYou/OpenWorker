@@ -16,6 +16,7 @@ using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Post;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -124,6 +125,12 @@ public sealed partial class ExchangeService(
     {
         var player = context.Player;
 
+        if (IsGameMaster(player))
+        {
+            Fail(context, ExchangeOpcode.WaitRegister, ExchangeCodes.GameMaster);
+            return;
+        }
+
         if (Refusal(player, request) is { } code)
         {
             Send(context, new ExchangeWaitRegisterResponse { Result = code });
@@ -182,6 +189,12 @@ public sealed partial class ExchangeService(
     {
         var player = context.Player;
         var me = Me(context);
+
+        if (IsGameMaster(player))
+        {
+            Fail(context, ExchangeOpcode.SellRegister, ExchangeCodes.GameMaster);
+            return;
+        }
 
         if (!MayTrade(player))
         {
@@ -333,6 +346,11 @@ public sealed partial class ExchangeService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ExchangeSearchRequest request)
     {
+        if (!MaySearch(context.Player))
+        {
+            return;
+        }
+
         if (request.Item > 0 && !inventory.Catalog.Exists(request.Item))
         {
             Fail(context, ExchangeOpcode.Search, ExchangeCodes.NoItem);
@@ -371,6 +389,12 @@ public sealed partial class ExchangeService(
     {
         var player = context.Player;
         var me = Me(context);
+
+        if (IsGameMaster(player))
+        {
+            Fail(context, ExchangeOpcode.ItemBuy, ExchangeCodes.GameMaster);
+            return;
+        }
 
         // The trade password is asked before anything of the request is looked at.
         if (!MayTrade(player))
@@ -533,6 +557,38 @@ public sealed partial class ExchangeService(
     private bool MayTrade(Entity player)
     {
         return world.TryGet(player, out TradePasswordComponent password) && password.Allows;
+    }
+
+    /// <summary>
+    /// A game master may not sell or buy at the exchange.
+    /// </summary>
+    private bool IsGameMaster(Entity player)
+    {
+        return world.TryGet(player, out AccessComponent access) && access.Level == AccessLevel.GameMaster;
+    }
+
+    /// <summary>
+    /// A player searches at most once in <see cref="ExchangeRules.SearchInterval"/>; a search sooner is dropped without an
+    /// answer: the window does not wait for one.
+    /// </summary>
+    private bool MaySearch(Entity player)
+    {
+        if (!world.TryGet(player, out ExchangeSearchComponent last))
+        {
+            return true;
+        }
+
+        var clock = time ?? TimeProvider.System;
+        var now = clock.GetTimestamp();
+
+        if (last.Searched && clock.GetElapsedTime(last.At, now) < ExchangeRules.SearchInterval)
+        {
+            return false;
+        }
+
+        world.Set(player, new ExchangeSearchComponent(true, now));
+
+        return true;
     }
 
     private long FeeOf(int item)

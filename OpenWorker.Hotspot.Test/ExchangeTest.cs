@@ -3,6 +3,7 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
@@ -12,6 +13,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Shop.Components;
+using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Messages.Response.Person.Enums;
 using OpenWorker.Hotspot.Modules.Exchange.Requests;
@@ -168,15 +170,22 @@ public sealed class ExchangeTest
             new InventoryComponent(factory.CreateNew(person)),
             new CurrencyComponent { Gold = gold },
             new ClaimsComponent(account, 0),
-            new TradePasswordComponent { Password = "hash", State = PasswordProtectionState.Authenticated });
+            new TradePasswordComponent { Password = "hash", State = PasswordProtectionState.Authenticated },
+            new AccessComponent(AccessLevel.None),
+            new ExchangeSearchComponent());
     }
 
-    private static ExchangeService Service(TestServer server, ItemCatalog catalog, IExchangeStore? store = null, IPersonCommit? commit = null)
+    private static ExchangeService Service(
+        TestServer server,
+        ItemCatalog catalog,
+        IExchangeStore? store = null,
+        IPersonCommit? commit = null,
+        TimeProvider? time = null)
     {
         var inventory = new InventoryService(server.World, catalog, new LocalItemSerials());
 
         return new ExchangeService(server.World, store ?? new ExchangeStore(Factory), new PostStore(Factory), inventory, server.Network,
-            NoPersonFlush.Instance, commit ?? TestPersonCommit.Written, Fees(), NullLogger<ExchangeService>.Instance);
+            NoPersonFlush.Instance, commit ?? TestPersonCommit.Written, Fees(), NullLogger<ExchangeService>.Instance, time: time);
     }
 
     /// <summary>
@@ -496,6 +505,70 @@ public sealed class ExchangeTest
 
         Assert.AreEqual(ExchangeCodes.Gone, Result(buyerPlayer.Read().Single()));
         Assert.AreEqual(3_000, far.World.Get<CurrencyComponent>(buyerPlayer.Entity).Gold);
+    }
+
+    /// <summary>
+    /// A player searches at most once a second: a search sooner is dropped without an answer, the next one after the second
+    /// is answered.
+    /// </summary>
+    [TestMethod]
+    public async Task ASearchWithinASecondOfTheLastIsDropped()
+    {
+        var (account, person) = await CreatePersonAsync("searcher");
+
+        var catalog = Catalog();
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var player = server.Join(person, "searcher");
+
+        Equip(server, player, account, catalog, 0);
+
+        var service = Service(server, catalog, time: clock);
+        var search = new ExchangeSearchRequest { Page = 1, Item = Sword, Category = -1, SubCategory = -1 };
+
+        Handle(server, player, c => service.OnHandleAsync(c, search));
+        Assert.HasCount(1, player.Read(), "the first search is answered");
+
+        clock.Advance(TimeSpan.FromMilliseconds(900));
+        Handle(server, player, c => service.OnHandleAsync(c, search));
+        Assert.IsEmpty(player.Read(), "a search within the second is dropped");
+
+        clock.Advance(TimeSpan.FromMilliseconds(100));
+        Handle(server, player, c => service.OnHandleAsync(c, search));
+        Assert.AreEqual((byte)ExchangeOpcode.Search, player.Read().Single().Command, "a second after the last, it is answered");
+    }
+
+    /// <summary>
+    /// A game master may not give an item to the exchange, put one on sale or buy: each is refused with the client's text for
+    /// it before anything of the request is looked at.
+    /// </summary>
+    [TestMethod]
+    public async Task AGameMasterMayNotSellOrBuy()
+    {
+        var (account, person) = await CreatePersonAsync("master");
+
+        var catalog = Catalog();
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var player = server.Join(person, "master");
+
+        Equip(server, player, account, catalog, 10_000);
+        server.World.Set(player.Entity, new AccessComponent(AccessLevel.GameMaster));
+
+        var service = Service(server, catalog);
+
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeWaitRegisterRequest { Item = Sword, Count = 1 }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeSellRegisterRequest { Serial = 1, Price = 1 }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeItemBuyRequest { Exchange = 1, Item = Sword, Count = 1 }));
+
+        var answers = player.Read();
+
+        CollectionAssert.AreEqual(
+            new[] { (byte)ExchangeOpcode.WaitRegister | 0x80, (byte)ExchangeOpcode.SellRegister | 0x80, (byte)ExchangeOpcode.ItemBuy | 0x80 },
+            answers.Select(e => (int)e.Command).ToArray());
+        Assert.IsTrue(answers.All(e => BitConverter.ToUInt16(e.Content) == 52415), "the text: a game master cannot trade");
+        Assert.AreEqual(10_000, server.World.Get<CurrencyComponent>(player.Entity).Gold);
     }
 
     /// <summary>
