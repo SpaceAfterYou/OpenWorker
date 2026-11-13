@@ -16,6 +16,7 @@ public sealed class SkillActionProviderTest
     private const int ChainAttack = 1201;
     private const int MouseTrapSkill = 24000111;
     private const int SwordSkill = 12011011;
+    private const int ControlSkill = 34000111;
 
     private static SkillActionProvider Open()
     {
@@ -60,6 +61,22 @@ public sealed class SkillActionProviderTest
         Assert.IsFalse(provider.TryGetChain(ChainSkill, Hero.Haru, ChainAttack, out _), "the file of another hero");
         Assert.IsFalse(provider.TryGetChain(SwordSkill, Hero.Haru, 1, out _), "a melee attack is no chain");
         Assert.IsFalse(provider.TryGetProjectile(ChainSkill, Hero.Stella, ChainAttack, out _), "a chain is no projectile");
+    }
+
+    /// <summary>
+    /// A skill that controls a monster brings it in at the moment of its start and lets it go at the moment of its end, after a
+    /// loop of the table's time that the file has no animation for.
+    /// </summary>
+    [TestMethod]
+    public void ControlLastsThroughTheLoopTime()
+    {
+        var controls = Open().GetControls(ControlSkill, Hero.Lily);
+
+        Assert.HasCount(2, controls);
+        Assert.AreNotEqual(0, controls[0].Event.Monster);
+        Assert.IsTrue(controls[0].Event.Follows);
+        Assert.AreEqual(0, controls[1].Event.Monster);
+        Assert.IsGreaterThan(controls[0].Time + 7f, controls[1].Time);
     }
 
     [TestMethod]

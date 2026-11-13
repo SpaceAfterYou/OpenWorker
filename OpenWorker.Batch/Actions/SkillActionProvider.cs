@@ -61,6 +61,12 @@ public readonly record struct SkillClip(float Began, ActionAnimation Animation);
 public readonly record struct SkillCarry(float Time, AttachEvent Event);
 
 /// <summary>
+/// A moment of a skill at which the character that plays it takes control of a monster or lets it go, from the start of the skill.
+/// </summary>
+/// <param name="Animation">The number of the animation the monster comes in with in the character's file, or -1 when it has none.</param>
+public readonly record struct SkillControl(float Time, ControlEvent Event, int Animation);
+
+/// <summary>
 /// Finds what a skill hits from the animations the table names for it.
 /// </summary>
 public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> skills, ILogger<SkillActionProvider> logger)
@@ -198,6 +204,33 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         }
 
         return carries;
+    }
+
+    /// <summary>
+    /// The moments at which a skill of a hero takes control of a monster or lets it go, from the start of the skill. A loop with a
+    /// time of its own lasts that time, whether the file has its animation or not: the clients play it all the same.
+    /// </summary>
+    public IReadOnlyList<SkillControl> GetControls(int skill, Hero hero)
+    {
+        if (!Rows.TryGetValue(skill, out var row) || GetFile(GetHeroFileName(hero)) is not { } file)
+        {
+            return [];
+        }
+
+        var controls = new List<SkillControl>();
+        var offset = 0f;
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
+        {
+            var animation = Find(file, name);
+
+            controls.AddRange((animation?.Controls ?? []).Select(control =>
+                new SkillControl(offset + control.Start, control, file.Indexes.TryGetValue(control.Animation, out var index) ? index : -1)));
+
+            offset += name == row.AnimationLoop && name != NoAnimation && row.LoopTime > 0 ? row.LoopTime / 1000f : animation?.Length ?? 0f;
+        }
+
+        return controls;
     }
 
     /// <summary>
