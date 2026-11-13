@@ -160,6 +160,14 @@ public sealed class MazeWireFormatTest
     }
 
     [TestMethod]
+    public void HiddenEventIsTheEventTheConditionTheStateAndTheCount()
+    {
+        var bytes = Written(new MazeHiddenEventResponse { Event = 6007, Condition = 600701, State = 2, Count = 15 });
+
+        CollectionAssert.AreEqual(new byte[] { 0x77, 0x17, 0x7D, 0x2A, 0x09, 0x00, 0x02, 0x0F, 0x00, 0x00, 0x00 }, bytes);
+    }
+
+    [TestMethod]
     public void WarpInSectorIsAPlaceAndAYaw()
     {
         var bytes = Written(new MazeWarpInSectorResponse { Position = new Vector3(1, 2, 3), Rotation = 90f });
