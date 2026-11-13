@@ -211,7 +211,7 @@ public sealed class AchievementEventsTest
     {
         using var world = World.Create();
         var chains = new AchievementChains(world, (AchievementType.SkillUsed, 0), (AchievementType.Combo, 0), (AchievementType.Death, 0));
-        var results = new MazeResults(world, achievements: chains.Manager);
+        var results = new MazeResults(world, TestMazes.Clock(), achievements: chains.Manager);
         var player = world.Create(Component.GetComponentType(typeof(AchievementComponent)), Component.GetComponentType(typeof(AbilityComponent)));
 
         world.Set(player, Ability(100));

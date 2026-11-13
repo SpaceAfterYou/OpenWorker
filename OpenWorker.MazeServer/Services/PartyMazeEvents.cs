@@ -176,7 +176,7 @@ public sealed partial class PartyMazeEvents(
 
         else
         {
-            results.Complete(members);
+            results.Complete(members, TimeSpan.FromSeconds(maze.PlayedSeconds));
         }
 
         if (maze.Party != 0 && members.Length > 0)

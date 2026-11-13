@@ -31,14 +31,16 @@ public sealed class PlayerDrops
 /// </summary>
 public readonly record struct DropThing(int ObjectId, int Count, int Bonus = 0);
 
-public sealed record DropObject(long Serial, int Group, int ObjectId, int Count, int Bonus, Vector3 Position, long ExpiresAt);
+public sealed record DropObject(long Serial, int Group, int ObjectId, int Count, int Bonus, Vector3 Position, TimeSpan ExpiresAt);
 
 /// <summary>
 /// Lets monsters drop things and lets players take them. Money and items are objects of their own on the ground,
-/// the ids of money are not items.
+/// the ids of money are not items. What falls together lies on the ground for <see cref="Lifetime"/> of game time, then
+/// goes away and the client is told; a stalled maze does not take it away sooner.
 /// </summary>
 public sealed partial class DropService(
     World world,
+    SimulationClock clock,
     InventoryService inventory,
     ItemCatalog catalog,
     IItemSerials serials,
@@ -63,7 +65,11 @@ public sealed partial class DropService(
 
     // The tables of a party's drop go up to four members.
     private const int MostMembers = 4;
-    private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// How long what falls together lies on the ground.
+    /// </summary>
+    public static TimeSpan Lifetime { get; } = TimeSpan.FromMinutes(3);
 
     // A player takes what is within this reach of its feet. The client decides when to ask, so this only holds back requests from afar.
     private const float PickUpReach = 1500f;
@@ -250,7 +256,7 @@ public sealed partial class DropService(
     {
         var field = Field(player);
         var group = Interlocked.Increment(ref _group);
-        var expires = Environment.TickCount64 + (long)Lifetime.TotalMilliseconds;
+        var expires = clock.Now + Lifetime;
         var values = new List<DropObjectValue>();
 
         foreach (var (thing, count, bonus) in things)
@@ -266,6 +272,11 @@ public sealed partial class DropService(
 
             field.Objects[drop.Serial] = drop;
             values.Add(new DropObjectValue(spot, thing, (short)Math.Min(count, short.MaxValue), (short)Math.Min(bonus, short.MaxValue), drop.Serial));
+        }
+
+        if (values.Count > 0)
+        {
+            clock.Schedule(Lifetime, () => Disappear(player, field, group));
         }
 
         if (world.Has<ServerSessionComponent>(player))
@@ -334,34 +345,31 @@ public sealed partial class DropService(
     }
 
     /// <summary>
-    /// Takes away what has lain on the ground too long, a group at a time as the client removes them.
+    /// What fell together has lain on the ground its time: what is left of it goes away, and the client is told. Nothing
+    /// happens for a player who has left, or whose ground was cleared since.
     /// </summary>
-    public void Expire()
+    private void Disappear(Entity player, PlayerDrops field, int group)
     {
-        var now = Environment.TickCount64;
-
-        foreach (var (player, field) in _field.ToArray())
+        if (!world.IsAlive(player) || !_field.TryGetValue(player, out var current) || current != field)
         {
-            if (!world.IsAlive(player))
-            {
-                _field.Remove(player);
-                continue;
-            }
+            return;
+        }
 
-            var gone = field.Objects.Values.Where(e => e.ExpiresAt <= now).ToArray();
+        var gone = field.Objects.Values.Where(e => e.Group == group).Select(e => e.Serial).ToArray();
 
-            foreach (var drop in gone)
-            {
-                field.Objects.Remove(drop.Serial);
-            }
+        if (gone.Length == 0)
+        {
+            return;
+        }
 
-            foreach (var group in gone.Select(e => e.Group).Distinct())
-            {
-                if (world.Has<ServerSessionComponent>(player))
-                {
-                    world.Get<ServerSessionComponent>(player).Send(new DropDeleteResponse { DropGroup = group });
-                }
-            }
+        foreach (var serial in gone)
+        {
+            field.Objects.Remove(serial);
+        }
+
+        if (world.Has<ServerSessionComponent>(player))
+        {
+            world.Get<ServerSessionComponent>(player).Send(new DropDeleteResponse { DropGroup = group });
         }
     }
 
