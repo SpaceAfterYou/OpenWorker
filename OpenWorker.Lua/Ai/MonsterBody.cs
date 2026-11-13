@@ -58,6 +58,11 @@ internal partial class MonsterBody : IAiHost
     private int _idleAnimation;
     private double _idleEnd;
     private readonly List<(double Start, double End, ActionAnimation Clip)> _clips = [];
+
+    /// <summary>
+    /// The skill that plays is held for a moment by each blow that lands.
+    /// </summary>
+    private bool _freezes;
     private double _lastMoveSent;
     private float _lastYawSent = float.NaN;
     private Vector3? _stoppedAt;
@@ -275,7 +280,6 @@ internal partial class MonsterBody : IAiHost
         _staggerEnd = _manager.Now + seconds;
         _attackEnd = 0;
         _pending.Clear();
-        _flights.Clear();
         _clips.Clear();
         ReleaseGrab(true);
 
@@ -732,7 +736,8 @@ internal partial class MonsterBody : IAiHost
         // A skill that grabs plays its start, and what follows depends on whether the start took somebody.
         var grabbing = _actions.IsGrabSkill(skill.Id);
         var start = grabbing ? _actions.GetStage(skill.Id, Behavior.ActionFile, GrabStage.Start) : null;
-        var duration = start?.Length ?? _actions.GetDuration(skill.Id, Behavior.ActionFile);
+        var timeline = start is null ? _actions.GetTimeline(skill.Id, Behavior.ActionFile) : SkillTimeline.Empty;
+        var duration = start?.Length ?? timeline.Length;
 
         if (duration <= 0f)
         {
@@ -754,6 +759,7 @@ internal partial class MonsterBody : IAiHost
         _detaches.Clear();
         _clips.Clear();
         _staged = false;
+        _freezes = start is null;
 
         if (start is not null)
         {
@@ -765,24 +771,24 @@ internal partial class MonsterBody : IAiHost
         }
         else
         {
-            foreach (var clip in _actions.GetClips(skill.Id, Behavior.ActionFile))
+            foreach (var clip in timeline.Clips)
             {
-                _clips.Add((now + clip.Began, now + clip.Began + clip.Animation.Length, clip.Animation));
+                _clips.Add((now + clip.Began, now + clip.Began + clip.Length, clip.Animation));
             }
 
-            foreach (var hit in _actions.GetHits(skill.Id, Behavior.ActionFile))
+            foreach (var hit in timeline.Hits)
             {
                 _pending.Add(new PendingHit(now + hit.Time, hit, skill.Id));
             }
 
-            foreach (var shot in _actions.GetShots(skill.Id, Behavior.ActionFile))
+            foreach (var shot in timeline.Shots)
             {
                 _pending.Add(new PendingHit(now + shot.Time, shot, skill.Id, true));
             }
 
             _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
-            foreach (var hiding in _actions.GetHidings(skill.Id, Behavior.ActionFile))
+            foreach (var hiding in timeline.Hidings)
             {
                 // The kinds that wait for other monsters to die are not followed.
                 if (IsFollowed(hiding.Event))
@@ -827,14 +833,50 @@ internal partial class MonsterBody : IAiHost
                 continue;
             }
 
-            Strike(pending.Skill, pending.Hit.Trigger, new AttackArea(pending.Hit.Trigger, Position, Yaw), null, false);
+            if (Strike(pending.Skill, pending.Hit.Trigger, new AttackArea(pending.Hit.Trigger, Position, Yaw), null, false) && _freezes)
+            {
+                Freeze(now, pending.Hit.Trigger.Reaction.HitFreeze);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A blow that lands holds the animation of the monster for a moment, on the clients as here: whatever of the skill was still
+    /// to come comes that much later.
+    /// </summary>
+    private void Freeze(double now, float seconds)
+    {
+        if (!float.IsFinite(seconds) || seconds <= 0f)
+        {
+            return;
+        }
+
+        _attackEnd += seconds;
+
+        for (var i = 0; i < _pending.Count; i++)
+        {
+            _pending[i] = _pending[i] with { Time = _pending[i].Time + seconds };
+        }
+
+        for (var i = 0; i < _clips.Count; i++)
+        {
+            if (_clips[i].End > now)
+            {
+                _clips[i] = (_clips[i].Start + seconds, _clips[i].End + seconds, _clips[i].Clip);
+            }
+        }
+
+        for (var i = 0; i < _hidings.Count; i++)
+        {
+            _hidings[i] = (_hidings[i].Time + seconds, _hidings[i].Event);
         }
     }
 
     /// <summary>
     /// A blow of the monster lands on an area, and on what a projectile ran into: the players and the helpers in it are hit.
     /// </summary>
-    protected virtual void Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
+    /// <returns>Whether it struck a player.</returns>
+    protected virtual bool Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
     {
         IReadOnlyList<Entity> victims = colliderOnly ? [] : _manager.PlayersTouching(area);
 
@@ -845,12 +887,19 @@ internal partial class MonsterBody : IAiHost
 
         victims = TakeGrabbed(trigger, victims, skill);
 
-        _manager.HitPlayers(this, skill, trigger, victims);
+        var first = _manager.HitPlayers(this, skill, trigger, victims);
+
+        if (first != 0 && trigger.DamageRate > 0f)
+        {
+            Machine.OnStruck(first);
+        }
 
         if (_manager.Helpers.HasTargets)
         {
             _manager.Helpers.HitBy(this, skill, trigger, area, collider, colliderOnly);
         }
+
+        return first != 0;
     }
 
     /// <summary>

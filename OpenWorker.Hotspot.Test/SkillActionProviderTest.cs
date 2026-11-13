@@ -17,6 +17,8 @@ public sealed class SkillActionProviderTest
     private const int MouseTrapSkill = 24000111;
     private const int SwordSkill = 12011011;
     private const int ControlSkill = 34000111;
+    private const int QuickBite = 1301020244;
+    private const int Whirl = 1301050183;
 
     private static SkillActionProvider Open()
     {
@@ -126,5 +128,30 @@ public sealed class SkillActionProviderTest
         Assert.IsNull(sword.Loop);
         Assert.IsNotNull(sword.End);
         Assert.IsNull(provider.GetAnimations(-1, Hero.Haru));
+    }
+
+    /// <summary>
+    /// A monster plays its skill as the clients do: a stretch of an animation at the speed its file gives it, and a loop that starts
+    /// over by itself for the time of the table, its blows judged again each time round.
+    /// </summary>
+    [TestMethod]
+    public void AMonsterSkillPlaysAtTheSpeedOfItsAnimationsAndLoopsForTheTableTime()
+    {
+        var provider = Open();
+
+        // The first 0.82 s of the bite play 2.2 times faster: its blow at 0.994 lands 0.45 s sooner.
+        var bite = provider.GetTimeline(QuickBite, "MOB_0251_CanineTooth_Veryhard");
+
+        Assert.AreEqual((0.82f / 2.2f) + (0.994f - 0.82f), bite.Hits[0].Time, 0.01f);
+        Assert.AreEqual((0.82f / 2.2f) + (2.167f - 0.82f), bite.Clips[0].Length, 0.01f);
+
+        // A loop of 0.533 s for 1.59 s goes round three times, its 14 blows each time, and the end follows it.
+        var whirl = provider.GetTimeline(Whirl, "MOB_9052_MumblePuppet");
+        var loopBlows = whirl.Hits.Where(e => e.Trigger.Id is >= 151 and <= 164).ToArray();
+        var loopStart = whirl.Clips[1].Began;
+
+        Assert.HasCount(42, loopBlows);
+        Assert.IsTrue(loopBlows.All(e => e.Time >= loopStart && e.Time < loopStart + 1.59f));
+        Assert.AreEqual(loopStart + 1.59f, whirl.Clips[^1].Began, 0.001f);
     }
 }

@@ -51,9 +51,18 @@ public sealed record SkillStage(float Length, IReadOnlyList<SkillHit> Hits, IRea
 }
 
 /// <summary>
-/// An animation of a skill and the moment it begins, from the start of the skill.
+/// An animation of a skill on the clock: when it begins, from the start of the skill, and how long it lasts, in seconds.
 /// </summary>
-public readonly record struct SkillClip(float Began, ActionAnimation Animation);
+public readonly record struct TimedClip(float Began, float Length, ActionAnimation Animation);
+
+/// <summary>
+/// A skill as a monster plays it, on the clock: its animations, its blows, its shots and its hidings at the moments the clients
+/// play them, and how long it lasts. Times are in seconds from the start of the skill.
+/// </summary>
+public sealed record SkillTimeline(float Length, IReadOnlyList<TimedClip> Clips, IReadOnlyList<SkillHit> Hits, IReadOnlyList<SkillHit> Shots, IReadOnlyList<SkillHiding> Hidings)
+{
+    public static SkillTimeline Empty { get; } = new(0f, [], [], [], []);
+}
 
 /// <summary>
 /// A moment of a skill at which the character that plays it starts to carry away what stands before it.
@@ -110,6 +119,88 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     private Dictionary<string, ActionFile?> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<(int Skill, string File), SkillHit[]> Hits { get; } = [];
     private Dictionary<(int Skill, string File), SkillHit[]> Shots { get; } = [];
+    private Dictionary<(int Skill, string File), SkillTimeline> Timelines { get; } = [];
+
+    /// <summary>
+    /// How a skill plays out for a monster, which presses no key: the start, the loop for the time of the table, then the end, each
+    /// stretch of an animation at the speed its file gives it. Empty when the file has none of the animations.
+    /// </summary>
+    public SkillTimeline GetTimeline(int skill, string actionFile)
+    {
+        if (Timelines.TryGetValue((skill, actionFile), out var timeline))
+        {
+            return timeline;
+        }
+
+        timeline = Rows.TryGetValue(skill, out var row) && GetFile(actionFile) is { } file ? Lay(row, file) : SkillTimeline.Empty;
+
+        Timelines.Add((skill, actionFile), timeline);
+
+        return timeline;
+    }
+
+    private static SkillTimeline Lay(SkillRow row, ActionFile file)
+    {
+        var clips = new List<TimedClip>();
+        var hits = new List<SkillHit>();
+        var shots = new List<SkillHit>();
+        var hidings = new List<SkillHiding>();
+        var offset = 0f;
+
+        // The extra animation plays only on input from the player.
+        foreach (var (name, loop) in (ReadOnlySpan<(string, bool)>)[(row.AnimationStart, false), (row.AnimationLoop, true), (row.AnimationEnd, false)])
+        {
+            if (Find(file, name) is not { } animation)
+            {
+                continue;
+            }
+
+            var clock = new SkillPlayback.ClipClock(animation, 1f);
+
+            // A loop that starts over by itself lasts the time of the table and judges its attacks again each time round.
+            var rounds = loop && animation.Repeats && row.LoopTime > 0 && clock.Length > 0f;
+            var end = offset + (rounds ? row.LoopTime / 1000f : clock.Length);
+            var round = offset;
+
+            do
+            {
+                clips.Add(new TimedClip(round, Math.Min(clock.Length, end - round), animation));
+
+                foreach (var attack in animation.Attacks)
+                {
+                    var time = round + clock.Wall(attack.Start);
+
+                    if (rounds && time >= end)
+                    {
+                        continue;
+                    }
+
+                    if (attack.IsProjectile)
+                    {
+                        shots.Add(new SkillHit(time, attack));
+                    }
+                    else if (attack.HitsArea || attack.IsTrap)
+                    {
+                        hits.Add(new SkillHit(time, attack));
+                    }
+                }
+
+                hidings.AddRange((animation.Hides ?? []).Select(hide => new SkillHiding(round + clock.Wall(hide.Start), hide)).Where(e => !rounds || e.Time < end));
+
+                round += clock.Length;
+            }
+            while (rounds && round < end);
+
+            offset = end;
+        }
+
+        return new SkillTimeline(
+            offset,
+            clips,
+            hits.OrderBy(e => e.Time).ToArray(),
+            shots.OrderBy(e => e.Time).ToArray(),
+            hidings.OrderBy(e => e.Time).ToArray());
+    }
 
     public IReadOnlyList<SkillHit> GetHits(int skill, Hero hero)
     {
@@ -148,34 +239,6 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         Shots.Add((skill, actionFile), shots);
 
         return shots;
-    }
-
-    /// <summary>
-    /// The moments at which a monster hides while it plays a skill, from the start of the skill.
-    /// </summary>
-    public IReadOnlyList<SkillHiding> GetHidings(int skill, string actionFile)
-    {
-        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
-        {
-            return [];
-        }
-
-        var hidings = new List<SkillHiding>();
-        var offset = 0f;
-
-        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
-        {
-            if (Find(file, name) is not { } animation)
-            {
-                continue;
-            }
-
-            hidings.AddRange((animation.Hides ?? []).Select(hide => new SkillHiding(offset + hide.Start, hide)));
-
-            offset += animation.Length;
-        }
-
-        return hidings;
     }
 
     /// <summary>
@@ -282,55 +345,6 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             (animation.Hides ?? []).Select(e => new SkillHiding(e.Start, e)).ToArray(),
             detaches,
             animation);
-    }
-
-    /// <summary>
-    /// The animations a skill plays one after the other and when each begins.
-    /// </summary>
-    public IReadOnlyList<SkillClip> GetClips(int skill, string actionFile)
-    {
-        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
-        {
-            return [];
-        }
-
-        var clips = new List<SkillClip>();
-        var offset = 0f;
-
-        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
-        {
-            if (Find(file, name) is { } animation)
-            {
-                clips.Add(new SkillClip(offset, animation));
-
-                offset += animation.Length;
-            }
-        }
-
-        return clips;
-    }
-
-    /// <summary>
-    /// How long the animations of a skill last together, in seconds. Zero when the file has none of them.
-    /// </summary>
-    public float GetDuration(int skill, string actionFile)
-    {
-        if (!Rows.TryGetValue(skill, out var row) || GetFile(actionFile) is not { } file)
-        {
-            return 0f;
-        }
-
-        var total = 0f;
-
-        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationEnd])
-        {
-            if (Find(file, name) is { } animation)
-            {
-                total += animation.Length;
-            }
-        }
-
-        return total;
     }
 
     /// <summary>

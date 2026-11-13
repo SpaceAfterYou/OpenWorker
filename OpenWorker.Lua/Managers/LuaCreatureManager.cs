@@ -1543,25 +1543,35 @@ public sealed partial class LuaCreatureManager
     /// <summary>
     /// A monster has hit the players in the area of an attack: tells everyone how hard, and who has fallen.
     /// </summary>
-    internal void HitPlayers(MonsterBody attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims)
+    /// <returns>The actor of the first player the clients are told was hit, zero when none was.</returns>
+    internal int HitPlayers(MonsterBody attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims)
     {
-        HitPlayers(attacker.Entity, skillId, trigger, victims);
+        // A blow of a monster that deals no damage neither hurts nor throws: only its buff lands, if it has one.
+        if (trigger.DamageRate <= 0f)
+        {
+            Buffs?.GiveFromAttack(attacker.Entity, trigger, victims);
+
+            return 0;
+        }
+
+        return HitPlayers(attacker.Entity, skillId, trigger, victims);
     }
 
     /// <param name="from">Where the blow comes from when it is not the attacker: the place of its trap.</param>
-    internal void HitPlayers(Entity attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims, Vector3? from = null)
+    /// <returns>The actor of the first player the clients are told was hit, zero when none was.</returns>
+    internal int HitPlayers(Entity attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims, Vector3? from = null)
     {
         // An attack for the side of the monster, or one that only gives a buff, hurts nobody.
         if (trigger.ForAllies || ((trigger.Buff > 0 || trigger.Aura > 0) && trigger.DamageRate <= 0f))
         {
             Buffs?.GiveFromAttack(attacker, trigger, victims);
 
-            return;
+            return 0;
         }
 
         if (victims.Count == 0 || !trigger.AffectsTargets || !ecs.IsAlive(attacker))
         {
-            return;
+            return 0;
         }
 
         var stats = Buffs?.StatsOf(attacker, ecs.Get<MonsterCombatComponent>(attacker).Stats) ?? ecs.Get<MonsterCombatComponent>(attacker).Stats;
@@ -1569,6 +1579,7 @@ public sealed partial class LuaCreatureManager
         var hits = new List<SkillDmgValue>();
         var fallen = new List<Entity>();
         List<Entity>? hurt = null;
+        var first = 0;
         var origin = ecs.Get<WorldComponent>(attacker);
         var weight = ecs.Get<MonsterCombatComponent>(attacker).WeightRank;
         var kind = DamageContext.MonsterHits(new Opponent(ecs.Get<MonsterCombatComponent>(attacker).Rank, ecs.Get<MonsterCombatComponent>(attacker).Faction, ecs.Get<MonsterCombatComponent>(attacker).StatusType));
@@ -1612,6 +1623,11 @@ public sealed partial class LuaCreatureManager
                 Posture(victim, SkillStates.FlightMilliseconds(extraMove.Z));
             }
 
+            if (hits.Count == 0)
+            {
+                first = ecs.Get<ActorComponent>(victim);
+            }
+
             hits.Add(default(SkillDmgValue) with
             {
                 UxActorId = ecs.Get<ActorComponent>(victim),
@@ -1636,7 +1652,7 @@ public sealed partial class LuaCreatureManager
 
         if (hits.Count == 0)
         {
-            return;
+            return 0;
         }
 
         var place = ecs.Get<WorldComponent>(attacker);
@@ -1677,5 +1693,7 @@ public sealed partial class LuaCreatureManager
         }
 
         Buffs?.GiveFromHit(attacker, trigger, victims);
+
+        return first;
     }
 }

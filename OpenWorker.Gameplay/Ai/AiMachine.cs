@@ -1497,7 +1497,7 @@ public sealed partial class AiMachine
             return;
         }
 
-        var distance = Vector3.Distance(_host.Position, target.Value.Position);
+        var distance = SkillDistance(_host.Position, target.Value.Position);
 
         if (_host.CanAttack && distance >= _skill.RangeMin - RangeSlack && distance <= _skill.RangeMax + target.Value.Radius)
         {
@@ -1554,6 +1554,23 @@ public sealed partial class AiMachine
                 GiveUpReaching();
             }
         }
+    }
+
+    /// <summary>
+    /// Below this height between the two, the reach of a skill is the distance less that height.
+    /// </summary>
+    private const float SkillReachLevel = 200f;
+
+    /// <summary>
+    /// How far a target is for the reach of a skill: the distance, less the height between the two when they stand on nearly one
+    /// level, so a target a little above or below is reached as if it stood level.
+    /// </summary>
+    private static float SkillDistance(Vector3 from, Vector3 to)
+    {
+        var distance = Vector3.Distance(from, to);
+        var height = MathF.Abs(to.Z - from.Z);
+
+        return height < SkillReachLevel ? distance - height : distance;
     }
 
     private void StartCommonAction(int index)
