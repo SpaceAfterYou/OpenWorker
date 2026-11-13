@@ -272,4 +272,13 @@ public partial class LuaMaze
             }
         }
     }
+
+    /// <summary>
+    /// The monsters come in waves at a monster the players must keep alive (<c>LuaMaze.Defence.cs</c>).
+    /// </summary>
+    [LuaMember]
+    public void StartDefenceMode(int table)
+    {
+        BeginDefence(table);
+    }
 }

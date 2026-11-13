@@ -111,4 +111,16 @@ public partial class LuaMaze
             await CheckSectorAsync(place.Sector);
         }
     }
+
+    [LuaMember]
+    public void ApplyBuff(int actor, int buff)
+    {
+        Logger.CallApplyBuff(actor, buff);
+
+        // Everybody in the maze sees the buff on the one it is for.
+        if (!ApplyScriptBuff(actor, buff))
+        {
+            Logger.UnknownBuff(actor, buff);
+        }
+    }
 }

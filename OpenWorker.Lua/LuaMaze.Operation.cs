@@ -244,4 +244,13 @@ public partial class LuaMaze
             return ValueTask.FromResult(true);
         }
     }
+
+    /// <summary>
+    /// A boss sets the players a trial as its life falls (<c>LuaMaze.Operation.cs</c>).
+    /// </summary>
+    [LuaMember]
+    public void StartOperationMode(int table)
+    {
+        BeginOperation(table);
+    }
 }
