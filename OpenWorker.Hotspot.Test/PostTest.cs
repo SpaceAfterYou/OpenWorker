@@ -547,4 +547,69 @@ public sealed class PostTest
 
         Assert.AreEqual(PostSendOutcome.Sent, (await store.SendAsync(Draft(sender, "fullfrom", "fullto", 0))).Outcome);
     }
+
+    /// <summary>
+    /// The sweep deletes the letters whose time is up, of persons and of accounts, and nothing else: a letter that still
+    /// lives and one its receiver keeps stay.
+    /// </summary>
+    [TestMethod]
+    public async Task TheSweepDeletesTheLettersWhoseTimeIsUpAndNothingElse()
+    {
+        var clock = Clock(2003);
+        var store = new PostStore(Factory, clock);
+
+        var (account, receiver) = await CreatePersonAsync("sweepto");
+
+        // What the tests before this one left to the sweep goes first.
+        await store.SweepAsync(int.MaxValue);
+
+        var dead = await AddLettersAsync(clock, 3, receiver, null);
+        dead.AddRange(await AddLettersAsync(clock, 2, null, account));
+
+        var kept = await AddLettersAsync(clock, 1, receiver, null, PostState.Saved);
+
+        clock.Advance(TimeSpan.FromDays(10));
+
+        var live = await AddLettersAsync(clock, 1, receiver, null);
+
+        clock.Advance(PostLimits.Lifetime - TimeSpan.FromDays(5));
+
+        var service = new PostSweepService(store, clock, NullLogger<PostSweepService>.Instance);
+
+        Assert.AreEqual(dead.Count, await service.SweepAsync(CancellationToken.None));
+
+        await using var database = await Factory.CreateDbContextAsync();
+
+        var left = await database.Posts.Where(e => e.ReceiverId == receiver || e.ReceiverAccountId == account).Select(e => e.Id).ToListAsync();
+
+        CollectionAssert.AreEquivalent(kept.Concat(live).ToList(), left);
+    }
+
+    /// <summary>
+    /// Two servers that sweep at the same moment delete every letter once between them.
+    /// </summary>
+    [TestMethod]
+    public async Task TwoSweepsAtOnceDeleteEachLetterOnce()
+    {
+        var clock = Clock(2004);
+
+        var (account, receiver) = await CreatePersonAsync("twosweeps");
+
+        await new PostStore(Factory, clock).SweepAsync(int.MaxValue);
+
+        var dead = await AddLettersAsync(clock, 300, receiver, null);
+        dead.AddRange(await AddLettersAsync(clock, 300, null, account));
+
+        clock.Advance(PostLimits.Lifetime + TimeSpan.FromSeconds(1));
+
+        var swept = await Task.WhenAll(
+            Task.Run(() => new PostStore(Factory, clock).SweepAsync(dead.Count)),
+            Task.Run(() => new PostStore(Factory, clock).SweepAsync(dead.Count)));
+
+        Assert.AreEqual(dead.Count, swept.Sum(), "each letter went once");
+
+        await using var database = await Factory.CreateDbContextAsync();
+
+        Assert.IsFalse(await database.Posts.AnyAsync(e => dead.Contains(e.Id)));
+    }
 }

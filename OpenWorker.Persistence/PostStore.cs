@@ -331,6 +331,20 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
         return new PostReturnResult(PostReturnOutcome.Returned, letter, unread);
     }
 
+    public async Task<int> SweepAsync(int limit, CancellationToken cancellationToken = default)
+    {
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
+
+        var now = Now;
+
+        // One statement: a letter two servers sweep at the same moment is deleted by one of them and skipped by the other.
+        return await database.Posts
+            .Where(e => e.ExpiresAt <= now && ((e.State & PostState.Saved) == 0 || (e.State & PostState.GoneForReceiver) != 0))
+            .OrderBy(e => e.ExpiresAt)
+            .Take(limit)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     /// <summary>
     /// The letters a person keeps, received and kept. A received letter whose time is up is gone for its receiver, whether
     /// the sweep has removed it yet or not; a kept one stays until the receiver deletes it.

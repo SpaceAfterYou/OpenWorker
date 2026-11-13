@@ -179,4 +179,11 @@ public interface IPostStore
     /// Sends a received letter back to its sender, with what it still carries.
     /// </summary>
     Task<PostReturnResult> SendBackAsync(long serial, int person, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes at most <paramref name="limit"/> letters whose time is up, with what they still carry, and tells how many
+    /// went. A letter kept by its receiver is not one of them. Every list, count and change already passes over such a
+    /// letter, so the sweep only frees the table; two servers may sweep at the same moment, and each letter goes once.
+    /// </summary>
+    Task<int> SweepAsync(int limit, CancellationToken cancellationToken = default);
 }
