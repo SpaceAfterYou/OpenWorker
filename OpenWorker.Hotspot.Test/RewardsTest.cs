@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Testing;
 using Arch.Core;
 using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Components;
@@ -82,7 +84,8 @@ public sealed class RewardsTest
         };
     }
 
-    private static Action<BinaryWriter> Drop(int id, ushort goldChance, ushort goldMin, ushort goldMax, int group, ushort groupChance)
+    private static Action<BinaryWriter> Drop(int id, ushort goldChance, ushort goldMin, ushort goldMax, int group, ushort groupChance,
+        ushort battlePointChance = 0, ushort battlePointFirst = 0, ushort battlePointSecond = 0)
     {
         return writer =>
         {
@@ -95,7 +98,9 @@ public sealed class RewardsTest
             writer.Write((byte)0);
             writer.Write(new byte[2 * 3]);     // soul vapor
             writer.Write(new byte[2 * 6]);     // ether
-            writer.Write(new byte[2 * 3]);     // battle points
+            writer.Write(battlePointChance);
+            writer.Write(battlePointFirst);
+            writer.Write(battlePointSecond);
 
             for (var i = 0; i < DropRow.GroupCount; i++)
             {
@@ -154,7 +159,7 @@ public sealed class RewardsTest
         public Fixture(byte level = 1, ReadOnlyCollection<MonsterExpRow>? monsterExp = null, ReadOnlyCollection<PartyExpMobRow>? intervals = null,
             ReadOnlyCollection<DropRow>? drops = null, ReadOnlyCollection<DropGroupRow>? groups = null,
             ReadOnlyCollection<DropRateLevelRow>? levelRates = null, ReadOnlyCollection<DropRateMemberRow>? memberRates = null,
-            BoosterEffectValue? boost = null)
+            BoosterEffectValue? boost = null, ILogger<DropService>? dropLogger = null)
         {
             // The person carries one booster with the effect, when a test asks for one.
             var boosters = boost is { } effect
@@ -194,7 +199,8 @@ public sealed class RewardsTest
                 Monsters,
                 levelRates: levelRates,
                 memberRates: memberRates,
-                boosters: boosters);
+                boosters: boosters,
+                logger: dropLogger);
 
             Player = World.Create(
                 Component.GetComponentType(typeof(ActorComponent)),
@@ -560,5 +566,61 @@ public sealed class RewardsTest
         }
 
         Assert.AreEqual(0, f.Drops.On(f.Player).Count);
+    }
+
+    [TestMethod]
+    public void APairTheWrongWayRoundIsRolledBetweenItsTwoValuesAndToldOnce()
+    {
+        var monster = FindMonster();
+        var logger = new FakeLogger<DropService>();
+        var row = Rows<DropRow>(Drop(monster.DropId, 10000, 30, 30, group: 5, groupChance: 10000, battlePointChance: 10000, battlePointFirst: 10, battlePointSecond: 100));
+
+        using var f = new Fixture(drops: row, groups: Rows<DropGroupRow>(Group(5, Material, 1, 1)), dropLogger: logger);
+
+        for (var seed = 0; seed < 50; seed++)
+        {
+            var things = f.Drops.Roll(row[0], 1f, new Random(seed));
+            var points = things.Single(e => e.ObjectId == DropService.BattlePointObject).Count;
+
+            Assert.IsTrue(points is >= 10 and <= 100, $"{points} battle points");
+            Assert.IsTrue(things.Any(e => e.ObjectId == DropService.GoldObject) && things.Any(e => e.ObjectId == Material));
+        }
+
+        Assert.AreEqual(1, logger.Collector.GetSnapshot().Count(e => e.Level == LogLevel.Warning));
+    }
+
+    [TestMethod]
+    public void EveryRowOfTheServerDropTableRollsWithoutAFailedPart()
+    {
+        var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_SERVER_RES");
+
+        if (string.IsNullOrEmpty(folder))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_SERVER_RES is not set.");
+        }
+
+        ReadOnlyCollection<T> Server<T>(string table)
+        {
+            using var reader = new BinaryReader(File.OpenRead(Path.Combine(folder, table + ".res")));
+
+            var count = reader.ReadInt32();
+
+            return new ReadOnlyCollection<T>(Enumerable.Range(0, count).Select(_ => (T)Activator.CreateInstance(typeof(T), reader)!).ToArray());
+        }
+
+        var drops = Server<DropRow>("tb_Drop");
+        var logger = new FakeLogger<DropService>();
+
+        using var f = new Fixture(drops: drops, groups: Server<DropGroupRow>("tb_Drop_Group"), dropLogger: logger);
+
+        var random = new Random(1);
+
+        // At this rate every part with a chance falls.
+        foreach (var row in drops)
+        {
+            f.Drops.Roll(row, 10000f, random);
+        }
+
+        Assert.AreEqual(0, logger.Collector.GetSnapshot().Count(e => e.Level == LogLevel.Error));
     }
 }
