@@ -40,6 +40,7 @@ public static class Cache
     {
         services.AddSingleton<SessionLeaseManager>();
         services.AddSingleton<ITradePasswordStates, RedisTradePasswordStates>();
+        services.AddSingleton<ICashShopLogins, RedisCashShopLogins>();
         services.AddSingleton<ISessionCloseHandler>(e => e.GetRequiredService<SessionLeaseManager>());
         services.AddRegistrationService<SessionLeaseRenewalService>();
 

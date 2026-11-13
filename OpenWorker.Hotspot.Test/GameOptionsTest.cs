@@ -29,22 +29,23 @@ public sealed class GameOptionsTest
             .AddSingleton(server.World)
             .AddSingleton(contents)
             .AddSingleton(server.Network)
+            .AddSingleton(CashShopTest.EmptyWindow(server.World, contents))
             .BuildServiceProvider();
 
         ICommand command = new OptionCommand(services);
         var done = false;
 
-        server.Run(async () => done = await command.TryExecute(alice.Entity, ["4", "true"]));
+        server.Run(async () => done = await command.TryExecute(alice.Entity, ["3", "true"]));
 
         Assert.IsTrue(done);
-        Assert.IsTrue(contents[ServerContentIndex.CashShop]);
+        Assert.IsTrue(contents[ServerContentIndex.Ranking]);
 
         foreach (var player in new[] { alice, bob })
         {
             var frame = player.Read().Single();
 
             Assert.AreEqual((1, 7), (frame.Group, frame.Command));
-            CollectionAssert.AreEqual(new byte[] { 0, 0, 0, 0, 1 }, frame.Content);
+            CollectionAssert.AreEqual(new byte[] { 0, 0, 0, 1, 0 }, frame.Content);
         }
     }
 }
