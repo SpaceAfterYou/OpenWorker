@@ -32,9 +32,4 @@ public readonly struct PersonUpdateOriginStatListResponse : IResponseHotspotMess
         Actor.Write(ref writer);
         StatKeyValuePair.WriteValueFirst(ref writer, Stats);
     }
-
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
 }

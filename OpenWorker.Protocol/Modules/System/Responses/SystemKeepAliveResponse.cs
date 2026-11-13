@@ -36,10 +36,5 @@ public readonly struct SystemKeepAliveResponse : IResponseHotspotMessage, IWireW
         writer.WriteInt64(Time.Ticks);
     }
 
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
-
 #endregion Interface: IWireWritable
 }

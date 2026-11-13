@@ -50,10 +50,5 @@ public readonly struct EventLuaValuesResponse : IResponseHotspotMessage, IWireWr
         }
     }
 
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
-
 #endregion Interface: IWireWritable
 }

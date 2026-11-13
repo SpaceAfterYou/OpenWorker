@@ -17,6 +17,7 @@ using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.MazeServer.Services;
 using OpenWorker.Server.Common.Services;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -27,18 +28,7 @@ public sealed class HelperTest
     private const int NoItem = 82;
     private const int BareHelper = 4 + 3 * NoItem + 18 + 2 + 2 + 1;
 
-    private static byte[] Written(IWritableData message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
-
-    private static byte[] Written(IResponseHotspotMessage message) => Written((IWritableData)message);
+    private static byte[] Written<T>(in T message) where T : IWireWritable => WireBytes.Of(in message);
 
     // Reads a helper in the order the client does and returns what it found, leaving the reader after the helper.
     private static (int Helper, int Items, byte Order, int Origin, int Additional, bool Summoned) ReadAsClient(BinaryReader reader)

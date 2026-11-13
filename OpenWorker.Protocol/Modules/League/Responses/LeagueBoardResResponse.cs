@@ -32,9 +32,4 @@ public readonly struct LeagueBoardResResponse : IResponseHotspotMessage, IWireWr
             writer.WriteInt64(Remain);
         }
     }
-
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
 }

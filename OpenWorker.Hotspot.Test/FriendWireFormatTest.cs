@@ -19,16 +19,7 @@ namespace OpenWorker.Hotspot.Test;
 [TestClass]
 public sealed class FriendWireFormatTest
 {
-    private static byte[] Written(IResponseHotspotMessage message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
     private static void WriteClientString(BinaryWriter writer, string value)
     {
@@ -59,14 +50,7 @@ public sealed class FriendWireFormatTest
 
     private static byte[] PersonBytes()
     {
-        return Written(new PersonOtherInfoResponseProbe(Person()));
-    }
-
-    private readonly struct PersonOtherInfoResponseProbe(OtherPersonValue value) : IResponseHotspotMessage
-    {
-        public GameServer.SoulWorker.Network.DataTypes.MessageOpcode Opcode => default;
-
-        public void Write(BinaryWriter writer) => value.Write(writer);
+        return WireBytes.Of(Person());
     }
 
     [TestMethod]

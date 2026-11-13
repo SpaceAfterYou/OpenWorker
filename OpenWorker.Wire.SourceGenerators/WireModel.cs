@@ -147,7 +147,7 @@ internal sealed class WireModel
             return MethodsRead;
         }
 
-        if (type.AllInterfaces.Any(i => i.Name is "IResponseHotspotMessage" or "IWritableData"))
+        if (type.AllInterfaces.Any(i => i.Name == "IResponseHotspotMessage"))
         {
             return MethodsWrite;
         }
@@ -166,7 +166,7 @@ internal sealed class WireModel
 
             var parameter = method.Parameters[0].Type.ToDisplayString();
 
-            if (write && method.Name == "Write" && parameter is "System.IO.BinaryWriter" or "OpenWorker.Wire.PacketWriter")
+            if (write && method.Name == "Write" && parameter == "OpenWorker.Wire.PacketWriter")
             {
                 Report(WireDiagnostics.HandWritten, method.Locations.FirstOrDefault(), _type.Name, $"Write({parameter})");
             }
@@ -557,9 +557,6 @@ internal sealed class WireModel
         }
 
         source.AppendLine("    }");
-        source.AppendLine();
-        source.AppendLine("    /// <summary>Writes through <see cref=\"global::OpenWorker.Wire.PacketWriter\"/>, for code that still holds a <see cref=\"global::System.IO.BinaryWriter\"/>.</summary>");
-        source.AppendLine($"    public {member}void Write(global::System.IO.BinaryWriter {Writer}) => {Wire}.WireBridge.Write({Writer}, this);");
     }
 
     internal string NextLocal()

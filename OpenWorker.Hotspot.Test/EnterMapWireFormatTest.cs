@@ -9,13 +9,7 @@ public sealed class EnterMapWireFormatTest
     [TestMethod]
     public void ErrorResponseIsWritableAndCarriesResult()
     {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        new WorldEnterResponse { Map = EnterMapResultValue.Error }.Write(writer);
-        writer.Flush();
-
-        var bytes = stream.ToArray();
+        var bytes = WireBytes.Of(new WorldEnterResponse { Map = EnterMapResultValue.Error });
 
         // The result is followed by the two flags of this response.
         Assert.AreEqual(1, BitConverter.ToInt32(bytes, bytes.Length - 2 - sizeof(int)));

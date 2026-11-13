@@ -29,17 +29,12 @@ public readonly struct ShopRepurchaserListResponse : IResponseHotspotMessage, IW
 
 #endregion Message: Body
 
-#region Interface: IWritableData
+#region Interface: IWireWritable
 
     public void Write(ref PacketWriter writer)
     {
         ShopRepurchaserAddResponse.WriteItems(ref writer, Items);
     }
 
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
-
-#endregion Interface: IWritableData
+#endregion Interface: IWireWritable
 }

@@ -1,4 +1,3 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.DailyMissions.Types;
@@ -7,7 +6,7 @@ namespace OpenWorker.Hotspot.Modules.DailyMissions.Types;
 /// The missions of one district.
 /// </summary>
 [WireMessage(WireMethods.Write)]
-public readonly partial struct DailyMissionGroupValue : IWritableData
+public readonly partial struct DailyMissionGroupValue
 {
     public int District { get; init; }
 

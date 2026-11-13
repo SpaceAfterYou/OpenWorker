@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.SoulWorker.Network;
 using OpenWorker.LoadTest.Protocol;
 
@@ -69,6 +70,14 @@ internal static class Wire
         }
 
         return frames;
+    }
+
+    /// <summary>
+    /// The frame of a response of the server, written the way the server writes it.
+    /// </summary>
+    public static byte[] ServerFrame<T>(T response) where T : IResponseHotspotMessage
+    {
+        return ServerFrame((ushort)response.Opcode.Value, writer => global::OpenWorker.Wire.WireBridge.Write(writer, response));
     }
 
     /// <summary>

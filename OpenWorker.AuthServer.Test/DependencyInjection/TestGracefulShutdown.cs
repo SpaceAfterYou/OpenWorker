@@ -14,6 +14,7 @@ using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.Wire;
 
 namespace OpenWorker.AuthServer.Test.DependencyInjection;
 
@@ -33,13 +34,12 @@ public sealed class TestGracefulShutdown
     {
         public MessageOpcode Opcode => new(GroupOpcode.Move, (byte)MoveOpcode.MoveBt);
 
-        public void Write(BinaryWriter writer)
+        public void Write(ref PacketWriter writer)
         {
-            var filler = new byte[size + 1];
-
-            Array.Fill(filler, value);
-
-            writer.Write(filler);
+            for (var index = 0; index <= size; index++)
+            {
+                writer.WriteByte(value);
+            }
         }
     }
 

@@ -97,8 +97,8 @@ public enum WireStringFormat
 
 /// <summary>
 /// The generator writes <c>Read(ref PacketReader)</c> and <c>Write(ref PacketWriter)</c> for this <see langword="partial"/>
-/// struct, and the bridges to <c>BinaryReader</c> and <c>BinaryWriter</c> (a constructor and <c>Write(BinaryWriter)</c>) for
-/// code that still reads or writes through them. The fields are the public instance auto-properties, in the order they are
+/// struct, and a constructor that takes a <c>BinaryReader</c> for code that still reads through one (the tests, the bot of
+/// the load test). The fields are the public instance auto-properties, in the order they are
 /// declared, which is the order on the wire; a computed property (<c>Opcode =&gt; ...</c>) is not a field.<br/>
 /// The type of a field says how it goes: the primitives, <see langword="bool"/> (one byte), an enum by its underlying type,
 /// <c>Vector3</c> (three floats), <see cref="DateTime"/> and <see cref="DateTimeOffset"/> (64-bit seconds since 1970),

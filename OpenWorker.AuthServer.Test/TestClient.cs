@@ -5,6 +5,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Login.Requests;
 using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.Wire;
 
 namespace OpenWorker.AuthServer.Test;
 
@@ -29,7 +30,7 @@ internal sealed class TestClient : TcpClient
 
                 writer.Write(message.Opcode.Value);
 
-                message.Write(writer);
+                WireBridge.Write(writer, message);
 
                 header = new MessageHeader(stream.Position);
 

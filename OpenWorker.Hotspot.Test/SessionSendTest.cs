@@ -4,6 +4,7 @@ using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.SoulWorker.Network;
+using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Test;
 
@@ -14,13 +15,12 @@ public sealed class SessionSendTest
     {
         public MessageOpcode Opcode => new(GroupOpcode.Move, (byte)MoveOpcode.MoveBt);
 
-        public void Write(BinaryWriter writer)
+        public void Write(ref PacketWriter writer)
         {
-            var filler = new byte[size + 1];
-
-            Array.Fill(filler, value);
-
-            writer.Write(filler);
+            for (var index = 0; index <= size; index++)
+            {
+                writer.WriteByte(value);
+            }
         }
     }
 

@@ -29,10 +29,5 @@ public readonly struct WorldCurrentDateClientMessage : IResponseHotspotMessage, 
         writer.WriteDateTimeOffset(DateTimeOffset.UtcNow);
     }
 
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
-
 #endregion Interface: IWireWritable
 }

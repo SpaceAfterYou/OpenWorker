@@ -77,7 +77,7 @@ public sealed class LoginWireFormatTest
     {
         const string address = "255.255.255.255";
 
-        var bytes = ToBytes(new LoginGateListResponse
+        var bytes = WireBytes.Of(new LoginGateListResponse
         {
             Values =
             [
@@ -95,7 +95,7 @@ public sealed class LoginWireFormatTest
                     Person = new GatePersonInfo { Count = 0 }
                 }
             ]
-        }.Write);
+        });
 
         // previous, count, id, port, name (length, "G", terminator).
         const int lengthOffset = 1 + 1 + 2 + 2 + 2 + 2;
@@ -139,7 +139,7 @@ public sealed class LoginWireFormatTest
     [TestMethod]
     public void OptionLoadAlwaysHasClientSize()
     {
-        var bytes = ToBytes(new LoginOptionLoadResponse { PersonOptions = [], Contents = CreateContent() }.Write);
+        var bytes = WireBytes.Of(new LoginOptionLoadResponse { PersonOptions = [], Contents = CreateContent() });
 
         Assert.HasCount(LoginModuleDefines.PersonOptionCount + 5, bytes);
     }
@@ -147,7 +147,7 @@ public sealed class LoginWireFormatTest
     [TestMethod]
     public void ServerOptionUpdateHasFiveBytes()
     {
-        var bytes = ToBytes(new SystemServerOptionUpdateResponse { Contents = CreateContent() }.Write);
+        var bytes = WireBytes.Of(new SystemServerOptionUpdateResponse { Contents = CreateContent() });
 
         Assert.HasCount(5, bytes);
     }
@@ -155,7 +155,7 @@ public sealed class LoginWireFormatTest
     [TestMethod]
     public void AccountIdIsAscii()
     {
-        var bytes = ToBytes(writer => new CharacterInfoGatePayload { AccountId = "abc" }.Write(writer));
+        var bytes = WireBytes.Of(new CharacterInfoGatePayload { AccountId = "abc" });
 
         // int + long + 4 bytes + 2 uint + 3 long precede the string.
         const int offset = 4 + 8 + 4 + 8 + 24;

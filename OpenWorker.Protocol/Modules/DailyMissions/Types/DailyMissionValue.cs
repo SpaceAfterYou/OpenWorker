@@ -8,7 +8,7 @@ namespace OpenWorker.Hotspot.Modules.DailyMissions.Types;
 /// A mission as the client reads it: 41 bytes.
 /// </summary>
 [WireMessage(WireMethods.Write)]
-public readonly partial struct DailyMissionValue : IWritableData
+public readonly partial struct DailyMissionValue
 {
     public int Mission { get; init; }
 

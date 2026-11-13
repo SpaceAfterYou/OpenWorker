@@ -38,19 +38,19 @@ public sealed class ShopWireFormatTest
         var itemSize = ToBytes(writer => WireBridge.Write(writer, item)).Length;
         var slot = new StorageItemValue(StorageGroup.Common, 3, item);
 
-        var bought = ToBytes(new ShopBuyResponse
+        var bought = WireBytes.Of(new ShopBuyResponse
         {
             StorageList = [new StorageValue { Storage = StorageGroup.Common, Slot = 3, Item = item }],
             Spent = 1080,
             Currency = ShopCurrency.Gold
-        }.Write);
+        });
 
         Assert.HasCount(4 + 1 + 2 + itemSize + 8 + 1, bought, "the currency of a purchase is one byte");
         Assert.AreEqual((byte)ShopCurrency.Gold, bought[^1]);
 
-        Assert.HasCount(4 + 1 + 2 + itemSize, ToBytes(new ShopSellResponse { Items = [slot] }.Write));
-        Assert.HasCount(4 + 1 + 2 + itemSize, ToBytes(new ShopRepurchaserResponse { Items = [slot] }.Write));
-        Assert.HasCount(1 + 2 * itemSize, ToBytes(new ShopRepurchaserListResponse { Items = [item, item] }.Write));
-        Assert.HasCount(1 + itemSize, ToBytes(new ShopRepurchaserAddResponse { Items = [item] }.Write));
+        Assert.HasCount(4 + 1 + 2 + itemSize, WireBytes.Of(new ShopSellResponse { Items = [slot] }));
+        Assert.HasCount(4 + 1 + 2 + itemSize, WireBytes.Of(new ShopRepurchaserResponse { Items = [slot] }));
+        Assert.HasCount(1 + 2 * itemSize, WireBytes.Of(new ShopRepurchaserListResponse { Items = [item, item] }));
+        Assert.HasCount(1 + itemSize, WireBytes.Of(new ShopRepurchaserAddResponse { Items = [item] }));
     }
 }

@@ -43,10 +43,5 @@ public readonly struct SoulMetryCompleteListResponse : IResponseHotspotMessage, 
         writer.WriteBytes(Complete);
     }
 
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
-
 #endregion Interface: IWireWritable
 }

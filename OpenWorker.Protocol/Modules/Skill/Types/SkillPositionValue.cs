@@ -1,5 +1,4 @@
 using System.Numerics;
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Skill.Types;
@@ -8,7 +7,7 @@ namespace OpenWorker.Hotspot.Modules.Skill.Types;
 /// Where a skill is used from, read in the requests of a skill and written back in its broadcast.
 /// </summary>
 [WireMessage(WireMethods.Both)]
-public readonly partial struct SkillPositionValue : IWritableData
+public readonly partial struct SkillPositionValue
 {
 #region Message: Body
 

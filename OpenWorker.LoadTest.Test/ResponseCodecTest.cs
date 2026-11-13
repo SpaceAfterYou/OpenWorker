@@ -37,7 +37,7 @@ public sealed class ResponseCodecTest
     /// </summary>
     private static byte[] BodyOf<T>(T response) where T : IResponseHotspotMessage
     {
-        var frame = Wire.ServerFrame((ushort)response.Opcode.Value, response.Write);
+        var frame = Wire.ServerFrame(response);
 
         return Wire.Split(frame).Body;
     }

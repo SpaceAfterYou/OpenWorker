@@ -75,16 +75,7 @@ public sealed class TitleTest
         return new CombatTables(Empty<MonsterRow>(), Empty<StatusRow>(), Empty<SkillRow>(), Empty<CharacterInfoRow>(), catalog);
     }
 
-    private static byte[] Written(PersonLoadTitleResponse message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(PersonLoadTitleResponse message) => WireBytes.Of(message);
 
     [TestMethod]
     public void ATitleKnowsItsKindItsClassAndItsEffects()

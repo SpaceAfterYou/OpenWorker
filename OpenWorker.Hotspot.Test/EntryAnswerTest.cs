@@ -37,7 +37,7 @@ public sealed class EntryAnswerTest
             using var actual = new MemoryStream();
             using (var writer = new BinaryWriter(actual, System.Text.Encoding.UTF8, leaveOpen: true))
             {
-                message.Write(writer);
+                writer.Write(WireBytes.Of(message));
             }
 
             using var expected = new MemoryStream();

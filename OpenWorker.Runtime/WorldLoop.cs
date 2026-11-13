@@ -176,11 +176,10 @@ public sealed partial class WorldLoop : SynchronizationContext, IEncoderThread, 
     {
         _queue.CompleteAdding();
 
-        // The queue cannot be disposed while the thread still reads it, nor the encoder while the thread may still send.
+        // The queue cannot be disposed while the thread still reads it.
         if (!IsCurrent && _thread.Join(StopTimeout))
         {
             _queue.Dispose();
-            Encoder.Dispose();
         }
     }
 

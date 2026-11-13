@@ -1,5 +1,4 @@
 using OpenWorker.Extensions;
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Persons.Extensions;
 using OpenWorker.Wire;
@@ -13,7 +12,7 @@ namespace OpenWorker.Hotspot.Modules.Post.Types;
 /// <remarks>Written by the generator. The reader of <see cref="BinaryReader"/> stays by hand: it takes the lengths of the
 /// texts in bytes, which no one <c>[WireString]</c> says together with how they are written.</remarks>
 [WireMessage(WireMethods.Write)]
-public readonly partial struct PostAccountValue : IWritableData
+public readonly partial struct PostAccountValue
 {
     public long Serial { get; init; }
     public int Account { get; init; }

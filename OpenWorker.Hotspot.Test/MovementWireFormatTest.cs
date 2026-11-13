@@ -30,16 +30,7 @@ public sealed class MovementWireFormatTest
         return new BinaryReader(stream);
     }
 
-    private static byte[] Written(IResponseHotspotMessage message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
     private static void WriteHead(BinaryWriter writer)
     {

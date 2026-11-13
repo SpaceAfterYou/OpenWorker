@@ -4,9 +4,9 @@ namespace OpenWorker.Wire;
 
 /// <summary>
 /// Carries a value with a span format over to code that still reads through <see cref="BinaryReader"/> or writes through
-/// <see cref="BinaryWriter"/>: the tests, a hand-written message that holds a value of the new kind, the bot of the load
-/// test. The generator calls it from the constructor and the <c>Write(BinaryWriter)</c> it writes, so both paths give the
-/// same bytes. Not for the hot path: the frame encoder and the handler executor use the spans directly.
+/// <see cref="BinaryWriter"/>: the tests and the bot of the load test. The generator calls it from the constructor that
+/// takes a <see cref="BinaryReader"/>, so both readers give the same value. Not for the hot path: the frame encoder and the
+/// handler executor use the spans directly.
 /// </summary>
 public static class WireBridge
 {

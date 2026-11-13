@@ -158,8 +158,8 @@ flowchart TB
   `ref struct`s over spans; a length the packet cannot hold is `InvalidDataException`, a write past the frame is an overflow,
   never an exception). `HandlerExecutor` parses every request from the span of the packet, whole, before its handler runs
   (a handler of a request that is not `IWireReadable` stops the table from being built; an opcode without a handler is not
-  read at all); `FrameEncoder` writes a response with a span format straight into the frame through `PacketWriter`, and
-  the others through a `BinaryWriter`. A message whose layout depends on its values keeps a hand-written reader or
+  read at all); `FrameEncoder` writes every response straight into the frame through `PacketWriter` (a response is
+  `IWireWritable`). A message whose layout depends on its values keeps a hand-written reader or
   writer. The details, the rules and what has moved: `docs/phase-2/C-wire-format.md`. The opcode of a message is its group and
   its command: `[HotspotMessage(Group, (byte)Command, direction)]` and `Opcode => new(Group, (byte)Command)`, with `Command` a
   constant of the enum named after the group (`SystemOpcode` for `GroupOpcode.System`); code that holds a command in a variable

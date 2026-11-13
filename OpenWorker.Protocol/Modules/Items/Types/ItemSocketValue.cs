@@ -1,4 +1,3 @@
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot.Modules.Items.Types;
@@ -7,7 +6,7 @@ namespace OpenWorker.Hotspot.Modules.Items.Types;
 /// A gem in a socket of the gear with this serial, and its options, as a letter carries it.
 /// </summary>
 [WireMessage(WireMethods.Both)]
-public readonly partial struct ItemSocketValue : IWritableData
+public readonly partial struct ItemSocketValue
 {
     public long EquipSerial { get; init; }
     public int Socket { get; init; }

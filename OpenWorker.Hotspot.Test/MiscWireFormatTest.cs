@@ -28,16 +28,7 @@ namespace OpenWorker.Hotspot.Test;
 [TestClass]
 public sealed class MiscWireFormatTest
 {
-    private static byte[] Written(IResponseHotspotMessage message)
-    {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
-        message.Write(writer);
-        writer.Flush();
-
-        return stream.ToArray();
-    }
+    private static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
 #region SoulMetry
 

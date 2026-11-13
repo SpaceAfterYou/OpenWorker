@@ -36,9 +36,4 @@ public readonly struct MazePortalInfosResponse : IResponseHotspotMessage, IWireW
             writer.WriteInt32(item);
         }
     }
-
-    public void Write(BinaryWriter writer)
-    {
-        WireBridge.Write(writer, this);
-    }
 }

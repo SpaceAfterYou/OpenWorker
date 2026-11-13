@@ -1,3 +1,4 @@
+using OpenWorker.Wire;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using System.Runtime.CompilerServices;
 
@@ -29,7 +30,7 @@ public static class ItemAttachmentExtensions
 
         foreach (var value in values)
         {
-            value.Write(writer);
+            WireBridge.Write(writer, value);
         }
     }
 
@@ -39,7 +40,7 @@ public static class ItemAttachmentExtensions
 
         foreach (var value in values)
         {
-            value.Write(writer);
+            WireBridge.Write(writer, value);
         }
     }
 }
