@@ -7,7 +7,8 @@ using OpenWorker.Hotspot.Modules.Events.Requests;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The rewards of attendance go to the person by themselves, so the requests of the client only make the server look again.
+/// The reward of a day of attendance goes to the person by itself, so its request only makes the server look again; the
+/// request of play time claims the step the person has reached.
 /// </summary>
 public sealed class EventService(AttendanceManager attendance) :
     IHotspotHandler<EventAttendancePlayTimeRewardRequest>,
@@ -15,7 +16,7 @@ public sealed class EventService(AttendanceManager attendance) :
 {
     public async ValueTask OnHandleAsync(ServiceHandleContext context, EventAttendancePlayTimeRewardRequest request)
     {
-        await attendance.CountPlayTimeAsync(context.Player, context.CancellationToken);
+        await attendance.ClaimPlayTimeAsync(context.Player, context.CancellationToken);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, EventAttendanceRewardRequest request)

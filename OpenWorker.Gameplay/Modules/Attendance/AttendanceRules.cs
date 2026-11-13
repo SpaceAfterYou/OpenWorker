@@ -3,9 +3,10 @@ using OpenWorker.Gameplay.Modules.State;
 namespace OpenWorker.Gameplay.Modules.Attendance;
 
 /// <summary>
-/// What bringing a book to the present changed.
+/// What bringing a book to the present changed. <paramref name="Unclaimed"/> are the play time steps the day that ended
+/// had reached and the person had not claimed.
 /// </summary>
-public readonly record struct AttendanceAdvance(bool HasTable, bool Attended, int Day, bool PlayTimeReset);
+public readonly record struct AttendanceAdvance(bool HasTable, bool Attended, int Day, bool PlayTimeReset, int[] Unclaimed);
 
 public static class AttendanceRules
 {
@@ -23,9 +24,11 @@ public static class AttendanceRules
         var (day, _) = GameDay.Get(now, reset);
 
         var playReset = book.PlayDay < day;
+        int[] unclaimed = [];
 
         if (playReset)
         {
+            unclaimed = Reached(book, catalog);
             book.PlayStep = 0;
             book.PlaySeconds = 0;
             book.PlayDay = day;
@@ -33,7 +36,7 @@ public static class AttendanceRules
 
         if (!catalog.TryGetTable(now, out var table))
         {
-            return new AttendanceAdvance(false, false, 0, playReset);
+            return new AttendanceAdvance(false, false, 0, playReset, unclaimed);
         }
 
         // A new table starts the count again.
@@ -46,13 +49,13 @@ public static class AttendanceRules
 
         if (book.LastDay >= day || book.Count >= table.Days)
         {
-            return new AttendanceAdvance(true, false, book.Count, playReset);
+            return new AttendanceAdvance(true, false, book.Count, playReset, unclaimed);
         }
 
         book.Count++;
         book.LastDay = day;
 
-        return new AttendanceAdvance(true, true, book.Count, playReset);
+        return new AttendanceAdvance(true, true, book.Count, playReset, unclaimed);
     }
 
     /// <summary>
@@ -79,6 +82,21 @@ public static class AttendanceRules
         book.PlaySeconds = (int)Math.Min((long)book.PlaySeconds + seconds, last);
 
         return true;
+    }
+
+    /// <summary>
+    /// The steps from the one the person waits for that the time of the day has reached.
+    /// </summary>
+    public static int[] Reached(AttendanceBook book, AttendanceCatalog catalog)
+    {
+        var reached = new List<int>();
+
+        for (var step = book.PlayStep; catalog.HasStep(step) && book.PlaySeconds >= catalog.PlayTime[step].Seconds; step++)
+        {
+            reached.Add(step);
+        }
+
+        return [.. reached];
     }
 
     /// <summary>

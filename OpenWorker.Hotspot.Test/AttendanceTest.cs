@@ -178,6 +178,21 @@ public sealed class AttendanceTest
     }
 
     [TestMethod]
+    public void StepsReachedAndNotClaimedAreHandedOverWhenTheDayEnds()
+    {
+        var book = new AttendanceBook();
+
+        AttendanceRules.Advance(book, Catalog, At(7, 12), Reset);
+        AttendanceRules.AddPlayTime(book, Catalog, 4000);
+        book.PlayStep = 1;
+
+        Assert.HasCount(0, AttendanceRules.Advance(book, Catalog, At(7, 20), Reset).Unclaimed);
+
+        CollectionAssert.AreEqual(new[] { 1 }, AttendanceRules.Advance(book, Catalog, At(8, 9), Reset).Unclaimed);
+        Assert.HasCount(0, AttendanceRules.Advance(book, Catalog, At(8, 10), Reset).Unclaimed, "once");
+    }
+
+    [TestMethod]
     public void TablesOfTheClientGiveRewardsForEveryDay()
     {
         var catalog = new AttendanceCatalog(

@@ -13,8 +13,8 @@ using OpenWorker.Gameplay.Modules.Persistence;
 namespace OpenWorker.Gameplay.Modules.Attendance;
 
 /// <summary>
-/// A person who comes on a new day gets the reward of that day of the table, and one who stays in the game gets
-/// a reward after each wait. Both go to the person by themselves; the requests of the client only ask to look again.
+/// A person who comes on a new day gets the reward of that day of the table by itself. One who stays in the game reaches
+/// the steps of the time played today and claims each of them; a step not claimed is given when the day ends.
 /// </summary>
 public sealed partial class AttendanceManager(
     World world,
@@ -85,6 +85,15 @@ public sealed partial class AttendanceManager(
             }
         }
 
+        // The steps reached yesterday and not claimed are not lost with the day.
+        foreach (var step in advance.Unclaimed)
+        {
+            if (!await rewards.TryGrantAsync(player, PlayTimeReward(step), RewardSource.PlayTime, cancellationToken))
+            {
+                LogPlayTimeRewardRefused(component.Person, step);
+            }
+        }
+
         if (!world.IsAlive(player))
         {
             return;
@@ -117,48 +126,59 @@ public sealed partial class AttendanceManager(
     }
 
     /// <summary>
-    /// Counts the time played since the last look and gives the rewards that are due.
+    /// Counts the time played since the last count. Nothing is given here: the person claims each step.
     /// </summary>
-    public async ValueTask CountPlayTimeAsync(Entity player, CancellationToken cancellationToken)
+    public void CountPlayTime(Entity player)
     {
         if (!TryGet(player, out var component) || !contents[ServerContentIndex.Attendance])
         {
             return;
         }
 
-        var book = component.Book!;
         var now = time.GetLocalNow();
         var elapsed = now - component.LastTick;
 
         world.Set(player, component with { LastTick = now });
 
-        if (elapsed <= TimeSpan.Zero)
+        if (elapsed > TimeSpan.Zero)
+        {
+            AttendanceRules.AddPlayTime(component.Book!, catalog, (int)Math.Min(elapsed.TotalSeconds, LongestStep.TotalSeconds));
+        }
+    }
+
+    /// <summary>
+    /// The person asks for the reward of the step it waits for. A step the server has not counted to yet is refused by
+    /// telling the client the time again, which sets its countdown without the notice of a reward.
+    /// </summary>
+    public async ValueTask ClaimPlayTimeAsync(Entity player, CancellationToken cancellationToken)
+    {
+        CountPlayTime(player);
+
+        if (!TryGet(player, out var component) || !contents[ServerContentIndex.Attendance])
         {
             return;
         }
 
-        AttendanceRules.AddPlayTime(book, catalog, (int)Math.Min(elapsed.TotalSeconds, LongestStep.TotalSeconds));
+        var book = component.Book!;
+        var session = world.Get<ServerSessionComponent>(player);
 
         if (!AttendanceRules.IsReady(book, catalog))
         {
+            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime() });
             return;
         }
 
-        var session = world.Get<ServerSessionComponent>(player);
+        // Taken before the grant is awaited: a second claim meanwhile sees the next step.
+        var step = book.PlayStep++;
 
-        while (AttendanceRules.IsReady(book, catalog))
+        world.MarkDirty(player, PersonSections.MiscState);
+
+        var granted = await rewards.TryGrantAsync(player, PlayTimeReward(step), RewardSource.PlayTime, cancellationToken);
+
+        if (!granted && book.PlayStep == step + 1)
         {
-            var step = book.PlayStep;
-            var reward = new Reward([new RewardItem(catalog.PlayTime[step].Item, 1)]);
-
-            book.PlayStep++;
-
-            if (!await rewards.TryGrantAsync(player, reward, RewardSource.PlayTime, cancellationToken))
-            {
-                // The step stays reached, so the reward is tried again at the next look.
-                book.PlayStep = step;
-                break;
-            }
+            book.PlayStep = step;
+            LogPlayTimeRewardRefused(component.Person, step);
         }
 
         if (!world.IsAlive(player))
@@ -166,9 +186,15 @@ public sealed partial class AttendanceManager(
             return;
         }
 
-        session.Send(new EventAttendancePlayTimeRewardResponse { Time = book.ToPlayTime() });
+        if (granted)
+        {
+            session.Send(new EventAttendancePlayTimeRewardResponse { Time = book.ToPlayTime() });
+        }
 
-        await SaveAsync(player, book, cancellationToken);
+        else
+        {
+            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime() });
+        }
     }
 
     public async ValueTask TickAsync(CancellationToken cancellationToken)
@@ -188,7 +214,7 @@ public sealed partial class AttendanceManager(
             try
             {
                 await RefreshAsync(player, cancellationToken);
-                await CountPlayTimeAsync(player, cancellationToken);
+                CountPlayTime(player);
             }
 
             catch (Exception e) when (e is not OperationCanceledException)
@@ -218,6 +244,11 @@ public sealed partial class AttendanceManager(
 
         return ValueTask.CompletedTask;
     }
+
+    private Reward PlayTimeReward(int step) => new([new RewardItem(catalog.PlayTime[step].Item, 1)]);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The reward of play time step {Step} of person {Person} could not be given")]
+    private partial void LogPlayTimeRewardRefused(int person, int step);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Attendance of a person failed.")]
     private partial void LogAttendanceFailed(Exception exception);
