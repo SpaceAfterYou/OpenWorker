@@ -7,7 +7,8 @@ using OpenWorker.Lua;
 namespace OpenWorker.Commands.MazeEventCommands;
 
 /// <summary>
-/// Calls monsters of a row of the monster table in where the player stands: <c>/monster 10000206 [count]</c>. Up to 50 at once.
+/// Calls monsters of a row of the monster table in where the player stands: <c>/monster 30103001 [count]</c>. Up to 50 at once.
+/// A defensive weapon is refused with a line that says why.
 /// </summary>
 [CommandTrigger("monster")]
 [CommandDescription("Call monsters of a row in where you stand")]
@@ -34,6 +35,15 @@ internal sealed partial class MonsterCommand : ICommand
             return ValueTask.FromResult(false);
         }
 
-        return ValueTask.FromResult(World.Get<LuaMaze>(player).CallMonsters(player, monster, count));
+        var maze = World.Get<LuaMaze>(player);
+
+        if (maze.IsDefensiveWeapon(monster))
+        {
+            WeaponRefusal.Tell(World, player, monster);
+
+            return ValueTask.FromResult(false);
+        }
+
+        return ValueTask.FromResult(maze.CallMonsters(player, monster, count));
     }
 }
