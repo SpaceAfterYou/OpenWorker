@@ -153,9 +153,9 @@ public sealed partial class TransportService(
 
         world.Remove<TransportRideComponent>(player);
 
-        if (world.TryGet(player, out WorldComponent place))
+        if (world.Has<WorldComponent>(player))
         {
-            world.Set(player, place with { Position = ride.Destination, Rotation = ride.Rotation });
+            OpenWorker.Gameplay.Modules.Movement.ServerPlace.Put(world, player, ride.Destination, ride.Rotation);
         }
 
         var actor = world.Get<ActorComponent>(player);

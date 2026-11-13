@@ -7,6 +7,7 @@ using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Modules.Movement;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Hotspot.Modules.World.Types;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
@@ -128,7 +129,7 @@ public partial class LuaMaze
         {
             if (Ecs.IsAlive(member.Player) && Ecs.Has<WorldComponent>(member.Player))
             {
-                Ecs.Set(member.Player, Ecs.Get<WorldComponent>(member.Player) with { Position = position, Rotation = destination.Rotation });
+                ServerPlace.Put(Ecs, member.Player, position, destination.Rotation);
             }
         }
 
@@ -157,7 +158,10 @@ public partial class LuaMaze
 
         foreach (var member in _members)
         {
-            Ecs.Set(member.Player, Ecs.Get<WorldComponent>(member.Player) with { Position = place, Rotation = rotation });
+            if (Ecs.IsAlive(member.Player) && Ecs.Has<WorldComponent>(member.Player))
+            {
+                ServerPlace.Put(Ecs, member.Player, place, rotation);
+            }
         }
 
         creatureManager.Broadcast(new MazeWarpInSectorResponse { Position = place, Rotation = rotation });

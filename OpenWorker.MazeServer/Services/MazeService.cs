@@ -905,10 +905,7 @@ public sealed partial class MazeService(
 
     private void Warp(Entity player, Vector3 position, float rotation)
     {
-        var world = ecs.Get<WorldComponent>(player);
-
-        ecs.Set(player, world with { Position = position, Rotation = rotation });
-        pace.PlaceTold(ecs, player);
+        OpenWorker.Gameplay.Modules.Movement.ServerPlace.Put(ecs, player, position, rotation);
 
         ecs.Get<ServerSessionComponent>(player).Send(new WorldWarpResponse
         {

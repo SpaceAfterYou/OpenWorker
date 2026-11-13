@@ -1520,7 +1520,7 @@ public sealed class LuaCreatureManager
     /// </summary>
     internal void Place(Entity player, Vector3 position)
     {
-        ecs.Set(player, ecs.Get<WorldComponent>(player) with { Position = position });
+        OpenWorker.Gameplay.Modules.Movement.ServerPlace.Put(ecs, player, position);
     }
 
     internal IReadOnlyList<Entity> PlayersTouching(AttackArea area)
