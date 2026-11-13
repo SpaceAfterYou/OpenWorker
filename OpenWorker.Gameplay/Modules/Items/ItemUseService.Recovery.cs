@@ -1,4 +1,5 @@
 using Arch.Core;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Gameplay.Modules.Items;
@@ -13,13 +14,16 @@ public sealed partial class ItemUseService
     private const int UsableInDistrict = 1;
     private const int UsableInMaze = 2;
 
-    // The calls that get a fallen player up are items of the sub type 2 whose effect is 1 (the player itself).
-    private const int ReviveSubType = 2;
-    private const int SelfReviveEffect = 1;
+    // The sub types of the item row of the revive items: a buff that lets a person get up, and a call that gets it up.
+    private const int ReviveBuffSubType = 1;
+    private const int ReviveCallSubType = 2;
+
+    // The item did nothing: what the original answers when the effect of a consumable fails.
+    private const ushort EffectFailed = 52606;
 
     /// <summary>
-    /// A potion or the like: in a maze it gives its buff to the person. A place the kind of item is not for and the infinite
-    /// tower are refused; so are the items that bring a person back, but for the call that gets the person itself up.
+    /// A potion or the like: it gives its buff or its aura to the person, or, for a revive item, gets the fallen up. A place
+    /// the kind of item is not for and the infinite tower are refused, and a revive item where nobody may get up.
     /// </summary>
     private ItemUseResult UseEffect(Entity player, ItemInstance item, ItemRow row, ItemClassifyRow classify, ItemPlace place)
     {
@@ -41,28 +45,24 @@ public sealed partial class ItemUseService
             return ItemUseResult.Refused(ItemUseCodes.InfiniteTower);
         }
 
-        // A call that gets a person up is used from the window of the fallen: the maze says whether it does.
-        if (row.SubType == ReviveSubType && row.EffectType == SelfReviveEffect && revive is not null)
+        var revival = ReviveKindOf(row);
+
+        if (revival is { } kind && (revive is null ? ItemUseCodes.NoRevive : revive.Check(player, kind)) is { } refusal)
         {
-            return revive.Use(player, item);
+            return ItemUseResult.Refused(refusal);
         }
 
-        // The other items that get a person up are not for this request.
-        if (row.SubType != 0)
+        var given = revival switch
         {
-            return ItemUseResult.Refused(ItemUseCodes.NoRevive);
-        }
-
-        var given = row.EffectType switch
-        {
-            BuffEffect => _field.GiveBuff(player, row.EffectValue),
-            AuraEffect => _field.GiveAura(player, row.EffectValue),
+            ReviveItemKind.Call or ReviveItemKind.PartyCall => GetUp(player, revival.Value),
+            _ when row.EffectType == BuffEffect => _field.GiveBuff(player, row.EffectValue),
+            _ when row.EffectType == AuraEffect => _field.GiveAura(player, row.EffectValue),
             _ => false
         };
 
         if (!given)
         {
-            return ItemUseResult.Refused();
+            return ItemUseResult.Refused(EffectFailed);
         }
 
         // The stack may go with its last item: the motion names the slot it was in.
@@ -71,5 +71,24 @@ public sealed partial class ItemUseService
         inventory.Spend(player, item, 1);
 
         return ItemUseResult.Used(item.Item, slot, motion: true);
+    }
+
+    /// <summary>
+    /// The kind of revive item a row is, by its sub type and its effect; null for an item that is no revive item.
+    /// </summary>
+    private static ReviveItemKind? ReviveKindOf(ItemRow row) => (row.SubType, row.EffectType) switch
+    {
+        (ReviveCallSubType, BuffEffect) => ReviveItemKind.Call,
+        (ReviveCallSubType, AuraEffect) => ReviveItemKind.PartyCall,
+        (ReviveBuffSubType, BuffEffect) => ReviveItemKind.Buff,
+        (ReviveBuffSubType, AuraEffect) => ReviveItemKind.PartyBuff,
+        _ => null
+    };
+
+    private bool GetUp(Entity player, ReviveItemKind kind)
+    {
+        revive!.GetUp(player, kind);
+
+        return true;
     }
 }

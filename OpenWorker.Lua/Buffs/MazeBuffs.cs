@@ -157,6 +157,33 @@ public sealed partial class MazeBuffs
     }
 
     /// <summary>
+    /// A fallen player gets up by the buff that lets it: the buff is used up. The actor that gave it, zero for the carrier
+    /// itself; null when the carrier has no such buff.
+    /// </summary>
+    public int? TakeRevive(Entity carrier)
+    {
+        if (!_books.TryGetValue(carrier, out var book) || !_ecs.IsAlive(carrier))
+        {
+            return null;
+        }
+
+        for (var index = 0; index < book.Buffs.Count; index++)
+        {
+            if (book.Buffs[index].Definition.Effect == BuffEffect.Revive)
+            {
+                var owner = book.Buffs[index].Owner;
+
+                BuffRules.Remove(book, _catalog, index, false, Carrier(carrier), _changes);
+                Process(carrier, book);
+
+                return owner;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// What the buffs of someone do to the damage it deals and takes.
     /// </summary>
     public BuffRates RatesOf(Entity carrier)

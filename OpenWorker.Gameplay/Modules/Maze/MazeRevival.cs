@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
-using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Res;
@@ -9,15 +8,38 @@ using OpenWorker.UpdateContent.Res.Rows;
 namespace OpenWorker.Gameplay.Modules.Maze;
 
 /// <summary>
-/// The revive items of a maze: a call a fallen player uses to get up. The maze server says what gets a player up
-/// (<see cref="MazeRevival"/> only decides whether it may).
+/// The four kinds of revive items, by the sub type and the effect of their item row.
+/// </summary>
+public enum ReviveItemKind : byte
+{
+    /// <summary>A call that gets the fallen player itself up.</summary>
+    Call,
+
+    /// <summary>A call that gets up the fallen of the player's party.</summary>
+    PartyCall,
+
+    /// <summary>A buff that lets the player get up once when it falls.</summary>
+    Buff,
+
+    /// <summary>An aura that gives that buff to the player's party around it.</summary>
+    PartyBuff
+}
+
+/// <summary>
+/// The revive items of a maze. The maze server says who a revive item is for and gets the fallen up
+/// (<see cref="MazeRevival"/> decides whether they may).
 /// </summary>
 public interface IReviveItems
 {
     /// <summary>
-    /// The player uses the revive item. Used when the item is spent and the player is up; else the refusal with its code.
+    /// Whether the player may use a revive item of the kind now: null when it may, else the code of the refusal.
     /// </summary>
-    ItemUseResult Use(Entity player, ItemInstance item);
+    ushort? Check(Entity player, ReviveItemKind kind);
+
+    /// <summary>
+    /// A call was used: the fallen it is for get up. The buffs are given by the item itself.
+    /// </summary>
+    void GetUp(Entity player, ReviveItemKind kind);
 }
 
 /// <summary>
@@ -25,8 +47,8 @@ public interface IReviveItems
 /// <list type="bullet">
 /// <item>Not at all in a maze that does not let anybody (<c>RevivalType</c> 1): <see cref="NotInThisMaze"/>.</item>
 /// <item>Only a fallen player gets up: <see cref="NotFallen"/>.</item>
-/// <item>By the buff of another player, which nothing here casts: <see cref="NotAllowed"/>. By the safe place of a district,
-/// which is none in a maze: <see cref="NotAllowed"/>.</item>
+/// <item>By a buff that lets the player get up, which the player carries: <see cref="NotAllowed"/> without one. By the safe
+/// place of a district, which is none in a maze: <see cref="NotAllowed"/>.</item>
 /// <item>Free, <see cref="MazeEntryLimits.FreeRevivesPerDay"/> times a day: <see cref="NoFreeRevive"/> after that.</item>
 /// <item>For cash: there is no cash shop here, so <see cref="NoFreeRevive"/>.</item>
 /// <item>By the maze itself in the maze of the mode that revives its players: <see cref="NotInThisMode"/> elsewhere.</item>
@@ -68,9 +90,10 @@ public sealed class MazeRevival(ReadOnlyCollection<MazeRuleRow> rules, MazeEntry
     /// Whether the player may get up the way it asks. Null when it may, else the code of the refusal. A free revive is used
     /// up by the check that lets it through.
     /// </summary>
-    public ushort? Check(Entity player, int maze, bool fallen, ReviveType type)
+    /// <param name="revivable">The player carries a buff that lets it get up.</param>
+    public ushort? Check(Entity player, int maze, bool fallen, ReviveType type, bool revivable = false)
     {
-        _rules.TryGet((ushort)Math.Clamp(maze, 0, ushort.MaxValue), out var rule);
+        var rule = RuleOf(maze);
 
         if (rule.RevivalType == Impossible)
         {
@@ -93,7 +116,10 @@ public sealed class MazeRevival(ReadOnlyCollection<MazeRuleRow> rules, MazeEntry
             case ReviveType.Cash:
                 return NoFreeRevive;
 
-            // The buff of another player, the safe place of a district, and the way of the server itself.
+            case ReviveType.Buff:
+                return revivable ? null : NotAllowed;
+
+            // The safe place of a district, and the way of the server itself.
             default:
                 return NotAllowed;
         }
@@ -104,7 +130,7 @@ public sealed class MazeRevival(ReadOnlyCollection<MazeRuleRow> rules, MazeEntry
     /// </summary>
     public ushort? CheckItem(Entity player, int maze, bool fallen)
     {
-        _rules.TryGet((ushort)Math.Clamp(maze, 0, ushort.MaxValue), out var rule);
+        var rule = RuleOf(maze);
 
         if (rule.RevivalType == Impossible)
         {
@@ -120,11 +146,23 @@ public sealed class MazeRevival(ReadOnlyCollection<MazeRuleRow> rules, MazeEntry
     }
 
     /// <summary>
+    /// Whether anybody may get up in the maze.
+    /// </summary>
+    public bool LetsUp(int maze) => RuleOf(maze).RevivalType != Impossible;
+
+    /// <summary>
     /// The player used a revive item in the maze it is in.
     /// </summary>
     public void ItemUsed(Entity player)
     {
         _itemsUsed[player] = _itemsUsed.GetValueOrDefault(player) + 1;
+    }
+
+    private MazeRuleRow RuleOf(int maze)
+    {
+        _rules.TryGet((ushort)Math.Clamp(maze, 0, ushort.MaxValue), out var rule);
+
+        return rule;
     }
 
     public ValueTask OnSessionClosedAsync(Entity player)

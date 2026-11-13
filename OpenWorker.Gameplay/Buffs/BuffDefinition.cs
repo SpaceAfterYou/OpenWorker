@@ -20,6 +20,10 @@ public enum BuffEffect : ushort
 {
     /// <summary>Changes up to three stats by its values; a buff with a tick gives the current values again at each tick.</summary>
     Stats = 0,
+
+    /// <summary>Lets the carrier get up once when it falls, where the place lets players get up.</summary>
+    Revive = 1,
+
     SuperArmor = 4,
     Invincible = 5,
 

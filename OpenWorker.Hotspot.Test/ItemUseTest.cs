@@ -5,6 +5,7 @@ using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -40,6 +41,20 @@ public sealed class ItemUseTest
         }
     }
 
+    /// <summary>
+    /// The revive items as a test sets them: the code its check answers with, and the calls that got somebody up.
+    /// </summary>
+    private sealed class Revives : IReviveItems
+    {
+        public ushort? Refusal { get; set; }
+
+        public List<ReviveItemKind> GotUp { get; } = [];
+
+        public ushort? Check(Entity player, ReviveItemKind kind) => Refusal;
+
+        public void GetUp(Entity player, ReviveItemKind kind) => GotUp.Add(kind);
+    }
+
     private static ItemPlace Maze { get; } = new(true, true, true, false, false);
 
     private sealed class Rig : IDisposable
@@ -49,6 +64,8 @@ public sealed class ItemUseTest
         public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 10, 12, 0, 0, TimeSpan.Zero));
 
         public Field Field { get; } = new();
+
+        public Revives Revives { get; } = new();
 
         public ItemUseLimits Limits { get; }
 
@@ -64,7 +81,7 @@ public sealed class ItemUseTest
             Chains?.Enter(Fixture.Player);
 
             Limits = new ItemUseLimits(Fixture.World, new PersonStateStore(null!), Time, Options.Create(new DailyMissionOptions()));
-            Use = new ItemUseService(Fixture.World, Fixture.Inventory, Fixture.Catalog, Limits, new([]), new([]), new([]), Field, achievements: Chains?.Manager);
+            Use = new ItemUseService(Fixture.World, Fixture.Inventory, Fixture.Catalog, Limits, new([]), new([]), new([]), Field, revive: Revives, achievements: Chains?.Manager);
         }
 
         /// <summary>
@@ -112,6 +129,40 @@ public sealed class ItemUseTest
         Assert.AreEqual((potion.Id, item.Slot), (used.Item, used.Slot), "The motion names the item and its slot");
         CollectionAssert.AreEqual(new[] { potion.EffectValue }, rig.Field.Given, "The buff of the item is given");
         Assert.AreEqual(4, item.Count, "One potion is used up");
+    }
+
+    [TestMethod]
+    public async Task ARevivalItemIsRefusedWithTheCodeOfTheMazeAndElseGetsTheFallenUpOrGivesItsBuff()
+    {
+        using var rig = new Rig();
+
+        rig.Field.Place = Maze;
+
+        var call = rig.Items.First(e => rig.Fixture.Catalog.Classify(e.Id) is { ItemUseType: ItemUseType.EFFECT } && e is { SubType: 2, EffectType: 1 });
+        var buff = rig.Items.First(e => rig.Fixture.Catalog.Classify(e.Id) is { ItemUseType: ItemUseType.EFFECT } && e is { SubType: 1, EffectType: 1 });
+        var calls = rig.Fixture.Give(call.Id, 2);
+        var buffs = rig.Fixture.Give(buff.Id, 2);
+
+        rig.Revives.Refusal = 52608;
+
+        Assert.AreEqual(52608, (await rig.UseAsync(calls)).Error, "The maze's refusal is the answer");
+        Assert.AreEqual(2, calls.Count, "A refused call is not spent");
+
+        rig.Revives.Refusal = null;
+
+        var used = await rig.UseAsync(calls);
+
+        Assert.IsTrue(used.Ok && used.Motion, "A call is used with the motion of a potion");
+        CollectionAssert.AreEqual(new[] { ReviveItemKind.Call }, rig.Revives.GotUp, "The call gets the fallen up");
+        Assert.AreEqual(1, calls.Count);
+
+        Assert.AreEqual(ItemUseCodes.Cooling, (await rig.UseAsync(buffs)).Error, "The calls and the buffs share a cooldown");
+
+        rig.Time.Advance(TimeSpan.FromMilliseconds(buff.CooldownMilliseconds));
+
+        Assert.IsTrue((await rig.UseAsync(buffs)).Ok, "The buff is used when the cooldown is over");
+        CollectionAssert.AreEqual(new[] { buff.EffectValue }, rig.Field.Given, "It gives its buff and gets nobody up");
+        Assert.AreEqual(1, rig.Revives.GotUp.Count);
     }
 
     [TestMethod]
