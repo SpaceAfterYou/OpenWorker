@@ -1,30 +1,31 @@
+using System.Numerics;
 using Lua;
 using Microsoft.Extensions.Logging;
 
 namespace OpenWorker.Lua;
 
 /// <summary>
-/// What a script holds on to after it has put a trap in the maze.
+/// What a script holds on to after it has put a trap in the maze: nothing when the trap could not be laid.
 /// </summary>
 [LuaObject]
 public partial class LuaTrap : ILuaUserData
 {
+    [LuaIgnoreMember]
+    internal MapTrap? Trap { get; init; }
+
     /// <summary>
-    /// How long the trap stays, in seconds.
+    /// The trap dies after this many seconds.
     /// </summary>
     [LuaMember]
     public void SetLifeTime(float time)
     {
-        LifeTime = time;
+        Trap?.LiveFor(time);
     }
-
-    [LuaIgnoreMember]
-    public float LifeTime { get; private set; }
 }
 
 /// <summary>
-/// The helper that scripts get from <c>Soulworker.GetHelper()</c>. A trap of a script hurts the player, which
-/// nothing here does yet, so the traps are accepted and then forgotten: a script goes on as if they were there.
+/// The helper that scripts get from <c>Soulworker.GetHelper()</c>. The traps it lays belong to the scene attacker of the
+/// maze; a script that hands over no maze lays none.
 /// </summary>
 [LuaObject]
 public partial class LuaGameHelper(ILogger<LuaGameHelper> logger) : ILuaUserData
@@ -44,44 +45,45 @@ public partial class LuaGameHelper(ILogger<LuaGameHelper> logger) : ILuaUserData
     [LuaMember]
     public LuaTrap CreateTrap(LuaMaze maze, VVector3 position, int skill)
     {
-        NotDone(maze, nameof(CreateTrap));
-        logger.IgnoredCreateTrap(position?.X ?? 0f, position?.Y ?? 0f, position?.Z ?? 0f, skill);
-
-        return new LuaTrap();
+        return new LuaTrap { Trap = maze?.LayTrap(nameof(CreateTrap), Place(position), skill) };
     }
 
+    /// <summary>
+    /// A trap in the middle of a position box of the map, facing the way the box faces.
+    /// </summary>
     [LuaMember]
     public LuaTrap CreateTrapEx(LuaMaze maze, int box, int skill)
     {
-        NotDone(maze, nameof(CreateTrapEx));
-        logger.IgnoredCreateTrapEx(box, skill);
+        return new LuaTrap { Trap = maze?.LayTrapInBox(nameof(CreateTrapEx), box, skill) };
+    }
 
-        return new LuaTrap();
+    /// <summary>
+    /// A trap the script ends later by its number.
+    /// </summary>
+    [LuaMember]
+    public LuaTrap CreateTrapLoop(LuaMaze maze, VVector3 position, int skill, int index)
+    {
+        return new LuaTrap { Trap = maze?.LayTrap(nameof(CreateTrapLoop), Place(position), skill, index) };
     }
 
     [LuaMember]
-    public LuaTrap CreateTrapLoop(LuaMaze maze, VVector3 position, int skill, int count)
+    public LuaTrap CreateTrapExLoop(LuaMaze maze, int box, int skill, int index)
     {
-        NotDone(maze, nameof(CreateTrapLoop));
-
-        return new LuaTrap();
+        return new LuaTrap { Trap = maze?.LayTrapInBox(nameof(CreateTrapExLoop), box, skill, number: index) };
     }
 
+    /// <summary>
+    /// A trap the script ends later with the others of its group.
+    /// </summary>
     [LuaMember]
-    public LuaTrap CreateTrapExLoop(LuaMaze maze, int box, int skill, int count)
+    public LuaTrap CreateTrapGroup(LuaMaze maze, int box, int skill, int group)
     {
-        NotDone(maze, nameof(CreateTrapExLoop));
-        logger.IgnoredCreateTrapExLoop(box, skill, count);
-
-        return new LuaTrap();
+        return new LuaTrap { Trap = maze?.LayTrapInBox(nameof(CreateTrapGroup), box, skill, group: group) };
     }
 
-    [LuaMember]
-    public LuaTrap CreateTrapGroup(LuaMaze maze, int box, int skill, int count)
+    private static Vector3 Place(VVector3? position)
     {
-        NotDone(maze, nameof(CreateTrapGroup));
-
-        return new LuaTrap();
+        return position is null ? Vector3.Zero : new Vector3(position.X, position.Y, position.Z);
     }
 
     /// <summary>

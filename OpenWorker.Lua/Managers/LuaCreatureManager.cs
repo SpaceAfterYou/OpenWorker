@@ -1531,28 +1531,34 @@ public sealed partial class LuaCreatureManager
     /// </summary>
     internal void HitPlayers(MonsterBody attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims)
     {
+        HitPlayers(attacker.Entity, skillId, trigger, victims);
+    }
+
+    /// <param name="from">Where the blow comes from when it is not the attacker: the place of its trap.</param>
+    internal void HitPlayers(Entity attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims, Vector3? from = null)
+    {
         // An attack for the side of the monster, or one that only gives a buff, hurts nobody.
         if (trigger.ForAllies || ((trigger.Buff > 0 || trigger.Aura > 0) && trigger.DamageRate <= 0f))
         {
-            Buffs?.GiveFromAttack(attacker.Entity, trigger, victims);
+            Buffs?.GiveFromAttack(attacker, trigger, victims);
 
             return;
         }
 
-        if (victims.Count == 0 || !trigger.AffectsTargets || !ecs.IsAlive(attacker.Entity))
+        if (victims.Count == 0 || !trigger.AffectsTargets || !ecs.IsAlive(attacker))
         {
             return;
         }
 
-        var stats = Buffs?.StatsOf(attacker.Entity, ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats) ?? ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats;
+        var stats = Buffs?.StatsOf(attacker, ecs.Get<MonsterCombatComponent>(attacker).Stats) ?? ecs.Get<MonsterCombatComponent>(attacker).Stats;
         var skill = tables.GetSkill(skillId);
         var hits = new List<SkillDmgValue>();
         var fallen = new List<Entity>();
         List<Entity>? hurt = null;
-        var origin = ecs.Get<WorldComponent>(attacker.Entity);
-        var weight = ecs.Get<MonsterCombatComponent>(attacker.Entity).WeightRank;
-        var kind = DamageContext.MonsterHits(new Opponent(ecs.Get<MonsterCombatComponent>(attacker.Entity).Rank, ecs.Get<MonsterCombatComponent>(attacker.Entity).Faction, ecs.Get<MonsterCombatComponent>(attacker.Entity).StatusType));
-        var blow = new Blow(trigger.Reaction, (ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue), trigger.DamageRate, trigger.Angle, origin.Position, origin.Position, origin.Rotation, true, weight, IsMelee: trigger.HitsArea);
+        var origin = ecs.Get<WorldComponent>(attacker);
+        var weight = ecs.Get<MonsterCombatComponent>(attacker).WeightRank;
+        var kind = DamageContext.MonsterHits(new Opponent(ecs.Get<MonsterCombatComponent>(attacker).Rank, ecs.Get<MonsterCombatComponent>(attacker).Faction, ecs.Get<MonsterCombatComponent>(attacker).StatusType));
+        var blow = new Blow(trigger.Reaction, (ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue), trigger.DamageRate, trigger.Angle, from ?? origin.Position, from ?? origin.Position, origin.Rotation, true, weight, IsMelee: trigger.HitsArea);
 
         foreach (var victim in victims)
         {
@@ -1569,12 +1575,12 @@ public sealed partial class LuaCreatureManager
 
             if (Buffs is not null && !shielded)
             {
-                result = result with { Damage = Buffs.Adjust(attacker.Entity, victim, result.Damage) };
+                result = result with { Damage = Buffs.Adjust(attacker, victim, result.Damage) };
             }
 
             var left = Vitals.Hurt(victim, result.Damage);
 
-            Buffs?.AfterHit(attacker.Entity, victim, hits.Count, result.Damage, default);
+            Buffs?.AfterHit(attacker, victim, hits.Count, result.Damage, default);
 
             if (Buffs is not null && !shielded)
             {
@@ -1619,7 +1625,7 @@ public sealed partial class LuaCreatureManager
             return;
         }
 
-        var place = ecs.Get<WorldComponent>(attacker.Entity);
+        var place = ecs.Get<WorldComponent>(attacker);
         var told = hits.ToArray();
 
         TellHitSlow(told, trigger);
@@ -1631,7 +1637,7 @@ public sealed partial class LuaCreatureManager
             {
                 SkillActorInfo = default(SkillActorInfoValue) with
                 {
-                    UxActorId = ecs.Get<ActorComponent>(attacker.Entity),
+                    UxActorId = ecs.Get<ActorComponent>(attacker),
                     SkillPosInfo = default(SkillActionPosInfoValue) with
                     {
                         Position = place.Position,
@@ -1656,6 +1662,6 @@ public sealed partial class LuaCreatureManager
             Announce(victim);
         }
 
-        Buffs?.GiveFromHit(attacker.Entity, trigger, victims);
+        Buffs?.GiveFromHit(attacker, trigger, victims);
     }
 }

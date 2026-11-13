@@ -95,20 +95,17 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call PrivateSetLuaValue: index {Index}, value {Value}")]
     public static partial void IgnoredSetLuaValueByIndex(this ILogger logger, int index, int value);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetTrapLifeTime: trap {Trap}, {Seconds} s")]
-    public static partial void IgnoredSetTrapLifeTime(this ILogger logger, int trap, float seconds);
-
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call StartEventTimer: {Function}")]
     public static partial void IgnoredStartEventTimer(this ILogger logger, string function);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrap: at {X}/{Y}/{Z}, skill {Skill}")]
-    public static partial void IgnoredCreateTrap(this ILogger logger, float x, float y, float z, int skill);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Script trap of skill {Skill} laid at {X}/{Y}/{Z}")]
+    public static partial void TrapLaid(this ILogger logger, int skill, float x, float y, float z);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrapEx: box {Box}, skill {Skill}")]
-    public static partial void IgnoredCreateTrapEx(this ILogger logger, int box, int skill);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Script trap of skill {Skill} not laid: the action file {File} of the scene attacker has no attack of it")]
+    public static partial void TrapWithoutAttack(this ILogger logger, int skill, string file);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call CreateTrapExLoop: box {Box}, skill {Skill}, count {Count}")]
-    public static partial void IgnoredCreateTrapExLoop(this ILogger logger, int box, int skill, int count);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Script trap of skill {Skill} not laid: the map has no position box {Box}")]
+    public static partial void TrapWithoutBox(this ILogger logger, int skill, int box);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call ChangeMonster: {Source} -> {Target}")]
     public static partial void IgnoredChangeMonster(this ILogger logger, string source, string target);

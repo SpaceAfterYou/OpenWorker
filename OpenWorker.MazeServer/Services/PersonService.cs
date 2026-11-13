@@ -58,6 +58,7 @@ public sealed partial class PersonService(
     World world,
     ReadOnlyCollection<MazeInfoRow> mazeInfoCollection,
     ReadOnlyCollection<InteractionObjectRow> interactionCollection,
+    ReadOnlyCollection<MazeRuleRow> mazeRules,
     IRedisCollection<SessionCache> sessions,
     SessionLeaseManager leases,
     BatchManager batches,
@@ -111,6 +112,7 @@ public sealed partial class PersonService(
 
     private readonly RowIndex<short, MazeInfoRow> _mazes = mazeInfoCollection.IndexBy(e => e.Id);
     private readonly RowIndex<int, InteractionObjectRow> _interactions = interactionCollection.IndexBy(e => e.Id);
+    private readonly RowIndex<ushort, MazeRuleRow> _rules = mazeRules.IndexBy(e => e.Id);
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonInfoReqRequest request)
     {
@@ -425,7 +427,8 @@ public sealed partial class PersonService(
         {
             Instance = instance,
             Party = party,
-            HiddenEvents = hiddenEvents
+            HiddenEvents = hiddenEvents,
+            SceneAttacker = mazeInfo.Id > 0 && _rules.TryGet((ushort)mazeInfo.Id, out var rule) ? (int)rule.SceneAttacker : 0
         };
 
         // What happens in the instance is wired once, for every player who is in it then.
