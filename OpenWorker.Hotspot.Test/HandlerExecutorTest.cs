@@ -28,7 +28,7 @@ namespace OpenWorker.Hotspot.Test;
 /// A request on an opcode no real message uses. The first byte says what happens next.
 /// </summary>
 [HotspotMessage(GroupOpcode.System, (byte)ProbeRequest.Command, HotspotMessageDirection.Request)]
-public readonly struct ProbeRequest : IRequestHotspotMessage
+public readonly struct ProbeRequest : IRequestHotspotMessage, IWireReadable<ProbeRequest>
 {
     public const SystemOpcode Command = (SystemOpcode)0x7E;
 
@@ -41,26 +41,23 @@ public readonly struct ProbeRequest : IRequestHotspotMessage
 
     public MessageOpcode Opcode => new(GroupOpcode.System, (byte)Command);
 
-    public byte Mode { get; }
+    public byte Mode { get; private init; }
 
     /// <summary>
     /// What follows the mode, for <see cref="Records"/>.
     /// </summary>
-    public byte[] Rest { get; } = [];
+    public byte[] Rest { get; private init; }
 
-    public ProbeRequest(BinaryReader reader)
+    public static ProbeRequest Read(ref PacketReader reader)
     {
-        Mode = reader.ReadByte();
+        var mode = reader.ReadByte();
 
-        if (Mode == ReadsText)
+        if (mode == ReadsText)
         {
             _ = reader.ReadUtf8UnicodeString();
         }
 
-        if (Mode == Records)
-        {
-            Rest = reader.ReadBytes((int)(reader.BaseStream.Length - reader.BaseStream.Position));
-        }
+        return new ProbeRequest { Mode = mode, Rest = mode == Records ? reader.ReadByteArray(reader.Remaining) : [] };
     }
 }
 
@@ -483,9 +480,8 @@ public sealed class HandlerExecutorTest
     }
 
     /// <summary>
-    /// A request with a span format goes the other way through the executor: it is parsed from the span of the packet,
-    /// whole, before its handler runs. A count it cannot hold is malformed and counted like any other, and the handler does
-    /// not run.
+    /// A request is parsed from the span of the packet, whole, before its handler runs. A count it cannot hold is malformed
+    /// and counted like any other, and the handler does not run.
     /// </summary>
     [TestMethod]
     public async Task ARequestWithASpanFormatIsParsedFromThePacketAndAHostileCountIsMalformed()

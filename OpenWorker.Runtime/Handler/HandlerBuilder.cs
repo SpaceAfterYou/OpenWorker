@@ -10,11 +10,10 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Handler;
 
 /// <summary>
-/// Compiles the call of every <c>OnHandleAsync</c> of a handler class into a delegate the executor calls with the packet.
-/// A request that reads itself from a <see cref="BinaryReader"/> gets <see cref="HandlerDelegate"/>, which builds the
-/// request with its constructor. A request with a span format (<see cref="IWireReadable{TSelf}"/>) gets
-/// <see cref="PacketHandlerDelegate"/> as well: the call takes the parsed request, and <see cref="PacketHandler{TRequest}"/>
-/// parses it from the span before the call.
+/// Compiles the call of every <c>OnHandleAsync</c> of a handler class into a <see cref="PacketHandlerDelegate"/>: the
+/// call takes the parsed request, and <see cref="PacketHandler{TRequest}"/> parses it from the span of the packet before
+/// the call. Every request reads itself through <see cref="PacketReader"/> (<see cref="IWireReadable{TSelf}"/>); a handler
+/// of a request that does not stops the table from being built.
 /// </summary>
 public sealed class HandlerBuilder
 {
@@ -26,13 +25,10 @@ public sealed class HandlerBuilder
     private ParameterExpression Player { get; } = Expression
         .Parameter(typeof(Entity), nameof(Player));
 
-    private ParameterExpression Reader { get; } = Expression
-        .Parameter(typeof(BinaryReader), nameof(Reader));
-
     private ParameterExpression CancellationToken { get; } = Expression
         .Parameter(typeof(CancellationToken), nameof(CancellationToken));
 
-    private Expression CreateArgument(ParameterInfo param, ParameterExpression? request = null)
+    private Expression CreateArgument(ParameterInfo param, ParameterExpression request)
     {
         if (param.ParameterType == typeof(CancellationToken))
         {
@@ -50,24 +46,9 @@ public sealed class HandlerBuilder
             return Expression.New(constructor, @params.Cast<Expression>());
         }
 
-        if (request is not null && param.ParameterType == request.Type)
+        if (param.ParameterType == request.Type)
         {
             return request;
-        }
-
-        if (param.ParameterType.GetCustomAttribute<HotspotMessageAttribute>() is not null)
-        {
-            var @params = new[] { Reader };
-            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-
-            var constructor = param.ParameterType.GetConstructor(flags, null, @params.Select(e => e.Type).ToArray(), null);
-
-            return constructor is null ?
-                // messages without content may haven't BinaryReader param
-                // so we need to create empty one
-                Expression.New(param.ParameterType) :
-
-                Expression.New(constructor, @params.Cast<Expression>());
         }
 
         throw new ArgumentException($"{param.ParameterType} Bad argument type", param.Name);
@@ -81,37 +62,28 @@ public sealed class HandlerBuilder
             {
                 Debug.Assert(method.IsStatic is false, "Static methods are not supported");
 
-                var parameters = method.GetParameters();
-                var arguments = parameters.Select(param => CreateArgument(param));
+                var message = method.GetParameters().First(param =>
+                    param.ParameterType.GetCustomAttribute<HotspotMessageAttribute>() is not null).ParameterType;
 
-                var call = Expression.Call(Expression.Convert(Instance, @class), method, arguments);
-
-                var message = parameters.First(param =>
-                    param.ParameterType.GetCustomAttribute<HotspotMessageAttribute>() is not null);
-
-                var attribute = message.ParameterType.GetCustomAttribute<HotspotMessageAttribute>();
+                var attribute = message.GetCustomAttribute<HotspotMessageAttribute>();
                 Debug.Assert(attribute is not null);
 
-                var opcode = attribute.Opcode;
-                var lambda = Expression
-                    .Lambda<HandlerDelegate>(call, Instance, Player, Reader, CancellationToken)
-                    .Compile();
-
-                return new CreatedHandler(opcode, @class, lambda, CreatePacketHandler(@class, method, message.ParameterType));
+                return new CreatedHandler(attribute.Opcode, @class, CreatePacketHandler(@class, method, message));
             });
     }
 
     /// <summary>
-    /// The second shape: the call takes the request already parsed, and the request is parsed from the span.
+    /// The call takes the request already parsed, and the request is parsed from the span.
     /// </summary>
-    private PacketHandlerDelegate? CreatePacketHandler(Type @class, MethodInfo method, Type message)
+    private PacketHandlerDelegate CreatePacketHandler(Type @class, MethodInfo method, Type message)
     {
         var readable = message.GetInterfaces().Any(i =>
             i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IWireReadable<>) && i.GetGenericArguments()[0] == message);
 
         if (!readable)
         {
-            return null;
+            throw new InvalidOperationException(
+                $"{@class.Name} handles {message.Name}, which does not read itself through PacketReader (IWireReadable).");
         }
 
         var request = Expression.Parameter(message, "Request");

@@ -25,13 +25,6 @@ public sealed partial class HandlerExecutor(
     /// </summary>
     private readonly IHotspotHandler?[] _instances = new IHotspotHandler?[collection.Classes];
 
-    // Readers that no packet uses. A handler holds its reader until it returns, awaits included, and other packets run on
-    // the loop meanwhile, so there are as many as packets in flight at once. Usually that is one, the spare, taken and
-    // given back with one atomic exchange; the others wait in the stack.
-    private RequestReader? _spare;
-    private readonly Stack<RequestReader> _readers = new();
-    private readonly Lock _readersLock = new();
-
     /// <summary>
     /// Reads the opcode of a packet, parses the request and runs its handler. A packet that cannot be read
     /// and a handler that fails never throw out of here: the error is counted for the session, and the
@@ -63,8 +56,6 @@ public sealed partial class HandlerExecutor(
 
         using var logScope = scope is null ? null : logger.BeginScope(scope);
 
-        RequestReader? reader = null;
-
         MessageOpcode? opcode = null;
 
         try
@@ -89,20 +80,8 @@ public sealed partial class HandlerExecutor(
 
             try
             {
-                ValueTask pending;
-
-                // A request with a span format is parsed from the packet here, whole, before its handler awaits anything;
-                // the others read from a BinaryReader over the packet, which the handler holds until it returns.
-                if (found.Packet is { } packet)
-                {
-                    pending = packet(instance, player, buffer.Span[OpcodeSize..], cancellationToken);
-                }
-
-                else
-                {
-                    reader = RentReader(buffer);
-                    pending = found.Delegate(instance, player, reader.Binary, cancellationToken);
-                }
+                // The request is parsed from the packet here, whole, before its handler awaits anything.
+                var pending = found.Packet(instance, player, buffer.Span[OpcodeSize..], cancellationToken);
 
                 await pending;
             }
@@ -123,14 +102,6 @@ public sealed partial class HandlerExecutor(
         {
             OnError(player, opcode, ex);
         }
-
-        finally
-        {
-            if (reader is not null)
-            {
-                ReturnReader(reader);
-            }
-        }
     }
 
     /// <summary>
@@ -150,42 +121,6 @@ public sealed partial class HandlerExecutor(
     {
         return provider.GetService(type) as IHotspotHandler
             ?? throw new InvalidOperationException($"The handler {type.Name} is not registered.");
-    }
-
-    private RequestReader RentReader(ReadOnlyMemory<byte> packet)
-    {
-        var reader = Interlocked.Exchange(ref _spare, null);
-
-        if (reader is null)
-        {
-            lock (_readersLock)
-            {
-                _readers.TryPop(out reader);
-            }
-        }
-
-        reader ??= new RequestReader();
-
-        reader.Stream.Source = packet;
-        reader.Stream.Position = OpcodeSize;
-
-        return reader;
-    }
-
-    private void ReturnReader(RequestReader reader)
-    {
-        // The packet goes back to the read loop with the end of the handler; the reader must not keep it.
-        reader.Stream.Source = ReadOnlyMemory<byte>.Empty;
-
-        if (Interlocked.CompareExchange(ref _spare, reader, null) is null)
-        {
-            return;
-        }
-
-        lock (_readersLock)
-        {
-            _readers.Push(reader);
-        }
     }
 
     /// <summary>

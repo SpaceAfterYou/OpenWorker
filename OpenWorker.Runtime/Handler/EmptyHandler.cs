@@ -3,11 +3,14 @@ using OpenWorker.Hotspot.Handler.Abstractions;
 
 namespace OpenWorker.Hotspot.Handler;
 
+/// <summary>
+/// What every opcode without a handler runs: nothing. The packet is not read.
+/// </summary>
 internal sealed class EmptyHandler : IHotspotHandler
 {
-    public static ValueTask OnUnhandledAsync(object instance,
+    public static ValueTask OnUnhandledAsync(IHotspotHandler instance,
         Entity player,
-        BinaryReader reader,
+        ReadOnlySpan<byte> body,
         CancellationToken cancellationToken)
     {
         return ValueTask.CompletedTask;
