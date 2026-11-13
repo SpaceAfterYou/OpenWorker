@@ -2441,7 +2441,7 @@
     "Int32",
     "Int32",
     "Int32",
-    "Int32"
+    "Int32 Box"
   ],
   "tb_Skill_Action": [
     "Int16",

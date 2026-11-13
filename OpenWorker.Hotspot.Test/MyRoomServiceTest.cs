@@ -11,6 +11,7 @@ using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Movement;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons.Components;
@@ -128,7 +129,7 @@ public sealed class MyRoomServiceTest
                 Options.Create(new MazeEndpointOptions { Host = "maze", Port = 100 }),
                 NullLogger<MyRooms>.Instance);
 
-            Room = new MyRoomState(new MyRoomRecord(Account, 1, 1, 1, 0, "Room"), 19, [], Catalog);
+            Room = new MyRoomState(new MyRoomRecord(Account, 1, 1, 1, 0, "Room"), 19, [], Catalog, Frame);
 
             Rooms.Open(Instance, Room, Guid.NewGuid());
             Rooms.Join(Player, Instance, Room, Account, 1, 0);
@@ -138,6 +139,11 @@ public sealed class MyRoomServiceTest
             Service = new MyRoomService(World, Rooms, Book, Catalog, StoreOfRooms, null!, null!, Inventory, NoPersonFlush.Instance,
                 NullLogger<MyRoomService>.Instance);
         }
+
+        /// <summary>
+        /// The grid of the room lies on its map as in the client's room: turned half round.
+        /// </summary>
+        public static MyRoomFrame Frame { get; } = new(new Vector3(1000, 500, 3700), -180);
 
         public World World { get; } = World.Create();
 
@@ -178,6 +184,41 @@ public sealed class MyRoomServiceTest
             var reader = new PacketReader(bytes);
 
             return MyRoomItemAddRequest.Read(ref reader);
+        }
+
+        public static MyRoomItemUseRequest Sit(long serial, Vector3 position, Vector3 piece)
+        {
+            Span<byte> bytes = stackalloc byte[45];
+
+            var writer = new PacketWriter(bytes);
+
+            writer.WriteInt32(999);
+            writer.WriteInt64(serial);
+
+            foreach (var value in (ReadOnlySpan<float>)[position.X, position.Y, position.Z, 0f, piece.X, piece.Y, piece.Z, 0f])
+            {
+                writer.WriteSingle(value);
+            }
+
+            writer.WriteByte(0);
+
+            var reader = new PacketReader(bytes);
+
+            return MyRoomItemUseRequest.Read(ref reader);
+        }
+
+        public static MyRoomItemReleaseUsedRequest GetUp(long serial)
+        {
+            Span<byte> bytes = stackalloc byte[12];
+
+            var writer = new PacketWriter(bytes);
+
+            writer.WriteInt32(999);
+            writer.WriteInt64(serial);
+
+            var reader = new PacketReader(bytes);
+
+            return MyRoomItemReleaseUsedRequest.Read(ref reader);
         }
 
         public void Dispose() => World.Destroy(World);
@@ -238,5 +279,38 @@ public sealed class MyRoomServiceTest
         await harness.Book.CreateAsync(harness.Player, 1, CancellationToken.None);
 
         Assert.AreEqual(5_000, harness.Inventory.Gold(harness.Player), "a room that is made costs its gold");
+    }
+
+    /// <summary>
+    /// A player who sits is put where the piece stands, by the server, from the cell and the turn of the piece; the places the
+    /// request carries are not taken. Getting up puts it back where the server had it.
+    /// </summary>
+    [TestMethod]
+    public async Task ASeatIsWhereThePieceStands()
+    {
+        using var harness = new Harness();
+
+        // A bed of one cell, on the third row, fourth from the corner.
+        Assert.IsTrue(harness.Room.StartArranging());
+        Assert.IsTrue(harness.Room.Place(new MyRoomPiece(5, Bed, 1, 26 * 2 + 3)));
+        harness.Room.StopArranging();
+
+        var stood = new Vector3(1200, 900, 3700);
+
+        harness.World.Set(harness.Player, harness.World.Get<WorldComponent>(harness.Player) with { Position = stood, Rotation = 30 });
+
+        await harness.Service.OnHandleAsync(harness.Context, Harness.Sit(5, new Vector3(-1e6f), new Vector3(1e6f)));
+
+        // The grid is 26 by 28 cells of 50 around its middle and turned half round: the cell lies 475 and 575 from the middle.
+        var sits = harness.World.Get<WorldComponent>(harness.Player).Position;
+
+        Assert.IsLessThan(0.01f, Vector3.Distance(new Vector3(1475, 1075, 3700), sits), $"the player sits at {sits}");
+        Assert.IsTrue(harness.World.Get<PlaceToldComponent>(harness.Player).Pending, "the pace check knows the server moved the player");
+        Assert.AreEqual(stood, harness.Room.Seats.Single().Position, "where the player stood is the server's");
+
+        await harness.Service.OnHandleAsync(harness.Context, Harness.GetUp(5));
+
+        Assert.AreEqual(stood, harness.World.Get<WorldComponent>(harness.Player).Position);
+        Assert.AreEqual(30f, harness.World.Get<WorldComponent>(harness.Player).Rotation);
     }
 }

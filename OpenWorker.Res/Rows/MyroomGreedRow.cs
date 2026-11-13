@@ -34,5 +34,5 @@ public readonly partial struct MyroomGreedRow(BinaryReader reader)
     public int Field23 { get; } = reader.ReadInt32();
     public int Field24 { get; } = reader.ReadInt32();
     public int Field25 { get; } = reader.ReadInt32();
-    public int Field26 { get; } = reader.ReadInt32();
+    public int Box { get; } = reader.ReadInt32();
 }
