@@ -9,6 +9,7 @@ using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Post;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -50,8 +51,8 @@ public sealed class RewardLetterTest
         Assert.AreEqual(1, letter.Items.Count);
         Assert.AreEqual(Gear, letter.Items[0].Item);
         Assert.AreEqual(0, letter.Money);
-        Assert.AreEqual((byte)4, letter.MainType);
-        Assert.AreEqual((byte)11, letter.SubType, "the row of a reward kept because the inventory had no room");
+        Assert.AreEqual(GameLetters.AccountKind, letter.MainType);
+        Assert.AreEqual(GameLetters.OwnText, letter.SubType, "the client has no row of attendance: the letter shows its own text");
 
         await MetricAssertions.UntilAsync(() => f.Received(PostOpcode.AccountRecv) == 1, "the person is told of the letter");
     }
@@ -69,7 +70,7 @@ public sealed class RewardLetterTest
 
         Assert.AreEqual(Material, f.Post.Letters[0].Items[0].Item);
         Assert.AreEqual((short)10, f.Post.Letters[0].Items[0].Count);
-        Assert.AreEqual((byte)12, f.Post.Letters[0].SubType, "the row of the reward of a daily mission");
+        Assert.AreEqual(GameLetters.DailyMissionReward, f.Post.Letters[0].SubType, "the row of the reward of a daily mission");
     }
 
     [TestMethod]

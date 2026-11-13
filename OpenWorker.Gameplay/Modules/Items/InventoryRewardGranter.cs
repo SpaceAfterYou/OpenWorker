@@ -33,13 +33,6 @@ public sealed partial class InventoryRewardGranter(
     TimeProvider? time = null,
     ILogger<InventoryRewardGranter>? logger = null) : IRewardGranter
 {
-    // The client draws a letter of the game of this kind with what its row of the system letters (tb_SystemMail) names.
-    private const byte GameLetter = 4;
-
-    // The rows of the system letters: a reward kept because the inventory had no room, and the reward of a daily mission.
-    private const byte KeptRewardLetter = 11;
-    private const byte DailyMissionLetter = 12;
-
     private const string Sender = "SoulWorker";
 
     /// <summary>
@@ -207,9 +200,19 @@ public sealed partial class InventoryRewardGranter(
     /// </summary>
     private async Task MailAsync(Entity player, int account, RewardSource source, (int Item, int Count)[] items, long gold)
     {
-        var (title, body, kind) = source == RewardSource.DailyMission
-            ? ("[System] Daily mission reward", "The reward of a daily mission has arrived. Make room in the inventory and take what is attached.", DailyMissionLetter)
-            : ("[System] Reward kept for you", "The inventory had no room for this reward, so it is kept here. Make room in the inventory and take what is attached.", KeptRewardLetter);
+        // The client has a row for the reward of a daily mission and none for attendance: that letter shows its own text.
+        var (title, body, row) = source switch
+        {
+            RewardSource.DailyMission => ("[System] Daily Mission Completion Reward",
+                "[Daily Mission] Your completion reward has arrived. Please clear some space in your inventory to claim the attachment.",
+                GameLetters.DailyMissionReward),
+            RewardSource.PlayTime => ("[System] Play Time Reward",
+                "Your inventory had no room for all of your play time reward, so the rest is kept here. Please clear some space in your inventory to claim the attachment.",
+                GameLetters.OwnText),
+            _ => ("[System] Attendance Reward",
+                "Your inventory had no room for all of your attendance reward, so the rest is kept here. Please clear some space in your inventory to claim the attachment.",
+                GameLetters.OwnText)
+        };
 
         for (var attempt = 0; ; attempt++)
         {
@@ -227,7 +230,7 @@ public sealed partial class InventoryRewardGranter(
                 var attached = items.Select(e => PostLetters.Attach(inventory.Create(e.Item, e.Count), (short)e.Count)).ToList();
 
                 letter = await post!.SendToAccountAsync(
-                    new PostAccountDraft(account, Sender, title, body, gold, attached, GameLetter, kind),
+                    new PostAccountDraft(account, Sender, title, body, gold, attached, GameLetters.AccountKind, row),
                     CancellationToken.None);
             }
 
