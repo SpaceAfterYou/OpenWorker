@@ -12,6 +12,7 @@ using OpenWorker.Gameplay.Modules.Exchange;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Post;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -501,7 +502,7 @@ public sealed class ExchangeTest
 
         var letter = (await new PostStore(Factory).ListReceivedAsync(person, saved: false)).Single();
 
-        Assert.AreEqual(ExchangeListings.TakenBack, letter.SubType);
+        Assert.AreEqual(GameLetters.ExchangeTakenBack, letter.SubType);
         Assert.AreEqual(7, letter.Items.Single().Upgrade, "the item comes back as it went");
         Assert.IsEmpty(await new ExchangeStore(Factory).ListMineAsync(person));
     }
@@ -693,7 +694,7 @@ public sealed class ExchangeTest
         var recall = await store.RecallAsync(listing.Serial, seller, e => ExchangeListings.ReturnLetter(e, DateTime.UtcNow));
 
         Assert.AreEqual(ExchangeOutcome.Done, recall.Outcome);
-        Assert.AreEqual(ExchangeListings.Ended, recall.Letter!.SubType);
+        Assert.AreEqual(GameLetters.ExchangeEnded, recall.Letter!.SubType);
         Assert.AreEqual(1, recall.Letter.Items.Single().Count);
     }
 }

@@ -744,8 +744,9 @@ public sealed partial class ExchangeService(
         LogReturnedToAccount(logger, account, gold, items.Count);
 
         await post.SendToAccountAsync(
-            new PostAccountDraft(account, ExchangeListings.Sender, "[Exchange] Returned", "What the exchange could not take.", gold, items,
-                ExchangeListings.AccountLetterKind, ExchangeListings.TakenBack),
+            new PostAccountDraft(account, ExchangeListings.Sender, "[Exchange] Returned",
+                "The exchange could not finish your request, so what it took is returned to you. Please check the attachment.",
+                gold, items, GameLetters.AccountKind, GameLetters.OwnText),
             CancellationToken.None);
     }
 

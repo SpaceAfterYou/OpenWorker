@@ -2,6 +2,7 @@ using System.Globalization;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.Items;
+using OpenWorker.Gameplay.Modules.Post;
 using OpenWorker.Hotspot.Modules.Exchange.Types;
 using OpenWorker.Hotspot.Modules.Items.Types;
 
@@ -16,25 +17,6 @@ public static class ExchangeListings
     /// Who signs the letters of the exchange.
     /// </summary>
     public const string Sender = "Exchange";
-
-    /// <summary>
-    /// The kind of the letters of the exchange: a letter of the game, whose sender, title and text the client takes from the
-    /// row of its table of system letters named by the sub kind. Such a letter goes to the box of the person whatever the box
-    /// holds.
-    /// </summary>
-    public const byte LetterKind = 1;
-
-    /// <summary>
-    /// The kind of a letter of the game to an account; the client takes only the icon from the row.
-    /// </summary>
-    public const byte AccountLetterKind = 4;
-
-    // The rows of the client's table of system letters.
-    public const byte Bought = 5;
-    public const byte Sold = 6;
-    public const byte TakenBack = 7;
-    public const byte Ended = 16;
-    public const byte SoldWithoutCommission = 18;
 
     #region As the client sees them
 
@@ -153,10 +135,10 @@ public static class ExchangeListings
         var item = listing.Item.ToString(CultureInfo.InvariantCulture);
         var sold = count.ToString(CultureInfo.InvariantCulture);
 
-        var toBuyer = Letter(buyer, buyerName, buyerHero, Bought, item, sold, 0, Part(listing, count), now);
+        var toBuyer = Letter(buyer, buyerName, buyerHero, GameLetters.ExchangeBought, item, sold, 0, Part(listing, count), now);
 
         var toSeller = Letter(listing.SellerId, listing.SellerName, listing.SellerHero,
-            listing.SaleRate == 0 ? SoldWithoutCommission : Sold, item, sold, gets, null, now);
+            listing.SaleRate == 0 ? GameLetters.ExchangeSoldWithoutCommission : GameLetters.ExchangeSold, item, sold, gets, null, now);
 
         return (toBuyer, toSeller);
     }
@@ -168,7 +150,7 @@ public static class ExchangeListings
     {
         var ended = listing.State == ExchangeListingState.OnSale && listing.ExpiresAt <= now;
 
-        return Letter(listing.SellerId, listing.SellerName, listing.SellerHero, ended ? Ended : TakenBack, string.Empty, string.Empty,
+        return Letter(listing.SellerId, listing.SellerName, listing.SellerHero, ended ? GameLetters.ExchangeEnded : GameLetters.ExchangeTakenBack, string.Empty, string.Empty,
             0, Part(listing, listing.Count), now);
     }
 
@@ -226,7 +208,7 @@ public static class ExchangeListings
             Body = body,
             Money = money,
             Items = item is null ? [] : [item],
-            MainType = LetterKind,
+            MainType = GameLetters.PersonKind,
             SubType = kind,
             State = PostState.None,
             CreatedAt = now,
