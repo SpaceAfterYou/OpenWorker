@@ -9,13 +9,22 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Defensive_Weapon")]
 public readonly partial struct DefensiveWeaponRow(BinaryReader reader)
 {
+    /// <summary>
+    /// The row: the monster that is the weapon. A weapon is a monster whose kind in tb_Monster is 5.
+    /// </summary>
     public int Id { get; } = reader.ReadInt32();
-    public int Field1 { get; } = reader.ReadInt32();
+    /// <summary>
+    /// The monster that is the weapon, the same as the row.
+    /// </summary>
+    public int Monster { get; } = reader.ReadInt32();
     public short Field2 { get; } = reader.ReadInt16();
     public short Field3 { get; } = reader.ReadInt16();
     public short Field4 { get; } = reader.ReadInt16();
     public short Field5 { get; } = reader.ReadInt16();
     public short Field6 { get; } = reader.ReadInt16();
     public byte Field7 { get; } = reader.ReadByte();
-    public string Field8 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    /// <summary>
+    /// The animation of the player on the weapon, by its name in the hero&apos;s action file.
+    /// </summary>
+    public string RiderAnimation { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
 }

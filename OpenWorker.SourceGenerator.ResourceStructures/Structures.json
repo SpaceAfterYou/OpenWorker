@@ -2155,15 +2155,15 @@
     "Int32 Days"
   ],
   "tb_Defensive_Weapon": [
-    "Int32",
-    "Int32",
+    "Int32 Id // The row: the monster that is the weapon. A weapon is a monster whose kind in tb_Monster is 5.",
+    "Int32 Monster // The monster that is the weapon, the same as the row.",
     "Int16",
     "Int16",
     "Int16",
     "Int16",
     "Int16",
     "Byte",
-    "String"
+    "String RiderAnimation // The animation of the player on the weapon, by its name in the hero's action file."
   ],
   "tb_Loading": [
     "Byte",

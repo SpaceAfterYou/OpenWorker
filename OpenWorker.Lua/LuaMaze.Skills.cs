@@ -53,11 +53,17 @@ public partial class LuaMaze
 
     /// <summary>
     /// Whether the player may start another skill now: the client lets a skill be cut only once its animation has come to the
-    /// moment it may be, and a client that starts a skill again and again before that would fire its shots over and over.
+    /// moment it may be, and a client that starts a skill again and again before that would fire its shots over and over. A
+    /// player on a defensive weapon fires the weapon, not its own skills.
     /// </summary>
     [LuaIgnoreMember]
     public bool MayStartSkill(Entity player)
     {
+        if (IsOnWeapon(player))
+        {
+            return false;
+        }
+
         if (Find(player) is not { Playback: { } run } member)
         {
             return true;

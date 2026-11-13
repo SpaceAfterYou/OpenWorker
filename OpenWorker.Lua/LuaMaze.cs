@@ -282,6 +282,7 @@ public partial class LuaMaze(
         // What the player carries is let go where it stands: nobody steps the carry of a player who is gone.
         EndCarry(member);
         EndControl(member);
+        EndRide(member);
 
         LeavePartyQuest(player);
         PayUnityPoints(player);
@@ -345,6 +346,7 @@ public partial class LuaMaze(
         StepQuests();
         StepMode((float)elapsed.TotalSeconds);
         StepEscort((float)elapsed.TotalSeconds);
+        StepRides();
         _portalWait?.Advance((float)elapsed.TotalSeconds);
 
         // A player who leaves during the step is taken out of the list, so the list is walked by index.
