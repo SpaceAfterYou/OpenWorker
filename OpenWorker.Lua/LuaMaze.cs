@@ -536,6 +536,8 @@ public partial class LuaMaze(
         _buffs.MonsterKilled += OnBuffKill;
         creatureManager.PlayerFrames = FrameDefenseOf;
 
+        StartWorld();
+
         // The quests the player has when the maze starts are where the script begins to follow them.
         foreach (var member in _members)
         {

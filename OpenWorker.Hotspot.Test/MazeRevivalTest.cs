@@ -93,6 +93,22 @@ public sealed class MazeRevivalTest
     }
 
     [TestMethod]
+    public void InAnOpenMazeOfTheWorldAPlayerGetsUpOnlyByABuffOrAtItsSafePlace()
+    {
+        using var f = new Fixture();
+
+        Assert.IsNull(f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.SafetyZone, world: true), "the safe place");
+        Assert.IsNull(f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.Buff, revivable: true, world: true), "a buff");
+        Assert.AreEqual(MazeRevival.NotAllowed, f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.Buff, world: true));
+        Assert.AreEqual(MazeRevival.NoFreeRevive, f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.MazeFree, world: true), "nothing free");
+        Assert.AreEqual(MazeRevival.NoFreeRevive, f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.Cash, world: true));
+        Assert.AreEqual(MazeRevival.NotInThisMode, f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.ModeMazeAuto, world: true));
+        Assert.AreEqual(MazeRevival.NotFallen, f.Revival.Check(f.Player, Plain, fallen: false, ReviveType.SafetyZone, world: true));
+        Assert.AreEqual(MazeEntryLimits.FreeRevivesPerDay, Enumerable.Range(0, MazeEntryLimits.FreeRevivesPerDay)
+            .Count(_ => f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.MazeFree) is null), "no free revive was used up");
+    }
+
+    [TestMethod]
     public void TheFreeRevivesOfADayAreUsedUpAndComeBackWithTheNextDay()
     {
         using var f = new Fixture();

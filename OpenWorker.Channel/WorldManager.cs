@@ -33,7 +33,8 @@ public sealed partial class WorldManager(
     IRedisCollection<MazeReserveCache> mazeReserves,
     MazeDirectory mazes,
     IPersonFlush persons,
-    ILogger<WorldManager> logger)
+    ILogger<WorldManager> logger,
+    WorldMazeRoutes? worlds = null)
 {
     /// <summary>
     /// How long a move between servers stays valid. The client reconnects right after the response,
@@ -117,8 +118,7 @@ public sealed partial class WorldManager(
         switch (type)
         {
             case BatchType.Maze:
-                await EnterMaze(player, location, start);
-                return EnterOutcome.Entered;
+                return await EnterMaze(player, location, start) ? EnterOutcome.Entered : EnterOutcome.Unavailable;
 
             case BatchType.District:
                 return await TryEnterDistrict(player, location, start);
@@ -138,8 +138,7 @@ public sealed partial class WorldManager(
             return false;
         }
 
-        await EnterMaze(player, location, start);
-        return true;
+        return await EnterMaze(player, location, start);
     }
 
     /// <summary>
@@ -196,17 +195,45 @@ public sealed partial class WorldManager(
         return true;
     }
 
-    private async ValueTask EnterMaze(Entity player, short location, StartEventBox start)
+    /// <summary>
+    /// Sends the player into a maze of its own, or into the instance of its channel of an open maze of the world. False when
+    /// every channel of the open maze is full.
+    /// </summary>
+    private async ValueTask<bool> EnterMaze(Entity player, short location, StartEventBox start)
     {
+        if (worlds is not null && worlds.IsWorld(location))
+        {
+            var picked = await PickMazeServerAsync();
+
+            if (!ecs.IsAlive(player))
+            {
+                return true;
+            }
+
+            if (await worlds.RouteAsync(player, location, picked) is not var (route, channel))
+            {
+                return !ecs.IsAlive(player);
+            }
+
+            if (ecs.IsAlive(player))
+            {
+                await SendToMazeAsync(player, location, start, (route.Host, route.Port), route.Instance, 0, 0, world: (byte)channel);
+            }
+
+            return true;
+        }
+
         var maze = await GetMazeAsync();
 
         // The player may have left while the servers were looked up.
         if (!ecs.IsAlive(player))
         {
-            return;
+            return true;
         }
 
         await SendToMazeAsync(player, location, start, maze, Guid.Empty, 0, 0);
+
+        return true;
     }
 
     /// <summary>
@@ -230,17 +257,19 @@ public sealed partial class WorldManager(
     }
 
     private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party, int members, int room = 0, short back = 0,
-        bool friend = false)
+        bool friend = false, byte world = 0)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
+        // An open maze of the world is played by channel, and its map says which.
         var map = new MapValue
         {
+            Channel = world,
             Location = location,
             Server = Gate
         };
 
-        var world = new WorldValue
+        var place = new WorldValue
         {
             Location = location,
             Position = start.GetPosition(),
@@ -254,7 +283,7 @@ public sealed partial class WorldManager(
             {
                 Actor = ecs.Get<ActorComponent>(player).Identifier,
                 Account = ecs.Get<ClaimsComponent>(player),
-                World = world,
+                World = place,
                 Jump = start.Id,
                 Address = maze.Host,
                 Port = maze.Port,
@@ -270,12 +299,13 @@ public sealed partial class WorldManager(
             Account = ecs.Get<ClaimsComponent>(player),
             Location = location,
             Person = ecs.Get<ActorComponent>(player).Identifier,
-            X = world.Position.X,
-            Y = world.Position.Y,
-            Z = world.Position.Z,
-            R = world.Rotation,
+            X = place.Position.X,
+            Y = place.Position.Y,
+            Z = place.Position.Z,
+            R = place.Rotation,
             Jump = start.Id,
             Instance = instance,
+            World = world,
             Party = party,
             Members = (byte)Math.Clamp(members, 0, byte.MaxValue),
             Room = room,

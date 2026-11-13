@@ -32,7 +32,7 @@ public sealed class VitalsService(World world, MazeRevival revival) : IHotspotHa
 
         var revivable = BuffBook.Of(world, context.Player) is { } book && book.Buffs.Any(e => e.Definition.Effect == BuffEffect.Revive);
 
-        if (revival.Check(context.Player, maze.Maze, fallen, request.Type, revivable) is { } code)
+        if (revival.Check(context.Player, maze.Maze, fallen, request.Type, revivable, maze.IsWorld) is { } code)
         {
             world.Get<ServerSessionComponent>(context.Player)
                 .Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Character, CharacterOpcode.ReviveRes), code));
@@ -42,6 +42,12 @@ public sealed class VitalsService(World world, MazeRevival revival) : IHotspotHa
 
         // Getting up by a buff uses the buff up; the one who gave it is told as the reviver.
         var owner = request.Type == ReviveType.Buff ? maze.Buffs.TakeRevive(context.Player) ?? 0 : 0;
+
+        // The safe place of an open maze of the world is the start box the player came in by.
+        if (request.Type == ReviveType.SafetyZone)
+        {
+            maze.ReturnToStart(context.Player);
+        }
 
         maze.Creatures.Revive(context.Player, request.Type, owner);
 

@@ -26,6 +26,8 @@ public static class ServiceCollectionExtensions
             .AddSingleton<HelperSupports>()
             .AddSingleton<CommandAccess>()
             .AddSingleton<SkillInputRelay>()
+            .AddSingleton<OpenWorker.Gameplay.Modules.Maze.WorldMazes>()
+            .AddSingleton<OpenWorker.Channel.WorldMazeRoutes>()
             .AddHostedService<KeepAliveService>()
             .AddSingleton<IPlayerAudience, TAudience>();
     }
