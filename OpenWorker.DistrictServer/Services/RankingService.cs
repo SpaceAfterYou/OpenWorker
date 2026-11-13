@@ -5,6 +5,7 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
+using OpenWorker.Gameplay.Modules.Ranking;
 using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler.Abstractions;
@@ -22,47 +23,14 @@ namespace OpenWorker.DistrictServer.Services;
 /// The rankings, from what the servers recorded: a clear of a map and the kills in the arena. Where nothing is recorded the
 /// list is empty. The tower shows the clears of the person and its friends.
 /// </summary>
-public sealed class RankingService(World world, IDbContextFactory<PersistenceContext> factory, InfiniteTower tower) :
+public sealed class RankingService(World world, IDbContextFactory<PersistenceContext> factory, InfiniteTower tower, TimeAttackRanking timeAttack) :
     IHotspotHandler<RankingTimeAttackListRequest>,
     IHotspotHandler<RankingPvpListRequest>,
     IHotspotHandler<RankingInfiniteTowerListRequest>
 {
-    public async ValueTask OnHandleAsync(ServiceHandleContext context, RankingTimeAttackListRequest request)
+    public ValueTask OnHandleAsync(ServiceHandleContext context, RankingTimeAttackListRequest request)
     {
-        var me = world.Get<ActorComponent>(context.Player).Identifier;
-        var (top, mine) = await factory.RankingAsync(RankingKind.TimeAttack, request.World, me);
-
-        if (!world.IsAlive(context.Player))
-        {
-            return;
-        }
-
-        ST_RANKING_TIME_ATTACK_USER Entry(int person, string name, byte hero, byte level, int order, int time, int score) => new()
-        {
-            Person = person,
-            World = request.World,
-            Order = (short)order,
-            Hero = (Hero)hero,
-            Level = level,
-            Name = name,
-            Time = time,
-            Score = score
-        };
-
-        var info = world.Get<PersonInfoComponent>(context.Player);
-
-        world.Get<ServerSessionComponent>(context.Player).Send(new RankingTimeAttackListResponse
-        {
-            Data = new ST_RANKING_TIME_ATTACK_USER2
-            {
-                Player = Entry(me, info.Name, (byte)info.Hero, Level(context.Player), mine?.Order ?? 0, mine?.Time ?? 0, mine?.Score ?? 0),
-                ParticipantList = new ST_RANKING_TIME_ATTACK_USER3
-                {
-                    World = request.World,
-                    aUserList = top.Select(e => Entry(e.Person, e.Name, e.Hero, e.Level, e.Order, e.Time, e.Score)).ToArray()
-                }
-            }
-        });
+        return timeAttack.SendAsync(context.Player, request.World);
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, RankingPvpListRequest request)

@@ -1,14 +1,11 @@
 using Arch.Core;
-using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
-using OpenWorker.Domain.Components;
-using OpenWorker.Domain.Persistent;
-using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.DailyMissions;
 using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Gameplay.Modules.Ranking;
 using OpenWorker.Gameplay.Modules.SoulMetry;
 using OpenWorker.Gameplay.Modules.Vaccum;
 using OpenWorker.Hotspot.Modules.Persons.Types;
@@ -35,12 +32,8 @@ public partial class MazeReporter(
     SharePointManager? sharePoints = null,
     HelperGear? helperGear = null,
     MazeResults? results = null,
-    IRankingStore? ranking = null)
+    TimeAttackRanking? ranking = null)
 {
-    // The kinds of maze whose clears the ranking window of the client shows: the casual ones and the raids of a district.
-    private const byte CasualMaze = 2;
-    private const byte DistrictRaid = 8;
-
     // A hidden event met: the target of its chain of achievements, and the kind of event the quests that ask for one name.
     private const int HiddenEventAchievement = 1;
     private const int HiddenEventQuest = 2;
@@ -105,15 +98,13 @@ public partial class MazeReporter(
             sharePoints?.RecordClear(player, info.Id, result?.Rank ?? 0, seconds);
             helperGear?.OnMazeCleared(player);
 
-            var person = player.Has<ActorComponent>() ? player.Get<ActorComponent>().Identifier : 0;
-
             await missions.OnMazeClearedAsync(player, clear, false, CancellationToken.None);
             await soulMetries.OnMazeClearedAsync(player, info.Group, CancellationToken.None);
             await quests.OnMazeClearedAsync(player, info.Id, CancellationToken.None);
 
-            if (ranking is not null && result is { } ranked && person != 0 && info.Type is CasualMaze or DistrictRaid)
+            if (ranking is not null && result is { } ranked)
             {
-                await ranking.SubmitAsync(RankingKind.TimeAttack, info.Id, person, seconds, ranked.PlayPoint);
+                await ranking.RecordAsync(player, info.Id, info.Type, seconds, ranked.PlayPoint);
             }
         }
 

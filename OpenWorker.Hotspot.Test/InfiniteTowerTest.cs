@@ -96,11 +96,16 @@ public sealed class InfiniteTowerTest
     {
         public List<(RankingKind Kind, int Scope, int Person, int Time)> Submitted { get; } = [];
 
-        public Task SubmitAsync(RankingKind kind, int scope, int person, int time, int score, CancellationToken cancellationToken = default)
+        public Task<bool> SubmitAsync(RankingKind kind, int scope, int person, int time, int score, CancellationToken cancellationToken = default)
         {
             Submitted.Add((kind, scope, person, time));
 
-            return Task.CompletedTask;
+            return Task.FromResult(true);
+        }
+
+        public Task<(IReadOnlyList<RankingRow> Top, RankingRow? Mine)> RankingAsync(RankingKind kind, int scope, int person, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<(IReadOnlyList<RankingRow>, RankingRow?)>(([], null));
         }
     }
 

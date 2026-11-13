@@ -10,6 +10,7 @@ using OpenWorker.Gameplay.Modules.DailyMissions.Components;
 using OpenWorker.Gameplay.Modules.Helpers.Components;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Progress;
+using OpenWorker.Gameplay.Modules.Ranking;
 using OpenWorker.Gameplay.Modules.SoulMetry.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.DailyMissions;
@@ -94,6 +95,7 @@ public static class MiscGameplayExtensions
         services.AddSingleton<IMazePortals, BatchMazePortals>();
         services.AddSingleton<MazeAdmission>();
         services.AddInfiniteTower();
+        services.AddSingleton<TimeAttackRanking>();
 
         // What the flush of the person writes when the managers mark their part.
         services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<SoulMetryComponent>(PersonStateKind.SoulMetry, PersonSections.MiscState, e => e.State));
