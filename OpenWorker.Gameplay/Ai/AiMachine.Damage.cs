@@ -51,6 +51,17 @@ public sealed partial class AiMachine
     public int TauntTarget => _taunt;
 
     /// <summary>
+    /// A blow of the monster that hurts has landed: the first one it struck becomes its enemy, unless a taunt holds it.
+    /// </summary>
+    public void OnStruck(int target)
+    {
+        if (target != NoTarget && target != _targetId && _host.GetTarget(target) is not null)
+        {
+            ChangeTarget(target);
+        }
+    }
+
+    /// <summary>
     /// Somebody has hurt the monster. A monster that has no enemy yet turns on the one who hurt it.
     /// </summary>
     public void OnDamaged(int attacker, float aggro)

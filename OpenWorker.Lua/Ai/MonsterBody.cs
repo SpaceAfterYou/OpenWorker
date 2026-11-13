@@ -890,6 +890,11 @@ internal partial class MonsterBody : IAiHost
 
         var first = _manager.HitPlayers(this, skill, trigger, victims);
 
+        if (first != 0 && trigger.DamageRate > 0f)
+        {
+            Machine.OnStruck(first);
+        }
+
         if (_manager.Helpers.HasTargets)
         {
             _manager.Helpers.HitBy(this, skill, trigger, area, collider, colliderOnly);

@@ -97,6 +97,32 @@ public sealed partial class AiMachineTest
         Assert.AreEqual(1000, machine.TargetId);
     }
 
+    [TestMethod]
+    public void TheFirstOneABlowOfTheMonsterStrikesBecomesItsEnemyUnlessATauntHoldsIt()
+    {
+        var host = Crowd();
+        var builder = Fighter();
+
+        builder.SetFindEnemyInfo(false, 0.1f, 1000f);
+
+        var machine = Create(builder, host);
+
+        machine.Start();
+
+        Hit(machine, host, 1000, 1f);
+
+        Assert.AreEqual(1000, machine.TargetId);
+
+        machine.OnStruck(2000);
+
+        Assert.AreEqual(2000, machine.TargetId);
+
+        machine.Taunt(1000);
+        machine.OnStruck(2000);
+
+        Assert.AreEqual(1000, machine.TargetId, "A taunt holds the monster on its giver.");
+    }
+
     private static AiProfileBuilder Escaper(float points)
     {
         var builder = Fighter();
