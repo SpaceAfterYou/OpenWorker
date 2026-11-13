@@ -53,13 +53,6 @@ public partial class LuaMaze
         }
     }
 
-    [LuaMember("ExcutEventSpawnGroupLua")]
-    public void ExecuteEventSpawnGroupLua(int group)
-    {
-        NotDone("ExcutEventSpawnGroupLua");
-        Logger.IgnoredExecuteEventSpawnGroup(group);
-    }
-
     [LuaMember("ExcutEventSpawnLua")]
     public void ExecuteEventSpawnLua(int box)
     {
