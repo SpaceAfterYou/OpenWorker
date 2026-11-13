@@ -217,7 +217,6 @@ public sealed class PostTest
         var factory = new InventoryFactory(catalog, new([]), new LocalItemSerials());
 
         var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TestPersonCommit.Written,
-            TimeProvider.System,
             NullLogger<PostService>.Instance);
 
         foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
@@ -286,6 +285,10 @@ public sealed class PostTest
         Assert.AreEqual(300, letter.Money);
         Assert.AreEqual(Sword, letter.Items[0].Item);
 
+        // The client compares the end with the date the server gave it, and takes a letter whose end has passed off its list.
+        Assert.IsLessThan(60, Math.Abs(letter.RemainTime - DateTimeOffset.UtcNow.Add(PostLimits.Lifetime).ToUnixTimeSeconds()),
+            "the end goes as a moment in Unix seconds");
+
         Handle(receiver, c => service.OnHandleAsync(c, new PostReadRequest(Serial(letter.Serial))));
 
         Assert.AreEqual((byte)PostOpcode.Read, receiver.Read().Single().Command);
@@ -326,7 +329,6 @@ public sealed class PostTest
         var factory = new InventoryFactory(Catalog(), new([]), new LocalItemSerials());
 
         var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TestPersonCommit.Written,
-            TimeProvider.System,
             NullLogger<PostService>.Instance);
 
         foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
@@ -405,7 +407,7 @@ public sealed class PostTest
         var commit = new TestPersonCommit(false);
 
         var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, commit,
-            TimeProvider.System, NullLogger<PostService>.Instance);
+            NullLogger<PostService>.Instance);
 
         var person = new PersonPersistent
         {
@@ -523,7 +525,7 @@ public sealed class PostTest
         var box = await store.ListReceivedAsync(receiver, saved: true);
 
         Assert.AreEqual(kept, box.Single().Id, "a kept letter stays");
-        Assert.AreEqual(0, PostLetters.RemainTime(box.Single(), clock.GetUtcNow().UtcDateTime), "and shows no end");
+        Assert.AreEqual(0, PostLetters.RemainTime(box.Single()), "and shows no end");
         Assert.IsNotNull(await store.ClaimAsync(kept, receiver));
     }
 

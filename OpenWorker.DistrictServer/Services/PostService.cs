@@ -45,7 +45,6 @@ public sealed partial class PostService(
     CommunityNetwork network,
     IPersonFlush persons,
     IPersonCommit commit,
-    TimeProvider time,
     ILogger<PostService> logger
 ) :
     IHotspotHandler<PostSendListRequest>,
@@ -69,36 +68,34 @@ public sealed partial class PostService(
     /// </summary>
     private const byte Refresh = 1;
 
-    private DateTime Now => time.GetUtcNow().UtcDateTime;
-
     #region Lists
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostSendListRequest request)
     {
         var letters = await store.ListSentAsync(Me(context), context.CancellationToken);
 
-        Send(context, new PostSendListResponse { Values = letters.Select(e => PostLetters.Sent(e, Now)).ToArray(), Flag = Refresh });
+        Send(context, new PostSendListResponse { Values = letters.Select(e => PostLetters.Sent(e)).ToArray(), Flag = Refresh });
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostRecvListRequest request)
     {
         var letters = await store.ListReceivedAsync(Me(context), saved: false, context.CancellationToken);
 
-        Send(context, new PostRecvListResponse { Values = letters.Select(e => PostLetters.Received(e, Now)).ToArray(), Flag = Refresh });
+        Send(context, new PostRecvListResponse { Values = letters.Select(e => PostLetters.Received(e)).ToArray(), Flag = Refresh });
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostSaveListRequest request)
     {
         var letters = await store.ListReceivedAsync(Me(context), saved: true, context.CancellationToken);
 
-        Send(context, new PostSaveListResponse { Values = letters.Select(e => PostLetters.Received(e, Now)).ToArray(), Flag = Refresh });
+        Send(context, new PostSaveListResponse { Values = letters.Select(e => PostLetters.Received(e)).ToArray(), Flag = Refresh });
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostAccountListRequest request)
     {
         var letters = await store.ListAccountAsync(Account(context), context.CancellationToken);
 
-        Send(context, new PostAccountListResponse { Values = letters.Select(e => PostLetters.Account(e, Now)).ToArray(), Flag = Refresh });
+        Send(context, new PostAccountListResponse { Values = letters.Select(e => PostLetters.Account(e)).ToArray(), Flag = Refresh });
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostInfoRequest request)
@@ -253,9 +250,9 @@ public sealed partial class PostService(
 
         var (_, letter, unread) = result.Value;
 
-        Send(context, new PostSendResponse { Result = 0, Value = PostLetters.Sent(letter!, Now) });
+        Send(context, new PostSendResponse { Result = 0, Value = PostLetters.Sent(letter!) });
 
-        await network.SendAsync(letter!.ReceiverId!.Value, new PostRecvResponse { PostCount = Count(unread), Value = PostLetters.Received(letter, Now) });
+        await network.SendAsync(letter!.ReceiverId!.Value, new PostRecvResponse { PostCount = Count(unread), Value = PostLetters.Received(letter) });
 
         await FlushAsync(context);
     }
@@ -277,7 +274,7 @@ public sealed partial class PostService(
 
         if (result.Letter is { ReceiverId: { } sender } letter)
         {
-            await network.SendAsync(sender, new PostRecvResponse { PostCount = Count(result.Unread), Value = PostLetters.Received(letter, Now) });
+            await network.SendAsync(sender, new PostRecvResponse { PostCount = Count(result.Unread), Value = PostLetters.Received(letter) });
         }
     }
 
@@ -301,7 +298,7 @@ public sealed partial class PostService(
         {
             Serial = letter.Id,
             PostFlag = PostLetters.Flag(letter),
-            RemainTime = PostLetters.RemainTime(letter, Now),
+            RemainTime = PostLetters.RemainTime(letter),
             PostCount = Count(mine)
         });
     }
@@ -322,7 +319,7 @@ public sealed partial class PostService(
         {
             Serial = letter.Id,
             PostFlag = PostLetters.Flag(letter),
-            RemainTime = PostLetters.RemainTime(letter, Now),
+            RemainTime = PostLetters.RemainTime(letter),
             PostCount = Count(account)
         });
     }
@@ -333,7 +330,7 @@ public sealed partial class PostService(
 
         if (letter is not null)
         {
-            Send(context, new PostReceiptResponse { Serial = letter.Id, PostFlag = PostLetters.Flag(letter), RemainTime = PostLetters.RemainTime(letter, Now) });
+            Send(context, new PostReceiptResponse { Serial = letter.Id, PostFlag = PostLetters.Flag(letter), RemainTime = PostLetters.RemainTime(letter) });
 
             await FlushAsync(context);
         }
@@ -345,7 +342,7 @@ public sealed partial class PostService(
 
         if (letter is not null)
         {
-            Send(context, new PostAccountReceiptResponse { Serial = letter.Id, PostFlag = PostLetters.Flag(letter), RemainTime = PostLetters.RemainTime(letter, Now) });
+            Send(context, new PostAccountReceiptResponse { Serial = letter.Id, PostFlag = PostLetters.Flag(letter), RemainTime = PostLetters.RemainTime(letter) });
 
             await FlushAsync(context);
         }

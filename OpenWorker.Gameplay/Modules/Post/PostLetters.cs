@@ -150,21 +150,21 @@ public static class PostLetters
     /// <summary>
     /// A letter as its receiver sees it: who sent it.
     /// </summary>
-    public static PostValue Received(PostPersistent letter, DateTime now)
+    public static PostValue Received(PostPersistent letter)
     {
-        return ToValue(letter, new PostCharacterValue { Character = letter.SenderId ?? 0, Class = letter.SenderHero, Name = letter.SenderName }, RemainTime(letter, now));
+        return ToValue(letter, new PostCharacterValue { Character = letter.SenderId ?? 0, Class = letter.SenderHero, Name = letter.SenderName }, RemainTime(letter));
     }
 
     /// <summary>
     /// A letter as its sender sees it: whom it went to.
     /// </summary>
-    public static PostValue Sent(PostPersistent letter, DateTime now)
+    public static PostValue Sent(PostPersistent letter)
     {
         // The sender lists it until its time is up, even when the receiver keeps it.
-        return ToValue(letter, new PostCharacterValue { Character = letter.ReceiverId ?? 0, Class = letter.ReceiverHero, Name = letter.ReceiverName }, Left(letter, now));
+        return ToValue(letter, new PostCharacterValue { Character = letter.ReceiverId ?? 0, Class = letter.ReceiverHero, Name = letter.ReceiverName }, End(letter));
     }
 
-    public static PostAccountValue Account(PostPersistent letter, DateTime now)
+    public static PostAccountValue Account(PostPersistent letter)
     {
         return new PostAccountValue
         {
@@ -175,7 +175,7 @@ public static class PostLetters
             Money = letter.HasAttachments ? letter.Money : 0,
             Items = Items(letter),
             RegisteredTime = new DateTimeOffset(DateTime.SpecifyKind(letter.CreatedAt, DateTimeKind.Utc)).ToUnixTimeSeconds(),
-            RemainTime = RemainTime(letter, now),
+            RemainTime = End(letter),
             Flag = Flag(letter),
             SenderName = letter.SenderName,
             MainType = letter.MainType,
@@ -220,16 +220,18 @@ public static class PostLetters
     }
 
     /// <summary>
-    /// How many seconds the receiver still has the letter; 0 for a letter it keeps, which has no end.
+    /// The end of the letter for its receiver, as the client reads the field it calls the remaining time: a moment in Unix
+    /// seconds, which it compares with the date the server gave it (04/03), and 0 for a letter its receiver keeps, which has
+    /// no end. The client takes a letter whose end has passed off its lists by itself.
     /// </summary>
-    public static long RemainTime(PostPersistent letter, DateTime now)
+    public static long RemainTime(PostPersistent letter)
     {
-        return letter.State.HasFlag(PostState.Saved) ? 0 : Left(letter, now);
+        return letter.State.HasFlag(PostState.Saved) ? 0 : End(letter);
     }
 
-    private static long Left(PostPersistent letter, DateTime now)
+    private static long End(PostPersistent letter)
     {
-        return Math.Max(0, (long)(letter.ExpiresAt - now).TotalSeconds);
+        return new DateTimeOffset(DateTime.SpecifyKind(letter.ExpiresAt, DateTimeKind.Utc)).ToUnixTimeSeconds();
     }
 
     private static PostValue ToValue(PostPersistent letter, PostCharacterValue character, long remainTime)

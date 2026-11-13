@@ -636,7 +636,7 @@ public sealed partial class ExchangeService(
         await network.SendAsync(person, new PostRecvResponse
         {
             PostCount = (short)Math.Min(unread, short.MaxValue),
-            Value = PostLetters.Received(letter, Now)
+            Value = PostLetters.Received(letter)
         });
     }
 
