@@ -332,4 +332,26 @@ public sealed class ItemUseTest
         Assert.IsNull(rig.Use.ItemOfService(rig.Fixture.Player, potion.Storage, potion.Slot, ItemUseType.SKILL_RESET_ALL), "A potion is not a reset");
         Assert.IsNull(rig.Use.ItemOfService(rig.Fixture.Player, item.Storage, (short)(item.Slot + 1), ItemUseType.SKILL_RESET_ALL), "An empty slot has none");
     }
+
+    /// <summary>
+    /// A fever item acts where it is picked up: it gives its buff and goes into no bag, whatever the place. One in a bag is not
+    /// usable; a potion picked up goes into the bags.
+    /// </summary>
+    [TestMethod]
+    public async Task AFeverItemGivesItsBuffWhenPickedUpAndIsNotUsedFromABag()
+    {
+        using var rig = new Rig();
+
+        var fever = rig.Items.First(e => rig.Fixture.Catalog.Classify(e.Id) is { ItemUseType: ItemUseType.FEVER } && e.EffectType == 1);
+
+        Assert.IsTrue(rig.Use.UseOnPickUp(rig.Fixture.Player, fever.Id), "The fever item is used where it lies");
+        CollectionAssert.AreEqual(new[] { fever.EffectValue }, rig.Field.Given, "Its buff is given");
+        Assert.IsFalse(rig.Use.UseOnPickUp(rig.Fixture.Player, rig.Potion().Id), "A potion is not used when it is picked up");
+
+        var item = rig.Fixture.Give(fever.Id, 1);
+        rig.Field.Place = Maze;
+
+        Assert.AreEqual(ItemUseCodes.NotUsable, (await rig.UseAsync(item)).Error, "A fever item in a bag is not usable");
+        Assert.AreEqual(1, rig.Field.Given.Count, "The refused use gives nothing");
+    }
 }

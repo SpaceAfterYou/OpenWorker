@@ -53,7 +53,8 @@ public sealed partial class DropService(
     AchievementManager? achievements = null,
     ReadOnlyCollection<DropRateLevelRow>? levelRates = null,
     ReadOnlyCollection<DropRateMemberRow>? memberRates = null,
-    BoosterManager? boosters = null)
+    BoosterManager? boosters = null,
+    ItemUseService? use = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -314,6 +315,8 @@ public sealed partial class DropService(
             BattlePointObject => inventory.AddUpToLimit(player, ShopCurrency.Bp, drop.Count) >= 0,
             EtherObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Ether, drop.Count)) >= 0,
             SoulObject => true,
+            // A fever item acts at once and does not go into the bags.
+            _ when use?.UseOnPickUp(player, drop.ObjectId) == true => true,
             _ => inventory.TryGive(player, drop.ObjectId, drop.Count)
         };
 
