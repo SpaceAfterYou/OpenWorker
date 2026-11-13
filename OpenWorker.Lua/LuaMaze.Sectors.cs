@@ -56,6 +56,8 @@ public partial class LuaMaze
 
         creatureManager.Remove(target);
 
+        RespawnLater(place.SpawnBox, identifier);
+
         return (identifier, place, position);
     }
 
