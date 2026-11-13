@@ -1,3 +1,4 @@
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot;
 
 namespace OpenWorker.DistrictServer.Trade;
@@ -14,6 +15,7 @@ public static class TradeServiceCollectionExtensions
         services.AddSingleton<TradeGoods>();
         services.AddSingleton<Trades>();
         services.AddSingleton<PrivateShops>();
+        services.AddSingleton<IItemLocks, TradeItemLocks>();
         services.AddSingleton<TradeCloseHandler>();
         services.Insert(0, ServiceDescriptor.Singleton<ISessionCloseHandler>(provider => provider.GetRequiredService<TradeCloseHandler>()));
         services.AddHostedService<TradeExpiryService>();

@@ -94,7 +94,8 @@ public sealed partial class ItemUseService(
     FatigueService? fatigue = null,
     IReviveItems? revive = null,
     AchievementManager? achievements = null,
-    InfiniteTower? tower = null)
+    InfiniteTower? tower = null,
+    IItemLocks? locks = null)
 {
     // The group of the classify table that holds the items taken at a meal: potions and fatigue items.
     private const int ConsumableGroup = 17;
@@ -114,7 +115,8 @@ public sealed partial class ItemUseService(
         var bag = inventory.InventoryOf(player);
         var item = bag?.At(group, slot);
 
-        if (bag is null || item is null || item.Serial != serial || !Usable.Contains(group) ||
+        // An item offered in a trade or a shop is held there.
+        if (bag is null || item is null || item.Serial != serial || !Usable.Contains(group) || locks?.IsLocked(player, group, slot) == true ||
             !catalog.TryGet(item.Item, out var row) || catalog.Classify(item.Item) is not { } classify)
         {
             return ItemUseResult.Refused();
@@ -178,7 +180,8 @@ public sealed partial class ItemUseService(
     {
         var item = inventory.InventoryOf(player)?.At(group, slot);
 
-        return item is { Count: >= 1 } && Usable.Contains(group) && catalog.Classify(item.Item) is { } classify && classify.ItemUseType == type
+        return item is { Count: >= 1 } && Usable.Contains(group) && locks?.IsLocked(player, group, slot) != true &&
+               catalog.Classify(item.Item) is { } classify && classify.ItemUseType == type
             ? item
             : null;
     }

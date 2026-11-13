@@ -64,6 +64,16 @@ public sealed class ItemUseTest
         public void GetUp(Entity player, ReviveItemKind kind) => GotUp.Add(kind);
     }
 
+    /// <summary>
+    /// The slots a test has put up in a trade or a shop.
+    /// </summary>
+    private sealed class Locks : IItemLocks
+    {
+        public HashSet<(StorageGroup, short)> Held { get; } = [];
+
+        public bool IsLocked(Entity player, StorageGroup storage, short slot) => Held.Contains((storage, slot));
+    }
+
     private static ItemPlace Maze { get; } = new(true, true, true, false, false);
 
     private sealed class Rig : IDisposable
@@ -75,6 +85,8 @@ public sealed class ItemUseTest
         public Field Field { get; } = new();
 
         public Revives Revives { get; } = new();
+
+        public Locks Locks { get; } = new();
 
         public ItemUseLimits Limits { get; }
 
@@ -90,7 +102,7 @@ public sealed class ItemUseTest
             Chains?.Enter(Fixture.Player);
 
             Limits = new ItemUseLimits(Fixture.World, new PersonStateStore(null!), Time, Options.Create(new DailyMissionOptions()));
-            Use = new ItemUseService(Fixture.World, Fixture.Inventory, Fixture.Catalog, Limits, new([]), new([]), new([]), Field, revive: Revives, achievements: Chains?.Manager);
+            Use = new ItemUseService(Fixture.World, Fixture.Inventory, Fixture.Catalog, Limits, new([]), new([]), new([]), Field, revive: Revives, achievements: Chains?.Manager, locks: Locks);
         }
 
         /// <summary>
@@ -204,6 +216,25 @@ public sealed class ItemUseTest
 
         Assert.IsTrue((await rig.UseAsync(rig.Fixture.Give(place.Id, 1))).Ok);
         Assert.AreEqual(1, rig.Chains.Counted(rig.Fixture.Player, AchievementType.ItemUsed));
+    }
+
+    [TestMethod]
+    public async Task AnItemOfferedInATradeOrAShopIsNotUsedUntilItIsTakenBack()
+    {
+        using var rig = new Rig();
+
+        rig.Field.Place = Maze;
+
+        var item = rig.Fixture.Give(rig.Potion().Id, 2);
+
+        rig.Locks.Held.Add((item.Storage, item.Slot));
+
+        Assert.AreEqual(ItemUseCodes.NotUsable, (await rig.UseAsync(item)).Error, "An offered item is refused as one that is not there");
+        Assert.AreEqual(2, item.Count);
+
+        rig.Locks.Held.Clear();
+
+        Assert.IsTrue((await rig.UseAsync(item)).Ok, "Taken back, it is used");
     }
 
     [TestMethod]
