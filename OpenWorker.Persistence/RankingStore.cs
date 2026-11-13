@@ -4,9 +4,6 @@ using OpenWorker.Domain.Stores;
 
 namespace OpenWorker.Persistence;
 
-/// <param name="Level">The level of the person as its row keeps it.</param>
-public sealed record RankingRow(int Order, int Person, string Name, byte Hero, int Time, int Score, byte Level = 1);
-
 /// <summary>
 /// The rankings: who cleared a map the fastest, and who has the most kills.
 /// </summary>
@@ -21,9 +18,9 @@ public static class RankingStore
 
     /// <summary>
     /// Records a result for the person, keeping the better of it and the old one. A faster clear is better in a time
-    /// attack (and with the same time, a higher score); a higher score is better in the arena.
+    /// attack (and with the same time, a higher score); a higher score is better in the arena. True when it was written.
     /// </summary>
-    public static async Task SubmitRankingAsync(this IDbContextFactory<PersistenceContext> factory, RankingKind kind, int scope, int person, int time, int score)
+    public static async Task<bool> SubmitRankingAsync(this IDbContextFactory<PersistenceContext> factory, RankingKind kind, int scope, int person, int time, int score)
     {
         await using var database = await factory.CreateDbContextAsync();
 
@@ -44,17 +41,20 @@ public static class RankingStore
 
         else
         {
-            return;
+            return false;
         }
 
         try
         {
             await database.SaveChangesAsync();
+
+            return true;
         }
 
         catch (DbUpdateException)
         {
             // Two results of the same person at once, the other one stays.
+            return false;
         }
     }
 
@@ -138,8 +138,15 @@ public static class TowerRankingStore
 /// </summary>
 public sealed class RankingBook(IDbContextFactory<PersistenceContext> factory) : IRankingStore
 {
-    public Task SubmitAsync(RankingKind kind, int scope, int person, int time, int score, CancellationToken cancellationToken = default)
+    public Task<bool> SubmitAsync(RankingKind kind, int scope, int person, int time, int score, CancellationToken cancellationToken = default)
     {
         return factory.SubmitRankingAsync(kind, scope, person, time, score);
+    }
+
+    public async Task<(IReadOnlyList<RankingRow> Top, RankingRow? Mine)> RankingAsync(RankingKind kind, int scope, int person, CancellationToken cancellationToken = default)
+    {
+        var (top, mine) = await factory.RankingAsync(kind, scope, person);
+
+        return (top, mine);
     }
 }
