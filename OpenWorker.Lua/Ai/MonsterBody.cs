@@ -60,6 +60,7 @@ internal partial class MonsterBody : IAiHost
     private readonly List<(double Start, double End, ActionAnimation Clip)> _clips = [];
     private double _lastMoveSent;
     private float _lastYawSent = float.NaN;
+    private Vector3? _stoppedAt;
     private double _born;
 
     public MonsterBody(World ecs, LuaCreatureManager manager, SkillActionProvider actions, Entity entity, MonsterBehavior behavior, AiProfile profile, Vector3 home)
@@ -135,6 +136,7 @@ internal partial class MonsterBody : IAiHost
         Group = default;
         _lastMoveSent = 0;
         _lastYawSent = float.NaN;
+        _stoppedAt = null;
         _born = _manager.Now;
         _shotSession = 0;
 
@@ -379,7 +381,8 @@ internal partial class MonsterBody : IAiHost
         _holdUntil = 0;
         _moveAfterHold = false;
 
-        if (send || moved)
+        // The clients already told it stands here are not told again.
+        if (moved || send && _stoppedAt != Position)
         {
             SendStop();
         }
@@ -934,6 +937,7 @@ internal partial class MonsterBody : IAiHost
 
         _lastMoveSent = now;
         _lastYawSent = Yaw;
+        _stoppedAt = null;
 
         Broadcast(new MovementMoveBtResponse
         {
@@ -953,6 +957,7 @@ internal partial class MonsterBody : IAiHost
     private void SendStop()
     {
         _lastYawSent = Yaw;
+        _stoppedAt = Position;
 
         Broadcast(new MovementStopBtResponse
         {
