@@ -78,27 +78,37 @@ public partial class LuaMaze
             return;
         }
 
-        EndControl(member);
-
         var owner = Ecs.Get<WorldComponent>(member.Player);
         var (sin, cos) = MathF.SinCos(owner.Rotation * MathF.PI / 180f);
         var offset = control.Event.Offset;
         var place = owner.Position + new Vector3(offset.X * cos - offset.Y * sin, offset.X * sin + offset.Y * cos, 0f);
+
+        TakeControl(member, behavior, control.Event.Monster, place, control.Event.Alpha, control.Event.Blend, control.Animation, control.Event.Follows, generation);
+    }
+
+    /// <summary>
+    /// The player takes a monster of that row in place of the one it had, and everybody in the maze is told.
+    /// </summary>
+    private void TakeControl(Fighter member, MonsterBehavior behavior, int table, Vector3 place, float alpha, float blend, int animation, bool follows,
+        int generation)
+    {
+        EndControl(member);
+
         var actor = new ActorValue(creatureManager.NextActor(), ActorType.Monster);
 
-        _controlled[member] = new Controlled(actor, behavior, place, control.Event.Follows, generation);
+        _controlled[member] = new Controlled(actor, behavior, place, follows, generation);
 
         creatureManager.Broadcast(new MonsterControlResponse
         {
             Owner = Ecs.Get<ActorComponent>(member.Player),
             Monster = actor,
             Position = place,
-            Yaw = owner.Rotation,
-            Table = control.Event.Monster,
-            Alpha = control.Event.Alpha,
-            Blend = control.Event.Blend,
-            Animation = control.Animation,
-            Follows = control.Event.Follows
+            Yaw = Ecs.Get<WorldComponent>(member.Player).Rotation,
+            Table = table,
+            Alpha = alpha,
+            Blend = blend,
+            Animation = animation,
+            Follows = follows
         });
     }
 

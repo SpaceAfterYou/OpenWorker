@@ -1,4 +1,6 @@
-﻿using System.Xml.Linq;
+﻿using System.Globalization;
+using System.Numerics;
+using System.Xml.Linq;
 using OpenWorker.Batch.Entities.Basic;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Batch.Enums;
@@ -42,6 +44,71 @@ public sealed record MonsterSpawnBox : BasicEntity
         RespawnType = x.GetEnum<RespawnType>("m_eRespawnType");
         RespawnCondition = x.GetInt32("m_iRespawnCondition");
         Group = x.GetInt32("m_iGroupID");
+    }
+
+    /// <summary>
+    /// A box of no map that brings one monster in at once at the place given, as a game master calls one in.
+    /// </summary>
+    public static MonsterSpawnBox At(int monster, Vector3 place, float rotation, int sector)
+    {
+        var x = new XElement("VMonsterSpawnBox");
+
+        void Add(string name, string value) => x.Add(new XElement(name, new XAttribute("value", value)));
+        string Number(float value) => value.ToString("R", CultureInfo.InvariantCulture);
+        string Point(Vector3 v) => $"{Number(v.X)},{Number(v.Y)},{Number(v.Z)}";
+
+        Add("m_ID", "0");
+        Add("m_iGenerateID", "0");
+        Add("iLayerBitmask", nameof(LayerBitmask.Common));
+        Add("m_vPosTopLeft", Point(place));
+        Add("m_vPosBottomRight", Point(place));
+        Add("m_fRotation", Number(rotation));
+        Add("m_vSize", Point(Vector3.Zero));
+        Add("m_bShowCustomEntity", "FALSE");
+        Add("m_ColorLDR", "0,0,0,255");
+
+        for (var slot = 1; slot <= 10; slot++)
+        {
+            var first = slot == 1;
+
+            Add($"m_iMonsterID{slot}", (first ? monster : 0).ToString(CultureInfo.InvariantCulture));
+            Add($"m_eType{slot}", nameof(MonsterSpawnType.Monster));
+            Add($"m_iChance{slot}", first ? "10000" : "0");
+        }
+
+        Add("m_eCreationPositionType", nameof(CreationPositionType.Center));
+        Add("m_eMoveType", nameof(MoveType.Free));
+        Add("m_eCreationCondition", nameof(CreationConditionType.Immediate));
+        Add("m_CreationEffectFile", string.Empty);
+        Add("m_fWaitCreationDelayTime", "0");
+        Add("m_fWaitCreationSequenceTime", "0");
+        Add("m_iWaitCreationMaxWave", "1");
+        Add("m_iMaxEntityCount", "1");
+        Add("m_eWaitCreationSequenceType", nameof(WaitCreationSequenceType.All));
+        Add("m_iWaypoint", "0");
+        Add("m_iAggroGroupID", "0");
+        Add("m_iAggroDistance", "0");
+        Add("m_iAggroMaxCount", "0");
+        Add("m_fLookRatio", "1");
+        Add("m_bShowSight", "FALSE");
+        Add("m_szObjectKey", string.Empty);
+        Add("m_eScriptType", nameof(ScriptType.None));
+
+        for (var check = 1; check <= 5; check++)
+        {
+            Add($"m_iCheckScriptHP{check}", "0");
+        }
+
+        Add("m_iSectorID", sector.ToString(CultureInfo.InvariantCulture));
+        Add("m_ChangeSpawnAction", string.Empty);
+        Add("m_ProtectionTarget", "0");
+        Add("m_RespawnTime", "0");
+        Add("m_iStep", "1");
+        Add("m_eRespawnType", nameof(RespawnType.None));
+        Add("m_iRespawnCondition", "0");
+        Add("m_iGroupID", "0");
+
+        return new MonsterSpawnBox(x);
     }
 
     /// <summary>

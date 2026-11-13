@@ -428,6 +428,18 @@ public sealed partial class LuaCreatureManager
     }
 
     /// <summary>
+    /// Monsters of no box of the map, brought in where they are asked for and shown to the clients at once.
+    /// </summary>
+    public IReadOnlyList<Entity> CreateMonstersAt(int identifier, IEnumerable<Vector3> positions, float rotation, int sector)
+    {
+        var created = positions.Select(e => CreateMonster(identifier, MonsterSpawnBox.At(identifier, e, rotation, sector))).ToList();
+
+        Show(created);
+
+        return created;
+    }
+
+    /// <summary>
     /// How many members the party of the maze has, which decides how strong its monsters are. A maze of one player counts one.
     /// </summary>
     public int PartyCount { get; private set; } = 1;
