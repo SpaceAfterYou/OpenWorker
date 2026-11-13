@@ -1,6 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Movement.Responses;
 
 namespace OpenWorker.Benchmarks;
 
@@ -15,8 +15,8 @@ public class BroadcastBenchmark
 
     private readonly ServerSessionComponent[] _sessions = new ServerSessionComponent[Recipients];
 
-    // Boxed once: the handler boxes its response itself, which is not the send path.
-    private readonly IResponseHotspotMessage _message = Movement.Response();
+    // The struct, as a handler sends it: nothing is boxed on the way.
+    private readonly MovementMoveBtResponse _message = Movement.Response();
 
     [GlobalSetup]
     public void Setup()
@@ -33,7 +33,7 @@ public class BroadcastBenchmark
     [Benchmark]
     public void EncodeAndQueueToFifty()
     {
-        using var frame = Frame.Encode(_message);
+        using var frame = Frame.Encode(in _message);
 
         foreach (var session in _sessions)
         {

@@ -1,7 +1,6 @@
 using System.Buffers;
 using System.Collections.Concurrent;
 using OpenWorker.Hotspot.Messages.Abstractions;
-using OpenWorker.Wire;
 
 namespace OpenWorker.Hotspot;
 
@@ -42,17 +41,10 @@ public sealed class Frame : IDisposable
     /// Encodes the message once, on the encoder of the world loop (or of the calling thread, off the loop). The caller holds
     /// the first reference and disposes the frame after queueing it.
     /// </summary>
+    /// <remarks>A message given as its struct is written where it is, without a box; one that is already held as
+    /// <see cref="IResponseHotspotMessage"/> is written through the interface.</remarks>
     /// <returns><see langword="null"/> for a message whose body does not fit one frame: it is dropped, with a warning.</returns>
-    public static Frame? Encode(IResponseHotspotMessage message)
-    {
-        return FrameEncoder.Current.Encode(message);
-    }
-
-    /// <summary>
-    /// The same for a message with a span format, without boxing it: what a broadcast on the hot path uses.
-    /// </summary>
-    /// <inheritdoc cref="Encode(IResponseHotspotMessage)"/>
-    public static Frame? Encode<T>(in T message) where T : struct, IResponseHotspotMessage, IWireWritable
+    public static Frame? Encode<T>(in T message) where T : IResponseHotspotMessage
     {
         return FrameEncoder.Current.Encode(in message);
     }

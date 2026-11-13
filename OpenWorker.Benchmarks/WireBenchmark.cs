@@ -1,9 +1,7 @@
 using System.Numerics;
 using BenchmarkDotNet.Attributes;
 using OpenWorker.Domain.Types;
-using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Movement.Requests;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
@@ -41,8 +39,8 @@ public class WireBenchmark : IDisposable
     // The body after the opcode, as the handler gets it.
     private readonly byte[] _body = Movement.Request()[2..];
 
-    // Boxed once, as the handler boxes its response itself.
-    private readonly IResponseHotspotMessage _generated = Movement.Response();
+    // The struct, as a handler sends it: nothing is boxed on the way.
+    private readonly MovementMoveBtResponse _generated = Movement.Response();
 
     private MemoryStream _stream = null!;
     private BinaryReader _reader = null!;
@@ -82,7 +80,7 @@ public class WireBenchmark : IDisposable
     [Benchmark]
     public int EncodeWithPacketWriter()
     {
-        using var frame = Frame.Encode(_generated)!;
+        using var frame = Frame.Encode(in _generated)!;
 
         return frame.Length;
     }

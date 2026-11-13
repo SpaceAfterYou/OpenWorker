@@ -54,21 +54,11 @@ internal sealed partial class FrameEncoder
         ? loop.Encoder
         : t_encoder ??= new FrameEncoder(NullLogger.Instance);
 
-    /// <returns>The frame with one reference, the caller's; <see langword="null"/> when the body does not fit.</returns>
-    public Frame? Encode(IResponseHotspotMessage message)
-    {
-        return Write(in message);
-    }
-
     /// <summary>
-    /// A message called on its struct: nothing is boxed, nothing allocated but the frame of the pools.
+    /// A message given as its struct is called where it is: nothing is boxed, nothing allocated but the frame of the pools.
     /// </summary>
-    public Frame? Encode<T>(in T message) where T : struct, IResponseHotspotMessage, IWireWritable
-    {
-        return Write(in message);
-    }
-
-    private Frame? Write<T>(in T message) where T : IResponseHotspotMessage
+    /// <returns>The frame with one reference, the caller's; <see langword="null"/> when the body does not fit.</returns>
+    public Frame? Encode<T>(in T message) where T : IResponseHotspotMessage
     {
         var writer = new PacketWriter(_arrays, InitialCapacity, MaxFrameLength, MessageHeader.HeaderSize);
 
