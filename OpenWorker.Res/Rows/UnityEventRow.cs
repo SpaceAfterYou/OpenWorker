@@ -8,21 +8,72 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 [BinaryResourceTable("tb_Unity_Event")]
 public readonly partial struct UnityEventRow(BinaryReader reader)
 {
-    public short Id { get; } = reader.ReadInt16();
-    public short Field1 { get; } = reader.ReadInt16();
-    public short Field2 { get; } = reader.ReadInt16();
-    public short Field3 { get; } = reader.ReadInt16();
-    public short Field4 { get; } = reader.ReadInt16();
-    public short Field5 { get; } = reader.ReadInt16();
-    public short Field6 { get; } = reader.ReadInt16();
-    public short Field7 { get; } = reader.ReadInt16();
-    public short Field8 { get; } = reader.ReadInt16();
-    public short Field9 { get; } = reader.ReadInt16();
-    public short Field10 { get; } = reader.ReadInt16();
-    public short Field11 { get; } = reader.ReadInt16();
-    public short Field12 { get; } = reader.ReadInt16();
-    public short Field13 { get; } = reader.ReadInt16();
-    public short Field14 { get; } = reader.ReadInt16();
-    public short Field15 { get; } = reader.ReadInt16();
-    public short Field16 { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The unity event: the table number a script starts the unity mode with.
+    /// </summary>
+    public ushort Id { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 1 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint1 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 2 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint2 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 3 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint3 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 4 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint4 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 5 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint5 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 6 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint6 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 7 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint7 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 8 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint8 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 9 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint9 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 10 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint10 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 11 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint11 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 12 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint12 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 13 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint13 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 14 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint14 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The D.S points stage 15 of the event gives every player standing.
+    /// </summary>
+    public ushort DsPoint15 { get; } = reader.ReadUInt16();
+    /// <summary>
+    /// The chance, in percent, of the bonus monsters of the event.
+    /// </summary>
+    public ushort BonusRate { get; } = reader.ReadUInt16();
 }
