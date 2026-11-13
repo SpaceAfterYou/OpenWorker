@@ -17,6 +17,7 @@ using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.HiddenEvents;
+using OpenWorker.Gameplay.Modules.UnityPoints;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
@@ -119,6 +120,7 @@ await Host
                 }
             };
         });
+        services.AddSingleton<UnityEvents>();
         services.AddSingleton<PrologueService>();
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<MazeResults>());
 
