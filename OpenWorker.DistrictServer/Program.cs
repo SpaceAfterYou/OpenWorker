@@ -18,6 +18,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Npcs;
 using OpenWorker.Gameplay.Modules.Persistence;
+using OpenWorker.Gameplay.Modules.Post;
 using OpenWorker.Gameplay.Modules.Quests;
 using OpenWorker.Res.Extensions;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -68,6 +69,7 @@ await Host
         services.AddTrade();
         services.AddPartyMazeEntry();
         services.AddMyRoom().AddSingleton<IMyRoomPlace, DistrictRoomPlace>();
+        services.AddHostedService<PostSweepService>();
 
         services.AddHotspot(context, EntityComponentService.District);
 

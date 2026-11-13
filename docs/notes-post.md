@@ -30,10 +30,10 @@ The NPC of a request is not checked: any request is served wherever the player s
 | `Items` | jsonb, the attached items with everything that was done to them (owned type `PostItemPersistent`) |
 | `MainType`, `SubType` | the kind of a letter of the game, as the client table of system letters numbers them; 0 for persons |
 | `State` | flags: read 1, taken 2, sent back 4, kept 8, deleted by the sender 16, deleted by the receiver 32 |
-| `ExpiresAt` | until when the letter is kept (30 days from sending or from sending back) |
+| `ExpiresAt` | until when the letter lives (30 days from sending or from sending back); indexed for the sweep |
 | `CreatedAt`, `UpdatedAt` | as on every table |
 
-Indexes: `ReceiverId`, `SenderId`, `ReceiverAccountId`. Checks: `Money >= 0`, `Postage >= 0`, and a letter is for a person
+Indexes: `ReceiverId`, `SenderId`, `ReceiverAccountId`, `ExpiresAt`. Checks: `Money >= 0`, `Postage >= 0`, and a letter is for a person
 or for an account as its `Kind` says.
 
 ## How a letter is written
@@ -47,9 +47,9 @@ and the wallet dirty; the handler then flushes the person (`IPersonFlush`) at on
   taken yet): two servers that take one letter at the same moment cannot both get it. A claim the game cannot honour (no
   room, too much gold, the player gone) is put back (`ReleaseAsync`).
 - **The box limit belongs to the database**: sending and sending back hold the row of the person whose box fills
-  (`SELECT ... FOR UPDATE`) while they count it and insert, so two servers cannot overfill it. The limit is 40 letters, kept
-  ones included: a list of 40 letters at their longest (about 1.4 KB each) still fits one packet. The sent list shows the
-  newest 40.
+  (`SELECT ... FOR UPDATE`) while they count it and insert, so two servers cannot overfill it. The limit is 40 live letters
+  (see "When a letter's time is up"), kept ones included: a list of 40 letters at their longest (about 1.4 KB each) still fits
+  one packet. The sent list shows the newest 40.
 - **Sending** takes the gold (money plus postage) and the items from the sender in memory, writes the sender
   (`IPersonCommit`) and only then the letter; when that write is not taken or the store fails, they are given back and
   the sender is answered 55306; an inventory that filled meanwhile gets the items as a letter to the account instead. A
@@ -60,6 +60,40 @@ and the wallet dirty; the handler then flushes the person (`IPersonFlush`) at on
   receiver never touch the same row. An item that stacks is given as the inventory gives stacks (its attributes are those
   of the table); an item that does not stack comes back with every attribute it was sent with.
 - A blocked sender is answered as if the receiver did not exist.
+
+## When a letter's time is up
+
+Every letter lives 30 days (`PostLimits.Lifetime`) from its sending, or from its sending back, whoever sent it: a person, the
+game or the exchange. Then it is gone for both sides with the gold and the items it still carries: they are lost, not sent
+back. A letter its receiver moved to the kept letters has no end for the receiver.
+
+- **The boxes decide by the time, not by the sweep.** Every query of the store asks the end of a letter: the received, sent
+  and account lists, the unread counts, reading, taking, keeping, deleting and sending back pass over a letter whose time is
+  up, whether it is still in the table or not. Taking it answers 55306, as for a letter that is not there. The client is told
+  nothing when a letter ends: it is missing from the next list.
+- **The limit of a box counts live letters**: a box full of letters whose time is up takes a new one.
+- **A kept letter** goes to its receiver with the end 0 (no end) and stays until it is deleted; its sender lists it until the
+  30 days are over.
+- **The sweep** (`PostSweepService`, every district) deletes the rows whose time is up and that no receiver keeps, every ten
+  minutes, in statements of at most 500 rows and at most 20 of them a round, off the world loop. Each statement is one
+  `DELETE` that picks its rows by the index on `ExpiresAt`: two districts that sweep at once delete each letter once, and as
+  nothing is given back, nothing is given twice.
+
+Compared with the original server:
+
+| What | Original | Here |
+|---|---|---|
+| Lifetime of a letter | 30 days, for letters of persons, of the game and of an account; a letter sent back gets 30 days again | same |
+| What happens at the end | the letter is no longer listed; what it carries is lost | same |
+| When the end is applied | when a list is loaded from the database; nothing deletes the rows in the game server | same for the lists; the sweep also deletes the rows |
+| Change of a letter whose end passed while the box was open | allowed until the list is loaded again (the server works on the list it loaded) | refused: every change asks the end |
+| Kept letters | no end; shown with an end time of 0 | same |
+| Sent list | until 30 days after sending, whatever the receiver did | same |
+| Notice to the client | none | none |
+| Remaining time on the wire | the end in Unix seconds, 0 for a kept letter | same (it was the seconds left until 2026-11-13) |
+
+Not checked: whether client 1.4.2.3 reads the `RemainTime` of a letter of an account as an end too (it does for the letters of
+persons); the server sends the end there as well.
 
 ## The requests
 
@@ -110,7 +144,10 @@ A letter of the game for an account is made by the store (`SendToAccountAsync`) 
   unread letters (the mark of new mail), of the person or of the account.
 - **`Flag`/`PostFlag`** is the low nibble of `State`: read 1, taken 2, sent back 4, kept 8. A letter that carried nothing
   shows no "taken". The client's own meaning of the bits is not known.
-- **Times.** `RegisteredTime` is Unix seconds of the sending; `RemainTime` is the seconds left until `ExpiresAt`.
+- **Times.** `RegisteredTime` is Unix seconds of the sending. `RemainTime` is, despite its name, the end of the letter in Unix
+  seconds (0 for a letter its receiver keeps): the client subtracts the date the server gave it (04/03) to show the time left,
+  and takes a letter whose end has passed off its list by itself. Until 2026-11-13 the server sent the seconds left, which
+  the client read as a moment in January 1970.
 - **Character of a letter.** In the received and kept lists it is the sender; in the sent list it is the receiver (the
   client has texts for "sent by {0}" and "sent to {0}").
 - **Attachments after they are taken** are not shown: the money is 0 and the item places are empty.
@@ -127,11 +164,9 @@ A letter of the game for an account is made by the store (`SendToAccountAsync`) 
   not marked yet, and a broken item (flag 2) is refused with 55303. The reference answers 55620 for the table rule and 55602 for
   a bound state and a broken item; the client has a text for 55304 and 55620 ("Bound items cannot be attached") and none for
   55602, so the texts decide here. An item worn once is bound.
-- **Expiry is not enforced**: `ExpiresAt` only feeds `RemainTime`. There is no automatic return or deletion.
 
 ## What remains
 
-- A sweep that sends back or deletes expired letters (the client has an "automatic return time").
 - Letters of the game from the game itself: maze or daily mission rewards that do not fit the inventory (`IRewardGranter`),
   shop gifts, the exchange.
 - Paging of lists if a box larger than 40 letters is wanted.

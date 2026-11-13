@@ -370,7 +370,7 @@ public sealed partial class MazeResults(
                 world.Get<ServerSessionComponent>(player).Send(new PostAccountRecvResponse
                 {
                     PostCount = (short)Math.Min(unread, short.MaxValue),
-                    Value = PostLetters.Account(letter, DateTime.UtcNow)
+                    Value = PostLetters.Account(letter)
                 });
             }
         }

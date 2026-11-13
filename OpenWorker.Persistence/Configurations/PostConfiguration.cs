@@ -58,6 +58,9 @@ public sealed class PostConfiguration : IEntityTypeConfiguration<PostPersistent>
         builder.HasIndex(x => x.SenderId);
         builder.HasIndex(x => x.ReceiverAccountId);
 
+        // The sweep finds the letters whose time is up by it.
+        builder.HasIndex(x => x.ExpiresAt);
+
         builder.ToTable(table =>
         {
             table.HasCheckConstraint("CK_Posts_Money", "\"Money\" >= 0");
