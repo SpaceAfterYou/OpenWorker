@@ -22,7 +22,7 @@ public readonly partial struct LeagueInviteAcceptRequest : IRequestHotspotMessag
 
     public int Requester { get; }
     public int Target { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string TargetName { get; }
     public int League { get; }
     public int Result { get; }

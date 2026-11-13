@@ -13,14 +13,14 @@ public readonly partial struct LoginAuthRequest : IRequestHotspotMessage
     private const GroupOpcode Group = GroupOpcode.Login;
     private const LoginOpcode Command = LoginOpcode.Req;
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Username { get; }
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Password { get; }
 
     // %02X-%02X-%02X-%02X-%02X-%02X
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string MacAddress { get; }
 
     public LoginAuthRequest(string username, string password, string macAddress) : this()

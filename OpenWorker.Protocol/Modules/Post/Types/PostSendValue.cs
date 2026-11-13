@@ -8,13 +8,13 @@ namespace OpenWorker.Hotspot.Modules.Post.Types;
 [WireMessage(WireMethods.Read)]
 public readonly partial struct PostSendValue
 {
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string TargetName { get; init; }
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Title { get; init; }
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Message { get; init; }
 
     public long Money { get; init; }

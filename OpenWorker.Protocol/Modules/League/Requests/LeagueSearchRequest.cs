@@ -19,10 +19,10 @@ public readonly partial struct LeagueSearchRequest : IRequestHotspotMessage
 
     public byte State { get; }
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Name { get; }
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Master { get; }
 
     public int Reserved { get; }

@@ -20,7 +20,7 @@ public readonly partial struct LeagueInviteRejectRequest : IRequestHotspotMessag
     private const GroupOpcode Group = GroupOpcode.League;
     private const LeagueOpcode Command = LeagueOpcode.InviteReject;
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string TargetName { get; }
     public int Requester { get; }
     public int Target { get; }

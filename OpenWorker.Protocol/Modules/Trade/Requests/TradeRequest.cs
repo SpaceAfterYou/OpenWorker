@@ -16,6 +16,6 @@ public readonly partial struct TradeRequest : IRequestHotspotMessage
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string TargetName { get; }
 }

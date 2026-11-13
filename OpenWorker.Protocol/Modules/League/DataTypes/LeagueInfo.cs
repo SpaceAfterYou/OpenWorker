@@ -4,8 +4,8 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.League.DataTypes;
 
 /// <summary>
-/// A league as the client reads it. What the client sends of a league comes in another order (the flag before the card)
-/// and with its texts counted in bytes, so the reading is written by hand.
+/// A league as the client reads it. What the client sends of a league comes in another order (the flag before the card),
+/// so the reading is written by hand.
 /// </summary>
 [WireMessage(WireMethods.Write)]
 public readonly partial struct LeagueInfo : IWireReadable<LeagueInfo>
@@ -73,13 +73,13 @@ public readonly partial struct LeagueInfo : IWireReadable<LeagueInfo>
         var rating = reader.ReadByte();
         var memberCount = reader.ReadInt16();
         var exp = reader.ReadInt64();
-        var name = reader.ReadUtf8UnicodeString();
+        var name = reader.ReadUtf16UnicodeString();
         var money = reader.ReadInt64();
         var createDate = reader.ReadInt64();
         var noticeDate = reader.ReadInt64();
         var master = reader.ReadInt32();
-        var masterName = reader.ReadUtf8UnicodeString();
-        var viceMasterName = reader.ReadUtf8UnicodeString();
+        var masterName = reader.ReadUtf16UnicodeString();
+        var viceMasterName = reader.ReadUtf16UnicodeString();
         var rewards = new LeagueRewardInfo[LeagueModuleDefines.LeagueRewardCount];
 
         for (var index = 0; index < rewards.Length; index++)
@@ -89,12 +89,12 @@ public readonly partial struct LeagueInfo : IWireReadable<LeagueInfo>
 
         var open = reader.ReadBoolean();
         var card = LeagueCard.Read(ref reader);
-        var notice = reader.ReadUtf8UnicodeString();
+        var notice = reader.ReadUtf16UnicodeString();
         var positions = new string[LeagueModuleDefines.LeaguePositionCount];
 
         for (var index = 0; index < positions.Length; index++)
         {
-            positions[index] = reader.ReadUtf8UnicodeString();
+            positions[index] = reader.ReadUtf16UnicodeString();
         }
 
         return new LeagueInfo
@@ -117,7 +117,7 @@ public readonly partial struct LeagueInfo : IWireReadable<LeagueInfo>
             Card = card,
             Notice = notice,
             PositionList = positions,
-            RecruitNotice = reader.ReadUtf8UnicodeString(),
+            RecruitNotice = reader.ReadUtf16UnicodeString(),
             RecruitNoticeDate = reader.ReadInt64()
         };
     }

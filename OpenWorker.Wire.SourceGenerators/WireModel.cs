@@ -29,8 +29,7 @@ internal sealed class WireModel
 
     private static readonly string[] StringFormats =
     [
-        "Ascii", "AsciiWithoutTerminator", "Utf8Ascii", "Utf16Ascii", "Utf8AsciiWithoutTerminator", "Utf8Unicode",
-        "Utf16Unicode", "Utf8UnicodeWithoutTerminator", "Utf16UnicodeWithoutTerminator"
+        "Ascii", "AsciiWithoutTerminator", "Utf8Ascii", "Utf8AsciiWithoutTerminator", "Utf16Unicode"
     ];
 
     private readonly INamedTypeSymbol _type;

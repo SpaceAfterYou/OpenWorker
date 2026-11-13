@@ -18,9 +18,9 @@ public readonly partial struct PersonCommunityRequest : IRequestHotspotMessage
     private const CharacterOpcode Command = CharacterOpcode.Community;
 
     public CommunityState State { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Comment { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string Memo { get; }
     
     public MessageOpcode Opcode => new(Group, (byte)Command);

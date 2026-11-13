@@ -3,8 +3,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.League.DataTypes;
 
 /// <summary>
-/// A note on the board of a league. The client sends its texts with a length in bytes and the server writes them with a
-/// length in characters, so the reading is written by hand.
+/// A note on the board of a league.
 /// </summary>
 [WireMessage(WireMethods.Write)]
 public readonly partial struct LeagueBoardEntry : IWireReadable<LeagueBoardEntry>
@@ -42,8 +41,8 @@ public readonly partial struct LeagueBoardEntry : IWireReadable<LeagueBoardEntry
         {
             Serial = reader.ReadInt32(),
             League = reader.ReadInt32(),
-            Name = reader.ReadUtf8UnicodeString(),
-            Message = reader.ReadUtf8UnicodeString(),
+            Name = reader.ReadUtf16UnicodeString(),
+            Message = reader.ReadUtf16UnicodeString(),
             Date = reader.ReadInt64(),
             Result = reader.ReadInt32()
         };

@@ -16,9 +16,9 @@ public readonly partial struct PartyInviteRequest : IRequestHotspotMessage
 
     public MessageOpcode Opcode => new(Group, (byte)Command);
 
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string TargetName { get; }
-    [WireString(WireStringFormat.Utf8Unicode)]
+    [WireString(WireStringFormat.Utf16Unicode)]
     public string RequesterName { get; }
     public ActorValue RequesterActor { get; }
     public ActorValue TargetActor { get; }

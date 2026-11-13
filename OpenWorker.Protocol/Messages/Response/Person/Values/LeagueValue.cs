@@ -21,12 +21,12 @@ public readonly partial struct LeagueValue : IWireReadable<LeagueValue>
     }
 
     /// <summary>
-    /// What the client sends of a new character: the name of the league counted in bytes, not in characters as it is written.
+    /// What the client sends of a new character.
     /// </summary>
     public static LeagueValue Read(ref PacketReader reader)
     {
         var id = reader.ReadInt32();
-        var name = reader.ReadUtf8UnicodeString();
+        var name = reader.ReadUtf16UnicodeString();
         var card = PersonLeagueCardValueEntry.Read(ref reader);
 
         return new LeagueValue(id, name, card);
