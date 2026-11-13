@@ -38,6 +38,7 @@ public sealed partial class CashShopService(
     World world,
     CashShopOrders orders,
     CashShopGacha gacha,
+    CashShopWindow window,
     InventoryService inventory,
     ICashShopStore store,
     IPostStore post,
@@ -61,36 +62,9 @@ public sealed partial class CashShopService(
 
     #region The window
 
-    public async ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashLoadRequest request)
+    public ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashLoadRequest request)
     {
-        Send(context, new ShopBannerLoadResponse { BannerList = [] });
-
-        var listing = orders.Catalog.Listing;
-
-        for (var first = 0; first == 0 || first < listing.Count; first += CashShopCatalog.PartSize)
-        {
-            Send(context, new ShopCashLoadResponse
-            {
-                Last = first + CashShopCatalog.PartSize >= listing.Count,
-                ItemList = listing.Skip(first).Take(CashShopCatalog.PartSize).ToList()
-            });
-        }
-
-        var me = Me(context);
-        var account = Account(context);
-
-        try
-        {
-            var sets = await store.ListSetsAsync(me, context.CancellationToken);
-            var balance = await store.BalanceAsync(account, context.CancellationToken);
-
-            Send(context, new ShopCashSetLoadResponse { Sets = sets.Select(Shown).ToList() });
-            Send(context, new ItemUpdateCashResponse { Total = Total(balance) });
-        }
-        catch (Exception e) when (e is not OperationCanceledException || !context.CancellationToken.IsCancellationRequested)
-        {
-            LogLoadFailed(logger, e, me);
-        }
+        return window.LoadAsync(context.Player, context.CancellationToken);
     }
 
     #endregion
@@ -122,7 +96,7 @@ public sealed partial class CashShopService(
 
         LogBought(logger, me, request.ItemList.Count, order.Price, done.Balance);
 
-        Send(context, new ItemUpdateCashResponse { Total = Total(done.Balance) });
+        Send(context, new ItemUpdateCashResponse { Total = CashShopWindow.Balance(done.Balance) });
         Send(context, new ShopCashBuyResponse { Appearances = [], Failed = [] });
 
         await TellLettersAsync(me, buyer.Account, letters);
@@ -197,7 +171,7 @@ public sealed partial class CashShopService(
 
         LogGiven(logger, me, receiver.Person, request.ItemList.Count, order.Price, done.Balance);
 
-        Send(context, new ItemUpdateCashResponse { Total = Total(done.Balance) });
+        Send(context, new ItemUpdateCashResponse { Total = CashShopWindow.Balance(done.Balance) });
         Send(context, new ShopCashGiftResponse { Failed = [] });
 
         await TellLettersAsync(receiver.Person, receiver.Account, letters);
@@ -227,7 +201,7 @@ public sealed partial class CashShopService(
 
             if (result.Outcome != CashPurchaseOutcome.Done)
             {
-                Send(context, new ItemUpdateCashResponse { Total = Total(result.Balance) });
+                Send(context, new ItemUpdateCashResponse { Total = CashShopWindow.Balance(result.Balance) });
                 Fail(context, command, result.Outcome == CashPurchaseOutcome.NotEnough ? CashShopCodes.NotEnough : CashShopCodes.LimitReached);
                 return null;
             }
@@ -304,7 +278,7 @@ public sealed partial class CashShopService(
             return;
         }
 
-        Send(context, new ShopCashSetResponse { Set = Shown(set) });
+        Send(context, new ShopCashSetResponse { Set = CashShopWindow.Shown(set) });
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashSetDelRequest request)
@@ -328,11 +302,6 @@ public sealed partial class CashShopService(
 
         // A list already gone is gone all the same: the window forgets it.
         Send(context, new ShopCashSetDelResponse { SetNo = request.SetNo });
-    }
-
-    private static CashSetValue Shown(CashShopSetPersistent set)
-    {
-        return new CashSetValue { SetNo = set.SetNo, Name = set.Name, Products = set.Products, Items = set.Items };
     }
 
     #endregion
@@ -407,11 +376,6 @@ public sealed partial class CashShopService(
 
     private DateTime Now => Time.GetUtcNow().UtcDateTime;
 
-    /// <summary>
-    /// The balance as the client reads it.
-    /// </summary>
-    private static int Total(long balance) => (int)Math.Clamp(balance, 0, int.MaxValue);
-
     private int Me(ServiceHandleContext context) => world.Get<ActorComponent>(context.Player).Identifier;
 
     private int Account(ServiceHandleContext context) => world.Get<ClaimsComponent>(context.Player).Account;
@@ -437,9 +401,6 @@ public sealed partial class CashShopService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cash shop request {Request} of person {Person} failed in the database and is refused")]
     private static partial void LogStoreFailed(ILogger logger, Exception exception, ShopOpcode request, int person);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "The cash shop of person {Person} could not be loaded")]
-    private static partial void LogLoadFailed(ILogger logger, Exception exception, int person);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Person {Person} could not be told of the letters of the cash shop")]
     private static partial void LogNoticeFailed(ILogger logger, Exception exception, int person);
