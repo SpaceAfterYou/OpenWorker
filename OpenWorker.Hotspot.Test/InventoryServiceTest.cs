@@ -570,7 +570,7 @@ public sealed class InventoryServiceTest
     {
         using var f = new Fixture();
 
-        var granter = new InventoryRewardGranter(f.Service);
+        var granter = new InventoryRewardGranter(f.Service, f.World);
         var reward = new Reward([new RewardItem(Material, 60), new RewardItem(SecondWeapon, 1)], Gold: 500, Ether: 7);
 
         Assert.IsTrue(await granter.TryGrantAsync(f.Player, reward, RewardSource.DailyMission, CancellationToken.None));

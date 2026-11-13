@@ -55,7 +55,7 @@ public sealed class QuestInventoryTest
                 World,
                 new NoStore(),
                 catalog,
-                new InventoryRewardGranter(Inventory),
+                new InventoryRewardGranter(Inventory, World),
                 new InventoryQuestItems(Inventory),
                 new HelperManager(World, null!, HelperCatalog.From([])),
                 new BoosterManager(World, null!, null!, TimeProvider.System, NullLogger<BoosterManager>.Instance),
