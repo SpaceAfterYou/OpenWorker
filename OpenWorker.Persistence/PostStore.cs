@@ -49,12 +49,12 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
             return new PostSendResult(PostSendOutcome.NoReceiver, null, 0);
         }
 
-        if (!await HoldBoxAsync(database, receiver.Id, cancellationToken))
+        var now = Now;
+
+        if (!await HoldBoxAsync(database, receiver.Id, now, cancellationToken))
         {
             return new PostSendResult(PostSendOutcome.Full, null, 0);
         }
-
-        var now = Now;
 
         var letter = new PostPersistent
         {
@@ -80,7 +80,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
 
         await database.SaveChangesAsync(cancellationToken);
 
-        var unread = await Unread(database.Posts, receiver.Id).CountAsync(cancellationToken);
+        var unread = await Unread(database.Posts, receiver.Id, now).CountAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 
@@ -121,7 +121,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var box = Box(database.Posts, person);
+        var box = Box(database.Posts, person, Now);
 
         box = saved
             ? box.Where(e => (e.State & PostState.Saved) != 0)
@@ -137,8 +137,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        return await database.Posts
-            .Where(e => e.Kind == PostKind.Person && e.SenderId == person && (e.State & PostState.GoneForSender) == 0)
+        return await SentBox(database.Posts, person, Now)
             .OrderByDescending(e => e.Id)
             .Take(PostLimits.MaxLetters)
             .ToListAsync(cancellationToken);
@@ -148,7 +147,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        return await AccountBox(database.Posts, account)
+        return await AccountBox(database.Posts, account, Now)
             .OrderByDescending(e => e.Id)
             .Take(PostLimits.MaxLetters)
             .ToListAsync(cancellationToken);
@@ -158,8 +157,9 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var mine = await Unread(database.Posts, person).CountAsync(cancellationToken);
-        var shared = await AccountBox(database.Posts, account).CountAsync(e => (e.State & PostState.Read) == 0, cancellationToken);
+        var now = Now;
+        var mine = await Unread(database.Posts, person, now).CountAsync(cancellationToken);
+        var shared = await AccountBox(database.Posts, account, now).CountAsync(e => (e.State & PostState.Read) == 0, cancellationToken);
 
         return (mine, shared);
     }
@@ -168,7 +168,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var letters = Box(database.Posts, person).Where(e => e.Id == serial);
+        var letters = Box(database.Posts, person, Now).Where(e => e.Id == serial);
 
         await MarkAsync(letters, PostState.Read, cancellationToken);
 
@@ -179,7 +179,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var letters = AccountBox(database.Posts, account).Where(e => e.Id == serial);
+        var letters = AccountBox(database.Posts, account, Now).Where(e => e.Id == serial);
 
         await MarkAsync(letters, PostState.Read, cancellationToken);
 
@@ -190,14 +190,14 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        return await ClaimAsync(Box(database.Posts, person).Where(e => e.Id == serial), cancellationToken);
+        return await ClaimAsync(Box(database.Posts, person, Now).Where(e => e.Id == serial), cancellationToken);
     }
 
     public async Task<PostPersistent?> ClaimAccountAsync(long serial, int account, CancellationToken cancellationToken = default)
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        return await ClaimAsync(AccountBox(database.Posts, account).Where(e => e.Id == serial), cancellationToken);
+        return await ClaimAsync(AccountBox(database.Posts, account, Now).Where(e => e.Id == serial), cancellationToken);
     }
 
     public async Task ReleaseAsync(long serial, CancellationToken cancellationToken = default)
@@ -217,7 +217,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var letters = Box(database.Posts, person).Where(e => e.Id == serial);
+        var letters = Box(database.Posts, person, Now).Where(e => e.Id == serial);
 
         if (await MarkAsync(letters, PostState.Saved | PostState.Read, cancellationToken) == 0)
         {
@@ -231,7 +231,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var letters = Box(database.Posts, person).Where(e => e.Id == serial);
+        var letters = Box(database.Posts, person, Now).Where(e => e.Id == serial);
 
         if (await MarkAsync(letters.Where(e => (e.State & PostState.Received) != 0), PostState.GoneForReceiver, cancellationToken) == 0)
         {
@@ -247,8 +247,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var letters = database.Posts
-            .Where(e => e.Id == serial && e.Kind == PostKind.Person && e.SenderId == person && (e.State & PostState.GoneForSender) == 0);
+        var letters = SentBox(database.Posts, person, Now).Where(e => e.Id == serial);
 
         // The receiver keeps the letter and what it carries.
         if (await MarkAsync(letters, PostState.GoneForSender, cancellationToken) == 0)
@@ -265,7 +264,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        var letters = AccountBox(database.Posts, account).Where(e => e.Id == serial);
+        var letters = AccountBox(database.Posts, account, Now).Where(e => e.Id == serial);
 
         if (await letters.Where(e => (e.State & PostState.Received) != 0).ExecuteDeleteAsync(cancellationToken) == 0)
         {
@@ -280,7 +279,8 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
 
-        var letters = Box(database.Posts, person).Where(e => e.Id == serial);
+        var now = Now;
+        var letters = Box(database.Posts, person, now).Where(e => e.Id == serial);
         var found = await letters.Select(e => new { e.SenderId, e.State }).Take(1).ToListAsync(cancellationToken);
 
         if (found.Count == 0)
@@ -298,12 +298,10 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
             return new PostReturnResult(PostReturnOutcome.AlreadyReturned, null, 0);
         }
 
-        if (!await HoldBoxAsync(database, sender, cancellationToken))
+        if (!await HoldBoxAsync(database, sender, now, cancellationToken))
         {
             return new PostReturnResult(PostReturnOutcome.Full, null, 0);
         }
-
-        var now = Now;
 
         // The two sides change places in one statement: the right side of every assignment is the row as it was. The one
         // who sends it back does not list it as sent; what was taken stays taken.
@@ -326,7 +324,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
         }
 
         var letter = await database.Posts.FirstAsync(e => e.Id == serial, cancellationToken);
-        var unread = await Unread(database.Posts, sender).CountAsync(cancellationToken);
+        var unread = await Unread(database.Posts, sender, now).CountAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 
@@ -334,21 +332,32 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     }
 
     /// <summary>
-    /// The letters a person keeps, received and kept.
+    /// The letters a person keeps, received and kept. A received letter whose time is up is gone for its receiver, whether
+    /// the sweep has removed it yet or not; a kept one stays until the receiver deletes it.
     /// </summary>
-    private static IQueryable<PostPersistent> Box(IQueryable<PostPersistent> posts, int person)
+    private static IQueryable<PostPersistent> Box(IQueryable<PostPersistent> posts, int person, DateTime now)
     {
-        return posts.Where(e => e.Kind == PostKind.Person && e.ReceiverId == person && (e.State & PostState.GoneForReceiver) == 0);
+        return posts.Where(e => e.Kind == PostKind.Person && e.ReceiverId == person && (e.State & PostState.GoneForReceiver) == 0 &&
+                                ((e.State & PostState.Saved) != 0 || e.ExpiresAt > now));
     }
 
-    private static IQueryable<PostPersistent> Unread(IQueryable<PostPersistent> posts, int person)
+    private static IQueryable<PostPersistent> Unread(IQueryable<PostPersistent> posts, int person, DateTime now)
     {
-        return Box(posts, person).Where(e => (e.State & PostState.Read) == 0);
+        return Box(posts, person, now).Where(e => (e.State & PostState.Read) == 0);
     }
 
-    private static IQueryable<PostPersistent> AccountBox(IQueryable<PostPersistent> posts, int account)
+    /// <summary>
+    /// The letters a person sent and still lists, until their time is up.
+    /// </summary>
+    private static IQueryable<PostPersistent> SentBox(IQueryable<PostPersistent> posts, int person, DateTime now)
     {
-        return posts.Where(e => e.Kind == PostKind.Account && e.ReceiverAccountId == account && (e.State & PostState.GoneForReceiver) == 0);
+        return posts.Where(e => e.Kind == PostKind.Person && e.SenderId == person && (e.State & PostState.GoneForSender) == 0 && e.ExpiresAt > now);
+    }
+
+    private static IQueryable<PostPersistent> AccountBox(IQueryable<PostPersistent> posts, int account, DateTime now)
+    {
+        return posts.Where(e => e.Kind == PostKind.Account && e.ReceiverAccountId == account && (e.State & PostState.GoneForReceiver) == 0 &&
+                                e.ExpiresAt > now);
     }
 
     /// <summary>
@@ -380,13 +389,13 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
 
     /// <summary>
     /// Holds the row of the person until the transaction ends, so that nobody else adds a letter to its box meanwhile, and
-    /// tells whether the box has room for one more.
+    /// tells whether the box has room for one more. Letters whose time is up take no room.
     /// </summary>
-    private static async Task<bool> HoldBoxAsync(PersistenceContext database, int person, CancellationToken cancellationToken)
+    private static async Task<bool> HoldBoxAsync(PersistenceContext database, int person, DateTime now, CancellationToken cancellationToken)
     {
         await database.Database.ExecuteSqlAsync($"""SELECT 1 FROM "Persons" WHERE "Id" = {person} FOR UPDATE""", cancellationToken);
 
-        return await Box(database.Posts, person).CountAsync(cancellationToken) < PostLimits.MaxLetters;
+        return await Box(database.Posts, person, now).CountAsync(cancellationToken) < PostLimits.MaxLetters;
     }
 
     /// <summary>

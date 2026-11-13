@@ -102,7 +102,8 @@ public static class PostLimits
     public const int MaxLetters = 40;
 
     /// <summary>
-    /// How long a letter is kept.
+    /// How long a letter is kept, from its sending or its sending back, whoever sent it. Then it is gone for both sides with
+    /// what it still carries; a letter the receiver moved to the kept ones stays with the receiver.
     /// </summary>
     public static TimeSpan Lifetime { get; } = TimeSpan.FromDays(30);
 }

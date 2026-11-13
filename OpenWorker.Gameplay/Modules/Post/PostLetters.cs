@@ -152,7 +152,7 @@ public static class PostLetters
     /// </summary>
     public static PostValue Received(PostPersistent letter, DateTime now)
     {
-        return ToValue(letter, new PostCharacterValue { Character = letter.SenderId ?? 0, Class = letter.SenderHero, Name = letter.SenderName }, now);
+        return ToValue(letter, new PostCharacterValue { Character = letter.SenderId ?? 0, Class = letter.SenderHero, Name = letter.SenderName }, RemainTime(letter, now));
     }
 
     /// <summary>
@@ -160,7 +160,8 @@ public static class PostLetters
     /// </summary>
     public static PostValue Sent(PostPersistent letter, DateTime now)
     {
-        return ToValue(letter, new PostCharacterValue { Character = letter.ReceiverId ?? 0, Class = letter.ReceiverHero, Name = letter.ReceiverName }, now);
+        // The sender lists it until its time is up, even when the receiver keeps it.
+        return ToValue(letter, new PostCharacterValue { Character = letter.ReceiverId ?? 0, Class = letter.ReceiverHero, Name = letter.ReceiverName }, Left(letter, now));
     }
 
     public static PostAccountValue Account(PostPersistent letter, DateTime now)
@@ -219,14 +220,19 @@ public static class PostLetters
     }
 
     /// <summary>
-    /// How many seconds the letter is still kept.
+    /// How many seconds the receiver still has the letter; 0 for a letter it keeps, which has no end.
     /// </summary>
     public static long RemainTime(PostPersistent letter, DateTime now)
+    {
+        return letter.State.HasFlag(PostState.Saved) ? 0 : Left(letter, now);
+    }
+
+    private static long Left(PostPersistent letter, DateTime now)
     {
         return Math.Max(0, (long)(letter.ExpiresAt - now).TotalSeconds);
     }
 
-    private static PostValue ToValue(PostPersistent letter, PostCharacterValue character, DateTime now)
+    private static PostValue ToValue(PostPersistent letter, PostCharacterValue character, long remainTime)
     {
         return new PostValue
         {
@@ -240,7 +246,7 @@ public static class PostLetters
             Flag = Flag(letter),
             Type = letter.MainType,
             SubType = letter.SubType,
-            RemainTime = RemainTime(letter, now),
+            RemainTime = remainTime,
             Event = 0,
             Sockets = [],
             Broaches = []

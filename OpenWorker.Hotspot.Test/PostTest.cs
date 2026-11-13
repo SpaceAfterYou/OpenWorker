@@ -4,6 +4,7 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.DistrictServer.Services;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
@@ -452,5 +453,98 @@ public sealed class PostTest
         await using var database = await Factory.CreateDbContextAsync();
 
         Assert.IsFalse(await database.Posts.AnyAsync(e => e.SenderId == from), "no letter was written");
+    }
+
+    /// <summary>
+    /// A clock of its own for a test of letters whose time is up, set in a year of its own: the database is shared by the
+    /// tests of the class, and a sweep at that time reaches no letter of a test with a later year.
+    /// </summary>
+    private static FakeTimeProvider Clock(int year) => new(new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero));
+
+    /// <summary>
+    /// Letters straight into the table, for a person or an account, sent at the time of the clock.
+    /// </summary>
+    private static async Task<List<long>> AddLettersAsync(TimeProvider clock, int count, int? person, int? account, PostState state = PostState.None)
+    {
+        await using var database = await Factory.CreateDbContextAsync();
+
+        var now = clock.GetUtcNow().UtcDateTime;
+
+        var letters = Enumerable.Range(0, count).Select(_ => new PostPersistent
+        {
+            Kind = person is null ? PostKind.Account : PostKind.Person,
+            ReceiverId = person,
+            ReceiverAccountId = person is null ? account : null,
+            SenderName = "game",
+            Title = "Title",
+            Body = "Body",
+            Money = 10,
+            State = state,
+            CreatedAt = now,
+            UpdatedAt = now,
+            ExpiresAt = now + PostLimits.Lifetime
+        }).ToList();
+
+        database.Posts.AddRange(letters);
+
+        await database.SaveChangesAsync();
+
+        return letters.Select(e => e.Id).ToList();
+    }
+
+    /// <summary>
+    /// A letter whose time is up is gone for both sides with what it carries, whether the sweep has run or not: no list
+    /// shows it, no count counts it and it cannot be taken. A letter its receiver keeps has no end.
+    /// </summary>
+    [TestMethod]
+    public async Task ALetterWhoseTimeIsUpIsNotListedAndAKeptOneIs()
+    {
+        var clock = Clock(2001);
+        var store = new PostStore(Factory, clock);
+
+        var (_, sender) = await CreatePersonAsync("deadfrom");
+        var (account, receiver) = await CreatePersonAsync("deadto");
+
+        var dead = (await store.SendAsync(Draft(sender, "deadfrom", "deadto", 500))).Letter!.Id;
+        var kept = (await store.SendAsync(Draft(sender, "deadfrom", "deadto", 500))).Letter!.Id;
+        var shared = (await store.SendToAccountAsync(new PostAccountDraft(account, "game", "Title", "Body", 10, []))).Id;
+
+        Assert.IsNotNull(await store.SaveAsync(kept, receiver));
+
+        clock.Advance(PostLimits.Lifetime + TimeSpan.FromSeconds(1));
+
+        Assert.IsEmpty(await store.ListReceivedAsync(receiver, saved: false));
+        Assert.IsEmpty(await store.ListSentAsync(sender), "the sender lists it until its time is up");
+        Assert.IsEmpty(await store.ListAccountAsync(account));
+        Assert.AreEqual((0, 0), await store.CountUnreadAsync(receiver, account));
+        Assert.IsNull(await store.ClaimAsync(dead, receiver), "what it carried is gone with it");
+        Assert.IsNull(await store.ClaimAccountAsync(shared, account));
+
+        var box = await store.ListReceivedAsync(receiver, saved: true);
+
+        Assert.AreEqual(kept, box.Single().Id, "a kept letter stays");
+        Assert.AreEqual(0, PostLetters.RemainTime(box.Single(), clock.GetUtcNow().UtcDateTime), "and shows no end");
+        Assert.IsNotNull(await store.ClaimAsync(kept, receiver));
+    }
+
+    /// <summary>
+    /// The limit of a box counts the letters that live: a box full of letters whose time is up takes a new one.
+    /// </summary>
+    [TestMethod]
+    public async Task ALetterWhoseTimeIsUpTakesNoRoomInTheBox()
+    {
+        var clock = Clock(2002);
+        var store = new PostStore(Factory, clock);
+
+        var (_, sender) = await CreatePersonAsync("fullfrom");
+        var (_, receiver) = await CreatePersonAsync("fullto");
+
+        await AddLettersAsync(clock, PostLimits.MaxLetters, receiver, null);
+
+        Assert.AreEqual(PostSendOutcome.Full, (await store.SendAsync(Draft(sender, "fullfrom", "fullto", 0))).Outcome);
+
+        clock.Advance(PostLimits.Lifetime + TimeSpan.FromSeconds(1));
+
+        Assert.AreEqual(PostSendOutcome.Sent, (await store.SendAsync(Draft(sender, "fullfrom", "fullto", 0))).Outcome);
     }
 }
