@@ -65,31 +65,27 @@ public static class AttendanceRules
     }
 
     /// <summary>
-    /// Counts time towards the reward the person is waiting for. Returns the steps that were reached, which are
-    /// at most the ones that are left.
+    /// Counts time played today, up to the time of the last step. Returns whether the count changed.
     /// </summary>
-    public static List<int> AddPlayTime(AttendanceBook book, AttendanceCatalog catalog, int seconds)
+    public static bool AddPlayTime(AttendanceBook book, AttendanceCatalog catalog, int seconds)
     {
-        var reached = new List<int>();
+        var last = catalog.LastPlayTimeSeconds;
 
-        while (seconds > 0 && catalog.HasStep(book.PlayStep))
+        if (seconds <= 0 || book.PlaySeconds >= last)
         {
-            var need = catalog.PlayTime[book.PlayStep].Seconds - book.PlaySeconds;
-            var take = Math.Min(seconds, need);
-
-            book.PlaySeconds += take;
-            seconds -= take;
-
-            if (book.PlaySeconds < catalog.PlayTime[book.PlayStep].Seconds)
-            {
-                break;
-            }
-
-            reached.Add(book.PlayStep);
-            book.PlayStep++;
-            book.PlaySeconds = 0;
+            return false;
         }
 
-        return reached;
+        book.PlaySeconds = (int)Math.Min((long)book.PlaySeconds + seconds, last);
+
+        return true;
+    }
+
+    /// <summary>
+    /// The step the person waits for is reached: the time of the day is at its mark.
+    /// </summary>
+    public static bool IsReady(AttendanceBook book, AttendanceCatalog catalog)
+    {
+        return catalog.HasStep(book.PlayStep) && book.PlaySeconds >= catalog.PlayTime[book.PlayStep].Seconds;
     }
 }

@@ -137,24 +137,26 @@ public sealed partial class AttendanceManager(
             return;
         }
 
-        var reached = AttendanceRules.AddPlayTime(book, catalog, (int)Math.Min(elapsed.TotalSeconds, LongestStep.TotalSeconds));
+        AttendanceRules.AddPlayTime(book, catalog, (int)Math.Min(elapsed.TotalSeconds, LongestStep.TotalSeconds));
 
-        if (reached.Count == 0)
+        if (!AttendanceRules.IsReady(book, catalog))
         {
             return;
         }
 
         var session = world.Get<ServerSessionComponent>(player);
 
-        foreach (var step in reached)
+        while (AttendanceRules.IsReady(book, catalog))
         {
+            var step = book.PlayStep;
             var reward = new Reward([new RewardItem(catalog.PlayTime[step].Item, 1)]);
+
+            book.PlayStep++;
 
             if (!await rewards.TryGrantAsync(player, reward, RewardSource.PlayTime, cancellationToken))
             {
-                // The time stays full, so the reward is tried again at the next look.
+                // The step stays reached, so the reward is tried again at the next look.
                 book.PlayStep = step;
-                book.PlaySeconds = catalog.PlayTime[step].Seconds;
                 break;
             }
         }

@@ -8,7 +8,7 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Events.Responses;
 
 /// <summary>
-/// The reward for the time played was given: the step the person is on now and how long it has played in it.
+/// The reward for the time played was given: the step the person is on now and how long it has played today.
 /// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
