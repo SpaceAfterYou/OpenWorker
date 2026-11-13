@@ -1,4 +1,5 @@
 using Arch.Core;
+using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Res.Types;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -8,7 +9,7 @@ public sealed partial class ItemUseService
 {
     /// <summary>
     /// An item of fatigue adds its value to the fatigue of the day, unless the person has saved fatigue or a full day. The
-    /// ones that are not free may be used three times a game day.
+    /// ones that are not free may be used three times a game day. Each counts for the achievements of used items.
     /// </summary>
     private ItemUseResult UseFatigue(Entity player, ItemInstance item, ItemRow row, ItemClassifyRow classify)
     {
@@ -35,6 +36,7 @@ public sealed partial class ItemUseService
         }
 
         inventory.Spend(player, item, 1);
+        achievements?.Count(player, AchievementType.ItemUsed);
         limits.CountUse(player, type);
 
         return ItemUseResult.Used();

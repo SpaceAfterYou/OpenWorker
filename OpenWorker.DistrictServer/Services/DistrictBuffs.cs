@@ -1,5 +1,6 @@
 using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
@@ -214,6 +215,7 @@ public static class DistrictBuffsServiceCollectionExtensions
         services.AddSingleton<SimulationClock>();
         services.AddHostedService(provider => provider.GetRequiredService<SimulationClock>());
         services.AddSingleton<DistrictBuffs>();
+        services.Replace(ServiceDescriptor.Singleton<IItemField, DistrictItemBuffs>());
         // Before the handler that writes the person: what the person carries is written down first.
         services.Insert(0, ServiceDescriptor.Singleton<ISessionCloseHandler>(provider => provider.GetRequiredService<DistrictBuffs>()));
 

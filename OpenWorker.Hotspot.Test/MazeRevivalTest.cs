@@ -75,8 +75,12 @@ public sealed class MazeRevivalTest
         Assert.AreEqual(MazeRevival.NotInThisMaze, f.Revival.Check(f.Player, Tower, fallen: true, ReviveType.MazeFree), "a maze that lets nobody get up");
         Assert.AreEqual(MazeRevival.NotInThisMaze, f.Revival.Check(f.Player, Tower, fallen: false, ReviveType.MazeFree), "that comes before the fall");
 
-        // The buff of another player, the safe place of a district and the way of the server itself are not a player's to ask.
+        // By a buff that lets the player get up, only when the player carries one.
         Assert.AreEqual(MazeRevival.NotAllowed, f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.Buff));
+        Assert.IsNull(f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.Buff, revivable: true));
+        Assert.AreEqual(MazeRevival.NotInThisMaze, f.Revival.Check(f.Player, Tower, fallen: true, ReviveType.Buff, revivable: true));
+
+        // The safe place of a district and the way of the server itself are not a player's to ask.
         Assert.AreEqual(MazeRevival.NotAllowed, f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.SafetyZone));
         Assert.AreEqual(MazeRevival.NotAllowed, f.Revival.Check(f.Player, Plain, fallen: true, ReviveType.Auto));
 
