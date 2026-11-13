@@ -1,6 +1,7 @@
 using Arch.Core;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Responses;
 using OpenWorker.Hotspot.Modules.Items.Types;
@@ -16,6 +17,14 @@ public sealed partial class ItemUseService
     private readonly RowIndex<int, ItemPackageRow> _packages = packages.IndexBy(e => e.Id);
     private readonly RowIndex<int, ItemRandomBoxRow> _randomBoxes = randomBoxes.IndexBy(e => e.Id);
     private readonly RowIndex<int, ItemClassrewardLinkRow> _classRewards = classRewards.IndexBy(e => (int)e.Id);
+    private readonly RowIndex<int, ItemPackageUnpackRow> _unpacking = (unpacking ?? new([])).IndexBy(e => e.Id);
+    private readonly RowIndex<int, ReinforceRow> _reinforces = (reinforces ?? new([])).IndexBy(e => e.Id);
+
+    // A package names an item it cannot give upgraded.
+    private const ushort CannotUnpack = 52013;
+
+    // The highest level an item is given at by a package.
+    private const int MostUpgrade = 9;
 
     // The kind of effect in the item row that names a class box.
     private const int ClassBoxEffect = 7;
@@ -27,9 +36,9 @@ public sealed partial class ItemUseService
     private static readonly StorageGroup[] BoxStorages = [StorageGroup.Common, StorageGroup.Cash];
 
     /// <summary>
-    /// What an item gives when it is opened: money and items with their counts.
+    /// What an item gives when it is opened: money and items with their counts, an item given upgraded with its level.
     /// </summary>
-    public readonly record struct Reward(long Gold, long BattlePoint, long Ether, List<(int Item, int Count)> Items);
+    public readonly record struct Reward(long Gold, long BattlePoint, long Ether, List<(int Item, int Count, byte Upgrade)> Items);
 
     /// <summary>
     /// A box or a package opens into what its table holds; it goes only when everything that comes out of it fits, and the
@@ -58,19 +67,20 @@ public sealed partial class ItemUseService
             kind = innerClassify.ItemUseType;
         }
 
+        var refusal = ItemUseCodes.NotUsable;
         var reward = kind switch
         {
-            ItemUseType.PACKAGE or ItemUseType.PACKAGE_COSTUME => OpenPackage(box),
+            ItemUseType.PACKAGE or ItemUseType.PACKAGE_COSTUME => OpenPackage(box, out refusal),
             ItemUseType.RANDOM_BOX => OpenRandomBox(box),
             _ => null
         };
 
         if (reward is not { } opened)
         {
-            return ItemUseResult.Refused();
+            return ItemUseResult.Refused(refusal);
         }
 
-        if (!inventory.CanGiveAll(player, opened.Items, ignoring: item))
+        if (!inventory.CanGiveAll(player, opened.Items.Select(e => (e.Item, e.Count)).ToList(), ignoring: item))
         {
             return ItemUseResult.Refused(ItemUseCodes.BagFull);
         }
@@ -134,9 +144,16 @@ public sealed partial class ItemUseService
     /// </summary>
     public void Grant(Entity player, Reward reward)
     {
-        foreach (var (id, count) in reward.Items)
+        foreach (var (id, count, upgrade) in reward.Items)
         {
-            inventory.TryGive(player, id, count);
+            if (upgrade == 0)
+            {
+                inventory.TryGive(player, id, count);
+            }
+            else
+            {
+                GiveUpgraded(player, id, upgrade);
+            }
         }
 
         if (reward.Gold != 0)
@@ -155,21 +172,78 @@ public sealed partial class ItemUseService
         }
     }
 
-    private Reward? OpenPackage(int id)
+    /// <summary>
+    /// One item at a level, as a package gives it: an item that does not stack, made and then raised to the level.
+    /// </summary>
+    private void GiveUpgraded(Entity player, int id, byte upgrade)
     {
-        if (_packages.TryGet(id, out var row))
+        if (!inventory.TryGive(player, id, 1, out var changes, notify: false) || inventory.InventoryOf(player) is not { } bag)
         {
-            var ids = new[] { row.Item1, row.Item2, row.Item3, row.Item4, row.Item5, row.Item6, row.Item7, row.Item8, row.Item9, row.Item10 };
-            var counts = new[] { row.Count1, row.Count2, row.Count3, row.Count4, row.Count5, row.Count6, row.Count7, row.Count8, row.Count9, row.Count10 };
-
-            return new Reward(
-                row.Gold,
-                row.BattlePoint,
-                row.Ether,
-                ids.Zip(counts).Where(e => e.First > 0 && e.Second > 0).ToList());
+            return;
         }
 
-        return null;
+        foreach (var change in changes)
+        {
+            if (bag.At(change.Storage, change.Slot) is { } made)
+            {
+                made.Upgrade = upgrade;
+                bag.Touch(made);
+
+                if (world.Has<ServerSessionComponent>(player))
+                {
+                    world.Get<ServerSessionComponent>(player).Send(new ItemCreateResponse { List = [InventoryService.ToStorageValue(made)] });
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// What a package holds. The server's table says how each item is given: as it is, with its count, or as one item
+    /// upgraded to the level its count names, which only an item that does not stack and can be upgraded that far can be.
+    /// </summary>
+    private Reward? OpenPackage(int id, out ushort refusal)
+    {
+        refusal = ItemUseCodes.NotUsable;
+
+        if (!_packages.TryGet(id, out var row))
+        {
+            return null;
+        }
+
+        int[] ids = [row.Item1, row.Item2, row.Item3, row.Item4, row.Item5, row.Item6, row.Item7, row.Item8, row.Item9, row.Item10, row.Item11, row.Item12, row.Item13, row.Item14, row.Item15];
+        int[] counts = [row.Count1, row.Count2, row.Count3, row.Count4, row.Count5, row.Count6, row.Count7, row.Count8, row.Count9, row.Count10, row.Count11, row.Count12, row.Count13, row.Count14, row.Count15];
+
+        var unpack = _unpacking.TryGet(id, out var server) ? server : (ItemPackageUnpackRow?)null;
+        var items = new List<(int, int, byte)>();
+
+        for (var i = 0; i < ids.Length; i++)
+        {
+            if (ids[i] <= 0 || counts[i] <= 0)
+            {
+                continue;
+            }
+
+            // The server's row counts only where it names the same item as the client's.
+            if (unpack is not { } kinds || kinds.Items[i] != ids[i] || kinds.Kinds[i] != ItemPackageUnpackRow.Upgraded)
+            {
+                items.Add((ids[i], counts[i], 0));
+                continue;
+            }
+
+            var level = (byte)counts[i];
+
+            if (catalog.StackLimit(ids[i]) != 1 || !catalog.TryGet(ids[i], out var given) || given.Reinforce == 0 ||
+                !_reinforces.TryGet(given.Reinforce, out var reinforce) || reinforce.MaxLevel < level || level > MostUpgrade)
+            {
+                refusal = CannotUnpack;
+
+                return null;
+            }
+
+            items.Add((ids[i], 1, level));
+        }
+
+        return new Reward(row.Gold, row.BattlePoint, row.Ether, items);
     }
 
     private Reward? OpenRandomBox(int id)
@@ -181,7 +255,7 @@ public sealed partial class ItemUseService
             var counts = new[] { row.Count1, row.Count2, row.Count3, row.Count4, row.Count5, row.Count6, row.Count7, row.Count8, row.Count9, row.Count10, row.Count11, row.Count12, row.Count13, row.Count14, row.Count15 };
 
             var total = Math.Max(1, row.TotalRate);
-            var items = new List<(int, int)>();
+            var items = new List<(int, int, byte)>();
             long gold = 0, battlePoint = 0, ether = 0;
 
             for (var roll = 0; roll < Math.Max(1, (int)row.Rolls); roll++)
@@ -218,7 +292,7 @@ public sealed partial class ItemUseService
                     {
                         if (ids[i] > 0 && counts[i] > 0)
                         {
-                            items.Add((ids[i], counts[i]));
+                            items.Add((ids[i], counts[i], 0));
                         }
 
                         break;

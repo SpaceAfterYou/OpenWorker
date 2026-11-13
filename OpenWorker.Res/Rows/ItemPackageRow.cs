@@ -22,16 +22,11 @@ public readonly partial struct ItemPackageRow(BinaryReader reader)
     public int Item8 { get; } = reader.ReadInt32();
     public int Item9 { get; } = reader.ReadInt32();
     public int Item10 { get; } = reader.ReadInt32();
-    public int Field14 { get; } = reader.ReadInt32();
-    public int Field15 { get; } = reader.ReadInt32();
-    public int Field16 { get; } = reader.ReadInt32();
-    public int Field17 { get; } = reader.ReadInt32();
-    public int Field18 { get; } = reader.ReadInt32();
-    public int Field19 { get; } = reader.ReadInt32();
-    public int Field20 { get; } = reader.ReadInt32();
-    public int Field21 { get; } = reader.ReadInt32();
-    public int Field22 { get; } = reader.ReadInt32();
-    public int Field23 { get; } = reader.ReadInt32();
+    public int Item11 { get; } = reader.ReadInt32();
+    public int Item12 { get; } = reader.ReadInt32();
+    public int Item13 { get; } = reader.ReadInt32();
+    public int Item14 { get; } = reader.ReadInt32();
+    public int Item15 { get; } = reader.ReadInt32();
     public int Count1 { get; } = reader.ReadInt32();
     public int Count2 { get; } = reader.ReadInt32();
     public int Count3 { get; } = reader.ReadInt32();
@@ -42,4 +37,9 @@ public readonly partial struct ItemPackageRow(BinaryReader reader)
     public int Count8 { get; } = reader.ReadInt32();
     public int Count9 { get; } = reader.ReadInt32();
     public int Count10 { get; } = reader.ReadInt32();
+    public int Count11 { get; } = reader.ReadInt32();
+    public int Count12 { get; } = reader.ReadInt32();
+    public int Count13 { get; } = reader.ReadInt32();
+    public int Count14 { get; } = reader.ReadInt32();
+    public int Count15 { get; } = reader.ReadInt32();
 }
