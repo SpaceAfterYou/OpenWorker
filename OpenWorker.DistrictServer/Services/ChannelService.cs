@@ -12,6 +12,7 @@ using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Modules.Channels.Components;
+using OpenWorker.Gameplay.Modules.SocialItems;
 using OpenWorker.Hotspot.Modules.Channels.Requests;
 using OpenWorker.Hotspot.Modules.World.Requests;
 using OpenWorker.Hotspot.Modules.World.Responses;
@@ -25,7 +26,8 @@ public sealed class ChannelService(
     ServiceChannels serviceChannels,
     ServerChannels serverChannels,
     Trades trades,
-    CommunityNetwork community
+    CommunityNetwork community,
+    SocialItems objects
 ) :
     IHotspotHandler<WorldObjectRequest>,
     IHotspotHandler<ChannelInfoRequest>,
@@ -49,6 +51,9 @@ public sealed class ChannelService(
         // A party shows the channel of its members: the others are told of the new one.
         if (serverChannels.Switch(context.Player, request.Channel) is ChannelSwitchResult.Ok && world.IsAlive(context.Player))
         {
+            // The objects of the old channel are left behind: the one the player put down goes.
+            objects.Leave(context.Player);
+
             await community.ChangedAsync(context.Player);
         }
     }
@@ -86,6 +91,7 @@ public sealed class ChannelService(
         session.Send(new WorldOtherInfosNpcResponse { List = npcWireList });
 
         serviceChannels[channel.Index].SendOthers(context.Player, world);
+        objects.Show(context.Player);
 
         return ValueTask.CompletedTask;
     }

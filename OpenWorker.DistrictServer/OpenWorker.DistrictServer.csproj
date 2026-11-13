@@ -26,6 +26,7 @@
         <ProjectReference Include="..\OpenWorker.DistrictServer.Gameplay\OpenWorker.DistrictServer.Gameplay.csproj" />
         <ProjectReference Include="..\OpenWorker.Extensions\OpenWorker.Extensions.csproj"/>
         <ProjectReference Include="..\OpenWorker.Gameplay\OpenWorker.Gameplay.csproj"/>
+        <ProjectReference Include="..\OpenWorker.Navigation\OpenWorker.Navigation.csproj" />
         <ProjectReference Include="..\OpenWorker.Runtime\OpenWorker.Runtime.csproj" />
         <ProjectReference Include="..\OpenWorker.Server.Common\OpenWorker.Server.Common.csproj" />
     </ItemGroup>
