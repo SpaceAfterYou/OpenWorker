@@ -1,6 +1,5 @@
 using System.Numerics;
 using Arch.Core;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Hotspot;
@@ -72,30 +71,4 @@ public sealed class DropCleaner(DropService drops) : ISessionCloseHandler
 
         return ValueTask.CompletedTask;
     }
-}
-
-/// <summary>
-/// Takes away what has lain on the ground too long.
-/// </summary>
-public sealed partial class DropExpiryService(WorldLoop loop, DropService drops, ILogger<DropExpiryService> logger) : BackgroundService
-{
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
-
-        while (await timer.WaitForNextTickAsync(stoppingToken))
-        {
-            try
-            {
-                await loop.InvokeAsync(drops.Expire);
-            }
-            catch (Exception exception)
-            {
-                LogExpiryFailed(logger, exception);
-            }
-        }
-    }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Clearing the ground failed")]
-    private static partial void LogExpiryFailed(ILogger logger, Exception exception);
 }

@@ -225,6 +225,8 @@ public sealed class MazeResultsTest
         public World World { get; } = World.Create();
         public InventoryService Inventory { get; }
         public MazeResults Results { get; }
+        public FakeTimeProvider Time { get; } = new();
+        public SimulationClock Clock { get; }
 
         /// <summary>The item of the bucket of F, and the item of every bucket above it.</summary>
         public int ItemOfF { get; }
@@ -276,7 +278,17 @@ public sealed class MazeResultsTest
             // A maze worth 100 experience and 50 gold; its points are too high for a run without kills to pass F.
             var scoring = Scoring(plays ?? None<MazePlayScoreRow>(), Rows<MazeRuleRow>(Rule(Maze, level: 1, clearTime: 1, experience: 100, gold: 50)), parties);
 
-            Results = new MazeResults(World, keys, scoring: scoring, inventory: Inventory);
+            Clock = TestMazes.Clock(Time);
+            Results = new MazeResults(World, Clock, keys, scoring: scoring, inventory: Inventory);
+        }
+
+        public void Run(TimeSpan time)
+        {
+            for (var left = time; left > TimeSpan.Zero; left -= SimulationClock.Period)
+            {
+                Time.Advance(SimulationClock.Period);
+                Clock.Tick();
+            }
         }
 
         private static Action<BinaryWriter> Box(int id, int item, int count) => w =>
@@ -367,8 +379,8 @@ public sealed class MazeResultsTest
         var player = f.Player(7, "Haru");
 
         f.Results.Start(player, Maze);
-        f.Results.Complete(player);
-        f.Results.Complete(player);
+        f.Results.Complete(player, TimeSpan.FromSeconds(60));
+        f.Results.Complete(player, TimeSpan.FromSeconds(60));
 
         var window = (await f.ReceivedAsync(player, MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO, 1)).Single().Body;
 
@@ -397,7 +409,7 @@ public sealed class MazeResultsTest
         f.Results.Start(second, Maze);
         f.Results.OnMonstersHit(second, 1, 300);
         f.Results.OnMonstersHit(first, 1, 100);
-        f.Results.Complete([first, second]);
+        f.Results.Complete([first, second], TimeSpan.FromSeconds(60));
 
         var windows = new[]
         {
@@ -428,6 +440,50 @@ public sealed class MazeResultsTest
         }
     }
 
+    [TestMethod]
+    public async Task EveryMemberIsShownThePlayedTimeOfTheMaze()
+    {
+        using var f = new Fixture();
+        var first = f.Player(7, "Haru");
+        var second = f.Player(8, "Lily");
+
+        f.Results.Start(first, Maze);
+        f.Run(TimeSpan.FromSeconds(30));
+        f.Results.Start(second, Maze);
+        f.Results.Complete([first, second], TimeSpan.FromMilliseconds(200_900));
+
+        foreach (var member in new[] { first, second })
+        {
+            var window = (await f.ReceivedAsync(member, MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO, 1)).Single().Body;
+
+            Assert.AreEqual(200, BinaryPrimitives.ReadUInt16LittleEndian(window.AsSpan(9)), "whole seconds of the maze, whenever the member came in");
+            Assert.AreEqual(200, f.Results.LastClear(member)!.Value.Seconds);
+        }
+    }
+
+    [TestMethod]
+    public async Task TheComboIsTimedOnTheGameClock()
+    {
+        using var f = new Fixture();
+        var player = f.Player(7, "Haru");
+
+        f.Results.Start(player, Maze);
+
+        // Three targets start a combo of two, five more go on from it; the process takes no time between them.
+        f.Results.OnMonstersHit(player, 3, 10);
+        f.Results.OnMonstersHit(player, 3, 10);
+
+        // Game time past the window starts the combo again, however little the process moved.
+        f.Run(TimeSpan.FromMilliseconds(OpenWorker.Gameplay.Combat.Combo.WindowMilliseconds));
+        f.Results.OnMonstersHit(player, 5, 10);
+        f.Results.OnMonstersHit(player, 5, 10);
+        f.Results.Complete(player, TimeSpan.FromSeconds(60));
+
+        var window = (await f.ReceivedAsync(player, MazeOpcode.eSUB_CMD_MAZE_REWARD_INFO, 1)).Single().Body;
+
+        Assert.AreEqual(9, BinaryPrimitives.ReadInt32LittleEndian(window.AsSpan(11)), "four and five after the gap, not fifteen in one run");
+    }
+
     /// <summary>
     /// A person in a world with fatigue, a level and a clock.
     /// </summary>
@@ -450,7 +506,7 @@ public sealed class MazeResultsTest
             var progress = new SharePointManager(World, new PersonStateStore(null!), SharePointCatalog.Of([]), null!, NullLogger<SharePointManager>.Instance);
 
             Admission = new MazeAdmission(World, mazes, Fatigue, Scoring(None<MazePlayScoreRow>(), None<MazeRuleRow>()), progress);
-            Results = new MazeResults(World, fatigue: Fatigue);
+            Results = new MazeResults(World, TestMazes.Clock(Time), fatigue: Fatigue);
 
             Player = World.Create(
                 Component.GetComponentType(typeof(FatiguePointsComponent)),
@@ -487,7 +543,7 @@ public sealed class MazeResultsTest
         Assert.AreEqual(new FatiguePointsComponent { Common = 8, Bonus = 0, RefilledAt = today }, f.Points);
         Assert.IsTrue(f.Dirty.Sections.HasFlag(PersonSections.Currencies), "the flush writes the fatigue with the row");
 
-        f.Results.Complete(f.Player);
+        f.Results.Complete(f.Player, TimeSpan.FromSeconds(60));
 
         Assert.AreEqual(4, f.Points.Common);
         Assert.AreEqual(FatigueService.NotEnough, f.Admission.Check(f.Player, Maze), "four points do not pay for nine");

@@ -140,7 +140,7 @@ public sealed class MazeKeyRewardTest
 
             var rewards = new MazeKeyRewards(Inventory, Reward(keys), OneItemBox(Item), NullLogger<MazeKeyRewards>.Instance);
 
-            Results = new MazeResults(World, rewards);
+            Results = new MazeResults(World, TestMazes.Clock(), rewards);
             Handler = new MazeRewardService(World, rewards);
 
             World.Set(Player, new ActorComponent(7, ActorType.User));
@@ -156,7 +156,7 @@ public sealed class MazeKeyRewardTest
         public void FinishMaze()
         {
             Results.Start(Player, Maze);
-            Results.Complete(Player);
+            Results.Complete(Player, TimeSpan.FromSeconds(60));
         }
 
         /// <summary>The player takes the key reward with the keys of the first slot that holds them, or of the first slot of the bag.</summary>

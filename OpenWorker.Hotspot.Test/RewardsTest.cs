@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Numerics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Arch.Core;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
@@ -145,6 +146,8 @@ public sealed class RewardsTest
         public InventoryService Inventory { get; }
         public ExperienceService Experience { get; }
         public DropService Drops { get; }
+        public FakeTimeProvider Time { get; } = new();
+        public SimulationClock Clock { get; }
         public Entity Player { get; }
         public ReadOnlyCollection<MonsterRow> Monsters { get; } = Load<MonsterRow>("tb_Monster");
 
@@ -177,8 +180,11 @@ public sealed class RewardsTest
                 Monsters,
                 boosters: boosters);
 
+            Clock = TestMazes.Clock(Time);
+
             Drops = new DropService(
                 World,
+                Clock,
                 Inventory,
                 catalog,
                 serials,
@@ -227,6 +233,15 @@ public sealed class RewardsTest
         }
 
         public LevelComponent Rank => World.Get<LevelComponent>(Player);
+
+        public void Run(TimeSpan time)
+        {
+            for (var left = time; left > TimeSpan.Zero; left -= SimulationClock.Period)
+            {
+                Time.Advance(SimulationClock.Period);
+                Clock.Tick();
+            }
+        }
 
 
         public void Dispose()
@@ -403,6 +418,27 @@ public sealed class RewardsTest
         Assert.AreEqual(30, f.Inventory.Gold(f.Player));
         Assert.AreEqual(4, f.Inventory.CountOf(f.Player, Material));
         Assert.AreEqual(0, f.Drops.On(f.Player).Count);
+    }
+
+    [TestMethod]
+    public void ADropLiesOnTheGroundForItsLifetimeOfGameTime()
+    {
+        var monster = FindMonster();
+
+        using var f = new Fixture(drops: Rows<DropRow>(Drop(monster.DropId, 10000, 30, 30, 0, 0)));
+
+        f.Drops.DropForKill(f.Player, monster.Id, Vector3.Zero);
+
+        // The process may stall for longer than the lifetime: the game clock, capped a step, does not.
+        f.Time.Advance(DropService.Lifetime * 2);
+        f.Clock.Tick();
+        f.Run(DropService.Lifetime - SimulationClock.MaxStep - SimulationClock.Period);
+
+        Assert.AreEqual(1, f.Drops.On(f.Player).Count, "Short of its lifetime of game time");
+
+        f.Run(SimulationClock.Period);
+
+        Assert.AreEqual(0, f.Drops.On(f.Player).Count, "Gone at its lifetime");
     }
 
     /// <summary>

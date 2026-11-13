@@ -107,7 +107,6 @@ await Host
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<MazeRevival>());
         services.AddSingleton<IReviveItems, MazeReviveItems>();
         services.AddSingleton<ISessionCloseHandler, DropCleaner>();
-        services.AddHostedService<DropExpiryService>();
 
         services.AddChannels();
 

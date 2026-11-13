@@ -41,9 +41,11 @@ public readonly record struct MazeClear(byte Rank, int PlayPoint, int Seconds);
 /// (<see cref="FatigueService"/>); the league of the player hears of both ends (<see cref="LeagueGrowth"/>).</item>
 /// </list>
 /// The last clear stays known (<see cref="LastClear"/>) for what counts clears by rank, until the next run.
+/// The combo is timed on the game clock, and the time of the clear is the played time of the maze, the same for every member.
 /// </summary>
 public sealed partial class MazeResults(
     World world,
+    SimulationClock clock,
     MazeKeyRewards? keys = null,
     LeagueGrowth? league = null,
     MazeScoring? scoring = null,
@@ -61,10 +63,9 @@ public sealed partial class MazeResults(
 
     private readonly ILogger _logger = logger ?? NullLogger<MazeResults>.Instance;
 
-    private sealed class Tally(int maze, long started)
+    private sealed class Tally(int maze)
     {
         public int Maze { get; } = maze;
-        public long Started { get; } = started;
         public int Kills { get; set; }
         public int Experience { get; set; }
         public long Gold { get; set; }
@@ -86,7 +87,7 @@ public sealed partial class MazeResults(
     /// </summary>
     public void Start(Entity player, int maze)
     {
-        _tallies[player] = new Tally(maze, Environment.TickCount64)
+        _tallies[player] = new Tally(maze)
         {
             Health = world.TryGet<AbilityComponent>(player, out var ability) ? ability.Health.Current : null
         };
@@ -143,7 +144,7 @@ public sealed partial class MazeResults(
             return;
         }
 
-        var now = Environment.TickCount64;
+        var now = (long)clock.Time.TotalMilliseconds;
 
         tally.Combo = Combat.Combo.Next(tally.Combo, tally.LastHit, targets, now);
         tally.MaxCombo = Math.Max(tally.MaxCombo, tally.Combo);
@@ -187,19 +188,20 @@ public sealed partial class MazeResults(
     public MazeClear? LastClear(Entity player) => _cleared.TryGetValue(player, out var clear) ? clear : null;
 
     /// <summary>
-    /// The maze is finished by a player alone: shows the player how it went. Only once for a maze.
+    /// The maze is finished by a player alone after <paramref name="played"/> of game time: shows the player how it went.
+    /// Only once for a maze.
     /// </summary>
-    public void Complete(Entity player)
+    public void Complete(Entity player, TimeSpan played)
     {
-        Complete([player]);
+        Complete([player], played);
     }
 
     /// <summary>
     /// The maze is finished by everybody in it: each member is scored, the members are put in the order of their scores,
     /// and each gets its rewards and its window; the members of a party also get the list of all of them with their ranks.
-    /// Only once for a maze.
+    /// Only once for a maze. <paramref name="played"/> is the played time of the maze, which every member is scored and shown.
     /// </summary>
-    public void Complete(IReadOnlyList<Entity> members)
+    public void Complete(IReadOnlyList<Entity> members, TimeSpan played)
     {
         var runs = new List<(Entity Player, Tally Tally)>(members.Count);
 
@@ -216,9 +218,10 @@ public sealed partial class MazeResults(
             return;
         }
 
-        var now = Environment.TickCount64;
+        var milliseconds = Math.Max(0L, (long)played.TotalMilliseconds);
+        var seconds = (int)Math.Min(milliseconds / 1000, ushort.MaxValue);
         var damage = runs.Sum(e => e.Tally.Damage);
-        var scored = runs.Select(run => (run.Player, run.Tally, Score: Score(run.Player, run.Tally, runs.Count, damage, now), Seconds: (now - run.Tally.Started) / 1000)).ToList();
+        var scored = runs.Select(run => (run.Player, run.Tally, Score: Score(run.Player, run.Tally, runs.Count, damage, milliseconds))).ToList();
 
         // The order of the scores, highest first; equal scores keep the order the members came in.
         var ordered = scored.OrderByDescending(e => e.Score.PlayPoint).ToList();
@@ -226,9 +229,9 @@ public sealed partial class MazeResults(
 
         for (var place = 1; place <= ordered.Count; place++)
         {
-            var (player, tally, score, seconds) = ordered[place - 1];
+            var (player, tally, score) = ordered[place - 1];
 
-            Reward(player, tally, score, (int)Math.Min(seconds, ushort.MaxValue), ordered.Count, place);
+            Reward(player, tally, score, seconds, ordered.Count, place);
 
             list.Add(new MazeRewardPartyMember(
                 (byte)place,
@@ -243,7 +246,7 @@ public sealed partial class MazeResults(
         {
             var party = new MazeRewardPartyInfoResponse { Members = list };
 
-            foreach (var (player, _, _, _) in ordered)
+            foreach (var (player, _, _) in ordered)
             {
                 if (world.IsAlive(player))
                 {
@@ -253,7 +256,7 @@ public sealed partial class MazeResults(
         }
     }
 
-    private MazeScore Score(Entity player, Tally tally, int partySize, long damage, long now)
+    private MazeScore Score(Entity player, Tally tally, int partySize, long damage, long milliseconds)
     {
         if (scoring is null)
         {
@@ -264,7 +267,7 @@ public sealed partial class MazeResults(
         var level = world.TryGet<LevelComponent>(player, out var rank) ? rank.Level : 0;
         var share = damage > 0 ? (int)(tally.Damage * 100f / damage) : 0;
 
-        return scoring.Score(new MazeRun(tally.Maze, hero, level, tally.MaxCombo, tally.Kills, share, tally.HitsTaken, partySize, now - tally.Started));
+        return scoring.Score(new MazeRun(tally.Maze, hero, level, tally.MaxCombo, tally.Kills, share, tally.HitsTaken, partySize, milliseconds));
     }
 
     private void Reward(Entity player, Tally tally, MazeScore score, int seconds, int members, int place)
