@@ -282,6 +282,64 @@ public sealed class ExchangeTest
         await store.RecallAsync(listing.Serial, seller, e => ExchangeListings.ReturnLetter(e, DateTime.UtcNow));
     }
 
+    /// <summary>
+    /// The store of the exchange whose database does not answer at all.
+    /// </summary>
+    public class StoreFails : System.Reflection.DispatchProxy
+    {
+        protected override object? Invoke(System.Reflection.MethodInfo? targetMethod, object?[]? args)
+        {
+            var result = targetMethod!.ReturnType.GetGenericArguments().Single();
+            var fail = typeof(Task).GetMethod(nameof(Task.FromException), 1, [typeof(Exception)])!.MakeGenericMethod(result);
+
+            return fail.Invoke(null, [new TimeoutException("the database does not answer")]);
+        }
+    }
+
+    /// <summary>
+    /// The database does not answer: every request of the exchange still gets its answer, its own result or the error answer
+    /// of the request, and no exception leaves a handler for the error budget of the session.
+    /// </summary>
+    [TestMethod]
+    public async Task EveryRequestIsAnsweredWhenTheDatabaseFails()
+    {
+        var (account, person) = await CreatePersonAsync("nodb");
+
+        var catalog = Catalog();
+
+        using var server = new TestServer(new MemoryCommunity());
+        using var player = server.Join(person, "nodb");
+
+        Equip(server, player, account, catalog, 10_000);
+
+        var service = Service(server, catalog, System.Reflection.DispatchProxy.Create<IExchangeStore, StoreFails>());
+
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeInterestListRequest { Person = person }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeMyListRequest { Person = person }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeSearchRequest { Page = 1, Category = -1, SubCategory = -1 }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangePriceHistoryRequest { Person = person, Item = Sword }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeInterestItemRequest { Person = person, Item = Sword, Add = 1 }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeSellRegisterRequest { Serial = 1, Price = 1 }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeItemRecallRequest { Serial = 1 }));
+        Handle(server, player, c => service.OnHandleAsync(c, new ExchangeItemBuyRequest { Exchange = 1, Item = Sword, Count = 1 }));
+
+        var answers = player.Read().Where(e => e.Group == (byte)GroupOpcode.Exchange).ToList();
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                (byte)ExchangeOpcode.InterestList | 0x80, (byte)ExchangeOpcode.MyList | 0x80, (byte)ExchangeOpcode.Search | 0x80,
+                (byte)ExchangeOpcode.PriceHistory | 0x80, (byte)ExchangeOpcode.InterestItem, (byte)ExchangeOpcode.SellRegister,
+                (byte)ExchangeOpcode.ItemRecall, (byte)ExchangeOpcode.ItemBuy
+            },
+            answers.Select(e => (int)e.Command).ToArray());
+        Assert.AreEqual(ExchangeCodes.ItemError, BitConverter.ToInt32(answers[4].Content, 8), "the result of the item watched");
+        Assert.AreEqual(ExchangeCodes.ItemError, Result(answers[5]));
+        Assert.AreEqual(ExchangeCodes.ItemError, Result(answers[6]));
+        Assert.AreEqual(ExchangeCodes.Mismatch, Result(answers[7]));
+        Assert.AreEqual(10_000, server.World.Get<CurrencyComponent>(player.Entity).Gold);
+    }
+
     private static void Handle(TestServer server, TestPlayer player, Func<ServiceHandleContext, ValueTask> handle) =>
         server.Run(async () => await handle(new ServiceHandleContext(player.Entity, CancellationToken.None)));
 

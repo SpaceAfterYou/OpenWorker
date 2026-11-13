@@ -79,14 +79,29 @@ public sealed partial class ExchangeService(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ExchangeInterestListRequest request)
     {
         var me = Me(context);
-        var items = await store.ListInterestsAsync(me, context.CancellationToken);
+
+        var (done, items) = await AskAsync(context, ExchangeOpcode.InterestList, () => store.ListInterestsAsync(me, context.CancellationToken));
+
+        if (!done)
+        {
+            Fail(context, ExchangeOpcode.InterestList, ExchangeCodes.ItemError);
+            return;
+        }
 
         Send(context, new ExchangeInterestListResponse { Person = me, Items = items });
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ExchangeMyListRequest request)
     {
-        var listings = await store.ListMineAsync(Me(context), context.CancellationToken);
+        var me = Me(context);
+
+        var (done, listings) = await AskAsync(context, ExchangeOpcode.MyList, () => store.ListMineAsync(me, context.CancellationToken));
+
+        if (!done)
+        {
+            Fail(context, ExchangeOpcode.MyList, ExchangeCodes.ItemError);
+            return;
+        }
 
         Send(context, new ExchangeMyListResponse { Items = listings.Select(ExchangeListings.Mine).ToArray() });
     }
@@ -101,20 +116,20 @@ public sealed partial class ExchangeService(
             return;
         }
 
-        var result = 0;
-
-        if (request.Add != 0)
+        var (done, result) = await AskAsync(context, ExchangeOpcode.InterestItem, async () =>
         {
+            if (request.Add == 0)
+            {
+                await store.RemoveInterestAsync(me, request.Item, context.CancellationToken);
+                return 0;
+            }
+
             var outcome = await store.AddInterestAsync(me, request.Item, ExchangeRules.InterestLimit, context.CancellationToken);
 
-            result = outcome == ExchangeInterestOutcome.Full ? ExchangeCodes.InterestFull : 0;
-        }
-        else
-        {
-            await store.RemoveInterestAsync(me, request.Item, context.CancellationToken);
-        }
+            return outcome == ExchangeInterestOutcome.Full ? ExchangeCodes.InterestFull : 0;
+        });
 
-        Send(context, new ExchangeInterestItemResponse { Person = me, Item = request.Item, Result = result, Add = request.Add });
+        Send(context, new ExchangeInterestItemResponse { Person = me, Item = request.Item, Result = done ? result : ExchangeCodes.ItemError, Add = request.Add });
     }
 
     #endregion
@@ -208,13 +223,20 @@ public sealed partial class ExchangeService(
             return;
         }
 
-        var mine = await store.ListMineAsync(me, context.CancellationToken);
-        var listing = mine.Find(e => e.Serial == request.Serial);
+        var (read, mine) = await AskAsync(context, ExchangeOpcode.SellRegister, () => store.ListMineAsync(me, context.CancellationToken));
+
+        if (!read)
+        {
+            Send(context, new ExchangeSellRegisterResponse { Result = ExchangeCodes.ItemError });
+            return;
+        }
 
         if (!world.IsAlive(player))
         {
             return;
         }
+
+        var listing = mine.Find(e => e.Serial == request.Serial);
 
         if (listing is null)
         {
@@ -327,17 +349,18 @@ public sealed partial class ExchangeService(
         var account = Account(context);
         var now = Now;
 
-        var result = await store.RecallAsync(request.Serial, me, listing => ExchangeListings.ReturnLetter(listing, now), context.CancellationToken);
+        var (done, result) = await AskAsync(context, ExchangeOpcode.ItemRecall,
+            () => store.RecallAsync(request.Serial, me, listing => ExchangeListings.ReturnLetter(listing, now), context.CancellationToken));
 
-        if (result.Outcome != ExchangeOutcome.Done || result.Letter is null)
+        if (result is not { Outcome: ExchangeOutcome.Done, Letter: { } letter })
         {
-            Send(context, new ExchangeItemRecallResponse { Result = ExchangeCodes.Gone, Serial = request.Serial });
+            Send(context, new ExchangeItemRecallResponse { Result = done ? ExchangeCodes.Gone : ExchangeCodes.ItemError, Serial = request.Serial });
             return;
         }
 
         Send(context, new ExchangeItemRecallResponse { Result = 0, Serial = request.Serial });
 
-        await TellLetterAsync(me, account, result.Letter, context.CancellationToken);
+        await TellLetterAsync(me, account, letter, context.CancellationToken);
     }
 
     #endregion
@@ -363,7 +386,14 @@ public sealed partial class ExchangeService(
         var search = ExchangeRules.Filter(request.Item, request.Category, request.SubCategory, request.UseClass, request.LevelMin,
             request.LevelMax, request.GradeMin, request.GradeMax, request.Price, request.Upgrade);
 
-        var (total, found) = await store.SearchAsync(search, page, ExchangeRules.PageSize, Now, context.CancellationToken);
+        var (done, (total, found)) = await AskAsync(context, ExchangeOpcode.Search,
+            () => store.SearchAsync(search, page, ExchangeRules.PageSize, Now, context.CancellationToken));
+
+        if (!done)
+        {
+            Fail(context, ExchangeOpcode.Search, ExchangeCodes.ItemError);
+            return;
+        }
 
         Send(context, new ExchangeSearchResponse
         {
@@ -375,11 +405,20 @@ public sealed partial class ExchangeService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ExchangePriceHistoryRequest request)
     {
-        var sales = await store.ListSalesAsync(request.Item, ExchangeRules.SalesShown, context.CancellationToken);
+        var me = Me(context);
+
+        var (done, sales) = await AskAsync(context, ExchangeOpcode.PriceHistory,
+            () => store.ListSalesAsync(request.Item, ExchangeRules.SalesShown, context.CancellationToken));
+
+        if (!done)
+        {
+            Fail(context, ExchangeOpcode.PriceHistory, ExchangeCodes.ItemError);
+            return;
+        }
 
         Send(context, new ExchangePriceHistoryResponse
         {
-            Person = Me(context),
+            Person = me,
             Item = request.Item,
             Sales = sales.Select(ExchangeListings.Sale).ToArray()
         });
@@ -409,10 +448,16 @@ public sealed partial class ExchangeService(
             return;
         }
 
-        var listing = await store.FindAsync(request.Exchange, context.CancellationToken);
+        var (found, listing) = await AskAsync(context, ExchangeOpcode.ItemBuy, () => store.FindAsync(request.Exchange, context.CancellationToken));
 
         if (!world.IsAlive(player))
         {
+            return;
+        }
+
+        if (!found)
+        {
+            Bought(context, request, ExchangeCodes.Mismatch);
             return;
         }
 
@@ -494,7 +539,7 @@ public sealed partial class ExchangeService(
         // The seller is told wherever it plays: the listing as it is now, and the letter with the gold.
         var seller = soldFrom.SellerId;
 
-        await network.SendAsync(seller, new ExchangeMyListResponse { Items = [ExchangeListings.Mine(soldFrom)] });
+        await TellAsync(seller, () => network.SendAsync(seller, new ExchangeMyListResponse { Items = [ExchangeListings.Mine(soldFrom)] }));
         await TellLetterAsync(seller, 0, toSeller, CancellationToken.None);
     }
 
@@ -643,6 +688,27 @@ public sealed partial class ExchangeService(
     }
 
     /// <summary>
+    /// Asks the store for what a request reads or changes without paying. Not done when the store failed: the caller answers
+    /// the request with its error code, and the failure, no fault of the client, is not charged to the session; a server that
+    /// stops is not answered.
+    /// </summary>
+    private async ValueTask<(bool Done, T Value)> AskAsync<T>(ServiceHandleContext context, ExchangeOpcode request, Func<Task<T>> call)
+    {
+        var me = Me(context);
+
+        try
+        {
+            return (true, await call());
+        }
+        catch (Exception e) when (e is not OperationCanceledException || !context.CancellationToken.IsCancellationRequested)
+        {
+            LogAskFailed(logger, e, request, me);
+        }
+
+        return (false, default!);
+    }
+
+    /// <summary>
     /// What was taken from the player goes back when the store refused or failed. A player who has left meanwhile, or whose
     /// bags filled, gets it as a letter to the account, so nothing is lost.
     /// </summary>
@@ -686,15 +752,33 @@ public sealed partial class ExchangeService(
     /// <summary>
     /// Tells a person of a letter of the exchange, wherever it plays.
     /// </summary>
-    private async ValueTask TellLetterAsync(int person, int account, PostPersistent letter, CancellationToken cancellationToken)
+    private ValueTask TellLetterAsync(int person, int account, PostPersistent letter, CancellationToken cancellationToken)
     {
-        var (unread, _) = await post.CountUnreadAsync(person, account, cancellationToken);
-
-        await network.SendAsync(person, new PostRecvResponse
+        return TellAsync(person, async () =>
         {
-            PostCount = (short)Math.Min(unread, short.MaxValue),
-            Value = PostLetters.Received(letter)
+            var (unread, _) = await post.CountUnreadAsync(person, account, cancellationToken);
+
+            await network.SendAsync(person, new PostRecvResponse
+            {
+                PostCount = (short)Math.Min(unread, short.MaxValue),
+                Value = PostLetters.Received(letter)
+            });
         });
+    }
+
+    /// <summary>
+    /// A notice of what is already written: when it cannot be given, the person sees the change at the next list.
+    /// </summary>
+    private async ValueTask TellAsync(int person, Func<ValueTask> tell)
+    {
+        try
+        {
+            await tell();
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogNoticeFailed(logger, e, person);
+        }
     }
 
     private async ValueTask FlushAsync(ServiceHandleContext context)
@@ -737,6 +821,12 @@ public sealed partial class ExchangeService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Exchange request {Request} of person {Person} failed in the database and is refused; what it paid is given back")]
     private static partial void LogStoreFailed(ILogger logger, Exception exception, ExchangeOpcode request, int person);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Exchange request {Request} of person {Person} failed in the database and is answered with an error")]
+    private static partial void LogAskFailed(ILogger logger, Exception exception, ExchangeOpcode request, int person);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The exchange could not tell person {Person} of a change; it is seen at the next list")]
+    private static partial void LogNoticeFailed(ILogger logger, Exception exception, int person);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The exchange could not give back to its player: {Gold} gold and {Items} items go to the box of account {Account}")]
     private static partial void LogReturnedToAccount(ILogger logger, int account, long gold, int items);
