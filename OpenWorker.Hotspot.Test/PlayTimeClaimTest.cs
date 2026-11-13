@@ -7,6 +7,7 @@ using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Modules.Attendance;
 using OpenWorker.Gameplay.Modules.Attendance.Components;
+using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.State;
 
@@ -43,6 +44,22 @@ public sealed class PlayTimeClaimTest
 
         await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendancePlayTimeReward) == 1, "the claim that was given is told");
         await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendanceLoad) == 1, "the other one sets the countdown again");
+    }
+
+    [TestMethod]
+    public async Task TheSecondsPlayedGoToTheFlushUpToTheClose()
+    {
+        using var f = new Fixture();
+
+        var dirty = new PersonDirty(7);
+
+        f.World.Add(f.Player, new DirtyComponent(dirty));
+
+        f.Time.Advance(TimeSpan.FromSeconds(20));
+        await f.Manager.OnSessionClosedAsync(f.Player);
+
+        Assert.AreEqual(20, f.Book.PlaySeconds, "the seconds since the last count are counted at the close");
+        Assert.AreEqual(PersonSections.MiscState, dirty.Sections & PersonSections.MiscState, "and written by the flush that follows");
     }
 
     private sealed class Fixture : IDisposable

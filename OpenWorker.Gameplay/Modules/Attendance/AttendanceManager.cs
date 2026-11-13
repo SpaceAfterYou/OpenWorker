@@ -24,7 +24,7 @@ public sealed partial class AttendanceManager(
     ServerContent contents,
     TimeProvider time,
     IOptions<AttendanceOptions> options,
-    ILogger<AttendanceManager> logger) : IMiscTick
+    ILogger<AttendanceManager> logger) : IMiscTick, ISessionCloseHandler
 {
     private static readonly QueryDescription Everyone = new QueryDescription().WithAll<AttendanceComponent>();
 
@@ -126,7 +126,8 @@ public sealed partial class AttendanceManager(
     }
 
     /// <summary>
-    /// Counts the time played since the last count. Nothing is given here: the person claims each step.
+    /// Counts the time played since the last count and marks it for the flush, so a relog or a move to another server
+    /// keeps it. Nothing is given here: the person claims each step.
     /// </summary>
     public void CountPlayTime(Entity player)
     {
@@ -140,10 +141,21 @@ public sealed partial class AttendanceManager(
 
         world.Set(player, component with { LastTick = now });
 
-        if (elapsed > TimeSpan.Zero)
+        if (elapsed > TimeSpan.Zero
+            && AttendanceRules.AddPlayTime(component.Book!, catalog, (int)Math.Min(elapsed.TotalSeconds, LongestStep.TotalSeconds)))
         {
-            AttendanceRules.AddPlayTime(component.Book!, catalog, (int)Math.Min(elapsed.TotalSeconds, LongestStep.TotalSeconds));
+            world.MarkDirty(player, PersonSections.MiscState);
         }
+    }
+
+    /// <summary>
+    /// The time since the last count goes into the last flush of the person, which runs after this handler.
+    /// </summary>
+    public ValueTask OnSessionClosedAsync(Entity player)
+    {
+        CountPlayTime(player);
+
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
