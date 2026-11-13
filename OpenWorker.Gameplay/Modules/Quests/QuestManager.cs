@@ -1039,6 +1039,36 @@ public sealed partial class QuestManager(
     }
 
     /// <summary>
+    /// Whether the condition is the one the person works on now in an episode that has not failed: the one before it is done
+    /// and it is not.
+    /// </summary>
+    public bool HasOpenCondition(Entity player, int conditionId)
+    {
+        if (conditionId == 0 || !TryGet(player, out var book, out _) || !catalog.TryGetCondition(conditionId, out var condition))
+        {
+            return false;
+        }
+
+        foreach (var state in book.Episodes)
+        {
+            if (!catalog.TryGetEpisode(state.Episode, out var quest))
+            {
+                continue;
+            }
+
+            for (var slot = 0; slot < quest.Conditions.Count; slot++)
+            {
+                if (quest.Conditions[slot] == conditionId && QuestRules.IsOpen(quest, state, slot, condition))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Whether the person has finished the episode.
     /// </summary>
     public bool HasFinishedEpisode(Entity player, int episodeId)

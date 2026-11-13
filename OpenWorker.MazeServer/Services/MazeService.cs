@@ -1162,8 +1162,7 @@ public sealed partial class MazeService(
             return;
         }
 
-        await maze.State
-            .OnExecuteLuaFunction(function.Function, request.Box, maze);
+        await maze.RunFunctionBoxAsync(context.Player, function.Function, request.Box);
 
         // The script may have taken a while, and the player may have left meanwhile.
         if (ecs.IsAlive(context.Player))

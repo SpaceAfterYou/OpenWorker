@@ -57,9 +57,32 @@ public sealed class DefendedTargets
         _targets.Add(creature);
     }
 
-    public void Remove(Entity creature) => _targets.Remove(creature);
+    public void Remove(Entity creature)
+    {
+        _targets.Remove(creature);
+        _led.Remove(creature);
+    }
 
-    public void Clear() => _targets.Clear();
+    public void Clear()
+    {
+        _targets.Clear();
+        _led.Clear();
+    }
+
+    private readonly HashSet<Entity> _led = [];
+
+    /// <summary>
+    /// The maze walks the defended monster itself: its own mind and body do nothing until it is no longer defended.
+    /// </summary>
+    public void Lead(Entity creature)
+    {
+        if (_targets.Contains(creature))
+        {
+            _led.Add(creature);
+        }
+    }
+
+    public bool IsLed(Entity creature) => _led.Contains(creature);
 
     /// <summary>
     /// The life of a defended monster, zero when it has fallen or is gone.

@@ -96,16 +96,6 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// A quest of the party. There is no party in a maze of one.
-    /// </summary>
-    [LuaMember]
-    public void InitPartyQuest(int quest, int condition, int sector)
-    {
-        NotDone("InitPartyQuest");
-        Logger.IgnoredInitPartyQuest(quest, condition, sector);
-    }
-
-    /// <summary>
     /// Whether anybody in the maze has a quest that counts the condition.
     /// </summary>
     [LuaMember]

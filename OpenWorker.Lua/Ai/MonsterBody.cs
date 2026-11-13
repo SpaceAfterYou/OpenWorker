@@ -289,7 +289,7 @@ internal partial class MonsterBody : IAiHost
 
     public void Update(double now, float elapsed)
     {
-        if (!IsRevealed || IsDead)
+        if (!IsRevealed || IsDead || _manager.Helpers.Defended.IsLed(Entity))
         {
             return;
         }

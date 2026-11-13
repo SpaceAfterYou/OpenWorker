@@ -116,14 +116,17 @@ internal static partial class LuaLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call ChangeNpcAnimation: npc {Npc}, animation {Animation}")]
     public static partial void IgnoredChangeNpcAnimation(this ILogger logger, int npc, string animation);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call InitPartyQuest: quest {Quest}, condition {Condition}, sector {Sector}")]
-    public static partial void IgnoredInitPartyQuest(this ILogger logger, int quest, int condition, int sector);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Script call InitPartyQuest: quest {Quest}, condition {Condition}, sector {Sector}")]
+    public static partial void CallInitPartyQuest(this ILogger logger, int quest, int condition, int sector);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetEscortCondition: condition {Condition}")]
-    public static partial void IgnoredSetEscortCondition(this ILogger logger, int condition);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Script call SetEscortCondition: condition {Condition}")]
+    public static partial void CallSetEscortCondition(this ILogger logger, int condition);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetEscortMonster")]
-    public static partial void IgnoredSetEscortMonster(this ILogger logger);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Script call SetEscortMonster: episode {Episode}, monster {Monster}")]
+    public static partial void CallSetEscortMonster(this ILogger logger, int episode, int monster);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Escort of monster {Monster}: point {Point}, {Status}")]
+    public static partial void EscortStatus(this ILogger logger, int monster, int point, OpenWorker.Hotspot.Modules.Maze.Types.EscortStatus status);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Ignored script call SetMonsterAllowPassiveType: monster {Monster}, type {Type}")]
     public static partial void IgnoredSetMonsterAllowPassiveType(this ILogger logger, int monster, int type);
