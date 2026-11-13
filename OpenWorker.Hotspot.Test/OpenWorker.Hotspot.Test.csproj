@@ -37,9 +37,21 @@
       <ProjectReference Include="..\OpenWorker.Lua\OpenWorker.Lua.csproj" />
       <ProjectReference Include="..\OpenWorker.Navigation\OpenWorker.Navigation.csproj" />
       <ProjectReference Include="..\OpenWorker.Channel\OpenWorker.Channel.csproj" />
+      <ProjectReference Include="..\OpenWorker.AuthServer\OpenWorker.AuthServer.csproj" />
+      <ProjectReference Include="..\OpenWorker.GateServer\OpenWorker.GateServer.csproj" />
       <ProjectReference Include="..\OpenWorker.DistrictServer\OpenWorker.DistrictServer.csproj" />
       <ProjectReference Include="..\OpenWorker.MazeServer\OpenWorker.MazeServer.csproj" />
+      <ProjectReference Include="..\OpenWorker.RelayServer\OpenWorker.RelayServer.csproj" />
       <ProjectReference Include="..\OpenWorker.SourceGenerator.ResourceStructures\OpenWorker.SourceGenerator.ResourceStructures.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The settings each server ships: ServerStartTest builds every server with them. -->
+        <Content Include="..\OpenWorker.AuthServer\appsettings.json" Link="ServerSettings\AuthServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.GateServer\appsettings.json" Link="ServerSettings\GateServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.DistrictServer\appsettings.json" Link="ServerSettings\DistrictServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.MazeServer\appsettings.json" Link="ServerSettings\MazeServer.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="..\OpenWorker.RelayServer\appsettings.json" Link="ServerSettings\RelayServer.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 </Project>
