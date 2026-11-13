@@ -317,7 +317,7 @@ public sealed partial class PersonService(
 
         session.Send(PersonProfileServiceBase.CreateCommunityResponse(world.Get<CommunityComponent>(context.Player)));
 
-        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken, prologue.QuestBehind(person));
 
         await miscState.EnterMazeAsync(context.Player, person.Id, context.CancellationToken);
         await achievements.EnterAsync(context.Player, person.Id, context.CancellationToken);

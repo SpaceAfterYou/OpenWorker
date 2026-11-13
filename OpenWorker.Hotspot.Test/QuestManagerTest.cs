@@ -514,6 +514,26 @@ public sealed class QuestManagerTest
         Assert.AreEqual((short)0, BitConverter.ToInt16(test.Next().Body));
     }
 
+    /// <summary>
+    /// A person with the prologue behind it that lacks the quest standing for it (made while the server did not play the
+    /// prologue) enters with it finished, and the episode it opens follows by itself; the lists carry both.
+    /// </summary>
+    [TestMethod]
+    public async Task APersonPastThePrologueEntersWithItsQuestFinished()
+    {
+        using var test = new Harness();
+
+        await test.Run(() => test.Manager.EnterAsync(test.Player, 1, CancellationToken.None, Prequel.Id));
+
+        var list = test.Next().Body;
+        var finished = test.Next().Body;
+
+        Assert.AreEqual((byte)(1 << (Prequel.CompleteBit & 7)), finished[Prequel.CompleteBit >> 3]);
+        Assert.AreEqual((short)1, BitConverter.ToInt16(list));
+        Assert.AreEqual(Sequel.Id, Int(list, 2));
+        Assert.IsTrue(test.Saved().IsFinished(Prequel.CompleteBit), "the finished quest is kept");
+    }
+
     #endregion Entering
 
     #region Taking

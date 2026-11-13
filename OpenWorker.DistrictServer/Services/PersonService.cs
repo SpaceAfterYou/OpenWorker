@@ -81,6 +81,7 @@ public sealed partial class PersonService(
     PlayerStatsService stats,
     LeaveManager leaving,
     QuestManager questManager,
+    PrologueQuests prologueQuests,
     CommunityNetwork community,
     TimeProvider time,
     AchievementManager achievements,
@@ -220,7 +221,7 @@ public sealed partial class PersonService(
         await soulMetry.EnterAsync(context.Player, person.Id, context.CancellationToken);
         await dailyMissions.EnterAsync(context.Player, person.Id, context.CancellationToken);
 
-        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken);
+        await questManager.EnterAsync(context.Player, person.Id, context.CancellationToken, prologueQuests.Behind(person.Hero, person.ProloguePending));
 
         JoinChannel(context.Player);
 
