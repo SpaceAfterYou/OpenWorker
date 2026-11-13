@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Boosters;
@@ -56,7 +58,8 @@ public sealed partial class DropService(
     ReadOnlyCollection<DropRateMemberRow>? memberRates = null,
     BoosterManager? boosters = null,
     ItemUseService? use = null,
-    HiddenEventCounter? hiddenEvents = null)
+    HiddenEventCounter? hiddenEvents = null,
+    ILogger<DropService>? logger = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -91,6 +94,11 @@ public sealed partial class DropService(
     private readonly float _rate = options?.Value.DropRate ?? 1f;
 
     private int _group;
+
+    private readonly ILogger _logger = logger ?? NullLogger<DropService>.Instance;
+
+    // The rows whose pair of values was found the wrong way round, told once each.
+    private readonly HashSet<(int Row, string Pair)> _reversed = [];
 
     /// <summary>
     /// What a monster lets fall for this player. Nothing happens when the tables do not know the monster.
@@ -170,85 +178,149 @@ public sealed partial class DropService(
     {
         var things = new List<DropThing>();
 
-        if (drop.GoldChance * rate >= random.Next(1, Chances + 1))
-        {
-            var multiple = 1;
+        // Each part is rolled by itself: a part that fails on a bad row does not take the others with it.
+        Part(drop.Id, "gold", () => RollGold(drop, rate, random, player, things));
 
-            if (drop.GoldBonusChance > 0 && drop.GoldBonusMultiple > 0 && random.Next(1, Chances + 1) <= drop.GoldBonusChance)
+        Part(drop.Id, "battle points", () =>
+        {
+            if (Boosted(player, BoosterEffect.IncBattlePoint, drop.BattlePointChance * rate) >= random.Next(1, Chances + 1))
             {
-                multiple = drop.GoldBonusMultiple;
+                things.Add(new DropThing(BattlePointObject, Between(random, drop.BattlePointMin, drop.BattlePointMax, drop.Id, "battle points")));
             }
+        });
 
-            var goldRate = player is { } known && boosters is not null ? boosters.GetRate(known, BoosterEffect.IncGoldDrop) : 0f;
-
-            for (var i = 0; i < multiple; i++)
+        Part(drop.Id, "ether", () =>
+        {
+            if (drop.EtherUnit > 0 && Boosted(player, BoosterEffect.IncEtherDrop, drop.EtherChance * rate) >= random.Next(1, Chances + 1))
             {
-                var gold = random.Next(drop.GoldMin, drop.GoldMax + 1);
-                var bonus = (int)(gold * goldRate);
-
-                things.Add(new DropThing(GoldObject, gold + bonus, bonus));
+                things.AddRange(RollEther(drop, random));
             }
-        }
-
-        if (Boosted(player, BoosterEffect.IncBattlePoint, drop.BattlePointChance * rate) >= random.Next(1, Chances + 1))
-        {
-            things.Add(new DropThing(BattlePointObject, random.Next(drop.BattlePointMin, drop.BattlePointMax + 1)));
-        }
-
-        if (drop.EtherUnit > 0 && Boosted(player, BoosterEffect.IncEtherDrop, drop.EtherChance * rate) >= random.Next(1, Chances + 1))
-        {
-            things.AddRange(RollEther(drop, random));
-        }
+        });
 
         for (var i = 0; i < DropRow.GroupCount; i++)
         {
-            if (drop.GroupId[i] == 0 || Boosted(player, BoosterEffect.IncItemDrop, drop.GroupChance[i] * rate) < random.Next(1, Chances + 1) || !_groups.TryGetValue(drop.GroupId[i], out var group))
-            {
-                continue;
-            }
+            var index = i;
 
-            var point = random.Next(1, Chances + 1);
-
-            for (var n = 0; n < DropGroupRow.ItemCount; n++)
-            {
-                point -= group.Chance[n];
-
-                if (point > 0)
-                {
-                    continue;
-                }
-
-                // Items the client does not have are left lying in the table.
-                if (group.Item[n] > 0 && catalog.Exists(group.Item[n]))
-                {
-                    things.Add(new DropThing(group.Item[n], random.Next(group.Min[n], Math.Max(group.Min[n], group.Max[n]) + 1)));
-                }
-
-                break;
-            }
+            Part(drop.Id, "item group", () => RollGroup(drop, index, rate, random, player, things));
         }
 
         return things;
     }
 
-    private static IEnumerable<DropThing> RollEther(DropRow drop, Random random)
+    private void Part(int row, string part, Action roll)
     {
-        var parts = Math.Max(1, (drop.EtherMax + drop.EtherUnit - 1) / drop.EtherUnit);
-        var least = drop.EtherMin / parts;
+        try
+        {
+            roll();
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogPartFailed(_logger, e, part, row);
+        }
+    }
+
+    private void RollGold(in DropRow drop, float rate, Random random, Entity? player, List<DropThing> things)
+    {
+        if (drop.GoldChance * rate < random.Next(1, Chances + 1))
+        {
+            return;
+        }
+
+        var multiple = 1;
+
+        if (drop.GoldBonusChance > 0 && drop.GoldBonusMultiple > 0 && random.Next(1, Chances + 1) <= drop.GoldBonusChance)
+        {
+            multiple = drop.GoldBonusMultiple;
+        }
+
+        var goldRate = player is { } known && boosters is not null ? boosters.GetRate(known, BoosterEffect.IncGoldDrop) : 0f;
+
+        for (var i = 0; i < multiple; i++)
+        {
+            var gold = Between(random, drop.GoldMin, drop.GoldMax, drop.Id, "gold");
+            var bonus = (int)(gold * goldRate);
+
+            things.Add(new DropThing(GoldObject, gold + bonus, bonus));
+        }
+    }
+
+    private void RollGroup(in DropRow drop, int index, float rate, Random random, Entity? player, List<DropThing> things)
+    {
+        if (drop.GroupId[index] == 0 || Boosted(player, BoosterEffect.IncItemDrop, drop.GroupChance[index] * rate) < random.Next(1, Chances + 1) || !_groups.TryGetValue(drop.GroupId[index], out var group))
+        {
+            return;
+        }
+
+        var point = random.Next(1, Chances + 1);
+
+        for (var n = 0; n < DropGroupRow.ItemCount; n++)
+        {
+            point -= group.Chance[n];
+
+            if (point > 0)
+            {
+                continue;
+            }
+
+            // Items the client does not have are left lying in the table.
+            if (group.Item[n] > 0 && catalog.Exists(group.Item[n]))
+            {
+                things.Add(new DropThing(group.Item[n], Between(random, group.Min[n], group.Max[n], group.Id, "item count")));
+            }
+
+            break;
+        }
+    }
+
+    /// <summary>
+    /// A value between the two of a pair of a table, both included. Some rows have the pair the wrong way round: it is
+    /// rolled between its two values all the same, and told once for the row.
+    /// </summary>
+    private int Between(Random random, int least, int most, int row, string pair)
+    {
+        Order(ref least, ref most, row, pair);
+
+        return random.Next(least, most + 1);
+    }
+
+    private void Order(ref int least, ref int most, int row, string pair)
+    {
+        if (least <= most)
+        {
+            return;
+        }
+
+        if (_reversed.Add((row, pair)))
+        {
+            LogReversed(_logger, pair, row, least, most);
+        }
+
+        (least, most) = (most, least);
+    }
+
+    private IEnumerable<DropThing> RollEther(DropRow drop, Random random)
+    {
+        var smallest = (int)drop.EtherMin;
+        var largest = (int)drop.EtherMax;
+
+        Order(ref smallest, ref largest, drop.Id, "ether");
+
+        var parts = Math.Max(1, (largest + drop.EtherUnit - 1) / drop.EtherUnit);
+        var least = smallest / parts;
         var total = 0;
 
-        for (var i = 0; i < parts && total < drop.EtherMax; i++)
+        for (var i = 0; i < parts && total < largest; i++)
         {
             var given = random.Next(least, drop.EtherUnit + 1);
 
             total += given;
 
-            yield return new DropThing(EtherObject, given - Math.Max(0, total - drop.EtherMax));
+            yield return new DropThing(EtherObject, given - Math.Max(0, total - largest));
         }
 
-        if (total < drop.EtherMin)
+        if (total < smallest)
         {
-            yield return new DropThing(EtherObject, drop.EtherMin - total);
+            yield return new DropThing(EtherObject, smallest - total);
         }
     }
 
@@ -398,4 +470,10 @@ public sealed partial class DropService(
 
         return field;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Row {Row} of the drop tables has its {Pair} the wrong way round ({First} before {Second}), rolled between the two")]
+    private static partial void LogReversed(ILogger logger, string pair, int row, int first, int second);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The {Part} of drop row {Row} could not be rolled, the rest of the drop falls")]
+    private static partial void LogPartFailed(ILogger logger, Exception exception, string part, int row);
 }

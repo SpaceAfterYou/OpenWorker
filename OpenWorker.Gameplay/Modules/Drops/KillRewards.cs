@@ -34,6 +34,28 @@ public sealed partial class KillRewards(ExperienceService experience, DropServic
     /// </summary>
     public void OnKilled(Entity killer, IReadOnlyList<Entity> present, IReadOnlyList<Entity> everyone, int monster, Vector3 position)
     {
+        // The experience and the drop are given each by itself: one that fails does not take the other with it.
+        try
+        {
+            GiveExperience(killer, present, monster);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogPartFailed(logger, e, "experience", monster);
+        }
+
+        try
+        {
+            drops.DropForKill(everyone.Count == 0 ? [killer] : everyone, monster, position);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogPartFailed(logger, e, "drop", monster);
+        }
+    }
+
+    private void GiveExperience(Entity killer, IReadOnlyList<Entity> present, int monster)
+    {
         IReadOnlyList<Entity> members = present.Count == 0 ? [killer] : present;
         var given = experience.GiveForParty(members, monster);
         var killerGot = 0;
@@ -53,11 +75,13 @@ public sealed partial class KillRewards(ExperienceService experience, DropServic
         LogKilled(logger, monster, killerGot);
 
         results.AddKill(killer, killerGot);
-        drops.DropForKill(everyone.Count == 0 ? [killer] : everyone, monster, position);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Monster {Monster} killed, {Experience} experience given")]
     private static partial void LogKilled(ILogger logger, int monster, int experience);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The {Part} of a kill of monster {Monster} could not be given")]
+    private static partial void LogPartFailed(ILogger logger, Exception exception, string part, int monster);
 }
 
 /// <summary>

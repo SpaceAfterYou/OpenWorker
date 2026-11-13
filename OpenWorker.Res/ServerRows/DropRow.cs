@@ -28,6 +28,7 @@ public readonly struct DropRow(BinaryReader reader)
     public ushort EtherBonusChance { get; } = reader.ReadUInt16();
     public ushort EtherBonusMultiple { get; } = reader.ReadUInt16();
     public ushort BattlePointChance { get; } = reader.ReadUInt16();
+    // The table has the largest of the battle points first; some rows have the two the other way round.
     public ushort BattlePointMax { get; } = reader.ReadUInt16();
     public ushort BattlePointMin { get; } = reader.ReadUInt16();
     public ushort[] GroupChance { get; } = Enumerable.Range(0, GroupCount).Select(_ => reader.ReadUInt16()).ToArray();
