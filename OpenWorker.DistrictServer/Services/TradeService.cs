@@ -140,7 +140,7 @@ public sealed class TradeService(
 
     /// <summary>
     /// The slot of the request is left alone: what the client puts there, and whether the shop should use an item up, is
-    /// not known (see <c>docs/notes-trade.md</c>).
+    /// not known.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, TradePrivateShopStartRequest request)
     {

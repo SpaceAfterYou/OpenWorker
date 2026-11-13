@@ -20,7 +20,7 @@
 # LOADTEST_DISCORD_TOKEN  A real token for the relay; the placeholder in the override is enough for the load test.
 # LOADTEST_COMPOSE_EXTRA  More compose files, separated by spaces, laid over the two above with -f, in that order. E.g.
 #                    LOADTEST_COMPOSE_EXTRA=eng/loadtest/compose.servergc.yaml runs the servers with Server GC and DATAS
-#                    instead of the collector of Directory.Build.props (step 7 of phase 1 of REFACTORING.md). Compose
+#                    instead of the collector of Directory.Build.props. Compose
 #                    recreates the containers whose settings change, so the next run without it goes back.
 #
 # The servers answer the bots with 127.0.0.1, which is right for a bot on this machine. For a bot in a container or

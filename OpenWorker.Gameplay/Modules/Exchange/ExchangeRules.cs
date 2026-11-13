@@ -2,7 +2,7 @@ namespace OpenWorker.Gameplay.Modules.Exchange;
 
 /// <summary>
 /// The messages of the exchange: numbers of the UI strings of the client. Where the original answers with a number the
-/// client has no text for, the text decides (<c>docs/notes-exchange.md</c>).
+/// client has no text for, the text decides.
 /// </summary>
 public static class ExchangeCodes
 {

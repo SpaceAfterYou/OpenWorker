@@ -6,8 +6,7 @@ using OpenWorker.Hotspot.Modules.Shop.Requests;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The shops of the NPCs of a city: buying, selling and buying back (<see cref="NpcShopService"/>). The rules and what each
-/// message carries: <c>docs/notes-npc-services.md</c>.
+/// The shops of the NPCs of a city: buying, selling and buying back (<see cref="NpcShopService"/>).
 /// </summary>
 public sealed class ShopService(NpcShopService shops) :
     IHotspotHandler<ShopBuyRequest>,
@@ -24,7 +23,7 @@ public sealed class ShopService(NpcShopService shops) :
     }
 
     /// <summary>
-    /// A draw of the cash shop, which this server does not run: see <c>docs/notes-npc-services.md</c>, "The cash shop".
+    /// A draw of the cash shop, which this server does not run.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, ShopGachaRequest request)
     {

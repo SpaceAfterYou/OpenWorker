@@ -521,5 +521,5 @@ fabric.properties
 Reverse/
 docs/
 
-# Local data of the machine for agents, see INSTALL.md
+# Local data of the machine for agents
 AGENTS.local.md

@@ -12,17 +12,17 @@ set -u
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 
 RULES=(
-  $'Task\\.Factory\\.StartNew\tAn async lambda in StartNew returns Task<Task> and its failure goes unobserved. Write an async Task ExecuteAsync with a PeriodicTimer (REFACTORING.md, principle 6).'
-  $'\\bConsole\\.(Write|WriteLine|Error|Out)\\b\tProduct code logs through ILogger (REFACTORING.md, principle 14).'
-  $'using +static +System\\.Console\\b\tProduct code logs through ILogger (REFACTORING.md, principle 14).'
+  $'Task\\.Factory\\.StartNew\tAn async lambda in StartNew returns Task<Task> and its failure goes unobserved. Write an async Task ExecuteAsync with a PeriodicTimer.'
+  $'\\bConsole\\.(Write|WriteLine|Error|Out)\\b\tProduct code logs through ILogger.'
+  $'using +static +System\\.Console\\b\tProduct code logs through ILogger.'
 )
 
 # Game time is the simulation clock's: the mazes wait on its queue (SimulationClock.Schedule), which runs on the world
 # loop, keeps the order of the ticks and is cancelled with the maze. A Task.Delay or a Timer would wake on the thread pool
 # or outlive the maze. Background services keep their PeriodicTimer.
 SCOPED=(
-  $'OpenWorker.Lua\tTask\\.Delay\\(|new +(System\\.Threading\\.)?Timer\\(|System\\.Threading\\.Timer\\b\tGame logic waits on the simulation clock (SimulationClock.Schedule), not on Task.Delay or a Timer (REFACTORING.md, principle 5).'
-  $'OpenWorker.MazeServer\tTask\\.Delay\\(|new +(System\\.Threading\\.)?Timer\\(|System\\.Threading\\.Timer\\b\tGame logic waits on the simulation clock (SimulationClock.Schedule), not on Task.Delay or a Timer (REFACTORING.md, principle 5).'
+  $'OpenWorker.Lua\tTask\\.Delay\\(|new +(System\\.Threading\\.)?Timer\\(|System\\.Threading\\.Timer\\b\tGame logic waits on the simulation clock (SimulationClock.Schedule), not on Task.Delay or a Timer.'
+  $'OpenWorker.MazeServer\tTask\\.Delay\\(|new +(System\\.Threading\\.)?Timer\\(|System\\.Threading\\.Timer\\b\tGame logic waits on the simulation clock (SimulationClock.Schedule), not on Task.Delay or a Timer.'
 )
 
 # The load test is a tool whose product is the report it prints. Program.cs is the one place of it that touches the

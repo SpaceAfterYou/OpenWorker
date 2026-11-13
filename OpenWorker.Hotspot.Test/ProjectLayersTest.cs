@@ -3,7 +3,7 @@ using System.Xml.Linq;
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// The layers of the solution point one way (principle 11 of <c>REFACTORING.md</c>): a project references the projects of
+/// The layers of the solution point one way: a project references the projects of
 /// its own layer and of the layers below it, never above; the protocol knows nothing of the database, Redis or the batch
 /// files, the runtime nothing of EF Core or Redis, the game logic nothing of EF Core. The test reads the project files of
 /// <c>OpenWorker.slnx</c>; a new project has to be given its layer here, and an exception has to be written down here

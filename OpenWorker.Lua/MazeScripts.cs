@@ -7,7 +7,7 @@ namespace OpenWorker.Lua;
 /// <summary>
 /// The scripts of the mazes, each read and compiled once, off the world loop, and run in the state of every maze that
 /// uses it. A compiled chunk does not change when it runs, so the mazes share it: entering a maze runs the chunk in a
-/// new state instead of reading and compiling the file again (docs/phase-5/README.md, "Cost of entry").
+/// new state instead of reading and compiling the file again.
 /// </summary>
 /// <param name="folder">Where the scripts of the client are, by name.</param>
 public sealed class MazeScripts(string folder = "scripts")

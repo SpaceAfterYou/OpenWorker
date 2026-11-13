@@ -2,7 +2,7 @@
 
     <!--
       Writes Read(ref PacketReader) and Write(ref PacketWriter) for the structs marked [WireMessage] (OpenWorker.Wire),
-      from their fields. OpenWorker.Hotspot references it as an analyzer. The design: docs/phase-2/C-wire-format.md.
+      from their fields. OpenWorker.Hotspot references it as an analyzer.
     -->
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>

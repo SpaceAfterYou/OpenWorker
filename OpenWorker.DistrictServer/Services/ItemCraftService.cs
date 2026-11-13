@@ -11,7 +11,7 @@ namespace OpenWorker.DistrictServer.Services;
 /// <summary>
 /// The requests of the work on items that make one item of others at the NPCs of a city: production, the exchange of
 /// materials, disassembly and evolution. A request that names an NPC is served only by an NPC of the city near the player
-/// that offers it (<see cref="ServiceNpcs"/>). What each does: <c>docs/notes-item-setup-handlers.md</c>.
+/// that offers it (<see cref="ServiceNpcs"/>).
 /// </summary>
 public sealed class ItemCraftService(
     ItemMakeService makes,

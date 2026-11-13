@@ -262,7 +262,7 @@ public sealed class DistrictMovementTest
     private const float Cell = WorldOptions.DefaultVisibilityRadius;
 
     /// <summary>
-    /// The criterion of phase 3: a move goes to the mover and the players who see it, not to the whole channel, and the
+    /// A move goes to the mover and the players who see it, not to the whole channel, and the
     /// list of the players around that the client asks for once it has loaded the map holds only those it sees.
     /// </summary>
     [TestMethod]
@@ -386,7 +386,7 @@ public sealed class DistrictMovementTest
     }
 
     /// <summary>
-    /// The criterion of phase 3: a move farther than the hero runs in the time is refused, the place stays where it was,
+    /// A move farther than the hero runs in the time is refused, the place stays where it was,
     /// nobody hears of it, and the player is warped back; such refusals count against the error budget of the session,
     /// once a second, and close it when they use it up.
     /// </summary>

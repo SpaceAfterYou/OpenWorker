@@ -11,7 +11,7 @@ namespace OpenWorker.Hotspot;
 /// Waiting for the database or Redis releases the thread, and the code continues here afterwards.
 /// That only works while the await captures this context, so server code must not use
 /// <c>ConfigureAwait(false)</c>, and slow synchronous work must go through <c>Task.Run</c>.<br/>
-/// Other connections run while a handler waits: see the rules in <c>ARCHITECTURE.md</c>.
+/// Other connections run while a handler waits.
 /// </summary>
 public sealed partial class WorldLoop : SynchronizationContext, IEncoderThread, IDisposable
 {

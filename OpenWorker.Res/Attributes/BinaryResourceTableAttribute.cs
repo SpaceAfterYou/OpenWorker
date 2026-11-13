@@ -7,7 +7,7 @@ public sealed class BinaryResourceTableAttribute(string table) : Attribute
     public const string ClientFolder = "res";
 
     /// <summary>
-    /// The folder of the server-only tables, next to <see cref="ClientFolder"/>, which the operator fills (<c>INSTALL.md</c>).
+    /// The folder of the server-only tables, next to <see cref="ClientFolder"/>, which the operator fills.
     /// </summary>
     public const string ServerFolder = "res-server";
 

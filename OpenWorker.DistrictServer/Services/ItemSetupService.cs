@@ -11,8 +11,7 @@ namespace OpenWorker.DistrictServer.Services;
 /// <summary>
 /// The work on items at the NPCs of a city: repairs, upgrades, sockets, broaches, akashic cards, and the tools that restore,
 /// unseal or lower a count of an item. A request that names an NPC is served only by an NPC of the city near the player that
-/// offers the service (<see cref="ServiceNpcs"/>). What each request does and what is still missing for the others:
-/// <c>docs/notes-item-setup-handlers.md</c>, <c>docs/notes-npc-services.md</c>.
+/// offers the service (<see cref="ServiceNpcs"/>).
 /// </summary>
 public sealed class ItemSetupService(
     ItemRepairService repairs,

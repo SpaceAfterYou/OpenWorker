@@ -14,8 +14,8 @@
     runtimeconfig.json next to each server, and so in its image.
 
     The servers run Server GC with dynamic adaptation (DATAS), background collections, and tiered compilation with
-    dynamic PGO. Server GC is the choice of step 7 of phase 1 of REFACTORING.md, decided on 2026-11-08 by four runs of
-    1000 bots, two with each collector (docs/phase-1/baseline/README.md, "GC modes at 1000 bots"): against workstation
+    dynamic PGO. Server GC was chosen on 2026-11-08 by four runs of
+    1000 bots, two with each collector: against workstation
     GC, Rocco Town paused for 1.0 to 1.5 s instead of 1.9 s in a run, the p99 of move.echo was 2.4 to 2.8 ms instead of
     3.8 to 4.4 ms, and the working set peaked at 450 to 493 MB instead of 395 MB. DATAS starts with one heap and adds
     heaps with the load, so an idle server does not take a heap per core. The other values are the defaults of .NET,

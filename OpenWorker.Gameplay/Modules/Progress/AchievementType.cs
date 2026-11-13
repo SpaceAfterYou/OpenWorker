@@ -2,7 +2,7 @@ namespace OpenWorker.Gameplay.Modules.Progress;
 
 /// <summary>
 /// The kinds of event an achievement counts (the type of a row of <c>tb_Achievement</c>) that the server raises. The table
-/// has more; those are listed in <c>docs/notes-person-progress.md</c> with the reason they do not count yet.
+/// has more, which do not count yet.
 /// </summary>
 public enum AchievementType : ushort
 {

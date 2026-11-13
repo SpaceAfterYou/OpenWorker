@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <!--
-      Measurements of the hot path with BenchmarkDotNet (REFACTORING.md, principle 1). CI builds it and never runs it.
-      How to run it and the numbers so far: docs/phase-2/A-send-path.md.
+      Measurements of the hot path with BenchmarkDotNet. CI builds it and never runs it.
     -->
     <PropertyGroup>
         <OutputType>Exe</OutputType>
