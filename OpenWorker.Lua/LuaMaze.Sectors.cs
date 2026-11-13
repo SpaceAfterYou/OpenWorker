@@ -197,11 +197,11 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// The sector the first player of the maze stands in.
+    /// The sector the first player of the maze who is still there stands in.
     /// </summary>
-    private int CurrentSector => _members.Count == 0
-        ? 0
-        : Batch.EventBox.Sectors.FirstOrDefault(e => Contains(e, Ecs.Get<WorldComponent>(_members[0].Player).Position))?.Id ?? 0;
+    private int CurrentSector => _members.Find(e => Ecs.IsAlive(e.Player) && Ecs.Has<WorldComponent>(e.Player)) is { } first
+        ? Batch.EventBox.Sectors.FirstOrDefault(e => Contains(e, Ecs.Get<WorldComponent>(first.Player).Position))?.Id ?? 0
+        : 0;
 
     private static bool Contains(SectorBox box, Vector3 position)
     {
