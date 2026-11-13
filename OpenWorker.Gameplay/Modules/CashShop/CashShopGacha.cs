@@ -67,7 +67,8 @@ public sealed class CashShopGacha
     }
 
     /// <summary>
-    /// Opens the gacha <paramref name="count"/> times: one item each. Nothing when a roll falls on a hole of the tables.
+    /// Opens the gacha <paramref name="count"/> times: one item each. A group without its draw and an item the client does not
+    /// know are left out of the roll, which runs over the chances left. Nothing when nothing is left to roll.
     /// </summary>
     public List<GachaResultValue>? Draw(GachaRow gacha, int count)
     {
@@ -76,20 +77,34 @@ public sealed class CashShopGacha
             return null;
         }
 
+        var groups = new int[GachaGroupRow.Groups];
+
+        for (var index = 0; index < groups.Length; index++)
+        {
+            groups[index] = _draws.TryGet(gacha.Draws[index], out _) ? chances.Chances[index] : 0;
+        }
+
         var results = new List<GachaResultValue>(count);
 
         for (var time = 0; time < count; time++)
         {
-            var group = Pick(chances.Chances);
+            var group = Pick(groups);
 
             if (group < 0 || !_draws.TryGet(gacha.Draws[group], out var draw))
             {
                 return null;
             }
 
-            var place = Pick(draw.Chances);
+            var known = new int[GachaDrawRow.Items];
 
-            if (place < 0 || !_items.Exists(draw.ItemList[place]))
+            for (var index = 0; index < known.Length; index++)
+            {
+                known[index] = _items.Exists(draw.ItemList[index]) ? draw.Chances[index] : 0;
+            }
+
+            var place = Pick(known);
+
+            if (place < 0)
             {
                 return null;
             }
@@ -101,17 +116,25 @@ public sealed class CashShopGacha
     }
 
     /// <summary>
-    /// The place a roll of 1 to ten thousand falls on, the chances taken in order; -1 past the last.
+    /// The place a roll falls on, the chances taken in order: out of ten thousand while they make that much, otherwise out of
+    /// what they make; -1 when they make nothing.
     /// </summary>
     private int Pick(int[] chances)
     {
-        var point = _roll(1, Whole);
+        var total = chances.Sum();
+
+        if (total <= 0)
+        {
+            return -1;
+        }
+
+        var point = _roll(1, Math.Min(total, Whole));
 
         for (var index = 0; index < chances.Length; index++)
         {
             point -= chances[index];
 
-            if (point <= 0)
+            if (point <= 0 && chances[index] > 0)
             {
                 return index;
             }
