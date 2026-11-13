@@ -192,6 +192,12 @@ public sealed class MazeWireFormatTest
     }
 
     [TestMethod]
+    public void EscortStatusIsThePointAndAByte()
+    {
+        CollectionAssert.AreEqual(new byte[] { 0x91, 0x01, 0, 0, 2 }, Written(new MazeEscortStatusResponse { Point = 401, Status = EscortStatus.Arrived }));
+    }
+
+    [TestMethod]
     public void ClientRequestsOfTheMazeAreRead()
     {
         using var spawn = new BinaryReader(new MemoryStream(new byte[12 + 4 + 4 + 4]));

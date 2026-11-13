@@ -281,6 +281,8 @@ public partial class LuaMaze(
         // What the player carries is let go where it stands: nobody steps the carry of a player who is gone.
         EndCarry(member);
 
+        LeavePartyQuest(player);
+
         _members.Remove(member);
         creatureManager.Detach(player);
         _buffs.Detach(player);
@@ -317,6 +319,8 @@ public partial class LuaMaze(
         member.Loaded = true;
         _countdown.Arrived();
 
+        JoinPartyQuest(player);
+
         return true;
     }
 
@@ -335,6 +339,7 @@ public partial class LuaMaze(
         StepTimers((float)elapsed.TotalSeconds);
         StepQuests();
         StepMode((float)elapsed.TotalSeconds);
+        StepEscort((float)elapsed.TotalSeconds);
         _portalWait?.Advance((float)elapsed.TotalSeconds);
 
         // A player who leaves during the step is taken out of the list, so the list is walked by index.
