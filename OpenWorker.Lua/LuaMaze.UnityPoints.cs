@@ -54,7 +54,7 @@ public partial class LuaMaze
     /// </summary>
     private void TellUnity(Entity player)
     {
-        if (_mode is not UnityMode || !Ecs.IsAlive(player) || !Ecs.TryGet(player, out ServerSessionComponent session))
+        if (_mode is not UnityMode || !TrySession(player, out var session))
         {
             return;
         }
@@ -124,7 +124,7 @@ public partial class LuaMaze
                 }
 
                 if (tally.CountCombo(member.Combo, member.LastHit, now, since) && member.Loaded &&
-                    Maze.Ecs.TryGet(member.Player, out ServerSessionComponent session))
+                    Maze.TrySession(member.Player, out var session))
                 {
                     session.Send(UnityMessage(tally));
                 }
@@ -154,7 +154,7 @@ public partial class LuaMaze
                 {
                     _fallen.Remove(player);
                 }
-                else if (_fallen.Add(player) && member.Loaded && Maze.Ecs.TryGet(player, out ServerSessionComponent session))
+                else if (_fallen.Add(player) && member.Loaded && Maze.TrySession(player, out var session))
                 {
                     session.Send(new MazeNoticeResponse { Type = UnityEnded, Value = UnityLost });
                 }

@@ -1,10 +1,11 @@
-using Arch.Core.Extensions;
+using Arch.Core;
 using Lua;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Chat.Responses;
+using OpenWorker.Gameplay.Messages.Response.Person;
 
 namespace OpenWorker.Lua;
 
@@ -40,9 +41,9 @@ public partial class LuaMaze
 
         foreach (var member in _members)
         {
-            if (user == (int)Ecs.Get<ActorComponent>(member.Player))
+            if (TrySession(member.Player, out var session) && user == (int)Ecs.Get<ActorComponent>(member.Player))
             {
-                member.Player.Get<ServerSessionComponent>().Send(notice);
+                session.Send(notice);
             }
         }
     }
@@ -70,12 +71,57 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// The client runs a function of its own script when it hears this.
+    /// What the script told the clients in a sector, kept for a player whose client loads the maze later, until its time is up.
+    /// </summary>
+    private readonly Dictionary<int, List<(int Type, int Value, TimeSpan Until)>> _sectorSyncs = [];
+
+    /// <summary>
+    /// The client runs a function of its own script when it hears this. A sync that names a sector of the map is kept
+    /// there, for good or for the seconds given.
     /// </summary>
     [LuaMember]
     public void LuaClientSync(int type, int value, int sector = 0, float time = 0)
     {
         creatureManager.Broadcast(new MazeLuaClientSyncResponse { Type = type, Value = value });
+
+        if (sector <= 0 || Batch.EventBox.Sectors.Find(sector) is null)
+        {
+            return;
+        }
+
+        if (!_sectorSyncs.TryGetValue(sector, out var kept))
+        {
+            kept = [];
+            _sectorSyncs[sector] = kept;
+        }
+
+        var now = Clock.Time;
+
+        kept.RemoveAll(e => e.Until <= now);
+        kept.Add((type, value, time > 0 ? now + Wait(time) : TimeSpan.MaxValue));
+    }
+
+    /// <summary>
+    /// A player whose client has loaded the maze hears again what the script told the clients in the sector it stands in.
+    /// </summary>
+    [LuaIgnoreMember]
+    public void ShowClientSyncsTo(Entity player)
+    {
+        if (!TrySession(player, out var session) || !Ecs.TryGet(player, out WorldComponent place) ||
+            SectorAt(place.Position) is not { } sector || !_sectorSyncs.TryGetValue(sector.Id, out var kept))
+        {
+            return;
+        }
+
+        var now = Clock.Time;
+
+        foreach (var (type, value, until) in kept)
+        {
+            if (until > now)
+            {
+                session.Send(new MazeLuaClientSyncResponse { Type = type, Value = value });
+            }
+        }
     }
 
     /// <summary>

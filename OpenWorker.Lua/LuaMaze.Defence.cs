@@ -1,6 +1,5 @@
 using System.Numerics;
 using Arch.Core;
-using Arch.Core.Extensions;
 using Lua;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Domain.Components;
@@ -125,9 +124,9 @@ public partial class LuaMaze
 
                 OpenWorker.Gameplay.Modules.Movement.ServerPlace.Put(Maze.Ecs, member.Player, position, box.Rotation);
 
-                if (member.Loaded)
+                if (member.Loaded && Maze.TrySession(member.Player, out var session))
                 {
-                    member.Player.Get<ServerSessionComponent>().Send(new WorldWarpResponse
+                    session.Send(new WorldWarpResponse
                     {
                         Actor = Maze.Ecs.Get<ActorComponent>(member.Player),
                         Position = position,

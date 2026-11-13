@@ -265,14 +265,14 @@ public partial class LuaMaze
 
         foreach (var member in _members)
         {
-            if (!member.Loaded || member.Gone || !Ecs.IsAlive(member.Player) || !_sawSceneAttacker.Add(member))
+            if (!member.Loaded || member.Gone || !TrySession(member.Player, out var session) || !_sawSceneAttacker.Add(member))
             {
                 continue;
             }
 
             shown ??= MonsterSnapshotMapper.ToStMonsterInfo(Ecs, owner, false);
 
-            Ecs.Get<ServerSessionComponent>(member.Player).Send(new WorldOtherInfosMonsterResponse { Monsters = [shown.Value] });
+            session.Send(new WorldOtherInfosMonsterResponse { Monsters = [shown.Value] });
         }
     }
 
