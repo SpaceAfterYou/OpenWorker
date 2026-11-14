@@ -401,6 +401,22 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     }
 
     /// <summary>
+    /// How an animation that is no skill carries its mover as it plays once: the moments on its own clock, from its start, with the
+    /// speed stretches of its file. Empty when the file does not have it or it does not move.
+    /// </summary>
+    public IReadOnlyList<SkillMove> GetMoves(string actionFile, string animation)
+    {
+        if (GetFile(actionFile) is not { } file || Find(file, animation, false) is not { Moves.Count: > 0 } found)
+        {
+            return [];
+        }
+
+        var clock = new SkillPlayback.ClipClock(found, 1f);
+
+        return Frames(found, false).Select(e => new SkillMove(clock.Wall(e.Time), e.Offset, 0)).ToArray();
+    }
+
+    /// <summary>
     /// The number the clients know an animation of a file by, or zero when the file does not have it.
     /// </summary>
     public int GetAnimationIndex(string actionFile, string animation)

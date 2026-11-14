@@ -51,6 +51,7 @@ internal partial class MonsterBody
         switch (WalkStart.Of(Yaw, wanted, hasTurn, hasBigTurn, out var left))
         {
             case WalkStarts.Pause:
+                _moves.Clear();
                 SendIdle(StandAnimation(), WalkStart.PauseSeconds);
 
                 _holdUntil = now + WalkStart.PauseSeconds;
@@ -63,6 +64,7 @@ internal partial class MonsterBody
             case var turn:
                 var name = turn == WalkStarts.BigTurn ? left ? BigTurnLeft : BigTurnRight : left ? TurnLeft : TurnRight;
 
+                PlayMoves(name);
                 SendIdle(_actions.GetAnimationIndex(Behavior.ActionFile, name), 0f);
 
                 // The walk is told when the turn is over; until then the monster stands.
@@ -150,6 +152,8 @@ internal partial class MonsterBody
 
         _idleAnimation = _actions.GetAnimationIndex(Behavior.ActionFile, IdleAnimation);
         _idleEnd = now + length;
+
+        PlayMoves(IdleAnimation);
 
         SendIdle(_idleAnimation, 0f);
     }

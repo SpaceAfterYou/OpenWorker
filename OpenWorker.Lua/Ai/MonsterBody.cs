@@ -123,6 +123,7 @@ internal partial class MonsterBody : IAiHost
         _detaches.Clear();
         _clips.Clear();
         _moves.Clear();
+        _reactionPlays.Clear();
         _carried = false;
         _lastChange = 0;
         _holdUntil = 0;
@@ -244,6 +245,8 @@ internal partial class MonsterBody : IAiHost
         }
 
         _idleAnimation = _actions.GetAnimationIndex(Behavior.ActionFile, _spawnAction);
+
+        PlayMoves(_spawnAction);
 
         if (!_actions.IsLooping(Behavior.ActionFile, _spawnAction))
         {
@@ -423,6 +426,12 @@ internal partial class MonsterBody : IAiHost
         // The first point of the way is the place the monster stands at.
         _route.AddRange(_found.Skip(1));
 
+        // A walk ends whatever animation carried the monster.
+        if (_route.Count > 0)
+        {
+            _moves.Clear();
+        }
+
         _run = run;
         _destination = _route.Count > 0 ? _route[^1] : position;
 
@@ -472,6 +481,7 @@ internal partial class MonsterBody : IAiHost
     {
         _destination = null;
         _route.Clear();
+        _moves.Clear();
 
         Place(position, Yaw);
 
@@ -730,6 +740,8 @@ internal partial class MonsterBody : IAiHost
 
         _idleAnimation = _actions.GetAnimationIndex(Behavior.ActionFile, name);
         _idleEnd = _manager.Now + length;
+
+        PlayMoves(name);
 
         Broadcast(new MovementIdleBtResponse
         {

@@ -128,6 +128,11 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
     public Func<Vector3, bool>? IsBlocked { get; set; }
 
     /// <summary>
+    /// The reaction begins to play an animation of the monster's file, so many seconds from now.
+    /// </summary>
+    public Action<string, float>? Plays { get; set; }
+
+    /// <summary>
     /// The motion class the monster is in.
     /// </summary>
     public short Motion => _motion;
@@ -229,6 +234,9 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         _phase = Phase.ArmorBreak;
         _motion = MotionClass.ArmorBreakStart;
         _left = seconds;
+
+        Plays?.Invoke("B_SABreak_Start", 0f);
+        Plays?.Invoke("B_SABreak_End", Math.Max(lengthOf("B_SABreak_Start"), seconds - lengthOf("B_SABreak_End")));
     }
 
     // ---- A blow -------------------------------------------------------------------------------
@@ -455,27 +463,43 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         switch (motion)
         {
             case MotionClass.FlinchLeft:
-                Begin(Phase.Flinch, motion, lengthOf("B_DMG_L"));
+                Begin(Phase.Flinch, motion, "B_DMG_L");
                 break;
             case MotionClass.FlinchRight:
-                Begin(Phase.Flinch, motion, lengthOf("B_DMG_R"));
+                Begin(Phase.Flinch, motion, "B_DMG_R");
                 break;
             case MotionClass.KnockBack:
-                Begin(Phase.KnockBack, motion, lengthOf("B_KB_Start") + lengthOf("B_KB_End"));
+                Begin(Phase.KnockBack, motion, "B_KB_Start", "B_KB_End");
                 break;
             case MotionClass.Stunned:
-                Begin(Phase.Stunned, motion, lengthOf("B_Stun"));
+                Begin(Phase.Stunned, motion, "B_Stun");
                 break;
             default:
                 break;
         }
     }
 
-    private void Begin(Phase phase, short motion, float seconds)
+    /// <summary>
+    /// The monster plays the animation, and the one that follows it if there is one, and is free again after them.
+    /// </summary>
+    private void Begin(Phase phase, short motion, string animation, string? then = null)
     {
+        var first = lengthOf(animation);
+        var seconds = first + (then is null ? 0f : lengthOf(then));
+
         _phase = seconds > 0f ? phase : Phase.Idle;
         _motion = seconds > 0f ? motion : MotionClass.Idle;
         _left = seconds;
+
+        if (seconds > 0f)
+        {
+            Plays?.Invoke(animation, 0f);
+
+            if (then is not null)
+            {
+                Plays?.Invoke(then, first);
+            }
+        }
     }
 
     // ---- The throw ----------------------------------------------------------------------------
@@ -517,6 +541,8 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
         _phase = Phase.Air;
         _motion = motion;
         _left = lengthOf(Family(motion) + "_Start");
+
+        Plays?.Invoke(Family(motion) + "_Start", 0f);
     }
 
     /// <summary>
@@ -668,6 +694,8 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
 
         _phase = Phase.Lying;
 
+        Plays?.Invoke(Family(_motion) + "_Down", 0f);
+
         if (_groundDown <= 0f)
         {
             Rise(ref events);
@@ -687,6 +715,8 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
 
         _phase = Phase.Rising;
         events |= ReactionEvents.RaiseBegan;
+
+        Plays?.Invoke(Family(_motion) + "_Raise", 0f);
     }
 
     private Vector3 Fly(float seconds, Vector3 position, ref ReactionEvents events)
@@ -701,6 +731,8 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
                 _phase = Phase.Landing;
                 _left = lengthOf(Family(_motion) + "_End");
                 events |= ReactionEvents.Landed;
+
+                Plays?.Invoke(Family(_motion) + "_End", 0f);
             }
 
             return position;
@@ -725,6 +757,8 @@ public sealed class MonsterReaction(ReactionProfile profile, INavigation ground,
             _phase = Phase.Landing;
             _left = lengthOf(Family(_motion) + "_End");
             events |= ReactionEvents.Landed;
+
+            Plays?.Invoke(Family(_motion) + "_End", 0f);
 
             StopSlide();
         }
