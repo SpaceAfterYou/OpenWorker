@@ -145,7 +145,7 @@ public sealed class MazeEventCommandsTest
     }
 
     /// <summary>
-    /// Monsters of a row the table has come where the player stands, as many as asked up to 50.
+    /// Monsters of a row the table has come where the player stands, as many as asked up to 50, still when asked.
     /// </summary>
     [TestMethod]
     public void MonstersOfARowComeWhereThePlayerStands()
@@ -166,6 +166,11 @@ public sealed class MazeEventCommandsTest
         Assert.IsTrue(called.All(e => stage.World.Get<CreatureComponent>(e).Identifier == Monster));
         Assert.AreEqual(stage.World.Get<WorldComponent>(stage.Player).Position, stage.World.Get<WorldComponent>(called[0]).Position, "the first stands where the player does");
         Assert.AreEqual(1, stage.Told(new WorldOtherInfosMonsterResponse { Monsters = [] }.Opcode), "the clients are shown them at once");
+
+        Assert.IsFalse(stage.Run(e => new MonsterCommand(e), stage.Player, MonsterText, "2", "3"), "a word past the count that is not still");
+        Assert.IsTrue(stage.Run(e => new MonsterCommand(e), stage.Player, MonsterText, "still"));
+        Assert.IsTrue(stage.Run(e => new MonsterCommand(e), stage.Player, MonsterText, "2", "still"));
+        Assert.AreEqual(6, stage.Creatures.Living.Count);
     }
 
     /// <summary>

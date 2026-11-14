@@ -49,10 +49,10 @@ public partial class LuaMaze
 
     /// <summary>
     /// Brings monsters of that row in where the player stands, facing as it faces, the others of the group scattered around
-    /// the first. False when the table has no such monster, or it is a defensive weapon.
+    /// the first. Still ones never walk or attack. False when the table has no such monster, or it is a defensive weapon.
     /// </summary>
     [LuaIgnoreMember]
-    public bool CallMonsters(Entity player, int monster, int count)
+    public bool CallMonsters(Entity player, int monster, int count, bool still = false)
     {
         if (Closed || Find(player) is null || creatureManager.Services?.Behaviors.Get(monster) is null || IsDefensiveWeapon(monster))
         {
@@ -65,7 +65,7 @@ public partial class LuaMaze
             .Select(e => e == 0 ? place.Position : place.Position + new Vector3(Scatter(), Scatter(), 0f))
             .ToArray();
 
-        creatureManager.CreateMonstersAt(monster, positions, place.Rotation, sector);
+        creatureManager.CreateMonstersAt(monster, positions, place.Rotation, sector, still);
 
         return true;
     }
