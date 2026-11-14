@@ -61,10 +61,10 @@ public sealed class TestLoginService
         var factory = provider.GetRequiredService<IDbContextFactory<PersistenceContext>>();
         
         {
-            await using var context = await factory.CreateDbContextAsync(TestContext.CancellationToken).ConfigureAwait(false);
+            await using var context = await factory.CreateDbContextAsync(TestContext.CancellationToken);
             
-            await context.Database.EnsureDeletedAsync(TestContext.CancellationToken).ConfigureAwait(false);
-            await context.Database.EnsureCreatedAsync(TestContext.CancellationToken).ConfigureAwait(false);
+            await context.Database.EnsureDeletedAsync(TestContext.CancellationToken);
+            await context.Database.EnsureCreatedAsync(TestContext.CancellationToken);
             
             PasswordHash.Create("password", out var passwordHash, out var saltHash);
             
@@ -74,13 +74,13 @@ public sealed class TestLoginService
                 Username = "username",
                 SaltHash = saltHash,
                 PasswordHash = passwordHash
-            }, TestContext.CancellationToken).ConfigureAwait(false);
+            }, TestContext.CancellationToken);
             
-            await context.SaveChangesAsync(TestContext.CancellationToken).ConfigureAwait(false);
+            await context.SaveChangesAsync(TestContext.CancellationToken);
         }
         
         await provider.GetRequiredService<IRedisConnectionProvider>().Connection
-            .CreateIndexAsync(typeof(SessionCache)).ConfigureAwait(false);
+            .CreateIndexAsync(typeof(SessionCache));
 
         var world = provider.GetRequiredService<World>();
         var entity = world.Create<ServerSessionComponent>();
@@ -89,7 +89,7 @@ public sealed class TestLoginService
         server.Start();
         
         var client = provider.GetRequiredService<TestClient>();
-        await client.ConnectAsync((IPEndPoint)server.LocalEndpoint, TestContext.CancellationToken).ConfigureAwait(false);
+        await client.ConnectAsync((IPEndPoint)server.LocalEndpoint, TestContext.CancellationToken);
 
         // The world goes first: `entity.Set(world, component)` binds to the overload that sets two components, the
         // first of them a World, and writes past the end of the chunk.
@@ -100,7 +100,7 @@ public sealed class TestLoginService
         await gameplay.TryJoinAsync(
             new ServiceHandleContext(entity, CancellationToken.None),
             new LoginAuthRequest("username", "password", "12-34-56-78-90-12")
-        ).ConfigureAwait(false);
+        );
     }
 
     public TestContext TestContext { get; set; }
