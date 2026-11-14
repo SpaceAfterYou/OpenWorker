@@ -11,6 +11,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Aura">The aura the attack puts on the targets it reaches (they give its buff to those around them), zero for none.</param>
 /// <param name="Reaction">How hard the attack throws its targets.</param>
 /// <param name="GrabDrop">For an attack that grabs: where the target is put down, from the attacker, turned by the way it looks.</param>
+/// <param name="TargetStatus">Whom the attack reaches by the way they stand: <see cref="AttackTrigger.LyingToo"/> and <see cref="AttackTrigger.LyingOnly"/> reach a target that lies on the ground, any other value only one that does not.</param>
 public readonly record struct AttackTrigger(
     int Id,
     short RangeType,
@@ -32,8 +33,24 @@ public readonly record struct AttackTrigger(
     int TargetType = AttackTrigger.Enemies,
     int Aura = 0,
     AttackReaction Reaction = default,
-    Vector3 GrabDrop = default)
+    Vector3 GrabDrop = default,
+    int TargetStatus = 0)
 {
+    /// <summary>
+    /// The attack reaches a target whether it lies on the ground or not.
+    /// </summary>
+    public const int LyingToo = 2;
+
+    /// <summary>
+    /// The attack reaches only a target that lies on the ground.
+    /// </summary>
+    public const int LyingOnly = 3;
+
+    /// <summary>
+    /// Whether the attack reaches a target that lies on the ground, or one that does not.
+    /// </summary>
+    public bool Reaches(bool lying) => lying ? TargetStatus is LyingToo or LyingOnly : TargetStatus != LyingOnly;
+
     /// <summary>
     /// The attacker itself, wherever it stands.
     /// </summary>
@@ -186,7 +203,50 @@ public sealed record ProjectileInfo(
 {
     public const int ByCamera = 0;
     public const int AlongGround = 2;
+
+    /// <summary>
+    /// What the attack does when it is a trap.
+    /// </summary>
+    public TrapInfo? Trap { get; init; }
 }
+
+/// <summary>
+/// How a trap is placed and how it ends. Times are in seconds, distances in the units of the world, angles in degrees.
+/// </summary>
+/// <param name="Delay">How long after it is placed the trap begins to hit.</param>
+/// <param name="GoesToMark">The trap goes where its maker last marked its target standing.</param>
+/// <param name="Pattern">0 one trap, <see cref="TrapInfo.Scattered"/> traps at random places around the maker, <see cref="TrapInfo.InRow"/> traps in a row.</param>
+/// <param name="ScatterRadius">How far from their middle the scattered traps go at most.</param>
+/// <param name="ScatterRadiusMin">How far from their middle the scattered traps go at least.</param>
+/// <param name="ScatterAngle">How far to either side of the way the maker looks a scattered trap may go.</param>
+/// <param name="Offset">For scattered traps their middle, for a row the step from one trap to the next, from the maker, turned by its yaw.</param>
+/// <param name="Count">How many traps the pattern places.</param>
+/// <param name="Interval">How long after one trap of a pattern the next is placed; zero places them all at once.</param>
+/// <param name="Burst">The space the trap bursts over when it ends; null for a file that has none.</param>
+/// <param name="BurstDelay">How long the trap that bursts when someone comes near waits before it does.</param>
+/// <param name="Faction">Who sets the trap off and is hit by its burst: 0 anybody but its maker, 4 the enemies of its maker.</param>
+public sealed record TrapInfo(
+    float Delay,
+    bool GoesToMark,
+    short Pattern,
+    float ScatterRadius,
+    float ScatterRadiusMin,
+    float ScatterAngle,
+    Vector3 Offset,
+    int Count,
+    float Interval,
+    TrapBurst? Burst,
+    float BurstDelay,
+    short Faction)
+{
+    public const short Scattered = 1;
+    public const short InRow = 2;
+}
+
+/// <summary>
+/// The space a trap bursts over, around the trap, turned the way it lies from its maker.
+/// </summary>
+public readonly record struct TrapBurst(float Angle, Vector3 Center, float Radius, float Height, float StartPosition);
 
 /// <summary>
 /// How a chain finds its next target and how long it lives.
