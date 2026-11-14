@@ -75,4 +75,10 @@ public interface ICashShopStore
     Task SaveSetAsync(CashShopSetPersistent list, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteSetAsync(int person, byte setNo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes at most <paramref name="limit"/> counts of limited products whose period started after
+    /// <paramref name="after"/> and before <paramref name="before"/> (UTC); how many were deleted.
+    /// </summary>
+    Task<int> SweepPurchasesAsync(DateTime after, DateTime before, int limit, CancellationToken cancellationToken = default);
 }

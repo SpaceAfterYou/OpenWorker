@@ -3,6 +3,7 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Commands;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.DistrictServer.Services;
@@ -406,6 +407,70 @@ public sealed class CashShopTest
     }
 
     /// <summary>
+    /// A count of a day, a week or a month that is over is swept; the counts for good and those of running periods stay.
+    /// </summary>
+    [TestMethod]
+    public async Task CountsOfPeriodsThatAreOverAreSwept()
+    {
+        var connection = Environment.GetEnvironmentVariable(Variable);
+
+        if (string.IsNullOrEmpty(connection))
+        {
+            Assert.Inconclusive($"{Variable} is not set.");
+        }
+
+        await using var services = new ServiceCollection()
+            .AddPooledDbContextFactory<PersistenceContext>(builder => builder
+                .UseNpgsql(connection + ";Database=openworker_test_" + Guid.NewGuid().ToString("N"))
+                .UsePersistenceDefaults())
+            .BuildServiceProvider();
+
+        var factory = services.GetRequiredService<IDbContextFactory<PersistenceContext>>();
+
+        await using (var context = await factory.CreateDbContextAsync())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        try
+        {
+            var now = new DateTimeOffset(2026, 11, 12, 12, 0, 0, TimeSpan.FromHours(9));
+            var running = CashLimits.PeriodOf(CashLimitKind.AccountWeek, now);
+            var day = CashLimits.PeriodOf(CashLimitKind.AccountDay, now);
+            var lastMonth = CashLimits.PeriodOf(CashLimitKind.AccountMonth, now.AddMonths(-1));
+
+            await using (var database = await factory.CreateDbContextAsync())
+            {
+                var account = new AccountPersistent { Username = "counts", PasswordHash = [], SaltHash = [] };
+
+                database.Add(account);
+                await database.SaveChangesAsync();
+
+                foreach (var (product, period) in new[] { (1, CashLimits.Always), (2, running), (3, day), (4, lastMonth), (5, running.AddDays(-14)) })
+                {
+                    database.CashShopPurchases.Add(new CashShopPurchasePersistent { AccountId = account.Id, Product = product, Period = period, Count = 1 });
+                }
+
+                await database.SaveChangesAsync();
+            }
+
+            var sweep = new CashShopSweepService(new CashShopStore(factory), new FakeTimeProvider(now), NullLogger<CashShopSweepService>.Instance);
+
+            Assert.AreEqual(2, await sweep.SweepAsync(CancellationToken.None));
+
+            await using var check = await factory.CreateDbContextAsync();
+
+            CollectionAssert.AreEquivalent(new[] { 1, 2, 3 }, await check.CashShopPurchases.Select(e => e.Product).ToListAsync());
+        }
+        finally
+        {
+            await using var context = await factory.CreateDbContextAsync();
+
+            await context.Database.EnsureDeletedAsync();
+        }
+    }
+
+    /// <summary>
     /// The cash of the shop is the account's, given with /cash: /currency refuses that kind, says so, and leaves the wallet of
     /// the person as it was.
     /// </summary>
@@ -584,6 +649,9 @@ public sealed class CashShopTest
             throw new NotSupportedException();
 
         public Task<bool> DeleteSetAsync(int person, byte setNo, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<int> SweepPurchasesAsync(DateTime after, DateTime before, int limit, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 }

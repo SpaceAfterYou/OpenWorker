@@ -88,6 +88,7 @@ public static class DistrictServerHost
         services.AddMyRoom().AddSingleton<IMyRoomPlace, DistrictRoomPlace>();
         services.AddSocialItems().AddSingleton<ISocialItemGrounds, DistrictSocialItemGrounds>().AddSingleton<NavMeshProvider>();
         services.AddHostedService<PostSweepService>();
+        services.AddHostedService<CashShopSweepService>();
 
         services.AddHotspot(context, EntityComponentService.District);
 

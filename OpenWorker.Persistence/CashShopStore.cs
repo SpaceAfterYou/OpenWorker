@@ -142,6 +142,18 @@ public sealed class CashShopStore(IDbContextFactory<PersistenceContext> factory)
             .ExecuteDeleteAsync(cancellationToken) > 0;
     }
 
+    public async Task<int> SweepPurchasesAsync(DateTime after, DateTime before, int limit, CancellationToken cancellationToken = default)
+    {
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
+
+        // One statement: two servers that sweep at once delete each count once.
+        return await database.CashShopPurchases
+            .Where(e => e.Period > after && e.Period < before)
+            .OrderBy(e => e.Period)
+            .Take(limit)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     private static Task<long> Balance(PersistenceContext database, int account, CancellationToken cancellationToken)
     {
         return database.Accounts
