@@ -289,7 +289,7 @@ public sealed class CashShopTest
     /// <summary>
     /// The window of the client cannot open before it has the products, so a client from the character selection is given
     /// the banners, the products in parts with the last one marked, the balance and the lists at the entry, while the cash shop
-    /// is open; a closed shop gives nothing, and a login given them is not given them again at its next entry.
+    /// is open; a login given them is not given them again at its next entry.
     /// </summary>
     [TestMethod]
     public async Task AClientFromTheCharacterSelectionIsGivenTheShopAtTheEntryOncePerLogin()
@@ -299,8 +299,6 @@ public sealed class CashShopTest
         var connection = new RecordingConnection();
         var player = Player(world, connection, 3);
 
-        await window.EnterAsync(player, true, CancellationToken.None);
-
         contents[ServerContentIndex.CashShop] = true;
 
         await window.EnterAsync(player, true, CancellationToken.None);
@@ -308,7 +306,7 @@ public sealed class CashShopTest
 
         var sent = Drain(world, player, connection);
 
-        CollectionAssert.AreEqual(ShopBurst, sent.Select(e => e.Opcode).ToArray(), "only the entry from the character selection with the shop open");
+        CollectionAssert.AreEqual(ShopBurst, sent.Select(e => e.Opcode).ToArray(), "only the entry from the character selection");
         Assert.AreEqual((0, CashShopCatalog.PartSize), (sent[1].Body[0], BitConverter.ToInt32(sent[1].Body, 1)));
         Assert.AreEqual((1, 1), (sent[2].Body[0], BitConverter.ToInt32(sent[2].Body, 1)));
         Assert.AreEqual(1234, BitConverter.ToInt32(sent[3].Body));
@@ -332,7 +330,28 @@ public sealed class CashShopTest
 
         await window.EnterAsync(player, false, CancellationToken.None);
 
-        CollectionAssert.AreEqual(ShopBurst, Drain(world, player, connection).Select(e => e.Opcode).ToArray());
+        CollectionAssert.AreEqual(ShopBurst.Prepend(Balance).ToArray(), Drain(world, player, connection).Select(e => e.Opcode).ToArray());
+    }
+
+    /// <summary>
+    /// The bags show the balance of the account, so a client from the character selection is told it while the shop is closed
+    /// too, and only it; a later entry of the login tells nothing.
+    /// </summary>
+    [TestMethod]
+    public async Task TheBalanceIsToldAtTheEntryFromTheCharacterSelectionWhileTheShopIsClosed()
+    {
+        using var world = World.Create();
+        var (window, _) = Window(world, new MemoryCashShopLogins());
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+
+        await window.EnterAsync(player, true, CancellationToken.None);
+        await window.EnterAsync(player, false, CancellationToken.None);
+
+        var sent = Drain(world, player, connection);
+
+        CollectionAssert.AreEqual(new[] { Balance }, sent.Select(e => e.Opcode).ToArray());
+        Assert.AreEqual(1234, BitConverter.ToInt32(sent[0].Body));
     }
 
     /// <summary>
@@ -421,6 +440,8 @@ public sealed class CashShopTest
         CollectionAssert.AreEqual(ShopBurst.Append(notice).ToArray(), Wait(lacking, 6).Select(e => e.Opcode).ToArray());
         CollectionAssert.AreEqual(new[] { notice }, Wait(given, 1).Select(e => e.Opcode).ToArray());
     }
+
+    private static readonly MessageOpcode Balance = MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateCash);
 
     private static readonly MessageOpcode[] ShopBurst =
     [

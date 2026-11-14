@@ -41,12 +41,18 @@ public sealed partial class CashShopWindow(
 
     /// <summary>
     /// Gives the window its contents at an entry into a district while the cash shop is open: always to a client from the
-    /// character selection, whose window is new, and to any other only when its login has not been given them yet.
+    /// character selection, whose window is new, and to any other only when its login has not been given them yet. A client
+    /// from the character selection is told the balance even while the shop is closed: its bags show it.
     /// </summary>
     public async ValueTask EnterAsync(Entity player, bool firstConnect, CancellationToken cancellationToken)
     {
-        if (!contents[ServerContentIndex.CashShop])
+        if (!IsOpen)
         {
+            if (firstConnect)
+            {
+                await TellBalanceAsync(player, cancellationToken);
+            }
+
             return;
         }
 
@@ -98,6 +104,30 @@ public sealed partial class CashShopWindow(
         {
             LogGivenUnknown(logger, e, claims.Key);
             return true;
+        }
+    }
+
+    private async ValueTask TellBalanceAsync(Entity player, CancellationToken cancellationToken)
+    {
+        if (!world.IsAlive(player))
+        {
+            return;
+        }
+
+        var account = world.Get<ClaimsComponent>(player).Account;
+
+        try
+        {
+            var balance = await store.BalanceAsync(account, cancellationToken);
+
+            if (world.IsAlive(player))
+            {
+                world.Get<ServerSessionComponent>(player).Send(new ItemUpdateCashResponse { Total = Balance(balance) });
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            LogBalanceFailed(logger, e, account);
         }
     }
 
@@ -187,6 +217,9 @@ public sealed partial class CashShopWindow(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Whether session {Session} was given the cash shop could not be read; it is given again")]
     private static partial void LogGivenUnknown(ILogger logger, Exception exception, long session);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The cash balance of account {Account} could not be read at the entry")]
+    private static partial void LogBalanceFailed(ILogger logger, Exception exception, int account);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The cash shop of person {Person} could not be loaded")]
     private static partial void LogLoadFailed(ILogger logger, Exception exception, int person);
