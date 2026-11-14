@@ -751,6 +751,12 @@ internal partial class MonsterBody : IAiHost
             return false;
         }
 
+        // A target on the ground waits for a skill that is for it.
+        if (!skill.ForLying && _manager.IsLying(target.Id))
+        {
+            return false;
+        }
+
         var now = _manager.Now;
 
         // A skill that grabs plays its start, and what follows depends on whether the start took somebody.
@@ -935,7 +941,7 @@ internal partial class MonsterBody : IAiHost
             victims = [.. victims, hit];
         }
 
-        victims = TakeGrabbed(trigger, victims, skill);
+        victims = TakeGrabbed(trigger, Reachable(trigger, victims), skill);
 
         var first = _manager.HitPlayers(this, skill, trigger, victims);
 
@@ -950,6 +956,14 @@ internal partial class MonsterBody : IAiHost
         }
 
         return first != 0;
+    }
+
+    /// <summary>
+    /// The players a blow reaches by the way they stand: one that lies on the ground only when the event of the blow says so.
+    /// </summary>
+    private IReadOnlyList<Entity> Reachable(AttackTrigger trigger, IReadOnlyList<Entity> players)
+    {
+        return players.Count == 0 ? players : players.Where(e => trigger.Reaches(_manager.IsLying(e))).ToArray();
     }
 
     /// <summary>

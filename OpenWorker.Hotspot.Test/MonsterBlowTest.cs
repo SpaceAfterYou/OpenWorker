@@ -94,6 +94,17 @@ public sealed class MonsterBlowTest
 
             return Hits().Length;
         }
+
+        public void Stance(short motion, short step)
+        {
+            world.Add(Player, new PlayerStanceComponent(motion, step));
+            world.Add(Player, new PlayerPostureComponent(TimeSpan.FromHours(1)));
+        }
+
+        public void SetStance(short motion, short step)
+        {
+            world.Set(Player, new PlayerStanceComponent(motion, step));
+        }
     }
 
     /// <summary>
@@ -274,6 +285,47 @@ public sealed class MonsterBlowTest
             arena.Advance(4f);
 
             Assert.AreEqual(3, await arena.HitsAsync(3), "Who has left is hit no more, and the burst at its end is far.");
+        }, trapper, skills, actions);
+    }
+
+    /// <summary>
+    /// A player who lies on the ground is not reached by a blow that is not for one, and a monster waits with a skill that is not
+    /// for one; once the player is up again, it is hit.
+    /// </summary>
+    [TestMethod]
+    public async Task APlayerOnTheGroundIsNotHitByWhatIsNotForOne()
+    {
+        if (Data(TrapSkill) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        var trapper = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", TrapperFile), ("Skill1", TrapSkill));
+        var laid = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }
+            .GetTimeline(TrapSkill, TrapperFile).Hits.First(e => e.Trigger.IsTrap && e.Trigger.Center == RightTrap).Time;
+
+        await WithArenaAsync(async arena =>
+        {
+            var ahead = arena.Body.Position + new Vector3(0f, -1000f, 0f);
+            var player = new AiTarget(100, ahead, 40f, 0f, 1, 1, false);
+            var skill = arena.Body.GetSkill(0)!;
+
+            arena.Stance(MotionClass.DownUp, 2);
+
+            Assert.IsFalse(arena.Body.UseSkill(skill, player), "The monster waits while its target lies.");
+            Assert.IsTrue(arena.Body.UseSkill(skill with { ForLying = true }, player), "A skill for one on the ground starts.");
+
+            arena.Place(arena.Body.Position + TrapLayout.Turn(RightTrap, arena.Body.Yaw));
+            arena.Advance(laid + 0.2f);
+
+            Assert.AreEqual(0, await arena.HitsAsync(0), "The trap passes over the player on the ground.");
+
+            arena.SetStance(MotionClass.DownUp, 5);
+            arena.Advance(0.2f);
+
+            Assert.AreEqual(1, await arena.HitsAsync(1), "Up again, the player is hit.");
         }, trapper, skills, actions);
     }
 

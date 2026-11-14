@@ -2,6 +2,7 @@ using Arch.Core;
 using System.Numerics;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Types;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Npcs.Components;
@@ -82,6 +83,18 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeMotionReqRequest request)
     {
+        // The motion after a blow says whether the player lies on the ground.
+        var stance = new PlayerStanceComponent(request.Motion, request.SubMotion);
+
+        if (world.Has<PlayerStanceComponent>(context.Player))
+        {
+            world.Set(context.Player, stance);
+        }
+        else
+        {
+            world.Add(context.Player, stance);
+        }
+
         BroadcastToOthers(context.Player, new PersonChangeMotionBroadcastResponse
         {
             Actor = world.Get<ActorComponent>(context.Player).Identifier,

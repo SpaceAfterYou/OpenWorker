@@ -356,7 +356,7 @@ internal partial class MonsterBody
     /// </summary>
     protected virtual IReadOnlyList<Entity> TrapTargets(AttackTrigger trigger, AttackArea area)
     {
-        return _manager.PlayersTouching(area);
+        return Reachable(trigger, _manager.PlayersTouching(area));
     }
 
     /// <summary>
