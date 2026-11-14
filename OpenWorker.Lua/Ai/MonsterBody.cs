@@ -410,6 +410,8 @@ internal partial class MonsterBody : IAiHost
         }
 
         var wasStanding = _destination is null;
+        Vector3? leg = _route.Count > 0 ? _route[0] : null;
+        var wasRunning = _run;
 
         _route.Clear();
 
@@ -429,7 +431,8 @@ internal partial class MonsterBody : IAiHost
 
         Place(position, wanted);
 
-        if (sendNow)
+        // A way found again that goes on to the same point is not news to the clients.
+        if (sendNow && (wasStanding || leg is not { } previous || wasRunning != run || AiMath.Distance2D(previous, _route[0]) >= Arrived))
         {
             SendMove(_manager.Now);
         }
@@ -558,6 +561,15 @@ internal partial class MonsterBody : IAiHost
     }
 
     public virtual void WarpTo(Vector3 position) => Teleport(position);
+
+    public INavigation Navigation => _manager.Navigation;
+
+    public TargetPlaces Places => _manager.Places;
+
+    public bool IsInOwnSector(Vector3 position)
+    {
+        return _manager.SectorAt(position) == _ecs.Get<NonPlayableCreatureComponent>(Entity).Sector;
+    }
 
     public void Heal(int amount)
     {
@@ -990,19 +1002,32 @@ internal partial class MonsterBody : IAiHost
 
     private void SendMove(double now)
     {
-        if (_destination is not { } end)
+        if (_destination is null)
         {
             return;
         }
-
-        // The client walks to the next point of the way; it hears of the next one when it gets there.
-        var destination = _route.Count > 0 ? _route[0] : end;
 
         _lastMoveSent = now;
         _lastYawSent = Yaw;
         _stoppedAt = null;
 
-        Broadcast(new MovementMoveBtResponse
+        Broadcast(WalkMessage());
+    }
+
+    /// <summary>
+    /// The walk the monster is on, for a client that comes in while it walks: nothing when it stands or waits to set off.
+    /// </summary>
+    public MovementMoveBtResponse? CurrentWalk()
+    {
+        return _destination is null || _manager.Now < _holdUntil || _moveAfterHold ? null : WalkMessage();
+    }
+
+    private MovementMoveBtResponse WalkMessage()
+    {
+        // The client walks to the next point of the way; it hears of the next one when it gets there.
+        var destination = _route.Count > 0 ? _route[0] : _destination.GetValueOrDefault();
+
+        return new MovementMoveBtResponse
         {
             Actor = Actor,
             Map = _ecs.Get<WorldComponent>(Entity).Map,
@@ -1014,7 +1039,7 @@ internal partial class MonsterBody : IAiHost
             Pitch = 0f,
             MoveSpeed = Speed,
             ChangeMotion = 0
-        });
+        };
     }
 
     private void SendStop()
