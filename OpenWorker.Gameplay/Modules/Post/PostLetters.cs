@@ -23,6 +23,27 @@ public static class PostLetters
     /// </summary>
     public static bool CanSendFrom(StorageGroup storage) => storage is StorageGroup.Common or StorageGroup.Costume;
 
+    /// <summary>
+    /// How many letters one page of a list carries.
+    /// </summary>
+    public const int PageSize = 10;
+
+    /// <summary>
+    /// A list as the client takes it: full pages that say more is coming (0), then the rest, possibly nothing, that says
+    /// the list is whole (1). The client adds every page to its list and draws it at the last.
+    /// </summary>
+    public static IEnumerable<(T[] Letters, byte Last)> Pages<T>(IReadOnlyList<T> letters)
+    {
+        var start = 0;
+
+        for (; letters.Count - start >= PageSize; start += PageSize)
+        {
+            yield return (letters.Skip(start).Take(PageSize).ToArray(), 0);
+        }
+
+        yield return (letters.Skip(start).ToArray(), 1);
+    }
+
     #region What a letter carries
 
     /// <summary>

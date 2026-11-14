@@ -24,7 +24,7 @@ public sealed class ProgressService(World world, AchievementManager achievements
 {
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PersonAchieveRewardRequest request)
     {
-        var reward = achievements.TakeReward(context.Player, request.Index);
+        var reward = await achievements.TakeRewardAsync(context.Player, request.Index, context.CancellationToken);
 
         if (reward.Error != 0)
         {

@@ -88,30 +88,81 @@ public sealed class RewardLetterTest
     }
 
     [TestMethod]
-    public async Task ALetterTheDatabaseRefusesIsTriedAgainAndWrittenOnce()
+    public async Task ALetterTheDatabaseRefusesIsKeptAndDeliveredOnceByTheNextTry()
     {
         using var f = new Fixture();
 
         f.FillCommonBag(leaveFree: 0);
         f.Post.Failures = 1;
+        f.Post.DeliveryFailures = 1;
 
         Assert.IsTrue(await f.Granter.TryGrantAsync(f.Player, new Reward([new RewardItem(Gear, 1)]), RewardSource.PlayTime, CancellationToken.None),
             "the reward is settled at once: the letter is the post's to write");
 
-        await MetricAssertions.UntilAsync(() => f.Post.Calls == 1, "the first letter is refused");
+        await MetricAssertions.UntilAsync(() => f.Post.Deliveries == 1, "the letter is kept pending and its first delivery refused");
+
+        Assert.HasCount(1, f.Post.Pending);
 
         // The person leaves before the letter is written: the letter is for the account and still goes, untold.
         f.World.Destroy(f.Player);
 
-        f.Time.Advance(TimeSpan.FromSeconds(1));
+        await MetricAssertions.UntilAsync(() =>
+        {
+            f.Time.Advance(TimeSpan.FromMilliseconds(250));
 
-        await MetricAssertions.UntilAsync(() => f.Post.Letters.Count == 1, "the letter is tried again");
+            return f.Post.Letters.Count == 1;
+        }, "the pending letter is delivered by the next try");
 
         f.Time.Advance(TimeSpan.FromMinutes(5));
         await Task.Delay(50);
 
-        Assert.AreEqual(2, f.Post.Calls, "it is written once and not tried again");
-        Assert.AreEqual(1, f.Post.Letters.Count);
+        Assert.AreEqual(2, f.Post.Deliveries, "it is delivered once and not tried again");
+        Assert.HasCount(0, f.Post.Pending);
+        Assert.AreEqual(Gear, f.Post.Letters[0].Items.Single().Item, "the item is made when the letter is delivered");
+    }
+
+    [TestMethod]
+    public async Task ALetterKeptPendingIsDeliveredOnceAtTheNextStart()
+    {
+        using var f = new Fixture();
+
+        f.FillCommonBag(leaveFree: 0);
+        f.Post.Failures = 1;
+        f.Post.DeliveryFailures = int.MaxValue;
+
+        Assert.IsTrue(await f.Granter.TryGrantAsync(f.Player, new Reward([new RewardItem(Gear, 1)], Gold: 0), RewardSource.Attendance, CancellationToken.None));
+
+        // Every try fails until the granter gives up: the letter stays pending. Time moves until each next try is made.
+        await MetricAssertions.UntilAsync(() => f.Post.Deliveries == 1, "the letter is kept pending and its first delivery refused");
+
+        for (var tries = 2; tries <= 5; tries++)
+        {
+            var reached = tries;
+
+            await MetricAssertions.UntilAsync(() =>
+            {
+                f.Time.Advance(TimeSpan.FromSeconds(1));
+
+                return f.Post.Deliveries == reached;
+            }, "the delivery is tried again");
+        }
+
+        f.Time.Advance(TimeSpan.FromMinutes(5));
+        await Task.Delay(50);
+
+        Assert.AreEqual(5, f.Post.Deliveries, "the tries end");
+        Assert.HasCount(0, f.Post.Letters);
+        Assert.HasCount(1, f.Post.Pending, "the reward is kept, not lost");
+
+        // The next start of a district: another granter over the same post.
+        f.Post.DeliveryFailures = 0;
+
+        var next = new InventoryRewardGranter(f.Inventory, f.World, f.Post, f.Time);
+
+        Assert.AreEqual(1, await next.DeliverPendingAsync(DateTime.MaxValue, CancellationToken.None));
+        Assert.AreEqual(0, await next.DeliverPendingAsync(DateTime.MaxValue, CancellationToken.None), "a delivered letter is not delivered again");
+        Assert.HasCount(1, f.Post.Letters);
+        Assert.AreEqual(Gear, f.Post.Letters[0].Items.Single().Item);
     }
 
     private sealed class Fixture : IDisposable
@@ -189,15 +240,19 @@ public sealed class RewardLetterTest
     }
 
     /// <summary>
-    /// Keeps the letters of the game it is asked to write, and refuses the first ones when told to.
+    /// Keeps the letters of the game it is asked to write and the pending ones, and refuses the first writes or deliveries
+    /// when told to.
     /// </summary>
     private sealed class RecordingPost : IPostStore
     {
         private long _serial;
 
         public List<PostAccountDraft> Letters { get; } = [];
+        public Dictionary<long, PostAccountDraft> Pending { get; } = [];
         public int Calls { get; private set; }
         public int Failures { get; set; }
+        public int Deliveries { get; private set; }
+        public int DeliveryFailures { get; set; }
 
         public Task<PostPersistent> SendToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default)
         {
@@ -212,9 +267,49 @@ public sealed class RewardLetterTest
 
             Letters.Add(draft);
 
-            return Task.FromResult(new PostPersistent
+            return Task.FromResult(Letter(++_serial, draft));
+        }
+
+        public Task<PostPersistent> SendPendingToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default)
+        {
+            Pending[++_serial] = draft;
+
+            return Task.FromResult(Letter(_serial, draft));
+        }
+
+        public Task<List<PostPersistent>> ListPendingAsync(DateTime writtenBefore, int limit, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Pending.Select(e => Letter(e.Key, e.Value)).Take(limit).ToList());
+        }
+
+        public Task<PostPersistent?> DeliverPendingAsync(long serial, IReadOnlyList<PostItemPersistent> items, CancellationToken cancellationToken = default)
+        {
+            Deliveries++;
+
+            if (DeliveryFailures > 0)
             {
-                Id = ++_serial,
+                DeliveryFailures--;
+
+                return Task.FromException<PostPersistent?>(new InvalidOperationException("The database did not deliver the letter."));
+            }
+
+            if (!Pending.Remove(serial, out var draft))
+            {
+                return Task.FromResult<PostPersistent?>(null);
+            }
+
+            var delivered = draft with { Items = items };
+
+            Letters.Add(delivered);
+
+            return Task.FromResult<PostPersistent?>(Letter(serial, delivered));
+        }
+
+        private static PostPersistent Letter(long serial, PostAccountDraft draft)
+        {
+            return new PostPersistent
+            {
+                Id = serial,
                 Kind = PostKind.Account,
                 ReceiverAccountId = draft.Account,
                 SenderName = draft.SenderName,
@@ -225,7 +320,7 @@ public sealed class RewardLetterTest
                 MainType = draft.MainType,
                 SubType = draft.SubType,
                 ExpiresAt = DateTime.UtcNow + PostLimits.Lifetime
-            });
+            };
         }
 
         public Task<(int Person, int Account)> CountUnreadAsync(int person, int account, CancellationToken cancellationToken = default)

@@ -96,10 +96,10 @@ public readonly record struct PostReturnResult(PostReturnOutcome Outcome, PostPe
 public static class PostLimits
 {
     /// <summary>
-    /// The largest box of a person, kept letters included, and the most letters one list shows: a list of that many
-    /// letters at their longest still fits one packet.
+    /// The most letters one list shows, the newest, and the largest box of a person, kept letters included, so that every
+    /// letter of a box is listed.
     /// </summary>
-    public const int MaxLetters = 40;
+    public const int MaxLetters = 50;
 
     /// <summary>
     /// How long a letter is kept, from its sending or its sending back, whoever sent it. Then it is gone for both sides with
@@ -126,6 +126,24 @@ public interface IPostStore
     /// Stores a letter of the game for an account.
     /// </summary>
     Task<PostPersistent> SendToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stores a letter of the game for an account that nobody sees yet (<see cref="PostState.Pending"/>): what it carries is
+    /// each item and its count, made when it is delivered.
+    /// </summary>
+    Task<PostPersistent> SendPendingToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The pending letters written before a moment, oldest first.
+    /// </summary>
+    Task<List<PostPersistent>> ListPendingAsync(DateTime writtenBefore, int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replaces a pending letter with the letter itself, under a serial of its own, with the items made for it and a lifetime
+    /// from now, once: the letter comes back to the call that delivered it and <see langword="null"/> to every other, from any
+    /// server.
+    /// </summary>
+    Task<PostPersistent?> DeliverPendingAsync(long serial, IReadOnlyList<PostItemPersistent> items, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// The letters a person received, the kept ones or the others, newest first.
@@ -182,7 +200,7 @@ public interface IPostStore
 
     /// <summary>
     /// Deletes at most <paramref name="limit"/> letters whose time is up, with what they still carry, and tells how many
-    /// went. A letter kept by its receiver is not one of them. Every list, count and change already passes over such a
+    /// went. A letter kept by its receiver, or pending, is not one of them. Every list, count and change already passes over such a
     /// letter, so the sweep only frees the table; two servers may sweep at the same moment, and each letter goes once.
     /// </summary>
     Task<int> SweepAsync(int limit, CancellationToken cancellationToken = default);

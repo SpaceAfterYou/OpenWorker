@@ -85,7 +85,8 @@ public sealed class RewardsTest
     }
 
     private static Action<BinaryWriter> Drop(int id, ushort goldChance, ushort goldMin, ushort goldMax, int group, ushort groupChance,
-        ushort battlePointChance = 0, ushort battlePointFirst = 0, ushort battlePointSecond = 0)
+        ushort battlePointChance = 0, ushort battlePointFirst = 0, ushort battlePointSecond = 0,
+        ushort soulChance = 0, ushort soulMin = 0, ushort soulMax = 0)
     {
         return writer =>
         {
@@ -96,7 +97,9 @@ public sealed class RewardsTest
             writer.Write(goldMax);
             writer.Write((ushort)0);
             writer.Write((byte)0);
-            writer.Write(new byte[2 * 3]);     // soul vapor
+            writer.Write(soulChance);
+            writer.Write(soulMin);
+            writer.Write(soulMax);
             writer.Write(new byte[2 * 6]);     // ether
             writer.Write(battlePointChance);
             writer.Write(battlePointFirst);
@@ -566,6 +569,24 @@ public sealed class RewardsTest
         }
 
         Assert.AreEqual(0, f.Drops.On(f.Player).Count);
+    }
+
+    [TestMethod]
+    public void SoulVaporFallsByItsChanceBetweenItsTwoValues()
+    {
+        var monster = FindMonster();
+        var half = Rows<DropRow>(Drop(monster.DropId, 0, 0, 0, 0, 0, soulChance: 5000, soulMin: 3, soulMax: 8));
+
+        using var f = new Fixture(drops: half);
+
+        var random = new Random(3);
+        var rolls = Enumerable.Range(0, 400).Select(_ => f.Drops.Roll(half[0], 1f, random)).ToList();
+        var souls = rolls.SelectMany(e => e).Where(e => e.ObjectId == DropService.SoulObject).ToList();
+
+        Assert.IsTrue(souls.Count is > 150 and < 250, $"{souls.Count} of 400 kills at half the chance");
+        Assert.IsTrue(souls.All(e => e.Count is >= 3 and <= 8));
+        Assert.AreEqual(6, souls.Select(e => e.Count).Distinct().Count(), "every amount between the two falls");
+        Assert.IsTrue(f.Drops.Roll(half[0], 0f, random).Count == 0, "no chance, no soul vapor");
     }
 
     [TestMethod]

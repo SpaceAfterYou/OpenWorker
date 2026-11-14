@@ -20,10 +20,16 @@ namespace OpenWorker.Gameplay.Modules.Items;
 /// <para>
 /// What the bags cannot hold depends on where the reward comes from. A quest, a soul metry, a cube and a helper refuse the
 /// whole reward and keep it for later, as the original does. The reward of a daily mission always goes by letter; the
-/// reward of a day of attendance and of the time played goes into the bags, and what does not fit goes by letter, with gold
-/// the purse cannot hold. The letter is one of the game, to the account of the person (<see cref="IPostStore.SendToAccountAsync"/>),
-/// written after the reward counts as given, the way the original sends it, so the feature that gives it waits for nothing:
-/// a letter the database does not take is tried again for a while and then given up with an error that names it.
+/// reward of a day of attendance, of the time played and of an achievement goes into the bags, and what does not fit goes by
+/// letter, with gold the purse cannot hold. The letter is one of the game, to the account of the person
+/// (<see cref="IPostStore.SendToAccountAsync"/>), written after the reward counts as given, the way the original sends it, so
+/// the feature that gives it waits for nothing.
+/// </para>
+/// <para>
+/// A letter the database does not take at once is kept as a pending letter (<see cref="IPostStore.SendPendingToAccountAsync"/>),
+/// which nobody sees, and delivered from it: by the tries that follow, or, when they fail or the server stops, by
+/// <see cref="DeliverPendingAsync"/> at the next start of a district. A pending letter is delivered once, by whichever comes
+/// first, so the reward is neither lost nor given twice.
 /// </para>
 /// </summary>
 public sealed partial class InventoryRewardGranter(
@@ -39,6 +45,11 @@ public sealed partial class InventoryRewardGranter(
     /// How long a letter the database did not take waits before it is tried again; after the last wait it is given up.
     /// </summary>
     private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30)];
+
+    /// <summary>
+    /// The most pending letters one call of <see cref="DeliverPendingAsync"/> delivers.
+    /// </summary>
+    private const int PendingBatch = 100;
 
     private readonly TimeProvider _time = time ?? TimeProvider.System;
     private readonly ILogger _logger = logger ?? NullLogger<InventoryRewardGranter>.Instance;
@@ -58,7 +69,7 @@ public sealed partial class InventoryRewardGranter(
     private static Delivery DeliveryOf(RewardSource source) => source switch
     {
         RewardSource.DailyMission => Delivery.Letter,
-        RewardSource.Attendance or RewardSource.PlayTime => Delivery.BagThenLetter,
+        RewardSource.Attendance or RewardSource.PlayTime or RewardSource.Achievement => Delivery.BagThenLetter,
         _ => Delivery.Bag
     };
 
@@ -194,14 +205,127 @@ public sealed partial class InventoryRewardGranter(
     }
 
     /// <summary>
-    /// Writes one letter of the reward to the account, trying again while the database does not take it, and tells the
-    /// person when it is in, if the person is still here. The items are made when the letter is written, with what the
-    /// tables give a new item, and are taken out of the letter under serials of their own.
+    /// Writes one letter of the reward to the account and tells the person when it is in, if the person is still here. The
+    /// items are made when the letter is written, with what the tables give a new item, and are taken out of the letter under
+    /// serials of their own. A letter that is not written at once is kept pending and delivered from there.
     /// </summary>
     private async Task MailAsync(Entity player, int account, RewardSource source, (int Item, int Count)[] items, long gold)
     {
-        // The client has a row for the reward of a daily mission and none for attendance: that letter shows its own text.
-        var (title, body, row) = source switch
+        var (title, body, row) = Text(source);
+
+        PostPersistent? letter = null;
+
+        try
+        {
+            letter = await post!.SendToAccountAsync(
+                new PostAccountDraft(account, Sender, title, body, gold, await MakeAsync(items), GameLetters.AccountKind, row),
+                CancellationToken.None);
+        }
+
+        catch (Exception e)
+        {
+            LogLetterRetried(e, account, source, 1);
+        }
+
+        PostPersistent? pending = null;
+
+        for (var attempt = 0; letter is null; attempt++)
+        {
+            try
+            {
+                // Each item with its count only: the items are made when the letter is delivered.
+                pending ??= await post!.SendPendingToAccountAsync(
+                    new PostAccountDraft(account, Sender, title, body, gold, items.Select(e => new PostItemPersistent { Item = e.Item, Count = (short)e.Count }).ToList(),
+                        GameLetters.AccountKind, row),
+                    CancellationToken.None);
+
+                letter = await DeliverAsync(pending.Id, items);
+
+                if (letter is null)
+                {
+                    // Another server delivered it.
+                    return;
+                }
+            }
+
+            catch (Exception e) when (attempt < RetryDelays.Length)
+            {
+                LogLetterRetried(e, account, source, attempt + 2);
+
+                await Task.Delay(RetryDelays[attempt], _time);
+            }
+
+            catch (Exception e)
+            {
+                if (pending is not null)
+                {
+                    LogLetterPending(e, account, source, pending.Id);
+                }
+                else
+                {
+                    LogLetterLost(e, account, source, gold, string.Join(", ", items.Select(x => string.Create(CultureInfo.InvariantCulture, $"{x.Item} x {x.Count}"))));
+                }
+
+                return;
+            }
+        }
+
+        await TellAsync(player, account, letter);
+    }
+
+    /// <summary>
+    /// Delivers the pending letters of rewards written before a moment: those whose server stopped, or gave them up, before
+    /// they were written. Runs on the world loop, which makes the items. Tells how many were delivered here.
+    /// </summary>
+    public async Task<int> DeliverPendingAsync(DateTime writtenBefore, CancellationToken cancellationToken)
+    {
+        if (post is null)
+        {
+            return 0;
+        }
+
+        var delivered = 0;
+
+        foreach (var letter in await post.ListPendingAsync(writtenBefore, PendingBatch, cancellationToken))
+        {
+            try
+            {
+                if (await DeliverAsync(letter.Id, letter.Items.Select(e => (e.Item, (int)e.Count)).ToArray()) is not null)
+                {
+                    delivered++;
+                }
+            }
+
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                LogPendingNotDelivered(e, letter.ReceiverAccountId ?? 0, letter.Id);
+            }
+        }
+
+        return delivered;
+    }
+
+    private async Task<PostPersistent?> DeliverAsync(long pending, (int Item, int Count)[] items)
+    {
+        return await post!.DeliverPendingAsync(pending, await MakeAsync(items), CancellationToken.None);
+    }
+
+    private async Task<List<PostItemPersistent>> MakeAsync((int Item, int Count)[] items)
+    {
+        await inventory.EnsureSerialsAsync(items.Select(e => (e.Item, 1)));
+
+        if (!inventory.CanMake(items.Length))
+        {
+            throw new ItemSerialsExhaustedException();
+        }
+
+        return items.Select(e => PostLetters.Attach(inventory.Create(e.Item, e.Count), (short)e.Count)).ToList();
+    }
+
+    private static (string Title, string Body, byte Row) Text(RewardSource source)
+    {
+        // The client has a row for the reward of a daily mission and none for the others: those letters show their own text.
+        return source switch
         {
             RewardSource.DailyMission => ("[System] Daily Mission Completion Reward",
                 "[Daily Mission] Your completion reward has arrived. Please clear some space in your inventory to claim the attachment.",
@@ -209,51 +333,13 @@ public sealed partial class InventoryRewardGranter(
             RewardSource.PlayTime => ("[System] Play Time Reward",
                 "Your inventory had no room for all of your play time reward, so the rest is kept here. Please clear some space in your inventory to claim the attachment.",
                 GameLetters.OwnText),
+            RewardSource.Achievement => ("[System] Achievement Reward",
+                "Your inventory had no room for all of your achievement reward, so the rest is kept here. Please clear some space in your inventory to claim the attachment.",
+                GameLetters.OwnText),
             _ => ("[System] Attendance Reward",
                 "Your inventory had no room for all of your attendance reward, so the rest is kept here. Please clear some space in your inventory to claim the attachment.",
                 GameLetters.OwnText)
         };
-
-        for (var attempt = 0; ; attempt++)
-        {
-            PostPersistent letter;
-
-            try
-            {
-                await inventory.EnsureSerialsAsync(items.Select(e => (e.Item, 1)));
-
-                if (!inventory.CanMake(items.Length))
-                {
-                    throw new ItemSerialsExhaustedException();
-                }
-
-                var attached = items.Select(e => PostLetters.Attach(inventory.Create(e.Item, e.Count), (short)e.Count)).ToList();
-
-                letter = await post!.SendToAccountAsync(
-                    new PostAccountDraft(account, Sender, title, body, gold, attached, GameLetters.AccountKind, row),
-                    CancellationToken.None);
-            }
-
-            catch (Exception e) when (attempt < RetryDelays.Length)
-            {
-                LogLetterRetried(e, account, source, attempt + 1);
-
-                await Task.Delay(RetryDelays[attempt], _time);
-
-                continue;
-            }
-
-            catch (Exception e)
-            {
-                LogLetterLost(e, account, source, gold, string.Join(", ", items.Select(x => string.Create(CultureInfo.InvariantCulture, $"{x.Item} x {x.Count}"))));
-
-                return;
-            }
-
-            await TellAsync(player, account, letter);
-
-            return;
-        }
     }
 
     private async Task TellAsync(Entity player, int account, PostPersistent letter)
@@ -285,6 +371,12 @@ public sealed partial class InventoryRewardGranter(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The letter with a reward from {Source} to account {Account} was not written (attempt {Attempt}); it is tried again")]
     private partial void LogLetterRetried(Exception exception, int account, RewardSource source, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The letter with a reward from {Source} to account {Account} is kept as pending letter {Letter}; a district delivers it at its next start")]
+    private partial void LogLetterPending(Exception exception, int account, RewardSource source, long letter);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The pending letter {Letter} of account {Account} was not delivered; it is tried again later")]
+    private partial void LogPendingNotDelivered(Exception exception, int account, long letter);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The letter with a reward from {Source} to account {Account} is lost: {Gold} gold, items {Items}")]
     private partial void LogLetterLost(Exception exception, int account, RewardSource source, long gold, string items);

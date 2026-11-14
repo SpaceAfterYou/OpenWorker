@@ -28,7 +28,8 @@ public enum RewardSource : byte
     Helper = 4,
     Vaccum = 5,
     PlayTime = 6,
-    Quest = 7
+    Quest = 7,
+    Achievement = 8
 }
 
 /// <summary>
@@ -40,7 +41,7 @@ public interface IRewardGranter
     /// <summary>
     /// Gives the reward, or none of it. False means nothing was given, and the caller must not count the reward as
     /// taken. Where what the bags cannot hold goes is up to the implementation and the source: some rewards are refused
-    /// when they do not fit, some go by letter in part (attendance) or whole (daily missions). The reward is settled when
+    /// when they do not fit, some go by letter in part (attendance, achievements) or whole (daily missions). The reward is settled when
     /// this returns, so the caller can count it as taken at once.
     /// </summary>
     ValueTask<bool> TryGrantAsync(

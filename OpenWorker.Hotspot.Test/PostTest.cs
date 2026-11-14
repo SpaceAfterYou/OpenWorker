@@ -614,4 +614,45 @@ public sealed class PostTest
 
         Assert.IsFalse(await database.Posts.AnyAsync(e => dead.Contains(e.Id)));
     }
+
+    /// <summary>
+    /// A pending letter of the game is seen by nobody and not swept; two servers that deliver it at the same moment deliver it
+    /// once, with the items made for it.
+    /// </summary>
+    [TestMethod]
+    public async Task APendingLetterIsSeenByNobodyAndDeliveredOnce()
+    {
+        var clock = Clock(2005);
+        var store = new PostStore(Factory, clock);
+
+        var (account, _) = await CreatePersonAsync("pending");
+
+        var pending = await store.SendPendingToAccountAsync(
+            new PostAccountDraft(account, "game", "Title", "Body", 10, [new PostItemPersistent { Item = Sword, Count = 1 }], 4, 9));
+
+        Assert.IsEmpty(await store.ListAccountAsync(account));
+        Assert.AreEqual(0, (await store.CountUnreadAsync(0, account)).Account);
+        Assert.IsNull(await store.ClaimAccountAsync(pending.Id, account));
+
+        clock.Advance(PostLimits.Lifetime + TimeSpan.FromDays(1));
+        await store.SweepAsync(int.MaxValue);
+
+        Assert.AreEqual(pending.Id, (await store.ListPendingAsync(clock.GetUtcNow().UtcDateTime, 100)).Single(e => e.ReceiverAccountId == account).Id,
+            "a pending letter is not swept");
+
+        var made = new PostItemPersistent { Item = Sword, Count = 1, Endurance = 50 };
+
+        var delivered = await Task.WhenAll(
+            Task.Run(() => new PostStore(Factory, clock).DeliverPendingAsync(pending.Id, [made])),
+            Task.Run(() => new PostStore(Factory, clock).DeliverPendingAsync(pending.Id, [made])));
+
+        Assert.AreEqual(1, delivered.Count(e => e is not null), "one of them delivers it");
+
+        var letter = (await store.ListAccountAsync(account)).Single();
+
+        Assert.AreEqual(delivered.Single(e => e is not null)!.Id, letter.Id);
+        Assert.AreEqual(50, letter.Items.Single().Endurance, "with the items made for it");
+        Assert.AreEqual(clock.GetUtcNow().UtcDateTime + PostLimits.Lifetime, letter.ExpiresAt, "it lives from its delivery");
+        Assert.IsFalse((await store.ListPendingAsync(DateTime.MaxValue, 100)).Any(e => e.ReceiverAccountId == account));
+    }
 }

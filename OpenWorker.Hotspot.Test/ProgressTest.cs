@@ -13,6 +13,7 @@ using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Progress.Components;
+using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot.Modules.Items.Enums;
@@ -64,7 +65,7 @@ public sealed class ProgressTest
         /// <summary>The item of every reward: a stack of the common bag the new person does not have.</summary>
         public int Item { get; }
 
-        public Fixture()
+        public Fixture(IRewardGranter? granter = null)
         {
             var items = TestTables.Load<ItemRow>("tb_Item");
             var catalog = new ItemCatalog(items, TestTables.Load<ItemClassifyRow>("tb_Item_Classify"), TestTables.Load<InvenSlotExtendRow>("tb_Inven_Slot_Extend"),
@@ -109,7 +110,7 @@ public sealed class ProgressTest
                 [new AchievementBegin(FirstAchievement, 1)]);
 
             Achievements = new AchievementManager(World, store, achievements, rewards, Inventory, new ReadOnlyCollection<MonsterRow>([]),
-                NullLogger<AchievementManager>.Instance);
+                NullLogger<AchievementManager>.Instance, granter: granter);
             SharePoints = new SharePointManager(World, store, sharePoints, rewards, NullLogger<SharePointManager>.Instance);
 
             Player = World.Create(
@@ -218,7 +219,7 @@ public sealed class ProgressTest
 
         await f.Achievements.EnterAsync(f.Player, 7, CancellationToken.None);
 
-        Assert.IsFalse(f.Achievements.TakeReward(f.Player, FirstAchievement).Given, "nothing is counted yet");
+        Assert.IsFalse((await f.Achievements.TakeRewardAsync(f.Player, FirstAchievement)).Given, "nothing is counted yet");
 
         f.Achievements.OnMazeCleared(f.Player, Maze, seconds: 600, kind: 0);
 
@@ -228,12 +229,12 @@ public sealed class ProgressTest
         Assert.AreEqual(1, counter.Count);
         await MetricAssertions.UntilAsync(() => f.Received(CharacterOpcode.AchieveUpdate).Length == 1, "the client is told");
 
-        var first = f.Achievements.TakeReward(f.Player, FirstAchievement);
-        var second = f.Achievements.TakeReward(f.Player, FirstAchievement);
+        var first = await f.Achievements.TakeRewardAsync(f.Player, FirstAchievement);
+        var second = await f.Achievements.TakeRewardAsync(f.Player, FirstAchievement);
 
         Assert.IsTrue(first.Given);
         Assert.AreEqual(AchievementReward.Silent, second, "a reward taken is not given again, and gets no answer");
-        Assert.IsFalse(f.Achievements.TakeReward(f.Player, FirstAchievement + 1).Given, "the next one is not reached");
+        Assert.IsFalse((await f.Achievements.TakeRewardAsync(f.Player, FirstAchievement + 1)).Given, "the next one is not reached");
         Assert.AreEqual(100, f.Gold());
         Assert.AreEqual(3, f.Count());
 
@@ -241,7 +242,48 @@ public sealed class ProgressTest
         f.Achievements.OnMazeCleared(f.Player, Maze, seconds: 600, kind: 0);
         f.World.Get<CurrencyComponent>(f.Player)[ShopCurrency.Gold] = InventoryService.WalletLimit;
 
-        Assert.AreEqual(AchievementManager.GoldOverflow, f.Achievements.TakeReward(f.Player, FirstAchievement + 1).Error);
+        Assert.AreEqual(AchievementManager.GoldOverflow, (await f.Achievements.TakeRewardAsync(f.Player, FirstAchievement + 1)).Error);
         Assert.AreEqual(3, f.Count(), "nothing of the refused reward is given");
+    }
+
+    [TestMethod]
+    public async Task TheItemsOfAnAchievementGoThroughTheGranterAndARefusalLeavesTheRewardToTake()
+    {
+        var granter = new RecordingGranter { Refuse = true };
+
+        using var f = new Fixture(granter);
+
+        await f.Achievements.EnterAsync(f.Player, 7, CancellationToken.None);
+        f.Achievements.OnMazeCleared(f.Player, Maze, seconds: 600, kind: 0);
+
+        var refused = await f.Achievements.TakeRewardAsync(f.Player, FirstAchievement);
+
+        Assert.AreEqual(AchievementManager.DoesNotFit, refused.Error);
+        Assert.AreEqual(0, f.Gold(), "nothing of a refused reward is given");
+
+        granter.Refuse = false;
+
+        Assert.IsTrue((await f.Achievements.TakeRewardAsync(f.Player, FirstAchievement)).Given, "the reward is still there to take");
+        Assert.AreEqual(100, f.Gold());
+
+        var (reward, source) = granter.Grants[^1];
+
+        Assert.AreEqual(RewardSource.Achievement, source, "the granter sends what does not fit by letter");
+        Assert.AreEqual(new RewardItem(f.Item, 3), reward.Items.Single());
+        Assert.AreEqual(0, reward.Gold, "the wallet is paid by the achievement, with its own codes");
+    }
+
+    private sealed class RecordingGranter : IRewardGranter
+    {
+        public bool Refuse { get; set; }
+
+        public List<(Reward Reward, RewardSource Source)> Grants { get; } = [];
+
+        public ValueTask<bool> TryGrantAsync(Entity player, Reward reward, RewardSource source, CancellationToken cancellationToken)
+        {
+            Grants.Add((reward, source));
+
+            return ValueTask.FromResult(!Refuse);
+        }
     }
 }

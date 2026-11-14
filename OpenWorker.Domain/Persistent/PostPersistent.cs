@@ -54,6 +54,12 @@ public enum PostState : byte
     GoneForReceiver = 1 << 5,
 
     /// <summary>
+    /// A letter of the game kept for its account while it could not be written whole: nobody sees it until it is delivered,
+    /// once, with its items made.
+    /// </summary>
+    Pending = 1 << 6,
+
+    /// <summary>
     /// What the client sees of the state.
     /// </summary>
     Shown = Read | Received | Returned | Saved

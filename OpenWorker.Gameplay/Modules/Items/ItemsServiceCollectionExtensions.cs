@@ -54,7 +54,8 @@ public static class ItemsServiceCollectionExtensions
         services.AddSingleton<InventoryPersistence>();
 
         // The features that give items hand them over here.
-        services.Replace(ServiceDescriptor.Singleton<IRewardGranter, InventoryRewardGranter>());
+        services.AddSingleton<InventoryRewardGranter>();
+        services.Replace(ServiceDescriptor.Singleton<IRewardGranter>(e => e.GetRequiredService<InventoryRewardGranter>()));
 
         // Quests count and take the items of the bags.
         services.Replace(ServiceDescriptor.Singleton<IQuestItems, InventoryQuestItems>());

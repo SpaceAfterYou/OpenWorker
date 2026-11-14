@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Progress;
@@ -59,7 +60,8 @@ public sealed partial class DropService(
     BoosterManager? boosters = null,
     ItemUseService? use = null,
     HiddenEventCounter? hiddenEvents = null,
-    ILogger<DropService>? logger = null)
+    ILogger<DropService>? logger = null,
+    CombatTables? combat = null)
 {
     public const int GoldObject = 800000001;
     public const int SoulObject = 800000002;
@@ -67,6 +69,9 @@ public sealed partial class DropService(
     public const int EtherObject = 800000004;
 
     private const int Chances = 10000;
+
+    // The special effect that adds a share in percent to the soul vapor a monster lets fall.
+    private const int MoreSoulVapor = 117;
     private const int BossRank = 4;
 
     // The tables of a party's drop go up to four members.
@@ -171,7 +176,7 @@ public sealed partial class DropService(
     }
 
     /// <summary>
-    /// Works out what falls: money by its chances, then one item from each group that falls. The boosters of the player
+    /// Works out what falls: gold, battle points, soul vapor and ether by their chances, then one item from each group that falls. The boosters of the player
     /// add to the gold that falls and to the chances of battle points, ether and the items of each group.
     /// </summary>
     public List<DropThing> Roll(DropRow drop, float rate, Random random, Entity? player = null)
@@ -188,6 +193,8 @@ public sealed partial class DropService(
                 things.Add(new DropThing(BattlePointObject, Between(random, drop.BattlePointMin, drop.BattlePointMax, drop.Id, "battle points")));
             }
         });
+
+        Part(drop.Id, "soul vapor", () => RollSoul(drop, rate, random, player, things));
 
         Part(drop.Id, "ether", () =>
         {
@@ -241,6 +248,29 @@ public sealed partial class DropService(
             var bonus = (int)(gold * goldRate);
 
             things.Add(new DropThing(GoldObject, gold + bonus, bonus));
+        }
+    }
+
+    /// <summary>
+    /// Soul vapor falls by its chance, which no booster changes, and the special effect of the player adds its share to
+    /// both ends of the amount.
+    /// </summary>
+    private void RollSoul(in DropRow drop, float rate, Random random, Entity? player, List<DropThing> things)
+    {
+        if (drop.SoulChance == 0 || drop.SoulChance * rate < random.Next(1, Chances + 1))
+        {
+            return;
+        }
+
+        var share = player is { } known && combat is not null && world.Has<PersonInfoComponent>(known)
+            ? combat.GetPlayer(world, known).Special[MoreSoulVapor] * 0.01f
+            : 0f;
+
+        var count = Between(random, (int)(drop.SoulMin * (1f + share)), (int)(drop.SoulMax * (1f + share)), drop.Id, "soul vapor");
+
+        if (count > 0)
+        {
+            things.Add(new DropThing(SoulObject, count));
         }
     }
 
