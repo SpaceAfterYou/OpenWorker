@@ -410,6 +410,8 @@ internal partial class MonsterBody : IAiHost
         }
 
         var wasStanding = _destination is null;
+        Vector3? leg = _route.Count > 0 ? _route[0] : null;
+        var wasRunning = _run;
 
         _route.Clear();
 
@@ -429,7 +431,8 @@ internal partial class MonsterBody : IAiHost
 
         Place(position, wanted);
 
-        if (sendNow)
+        // A way found again that goes on to the same point is not news to the clients.
+        if (sendNow && (wasStanding || leg is not { } previous || wasRunning != run || AiMath.Distance2D(previous, _route[0]) >= Arrived))
         {
             SendMove(_manager.Now);
         }
@@ -558,6 +561,15 @@ internal partial class MonsterBody : IAiHost
     }
 
     public virtual void WarpTo(Vector3 position) => Teleport(position);
+
+    public INavigation Navigation => _manager.Navigation;
+
+    public TargetPlaces Places => _manager.Places;
+
+    public bool IsInOwnSector(Vector3 position)
+    {
+        return _manager.SectorAt(position) == _ecs.Get<NonPlayableCreatureComponent>(Entity).Sector;
+    }
 
     public void Heal(int amount)
     {

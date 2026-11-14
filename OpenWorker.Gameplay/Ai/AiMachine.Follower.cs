@@ -132,13 +132,14 @@ public sealed partial class AiMachine
     }
 
     /// <summary>
-    /// A monster that cannot find its way to its target chooses again; a helper first checks that it is not lost far from
-    /// its owner, then waits.
+    /// A monster that cannot find its way to its target chooses again, and is put somewhere when it keeps failing; a helper
+    /// first checks that it is not lost far from its owner, then waits.
     /// </summary>
     private void GiveUpReaching()
     {
         if (!IsFollower)
         {
+            CountFailedWay();
             ChangeState(AiState.SelectAction);
 
             return;

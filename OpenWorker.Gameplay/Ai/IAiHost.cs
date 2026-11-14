@@ -164,6 +164,21 @@ public interface IAiHost
     bool HasGround(Vector3 position) => true;
 
     /// <summary>
+    /// The ground the monster walks on.
+    /// </summary>
+    INavigation Navigation => OpenNavigation.Instance;
+
+    /// <summary>
+    /// The places around the targets that the monsters of the map share out, or nothing when the monster fights alone.
+    /// </summary>
+    TargetPlaces? Places => null;
+
+    /// <summary>
+    /// Whether a place lies in the sector the monster belongs to.
+    /// </summary>
+    bool IsInOwnSector(Vector3 position) => true;
+
+    /// <summary>
     /// A helper is put where its owner stands, and everybody is told where it is now.
     /// </summary>
     void WarpTo(Vector3 position) => Teleport(position);

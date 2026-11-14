@@ -18,7 +18,32 @@ public sealed partial class AiMachine
     private const float RangeSlack = 30f;
     private const float DefaultSkillAngle = 45f;
     private const float RetargetPause = 0.2f;
-    private const float RepathPause = 0.3f;
+    private const float ApproachLook = 0.1f;
+
+    /// <summary>
+    /// A monster this near its place around the target does not walk to it.
+    /// </summary>
+    private const float PlaceReached = 30f;
+
+    /// <summary>
+    /// A place around the target is not nearer the target than this, unless both bodies need more.
+    /// </summary>
+    private const float PlaceNearest = 100f;
+
+    /// <summary>
+    /// A place of the approach that has moved less than this is the same place: the way to it is not looked for again.
+    /// </summary>
+    private const float PlaceMoved = 1f;
+
+    /// <summary>
+    /// A way not found this many times in a row puts the monster where it can fight, or home.
+    /// </summary>
+    private const int FailedWaysBeforeWarp = 3;
+
+    /// <summary>
+    /// How long a monster that waits or wanders may stand where there is no floor before it is put home, in seconds.
+    /// </summary>
+    private const float NoFloorWarp = 5f;
     private const float ReturnArrival = 50f;
     private const int RandomRange = 10000;
     private const float AggroPerSighting = 1f;
@@ -133,6 +158,11 @@ public sealed partial class AiMachine
     /// </summary>
     public void Update(float elapsed)
     {
+        if (_host.IsDead)
+        {
+            LeavePlace();
+        }
+
         if (_state == AiState.None || _host.IsDead || elapsed <= 0f)
         {
             return;
@@ -783,6 +813,8 @@ public sealed partial class AiMachine
 
         _targetId = id;
 
+        LeavePlace();
+
         _host.SetTarget(id);
 
         // A new target starts the waiting of the transitions of the state anew.
@@ -1097,10 +1129,15 @@ public sealed partial class AiMachine
         switch (state)
         {
             case AiState.Wait:
+                CheckFloor(elapsed);
                 UpdateWait(elapsed);
                 break;
 
             case AiState.Patrol:
+                CheckFloor(elapsed);
+                UpdateMovement(state);
+                break;
+
             case AiState.BattleMove:
             case AiState.Gaze:
             case AiState.Runaway:
@@ -1448,7 +1485,7 @@ public sealed partial class AiMachine
             return;
         }
 
-        if (TargetFor(skill) is null)
+        if (TargetFor(skill) is not { } target)
         {
             ChangeState(AiState.Wait);
 
@@ -1459,6 +1496,8 @@ public sealed partial class AiMachine
         _skillSlot = slot;
         _skillGroup = group;
         _skillStarted = false;
+
+        TakePlace(target, skill);
     }
 
     private void UpdateAttackSkill(float elapsed)
@@ -1537,23 +1576,7 @@ public sealed partial class AiMachine
             return;
         }
 
-        // Out of reach: goes up to the target, and follows it while it moves.
-        if (!_host.IsMoving || _repathTime > RepathPause)
-        {
-            _repathTime = 0f;
-
-            var toward = Vector3.Normalize(target.Value.Position - _host.Position);
-            // A wide monster with a short skill has its nearest stand beyond the skill's own range: the nearest stand wins
-            // (a clamp between the two would throw there).
-            var nearest = target.Value.Radius + _host.Radius + 10f;
-            var farthest = Math.Max(_skill.RangeMax - 10f, 1f);
-            var wanted = Math.Max(nearest, Math.Min((_skill.RangeMin + _skill.RangeMax) / 2f, farthest));
-
-            if (!_host.MoveTo(target.Value.Position - toward * Math.Min(wanted, distance), true) && !_host.IsMoving)
-            {
-                GiveUpReaching();
-            }
-        }
+        Approach(target.Value, _skill);
     }
 
     /// <summary>

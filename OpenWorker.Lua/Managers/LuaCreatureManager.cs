@@ -171,6 +171,28 @@ public sealed partial class LuaCreatureManager
     /// </summary>
     private const int MaxSpareBodies = 32;
     private Dictionary<Entity, DefenseType> Defenses { get; } = [];
+
+    /// <summary>
+    /// The places around their targets the monsters of the maze have taken.
+    /// </summary>
+    public TargetPlaces Places { get; } = new();
+
+    /// <summary>
+    /// The sector whose box holds a place, or 0 when none does.
+    /// </summary>
+    public int SectorAt(Vector3 position)
+    {
+        foreach (var box in batch.EventBox.Sectors)
+        {
+            if (position.X >= Math.Min(box.PosTopLeft.X, box.PosBottomRight.X) && position.X <= Math.Max(box.PosTopLeft.X, box.PosBottomRight.X) &&
+                position.Y >= Math.Min(box.PosTopLeft.Y, box.PosBottomRight.Y) && position.Y <= Math.Max(box.PosTopLeft.Y, box.PosBottomRight.Y))
+            {
+                return box.Id;
+            }
+        }
+
+        return 0;
+    }
     private Dictionary<int, SectorKillProgress> KillProgress { get; } = [];
 
     /// <summary>
@@ -722,6 +744,7 @@ public sealed partial class LuaCreatureManager
 
         if (Bodies.Remove(creature, out var body))
         {
+            body.Machine.LeavePlace();
             Retire(body);
         }
 

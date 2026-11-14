@@ -37,6 +37,14 @@ public sealed partial class AiMachineTest
         /// </summary>
         public List<AiTarget> Others { get; } = [];
 
+        public TargetPlaces? Places { get; set; }
+        public INavigation Navigation { get; set; } = OpenNavigation.Instance;
+
+        /// <summary>
+        /// How many times a way was looked for.
+        /// </summary>
+        public int Searches => Log.Count(e => e is "run" or "walk");
+
         public bool Down { get; set; }
         public List<(AiDefense Defense, float Seconds)> Forced { get; } = [];
         public List<float> Escapes { get; } = [];
