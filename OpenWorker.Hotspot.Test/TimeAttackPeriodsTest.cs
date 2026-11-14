@@ -17,6 +17,10 @@ public sealed class TimeAttackPeriodsTest
     private const int Potion = 100;
     private const int Unknown = 200;
 
+    // A reward of the client's table that its item table lacks, and the medibox given in its place.
+    private const int CrystalPotion = 610901000;
+    private const int BitMedibox = 610101001;
+
     /// <summary>
     /// A period ends at midnight of Monday, once: a server that starts later ends the one it missed, and each place the table
     /// rewards gets its item by a letter of the game to its account, in stacks.
@@ -46,13 +50,21 @@ public sealed class TimeAttackPeriodsTest
         Assert.AreEqual(new DateTime(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc), store.Ends[^1]);
         Assert.HasCount(2, store.Ends);
 
-        // Place 1 gets five potions in stacks of two; place 2 names an item the game lacks; place 3 has no reward.
-        var letter = store.Letters[^1].Single();
+        // Place 1 gets five potions in stacks of two; place 2 its stand-in for a reward the item table lacks; place 3 names
+        // an item the game lacks and nothing stands in for.
+        var letters = store.Letters[^1];
+
+        Assert.HasCount(2, letters);
+
+        var letter = letters[0];
 
         Assert.AreEqual(1001, letter.Account);
         Assert.AreEqual(GameLetters.OwnText, letter.SubType);
         CollectionAssert.AreEqual(new short[] { 2, 2, 1 }, letter.Items.Select(e => e.Count).ToArray());
         Assert.IsTrue(letter.Items.All(e => e.Item == Potion));
+
+        Assert.AreEqual(1002, letters[1].Account);
+        Assert.AreEqual((BitMedibox, (short)20), (letters[1].Items.Single().Item, letters[1].Items.Single().Count));
     }
 
     /// <summary>
@@ -65,19 +77,22 @@ public sealed class TimeAttackPeriodsTest
         using var world = World.Create();
         var store = new Store();
 
-        Assert.AreEqual(1, await Periods(world, store, new FakeTimeProvider(now)).EndNowAsync());
+        Assert.AreEqual(2, await Periods(world, store, new FakeTimeProvider(now)).EndNowAsync());
         Assert.AreEqual(now.UtcDateTime, store.Ends.Single());
     }
 
     private static TimeAttackPeriods Periods(World world, Store store, TimeProvider time)
     {
         var catalog = new ItemCatalog(
-            new ReadOnlyCollection<ItemRow>([TestRows.Build<ItemRow>(("Id", Potion), ("Stack", (short)2))]),
+            new ReadOnlyCollection<ItemRow>([
+                TestRows.Build<ItemRow>(("Id", Potion), ("Stack", (short)2)),
+                TestRows.Build<ItemRow>(("Id", BitMedibox), ("Stack", (short)50))
+            ]),
             new ReadOnlyCollection<ItemClassifyRow>([]),
             new ReadOnlyCollection<InvenSlotExtendRow>([]),
             new ReadOnlyCollection<BankSlotExtendRow>([]));
 
-        var rewards = TimeAttackRewards.From((Map, 1, Potion, 5), (Map, 2, Unknown, 1));
+        var rewards = TimeAttackRewards.From((Map, 1, Potion, 5), (Map, 2, CrystalPotion, 20), (Map, 3, Unknown, 1));
 
         return new TimeAttackPeriods(world, store, rewards, new InventoryService(world, catalog, new LocalItemSerials()), time: time);
     }

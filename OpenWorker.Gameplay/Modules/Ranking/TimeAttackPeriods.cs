@@ -134,19 +134,21 @@ public sealed partial class TimeAttackPeriods(
                 continue;
             }
 
-            if (!inventory.Catalog.Exists(reward.Item))
+            var item = RankingRewardStandIns.Resolve(reward.Item, inventory.Catalog);
+
+            if (item == 0)
             {
                 unknown.Add(reward.Item);
 
                 continue;
             }
 
-            var limit = Math.Max(1, (int)inventory.Catalog.StackLimit(reward.Item));
+            var limit = Math.Max(1, (int)inventory.Catalog.StackLimit(item));
             var stacks = new List<(int Item, int Count)>();
 
             for (var left = reward.Count; left > 0; left -= limit)
             {
-                stacks.Add((reward.Item, Math.Min(left, limit)));
+                stacks.Add((item, Math.Min(left, limit)));
             }
 
             parcels.Add((place, stacks));
