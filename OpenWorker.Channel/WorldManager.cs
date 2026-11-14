@@ -34,6 +34,7 @@ public sealed partial class WorldManager(
     MazeDirectory mazes,
     IPersonFlush persons,
     ILogger<WorldManager> logger,
+    ServerChanges changes,
     WorldMazeRoutes? worlds = null)
 {
     /// <summary>
@@ -320,6 +321,7 @@ public sealed partial class WorldManager(
             .InsertAsync(cache, ReservationLifetime);
 
         session.Send(new WorldEnterResponse { Map = enter });
+        changes.Begin(player);
     }
 
     private async ValueTask<EnterOutcome> TryEnterDistrict(Entity player, short location, StartEventBox start)
@@ -391,6 +393,7 @@ public sealed partial class WorldManager(
             .InsertAsync(cache, ReservationLifetime);
 
         session.Send(new WorldEnterResponse { Map = enter });
+        changes.Begin(player);
 
         return EnterOutcome.Entered;
     }

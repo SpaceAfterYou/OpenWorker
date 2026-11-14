@@ -64,6 +64,7 @@ public sealed partial class MazeService(
     IPlayerAudience audience,
     SkillInputRelay relay,
     MazeAdmission admission,
+    ServerChanges changes,
     ILogger<MazeService> logger,
     MazeHelperField? helpers = null
 ) :
@@ -127,7 +128,7 @@ public sealed partial class MazeService(
     /// </summary>
     public async ValueTask OnHandleAsync(ServiceHandleContext context, WorldEnterRequest request)
     {
-        if (!ecs.IsAlive(context.Player))
+        if (!ecs.IsAlive(context.Player) || changes.IsLeaving(context.Player))
         {
             return;
         }
@@ -983,6 +984,12 @@ public sealed partial class MazeService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeExitRequest request)
     {
+        // A player already told where to go is not sent anywhere again.
+        if (changes.IsLeaving(context.Player))
+        {
+            return;
+        }
+
         // The way out of the last tutorial maze ends the prologue.
         await prologue.LeaveAsync(context.Player);
 
@@ -1102,6 +1109,7 @@ public sealed partial class MazeService(
             .InsertAsync(cache, WorldManager.ReservationLifetime);
 
         session.Send(new WorldEnterResponse { Map = enter });
+        changes.Begin(player);
 
         // The player is on the way out: the maze goes on for the rest of the party, and the last one out ends it.
         await instances.LeaveAsync(player);

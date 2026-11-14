@@ -47,6 +47,7 @@ public static class ServiceCollectionExtensions
         services.AddMazeEndpointOptions();
 
         services.AddSingleton<WorldManager>();
+        services.AddSingleton<ServerChanges>();
         services.AddSingleton<LeaveManager>();
 
         // A server with the write-behind of its players (AddPersonPersistence) writes them before they go; the gate keeps nothing.
