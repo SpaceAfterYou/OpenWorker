@@ -95,6 +95,7 @@ public static class MiscGameplayExtensions
         services.AddSingleton<IMazePortals, BatchMazePortals>();
         services.AddSingleton<MazeAdmission>();
         services.AddInfiniteTower();
+        services.AddSingleton<TimeAttackRewards>();
         services.AddSingleton<TimeAttackRanking>();
 
         // What the flush of the person writes when the managers mark their part.

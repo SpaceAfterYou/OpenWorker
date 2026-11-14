@@ -18,7 +18,7 @@ public sealed class TimeAttackRankingTest
 
     /// <summary>
     /// The client asks for a map's list once per login: a clear that sets the player's time sends it the list with its new row,
-    /// a clear that sets nothing (a slower time, a maze the window does not list) sends nothing.
+    /// a clear that sets nothing (a slower time, a maze the window does not list, a map off its raid list) sends nothing.
     /// </summary>
     [TestMethod]
     public async Task OnlyAClearThatRecordsATimeSendsThePlayerTheList()
@@ -26,7 +26,7 @@ public sealed class TimeAttackRankingTest
         using var world = World.Create();
         var connection = new RecordingConnection();
         var store = new Store();
-        var ranking = new TimeAttackRanking(world, store);
+        var ranking = new TimeAttackRanking(world, store, TimeAttackRewards.From((Map, 1, 100, 1)));
 
         var player = world.Create(new ActorComponent(Person, ActorType.User), new PersonInfoComponent { Name = "Me", Hero = Hero.Haru },
             new ServerSessionComponent(connection));
@@ -36,6 +36,7 @@ public sealed class TimeAttackRankingTest
 
         store.Better = true;
         await ranking.RecordAsync(player, 10101, mazeType: 1, seconds: 300, score: 10);
+        await ranking.RecordAsync(player, 10301, mazeType: 2, seconds: 300, score: 10);
         await ranking.RecordAsync(player, Map, mazeType: 8, seconds: 300, score: 20);
 
         var until = DateTime.UtcNow.AddSeconds(5);

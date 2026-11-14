@@ -481,11 +481,11 @@
     "Int16"
   ],
   "tb_Rank_Reward": [
-    "Int16",
-    "Int16",
-    "Int16",
-    "Int32",
-    "Byte"
+    "Int16 Id",
+    "Int16 Map // The map of the time attack ranking: the client lists the maps of this table in its raid tab, in the order of their keys.",
+    "Int16 Place // The place in the ranking of the map, from 1.",
+    "Int32 Item // The item the place is given at the end of a period; the client shows it in the reward popup.",
+    "Byte Count // How many of the item."
   ],
   "tb_UI_Img": [
     "Int16",
