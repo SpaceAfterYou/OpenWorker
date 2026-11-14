@@ -31,7 +31,7 @@ internal sealed class ServerServiceHost : IAsyncDisposable
     private readonly ApplicationLifetime _lifetime = new(NullLogger<ApplicationLifetime>.Instance);
     private readonly ServerState _state;
 
-    public ServerServiceHost()
+    public ServerServiceHost(HotspotOptions? hotspot = null)
     {
         ProbeHandler.Handled = 0;
 
@@ -60,7 +60,7 @@ internal sealed class ServerServiceHost : IAsyncDisposable
             executor,
             Options.Create(new ServerOptions { Port = 0 }),
             Options.Create(new GameOptions { Version = "1.0" }),
-            Options.Create(new HotspotOptions()),
+            Options.Create(hotspot ?? new HotspotOptions()),
             Options.Create(new ShutdownOptions { Timeout = TimeSpan.FromSeconds(30), DrainTimeout = TimeSpan.FromSeconds(15) }),
             new ArchComponentProvider(configuration, NullLogger<ArchComponentProvider>.Instance),
             _state,

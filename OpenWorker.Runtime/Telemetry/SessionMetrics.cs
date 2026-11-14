@@ -11,6 +11,7 @@ public sealed class SessionMetrics : IFrameDrops
 {
     private readonly UpDownCounter<long> _active;
     private readonly Counter<long> _closed;
+    private readonly Counter<long> _refused;
     private readonly UpDownCounter<long> _writerQueue;
     private readonly Counter<long> _framesSent;
     private readonly Counter<long> _framesDropped;
@@ -30,6 +31,11 @@ public sealed class SessionMetrics : IFrameDrops
             "sessions.closed",
             unit: "{session}",
             description: "Connections that ended. Tag reason: client, server, backpressure, timeout, malformed, shutdown, no_entry.");
+
+        _refused = meter.CreateCounter<long>(
+            "sessions.refused",
+            unit: "{session}",
+            description: "Connections closed as soon as they were accepted. Tag reason: address (the address holds the most connections it may).");
 
         // A sum that goes up and down costs nothing when no one listens, where a counter read by a gauge would
         // have to be an atomic operation on every frame.
@@ -85,6 +91,12 @@ public sealed class SessionMetrics : IFrameDrops
     {
         _active.Add(-1);
         _closed.Add(1, new KeyValuePair<string, object?>("reason", Tag(reason)));
+    }
+
+    /// <param name="reason">The value of the <c>reason</c> tag.</param>
+    public void Refused(string reason)
+    {
+        _refused.Add(1, new KeyValuePair<string, object?>("reason", reason));
     }
 
     /// <summary>

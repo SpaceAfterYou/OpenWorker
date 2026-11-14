@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.Server.Common.Services;
 
 namespace OpenWorker.Server.Common.Extensions;
@@ -29,6 +30,7 @@ public static class ServiceCollectionExtensions
             .AddSingleton<OpenWorker.Gameplay.Modules.Maze.WorldMazes>()
             .AddSingleton<OpenWorker.Channel.WorldMazeRoutes>()
             .AddHostedService<KeepAliveService>()
+            .AddSingleton<IServerContentListener, ServerContentNotifier>()
             .AddSingleton<IPlayerAudience, TAudience>();
     }
 }

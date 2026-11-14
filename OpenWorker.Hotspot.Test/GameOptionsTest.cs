@@ -1,51 +1,145 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using OpenWorker.Channel.Community;
 using OpenWorker.Commands;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Domain.Stores;
+using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Modules.Attendance;
+using OpenWorker.Gameplay.Modules.State;
+using OpenWorker.Gameplay.Modules.Rewards;
+using OpenWorker.Hotspot.Cache;
+using OpenWorker.Server.Common;
+using StackExchange.Redis;
 
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// The options of the game: the contents a server offers and what the client is told of them.
+/// The options of the game: the contents the servers offer and what the client is told of them. Needs Redis: set
+/// OPENWORKER_TEST_REDIS.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
 public sealed class GameOptionsTest
 {
+    private sealed class MemoryContentStore : IServerContentStore
+    {
+        public ConcurrentDictionary<ServerContentIndex, bool> Rows { get; } = [];
+
+        public Task SetAsync(ServerContentIndex index, bool state, CancellationToken cancellationToken = default)
+        {
+            Rows[index] = state;
+
+            return Task.CompletedTask;
+        }
+    }
+
     /// <summary>
-    /// A content switched by the command is switched for the whole server, and everybody on it is told with 01/07: the client in
-    /// the game reads the contents only from that message.
+    /// One server with its own contents and its own connection to Redis, as a process has.
+    /// </summary>
+    private sealed class Host : IDisposable
+    {
+        private readonly ConnectionMultiplexer _redis;
+
+        public Host(MemoryCommunity community, string redis)
+        {
+            Server = new TestServer(community);
+            _redis = ConnectionMultiplexer.Connect(new RedisOptions { ConnectionString = redis }.ToConfigurationOptions());
+
+            var attendance = new AttendanceManager(
+                Server.World, new PersonStateStore(null!), AttendanceCatalog.From([], new Dictionary<int, Reward>(), []), null!, Contents,
+                TimeProvider.System, Options.Create(new AttendanceOptions()), NullLogger<AttendanceManager>.Instance);
+
+            var notifier = new ServerContentNotifier(
+                Server.World, Contents, Server.Network, CashShopTest.EmptyWindow(Server.World, Contents), attendance);
+
+            Changes = new ServerContentChanges(Contents, _redis, Server.Loop, [notifier], NullLogger<ServerContentChanges>.Instance);
+            Changes.ListenAsync().GetAwaiter().GetResult();
+        }
+
+        public TestServer Server { get; }
+
+        public ServerContent Contents { get; } = new();
+
+        public ServerContentChanges Changes { get; }
+
+        public void Dispose()
+        {
+            Server.Dispose();
+            _redis.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// A content switched by the command on one server is written to the table and switched on every server, and everybody
+    /// on each of them is told with 01/07: the client in the game reads the contents only from that message.
     /// </summary>
     [TestMethod]
-    public void TheOptionCommandTellsEverybodyOnTheServer()
+    public void TheOptionCommandSwitchesTheContentOnEveryServer()
     {
-        var community = new MemoryCommunity();
-        var contents = new ServerContent();
+        var redis = Environment.GetEnvironmentVariable("OPENWORKER_TEST_REDIS");
 
-        using var server = new TestServer(community);
-        using var alice = server.Join(1, "Alice");
-        using var bob = server.Join(2, "Bob");
+        if (string.IsNullOrEmpty(redis))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_REDIS is not set.");
+        }
+
+        var community = new MemoryCommunity();
+        var store = new MemoryContentStore();
+
+        using var district = new Host(community, redis);
+        using var maze = new Host(community, redis);
+        using var alice = district.Server.Join(1, "Alice");
+        using var bob = maze.Server.Join(2, "Bob");
         using var services = new ServiceCollection()
-            .AddSingleton(server.World)
-            .AddSingleton(contents)
-            .AddSingleton(server.Network)
-            .AddSingleton(CashShopTest.EmptyWindow(server.World, contents))
+            .AddSingleton<IServerContentStore>(store)
+            .AddSingleton(district.Changes)
             .BuildServiceProvider();
 
         ICommand command = new OptionCommand(services);
         var done = false;
 
-        server.Run(async () => done = await command.TryExecute(alice.Entity, ["3", "true"]));
+        district.Server.Run(async () => done = await command.TryExecute(alice.Entity, ["3", "true"]));
 
         Assert.IsTrue(done);
-        Assert.IsTrue(contents[ServerContentIndex.Ranking]);
+        Assert.IsTrue(store.Rows[ServerContentIndex.Ranking]);
 
-        foreach (var player in new[] { alice, bob })
+        foreach (var (host, player) in new[] { (district, alice), (maze, bob) })
         {
-            var frame = player.Read().Single();
+            var frame = player.Read(2000).Single();
 
             Assert.AreEqual((1, 7), (frame.Group, frame.Command));
             CollectionAssert.AreEqual(new byte[] { 0, 0, 0, 1, 0 }, frame.Content);
+            Assert.IsTrue(host.Server.Loop.InvokeAsync(() => host.Contents[ServerContentIndex.Ranking]).GetAwaiter().GetResult());
         }
+    }
+
+    /// <summary>
+    /// The client of a game master forces whispers, trades, parties, leagues, friends and looks to "nobody" at every entry and
+    /// sends that: the server keeps what the player chose for each of them, and takes any other option and any of them the
+    /// player set to something else.
+    /// </summary>
+    [TestMethod]
+    public void AGameMasterKeepsTheOptionsItsClientForces()
+    {
+        var kept = Enumerable.Repeat((byte)'0', 64).ToArray();
+        kept[0] = (byte)'5';
+        kept[PersonOptions.FriendRequest] = (byte)'1';
+        kept[PersonOptions.OtherInfo] = (byte)'1';
+
+        var sent = kept.ToArray();
+        "222202"u8.CopyTo(sent.AsSpan(PersonOptions.Whisper));
+        sent[22] = (byte)'1';
+        sent[3] = (byte)'1';
+
+        var options = PersonOptions.KeepChoiceOfStaff(sent, kept);
+
+        CollectionAssert.AreEqual("010011"u8.ToArray(), options[PersonOptions.Whisper..(PersonOptions.OtherInfo + 1)]);
+        Assert.AreEqual((byte)'1', options[3]);
+        Assert.AreEqual(PersonOptions.AllowAll, PersonOptions.Level(options, PersonOptions.Whisper));
+        Assert.IsTrue(PersonOptions.TakesFriendRequests(options));
     }
 }

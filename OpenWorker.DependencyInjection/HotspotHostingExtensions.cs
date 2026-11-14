@@ -6,6 +6,7 @@ using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Handler.Extensions;
 
 namespace OpenWorker.DependencyInjection;
@@ -21,6 +22,8 @@ public static class HotspotHostingExtensions
             // Filled when the server starts, after the migration: nothing reads the database while the container is built.
             .AddSingleton<ServerContent>()
             .AddHostedService<ServerContentLoadService>()
+            // Made only where Redis is (ServerContentLoadService asks first): a factory, so a container without Redis builds.
+            .AddSingleton(provider => ActivatorUtilities.CreateInstance<ServerContentChanges>(provider))
             .AddSingleton(World.Create())
             .AddSingleton<WorldLoop>()
             .AddSingleton<ArchComponentProvider>()

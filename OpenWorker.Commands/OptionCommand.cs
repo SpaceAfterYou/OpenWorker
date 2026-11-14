@@ -1,38 +1,30 @@
+using System.Globalization;
 using Arch.Core;
-using OpenWorker.Channel.Community;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Commands.Attributes;
 using OpenWorker.Domain.Enums;
-using OpenWorker.Gameplay.Modules.CashShop;
-using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Domain.Stores;
+using OpenWorker.Hotspot.Cache;
 
 namespace OpenWorker.Commands;
 
 /// <summary>
-/// Switches a content of this server on or off, as <c>/option index true|false</c>. Everybody on the server is told at once:
-/// the client in the game reads the server options only from 01/07. The cash shop is opened only after each player has its
-/// window's contents.
+/// Switches a content of the game on or off on every server, as <c>/option index true|false</c>. The table is written, so a
+/// server that starts later has it too, and then every server takes the switch and tells its players.
 /// </summary>
 [CommandTrigger("option")]
-[CommandDescription("Switch a content of this server on or off")]
+[CommandDescription("Switch a content of the game on or off on every server")]
 internal sealed partial class OptionCommand : ICommand
 {
     [ExternalDependency]
-    private World World { get; }
+    private IServerContentStore Store { get; }
 
     [ExternalDependency]
-    private ServerContent Contents { get; }
-
-    [ExternalDependency]
-    private CommunityNetwork Network { get; }
-
-    [ExternalDependency]
-    private CashShopWindow CashShop { get; }
+    private ServerContentChanges Changes { get; }
 
     async ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
-        if (!int.TryParse(tokens.ElementAtOrDefault(0), out var index) || index < 0 || index >= Contents.Count)
+        if (!byte.TryParse(tokens.ElementAtOrDefault(0), NumberStyles.None, CultureInfo.InvariantCulture, out var number) || !Enum.IsDefined((ServerContentIndex)number))
         {
             return false;
         }
@@ -42,23 +34,10 @@ internal sealed partial class OptionCommand : ICommand
             return false;
         }
 
-        Contents[index] = flag;
+        var index = (ServerContentIndex)number;
 
-        var update = new SystemServerOptionUpdateResponse { Contents = Contents };
-
-        if (index == (int)ServerContentIndex.CashShop && flag)
-        {
-            await CashShop.OpenAsync(Network.Online, update, CancellationToken.None);
-            return true;
-        }
-
-        foreach (var person in Network.Online)
-        {
-            if (World.IsAlive(person) && World.TryGet(person, out ServerSessionComponent session))
-            {
-                session.Send(update);
-            }
-        }
+        await Store.SetAsync(index, flag);
+        await Changes.SwitchAsync(index, flag);
 
         return true;
     }
