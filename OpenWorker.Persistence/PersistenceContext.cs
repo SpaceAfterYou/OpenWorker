@@ -27,6 +27,7 @@ public sealed class PersistenceContext(DbContextOptions<PersistenceContext> opti
     public DbSet<PersonStatePersistent> PersonStates { get; init; }
     public DbSet<PostPersistent> Posts { get; init; }
     public DbSet<RankingEntryPersistent> RankingEntries { get; init; }
+    public DbSet<RankingPeriodPersistent> RankingPeriods { get; init; }
     public DbSet<ServerContentPersistent> ServerContents { get; init; }
 
     public const string ItemSerialSequence = "ItemSerial";

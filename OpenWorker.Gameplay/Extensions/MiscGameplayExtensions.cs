@@ -97,6 +97,7 @@ public static class MiscGameplayExtensions
         services.AddInfiniteTower();
         services.AddSingleton<TimeAttackRewards>();
         services.AddSingleton<TimeAttackRanking>();
+        services.AddSingleton<TimeAttackPeriods>();
 
         // What the flush of the person writes when the managers mark their part.
         services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<SoulMetryComponent>(PersonStateKind.SoulMetry, PersonSections.MiscState, e => e.State));
@@ -106,5 +107,14 @@ public static class MiscGameplayExtensions
         services.AddSingleton<IPersonDocumentSource>(new PersonDocumentSource<HelperComponent>(PersonStateKind.Helper, PersonSections.MiscState, e => e.Book));
 
         return services;
+    }
+
+    /// <summary>
+    /// Ends the periods of the time attack ranking on this server when they run out. One kind of server is enough; the
+    /// database lets a period end once.
+    /// </summary>
+    public static IServiceCollection AddRankingPeriods(this IServiceCollection services)
+    {
+        return services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<TimeAttackPeriods>());
     }
 }

@@ -85,5 +85,15 @@ public sealed class TimeAttackRankingTest
 
             return Task.FromResult((top, _row));
         }
+
+        public Task<IReadOnlyList<RankingPlace>?> PeriodPlacesAsync(RankingKind kind, int scope, DateTime endedAt, int places, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<RankingPlace>?>(null);
+        }
+
+        public Task<IReadOnlyList<PostPersistent>?> EndPeriodAsync(RankingKind kind, int scope, DateTime endedAt, IReadOnlyList<PostAccountDraft> letters, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<PostPersistent>?>(null);
+        }
     }
 }
