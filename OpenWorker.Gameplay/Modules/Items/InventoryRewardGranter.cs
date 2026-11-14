@@ -20,8 +20,8 @@ namespace OpenWorker.Gameplay.Modules.Items;
 /// <para>
 /// What the bags cannot hold depends on where the reward comes from. A quest, a soul metry, a cube and a helper refuse the
 /// whole reward and keep it for later, as the original does. The reward of a daily mission always goes by letter; the
-/// reward of a day of attendance and of the time played goes into the bags, and what does not fit goes by letter, with gold
-/// the purse cannot hold. The letter is one of the game, to the account of the person (<see cref="IPostStore.SendToAccountAsync"/>),
+/// reward of a day of attendance, of the time played and of an achievement goes into the bags, and what does not fit goes by
+/// letter, with gold the purse cannot hold. The letter is one of the game, to the account of the person (<see cref="IPostStore.SendToAccountAsync"/>),
 /// written after the reward counts as given, the way the original sends it, so the feature that gives it waits for nothing:
 /// a letter the database does not take is tried again for a while and then given up with an error that names it.
 /// </para>
@@ -58,7 +58,7 @@ public sealed partial class InventoryRewardGranter(
     private static Delivery DeliveryOf(RewardSource source) => source switch
     {
         RewardSource.DailyMission => Delivery.Letter,
-        RewardSource.Attendance or RewardSource.PlayTime => Delivery.BagThenLetter,
+        RewardSource.Attendance or RewardSource.PlayTime or RewardSource.Achievement => Delivery.BagThenLetter,
         _ => Delivery.Bag
     };
 
@@ -200,7 +200,7 @@ public sealed partial class InventoryRewardGranter(
     /// </summary>
     private async Task MailAsync(Entity player, int account, RewardSource source, (int Item, int Count)[] items, long gold)
     {
-        // The client has a row for the reward of a daily mission and none for attendance: that letter shows its own text.
+        // The client has a row for the reward of a daily mission and none for the others: those letters show their own text.
         var (title, body, row) = source switch
         {
             RewardSource.DailyMission => ("[System] Daily Mission Completion Reward",
@@ -208,6 +208,9 @@ public sealed partial class InventoryRewardGranter(
                 GameLetters.DailyMissionReward),
             RewardSource.PlayTime => ("[System] Play Time Reward",
                 "Your inventory had no room for all of your play time reward, so the rest is kept here. Please clear some space in your inventory to claim the attachment.",
+                GameLetters.OwnText),
+            RewardSource.Achievement => ("[System] Achievement Reward",
+                "Your inventory had no room for all of your achievement reward, so the rest is kept here. Please clear some space in your inventory to claim the attachment.",
                 GameLetters.OwnText),
             _ => ("[System] Attendance Reward",
                 "Your inventory had no room for all of your attendance reward, so the rest is kept here. Please clear some space in your inventory to claim the attachment.",

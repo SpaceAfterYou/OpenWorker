@@ -8,6 +8,7 @@ using OpenWorker.Gameplay.Modules.Persons;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress.Components;
 using OpenWorker.Gameplay.Modules.Quests;
+using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
@@ -47,8 +48,11 @@ public sealed partial class AchievementManager(
     ReadOnlyCollection<MonsterRow> monsters,
     ILogger<AchievementManager> logger,
     TimeProvider? time = null,
-    OpenTitleManager? openTitles = null) : IMiscTick
+    OpenTitleManager? openTitles = null,
+    IRewardGranter? granter = null) : IMiscTick
 {
+    private readonly IRewardGranter _granter = granter ?? new InventoryRewardGranter(inventory, world);
+
     /// <summary>The gold of the reward would go past what a person can hold.</summary>
     public const ushort GoldOverflow = 52056;
 
@@ -329,11 +333,12 @@ public sealed partial class AchievementManager(
     }
 
     /// <summary>
-    /// The person takes the reward of an achievement it has reached: once, all of it or nothing. The items go into the bags,
-    /// the gold, battle points and ether into the wallet; the titles are handed back for whoever keeps them. An achievement
-    /// that is not reached, unknown or already rewarded gets no answer, as the client asks only for one it shows as ready.
+    /// The person takes the reward of an achievement it has reached, once. The items go through the granter: into the bags
+    /// what fits, the rest by letter. The gold, battle points and ether go into the wallet, refused with the client's code
+    /// when the wallet cannot hold them; the titles are handed back for whoever keeps them. An achievement that is not
+    /// reached, unknown or already rewarded gets no answer, as the client asks only for one it shows as ready.
     /// </summary>
-    public AchievementReward TakeReward(Entity player, int achievement)
+    public async ValueTask<AchievementReward> TakeRewardAsync(Entity player, int achievement, CancellationToken cancellationToken = default)
     {
         if (!TryGet(player, out var book))
         {
@@ -365,12 +370,20 @@ public sealed partial class AchievementManager(
 
         var given = items.Resolve(player, rule.Items);
 
-        if (!items.TryGive(player, given))
+        // Taken before the grant, so that a second request cannot take it meanwhile.
+        book.SetRewarded(rule.CompleteBit);
+
+        if (given.Count > 0 &&
+            !await _granter.TryGrantAsync(player, new Reward(given.Select(e => new RewardItem(e.Item, (short)e.Count)).ToList()), RewardSource.Achievement, cancellationToken))
         {
+            book.SetRewarded(rule.CompleteBit, false);
             return new AchievementReward(false, DoesNotFit, []);
         }
 
-        book.SetRewarded(rule.CompleteBit);
+        if (!world.IsAlive(player))
+        {
+            return AchievementReward.Silent;
+        }
 
         Pay(player, ShopCurrency.Gold, rule.Gold);
         Pay(player, ShopCurrency.Bp, rule.BattlePoints);
