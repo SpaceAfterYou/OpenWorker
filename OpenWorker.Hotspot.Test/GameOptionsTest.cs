@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using OpenWorker.Channel.Community;
 using OpenWorker.Commands;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Domain.Enums;
@@ -114,5 +115,31 @@ public sealed class GameOptionsTest
             CollectionAssert.AreEqual(new byte[] { 0, 0, 0, 1, 0 }, frame.Content);
             Assert.IsTrue(host.Server.Loop.InvokeAsync(() => host.Contents[ServerContentIndex.Ranking]).GetAwaiter().GetResult());
         }
+    }
+
+    /// <summary>
+    /// The client of a game master forces whispers, trades, parties, leagues, friends and looks to "nobody" at every entry and
+    /// sends that: the server keeps what the player chose for each of them, and takes any other option and any of them the
+    /// player set to something else.
+    /// </summary>
+    [TestMethod]
+    public void AGameMasterKeepsTheOptionsItsClientForces()
+    {
+        var kept = Enumerable.Repeat((byte)'0', 64).ToArray();
+        kept[0] = (byte)'5';
+        kept[PersonOptions.FriendRequest] = (byte)'1';
+        kept[PersonOptions.OtherInfo] = (byte)'1';
+
+        var sent = kept.ToArray();
+        "222202"u8.CopyTo(sent.AsSpan(PersonOptions.Whisper));
+        sent[22] = (byte)'1';
+        sent[3] = (byte)'1';
+
+        var options = PersonOptions.KeepChoiceOfStaff(sent, kept);
+
+        CollectionAssert.AreEqual("010011"u8.ToArray(), options[PersonOptions.Whisper..(PersonOptions.OtherInfo + 1)]);
+        Assert.AreEqual((byte)'1', options[3]);
+        Assert.AreEqual(PersonOptions.AllowAll, PersonOptions.Level(options, PersonOptions.Whisper));
+        Assert.IsTrue(PersonOptions.TakesFriendRequests(options));
     }
 }

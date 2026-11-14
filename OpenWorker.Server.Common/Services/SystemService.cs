@@ -4,6 +4,7 @@ using OpenWorker.Channel.Community;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.Login.Extensions;
 using OpenWorker.Hotspot;
+using OpenWorker.Hotspot.Enums;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.Attributes;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -40,6 +41,7 @@ public sealed class SystemService(
     /// <summary>
     /// The options window of the game sends every option at once. They are the account's, as at the gate, so the next login
     /// shows them, and the person's copy changes at once: who may whisper to it or see its information is read from it.
+    /// The client of a game master forces some of them at every entry; those keep what the player chose.
     /// </summary>
     public async ValueTask OnHandleAsync(ServiceHandleContext context, SystemOptionUpdateRequest request)
     {
@@ -51,6 +53,11 @@ public sealed class SystemService(
         }
 
         var options = request.OptionList.ToArray();
+
+        if (world.TryGet(context.Player, out AccessComponent access) && access.Level != AccessLevel.None)
+        {
+            options = PersonOptions.KeepChoiceOfStaff(options, world.TryGet(context.Player, out PersonOptionComponent kept) ? kept.Collection : null);
+        }
 
         world.Set(context.Player, options.ToPersonOptionComponent());
 
