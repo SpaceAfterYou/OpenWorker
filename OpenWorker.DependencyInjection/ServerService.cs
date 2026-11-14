@@ -54,6 +54,13 @@ internal sealed partial class ServerService(
 
     private Lock DumpLock { get; } = new();
     private TcpListener Listener { get; } = new(IPAddress.Any, server.Value.Port);
+    private ConnectionsPerAddress Addresses { get; } = new(hotspot.Value.MaxConnectionsPerAddress);
+
+    /// <summary>
+    /// The probes of the keep-alive of TCP after the first: one every ten seconds, five of them.
+    /// </summary>
+    private const int KeepAliveProbeInterval = 10;
+    private const int KeepAliveProbes = 5;
     private string? DumpDirectory { get; } = ResolveDumpDirectory(hotspot.Value, game.Value);
 
     /// <summary>
@@ -174,10 +181,27 @@ internal sealed partial class ServerService(
                     continue;
                 }
 
+                var address = ConnectionsPerAddress.AddressOf(socket.Client.RemoteEndPoint);
+
+                // Closed before it has an entity or a writer: nothing of the game knows it.
+                if (!Addresses.TryEnter(address, out var report))
+                {
+                    metrics.Refused("address");
+
+                    if (report)
+                    {
+                        LogAddressFull(logger, address, hotspot.Value.MaxConnectionsPerAddress);
+                    }
+
+                    socket.Dispose();
+
+                    continue;
+                }
+
                 // Counted before the task starts: the drain waits for every connection that was accepted.
                 sessions.Enter();
 
-                _ = Task.Run(() => RunSessionAsync(socket, stopping, reading), CancellationToken.None);
+                _ = Task.Run(() => RunSessionAsync(socket, address, stopping, reading), CancellationToken.None);
             }
         }
 
@@ -196,7 +220,7 @@ internal sealed partial class ServerService(
         }
     }
 
-    private async Task RunSessionAsync(TcpClient socket, CancellationToken stopping, CancellationToken reading)
+    private async Task RunSessionAsync(TcpClient socket, IPAddress? address, CancellationToken stopping, CancellationToken reading)
     {
         try
         {
@@ -205,8 +229,26 @@ internal sealed partial class ServerService(
 
         finally
         {
+            Addresses.Exit(address);
+
             sessions.Exit();
         }
+    }
+
+    /// <summary>
+    /// Turns on the keep-alive of TCP for the socket, so a client that is gone without a word is found.
+    /// </summary>
+    internal static void KeepAlive(Socket socket, TimeSpan idle)
+    {
+        if (idle <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+        socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, Math.Max(1, (int)Math.Ceiling(idle.TotalSeconds)));
+        socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, KeepAliveProbeInterval);
+        socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, KeepAliveProbes);
     }
 
     private async Task SessionLoopAsync(TcpClient socket, CancellationToken cancellationToken, CancellationToken reading)
@@ -215,6 +257,8 @@ internal sealed partial class ServerService(
         {
             // Movement is made of small frames that must not wait for each other.
             socket.NoDelay = true;
+
+            KeepAlive(socket.Client, hotspot.Value.ConnectionKeepAlive);
 
             var session = new ServerSessionComponent(socket, metrics);
 
@@ -274,6 +318,12 @@ internal sealed partial class ServerService(
             catch (Exception e) when (e is EndOfStreamException or IOException { InnerException: SocketException } or ObjectDisposedException or OperationCanceledException)
             {
                 LogConnectionClosed(logger, e.Message);
+
+                // The keep-alive of TCP found the client gone.
+                if (e is IOException { InnerException: SocketException { SocketErrorCode: SocketError.TimedOut } })
+                {
+                    reason = SessionCloseReason.Timeout;
+                }
 
                 // The client did not leave: the drain stopped the reading, or the server is stopping.
                 if (e is OperationCanceledException)
@@ -553,6 +603,9 @@ internal sealed partial class ServerService(
             LogDumpFailed(logger, e, path);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Address {Address} holds {Limit} connections, the most one address may; the next ones are refused until one closes.")]
+    private static partial void LogAddressFull(ILogger logger, IPAddress? address, int limit);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Server ready.")]
     private static partial void LogServerReady(ILogger logger);

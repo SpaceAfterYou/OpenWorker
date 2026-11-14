@@ -1,3 +1,6 @@
+using System.Net.Sockets;
+using OpenWorker.DependencyInjection;
+using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 
 namespace OpenWorker.Hotspot.Test;
@@ -116,6 +119,57 @@ public sealed class ServerServiceMetricsTest
         Assert.AreEqual(1, closed.Sum("reason", "no_entry"));
         Assert.AreEqual(1, closed.Sum());
         Assert.AreEqual(1, active.Sum());
+    }
+
+    /// <summary>
+    /// An address that holds the most connections it may has the next one closed at once, before anything of the game is
+    /// made for it, and is let in again once one of its connections has closed.
+    /// </summary>
+    [TestMethod]
+    public async Task AnAddressPastItsLimitIsRefusedUntilOneOfItsConnectionsCloses()
+    {
+        await using var server = new ServerServiceHost(new HotspotOptions { MaxConnectionsPerAddress = 1 });
+        using var active = server.Metrics.Listen<long>("sessions.active");
+        using var refused = server.Metrics.Listen<long>("sessions.refused");
+
+        await server.StartAsync();
+
+        var first = await server.ConnectAsync();
+
+        await MetricAssertions.UntilAsync(() => active.Sum() == 1, "The first connection was not counted.");
+
+        using var second = await server.ConnectAsync();
+
+        var buffer = new byte[1];
+        using var read = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        Assert.AreEqual(0, await second.GetStream().ReadAsync(buffer, read.Token), "The server did not close the connection over the limit.");
+        Assert.AreEqual(1, refused.Sum("reason", "address"));
+        Assert.AreEqual(1, active.Sum());
+
+        first.Dispose();
+
+        await MetricAssertions.UntilAsync(() => active.Sum() == 0, "The first connection did not end.");
+
+        using var third = await server.ConnectAsync();
+
+        await MetricAssertions.UntilAsync(() => active.Sum() == 1, "The address was not let in again.");
+
+        Assert.AreEqual(1, refused.Sum());
+    }
+
+    /// <summary>
+    /// A connection is watched by the keep-alive of TCP, so a client that is gone without closing it is found.
+    /// </summary>
+    [TestMethod]
+    public void AConnectionIsWatchedByTheKeepAliveOfTcp()
+    {
+        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+        ServerService.KeepAlive(socket, TimeSpan.FromSeconds(90));
+
+        Assert.AreNotEqual(0, (int)socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive)!);
+        Assert.AreEqual(90, (int)socket.GetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime)!);
     }
 
     [TestMethod]
