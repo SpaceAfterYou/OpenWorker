@@ -381,6 +381,15 @@ public sealed partial class LuaCreatureManager
             {
                 session.Send(new MovementIdlesBtResponse { Entries = idles });
             }
+
+            // A monster on its way is told walking from where it is, or the client sees it stand until its next turn.
+            foreach (var monster in monsters)
+            {
+                if (Bodies.TryGetValue(monster, out var body) && body.CurrentWalk() is { } walk)
+                {
+                    session.Send(walk);
+                }
+            }
         }
 
         if (npcs.Length > 0)
