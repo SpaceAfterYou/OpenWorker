@@ -370,6 +370,59 @@ public sealed class MazeRequestGuardTest
         }
     }
 
+    /// <summary>
+    /// A box that a townsman enters (the guide of the tutorial walking ahead) is told by the client while the player stands
+    /// elsewhere: it runs and is answered, and it is no error of the session.
+    /// </summary>
+    [TestMethod]
+    public async Task ABoxOfATownsmanRunsWhereverThePlayerStands()
+    {
+        var world = World.Create();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+
+        listener.Start();
+
+        using var client = new TcpClient();
+
+        client.Connect(IPAddress.Loopback, ((IPEndPoint)listener.LocalEndpoint).Port);
+
+        using var server = listener.AcceptTcpClient();
+        using var reader = new BinaryReader(client.GetStream());
+
+        client.ReceiveTimeout = 5000;
+
+        try
+        {
+            var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+            var budget = new Hotspot.Handler.HandlerErrorBudget(time, Options.Create(new HandlerErrorBudgetOptions { MaxErrors = 10, Window = TimeSpan.FromMinutes(1) }));
+            var errors = new Hotspot.Handler.HandlerExecutor(new Hotspot.Handler.HandlerTable(new Hotspot.Handler.HandlerTableBuilder(new Hotspot.Handler.HandlerBuilder(), NullLogger<Hotspot.Handler.HandlerTable>.Instance)), new ServiceCollection().BuildServiceProvider(), world, budget, NullLogger<Hotspot.Handler.HandlerExecutor>.Instance);
+            var service = Service(world, errors);
+            var player = world.Create();
+            var map = MapWithAFunctionBox.Replace("value=\"Party\"", "value=\"NPC\"").Replace("m_iCheckID type=\"0\" value=\"0\"", "m_iCheckID type=\"0\" value=\"101001\"");
+
+            world.Add(player, new ServerSessionComponent(server));
+            world.Add(player, Maze(world, player, NullLogger<LuaMaze>.Instance, map));
+            world.Add(player, new Gameplay.Messages.Response.Person.WorldComponent { Location = 1, Position = new System.Numerics.Vector3(20000f, 20000f, 0f), Rotation = 0f, Jump = 0 });
+
+            await service.OnHandleAsync(Context(player), new MazeLuaFunctionRequest(Box(7)));
+
+            var header = new MessageHeader(reader);
+            var content = reader.ReadBytes(header.ContentLength);
+
+            MessageEncryption.Exchange(content, header.Version);
+
+            Assert.AreEqual((byte)GroupOpcode.Maze, content[0]);
+            Assert.AreEqual((byte)MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_RES, content[1]);
+            Assert.IsFalse(world.Has<Hotspot.Handler.HandlerErrorsComponent>(player) && world.Get<Hotspot.Handler.HandlerErrorsComponent>(player).Count > 0, "The townsman's box is no error.");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+            listener.Stop();
+        }
+    }
+
     [TestMethod]
     public void ScriptThatNamesAPositionBoxTheMapDoesNotHaveGetsTheOriginAndALoggedWarning()
     {

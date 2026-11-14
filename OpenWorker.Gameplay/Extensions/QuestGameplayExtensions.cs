@@ -22,6 +22,7 @@ public static class QuestGameplayExtensions
         services.TryAddSingleton<IQuestTitles, NoQuestTitles>();
 
         services.AddSingleton<QuestCatalog>();
+        services.TryAddSingleton<PrologueQuests>();
 
         // The quests hear of every item that comes into the bags, for the conditions that ask to collect it.
         services.AddSingleton(provider =>

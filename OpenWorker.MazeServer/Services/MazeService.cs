@@ -1167,7 +1167,10 @@ public sealed partial class MazeService(
             return;
         }
 
-        if (!StandsAt(context.Player, function, MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_REQ, nameof(MazeLuaFunctionRequest)))
+        // A box of a townsman or a monster is entered by that actor (the guide walking ahead), not by the player: where the
+        // player stands says nothing about it.
+        if (function.Type is not (LuaFunctionType.Npc or LuaFunctionType.Monster) &&
+            !StandsAt(context.Player, function, MazeOpcode.eSUB_CMD_MAZE_LUA_FUNCTION_REQ, nameof(MazeLuaFunctionRequest)))
         {
             return;
         }

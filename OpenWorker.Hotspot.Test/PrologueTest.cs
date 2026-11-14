@@ -82,7 +82,7 @@ public sealed class PrologueTest
 
             var prologue = new PrologueService(world, flags, TestMazes.Quests(world), NoPersonFlush.Instance,
                 new ReadOnlyCollection<MazeInfoRow>([Maze(Tutorial, PrologueService.TutorialMaze), Maze(21311, 0)]),
-                new ReadOnlyCollection<CharacterStartRow>([]),
+                new PrologueQuests(new ReadOnlyCollection<CharacterStartRow>([])),
                 NullLogger<PrologueService>.Instance);
 
             var player = Person(world, 5);

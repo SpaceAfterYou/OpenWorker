@@ -29,7 +29,7 @@ public sealed partial class PrologueService(
     QuestManager quests,
     IPersonFlush persons,
     ReadOnlyCollection<MazeInfoRow> mazes,
-    ReadOnlyCollection<CharacterStartRow> starts,
+    PrologueQuests prologueQuests,
     ILogger<PrologueService> logger)
 {
     /// <summary>
@@ -38,7 +38,6 @@ public sealed partial class PrologueService(
     public const byte TutorialMaze = 1;
 
     private readonly RowIndex<short, MazeInfoRow> _mazes = mazes.IndexBy(e => e.Id);
-    private readonly RowIndex<ushort, CharacterStartRow> _starts = starts.IndexBy(e => e.Id);
 
     /// <summary>
     /// The character enters a maze: whether it still has the prologue ahead is read from its row.
@@ -65,7 +64,7 @@ public sealed partial class PrologueService(
         world.Remove<PrologueComponent>(player);
 
         var person = (int)world.Get<ActorComponent>(player).Identifier;
-        var skip = SkipQuestOf(world.Get<PersonInfoComponent>(player).Hero);
+        var skip = prologueQuests.Of(world.Get<PersonInfoComponent>(player).Hero);
 
         // The quests of the tutorial go, and the quest of the whole prologue is taken and finished, so the story goes on
         // from it; what it gives is given now.
@@ -95,11 +94,11 @@ public sealed partial class PrologueService(
     }
 
     /// <summary>
-    /// The quest that stands for the prologue of the hero in the server's table, or none.
+    /// The quest the person enters a maze with finished: the one of the prologue once it is behind it.
     /// </summary>
-    private int SkipQuestOf(Domain.Enums.Hero hero)
+    public int QuestBehind(PersonPersistent person)
     {
-        return (int)hero * 1000 is var id and >= 0 and <= ushort.MaxValue ? _starts.GetOrDefault((ushort)id).SkipQuest : 0;
+        return prologueQuests.Behind(person.Hero, person.ProloguePending);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Person {Person} has played the prologue, quest {Quest} stands for it")]

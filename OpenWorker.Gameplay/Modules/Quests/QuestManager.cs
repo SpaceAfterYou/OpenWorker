@@ -94,9 +94,10 @@ public sealed partial class QuestManager(
 
     /// <summary>
     /// Loads the quests of the person and tells the client about them: the episodes in progress, then the finished ones,
-    /// which is the order the client reads them in to know which episodes it may offer.
+    /// which is the order the client reads them in to know which episodes it may offer. <paramref name="prologueQuest"/> is
+    /// the quest that stands for the prologue of a person that has the prologue behind it, 0 for one that has it ahead.
     /// </summary>
-    public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken)
+    public async ValueTask EnterAsync(Entity player, int person, CancellationToken cancellationToken, int prologueQuest = 0)
     {
         var book = await store.LoadAsync(person, cancellationToken) ?? new QuestBook();
 
@@ -110,6 +111,14 @@ public sealed partial class QuestManager(
         world.Set(player, new QuestComponent { Person = person, Book = book });
 
         var changed = QuestRules.MarkCountedConditions(book, catalog);
+
+        // A person with the prologue behind it has the quest that stands for it finished, so the story goes on from there;
+        // one that never played it (made while the server did not play the prologue) gets it now.
+        if (prologueQuest != 0 && catalog.TryGetEpisode(prologueQuest, out var prologue) && !book.IsFinished(prologue.CompleteBit))
+        {
+            book.Episodes.RemoveAll(e => e.Episode == prologueQuest);
+            changed |= book.SetFinished(prologue.CompleteBit, true);
+        }
 
         // Episodes that start by themselves once the one before them is finished, and that the person lacks: a finish that
         // came from another server or a script, or a book from before they started by themselves. The lists that follow
