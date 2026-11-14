@@ -103,7 +103,7 @@ public sealed partial class AttendanceManager(
         {
             world.Set(player, world.Get<AttendanceComponent>(player) with { Sent = true });
 
-            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime() });
+            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime(catalog) });
         }
 
         else
@@ -149,6 +149,31 @@ public sealed partial class AttendanceManager(
     }
 
     /// <summary>
+    /// Counts seconds as played today at once and tells the client the time again, which is what a test needs to bring a
+    /// step to its time. False when the person has no attendance here.
+    /// </summary>
+    public bool AddPlayTime(Entity player, int seconds)
+    {
+        CountPlayTime(player);
+
+        if (seconds <= 0 || !TryGet(player, out var component) || !contents[ServerContentIndex.Attendance])
+        {
+            return false;
+        }
+
+        var book = component.Book!;
+
+        if (AttendanceRules.AddPlayTime(book, catalog, seconds))
+        {
+            world.MarkDirty(player, PersonSections.MiscState);
+        }
+
+        world.Get<ServerSessionComponent>(player).Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime(catalog) });
+
+        return true;
+    }
+
+    /// <summary>
     /// The time since the last count goes into the last flush of the person, which runs after this handler.
     /// </summary>
     public ValueTask OnSessionClosedAsync(Entity player)
@@ -179,7 +204,7 @@ public sealed partial class AttendanceManager(
 
         if (!AttendanceRules.IsReady(book, catalog))
         {
-            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime() });
+            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime(catalog) });
             return;
         }
 
@@ -203,12 +228,12 @@ public sealed partial class AttendanceManager(
 
         if (granted)
         {
-            session.Send(new EventAttendancePlayTimeRewardResponse { Time = book.ToPlayTime() });
+            session.Send(new EventAttendancePlayTimeRewardResponse { Time = book.ToPlayTime(catalog) });
         }
 
         else
         {
-            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime() });
+            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime(catalog) });
         }
     }
 

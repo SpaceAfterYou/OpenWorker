@@ -149,7 +149,7 @@ public sealed class AttendanceTest
         book.PlayStep = 1;
         AttendanceRules.AddPlayTime(book, Catalog, 1800);
         Assert.IsTrue(AttendanceRules.IsReady(book, Catalog));
-        Assert.AreEqual(3600, book.ToPlayTime().Seconds, "the client counts down from the time of the day");
+        Assert.AreEqual(3600, book.ToPlayTime(Catalog).Seconds, "the client counts down from the time of the day");
 
         // Counting stops at the time of the last step.
         AttendanceRules.AddPlayTime(book, Catalog, 100_000);

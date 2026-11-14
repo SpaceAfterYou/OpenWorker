@@ -1,7 +1,10 @@
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Abstractions;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
@@ -51,6 +54,54 @@ public sealed class PlayTimeClaimTest
         await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendanceLoad) == 1, "the other one sets the countdown again");
     }
 
+    /// <summary>
+    /// The client shows a step ready when its time less the seconds told is zero; a time past the step would read as a
+    /// wait of a million hours. Steps here are at 60, 120 and 180 seconds.
+    /// </summary>
+    [TestMethod]
+    public async Task TheSecondsToldStopAtTheStepWaitedFor()
+    {
+        using var f = new Fixture();
+
+        f.Time.Advance(TimeSpan.FromSeconds(30));
+        await f.Manager.ClaimPlayTimeAsync(f.Player, CancellationToken.None);
+        await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendanceLoad) == 1, "an early claim is refused");
+        CollectionAssert.AreEqual(new byte[] { 0, 30, 0, 0, 0 }, f.LastPlayTime(EventOpcode.AttendanceLoad), "nothing to take: 30 s left");
+
+        // Two steps reached and none claimed.
+        f.Time.Advance(TimeSpan.FromSeconds(120));
+        f.Manager.CountPlayTime(f.Player);
+        f.World.Set(f.Player, f.World.Get<AttendanceComponent>(f.Player) with { Sent = false });
+        await f.Manager.RefreshAsync(f.Player, CancellationToken.None);
+        await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendanceLoad) == 2, "the entry tells the time");
+        CollectionAssert.AreEqual(new byte[] { 0, 60, 0, 0, 0 }, f.LastPlayTime(EventOpcode.AttendanceLoad), "the first step is ready");
+
+        await f.Manager.ClaimPlayTimeAsync(f.Player, CancellationToken.None);
+        await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendancePlayTimeReward) == 1, "the first claim is given");
+        CollectionAssert.AreEqual(new byte[] { 1, 120, 0, 0, 0 }, f.LastPlayTime(EventOpcode.AttendancePlayTimeReward), "the second step is ready too");
+
+        await f.Manager.ClaimPlayTimeAsync(f.Player, CancellationToken.None);
+        await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendancePlayTimeReward) == 2, "the second claim is given");
+        CollectionAssert.AreEqual(new byte[] { 2, 150, 0, 0, 0 }, f.LastPlayTime(EventOpcode.AttendancePlayTimeReward), "the third waits 30 s more");
+    }
+
+    [TestMethod]
+    public async Task ThePlayTimeCommandBringsAStepToItsTimeAtOnce()
+    {
+        using var f = new Fixture();
+        using var services = new ServiceCollection().AddSingleton(f.Manager).BuildServiceProvider();
+
+        ICommand command = new PlayTimeCommand(services);
+
+        Assert.IsFalse(await command.TryExecute(f.Player, ["-5"]));
+        Assert.IsFalse(await command.TryExecute(f.Player, ["86401"]));
+
+        Assert.IsTrue(await command.TryExecute(f.Player, ["60"]));
+        Assert.IsTrue(AttendanceRules.IsReady(f.Book, f.Catalog));
+        await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendanceLoad) == 1, "the client is told the time");
+        CollectionAssert.AreEqual(new byte[] { 0, 60, 0, 0, 0 }, f.LastPlayTime(EventOpcode.AttendanceLoad));
+    }
+
     [TestMethod]
     public async Task TheSecondsPlayedGoToTheFlushUpToTheClose()
     {
@@ -89,6 +140,7 @@ public sealed class PlayTimeClaimTest
         public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 7, 12, 0, 0, TimeSpan.Zero));
         public RecordingGranter Granter { get; } = new();
         public AttendanceManager Manager { get; }
+        public AttendanceCatalog Catalog { get; }
         public AttendanceBook Book { get; }
         public Entity Player { get; }
 
@@ -96,7 +148,7 @@ public sealed class PlayTimeClaimTest
 
         public Fixture()
         {
-            var catalog = AttendanceCatalog.From(
+            Catalog = AttendanceCatalog.From(
                 [new AttendanceTable(1011, 28)],
                 new Dictionary<int, Reward>(),
                 [new PlayTimeStep(60, Item), new PlayTimeStep(120, Item), new PlayTimeStep(180, Item)]);
@@ -104,7 +156,7 @@ public sealed class PlayTimeClaimTest
             var contents = new ServerContent { [ServerContentIndex.Attendance] = true };
 
             Manager = new AttendanceManager(
-                World, new PersonStateStore(null!), catalog, Granter, contents, Time,
+                World, new PersonStateStore(null!), Catalog, Granter, contents, Time,
                 Options.Create(new AttendanceOptions()), NullLogger<AttendanceManager>.Instance);
 
             Book = new AttendanceBook { Table = 1011, Count = 1, LastDay = Time.GetLocalNow(), PlayDay = Time.GetLocalNow() };
@@ -116,6 +168,16 @@ public sealed class PlayTimeClaimTest
         public int Received(EventOpcode command)
         {
             return _connection.Frames.Select(PlayerFrame.Open).Count(e => e.Is(GroupOpcode.Event, (byte)command));
+        }
+
+        /// <summary>
+        /// The step and the seconds at the end of the last message of this kind.
+        /// </summary>
+        public byte[] LastPlayTime(EventOpcode command)
+        {
+            var body = _connection.Frames.Select(PlayerFrame.Open).Last(e => e.Is(GroupOpcode.Event, (byte)command)).Body;
+
+            return body[^5..];
         }
 
         public void Dispose()
