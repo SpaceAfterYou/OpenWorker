@@ -9,8 +9,20 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct RankRewardRow(BinaryReader reader)
 {
     public short Id { get; } = reader.ReadInt16();
-    public short Field1 { get; } = reader.ReadInt16();
-    public short Field2 { get; } = reader.ReadInt16();
-    public int Field3 { get; } = reader.ReadInt32();
-    public byte Field4 { get; } = reader.ReadByte();
+    /// <summary>
+    /// The map of the time attack ranking: the client lists the maps of this table in its raid tab, in the order of their keys.
+    /// </summary>
+    public short Map { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The place in the ranking of the map, from 1.
+    /// </summary>
+    public short Place { get; } = reader.ReadInt16();
+    /// <summary>
+    /// The item the place is given at the end of a period; the client shows it in the reward popup.
+    /// </summary>
+    public int Item { get; } = reader.ReadInt32();
+    /// <summary>
+    /// How many of the item.
+    /// </summary>
+    public byte Count { get; } = reader.ReadByte();
 }

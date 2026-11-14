@@ -17,7 +17,26 @@ public interface IRankingStore
     /// The best of a ranking, in order, and the place of the person; a person who is not in it has no row.
     /// </summary>
     Task<(IReadOnlyList<RankingRow> Top, RankingRow? Mine)> RankingAsync(RankingKind kind, int scope, int person, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The first places of the period of a ranking that ends at <paramref name="endedAt"/> (UTC), in order: the results recorded
+    /// before it. Null when that period has ended already.
+    /// </summary>
+    Task<IReadOnlyList<RankingPlace>?> PeriodPlacesAsync(RankingKind kind, int scope, DateTime endedAt, int places, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ends the period at <paramref name="endedAt"/> (UTC) at once: writes the letters with its rewards to the accounts and takes
+    /// the results recorded before it off the list. The letters as they were stored; null, and nothing written, when the
+    /// period has ended already.
+    /// </summary>
+    Task<IReadOnlyList<PostPersistent>?> EndPeriodAsync(RankingKind kind, int scope, DateTime endedAt, IReadOnlyList<PostAccountDraft> letters, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// A place of a ranking at the end of its period, with the account its reward goes to.
+/// </summary>
+/// <param name="Place">The place, from 1.</param>
+public sealed record RankingPlace(int Place, int Person, int Account);
 
 /// <summary>
 /// A row of a ranking with what the window shows of its person.

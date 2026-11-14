@@ -35,4 +35,9 @@ public sealed class RankingEntryPersistent : BasicPersistent
     public int Time { get; set; }
 
     public int Score { get; set; }
+
+    /// <summary>
+    /// When the result was written, in UTC: the period it belongs to is the one that ends after it.
+    /// </summary>
+    public DateTime RecordedAt { get; set; }
 }

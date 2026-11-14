@@ -16,7 +16,7 @@ namespace OpenWorker.Gameplay.Modules.Ranking;
 /// clear set a new best time. The client asks for a map's list once per login, so without that its new time would show
 /// only after the next login; it files a list it did not ask for and redraws the page if it is open.
 /// </summary>
-public sealed class TimeAttackRanking(World world, IRankingStore store)
+public sealed class TimeAttackRanking(World world, IRankingStore store, TimeAttackRewards rewards)
 {
     // The kinds of maze the ranking window lists: the casual ones and the raids of a district.
     private const byte CasualMaze = 2;
@@ -28,12 +28,12 @@ public sealed class TimeAttackRanking(World world, IRankingStore store)
     public static bool IsRanked(byte mazeType) => mazeType is CasualMaze or DistrictRaid;
 
     /// <summary>
-    /// Records the clear of a maze the window lists and, when it is the player's first or better time, sends the player the
-    /// map's list with its new row.
+    /// Records the clear of a maze the window lists (of a kind it ranks, on a map of its raid list) and, when it is the
+    /// player's first or better time, sends the player the map's list with its new row.
     /// </summary>
     public async ValueTask RecordAsync(Entity player, int map, byte mazeType, int seconds, int score)
     {
-        if (!IsRanked(mazeType) || !world.IsAlive(player) || !world.TryGet(player, out ActorComponent actor) || actor.Identifier == 0)
+        if (!IsRanked(mazeType) || !rewards.IsRanked(map) || !world.IsAlive(player) || !world.TryGet(player, out ActorComponent actor) || actor.Identifier == 0)
         {
             return;
         }

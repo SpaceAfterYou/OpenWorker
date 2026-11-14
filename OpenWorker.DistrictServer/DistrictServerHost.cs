@@ -69,6 +69,7 @@ public static class DistrictServerHost
         services.AddDistrictBuffs();
         services.AddGameplay();
         services.AddMiscGameplay();
+        services.AddRankingPeriods();
         services.AddQuestGameplay();
 
         services.AddCommandManager();
