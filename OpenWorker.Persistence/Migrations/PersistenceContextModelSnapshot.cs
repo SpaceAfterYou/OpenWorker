@@ -1114,6 +1114,9 @@ namespace OpenWorker.Persistence.Migrations
                     b.Property<int>("PersonId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("Scope")
                         .HasColumnType("integer");
 
@@ -1135,6 +1138,42 @@ namespace OpenWorker.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("RankingEntries");
+                });
+
+            modelBuilder.Entity("OpenWorker.Domain.Persistent.RankingPeriodPersistent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("Letters")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnUpdate()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Kind", "Scope", "EndedAt")
+                        .IsUnique();
+
+                    b.ToTable("RankingPeriods");
                 });
 
             modelBuilder.Entity("OpenWorker.Domain.Persistent.ServerContentPersistent", b =>
