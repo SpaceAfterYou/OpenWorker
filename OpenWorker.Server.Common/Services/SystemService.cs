@@ -41,7 +41,7 @@ public sealed class SystemService(
     /// <summary>
     /// The options window of the game sends every option at once. They are the account's, as at the gate, so the next login
     /// shows them, and the person's copy changes at once: who may whisper to it or see its information is read from it.
-    /// The client of a game master forces some of them at every entry; those keep what the player chose.
+    /// An unchanged client of a game master forces some of them when it reads its record; those keep what the player chose.
     /// </summary>
     public async ValueTask OnHandleAsync(ServiceHandleContext context, SystemOptionUpdateRequest request)
     {
@@ -54,7 +54,7 @@ public sealed class SystemService(
 
         var options = request.OptionList.ToArray();
 
-        if (world.TryGet(context.Player, out AccessComponent access) && access.Level != AccessLevel.None)
+        if (StaffOptions.TakeExpected(world, context.Player))
         {
             options = PersonOptions.KeepChoiceOfStaff(options, world.TryGet(context.Player, out PersonOptionComponent kept) ? kept.Collection : null);
         }

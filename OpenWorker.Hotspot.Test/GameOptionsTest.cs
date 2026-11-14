@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -9,9 +10,11 @@ using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Stores;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Attendance;
+using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Gameplay.Modules.Rewards;
 using OpenWorker.Hotspot.Cache;
+using OpenWorker.Hotspot.Enums;
 using OpenWorker.Server.Common;
 using StackExchange.Redis;
 
@@ -161,28 +164,44 @@ public sealed class GameOptionsTest
     }
 
     /// <summary>
-    /// The client of a game master forces whispers, trades, parties, leagues, friends and looks to "nobody" at every entry and
-    /// sends that: the server keeps what the player chose for each of them, and takes any other option and any of them the
-    /// player set to something else.
+    /// An unchanged client of a game master forces whispers, trades, parties, leagues, friends and looks to "nobody" when it
+    /// reads its record and sends that at once: those first options keep what the player chose. Options sent later, and an
+    /// own "nobody" of a client that does not force, are the player's choice and are taken.
     /// </summary>
     [TestMethod]
-    public void AGameMasterKeepsTheOptionsItsClientForces()
+    public void OnlyTheOptionsAGameMastersClientForcesAtItsRecordKeepTheChoice()
     {
+        using var world = World.Create();
+
+        var master = world.Create(new AccessComponent(AccessLevel.GameMaster), new ForcedStaffOptionsComponent());
+        var player = world.Create(new AccessComponent(AccessLevel.None), new ForcedStaffOptionsComponent());
+
+        StaffOptions.ExpectForced(world, master);
+        StaffOptions.ExpectForced(world, player);
+
+        Assert.IsTrue(StaffOptions.TakeExpected(world, master), "The first options after the record may be forced.");
+        Assert.IsFalse(StaffOptions.TakeExpected(world, master), "The next ones are the player's.");
+        Assert.IsFalse(StaffOptions.TakeExpected(world, player), "A player's client forces nothing.");
+
         var kept = Enumerable.Repeat((byte)'0', 64).ToArray();
         kept[0] = (byte)'5';
         kept[PersonOptions.FriendRequest] = (byte)'1';
         kept[PersonOptions.OtherInfo] = (byte)'1';
 
-        var sent = kept.ToArray();
-        "222202"u8.CopyTo(sent.AsSpan(PersonOptions.Whisper));
-        sent[22] = (byte)'1';
-        sent[3] = (byte)'1';
+        var forced = kept.ToArray();
+        "222202"u8.CopyTo(forced.AsSpan(PersonOptions.Whisper));
+        forced[3] = (byte)'1';
 
-        var options = PersonOptions.KeepChoiceOfStaff(sent, kept);
+        var options = PersonOptions.KeepChoiceOfStaff(forced, kept);
 
-        CollectionAssert.AreEqual("010011"u8.ToArray(), options[PersonOptions.Whisper..(PersonOptions.OtherInfo + 1)]);
+        CollectionAssert.AreEqual("000011"u8.ToArray(), options[PersonOptions.Whisper..(PersonOptions.OtherInfo + 1)]);
         Assert.AreEqual((byte)'1', options[3]);
-        Assert.AreEqual(PersonOptions.AllowAll, PersonOptions.Level(options, PersonOptions.Whisper));
-        Assert.IsTrue(PersonOptions.TakesFriendRequests(options));
+
+        var own = kept.ToArray();
+        own[PersonOptions.Whisper] = (byte)'2';
+
+        options = PersonOptions.KeepChoiceOfStaff(own, kept);
+
+        Assert.AreEqual(PersonOptions.Nobody, PersonOptions.Level(options, PersonOptions.Whisper));
     }
 }

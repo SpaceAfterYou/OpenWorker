@@ -109,6 +109,7 @@ public sealed partial class PersonService(
         // The person is always taken from the session, never from the request.
         if (ecs.Get<ClaimsComponent>(context.Player).Account != 0)
         {
+            StaffOptions.ExpectForced(ecs, context.Player);
             ecs.Get<ServerSessionComponent>(context.Player)
                 .Send(PersonSnapshotMapper.CreateCharacterInfoResponse(ecs, context.Player));
         }
@@ -204,6 +205,12 @@ public sealed partial class PersonService(
         // A client that was already playing reads the answer of the play scene; one from the character selection, the record.
         // Until it has taken the place in it, the client goes on sending the place of the map it left.
         MovementPace.PlaceTold(ecs, context.Player);
+
+        if (request.FirstConnect)
+        {
+            StaffOptions.ExpectForced(ecs, context.Player);
+        }
+
         session.Send(PersonSnapshotMapper.CreateEntryResponse(ecs, context.Player, request.FirstConnect));
 
         // The date of the server: the game scene counts the times left on items, boosters and windows from it.
