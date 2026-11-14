@@ -17,8 +17,8 @@ namespace OpenWorker.Lua.Helpers;
 
 /// <summary>
 /// The monsters a mode of a maze asks the players to defend. To the monsters such a monster is an enemy like a helper: they
-/// see it, go for it and hit it, and a blow that takes the last of its life fells it. The players cannot hit it, and its own
-/// mind does nothing; the mode watches its life.
+/// see it, go for it and hit it, and a blow that takes the last of its life fells it. The players cannot hit it; the mode
+/// watches its life. An escorted one fights back.
 /// </summary>
 public sealed class DefendedTargets
 {
@@ -26,6 +26,11 @@ public sealed class DefendedTargets
     private readonly LuaCreatureManager _manager;
     private readonly CombatTables _tables;
     private readonly List<Entity> _targets = [];
+
+    /// <summary>
+    /// How much a point of damage angers the escorted at the monster that dealt it.
+    /// </summary>
+    private const float HatePerDamage = 0.0004f;
 
     internal DefendedTargets(World ecs, LuaCreatureManager manager, CombatTables tables)
     {
@@ -60,29 +65,12 @@ public sealed class DefendedTargets
     public void Remove(Entity creature)
     {
         _targets.Remove(creature);
-        _led.Remove(creature);
     }
 
     public void Clear()
     {
         _targets.Clear();
-        _led.Clear();
     }
-
-    private readonly HashSet<Entity> _led = [];
-
-    /// <summary>
-    /// The maze walks the defended monster itself: its own mind and body do nothing until it is no longer defended.
-    /// </summary>
-    public void Lead(Entity creature)
-    {
-        if (_targets.Contains(creature))
-        {
-            _led.Add(creature);
-        }
-    }
-
-    public bool IsLed(Entity creature) => _led.Contains(creature);
 
     /// <summary>
     /// The life of a defended monster, zero when it has fallen or is gone.
@@ -213,6 +201,12 @@ public sealed class DefendedTargets
             var left = Math.Max(0, state.Health - result.Damage);
 
             _ecs.Set(creature, state with { Health = left });
+
+            // The escorted turns on the monster that hurt it.
+            if (left > 0 && _manager.BodyOf(creature) is EscortBody escort)
+            {
+                escort.Machine.OnDamaged(new AiHit(attackerActor, result.Damage * HatePerDamage, result.Damage, collider is null ? AiHitKind.Skill : AiHitKind.Projectile));
+            }
 
             hits.Add(default(SkillDmgValue) with
             {

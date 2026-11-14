@@ -636,6 +636,11 @@ public sealed partial class LuaCreatureManager
         body.Retired();
         Minds.Remove(body);
 
+        if (body is EscortBody)
+        {
+            return;
+        }
+
         if (!SpareBodies.TryGetValue(body.Machine.Profile, out var spare))
         {
             spare = new Stack<MonsterBody>();
@@ -646,6 +651,36 @@ public sealed partial class LuaCreatureManager
         {
             spare.Push(body);
         }
+    }
+
+    /// <summary>
+    /// The monster is escorted: from now on it thinks with a body that walks the way the maze gives it and fights the monsters.
+    /// Nothing for a monster without a mind.
+    /// </summary>
+    internal EscortBody? Escort(Entity creature)
+    {
+        if (!Bodies.TryGetValue(creature, out var body) || Services is not { } services)
+        {
+            return null;
+        }
+
+        if (body is EscortBody escorted)
+        {
+            return escorted;
+        }
+
+        body.StopMoving(true);
+        body.Machine.LeavePlace();
+        Minds.Remove(body);
+
+        var escort = new EscortBody(ecs, this, services.Actions, creature, body.Behavior, body.Machine.Profile, body.HomePosition);
+
+        Bodies[creature] = escort;
+        Minds.Add(escort);
+
+        escort.Reveal();
+
+        return escort;
     }
 
     public Entity CreateNpc(int identifier, MonsterSpawnBox spawn)

@@ -5,18 +5,21 @@ using Lua;
 using OpenWorker.Batch.Entities;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Maze.Types;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
-using OpenWorker.Lua.Managers;
+using OpenWorker.Lua.Ai;
 
 namespace OpenWorker.Lua;
 
 /// <summary>
-/// The escort: a monster the script names walks the escort points of the map from the one its spawn box gives, and the
-/// monsters go for it while the players cannot hit it. Each point it passes is told to the clients and runs the function the
+/// The escort: a monster the script names walks the escort points of the map from the one its spawn box gives, by its own
+/// mind and fighting the monsters on the way, and the monsters go for it while the players cannot hit it. Each point it passes is told to the clients and runs the function the
 /// point names; at the last one it leaves the maze, and a moment later the condition the script set is done for everyone in
 /// the maze who works on it. If it falls, the quest of the party fails for everyone who has the escort's episode.
 /// <para>
@@ -42,7 +45,7 @@ public partial class LuaMaze
     /// <summary>
     /// The escorted monster on its way and the point it heads for.
     /// </summary>
-    private (Entity Monster, EscortPoint Point, bool Walking)? _escort;
+    private (Entity Monster, EscortBody? Body, EscortPoint Point)? _escort;
 
     /// <summary>
     /// The monsters of the escort's kind that have been looked at, so that one with no way is not looked at again.
@@ -220,10 +223,10 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// One step of the escort: the monster the script named starts its way once the clients see it, walks to its point, and
-    /// passes it, arrives or falls.
+    /// One step of the escort: the monster the script named starts its way once the clients see it, its blows land, and it
+    /// passes its point, arrives or falls. Its own mind walks it to the point and fights on the way.
     /// </summary>
-    private void StepEscort(float seconds)
+    private void StepEscort()
     {
         if (_escortMonster == 0)
         {
@@ -240,6 +243,18 @@ public partial class LuaMaze
             return;
         }
 
+        if (escort.Body is { Strikes.Count: > 0 } body)
+        {
+            var strikes = body.Strikes.ToArray();
+
+            body.Strikes.Clear();
+
+            foreach (var strike in strikes)
+            {
+                Run(EscortStrikeAsync(strike));
+            }
+        }
+
         if (creatureManager.Helpers.Defended.Health(escort.Monster) <= 0)
         {
             EscortFalls(escort.Monster, escort.Point);
@@ -247,19 +262,12 @@ public partial class LuaMaze
             return;
         }
 
-        var place = Ecs.Get<WorldComponent>(escort.Monster).Position;
-
-        if (!Touches(escort.Point, place))
+        if (!Touches(escort.Point, Ecs.Get<WorldComponent>(escort.Monster).Position))
         {
-            _escort = escort with { Walking = WalkTowards(escort.Monster, Centre(escort.Point), seconds, escort.Walking) };
-
             return;
         }
 
-        if (escort.Walking)
-        {
-            creatureManager.Arrive(escort.Monster, place);
-        }
+        escort.Body?.StopMoving(true);
 
         var next = escort.Point.NextPointList[0];
 
@@ -273,7 +281,16 @@ public partial class LuaMaze
         TellEscort(escort.Point, EscortStatus.Passed);
 
         // A way that goes on to a point that is not an escort point stops there.
-        _escort = FindEscortPoint(next) is { } point ? (escort.Monster, point, false) : null;
+        if (FindEscortPoint(next) is not { } point)
+        {
+            _escort = null;
+
+            return;
+        }
+
+        _escort = escort with { Point = point };
+
+        escort.Body?.Follow(Centre(point));
     }
 
     private void FindEscorted()
@@ -300,9 +317,12 @@ public partial class LuaMaze
             }
 
             creatureManager.Helpers.Defended.Add(creature);
-            creatureManager.Helpers.Defended.Lead(creature);
 
-            _escort = (creature, point, false);
+            var body = creatureManager.Escort(creature);
+
+            body?.Follow(Centre(point));
+
+            _escort = (creature, body, point);
 
             TellEscort(point, EscortStatus.Started);
 
@@ -311,35 +331,74 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// The escorted walks on towards the point, at the pace of townsfolk. The clients are told of a walk when it starts.
+    /// The monsters a blow of the escorted hit take it as from any fighter; those that die are nobody's kills, and their
+    /// sectors are looked at.
     /// </summary>
-    private bool WalkTowards(Entity monster, Vector3 target, float seconds, bool walking)
+    private async ValueTask EscortStrikeAsync(EscortStrike strike)
     {
-        var place = Ecs.Get<WorldComponent>(monster);
-        var offset = new Vector2(target.X - place.Position.X, target.Y - place.Position.Y);
-        var distance = offset.Length();
-
-        if (distance < 1f || !float.IsFinite(distance))
+        if (Closed || !Ecs.IsAlive(strike.Escorted))
         {
-            return walking;
+            return;
         }
 
-        if (!walking)
+        var targets = strike.Targets.Where(e => Ecs.IsAlive(e) && Ecs.Get<CreatureComponent>(e).Health > 0).ToArray();
+
+        if (targets.Length == 0)
         {
-            creatureManager.Walk(monster, target);
+            return;
         }
 
-        var step = Math.Min(distance, LuaCreatureManager.NpcWalkSpeed * seconds);
-        var position = place.Position + new Vector3(offset / distance * step, 0f);
+        var attacker = Ecs.Get<WorldComponent>(strike.Escorted);
+        var stats = _buffs.StatsOf(strike.Escorted, Ecs.Get<MonsterCombatComponent>(strike.Escorted).Stats);
+        var skill = combat.GetSkill(strike.Skill);
+        var hits = targets.Select(target => ApplyDamage(strike.Escorted, target, stats, skill, strike.Trigger.DamageRate, strike.Trigger, strike.Skill, HitKinds.Of(strike.Trigger))).ToArray();
 
-        if (creatureManager.Navigation.TryGetFloor(position, out var height))
+        creatureManager.TellHitSlow(hits, strike.Trigger);
+
+        creatureManager.Broadcast(new SkillActionBroadcastResponse
         {
-            position.Z = height;
+            SkillDmgValueList = hits,
+            SkillAction = default(SkillActionValue) with
+            {
+                SkillActorInfo = default(SkillActorInfoValue) with
+                {
+                    UxActorId = Ecs.Get<ActorComponent>(strike.Escorted),
+                    SkillPosInfo = default(SkillActionPosInfoValue) with
+                    {
+                        Position = attacker.Position,
+                        Angle = attacker.Rotation,
+                        MotionClass = -1
+                    }
+                },
+                Skill = strike.Skill,
+                TriggerIndex = (short)strike.Trigger.Id,
+                ContinuousHit = 1
+            }
+        });
+
+        _buffs.GiveFromHit(strike.Escorted, strike.Trigger, targets);
+
+        var dead = targets.Where(e => Ecs.Get<CreatureComponent>(e).Health == 0).Select(RemoveDead).ToArray();
+
+        foreach (var (identifier, place, _) in dead)
+        {
+            if (Closed)
+            {
+                return;
+            }
+
+            await State.OnDie(identifier, place.SpawnBox, this);
         }
 
-        Ecs.Set(monster, Ecs.Get<WorldComponent>(monster) with { Position = position });
+        foreach (var sector in dead.Select(e => e.Place.Sector).Distinct())
+        {
+            if (Closed)
+            {
+                return;
+            }
 
-        return true;
+            await CheckSectorAsync(sector);
+        }
     }
 
     /// <summary>
