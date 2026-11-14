@@ -44,6 +44,14 @@ public sealed class SkillMovementTest
     private const float DashWay = 684f;
 
     /// <summary>
+    /// A monster whose idle action carries it 913 units.
+    /// </summary>
+    private const string EnochFile = "MOB_9025_Enoch";
+
+    private const string EnochAction = "B_Action_01";
+    private const float EnochActionWay = 913f;
+
+    /// <summary>
     /// The ground ends along a line of Y: there is ground only on its far side.
     /// </summary>
     private sealed class GroundEndingAt(float edge) : INavigation
@@ -98,11 +106,22 @@ public sealed class SkillMovementTest
         public PlayerFrame[] Frames(MoveOpcode command) =>
             connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Move, (byte)command)).ToArray();
 
+        /// <summary>
+        /// Waits for the messages told so far to come out, then gives those of the kind.
+        /// </summary>
+        public async Task<PlayerFrame[]> FramesAsync(MoveOpcode command, int atLeast)
+        {
+            await MetricAssertions.UntilAsync(() => Frames(command).Length >= atLeast, $"{atLeast} messages {command} are told.");
+            await Task.Delay(100);
+
+            return Frames(command);
+        }
+
         public int Hits() =>
             connection.Frames.Select(PlayerFrame.Open).Count(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActionSkillBt));
     }
 
-    private static async Task WithPuppetAsync(Func<Arena, Task> test)
+    private static async Task WithPuppetAsync(Func<Arena, Task> test, string file = PuppetFile)
     {
         var tables = Environment.GetEnvironmentVariable("OPENWORKER_TEST_RES");
         var actions = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
@@ -130,7 +149,7 @@ public sealed class SkillMovementTest
 
             var time = new FakeTimeProvider();
             var clock = TestMazes.Clock(time);
-            var monsters = new ReadOnlyCollection<MonsterRow>([TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", PuppetFile), ("Skill1", Dash))]);
+            var monsters = new ReadOnlyCollection<MonsterRow>([TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", file), ("Skill1", Dash))]);
             var combat = new CombatTables(monsters, TestMazes.None<StatusRow>(), skills, TestMazes.None<CharacterInfoRow>());
             var services = new CreatureServices(new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, folder.FullName), new MonsterBehaviorTables(monsters, skills),
                 new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions! }, clock, new NavMeshProvider());
@@ -191,7 +210,7 @@ public sealed class SkillMovementTest
     /// Where the ground ends the dash ends, a radius before the edge, and the clients are told where the monster stands.
     /// </summary>
     [TestMethod]
-    public Task ADashEndsARadiusBeforeTheEdgeOfTheGround() => WithPuppetAsync(arena =>
+    public Task ADashEndsARadiusBeforeTheEdgeOfTheGround() => WithPuppetAsync(async arena =>
     {
         var edge = arena.Start.Y - 300f;
         var stop = edge + Math.Min(arena.Body.Radius, 100f);
@@ -202,12 +221,10 @@ public sealed class SkillMovementTest
 
         Assert.AreEqual(stop, arena.Body.Position.Y, 1f);
 
-        var told = arena.Frames(MoveOpcode.IgnoreMotionDelta);
+        var told = await arena.FramesAsync(MoveOpcode.IgnoreMotionDelta, 1);
 
         Assert.HasCount(1, told, "The cut is told once.");
         Assert.AreEqual(stop, PlaceOf(told[0], 4).Y, 1f);
-
-        return Task.CompletedTask;
     });
 
     /// <summary>
@@ -227,7 +244,7 @@ public sealed class SkillMovementTest
     /// A monster runs no further into the player it fights: it stops before it and the clients are told where.
     /// </summary>
     [TestMethod]
-    public Task ADashStopsBeforeThePlayerTheMonsterFights() => WithPuppetAsync(arena =>
+    public Task ADashStopsBeforeThePlayerTheMonsterFights() => WithPuppetAsync(async arena =>
     {
         arena.Body.Machine.OnStruck(Person);
         arena.DashAt(400f);
@@ -240,9 +257,7 @@ public sealed class SkillMovementTest
 
         Assert.IsGreaterThan(reach, arena.Body.Position.Y - player);
         Assert.IsLessThan(reach + 40f, arena.Body.Position.Y - player);
-        Assert.HasCount(1, arena.Frames(MoveOpcode.IgnoreMotionDelta));
-
-        return Task.CompletedTask;
+        Assert.HasCount(1, await arena.FramesAsync(MoveOpcode.IgnoreMotionDelta, 1));
     });
 
     /// <summary>
@@ -269,7 +284,7 @@ public sealed class SkillMovementTest
     /// The walk after the skill starts where the skill has left the monster.
     /// </summary>
     [TestMethod]
-    public Task TheWalkAfterTheSkillStartsWhereTheSkillLeftTheMonster() => WithPuppetAsync(arena =>
+    public Task TheWalkAfterTheSkillStartsWhereTheSkillLeftTheMonster() => WithPuppetAsync(async arena =>
     {
         arena.DashAt(5000f);
         arena.Advance(3.5f);
@@ -279,12 +294,26 @@ public sealed class SkillMovementTest
         Assert.IsTrue(arena.Body.MoveTo(after + new Vector3(0f, -300f, 0f), false));
         arena.Advance(1f);
 
-        var walk = arena.Frames(MoveOpcode.MoveBt);
+        var walk = await arena.FramesAsync(MoveOpcode.MoveBt, 1);
 
-        Assert.IsNotEmpty(walk);
         Assert.AreEqual(after.Y, PlaceOf(walk[0], 4 + 8).Y, 1f);
         Assert.IsGreaterThan(DashWay - 10f, arena.Start.Y - PlaceOf(walk[0], 4 + 8).Y, "Not from where the skill began.");
+    });
+
+    /// <summary>
+    /// An animation that is no skill carries the monster too: an idle action takes it the whole way of its animation.
+    /// </summary>
+    [TestMethod]
+    public Task AnIdleActionCarriesTheMonsterTheWayOfItsAnimation() => WithPuppetAsync(arena =>
+    {
+        var length = arena.Body.PlayAction(EnochAction);
+
+        Assert.IsGreaterThan(0f, length);
+
+        arena.Advance(length + 0.5f);
+
+        Assert.AreEqual(EnochActionWay, AiMath.Distance2D(arena.Start, arena.Body.Position), 2f);
 
         return Task.CompletedTask;
-    });
+    }, EnochFile);
 }

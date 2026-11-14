@@ -81,6 +81,7 @@ public readonly record struct AttackTrigger(
     private const short Melee = 0;
     private const short Thrown = 1;
     private const short Trap = 2;
+    private const short Summon = 3;
     private const short Chained = 5;
     private const short Grabbing = 7;
 
@@ -103,6 +104,11 @@ public readonly record struct AttackTrigger(
     /// Stays where it was placed and hits whoever is around.
     /// </summary>
     public bool IsTrap => AttackType is Trap;
+
+    /// <summary>
+    /// Brings in the monster of <see cref="SpawnObject"/> somewhere in its space.
+    /// </summary>
+    public bool IsSummon => AttackType is Summon;
 
     /// <summary>
     /// Jumps from one target to the next one close to it.

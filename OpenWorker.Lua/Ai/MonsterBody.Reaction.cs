@@ -30,6 +30,11 @@ internal partial class MonsterBody
 
     private MonsterReaction? _reaction;
 
+    /// <summary>
+    /// The animations the reaction has begun, which carry the monster once what the blow ended is cleared away.
+    /// </summary>
+    private readonly List<(string Animation, float After)> _reactionPlays = [];
+
     private MonsterReaction Reaction => _reaction ??= CreateReaction();
 
     private bool IsReactionBlockingMove => _reaction?.BlocksMove == true;
@@ -43,7 +48,8 @@ internal partial class MonsterBody
 
         return new MonsterReaction(profile, _manager.Navigation, name => _actions.GetAnimationLength(Behavior.ActionFile, name), _manager.Random)
         {
-            IsBlocked = place => _manager.IsPlayerNear(place, Math.Min(combat.BodyRadius, SlideBodyLimit) + PlayerMargin)
+            IsBlocked = place => _manager.IsPlayerNear(place, Math.Min(combat.BodyRadius, SlideBodyLimit) + PlayerMargin),
+            Plays = (animation, after) => _reactionPlays.Add((animation, after))
         };
     }
 
@@ -72,6 +78,8 @@ internal partial class MonsterBody
             Interrupt();
         }
 
+        PlayReaction();
+
         return outcome;
     }
 
@@ -83,6 +91,17 @@ internal partial class MonsterBody
         Reaction.BreakArmor(seconds);
 
         Interrupt();
+        PlayReaction();
+    }
+
+    private void PlayReaction()
+    {
+        foreach (var (animation, after) in _reactionPlays)
+        {
+            PlayMoves(animation, after);
+        }
+
+        _reactionPlays.Clear();
     }
 
     /// <summary>
@@ -95,6 +114,7 @@ internal partial class MonsterBody
         _pending.Clear();
         _clips.Clear();
         _moves.Clear();
+        DropCombo();
         ReleaseGrab(true);
 
         StopMoving(false);
@@ -122,6 +142,7 @@ internal partial class MonsterBody
             Place(step.Position, Yaw);
         }
 
+        PlayReaction();
         TellReaction(step);
     }
 

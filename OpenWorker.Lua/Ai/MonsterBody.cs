@@ -123,6 +123,8 @@ internal partial class MonsterBody : IAiHost
         _detaches.Clear();
         _clips.Clear();
         _moves.Clear();
+        _reactionPlays.Clear();
+        DropCombo();
         _carried = false;
         _lastChange = 0;
         _holdUntil = 0;
@@ -245,6 +247,8 @@ internal partial class MonsterBody : IAiHost
 
         _idleAnimation = _actions.GetAnimationIndex(Behavior.ActionFile, _spawnAction);
 
+        PlayMoves(_spawnAction);
+
         if (!_actions.IsLooping(Behavior.ActionFile, _spawnAction))
         {
             _idleEnd = _manager.Now + length;
@@ -287,6 +291,7 @@ internal partial class MonsterBody : IAiHost
         _pending.Clear();
         _clips.Clear();
         _moves.Clear();
+        DropCombo();
         ReleaseGrab(true);
 
         if (IsMoving)
@@ -310,8 +315,13 @@ internal partial class MonsterBody : IAiHost
         }
 
         Advance(now, elapsed);
-        ResolveHits(now);
-        MoveWithSkill(now);
+
+        // What the skill had still to do after a combo cuts it is not done.
+        var until = Math.Min(now, _comboAt);
+
+        ResolveHits(until);
+        MoveWithSkill(until);
+        GoOnWithCombo(now);
         ResolveGrab(now);
         ResolveHidings(now);
         CheckIdleTime(now);
@@ -423,6 +433,12 @@ internal partial class MonsterBody : IAiHost
         // The first point of the way is the place the monster stands at.
         _route.AddRange(_found.Skip(1));
 
+        // A walk ends whatever animation carried the monster.
+        if (_route.Count > 0)
+        {
+            _moves.Clear();
+        }
+
         _run = run;
         _destination = _route.Count > 0 ? _route[^1] : position;
 
@@ -472,6 +488,7 @@ internal partial class MonsterBody : IAiHost
     {
         _destination = null;
         _route.Clear();
+        _moves.Clear();
 
         Place(position, Yaw);
 
@@ -731,6 +748,8 @@ internal partial class MonsterBody : IAiHost
         _idleAnimation = _actions.GetAnimationIndex(Behavior.ActionFile, name);
         _idleEnd = _manager.Now + length;
 
+        PlayMoves(name);
+
         Broadcast(new MovementIdleBtResponse
         {
             Actor = Actor,
@@ -757,6 +776,20 @@ internal partial class MonsterBody : IAiHost
             return false;
         }
 
+        StopMoving(true);
+
+        FaceTo(target.Position);
+
+        Play(skill);
+
+        return true;
+    }
+
+    /// <summary>
+    /// The monster plays a skill where it stands and the way it looks, and the clients are told.
+    /// </summary>
+    private void Play(AiSkill skill)
+    {
         var now = _manager.Now;
 
         // A skill that grabs plays its start, and what follows depends on whether the start took somebody.
@@ -774,10 +807,6 @@ internal partial class MonsterBody : IAiHost
         {
             duration = AttackDefaultLength;
         }
-
-        StopMoving(true);
-
-        FaceTo(target.Position);
 
         _attackEnd = now + duration;
         _pending.Clear();
@@ -818,6 +847,11 @@ internal partial class MonsterBody : IAiHost
                 _pending.Add(new PendingHit(now + mark, default, skill.Id, Mark: true));
             }
 
+            foreach (var summon in timeline.Summons)
+            {
+                _pending.Add(new PendingHit(now + summon.Time, summon, skill.Id));
+            }
+
             _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
             AddMoves(timeline.Moves, now, timeline.Clips.Count);
@@ -832,6 +866,8 @@ internal partial class MonsterBody : IAiHost
             }
         }
 
+        RollCombo(skill.Id, start is null ? timeline.ComboAt : null, now);
+
         Broadcast(new SkillActiveBroadcastResponse
         {
             Skill = default(ActiveSkillValue) with
@@ -842,8 +878,6 @@ internal partial class MonsterBody : IAiHost
                 RandomTrapIndex = _trapKey = _manager.Random.Next(0, TrapLayout.Keys)
             }
         });
-
-        return true;
     }
 
     private void ResolveHits(double now)
@@ -880,6 +914,13 @@ internal partial class MonsterBody : IAiHost
             if (pending.Hit.Trigger.IsTrap)
             {
                 SetTraps(pending.Skill, pending.Hit.Trigger);
+
+                continue;
+            }
+
+            if (pending.Hit.Trigger.IsSummon)
+            {
+                Summon(pending.Hit.Trigger);
 
                 continue;
             }
@@ -926,6 +967,8 @@ internal partial class MonsterBody : IAiHost
         {
             _moves[i] = _moves[i] with { Time = _moves[i].Time + seconds };
         }
+
+        _comboAt += seconds;
     }
 
     /// <summary>

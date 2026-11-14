@@ -3,8 +3,8 @@ using OpenWorker.Res.Attributes;
 namespace OpenWorker.UpdateContent.Res.Rows;
 
 /// <summary>
-/// The server's own <c>tb_Skill</c>, of which only how much hate a blow of the skill earns is kept: the client's copy has no such
-/// columns. The rest of the row is read to reach its end.
+/// The server's own <c>tb_Skill</c>, of which only how much hate a blow of the skill earns and the skill a monster may go on with
+/// are kept: the client's copy has no such columns. The rest of the row is read to reach its end.
 /// </summary>
 [BinaryResourceTable("tb_Skill", Server = true)]
 public readonly struct SkillAggroRow
@@ -14,8 +14,14 @@ public readonly struct SkillAggroRow
         Id = reader.ReadUInt32();
         SkipString(reader);
 
-        // Group, level and cost, then the times and ranges, up to the columns of the hate.
-        reader.ReadBytes(139);
+        // Group, level and cost, then the times, ranges and states, up to the next skill of a combo.
+        reader.ReadBytes(116);
+
+        ChainSkill = reader.ReadUInt32();
+        ChainRate = reader.ReadByte();
+
+        // The cooldowns and the bullets, up to the columns of the hate.
+        reader.ReadBytes(18);
 
         Kind = reader.ReadByte();
         Value = reader.ReadUInt16();
@@ -30,6 +36,12 @@ public readonly struct SkillAggroRow
     }
 
     public uint Id { get; }
+
+    /// <summary>The skill a monster goes on with after this one, when the chance comes up; zero for none.</summary>
+    public uint ChainSkill { get; }
+
+    /// <summary>The chance in percent that a monster goes on with <see cref="ChainSkill"/>.</summary>
+    public byte ChainRate { get; }
 
     /// <summary>Zero: the hate grows by <see cref="Value"/> a blow. Otherwise it grows by that many percent of the damage.</summary>
     public byte Kind { get; }
