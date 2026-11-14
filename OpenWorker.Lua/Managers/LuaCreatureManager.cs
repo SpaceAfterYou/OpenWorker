@@ -1480,6 +1480,23 @@ public sealed partial class LuaCreatureManager
     internal Vector3 PositionOf(Entity player) => Vitals.PositionOf(player);
 
     /// <summary>
+    /// Whether the player lies on the ground: its client says so, and a throw the server dealt it has landed a short while ago.
+    /// </summary>
+    internal bool IsLying(Entity player)
+    {
+        return ecs.TryGet<PlayerStanceComponent>(player, out var stance) && PlayerStance.IsDown(stance) &&
+               ecs.TryGet<PlayerPostureComponent>(player, out var posture) && Time < posture.DownUntil + PlayerStance.MostLying;
+    }
+
+    /// <summary>
+    /// Whether the player of an actor lies on the ground.
+    /// </summary>
+    internal bool IsLying(int actor)
+    {
+        return FindPlayerEntity(actor) is { } player && IsLying(player);
+    }
+
+    /// <summary>
     /// The server knows the player is in the air for at least this long.
     /// </summary>
     private void Posture(Entity player, long milliseconds)

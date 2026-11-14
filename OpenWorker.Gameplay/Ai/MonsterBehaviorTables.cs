@@ -131,6 +131,7 @@ public sealed class MonsterBehaviorTables
             row.GlobalCooldown * 0.001f,
             row.Angle,
             row.RotationType != 0,
-            row.TargetType != 0);
+            row.TargetType != 0,
+            row.TargetState == 1);
     }
 }

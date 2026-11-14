@@ -158,7 +158,7 @@ public sealed class ActionFileTest
         e.Write(false);
         e.Write(75f);
         e.Write(true);
-        WriteFloats(e, 0.2f, 0f);
+        WriteFloats(e, 0.2f, 0.3f);
         e.Write(true);
         WriteFloats(e, 0f, 0f);
         e.Write((short)0);
@@ -175,7 +175,14 @@ public sealed class ActionFileTest
             WriteString(e, "text");
         }
 
-        e.Write(new byte[1 + 2 + 4 + 4 + 4 + 12 + 4 + 4 + 4]);
+        // Where its traps go: to the mark, scattered between 100 and 900 within 45 degrees round a middle 300 ahead, five of them,
+        // 0.4 s apart; then the linked skill.
+        e.Write(true);
+        e.Write(TrapInfo.Scattered);
+        WriteFloats(e, 900f, 100f, 45f, 0f, -300f, 0f);
+        e.Write(5);
+        e.Write(0.4f);
+        e.Write(0);
         e.Write(new byte[1 + 4 + 4 + 4 + 4 + 4]);
         e.Write(7);
         e.Write(1);
@@ -199,10 +206,12 @@ public sealed class ActionFileTest
         WriteString(e, "text");
         WriteString(e, "text");
         WriteFloats(e, 0f, 0f, 0f, GrabDrop.X, GrabDrop.Y, GrabDrop.Z);
-        e.Write(new byte[40]);
+        // The space a trap bursts over and the wait of one that bursts when somebody comes near.
+        WriteFloats(e, 360f, 0f, 0f, 0f, 100f, 100f, 150f, 500f, 1f, 0.5f);
         e.Write(true);
         e.Write(4);
-        e.Write(new byte[2 + 2 + 1]);
+        e.Write((short)4);
+        e.Write(new byte[2 + 1]);
         e.Write(ReactionAngle);
         e.Write(new byte[4]);
         e.Write(false);
@@ -300,14 +309,17 @@ public sealed class ActionFileTest
 
             Assert.AreEqual(
                 new AttackTrigger(51, 1, 6, 11, 0.25f, 40f, new Vector3(1, 2, 3), 4, 5, 6, 7, 8, 0.5f, 9, attack.Projectile, attack.Chain, 1406, AttackTrigger.SelfAndParty, version >= AuraSinceVersion ? AuraWritten : 0,
-                    new AttackReaction(120f, 75f, 30f, 900f, AwayFromOrigin, ReactionAngle, 0.4f, 0.5f, 0.1f, 0.05f, 15, Grade, true, Hardness, version >= AuraSinceVersion), GrabDrop),
+                    new AttackReaction(120f, 75f, 30f, 900f, AwayFromOrigin, ReactionAngle, 0.4f, 0.5f, 0.1f, 0.05f, 15, Grade, true, Hardness, version >= AuraSinceVersion), GrabDrop, TargetStatus: 1),
                 attack);
             Assert.AreEqual(new ChainInfo(1, 3f, 5, 0.3f, new Vector3(0, -10, 0), 120f, 1f, true), attack.Chain);
             Assert.AreEqual(0.75f, animation.Attacks[1].Start);
             // The client numbers the attacks itself: the first animation took 1, so the second goes on from the next block.
             Assert.AreEqual(52, animation.Attacks[1].Id);
             Assert.AreEqual(
-                new ProjectileInfo(new Vector3(10, 20, 30), 500f, 2f, true, 1, 75f, true, 0.2f, true, version >= 218, 6, new Vector3(-7, 40, 0), true, 4),
+                new ProjectileInfo(new Vector3(10, 20, 30), 500f, 2f, true, 1, 75f, true, 0.2f, true, version >= 218, 6, new Vector3(-7, 40, 0), true, 4)
+                {
+                    Trap = new TrapInfo(0.3f, true, TrapInfo.Scattered, 900f, 100f, 45f, new Vector3(0f, -300f, 0f), 5, 0.4f, new TrapBurst(360f, Vector3.Zero, 150f, 500f, 1f), 0.5f, 4)
+                },
                 attack.Projectile);
         }
     }

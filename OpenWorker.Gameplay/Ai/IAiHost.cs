@@ -15,6 +15,7 @@ public readonly record struct AiTarget(int Id, Vector3 Position, float Radius, f
 /// <param name="Angle">How far from the target it may look when the skill starts, in degrees.</param>
 /// <param name="IgnoresRotation">The skill starts whatever way the monster looks.</param>
 /// <param name="TargetsOwner">The skill is for the one who owns the monster and not for its enemy.</param>
+/// <param name="ForLying">The skill may start on a target that lies on the ground.</param>
 public sealed record AiSkill(
     int Id,
     float RangeMin,
@@ -24,7 +25,8 @@ public sealed record AiSkill(
     float GlobalCooldown,
     float Angle,
     bool IgnoresRotation,
-    bool TargetsOwner);
+    bool TargetsOwner,
+    bool ForLying = false);
 
 /// <summary>
 /// What a monster is made of and what it can do in the world. The machine decides, the host does and tells what it sees.

@@ -2214,7 +2214,7 @@
     "Single SuperArmorAttack // How much the skill wears down the super armor of its target.",
     "Byte TargetCount // How many targets one hit of the skill may strike: 15 on almost every row, 50 on 82.",
     "UInt16 MoveSpeed // The speed the user moves at while the skill plays and the player moves: the client takes this value as the speed of the mover then. 22 rows have one (15 to 500).",
-    "Byte // Not known: 1 on 50 monster skills, 0 elsewhere. The original server's row has a flag about the state of a monster's target at this place (every common row agrees); no client code that reads it was found.",
+    "Byte TargetState // 1 when a monster may start the skill on a target that lies on the ground (50 monster skills), 0 elsewhere.",
     "Byte Attribute // The attribute of the skill: 1 on every row but one.",
     "Byte CostAttribute // What the skill costs: 0 nothing, 2 soul gauge, 3 stamina, 4 soul vapor (1 is health on the server, no row has it).",
     "Int32 Cost // How much of CostAttribute the skill costs.",

@@ -38,6 +38,25 @@ public sealed class MonsterBlowTest
 
     private const int Shot = 1303043072;
 
+    /// <summary>
+    /// A monster whose shot follows its target: one shot, 1.0 s into the skill.
+    /// </summary>
+    private const string GuidedShooterFile = "MOB_9066_DignitySnasher";
+
+    private const int GuidedShot = 1302050241;
+
+    /// <summary>
+    /// A monster that lays eight traps round itself, 300 away, each a circle of 150 that hits every half second for 4 s.
+    /// </summary>
+    private const string TrapperFile = "MOB_0211_Hell Collector";
+
+    private const int TrapSkill = 1303053064;
+
+    /// <summary>
+    /// Where the trap that lies to the right of the monster is, from the monster that looks along -Y.
+    /// </summary>
+    private static readonly Vector3 RightTrap = new(300f, 0f, 0f);
+
     private sealed class Arena(World world, LuaMaze maze, Entity player, MonsterBody body, RecordingConnection connection, FakeTimeProvider time, SimulationClock clock)
     {
         public LuaMaze Maze { get; } = maze;
@@ -61,6 +80,55 @@ public sealed class MonsterBlowTest
 
         public PlayerFrame[] Hits() =>
             connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActionSkillBt)).ToArray();
+
+        public PlayerFrame[] Shots() =>
+            connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ProjectileBt)).ToArray();
+
+        /// <summary>
+        /// Waits for the hits told so far to come out, then counts them.
+        /// </summary>
+        public async Task<int> HitsAsync(int atLeast)
+        {
+            await MetricAssertions.UntilAsync(() => Hits().Length >= atLeast, $"{atLeast} hits are told.");
+            await Task.Delay(100);
+
+            return Hits().Length;
+        }
+
+        public void Stance(short motion, short step)
+        {
+            world.Add(Player, new PlayerStanceComponent(motion, step));
+            world.Add(Player, new PlayerPostureComponent(TimeSpan.FromHours(1)));
+        }
+
+        public void SetStance(short motion, short step)
+        {
+            world.Set(Player, new PlayerStanceComponent(motion, step));
+        }
+    }
+
+    /// <summary>
+    /// The skills of the client's tables, or null when the variables of the test data are not set.
+    /// </summary>
+    private static (ReadOnlyCollection<SkillRow> Skills, string Actions)? Data(params int[] ids)
+    {
+        var tables = Environment.GetEnvironmentVariable("OPENWORKER_TEST_RES");
+        var actions = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
+
+        if (string.IsNullOrEmpty(tables) || string.IsNullOrEmpty(actions))
+        {
+            return null;
+        }
+
+        using var reader = new BinaryReader(File.OpenRead(Path.Join(tables, "tb_Skill.res")));
+        var rows = new SkillRow[reader.ReadInt32()];
+
+        for (var index = 0; index < rows.Length; index++)
+        {
+            rows[index] = new SkillRow(reader);
+        }
+
+        return (new ReadOnlyCollection<SkillRow>([.. ids.Select(id => rows.First(e => e.Id == id))]), actions);
     }
 
     private static async Task WithArenaAsync(Func<Arena, Task> test, MonsterRow? row = null, ReadOnlyCollection<SkillRow>? skills = null, string actions = "action")
@@ -174,5 +242,122 @@ public sealed class MonsterBlowTest
 
             await MetricAssertions.UntilAsync(() => arena.Hits().Length > 0, "The shot lands.");
         }, shooter, skills, actions!);
+    }
+
+    /// <summary>
+    /// A trap of a monster stays for its life and hits whoever is in it at once and again every interval while it stays; one
+    /// who has left it is hit no more.
+    /// </summary>
+    [TestMethod]
+    public async Task ATrapHitsWhoStaysInItEveryIntervalAndNotWhoLeft()
+    {
+        if (Data(TrapSkill) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        var trapper = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", TrapperFile), ("Skill1", TrapSkill));
+        var laid = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }
+            .GetTimeline(TrapSkill, TrapperFile).Hits.First(e => e.Trigger.IsTrap && e.Trigger.Center == RightTrap).Time;
+
+        await WithArenaAsync(async arena =>
+        {
+            var ahead = arena.Body.Position + new Vector3(0f, -1000f, 0f);
+
+            Assert.IsTrue(arena.Body.UseSkill(arena.Body.GetSkill(0)!, new AiTarget(100, ahead, 40f, 0f, 1, 1, false)));
+
+            arena.Place(arena.Body.Position + TrapLayout.Turn(RightTrap, arena.Body.Yaw));
+            arena.Advance(laid - 0.1f);
+
+            Assert.AreEqual(0, await arena.HitsAsync(0), "Nothing hits before the trap is laid.");
+
+            arena.Advance(0.2f);
+
+            Assert.AreEqual(1, await arena.HitsAsync(1), "The trap hits at once who is in it.");
+
+            arena.Advance(1.2f);
+
+            Assert.AreEqual(3, await arena.HitsAsync(3), "It hits again every half second.");
+
+            arena.Place(arena.Body.Position + new Vector3(0f, 3000f, 0f));
+            arena.Advance(4f);
+
+            Assert.AreEqual(3, await arena.HitsAsync(3), "Who has left is hit no more, and the burst at its end is far.");
+        }, trapper, skills, actions);
+    }
+
+    /// <summary>
+    /// A player who lies on the ground is not reached by a blow that is not for one, and a monster waits with a skill that is not
+    /// for one; once the player is up again, it is hit.
+    /// </summary>
+    [TestMethod]
+    public async Task APlayerOnTheGroundIsNotHitByWhatIsNotForOne()
+    {
+        if (Data(TrapSkill) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        var trapper = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", TrapperFile), ("Skill1", TrapSkill));
+        var laid = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }
+            .GetTimeline(TrapSkill, TrapperFile).Hits.First(e => e.Trigger.IsTrap && e.Trigger.Center == RightTrap).Time;
+
+        await WithArenaAsync(async arena =>
+        {
+            var ahead = arena.Body.Position + new Vector3(0f, -1000f, 0f);
+            var player = new AiTarget(100, ahead, 40f, 0f, 1, 1, false);
+            var skill = arena.Body.GetSkill(0)!;
+
+            arena.Stance(MotionClass.DownUp, 2);
+
+            Assert.IsFalse(arena.Body.UseSkill(skill, player), "The monster waits while its target lies.");
+            Assert.IsTrue(arena.Body.UseSkill(skill with { ForLying = true }, player), "A skill for one on the ground starts.");
+
+            arena.Place(arena.Body.Position + TrapLayout.Turn(RightTrap, arena.Body.Yaw));
+            arena.Advance(laid + 0.2f);
+
+            Assert.AreEqual(0, await arena.HitsAsync(0), "The trap passes over the player on the ground.");
+
+            arena.SetStance(MotionClass.DownUp, 5);
+            arena.Advance(0.2f);
+
+            Assert.AreEqual(1, await arena.HitsAsync(1), "Up again, the player is hit.");
+        }, trapper, skills, actions);
+    }
+
+    /// <summary>
+    /// The clients fly the shots of a monster themselves: only a shot that follows its target is told to them.
+    /// </summary>
+    [TestMethod]
+    public async Task OnlyAShotThatFollowsItsTargetIsTold()
+    {
+        if (Data(Shot, GuidedShot) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        foreach (var (file, skill, told) in new[] { (ShooterFile, Shot, false), (GuidedShooterFile, GuidedShot, true) })
+        {
+            var shooter = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", file), ("Skill1", skill));
+
+            await WithArenaAsync(async arena =>
+            {
+                var aim = arena.Body.Position + new Vector3(0f, -1000f, 0f);
+
+                Assert.IsTrue(arena.Body.UseSkill(arena.Body.GetSkill(0)!, new AiTarget(100, aim, 40f, 0f, 1, 1, false)));
+
+                arena.Advance(1.5f);
+
+                await Task.Delay(100);
+
+                Assert.AreEqual(told, arena.Shots().Length > 0, $"The shot of {file} is told: {told}.");
+            }, shooter, skills, actions);
+        }
     }
 }

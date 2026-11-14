@@ -13,6 +13,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Speeds">The stretches of the animation that play faster or slower than the rest.</param>
 /// <param name="Controls">The moments at which the one who plays the animation takes control of a monster or lets it go.</param>
 /// <param name="Moves">How the animation carries the one who plays it, frame by frame, in the order of time.</param>
+/// <param name="TrapMarks">The moments at which the one who plays the animation marks where its target stands, for the traps that go there.</param>
 public sealed record ActionAnimation(
     string Name,
     float Length,
@@ -26,7 +27,8 @@ public sealed record ActionAnimation(
     IReadOnlyList<CutEvent>? Cuts = null,
     IReadOnlyList<SpeedEvent>? Speeds = null,
     IReadOnlyList<ControlEvent>? Controls = null,
-    IReadOnlyList<MoveFrame>? Moves = null);
+    IReadOnlyList<MoveFrame>? Moves = null,
+    IReadOnlyList<float>? TrapMarks = null);
 
 /// <summary>
 /// One frame of the way an animation carries the one who plays it: the move since the frame before, in the mover's own frame,
@@ -168,6 +170,12 @@ public sealed class ActionFile
     private const short DefenseTriggerType = 25;
     private const short DetachTriggerType = 30;
     private const short SummonTriggerType = 16;
+    private const short ActionTriggerType = 5;
+
+    /// <summary>
+    /// The action of an action event that marks where the target stands, for a trap that goes there.
+    /// </summary>
+    private const int MarkTrapPlace = 8;
 
     /// <summary>
     /// The kind of summon by which the player controls the monster it brings in.
@@ -373,6 +381,7 @@ public sealed class ActionFile
         var cuts = new List<CutEvent>();
         var speeds = new List<SpeedEvent>();
         var controls = new List<ControlEvent>();
+        var marks = new List<float>();
         var events = reader.ReadInt32();
 
         for (var i = 0; i < events; i++)
@@ -413,6 +422,10 @@ public sealed class ActionFile
                 case SummonTriggerType when ReadControl(reader, header) is { } control:
                     controls.Add(control);
                     break;
+
+                case ActionTriggerType when reader.ReadInt32() == MarkTrapPlace:
+                    marks.Add(header.Start);
+                    break;
             }
 
             Close(reader, chunk);
@@ -428,7 +441,7 @@ public sealed class ActionFile
         }
 
         return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches,
-            cuts, speeds, controls.Count > 0 ? controls : null, moves);
+            cuts, speeds, controls.Count > 0 ? controls : null, moves, marks.Count > 0 ? marks : null);
     }
 
     /// <summary>
@@ -626,14 +639,14 @@ public sealed class ActionFile
 
         return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition,
             reaction.DamageRate, reaction.ReactionType, projectile, chain, reaction.Buff, reaction.TargetType, reaction.Aura,
-            reaction.Push with { Hardness = hardness }, reaction.GrabDrop);
+            reaction.Push with { Hardness = hardness }, reaction.GrabDrop, reaction.TargetStatus);
     }
 
     /// <summary>
     /// Whom an attack is for and what it does to them: the kind of target, the share of the damage, the buff it gives each
     /// target and how the target reacts.
     /// </summary>
-    private readonly record struct Effects(int TargetType, float DamageRate, int Buff, int ReactionType, int Aura, AttackReaction Push, Vector3 GrabDrop);
+    private readonly record struct Effects(int TargetType, float DamageRate, int Buff, int ReactionType, int Aura, AttackReaction Push, Vector3 GrabDrop, int TargetStatus);
 
     /// <summary>
     /// The aura an attack puts on its targets sits at the end of the attack, after the fields that later versions added to it.
@@ -686,9 +699,7 @@ public sealed class ActionFile
         var radius = reader.ReadSingle();
         var isContinuous = reader.ReadBoolean();
         var continuousTime = reader.ReadSingle();
-
-        reader.ReadSingle();
-
+        var delay = reader.ReadSingle();
         var isGuided = reader.ReadBoolean();
 
         Skip(reader, 2 * sizeof(float) + sizeof(short) + 2);
@@ -701,14 +712,18 @@ public sealed class ActionFile
         var direction = ReadVector3(reader);
 
         SkipStrings(reader, 5);
-        Skip(reader, 1 + sizeof(short) + sizeof(float));
 
-        if (version >= RandomRadiusMinSinceVersion)
-        {
-            reader.ReadSingle();
-        }
+        // Where a trap goes: to the place its maker marked, at random around it, or in a row.
+        var movesToMark = reader.ReadBoolean();
+        var pattern = reader.ReadInt16();
+        var randomRadius = reader.ReadSingle();
+        var randomRadiusMin = version >= RandomRadiusMinSinceVersion ? reader.ReadSingle() : 0f;
+        var randomAngle = reader.ReadSingle();
+        var randomOffset = ReadVector3(reader);
+        var randomCount = reader.ReadInt32();
+        var randomDelay = reader.ReadSingle();
 
-        Skip(reader, sizeof(float) + 3 * sizeof(float) + sizeof(int) + sizeof(float) + sizeof(int));
+        Skip(reader, sizeof(int));
 
         if (version >= EffectVisibilitySinceVersion)
         {
@@ -719,9 +734,7 @@ public sealed class ActionFile
         Skip(reader, 1 + sizeof(float) + sizeof(int) + sizeof(float) + sizeof(int) + sizeof(float));
         // Which targets it may affect: the kind of target, then the states of the targets it reaches.
         var targetType = reader.ReadInt32();
-
-        reader.ReadInt32();
-
+        var targetStatus = reader.ReadInt32();
         var damageRate = reader.ReadSingle();
         var buff = reader.ReadInt32();
         var reactionType = reader.ReadInt32();
@@ -777,9 +790,22 @@ public sealed class ActionFile
 
         var grabDrop = ReadVector3(reader);
 
+        TrapBurst? burst = null;
+        var explodeDelay = 0f;
+
         if (version >= CollisionRangeSinceVersion)
         {
-            Skip(reader, 9 * sizeof(float) + sizeof(float));
+            var burstAngle = reader.ReadSingle();
+            var burstCenter = ReadVector3(reader);
+
+            Skip(reader, 2 * sizeof(float));
+
+            var burstRadius = reader.ReadSingle();
+            var burstHeight = reader.ReadSingle();
+            var burstStart = reader.ReadSingle();
+
+            burst = new TrapBurst(burstAngle, burstCenter, burstRadius, burstHeight, burstStart);
+            explodeDelay = reader.ReadSingle();
         }
 
         var penetrates = false;
@@ -791,7 +817,8 @@ public sealed class ActionFile
             penetrateCount = reader.ReadInt32();
         }
 
-        SkipSince(reader, version, ExplodeFactionSinceVersion, sizeof(short));
+        var explodeFaction = version >= ExplodeFactionSinceVersion ? reader.ReadInt16() : (short)0;
+
         SkipSince(reader, version, ExplodeTrapSinceVersion, sizeof(short));
         SkipSince(reader, version, PenetrationEffectSinceVersion, 1);
         var angle = version >= ReactionAngleSinceVersion ? reader.ReadSingle() : 0f;
@@ -806,13 +833,16 @@ public sealed class ActionFile
             recalculates = reader.ReadBoolean();
         }
 
-        var projectile = new ProjectileInfo(start, speed, lifeTime, hasGravity, directionType, radius, isContinuous, continuousTime, isGuided, targetOnly, explodeDecision, direction, penetrates, penetrateCount);
+        var projectile = new ProjectileInfo(start, speed, lifeTime, hasGravity, directionType, radius, isContinuous, continuousTime, isGuided, targetOnly, explodeDecision, direction, penetrates, penetrateCount)
+        {
+            Trap = new TrapInfo(delay, movesToMark, pattern, randomRadius, randomRadiusMin, randomAngle, randomOffset, randomCount, randomDelay, burst, explodeDelay, explodeFaction)
+        };
         var chain = new ChainInfo(connectionType, chainLifeTime, chainMaxCount, damageMultiple, chainCenter, chainRadius, chainStartPosition, recalculates);
 
         var (aura, breaksPlayerArmor) = ReadAura(reader, version);
         var push = new AttackReaction(distance, pushHeight, heightInAir, pushSpeed, arrow, angle, slowRate, slowTime, slowDelay, hitFreeze, weakSlowChance, grade, usesTargetWeight, 0, breaksPlayerArmor);
 
-        return (projectile, chain, new Effects(targetType, damageRate, buff, reactionType, aura, push, grabDrop));
+        return (projectile, chain, new Effects(targetType, damageRate, buff, reactionType, aura, push, grabDrop, targetStatus));
     }
 
     private static Vector3 ReadVector3(BinaryReader reader)

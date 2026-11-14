@@ -80,6 +80,11 @@ public sealed record SkillTimeline(float Length, IReadOnlyList<TimedClip> Clips,
     /// the animation in <see cref="Clips"/>.
     /// </summary>
     public IReadOnlyList<SkillMove> Moves { get; init; } = [];
+
+    /// <summary>
+    /// The moments the monster marks where its target stands, for the traps that go there, in the order of time.
+    /// </summary>
+    public IReadOnlyList<float> TrapMarks { get; init; } = [];
 }
 
 /// <summary>
@@ -164,6 +169,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         var shots = new List<SkillHit>();
         var hidings = new List<SkillHiding>();
         var moves = new List<SkillMove>();
+        var marks = new List<float>();
         var offset = 0f;
 
         // The extra animation plays only on input from the player.
@@ -216,6 +222,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
                 }
 
                 hidings.AddRange((animation.Hides ?? []).Select(hide => new SkillHiding(round + clock.Wall(hide.Start), hide)).Where(e => !rounds || e.Time < end));
+                marks.AddRange((animation.TrapMarks ?? []).Select(mark => round + clock.Wall(mark)).Where(e => !rounds || e < end));
 
                 round += clock.Length;
             }
@@ -231,7 +238,8 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             shots.OrderBy(e => e.Time).ToArray(),
             hidings.OrderBy(e => e.Time).ToArray())
         {
-            Moves = moves
+            Moves = moves,
+            TrapMarks = [.. marks.Order()]
         };
     }
 

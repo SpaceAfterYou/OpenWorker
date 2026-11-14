@@ -118,9 +118,9 @@ public readonly partial struct SkillRow(BinaryReader reader)
     /// </summary>
     public ushort MoveSpeed { get; } = reader.ReadUInt16();
     /// <summary>
-    /// Not known: 1 on 50 monster skills, 0 elsewhere. The original server&apos;s row has a flag about the state of a monster&apos;s target at this place (every common row agrees); no client code that reads it was found.
+    /// 1 when a monster may start the skill on a target that lies on the ground (50 monster skills), 0 elsewhere.
     /// </summary>
-    public byte Field27 { get; } = reader.ReadByte();
+    public byte TargetState { get; } = reader.ReadByte();
     /// <summary>
     /// The attribute of the skill: 1 on every row but one.
     /// </summary>
