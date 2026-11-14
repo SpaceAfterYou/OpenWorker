@@ -1133,6 +1133,11 @@ public sealed partial class AiMachine
                 UpdateWait(elapsed);
                 break;
 
+            case AiState.Patrol when _host.WayPoint is { } point:
+                CheckFloor(elapsed);
+                UpdateWay(point, elapsed);
+                break;
+
             case AiState.Patrol:
                 CheckFloor(elapsed);
                 UpdateMovement(state);
@@ -1276,6 +1281,14 @@ public sealed partial class AiMachine
             return;
         }
 
+        if (_host.WayPoint is { } point)
+        {
+            _host.SetBattlePose(false, false);
+            WalkTo(point);
+
+            return;
+        }
+
         var home = _host.HomePosition;
         var angle = RandomBetween(_settings.AngleMin, _settings.AngleMax) * (_random.Next(2) == 0 ? -1 : 1);
         var distance = RandomBetween(_settings.MoveDistanceMin, _settings.MoveDistanceMax);
@@ -1296,6 +1309,32 @@ public sealed partial class AiMachine
         if (!_host.MoveTo(destination, false))
         {
             ChangeState(AiState.Wait);
+        }
+    }
+
+    /// <summary>
+    /// A monster on a way does not stop patrolling at its point: it looks for enemies as it walks, and sets off again whenever
+    /// it stands away from the point it is given, for the next one once the old is passed.
+    /// </summary>
+    private void UpdateWay(Vector3 point, float elapsed)
+    {
+        UpdateWait(elapsed);
+
+        if (_state != AiState.Patrol || _host.IsMoving || _repathTime <= ApproachLook)
+        {
+            return;
+        }
+
+        _repathTime = 0f;
+
+        WalkTo(point);
+    }
+
+    private void WalkTo(Vector3 point)
+    {
+        if (_host.CanMove && AiMath.Distance2D(_host.Position, point) > PlaceReached)
+        {
+            _host.MoveTo(point, false);
         }
     }
 

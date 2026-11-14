@@ -19,8 +19,15 @@ using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Maze.Types;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.World.Responses;
+using OpenWorker.Batch.Actions;
+using OpenWorker.Gameplay.Ai;
+using OpenWorker.Gameplay.Modules.Skill.Components;
+using OpenWorker.Hotspot.Modules.Movement.Responses;
+using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Lua;
+using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
+using OpenWorker.Navigation;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -34,7 +41,21 @@ namespace OpenWorker.Hotspot.Test;
 public sealed class EscortTest
 {
     private const int Sector = 10;
-    private const int Escorted = 5000;
+
+    /// <summary>
+    /// Catherine, the townsman of the escort: walk speed 400, a mind that patrols and fights, faction 10.
+    /// </summary>
+    private const int Escorted = 10105168;
+
+    /// <summary>
+    /// The Discus Puppet: a monster of a side at war with the townsfolk.
+    /// </summary>
+    private const int Puppet = 30103005;
+
+    /// <summary>
+    /// The bit the wire sets on the actor of a monster.
+    /// </summary>
+    private const int MonsterActors = 1 << 30;
     private const int Episode = 100;
     private const int FirstGuard = 1;
     private const int SecondGuard = 2;
@@ -99,13 +120,15 @@ public sealed class EscortTest
         function OnBox(box, maze) Boxes = box end
         """;
 
+    private static readonly AbilityComponentEntry Life = new() { Current = 100_000, Max = 100_000 };
+
     private sealed class Test : IDisposable
     {
         private readonly FakeTimeProvider _time = new();
         private readonly SimulationClock _clock;
         private int _sentinels;
 
-        public Test()
+        public Test(bool minds = false)
         {
             World = World.Create();
             Connection = new RecordingConnection();
@@ -114,19 +137,49 @@ public sealed class EscortTest
                 new ServerSessionComponent(Connection),
                 new WorldComponent { Location = 0, Position = new Vector3(100f, 100f, 0f), Rotation = 0f, Jump = 0 },
                 new PersonInfoComponent { Name = "Member", Hero = Hero.Haru },
+                new LevelComponent(20, 0),
+                new AbilityComponent { Health = Life, SoulGain = Life, SoulVapor = Life, Stamina = Life, SuperArmor = Life, Speed = new SpeedComponentEntry { Move = 1f, Attack = 1f } },
                 new QuestComponent { Book = new QuestBook { Episodes = [new QuestEpisodeState { Episode = Episode }] } });
 
             var batch = TestMazes.Map(Map());
-            var tables = new CombatTables(TestMazes.None<MonsterRow>(), TestMazes.None<StatusRow>(), TestMazes.None<SkillRow>(), TestMazes.None<CharacterInfoRow>());
-
-            Quests = new QuestManager(World, null!, Catalog, null!, null!, null!, null!, NullLogger<QuestManager>.Instance);
-            Creatures = new LuaCreatureManager(World, batch, tables);
-            State = LuaState.Create();
-            State.OpenStandardLibraries();
 
             _clock = TestMazes.Clock(_time);
 
-            Maze = TestMazes.Create(World, Player, state: State, batch: batch, quests: Quests, creatures: Creatures, clock: _clock);
+            CombatTables tables;
+            CreatureServices? services = null;
+
+            if (minds)
+            {
+                var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_AI");
+                var actions = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
+
+                if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(actions))
+                {
+                    Assert.Inconclusive("OPENWORKER_TEST_AI or OPENWORKER_TEST_ACTION is not set.");
+                }
+
+                var monsters = TestTables.Load<MonsterRow>("tb_Monster");
+                var skills = TestTables.Load<SkillRow>("tb_Skill");
+
+                tables = new CombatTables(monsters, TestTables.Load<StatusRow>("tb_Status"), skills, TestTables.Load<CharacterInfoRow>("tb_Character_Info"));
+                services = new CreatureServices(
+                    new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, folder),
+                    new MonsterBehaviorTables(monsters, skills, TestTables.Load<FactionRow>("tb_Faction")),
+                    new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions },
+                    _clock,
+                    new NavMeshProvider());
+            }
+            else
+            {
+                tables = new CombatTables(TestMazes.None<MonsterRow>(), TestMazes.None<StatusRow>(), TestMazes.None<SkillRow>(), TestMazes.None<CharacterInfoRow>());
+            }
+
+            Quests = new QuestManager(World, null!, Catalog, null!, null!, null!, null!, NullLogger<QuestManager>.Instance);
+            Creatures = new LuaCreatureManager(World, batch, tables, services);
+            State = LuaState.Create();
+            State.OpenStandardLibraries();
+
+            Maze = TestMazes.Create(World, Player, state: State, batch: batch, quests: Quests, creatures: Creatures, clock: _clock, tables: tables);
 
             State.DoStringAsync(Script).AsTask().GetAwaiter().GetResult();
             Run("OnMazeCreated(nil, pMaze)");
@@ -176,6 +229,23 @@ public sealed class EscortTest
         /// </summary>
         public (int Point, EscortStatus Status)[] Statuses()
         {
+            var opcode = new MazeEscortStatusResponse().Opcode.Value;
+
+            return Told(opcode)
+                .Select(e => (BitConverter.ToInt32(e.Body, 0), (EscortStatus)e.Body[4]))
+                .ToArray();
+        }
+
+        /// <summary>
+        /// The messages of one kind the player was told so far about the actor the message names first.
+        /// </summary>
+        public PlayerFrame[] ToldOf(short opcode, int actor)
+        {
+            return Told(opcode).Where(e => (BitConverter.ToInt32(e.Body, 0) & ~MonsterActors) == actor).ToArray();
+        }
+
+        private PlayerFrame[] Told(short opcode)
+        {
             var sentinel = new ChatNoticeResponse { Message = "end" };
 
             World.Get<ServerSessionComponent>(Player).Send(sentinel);
@@ -189,13 +259,7 @@ public sealed class EscortTest
                 Thread.Sleep(5);
             }
 
-            var opcode = new MazeEscortStatusResponse().Opcode.Value;
-
-            return Connection.Frames
-                .Select(PlayerFrame.Open)
-                .Where(e => e.Opcode.Value == opcode)
-                .Select(e => (BitConverter.ToInt32(e.Body, 0), (EscortStatus)e.Body[4]))
-                .ToArray();
+            return Connection.Frames.Select(PlayerFrame.Open).Where(e => e.Opcode.Value == opcode).ToArray();
         }
 
         public void Dispose()
@@ -206,25 +270,32 @@ public sealed class EscortTest
     }
 
     /// <summary>
-    /// The escorted starts its way when it appears, passes each point, and at the last one runs the function of the point and leaves
-    /// the maze; the condition of the escort is done for the player a moment later, not at once.
+    /// The escorted starts its way when it appears and its own mind walks it from point to point at its walk speed; at the last one
+    /// it runs the function of the point and leaves the maze; the condition of the escort is done for the player a moment later, not
+    /// at once.
     /// </summary>
     [TestMethod]
     public void TheEscortedWalksItsPointsAndItsArrivalDoesTheCondition()
     {
-        using var test = new Test();
+        using var test = new Test(minds: true);
 
         test.Start();
         test.Pass(0.2);
 
-        Assert.IsNotNull(test.Escort);
+        var escort = test.World.Get<ActorComponent>(test.Escort!.Value).Identifier;
+
         Assert.IsEmpty(test.Creatures.FindMonsters((_, _) => true), "The players cannot hit the escorted");
 
-        test.Pass(6);
+        test.Pass(10);
 
         CollectionAssert.AreEqual(
             new[] { (401, EscortStatus.Started), (401, EscortStatus.Passed), (402, EscortStatus.Passed), (403, EscortStatus.Arrived) },
             test.Statuses());
+
+        var walks = test.ToldOf(new MovementMoveBtResponse().Opcode.Value, escort);
+
+        Assert.IsNotEmpty(walks);
+        Assert.IsTrue(walks.All(e => BitConverter.ToSingle(e.Body, e.Body.Length - 5) == 400f), "It walks at the speed of its table");
         Assert.AreEqual(403d, test.Number("Arrived"));
         Assert.IsNull(test.Escort, "The escorted has left");
         Assert.IsFalse(test.Book.IsDone(0), "The condition waits");
@@ -233,6 +304,30 @@ public sealed class EscortTest
 
         Assert.IsTrue(test.Book.IsDone(0));
         Assert.IsFalse(test.Book.Failed);
+    }
+
+    /// <summary>
+    /// The escorted fights a monster of a side at war with its own that it sees from its way, going to it off the way: its skill
+    /// hurts the monster, and the players are never its targets.
+    /// </summary>
+    [TestMethod]
+    public void TheEscortedFightsTheMonstersOnItsWay()
+    {
+        using var test = new Test(minds: true);
+
+        test.Start();
+        test.Pass(0.2);
+
+        var escort = test.World.Get<ActorComponent>(test.Escort!.Value).Identifier;
+        var puppet = test.Creatures.CreateMonstersAt(Puppet, [new Vector3(1300f, 900f, 0f)], 0f, Sector, still: true).Single();
+        var full = test.World.Get<CreatureComponent>(puppet).Health;
+
+        test.Pass(20);
+
+
+        Assert.IsTrue(!test.World.IsAlive(puppet) || test.World.Get<CreatureComponent>(puppet).Health < full, "The monster is hurt");
+        Assert.IsNotEmpty(test.ToldOf(new SkillActiveBroadcastResponse().Opcode.Value, escort), "by a skill of the escorted");
+        Assert.AreEqual(100_000, test.World.Get<AbilityComponent>(test.Player).Health.Current, "The player is not hit");
     }
 
     /// <summary>

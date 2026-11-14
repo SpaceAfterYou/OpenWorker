@@ -355,7 +355,7 @@ public partial class LuaMaze(
         StepTimers((float)elapsed.TotalSeconds);
         StepQuests();
         StepMode((float)elapsed.TotalSeconds);
-        StepEscort((float)elapsed.TotalSeconds);
+        StepEscort();
         StepRides();
         _portalWait?.Advance((float)elapsed.TotalSeconds);
 

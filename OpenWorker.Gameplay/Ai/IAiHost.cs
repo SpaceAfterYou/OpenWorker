@@ -176,6 +176,11 @@ public interface IAiHost
     TargetPlaces? Places => null;
 
     /// <summary>
+    /// The point of a way the monster walks when it patrols, or nothing for a monster that wanders round its home.
+    /// </summary>
+    Vector3? WayPoint => null;
+
+    /// <summary>
     /// Whether a place lies in the sector the monster belongs to.
     /// </summary>
     bool IsInOwnSector(Vector3 position) => true;
