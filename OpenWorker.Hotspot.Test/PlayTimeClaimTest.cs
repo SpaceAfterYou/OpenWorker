@@ -1,7 +1,10 @@
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Abstractions;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
@@ -80,6 +83,23 @@ public sealed class PlayTimeClaimTest
         await f.Manager.ClaimPlayTimeAsync(f.Player, CancellationToken.None);
         await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendancePlayTimeReward) == 2, "the second claim is given");
         CollectionAssert.AreEqual(new byte[] { 2, 150, 0, 0, 0 }, f.LastPlayTime(EventOpcode.AttendancePlayTimeReward), "the third waits 30 s more");
+    }
+
+    [TestMethod]
+    public async Task ThePlayTimeCommandBringsAStepToItsTimeAtOnce()
+    {
+        using var f = new Fixture();
+        using var services = new ServiceCollection().AddSingleton(f.Manager).BuildServiceProvider();
+
+        ICommand command = new PlayTimeCommand(services);
+
+        Assert.IsFalse(await command.TryExecute(f.Player, ["-5"]));
+        Assert.IsFalse(await command.TryExecute(f.Player, ["86401"]));
+
+        Assert.IsTrue(await command.TryExecute(f.Player, ["60"]));
+        Assert.IsTrue(AttendanceRules.IsReady(f.Book, f.Catalog));
+        await MetricAssertions.UntilAsync(() => f.Received(EventOpcode.AttendanceLoad) == 1, "the client is told the time");
+        CollectionAssert.AreEqual(new byte[] { 0, 60, 0, 0, 0 }, f.LastPlayTime(EventOpcode.AttendanceLoad));
     }
 
     [TestMethod]
