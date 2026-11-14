@@ -3,6 +3,8 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Abstractions;
 using OpenWorker.DistrictServer.Services;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
@@ -11,9 +13,11 @@ using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.CashShop;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Hotspot.Modules.Shop.Enums;
 using OpenWorker.Hotspot.Modules.Shop.Requests;
 using OpenWorker.Hotspot.Modules.Shop.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
@@ -399,6 +403,28 @@ public sealed class CashShopTest
         await service.OnHandleAsync(context, default(ShopCashSetDelRequest));
 
         AssertRefused(Drain(world, player, connection));
+    }
+
+    /// <summary>
+    /// The cash of the shop is the account's, given with /cash: /currency refuses that kind, says so, and leaves the wallet of
+    /// the person as it was.
+    /// </summary>
+    [TestMethod]
+    public async Task TheCurrencyCommandLeavesTheCashToTheAccount()
+    {
+        using var world = World.Create();
+        await using var services = new ServiceCollection().AddSingleton(world).BuildServiceProvider();
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+
+        world.Add(player, new CurrencyComponent());
+
+        ICommand command = new CurrencyCommand(services);
+
+        Assert.IsFalse(await command.TryExecute(player, ["5000", nameof(ShopCurrency.Cash)]));
+        Assert.AreEqual(0, world.Get<CurrencyComponent>(player).Cash);
+        CollectionAssert.AreEqual(new[] { MessageOpcode.From(GroupOpcode.Chat, ChatOpcode.Normal) },
+            Drain(world, player, connection).Select(e => e.Opcode).ToArray());
     }
 
     private static void AssertRefused(PlayerFrame[] sent)
