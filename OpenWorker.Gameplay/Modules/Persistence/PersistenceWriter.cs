@@ -17,7 +17,9 @@ namespace OpenWorker.Gameplay.Modules.Persistence;
 /// person never lands after a newer one.<br/>
 /// What a player who leaves the server changed, and the database does not take, is kept here and tried again after the
 /// player is gone (<see cref="LeaveAsync"/>), within <see cref="PersistenceOptions.KeepTimeout"/> and
-/// <see cref="PersistenceOptions.KeepLimit"/>; the session of the player stays held meanwhile.
+/// <see cref="PersistenceOptions.KeepLimit"/>; the session of the player stays held meanwhile.<br/>
+/// A person whose row is gone from the database can never be written: its writes are dropped, now and from then on, and
+/// nothing of it is kept.
 /// </summary>
 public sealed partial class PersistenceWriter(
     IPersonStore store,
@@ -72,6 +74,11 @@ public sealed partial class PersistenceWriter(
     /// Counts the tries of kept persons on their own, so that the one tried longest ago goes first. Writer only.
     /// </summary>
     private long _turn;
+
+    /// <summary>
+    /// The persons whose rows are gone from the database: their writes are dropped without a try. Writer only.
+    /// </summary>
+    private readonly HashSet<int> _missing = [];
 
     private int KeptCount
     {
@@ -200,7 +207,7 @@ public sealed partial class PersistenceWriter(
 
                 foreach (var write in request.Writes)
                 {
-                    if (KeepAfter(write))
+                    if (_missing.Contains(write.Changes.Person) || KeepAfter(write))
                     {
                         request.Settle(false);
                         continue;
@@ -340,6 +347,15 @@ public sealed partial class PersistenceWriter(
     /// </summary>
     private async Task FailAsync(int person, List<Pending> mine, Exception failure, List<Pending> retry)
     {
+        if (IsPersonMissing(failure))
+        {
+            Drop(person, mine.Aggregate(PersonSections.None, (sections, e) => sections | e.Write!.Sections));
+
+            Complete(mine, false);
+
+            return;
+        }
+
         var attempt = mine.Max(x => x.Attempt) + 1;
 
         if (attempt < MaxAttempts)
@@ -380,6 +396,36 @@ public sealed partial class PersistenceWriter(
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Whether the database refused a write of one person because a row refers to a person that is not there: the person
+    /// was deleted, and no retry can write it.
+    /// </summary>
+    private static bool IsPersonMissing(Exception failure)
+    {
+        for (var cause = failure; cause is not null; cause = cause.InnerException)
+        {
+            if (cause is DbException { SqlState: ForeignKeyViolation })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private const string ForeignKeyViolation = "23503";
+
+    /// <summary>
+    /// The row of the person is gone: what it changed is dropped, and so is every write of it from now on.
+    /// </summary>
+    private void Drop(int person, PersonSections sections)
+    {
+        if (_missing.Add(person))
+        {
+            LogPersonMissing(logger, person, sections);
+        }
     }
 
     /// <summary>
@@ -522,7 +568,7 @@ public sealed partial class PersistenceWriter(
         {
             foreach (var one in kept)
             {
-                Settle(one, e);
+                Settle(one, e, kept.Length == 1 && IsPersonMissing(e));
             }
 
             if (kept.Length == 1 || IsUnreachable(e))
@@ -550,7 +596,7 @@ public sealed partial class PersistenceWriter(
 
             catch (Exception e)
             {
-                Settle(one, e);
+                Settle(one, e, IsPersonMissing(e));
             }
 
             if (reader.TryPeek(out _))
@@ -607,9 +653,9 @@ public sealed partial class PersistenceWriter(
     /// <summary>
     /// A try of a kept person has answered: written (<paramref name="failure"/> null), or failed. The person is ended when
     /// it is written, when its time is up, and when the stop of the server gave it up during the try; else it waits for the
-    /// next round.
+    /// next round. A person whose row is gone (<paramref name="missing"/>) is dropped at once.
     /// </summary>
-    private void Settle(Kept kept, Exception? failure)
+    private void Settle(Kept kept, Exception? failure, bool missing = false)
     {
         lock (_keptLock)
         {
@@ -626,7 +672,7 @@ public sealed partial class PersistenceWriter(
                 return;
             }
 
-            else if (failure is not null && _time.GetElapsedTime(kept.Since) < _keepTimeout)
+            else if (failure is not null && !missing && _time.GetElapsedTime(kept.Since) < _keepTimeout)
             {
                 return;
             }
@@ -635,6 +681,17 @@ public sealed partial class PersistenceWriter(
             {
                 _kept.Remove(kept.Person);
             }
+        }
+
+        if (missing)
+        {
+            Drop(kept.Person, kept.Sections);
+
+            metrics?.Ended(false);
+
+            kept.Done.TrySetResult(false);
+
+            return;
         }
 
         End(kept, failure);
@@ -794,6 +851,9 @@ public sealed partial class PersistenceWriter(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Writing the changes of person {Person} failed {Attempt} times and is given up; what is still on the server is written by the next flush")]
     private static partial void LogPersonGivenUp(ILogger logger, Exception exception, int person, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Person {Person} is no longer in the database; what it changed ({Sections}) and every later change of it are dropped, and its session is let go")]
+    private static partial void LogPersonMissing(ILogger logger, int person, PersonSections sections);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Person {Person} has left the server, and the changes that could not be written are lost")]
     private static partial void LogLost(ILogger logger, int person);

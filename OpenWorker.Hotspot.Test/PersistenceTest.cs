@@ -13,6 +13,7 @@ using OpenWorker.DistrictServer.Server;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Domain.Stores;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Items;
@@ -122,10 +123,17 @@ public sealed class PersistenceTest
         public PersistenceFlushService Flush { get; }
         public PersonFlush Close { get; }
 
+        /// <summary>
+        /// The writes the writer sent to the database, by the persons in each.
+        /// </summary>
+        public SavedBatches Saved { get; }
+
         public Server()
         {
             var catalog = new ItemCatalog(Empty<ItemRow>(), Empty<ItemClassifyRow>(), Empty<InvenSlotExtendRow>(), Empty<BankSlotExtendRow>());
             var store = new PersonStore(Factory);
+
+            Saved = new SavedBatches(store);
             var states = new PersonStateStore(store);
 
             States = states;
@@ -144,7 +152,7 @@ public sealed class PersistenceTest
                 ],
                 [new PersonPlaceStore(Options.Create(new InstanceOptions { Location = District }))]);
 
-            Writer = new PersistenceWriter(store, Loop, snapshots, NullLogger<PersistenceWriter>.Instance);
+            Writer = new PersistenceWriter(Saved, Loop, snapshots, NullLogger<PersistenceWriter>.Instance);
             Flush = new PersistenceFlushService(Loop, snapshots, Writer, new DatabaseItemSerials(store),
                 Options.Create(new PersistenceOptions()), new FakeTimeProvider(), NullLogger<PersistenceFlushService>.Instance);
             Close = new PersonFlush(World, snapshots, Writer);
@@ -224,9 +232,15 @@ public sealed class PersistenceTest
         public Task RunAsync(Action action) => Loop.InvokeAsync(action);
 
         /// <summary>
-        /// The connection closes: the flush of the person, as the close handler runs it on the loop.
+        /// The connection closes: the flush of the person, as the close handler runs it on the loop. Returns what holds the
+        /// session, or null when it is let go at once.
         /// </summary>
-        public Task LeaveAsync(Entity player) => Loop.InvokeAsync(() => Close.OnSessionClosedAsync(player));
+        public Task<Task?> LeaveAsync(Entity player) => Loop.InvokeAsync(async () =>
+        {
+            await Close.OnSessionClosedAsync(player);
+
+            return World.TryGet(player, out SessionHoldComponent hold) ? hold.Until : null;
+        }).Unwrap();
 
         public async ValueTask DisposeAsync()
         {
@@ -238,6 +252,46 @@ public sealed class PersistenceTest
     }
 
     private static ReadOnlyCollection<T> Empty<T>() => new([]);
+
+    /// <summary>
+    /// The store of the writer, which also records the persons of every write it sends.
+    /// </summary>
+    private sealed class SavedBatches(IPersonStore inner) : IPersonStore
+    {
+        private readonly Lock _lock = new();
+        private readonly List<int[]> _batches = [];
+
+        public int[][] Batches
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return [.. _batches];
+                }
+            }
+        }
+
+        public Task SaveChangesAsync(IReadOnlyList<PersonChanges> batch, CancellationToken cancellationToken = default)
+        {
+            lock (_lock)
+            {
+                _batches.Add([.. batch.Select(e => e.Person).Distinct().Order()]);
+            }
+
+            return inner.SaveChangesAsync(batch, cancellationToken);
+        }
+
+        public Task<List<ItemPersistent>> LoadItemsAsync(int person, CancellationToken cancellationToken = default) => inner.LoadItemsAsync(person, cancellationToken);
+
+        public Task<long[]> ReserveSerialsAsync(int count, CancellationToken cancellationToken = default) => inner.ReserveSerialsAsync(count, cancellationToken);
+
+        public Task<string?> LoadDocumentAsync(int person, PersonStateKind kind, CancellationToken cancellationToken = default) =>
+            inner.LoadDocumentAsync(person, kind, cancellationToken);
+
+        public Task<Dictionary<PersonStateKind, string>> LoadDocumentsAsync(int person, CancellationToken cancellationToken = default) =>
+            inner.LoadDocumentsAsync(person, cancellationToken);
+    }
 
     /// <summary>
     /// Counts the queries that read the progress documents.
@@ -658,4 +712,58 @@ public sealed class PersistenceTest
 
         Assert.AreEqual(Npgsql.PostgresErrorCodes.UniqueViolation, (refused.InnerException as Npgsql.PostgresException)?.SqlState);
     }
+
+    /// <summary>
+    /// A person whose row is deleted while a server holds it can never be written: its writes are dropped at the first
+    /// refusal and never tried again, its session is let go at once, and the writes of another person in the same batch are
+    /// saved.
+    /// </summary>
+    [TestMethod]
+    public async Task APersonDeletedWhileHeldIsDroppedAndTheOthersAreWritten()
+    {
+        var (goneAccount, gonePerson) = await CreatePersonAsync("deleted");
+        var (stayAccount, stayPerson) = await CreatePersonAsync("stays");
+
+        await using var server = new Server();
+
+        var gone = await server.EnterAsync(goneAccount, gonePerson);
+        var stay = await server.EnterAsync(stayAccount, stayPerson);
+
+        await using (var database = await Factory.CreateDbContextAsync())
+        {
+            await database.Persons.Where(e => e.Id == gonePerson).ExecuteDeleteAsync();
+        }
+
+        // The progress of the deleted person is a row of its own that refers to it; the other one levels up.
+        await server.RunAsync(() =>
+        {
+            server.World.MarkDirty(gone, PersonSections.Quests);
+            server.World.Set(stay, new LevelComponent(31, 0));
+            server.World.MarkDirty(stay, PersonSections.Level);
+        });
+
+        // Both are queued before the writer starts, so they go to the database in one batch.
+        var leaving = server.LeaveAsync(gone);
+        var flushed = server.Flush.FlushAsync();
+
+        await server.Loop.InvokeAsync(() => { });
+        await server.StartAsync();
+
+        Assert.IsNull(await leaving.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken), "The session is let go at once");
+        Assert.IsTrue(await flushed.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken), "The other person is written");
+        Assert.IsFalse(server.Writer.Keeps(gonePerson), "Nothing of the deleted person is kept");
+        Assert.AreEqual((byte)31, (await RowAsync(stayPerson)).Level);
+
+        var tries = server.Saved.Batches.Count(e => e.Contains(gonePerson));
+
+        Assert.AreEqual(2, tries, "Tried in the batch and once on its own");
+
+        // A later change of the deleted person goes nowhere near the database.
+        await server.RunAsync(() => server.World.MarkDirty(gone, PersonSections.Quests));
+
+        Assert.IsFalse(await server.Flush.FlushAsync());
+        Assert.AreEqual(tries, server.Saved.Batches.Count(e => e.Contains(gonePerson)), "Never tried again");
+    }
+
+    public TestContext TestContext { get; set; } = null!;
 }
