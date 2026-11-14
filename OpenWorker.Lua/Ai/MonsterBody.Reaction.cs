@@ -114,6 +114,7 @@ internal partial class MonsterBody
         _pending.Clear();
         _clips.Clear();
         _moves.Clear();
+        DropCombo();
         ReleaseGrab(true);
 
         StopMoving(false);

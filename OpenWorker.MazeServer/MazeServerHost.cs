@@ -75,6 +75,7 @@ public static class MazeServerHost
         services.AddSingleton<NavMeshProvider>();
         services.AddSingleton<PartyRevision>();
         services.AddSingleton<SkillAggro>();
+        services.AddSingleton<SkillChains>();
         services.AddSingleton<GameModes>();
         services.AddSingleton<CreatureServices>();
         services.AddSingleton<IPlayerHealthResize, MazeHealthResize>();

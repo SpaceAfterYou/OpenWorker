@@ -54,6 +54,14 @@ public sealed class MonsterBlowTest
     private const int TrapSkill = 1303053064;
 
     /// <summary>
+    /// A monster whose skill goes on, every time, with the next of its combo once its end animation may be cut, 1.77 s in.
+    /// </summary>
+    private const string ComboFile = "MOB_9024_BloodyScar";
+
+    private const int ComboSkill = 1303044070;
+    private const int ComboNext = 1303044071;
+
+    /// <summary>
     /// Where the trap that lies to the right of the monster is, from the monster that looks along -Y.
     /// </summary>
     private static readonly Vector3 RightTrap = new(300f, 0f, 0f);
@@ -81,6 +89,9 @@ public sealed class MonsterBlowTest
 
         public PlayerFrame[] Hits() =>
             connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActionSkillBt)).ToArray();
+
+        public PlayerFrame[] Starts() =>
+            connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActiveSkillBt)).ToArray();
 
         public PlayerFrame[] Shots() =>
             connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ProjectileBt)).ToArray();
@@ -132,7 +143,7 @@ public sealed class MonsterBlowTest
         return (new ReadOnlyCollection<SkillRow>([.. ids.Select(id => rows.First(e => e.Id == id))]), actions);
     }
 
-    private static async Task WithArenaAsync(Func<Arena, Task> test, MonsterRow? row = null, ReadOnlyCollection<SkillRow>? skills = null, string actions = "action")
+    private static async Task WithArenaAsync(Func<Arena, Task> test, MonsterRow? row = null, ReadOnlyCollection<SkillRow>? skills = null, string actions = "action", SkillChains? chains = null)
     {
         var folder = Directory.CreateTempSubdirectory();
         var world = World.Create();
@@ -150,7 +161,7 @@ public sealed class MonsterBlowTest
 
             var combat = new CombatTables(monsters, TestMazes.None<StatusRow>(), skills, TestMazes.None<CharacterInfoRow>());
             var services = new CreatureServices(new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, folder.FullName), new MonsterBehaviorTables(monsters, skills),
-                new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }, clock, new NavMeshProvider());
+                new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }, clock, new NavMeshProvider(), chains: chains);
             var batch = TestMazes.Map(PartyMazeTest.MapWithMonster(Monster));
             var connection = new RecordingConnection();
             var player = world.Create(
@@ -425,6 +436,63 @@ public sealed class MonsterBlowTest
 
                 Assert.AreEqual(told, arena.Shots().Length > 0, $"The shot of {file} is told: {told}.");
             }, shooter, skills, actions);
+        }
+    }
+
+    /// <summary>
+    /// A monster goes on with the next skill of its combo, as the table of the server says, once the end animation of its skill may
+    /// be cut short: the clients are told the second skill then. Without the table it makes no combo.
+    /// </summary>
+    [TestMethod]
+    public async Task AMonsterGoesOnWithTheNextSkillOfItsComboOnceItsEndMayBeCut()
+    {
+        var server = Environment.GetEnvironmentVariable("OPENWORKER_TEST_SERVER_RES");
+
+        if (string.IsNullOrEmpty(server) || Data(ComboSkill, ComboNext) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES, OPENWORKER_TEST_ACTION and OPENWORKER_TEST_SERVER_RES are not set.");
+
+            return;
+        }
+
+        using var reader = new BinaryReader(File.OpenRead(Path.Join(server, "tb_Skill.res")));
+        var rows = new SkillAggroRow[reader.ReadInt32()];
+
+        for (var index = 0; index < rows.Length; index++)
+        {
+            rows[index] = new SkillAggroRow(reader);
+        }
+
+        var comboAt = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }.GetTimeline(ComboSkill, ComboFile).ComboAt;
+
+        Assert.IsNotNull(comboAt);
+
+        var scar = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", ComboFile), ("Skill1", ComboSkill));
+
+        foreach (var chains in new[] { new SkillChains(new ReadOnlyCollection<SkillAggroRow>(rows)), null })
+        {
+            await WithArenaAsync(async arena =>
+            {
+                var aim = arena.Body.Position + new Vector3(0f, -3000f, 0f);
+
+                Assert.IsTrue(arena.Body.UseSkill(arena.Body.GetSkill(0)!, new AiTarget(100, aim, 40f, 0f, 1, 1, false)));
+
+                arena.Advance(comboAt.Value - 0.1f);
+
+                await Task.Delay(100);
+
+                Assert.HasCount(1, arena.Starts(), "Not before the end may be cut.");
+
+                arena.Advance(0.2f);
+
+                await MetricAssertions.UntilAsync(() => arena.Starts().Length >= (chains is null ? 1 : 2), "The skills are told.");
+                await Task.Delay(100);
+
+                var told = arena.Starts().Select(e => BinaryPrimitives.ReadInt32LittleEndian(e.Body.AsSpan(4))).ToArray();
+
+                CollectionAssert.AreEqual(chains is null ? new[] { ComboSkill } : new[] { ComboSkill, ComboNext }, told);
+                Assert.IsTrue(arena.Body.IsAttacking, "The monster plays on.");
+            }, scar, skills, actions, chains);
         }
     }
 }

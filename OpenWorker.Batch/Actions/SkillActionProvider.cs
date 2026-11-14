@@ -85,6 +85,12 @@ public sealed record SkillTimeline(float Length, IReadOnlyList<TimedClip> Clips,
     /// The moments the monster marks where its target stands, for the traps that go there, in the order of time.
     /// </summary>
     public IReadOnlyList<float> TrapMarks { get; init; } = [];
+
+    /// <summary>
+    /// The moment the end animation of the skill may first be cut short by the next skill of a combo. Null when the skill has no end
+    /// animation or the end animation cannot be cut: then a monster makes no combo with it.
+    /// </summary>
+    public float? ComboAt { get; init; }
 }
 
 /// <summary>
@@ -122,6 +128,11 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     private const string ForwardSuffix = "_F";
 
     private const byte FlownByClient = 2;
+
+    /// <summary>
+    /// A moment to cut an animation at counts only from this, in seconds.
+    /// </summary>
+    private const float MinimumSkipTime = 0.001f;
     private const byte GrabSkillType = 8;
 
     private const byte Charging = 2;
@@ -171,6 +182,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         var moves = new List<SkillMove>();
         var marks = new List<float>();
         var offset = 0f;
+        float? combo = null;
 
         // The extra animation plays only on input from the player.
         foreach (var (name, loop) in (ReadOnlySpan<(string, bool)>)[(row.AnimationStart, false), (row.AnimationLoop, true), (row.AnimationEnd, false)])
@@ -181,6 +193,11 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             }
 
             var clock = new SkillPlayback.ClipClock(animation, 1f);
+
+            if (name == row.AnimationEnd && SkipTime(animation) is { } skip)
+            {
+                combo = offset + clock.Wall(skip);
+            }
 
             // A loop that starts over by itself lasts the time of the table and judges its attacks again each time round.
             var rounds = loop && animation.Repeats && row.LoopTime > 0 && clock.Length > 0f;
@@ -239,8 +256,19 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             hidings.OrderBy(e => e.Time).ToArray())
         {
             Moves = moves,
-            TrapMarks = [.. marks.Order()]
+            TrapMarks = [.. marks.Order()],
+            ComboAt = combo
         };
+    }
+
+    /// <summary>
+    /// The first moment, on its own time, from which the animation may be cut short; null when it never may.
+    /// </summary>
+    private static float? SkipTime(ActionAnimation animation)
+    {
+        var skips = (animation.Cuts ?? []).Where(e => e.Cut > MinimumSkipTime).Select(e => e.Cut).ToArray();
+
+        return skips.Length > 0 ? skips.Min() : null;
     }
 
     /// <summary>

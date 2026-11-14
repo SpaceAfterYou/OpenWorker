@@ -124,6 +124,7 @@ internal partial class MonsterBody : IAiHost
         _clips.Clear();
         _moves.Clear();
         _reactionPlays.Clear();
+        DropCombo();
         _carried = false;
         _lastChange = 0;
         _holdUntil = 0;
@@ -290,6 +291,7 @@ internal partial class MonsterBody : IAiHost
         _pending.Clear();
         _clips.Clear();
         _moves.Clear();
+        DropCombo();
         ReleaseGrab(true);
 
         if (IsMoving)
@@ -313,8 +315,13 @@ internal partial class MonsterBody : IAiHost
         }
 
         Advance(now, elapsed);
-        ResolveHits(now);
-        MoveWithSkill(now);
+
+        // What the skill had still to do after a combo cuts it is not done.
+        var until = Math.Min(now, _comboAt);
+
+        ResolveHits(until);
+        MoveWithSkill(until);
+        GoOnWithCombo(now);
         ResolveGrab(now);
         ResolveHidings(now);
         CheckIdleTime(now);
@@ -769,6 +776,20 @@ internal partial class MonsterBody : IAiHost
             return false;
         }
 
+        StopMoving(true);
+
+        FaceTo(target.Position);
+
+        Play(skill);
+
+        return true;
+    }
+
+    /// <summary>
+    /// The monster plays a skill where it stands and the way it looks, and the clients are told.
+    /// </summary>
+    private void Play(AiSkill skill)
+    {
         var now = _manager.Now;
 
         // A skill that grabs plays its start, and what follows depends on whether the start took somebody.
@@ -786,10 +807,6 @@ internal partial class MonsterBody : IAiHost
         {
             duration = AttackDefaultLength;
         }
-
-        StopMoving(true);
-
-        FaceTo(target.Position);
 
         _attackEnd = now + duration;
         _pending.Clear();
@@ -844,6 +861,8 @@ internal partial class MonsterBody : IAiHost
             }
         }
 
+        RollCombo(skill.Id, start is null ? timeline.ComboAt : null, now);
+
         Broadcast(new SkillActiveBroadcastResponse
         {
             Skill = default(ActiveSkillValue) with
@@ -854,8 +873,6 @@ internal partial class MonsterBody : IAiHost
                 RandomTrapIndex = _trapKey = _manager.Random.Next(0, TrapLayout.Keys)
             }
         });
-
-        return true;
     }
 
     private void ResolveHits(double now)
@@ -938,6 +955,8 @@ internal partial class MonsterBody : IAiHost
         {
             _moves[i] = _moves[i] with { Time = _moves[i].Time + seconds };
         }
+
+        _comboAt += seconds;
     }
 
     /// <summary>

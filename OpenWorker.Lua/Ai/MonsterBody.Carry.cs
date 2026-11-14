@@ -25,6 +25,7 @@ internal partial class MonsterBody
         _attackEnd = 0;
         _pending.Clear();
         _moves.Clear();
+        DropCombo();
         _destination = null;
 
         ReleaseGrab(true);
