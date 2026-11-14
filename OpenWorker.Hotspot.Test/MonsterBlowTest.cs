@@ -45,6 +45,18 @@ public sealed class MonsterBlowTest
 
     private const int GuidedShot = 1302050241;
 
+    /// <summary>
+    /// A monster that lays eight traps round itself, 300 away, each a circle of 150 that hits every half second for 4 s.
+    /// </summary>
+    private const string TrapperFile = "MOB_0211_Hell Collector";
+
+    private const int TrapSkill = 1303053064;
+
+    /// <summary>
+    /// Where the trap that lies to the right of the monster is, from the monster that looks along -Y.
+    /// </summary>
+    private static readonly Vector3 RightTrap = new(300f, 0f, 0f);
+
     private sealed class Arena(World world, LuaMaze maze, Entity player, MonsterBody body, RecordingConnection connection, FakeTimeProvider time, SimulationClock clock)
     {
         public LuaMaze Maze { get; } = maze;
@@ -71,6 +83,17 @@ public sealed class MonsterBlowTest
 
         public PlayerFrame[] Shots() =>
             connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ProjectileBt)).ToArray();
+
+        /// <summary>
+        /// Waits for the hits told so far to come out, then counts them.
+        /// </summary>
+        public async Task<int> HitsAsync(int atLeast)
+        {
+            await MetricAssertions.UntilAsync(() => Hits().Length >= atLeast, $"{atLeast} hits are told.");
+            await Task.Delay(100);
+
+            return Hits().Length;
+        }
     }
 
     /// <summary>
@@ -208,6 +231,50 @@ public sealed class MonsterBlowTest
 
             await MetricAssertions.UntilAsync(() => arena.Hits().Length > 0, "The shot lands.");
         }, shooter, skills, actions!);
+    }
+
+    /// <summary>
+    /// A trap of a monster stays for its life and hits whoever is in it at once and again every interval while it stays; one
+    /// who has left it is hit no more.
+    /// </summary>
+    [TestMethod]
+    public async Task ATrapHitsWhoStaysInItEveryIntervalAndNotWhoLeft()
+    {
+        if (Data(TrapSkill) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        var trapper = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", TrapperFile), ("Skill1", TrapSkill));
+        var laid = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }
+            .GetTimeline(TrapSkill, TrapperFile).Hits.First(e => e.Trigger.IsTrap && e.Trigger.Center == RightTrap).Time;
+
+        await WithArenaAsync(async arena =>
+        {
+            var ahead = arena.Body.Position + new Vector3(0f, -1000f, 0f);
+
+            Assert.IsTrue(arena.Body.UseSkill(arena.Body.GetSkill(0)!, new AiTarget(100, ahead, 40f, 0f, 1, 1, false)));
+
+            arena.Place(arena.Body.Position + TrapLayout.Turn(RightTrap, arena.Body.Yaw));
+            arena.Advance(laid - 0.1f);
+
+            Assert.AreEqual(0, await arena.HitsAsync(0), "Nothing hits before the trap is laid.");
+
+            arena.Advance(0.2f);
+
+            Assert.AreEqual(1, await arena.HitsAsync(1), "The trap hits at once who is in it.");
+
+            arena.Advance(1.2f);
+
+            Assert.AreEqual(3, await arena.HitsAsync(3), "It hits again every half second.");
+
+            arena.Place(arena.Body.Position + new Vector3(0f, 3000f, 0f));
+            arena.Advance(4f);
+
+            Assert.AreEqual(3, await arena.HitsAsync(3), "Who has left is hit no more, and the burst at its end is far.");
+        }, trapper, skills, actions);
     }
 
     /// <summary>

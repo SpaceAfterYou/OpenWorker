@@ -145,6 +145,9 @@ internal partial class MonsterBody : IAiHost
         _stoppedAt = null;
         _born = _manager.Now;
         _shotSession = 0;
+        _traps.Clear();
+        _trapRuns.Clear();
+        _trapMark = null;
 
         Machine = CreateMind(Machine.Profile);
 
@@ -158,7 +161,8 @@ internal partial class MonsterBody : IAiHost
 
     private ActorComponent Actor => _ecs.Get<ActorComponent>(Entity);
 
-    private readonly record struct PendingHit(double Time, SkillHit Hit, int Skill, bool Shot = false);
+    /// <param name="Mark">The moment the monster marks where its target stands, for the traps that go there.</param>
+    private readonly record struct PendingHit(double Time, SkillHit Hit, int Skill, bool Shot = false, bool Mark = false);
 
     private sealed class Flight(ProjectileFlight projectile, AttackTrigger trigger, int skill)
     {
@@ -312,6 +316,7 @@ internal partial class MonsterBody : IAiHost
         ResolveHidings(now);
         CheckIdleTime(now);
         Fly(elapsed);
+        TickTraps(elapsed);
 
         // A monster that has hidden thinks no more, unless its animation leaves the mind on.
         if (!_carried && _hiding.CanThink)
@@ -802,6 +807,11 @@ internal partial class MonsterBody : IAiHost
                 _pending.Add(new PendingHit(now + shot.Time, shot, skill.Id, true));
             }
 
+            foreach (var mark in timeline.TrapMarks)
+            {
+                _pending.Add(new PendingHit(now + mark, default, skill.Id, Mark: true));
+            }
+
             _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
             AddMoves(timeline.Moves, now, timeline.Clips.Count);
@@ -823,7 +833,7 @@ internal partial class MonsterBody : IAiHost
                 Actor = Actor,
                 Skill = skill.Id,
                 Position = new SkillPositionValue { Position = Position, Angle = Yaw, MotionClass = NoMotion },
-                RandomTrapIndex = _manager.Random.Next(1, int.MaxValue)
+                RandomTrapIndex = _trapKey = _manager.Random.Next(0, TrapLayout.Keys)
             }
         });
 
@@ -848,9 +858,23 @@ internal partial class MonsterBody : IAiHost
                 continue;
             }
 
+            if (pending.Mark)
+            {
+                MarkTrapPlace();
+
+                continue;
+            }
+
             // What a monster does while it holds a player is the hold's: its other blows do not land.
             if (_grab.IsHolding)
             {
+                continue;
+            }
+
+            if (pending.Hit.Trigger.IsTrap)
+            {
+                SetTraps(pending.Skill, pending.Hit.Trigger);
+
                 continue;
             }
 

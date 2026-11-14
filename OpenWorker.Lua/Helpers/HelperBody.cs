@@ -101,4 +101,17 @@ internal sealed class HelperBody : MonsterBody
     }
 
     protected override FlightTarget[] FlightTargets() => _squad.EnemyFlightTargets(this);
+
+    protected override IReadOnlyList<Entity> TrapTargets(AttackTrigger trigger, AttackArea area) => _squad.EnemiesTouching(this, area);
+
+    /// <summary>
+    /// A trap of the helper hurts the monsters that are due, as a blow of it does.
+    /// </summary>
+    protected override void StrikeByTrap(int skill, AttackTrigger trigger, Vector3 place, AttackArea area, IReadOnlyList<Entity> targets, bool round)
+    {
+        if (targets.Count > 0 && trigger.AffectsTargets && !trigger.ForAllies && !(trigger.Buff > 0 && trigger.DamageRate <= 0f))
+        {
+            _squad.Queue(new HelperStrike(Helper, skill, trigger, [.. targets]));
+        }
+    }
 }
