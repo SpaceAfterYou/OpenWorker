@@ -22,6 +22,7 @@ public sealed class WorldService(
     MazeAdmission admission,
     IPartyRoster roster,
     IPartyMazeRoutes routes,
+    ServerChanges changes,
     WorldMazes? worlds = null) :
     IHotspotHandler<MazeCreateRequest>,
     IHotspotHandler<WorldEnterRequest>,
@@ -34,6 +35,12 @@ public sealed class WorldService(
     public async ValueTask OnHandleAsync(ServiceHandleContext context, MazeCreateRequest request)
     {
         var opcode = MessageOpcode.From(GroupOpcode.World, WorldOpcode.MazeCreateReq);
+
+        // A player already told where to go is not sent anywhere again.
+        if (changes.IsLeaving(context.Player))
+        {
+            return;
+        }
 
         if (admission.CheckBoard(context.Player, request.Location, request.Portal) is { } astray &&
             !await PartyPlaysAsync(context.Player, request.Location))
@@ -63,7 +70,7 @@ public sealed class WorldService(
     {
         var opcode = MessageOpcode.From(GroupOpcode.World, WorldOpcode.EnterReq);
 
-        if (!world.IsAlive(context.Player))
+        if (!world.IsAlive(context.Player) || changes.IsLeaving(context.Player))
         {
             return;
         }

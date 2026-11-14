@@ -62,9 +62,10 @@ public sealed class MazeRequestGuardTest
 
     private static BinaryReader Box(int box) => new(new MemoryStream(BitConverter.GetBytes(box)));
 
-    private static ServiceHandleContext Context(Entity player) => new(player, CancellationToken.None);
+    internal static ServiceHandleContext Context(Entity player) => new(player, CancellationToken.None);
 
-    private static MazeService Service(World world, Hotspot.Handler.HandlerExecutor? errors = null, MazeAdmission? admission = null, MovementPace? pace = null)
+    internal static MazeService Service(World world, Hotspot.Handler.HandlerExecutor? errors = null, MazeAdmission? admission = null, MovementPace? pace = null,
+        ServerChanges? changes = null)
     {
         // The handlers under test never reach Redis, the batches or the other server.
         return new MazeService(
@@ -84,6 +85,7 @@ public sealed class MazeRequestGuardTest
             null!,
             null!,
             admission!,
+            changes ?? new ServerChanges(world, TimeProvider.System),
             NullLogger<MazeService>.Instance);
     }
 
@@ -244,9 +246,9 @@ public sealed class MazeRequestGuardTest
         }
     }
 
-    private delegate T Reading<out T>(ref PacketReader reader);
+    internal delegate T Reading<out T>(ref PacketReader reader);
 
-    private static T Read<T>(byte[] bytes, Reading<T> read)
+    internal static T Read<T>(byte[] bytes, Reading<T> read)
     {
         var reader = new PacketReader(bytes);
 
