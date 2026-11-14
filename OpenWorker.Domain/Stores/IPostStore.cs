@@ -96,10 +96,10 @@ public readonly record struct PostReturnResult(PostReturnOutcome Outcome, PostPe
 public static class PostLimits
 {
     /// <summary>
-    /// The largest box of a person, kept letters included, and the most letters one list shows: a list of that many
-    /// letters at their longest still fits one packet.
+    /// The most letters one list shows, the newest, and the largest box of a person, kept letters included, so that every
+    /// letter of a box is listed.
     /// </summary>
-    public const int MaxLetters = 40;
+    public const int MaxLetters = 50;
 
     /// <summary>
     /// How long a letter is kept, from its sending or its sending back, whoever sent it. Then it is gone for both sides with

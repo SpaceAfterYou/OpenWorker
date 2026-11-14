@@ -1,4 +1,8 @@
-﻿using OpenWorker.Hotspot.Modules.Items.Enums;
+﻿using System.Globalization;
+using OpenWorker.Domain.Persistent;
+using OpenWorker.Domain.Stores;
+using OpenWorker.Gameplay.Modules.Post;
+using OpenWorker.Hotspot.Modules.Items.Enums;
 using OpenWorker.Hotspot.Modules.Items.Extensions;
 using OpenWorker.Hotspot.Modules.Items.Types;
 using OpenWorker.Hotspot.Modules.Post.Requests;
@@ -169,6 +173,55 @@ public sealed class TradePostWireFormatTest
         Assert.AreEqual(7, request.Npc);
         Assert.AreEqual(8, request.Serial);
         Assert.AreEqual(9, request.State);
+    }
+
+    [TestMethod]
+    public void AListGoesInPagesOfTenAndOnlyTheLastSaysItIsWhole()
+    {
+        string Pages(int letters) => string.Join(" ", PostLetters.Pages(Enumerable.Range(0, letters).ToArray()).Select(e => string.Create(CultureInfo.InvariantCulture, $"{e.Letters.Length}:{e.Last}")));
+
+        Assert.AreEqual("0:1", Pages(0));
+        Assert.AreEqual("10:0 0:1", Pages(10), "a full last page is followed by an empty one");
+        Assert.AreEqual("10:0 10:0 10:0 10:0 10:0 0:1", Pages(PostLimits.MaxLetters));
+        Assert.AreEqual("10:0 3:1", Pages(13));
+    }
+
+    [TestMethod]
+    public void AnAccountLetterCarriesItsEndWhereTheClientReadsIt()
+    {
+        var end = new DateTime(2026, 12, 14, 0, 0, 0, DateTimeKind.Utc);
+        var letter = new PostPersistent
+        {
+            Id = 1234,
+            Kind = PostKind.Account,
+            ReceiverAccountId = 31,
+            SenderName = "SoulWorker",
+            Title = "T",
+            Body = "M",
+            Money = 7,
+            MainType = 4,
+            SubType = 9,
+            State = PostState.Read,
+            CreatedAt = end - PostLimits.Lifetime,
+            ExpiresAt = end
+        };
+
+        var bytes = WireBytes.Of(PostLetters.Account(letter));
+
+        // Serial, account, title and text (a length of 2 x 1 + 1 each), gold, five items; then the times, the flag, the
+        // sender (a length in bytes the client takes from 1 to 43), the main and the sub type.
+        var times = 8 + 4 + (2 + 3) + (2 + 3) + 8 + 5 * ItemSize;
+        var name = times + 8 + 8 + 1;
+
+        Assert.HasCount(name + 2 + 21 + 1 + 1, bytes);
+        Assert.AreEqual(31, BitConverter.ToInt32(bytes, 8));
+        Assert.AreEqual(7, BitConverter.ToInt64(bytes, times - 5 * ItemSize - 8));
+        Assert.AreEqual(new DateTimeOffset(end - PostLimits.Lifetime).ToUnixTimeSeconds(), BitConverter.ToInt64(bytes, times));
+        Assert.AreEqual(new DateTimeOffset(end).ToUnixTimeSeconds(), BitConverter.ToInt64(bytes, times + 8), "the end, in Unix seconds");
+        Assert.AreEqual((byte)PostState.Read, bytes[times + 16]);
+        Assert.AreEqual(21, BitConverter.ToInt16(bytes, name));
+        Assert.AreEqual(4, bytes[^2]);
+        Assert.AreEqual(9, bytes[^1]);
     }
 
     [TestMethod]

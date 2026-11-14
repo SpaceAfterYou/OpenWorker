@@ -63,39 +63,48 @@ public sealed partial class PostService(
     IHotspotHandler<PostAccountDelRequest>,
     IHotspotHandler<PostSendBackRequest>
 {
-    /// <summary>
-    /// The trailing byte of a list: the client refreshes the window when it is not zero.
-    /// </summary>
-    private const byte Refresh = 1;
-
     #region Lists
+
+    // A list goes in pages (PostLetters.Pages): the last one tells the client to draw it.
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostSendListRequest request)
     {
         var letters = await store.ListSentAsync(Me(context), context.CancellationToken);
 
-        Send(context, new PostSendListResponse { Values = letters.Select(e => PostLetters.Sent(e)).ToArray(), Flag = Refresh });
+        foreach (var (page, last) in PostLetters.Pages(letters.Select(e => PostLetters.Sent(e)).ToArray()))
+        {
+            Send(context, new PostSendListResponse { Values = page, Flag = last });
+        }
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostRecvListRequest request)
     {
         var letters = await store.ListReceivedAsync(Me(context), saved: false, context.CancellationToken);
 
-        Send(context, new PostRecvListResponse { Values = letters.Select(e => PostLetters.Received(e)).ToArray(), Flag = Refresh });
+        foreach (var (page, last) in PostLetters.Pages(letters.Select(e => PostLetters.Received(e)).ToArray()))
+        {
+            Send(context, new PostRecvListResponse { Values = page, Flag = last });
+        }
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostSaveListRequest request)
     {
         var letters = await store.ListReceivedAsync(Me(context), saved: true, context.CancellationToken);
 
-        Send(context, new PostSaveListResponse { Values = letters.Select(e => PostLetters.Received(e)).ToArray(), Flag = Refresh });
+        foreach (var (page, last) in PostLetters.Pages(letters.Select(e => PostLetters.Received(e)).ToArray()))
+        {
+            Send(context, new PostSaveListResponse { Values = page, Flag = last });
+        }
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostAccountListRequest request)
     {
         var letters = await store.ListAccountAsync(Account(context), context.CancellationToken);
 
-        Send(context, new PostAccountListResponse { Values = letters.Select(e => PostLetters.Account(e)).ToArray(), Flag = Refresh });
+        foreach (var (page, last) in PostLetters.Pages(letters.Select(e => PostLetters.Account(e)).ToArray()))
+        {
+            Send(context, new PostAccountListResponse { Values = page, Flag = last });
+        }
     }
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, PostInfoRequest request)
