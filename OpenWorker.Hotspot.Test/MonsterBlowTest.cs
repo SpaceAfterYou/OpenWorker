@@ -204,6 +204,28 @@ public sealed class MonsterBlowTest
     });
 
     /// <summary>
+    /// A trap with a reaction and a buff but no damage still hits: the player is told the reaction and no damage, and keeps its life.
+    /// One with neither damage nor a reaction hits nobody.
+    /// </summary>
+    [TestMethod]
+    public Task ATrapWithAReactionAndNoDamageHits() => WithArenaAsync(async arena =>
+    {
+        var trap = new AttackTrigger(1, 0, 0, 0, 0f, 360f, Vector3.Zero, 0f, 0f, 500f, 500f, 0f, DamageRate: 0f, ReactionType: 1, Buff: 1);
+        var place = arena.Body.Position + new Vector3(300f, 0f, 0f);
+
+        Assert.AreEqual(0, arena.Maze.Creatures.HitPlayers(arena.Body.Entity, 0, trap with { ReactionType = 0 }, [arena.Player], place));
+        Assert.AreNotEqual(0, arena.Maze.Creatures.HitPlayers(arena.Body.Entity, 0, trap, [arena.Player], place));
+
+        Assert.AreEqual(1, await arena.HitsAsync(1), "Only the trap with a reaction is told.");
+
+        var body = arena.Hits()[0].Body;
+
+        Assert.AreEqual(1, body[1 + 4], "The reaction.");
+        Assert.AreEqual(0, BinaryPrimitives.ReadInt32LittleEndian(body.AsSpan(1 + 6)), "No damage.");
+        Assert.AreEqual(100000, BinaryPrimitives.ReadInt32LittleEndian(body.AsSpan(1 + 10)), "The life is whole.");
+    });
+
+    /// <summary>
     /// A shot the monster has let go flies on when the monster is thrown off balance: only what it had still to deal is lost.
     /// </summary>
     [TestMethod]

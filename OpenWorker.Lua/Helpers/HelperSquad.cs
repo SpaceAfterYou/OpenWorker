@@ -569,7 +569,8 @@ public sealed class HelperSquad
 
         foreach (var helper in _helpers)
         {
-            if (!IsFoe(attacker, helper) || helper.Body is not { } body)
+            // A helper on the ground is reached only by what is for one.
+            if (!IsFoe(attacker, helper) || helper.Body is not { } body || !trigger.Reaches(body.IsLying))
             {
                 continue;
             }

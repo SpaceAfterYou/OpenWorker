@@ -1658,8 +1658,9 @@ public sealed partial class LuaCreatureManager
     /// <returns>The actor of the first player the clients are told was hit, zero when none was.</returns>
     internal int HitPlayers(Entity attacker, int skillId, AttackTrigger trigger, IReadOnlyList<Entity> victims, Vector3? from = null)
     {
-        // An attack for the side of the monster, or one that only gives a buff, hurts nobody.
-        if (trigger.ForAllies || ((trigger.Buff > 0 || trigger.Aura > 0) && trigger.DamageRate <= 0f))
+        // An attack for the side of the monster, or one with neither damage nor a reaction, hurts nobody: only its buff lands. One
+        // with a reaction and no damage throws the players and deals them nothing, and its buff lands too.
+        if (trigger.ForAllies || (trigger.DamageRate <= 0f && trigger.ReactionType == 0))
         {
             Buffs?.GiveFromAttack(attacker, trigger, victims);
 
@@ -1691,11 +1692,12 @@ public sealed partial class LuaCreatureManager
 
             var defense = DefenseOfPlayer(victim);
             var shielded = Vitals.IsProtected(victim) || defense == DefenseType.Invincible;
-            var result = shielded
+            var harmless = shielded || trigger.DamageRate <= 0f;
+            var result = harmless
                 ? new DamageResult(0, HitResults.None)
                 : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random, context: kind);
 
-            if (Buffs is not null && !shielded)
+            if (Buffs is not null && !harmless)
             {
                 result = result with { Damage = Buffs.Adjust(attacker, victim, result.Damage) };
             }
@@ -1704,7 +1706,7 @@ public sealed partial class LuaCreatureManager
 
             Buffs?.AfterHit(attacker, victim, hits.Count, result.Damage, default);
 
-            if (Buffs is not null && !shielded)
+            if (Buffs is not null && !harmless)
             {
                 Buffs.OnCondition(victim, result.Flags.HasFlag(HitResults.Critical) ? MazeBuffs.OnCriticallyDamaged : result.Flags.HasFlag(HitResults.Miss) ? MazeBuffs.OnDamagedMissed : MazeBuffs.OnDamaged);
             }
