@@ -1757,6 +1757,7 @@ public sealed partial class LuaCreatureManager
 
         TellHitSlow(told, trigger);
 
+        // A hit of a trap is told from the trap, facing the way its maker faces.
         Broadcast(new SkillActionBroadcastResponse
         {
             SkillDmgValueList = told,
@@ -1767,7 +1768,7 @@ public sealed partial class LuaCreatureManager
                     UxActorId = ecs.Get<ActorComponent>(attacker),
                     SkillPosInfo = default(SkillActionPosInfoValue) with
                     {
-                        Position = place.Position,
+                        Position = from ?? place.Position,
                         Angle = place.Rotation,
                         MotionClass = -1
                     }

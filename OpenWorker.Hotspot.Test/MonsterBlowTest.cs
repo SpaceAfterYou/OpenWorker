@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
@@ -285,6 +286,50 @@ public sealed class MonsterBlowTest
             arena.Advance(4f);
 
             Assert.AreEqual(3, await arena.HitsAsync(3), "Who has left is hit no more, and the burst at its end is far.");
+        }, trapper, skills, actions);
+    }
+
+    /// <summary>
+    /// The hit of a trap is told from the place of the trap, facing the way the monster faces: one target after the count, its
+    /// 37 bytes, then the actor of the monster, then the place and the facing.
+    /// </summary>
+    [TestMethod]
+    public async Task AHitOfATrapIsToldFromTheTrap()
+    {
+        if (Data(TrapSkill) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        var trapper = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", TrapperFile), ("Skill1", TrapSkill));
+        var laid = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }
+            .GetTimeline(TrapSkill, TrapperFile).Hits.First(e => e.Trigger.IsTrap && e.Trigger.Center == RightTrap).Time;
+
+        await WithArenaAsync(async arena =>
+        {
+            var ahead = arena.Body.Position + new Vector3(0f, -1000f, 0f);
+
+            Assert.IsTrue(arena.Body.UseSkill(arena.Body.GetSkill(0)!, new AiTarget(100, ahead, 40f, 0f, 1, 1, false)));
+
+            var trap = arena.Body.Position + TrapLayout.Turn(RightTrap, arena.Body.Yaw);
+
+            arena.Place(trap);
+            arena.Advance(laid + 0.1f);
+
+            Assert.AreEqual(1, await arena.HitsAsync(1));
+
+            var body = arena.Hits()[0].Body;
+            const int at = 1 + 37 + 4;
+            var told = new Vector3(BinaryPrimitives.ReadSingleLittleEndian(body.AsSpan(at)), BinaryPrimitives.ReadSingleLittleEndian(body.AsSpan(at + 4)), 0f);
+
+            // The skill carries the monster a little before it lays the trap, which lies 300 to its right.
+            Assert.AreEqual(1, body[0]);
+            Assert.AreEqual(trap.X, told.X, 1f);
+            Assert.AreEqual(trap.Y, told.Y, 30f);
+            Assert.AreEqual(RightTrap.Length(), AiMath.Distance2D(told, arena.Body.Position), 30f, "Not the place of the monster.");
+            Assert.AreEqual(arena.Body.Yaw, BinaryPrimitives.ReadSingleLittleEndian(body.AsSpan(at + 12)), 0.01f);
         }, trapper, skills, actions);
     }
 
