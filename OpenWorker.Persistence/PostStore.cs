@@ -87,13 +87,73 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
         return new PostSendResult(PostSendOutcome.Sent, letter, unread);
     }
 
-    public async Task<PostPersistent> SendToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default)
+    public Task<PostPersistent> SendToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default)
+    {
+        return AddToAccountAsync(draft, PostState.None, cancellationToken);
+    }
+
+    public Task<PostPersistent> SendPendingToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default)
+    {
+        return AddToAccountAsync(draft, PostState.Pending, cancellationToken);
+    }
+
+    public async Task<List<PostPersistent>> ListPendingAsync(DateTime writtenBefore, int limit, CancellationToken cancellationToken = default)
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
+        return await database.Posts
+            .Where(e => (e.State & PostState.Pending) != 0 && e.CreatedAt < writtenBefore)
+            .OrderBy(e => e.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PostPersistent?> DeliverPendingAsync(long serial, IReadOnlyList<PostItemPersistent> items, CancellationToken cancellationToken = default)
+    {
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+
+        var pending = await database.Posts.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == serial && (e.State & PostState.Pending) != 0, cancellationToken);
+
+        // The pending row goes and the letter takes its place in one transaction: a second delivery waits for the delete of
+        // this one and then finds nothing to delete.
+        if (pending is null ||
+            await database.Posts.Where(e => e.Id == serial && (e.State & PostState.Pending) != 0).ExecuteDeleteAsync(cancellationToken) == 0)
+        {
+            return null;
+        }
+
+        var letter = AccountLetter(
+            new PostAccountDraft(pending.ReceiverAccountId ?? 0, pending.SenderName, pending.Title, pending.Body, pending.Money, items, pending.MainType, pending.SubType),
+            PostState.None);
+
+        database.Posts.Add(letter);
+
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return letter;
+    }
+
+    private async Task<PostPersistent> AddToAccountAsync(PostAccountDraft draft, PostState state, CancellationToken cancellationToken)
+    {
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
+
+        var letter = AccountLetter(draft, state);
+
+        database.Posts.Add(letter);
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return letter;
+    }
+
+    private PostPersistent AccountLetter(PostAccountDraft draft, PostState state)
+    {
         var now = Now;
 
-        var letter = new PostPersistent
+        return new PostPersistent
         {
             Kind = PostKind.Account,
             SenderName = draft.SenderName,
@@ -104,17 +164,11 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
             Items = draft.Items.ToList(),
             MainType = draft.MainType,
             SubType = draft.SubType,
-            State = Nothing(draft.Money, draft.Items),
+            State = state | Nothing(draft.Money, draft.Items),
             CreatedAt = now,
             UpdatedAt = now,
             ExpiresAt = now + PostLimits.Lifetime
         };
-
-        database.Posts.Add(letter);
-
-        await database.SaveChangesAsync(cancellationToken);
-
-        return letter;
     }
 
     public async Task<List<PostPersistent>> ListReceivedAsync(int person, bool saved, CancellationToken cancellationToken = default)
@@ -339,7 +393,8 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
 
         // One statement: a letter two servers sweep at the same moment is deleted by one of them and skipped by the other.
         return await database.Posts
-            .Where(e => e.ExpiresAt <= now && ((e.State & PostState.Saved) == 0 || (e.State & PostState.GoneForReceiver) != 0))
+            .Where(e => e.ExpiresAt <= now && (e.State & PostState.Pending) == 0 &&
+                        ((e.State & PostState.Saved) == 0 || (e.State & PostState.GoneForReceiver) != 0))
             .OrderBy(e => e.ExpiresAt)
             .Take(limit)
             .ExecuteDeleteAsync(cancellationToken);
@@ -370,8 +425,8 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
 
     private static IQueryable<PostPersistent> AccountBox(IQueryable<PostPersistent> posts, int account, DateTime now)
     {
-        return posts.Where(e => e.Kind == PostKind.Account && e.ReceiverAccountId == account && (e.State & PostState.GoneForReceiver) == 0 &&
-                                e.ExpiresAt > now);
+        return posts.Where(e => e.Kind == PostKind.Account && e.ReceiverAccountId == account &&
+                                (e.State & (PostState.GoneForReceiver | PostState.Pending)) == 0 && e.ExpiresAt > now);
     }
 
     /// <summary>

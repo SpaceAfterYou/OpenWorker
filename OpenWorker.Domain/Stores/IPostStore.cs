@@ -128,6 +128,24 @@ public interface IPostStore
     Task<PostPersistent> SendToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Stores a letter of the game for an account that nobody sees yet (<see cref="PostState.Pending"/>): what it carries is
+    /// each item and its count, made when it is delivered.
+    /// </summary>
+    Task<PostPersistent> SendPendingToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The pending letters written before a moment, oldest first.
+    /// </summary>
+    Task<List<PostPersistent>> ListPendingAsync(DateTime writtenBefore, int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replaces a pending letter with the letter itself, under a serial of its own, with the items made for it and a lifetime
+    /// from now, once: the letter comes back to the call that delivered it and <see langword="null"/> to every other, from any
+    /// server.
+    /// </summary>
+    Task<PostPersistent?> DeliverPendingAsync(long serial, IReadOnlyList<PostItemPersistent> items, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The letters a person received, the kept ones or the others, newest first.
     /// </summary>
     Task<List<PostPersistent>> ListReceivedAsync(int person, bool saved, CancellationToken cancellationToken = default);
@@ -182,7 +200,7 @@ public interface IPostStore
 
     /// <summary>
     /// Deletes at most <paramref name="limit"/> letters whose time is up, with what they still carry, and tells how many
-    /// went. A letter kept by its receiver is not one of them. Every list, count and change already passes over such a
+    /// went. A letter kept by its receiver, or pending, is not one of them. Every list, count and change already passes over such a
     /// letter, so the sweep only frees the table; two servers may sweep at the same moment, and each letter goes once.
     /// </summary>
     Task<int> SweepAsync(int limit, CancellationToken cancellationToken = default);
