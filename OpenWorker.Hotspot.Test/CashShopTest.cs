@@ -3,6 +3,10 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Abstractions;
+using OpenWorker.DistrictServer.Services;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
@@ -10,10 +14,15 @@ using OpenWorker.Domain.Stores;
 using OpenWorker.Gameplay.Modules.CashShop;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Shop.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Hotspot.Modules.Shop.Enums;
+using OpenWorker.Hotspot.Modules.Shop.Requests;
 using OpenWorker.Hotspot.Modules.Shop.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.MazeServer.Services;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -285,7 +294,7 @@ public sealed class CashShopTest
     /// <summary>
     /// The window of the client cannot open before it has the products, so a client from the character selection is given
     /// the banners, the products in parts with the last one marked, the balance and the lists at the entry, while the cash shop
-    /// is open; a closed shop gives nothing, and a login given them is not given them again at its next entry.
+    /// is open; a login given them is not given them again at its next entry.
     /// </summary>
     [TestMethod]
     public async Task AClientFromTheCharacterSelectionIsGivenTheShopAtTheEntryOncePerLogin()
@@ -295,8 +304,6 @@ public sealed class CashShopTest
         var connection = new RecordingConnection();
         var player = Player(world, connection, 3);
 
-        await window.EnterAsync(player, true, CancellationToken.None);
-
         contents[ServerContentIndex.CashShop] = true;
 
         await window.EnterAsync(player, true, CancellationToken.None);
@@ -304,7 +311,7 @@ public sealed class CashShopTest
 
         var sent = Drain(world, player, connection);
 
-        CollectionAssert.AreEqual(ShopBurst, sent.Select(e => e.Opcode).ToArray(), "only the entry from the character selection with the shop open");
+        CollectionAssert.AreEqual(ShopBurst, sent.Select(e => e.Opcode).ToArray(), "only the entry from the character selection");
         Assert.AreEqual((0, CashShopCatalog.PartSize), (sent[1].Body[0], BitConverter.ToInt32(sent[1].Body, 1)));
         Assert.AreEqual((1, 1), (sent[2].Body[0], BitConverter.ToInt32(sent[2].Body, 1)));
         Assert.AreEqual(1234, BitConverter.ToInt32(sent[3].Body));
@@ -328,7 +335,175 @@ public sealed class CashShopTest
 
         await window.EnterAsync(player, false, CancellationToken.None);
 
-        CollectionAssert.AreEqual(ShopBurst, Drain(world, player, connection).Select(e => e.Opcode).ToArray());
+        CollectionAssert.AreEqual(ShopBurst.Prepend(Balance).ToArray(), Drain(world, player, connection).Select(e => e.Opcode).ToArray());
+    }
+
+    /// <summary>
+    /// The bags show the balance of the account, so a client from the character selection is told it while the shop is closed
+    /// too, and only it; a later entry of the login tells nothing.
+    /// </summary>
+    [TestMethod]
+    public async Task TheBalanceIsToldAtTheEntryFromTheCharacterSelectionWhileTheShopIsClosed()
+    {
+        using var world = World.Create();
+        var (window, _) = Window(world, new MemoryCashShopLogins());
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+
+        await window.EnterAsync(player, true, CancellationToken.None);
+        await window.EnterAsync(player, false, CancellationToken.None);
+
+        var sent = Drain(world, player, connection);
+
+        CollectionAssert.AreEqual(new[] { Balance }, sent.Select(e => e.Opcode).ToArray());
+        Assert.AreEqual(1234, BitConverter.ToInt32(sent[0].Body));
+    }
+
+    /// <summary>
+    /// While the shop of a district is closed, every request of its window is refused with the code the client shows for a
+    /// shop that cannot open, whatever its menu shows.
+    /// </summary>
+    [TestMethod]
+    public async Task EveryRequestOfTheShopIsRefusedWhileItIsClosed()
+    {
+        using var world = World.Create();
+        var window = EmptyWindow(world, new ServerContent());
+        var orders = new CashShopOrders(
+            new CashShopCatalog(new ReadOnlyCollection<CashShopRow>([]), new ReadOnlyCollection<CashBillingInfoRow>([]), new ReadOnlyCollection<CashBillingRow>([]), Items()),
+            Items());
+        var service = new CashShopService(world, orders, window, new Balances(0), null!, null!, NullLogger<CashShopService>.Instance);
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+        var context = new ServiceHandleContext(player, CancellationToken.None);
+
+        await service.OnHandleAsync(context, default(ShopCashLoadRequest));
+        await service.OnHandleAsync(context, default(ShopCashBuyRequest));
+        await service.OnHandleAsync(context, default(ShopCashGiftRequest));
+        await service.OnHandleAsync(context, default(ShopCashSetRequest));
+        await service.OnHandleAsync(context, default(ShopCashSetDelRequest));
+
+        AssertRefused(Drain(world, player, connection));
+    }
+
+    /// <summary>
+    /// A maze has no cash shop: the client refuses the window there, and a request that comes anyway gets the same code.
+    /// </summary>
+    [TestMethod]
+    public async Task AMazeRefusesEveryRequestOfTheShop()
+    {
+        using var world = World.Create();
+        var service = new MazeCashShopService(world);
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+        var context = new ServiceHandleContext(player, CancellationToken.None);
+
+        await service.OnHandleAsync(context, default(ShopCashLoadRequest));
+        await service.OnHandleAsync(context, default(ShopCashBuyRequest));
+        await service.OnHandleAsync(context, default(ShopCashGiftRequest));
+        await service.OnHandleAsync(context, default(ShopCashSetRequest));
+        await service.OnHandleAsync(context, default(ShopCashSetDelRequest));
+
+        AssertRefused(Drain(world, player, connection));
+    }
+
+    /// <summary>
+    /// A count of a day, a week or a month that is over is swept; the counts for good and those of running periods stay.
+    /// </summary>
+    [TestMethod]
+    public async Task CountsOfPeriodsThatAreOverAreSwept()
+    {
+        var connection = Environment.GetEnvironmentVariable(Variable);
+
+        if (string.IsNullOrEmpty(connection))
+        {
+            Assert.Inconclusive($"{Variable} is not set.");
+        }
+
+        await using var services = new ServiceCollection()
+            .AddPooledDbContextFactory<PersistenceContext>(builder => builder
+                .UseNpgsql(connection + ";Database=openworker_test_" + Guid.NewGuid().ToString("N"))
+                .UsePersistenceDefaults())
+            .BuildServiceProvider();
+
+        var factory = services.GetRequiredService<IDbContextFactory<PersistenceContext>>();
+
+        await using (var context = await factory.CreateDbContextAsync())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        try
+        {
+            var now = new DateTimeOffset(2026, 11, 12, 12, 0, 0, TimeSpan.FromHours(9));
+            var running = CashLimits.PeriodOf(CashLimitKind.AccountWeek, now);
+            var day = CashLimits.PeriodOf(CashLimitKind.AccountDay, now);
+            var lastMonth = CashLimits.PeriodOf(CashLimitKind.AccountMonth, now.AddMonths(-1));
+
+            await using (var database = await factory.CreateDbContextAsync())
+            {
+                var account = new AccountPersistent { Username = "counts", PasswordHash = [], SaltHash = [] };
+
+                database.Add(account);
+                await database.SaveChangesAsync();
+
+                foreach (var (product, period) in new[] { (1, CashLimits.Always), (2, running), (3, day), (4, lastMonth), (5, running.AddDays(-14)) })
+                {
+                    database.CashShopPurchases.Add(new CashShopPurchasePersistent { AccountId = account.Id, Product = product, Period = period, Count = 1 });
+                }
+
+                await database.SaveChangesAsync();
+            }
+
+            var sweep = new CashShopSweepService(new CashShopStore(factory), new FakeTimeProvider(now), NullLogger<CashShopSweepService>.Instance);
+
+            Assert.AreEqual(2, await sweep.SweepAsync(CancellationToken.None));
+
+            await using var check = await factory.CreateDbContextAsync();
+
+            CollectionAssert.AreEquivalent(new[] { 1, 2, 3 }, await check.CashShopPurchases.Select(e => e.Product).ToListAsync());
+        }
+        finally
+        {
+            await using var context = await factory.CreateDbContextAsync();
+
+            await context.Database.EnsureDeletedAsync();
+        }
+    }
+
+    /// <summary>
+    /// The cash of the shop is the account's, given with /cash: /currency refuses that kind, says so, and leaves the wallet of
+    /// the person as it was.
+    /// </summary>
+    [TestMethod]
+    public async Task TheCurrencyCommandLeavesTheCashToTheAccount()
+    {
+        using var world = World.Create();
+        await using var services = new ServiceCollection().AddSingleton(world).BuildServiceProvider();
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+
+        world.Add(player, new CurrencyComponent());
+
+        ICommand command = new CurrencyCommand(services);
+
+        Assert.IsFalse(await command.TryExecute(player, ["5000", nameof(ShopCurrency.Cash)]));
+        Assert.AreEqual(0, world.Get<CurrencyComponent>(player).Cash);
+        CollectionAssert.AreEqual(new[] { MessageOpcode.From(GroupOpcode.Chat, ChatOpcode.Normal) },
+            Drain(world, player, connection).Select(e => e.Opcode).ToArray());
+    }
+
+    private static void AssertRefused(PlayerFrame[] sent)
+    {
+        ShopOpcode[] requests = [ShopOpcode.CashLoad, ShopOpcode.CashBuy, ShopOpcode.CashGift, ShopOpcode.CashSet, ShopOpcode.CashSetDel];
+
+        CollectionAssert.AreEqual(
+            requests.Select(e => new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Shop, e), 0).Opcode).ToArray(),
+            sent.Select(e => e.Opcode).ToArray());
+
+        foreach (var frame in sent)
+        {
+            Assert.AreEqual((ushort)CashShopCodes.NotHere, BitConverter.ToUInt16(frame.Body));
+        }
     }
 
     /// <summary>
@@ -356,6 +531,8 @@ public sealed class CashShopTest
         CollectionAssert.AreEqual(ShopBurst.Append(notice).ToArray(), Wait(lacking, 6).Select(e => e.Opcode).ToArray());
         CollectionAssert.AreEqual(new[] { notice }, Wait(given, 1).Select(e => e.Opcode).ToArray());
     }
+
+    private static readonly MessageOpcode Balance = MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateCash);
 
     private static readonly MessageOpcode[] ShopBurst =
     [
@@ -472,6 +649,9 @@ public sealed class CashShopTest
             throw new NotSupportedException();
 
         public Task<bool> DeleteSetAsync(int person, byte setNo, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<int> SweepPurchasesAsync(DateTime after, DateTime before, int limit, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 }
