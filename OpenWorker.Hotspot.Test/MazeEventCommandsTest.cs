@@ -13,10 +13,13 @@ using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Drops;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Gameplay.Modules.UnityPoints;
 using OpenWorker.Hotspot.Modules.Chat.Responses;
+using OpenWorker.Hotspot.Modules.Drops;
 using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Monster.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
@@ -41,6 +44,8 @@ public sealed class MazeEventCommandsTest
     private const int UnityEvent = 40101;
     private const string MonsterText = "20000";
     private const string UnityEventText = "40101";
+    private const int FeverItem = 650000001;
+    private const string FeverItemText = "650000001";
 
     /// <summary>
     /// A started maze with one player in it, and a person outside every maze.
@@ -48,6 +53,9 @@ public sealed class MazeEventCommandsTest
     private sealed class Stage : IDisposable
     {
         private readonly ServiceProvider _services;
+
+        // A server that keeps nothing on the ground.
+        private readonly ServiceProvider _district;
 
         public Stage()
         {
@@ -70,7 +78,15 @@ public sealed class MazeEventCommandsTest
             Maze.TryStart();
             World.Add(Player, Maze);
 
-            _services = new ServiceCollection().AddSingleton(World).BuildServiceProvider();
+            var items = new ItemCatalog(new ReadOnlyCollection<ItemRow>([TestRows.Build<ItemRow>(("Id", FeverItem))]), TestMazes.None<ItemClassifyRow>(),
+                TestMazes.None<InvenSlotExtendRow>(), TestMazes.None<BankSlotExtendRow>());
+            var serials = new LocalItemSerials();
+
+            Drops = new DropService(World, clock, new InventoryService(World, items, serials), items, serials, TestMazes.None<DropRow>(),
+                TestMazes.None<DropGroupRow>(), TestMazes.None<DropRateMobRow>(), monsters);
+
+            _services = new ServiceCollection().AddSingleton(World).AddSingleton(items).AddSingleton(Drops).BuildServiceProvider();
+            _district = new ServiceCollection().AddSingleton(World).AddSingleton(items).BuildServiceProvider();
         }
 
         public World World { get; } = World.Create();
@@ -79,6 +95,7 @@ public sealed class MazeEventCommandsTest
         public Entity Outsider { get; }
         public LuaCreatureManager Creatures { get; }
         public LuaMaze Maze { get; }
+        public DropService Drops { get; }
 
         private Entity Person(int actor, RecordingConnection connection)
         {
@@ -95,6 +112,11 @@ public sealed class MazeEventCommandsTest
         public bool Run<T>(Func<IServiceProvider, T> make, Entity who, params string[] tokens) where T : ICommand
         {
             return make(_services).TryExecute(who, tokens).AsTask().GetAwaiter().GetResult();
+        }
+
+        public bool RunInDistrict<T>(Func<IServiceProvider, T> make, Entity who, params string[] tokens) where T : ICommand
+        {
+            return make(_district).TryExecute(who, tokens).AsTask().GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -123,6 +145,7 @@ public sealed class MazeEventCommandsTest
         {
             Maze.Close();
             _services.Dispose();
+            _district.Dispose();
             World.Destroy(World);
         }
     }
@@ -145,7 +168,7 @@ public sealed class MazeEventCommandsTest
     }
 
     /// <summary>
-    /// Monsters of a row the table has come where the player stands, as many as asked up to 50.
+    /// Monsters of a row the table has come where the player stands, as many as asked up to 50, still when asked.
     /// </summary>
     [TestMethod]
     public void MonstersOfARowComeWhereThePlayerStands()
@@ -166,6 +189,11 @@ public sealed class MazeEventCommandsTest
         Assert.IsTrue(called.All(e => stage.World.Get<CreatureComponent>(e).Identifier == Monster));
         Assert.AreEqual(stage.World.Get<WorldComponent>(stage.Player).Position, stage.World.Get<WorldComponent>(called[0]).Position, "the first stands where the player does");
         Assert.AreEqual(1, stage.Told(new WorldOtherInfosMonsterResponse { Monsters = [] }.Opcode), "the clients are shown them at once");
+
+        Assert.IsFalse(stage.Run(e => new MonsterCommand(e), stage.Player, MonsterText, "2", "3"), "a word past the count that is not still");
+        Assert.IsTrue(stage.Run(e => new MonsterCommand(e), stage.Player, MonsterText, "still"));
+        Assert.IsTrue(stage.Run(e => new MonsterCommand(e), stage.Player, MonsterText, "2", "still"));
+        Assert.AreEqual(6, stage.Creatures.Living.Count);
     }
 
     /// <summary>
@@ -207,5 +235,30 @@ public sealed class MazeEventCommandsTest
         Assert.IsTrue(stage.Run(e => new MonsterControlCommand(e), stage.Player, "0"));
         Assert.IsFalse(stage.Run(e => new MonsterControlCommand(e), stage.Player, "0"), "let go already");
         Assert.AreEqual(2, stage.Told(control), "everybody is told of the take and of the release");
+    }
+
+    /// <summary>
+    /// An item the client has falls at the feet of the player as a drop of a kill, only on the server that keeps the ground and
+    /// only in a maze.
+    /// </summary>
+    [TestMethod]
+    public void AnItemFallsAtTheFeetOfThePlayerAsADrop()
+    {
+        using var stage = new Stage();
+
+        Assert.IsFalse(stage.Run(e => new DropCommand(e), stage.Outsider, FeverItemText), "outside a maze");
+        Assert.IsFalse(stage.RunInDistrict(e => new DropCommand(e), stage.Player, FeverItemText), "a server without the ground");
+        Assert.IsFalse(stage.Run(e => new DropCommand(e), stage.Player, "650000009"), "an item the client lacks");
+        Assert.IsFalse(stage.Run(e => new DropCommand(e), stage.Player, FeverItemText, "0"));
+        Assert.IsEmpty(stage.Drops.On(stage.Player));
+
+        Assert.IsTrue(stage.Run(e => new DropCommand(e), stage.Player, FeverItemText, "2"));
+
+        var dropped = stage.Drops.On(stage.Player).Single();
+
+        Assert.AreEqual(FeverItem, dropped.ObjectId);
+        Assert.AreEqual(2, dropped.Count);
+        Assert.IsLessThanOrEqualTo(90f, Vector3.Distance(stage.World.Get<WorldComponent>(stage.Player).Position, dropped.Position), "at the feet");
+        Assert.AreEqual(1, stage.Told(new DropInfosResponse { DropGroup = 0, Objects = [] }.Opcode), "the client is told as of a kill's drop");
     }
 }

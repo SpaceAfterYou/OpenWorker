@@ -154,6 +154,11 @@ public sealed partial class LuaCreatureManager
     /// Creatures that wait for their delay before the clients see them.
     /// </summary>
     private HashSet<Entity> Unseen { get; } = [];
+
+    /// <summary>
+    /// Monsters a command keeps where they were brought in: their armor comes back, but they never walk or attack.
+    /// </summary>
+    private HashSet<Entity> Still { get; } = [];
     private Dictionary<Entity, MonsterBody> Bodies { get; } = [];
 
     /// <summary>
@@ -459,11 +464,17 @@ public sealed partial class LuaCreatureManager
     }
 
     /// <summary>
-    /// Monsters of no box of the map, brought in where they are asked for and shown to the clients at once.
+    /// Monsters of no box of the map, brought in where they are asked for and shown to the clients at once. Still ones stay
+    /// where they are brought in.
     /// </summary>
-    public IReadOnlyList<Entity> CreateMonstersAt(int identifier, IEnumerable<Vector3> positions, float rotation, int sector)
+    public IReadOnlyList<Entity> CreateMonstersAt(int identifier, IEnumerable<Vector3> positions, float rotation, int sector, bool still = false)
     {
         var created = positions.Select(e => CreateMonster(identifier, MonsterSpawnBox.At(identifier, e, rotation, sector))).ToList();
+
+        if (still)
+        {
+            Still.UnionWith(created);
+        }
 
         Show(created);
 
@@ -761,6 +772,7 @@ public sealed partial class LuaCreatureManager
         Creatures.Remove(creature);
         Scenery.Remove(creature);
         Unseen.Remove(creature);
+        Still.Remove(creature);
         Buffs?.Forget(creature);
 
         ecs.Destroy(creature);
@@ -786,6 +798,7 @@ public sealed partial class LuaCreatureManager
         Defenses.Clear();
         Players.Clear();
         Unseen.Clear();
+        Still.Clear();
         Helpers.Clear();
     }
 
@@ -948,8 +961,8 @@ public sealed partial class LuaCreatureManager
                 {
                     RestoreSuperArmor(body.Entity);
 
-                    // A monster that is stunned, asleep, paralysed or frozen does nothing until it is over.
-                    if (Buffs?.IsHeld(body.Entity) == true)
+                    // A monster that is stunned, asleep, paralysed or frozen does nothing until it is over; a still one never.
+                    if (Still.Contains(body.Entity) || Buffs?.IsHeld(body.Entity) == true)
                     {
                         continue;
                     }

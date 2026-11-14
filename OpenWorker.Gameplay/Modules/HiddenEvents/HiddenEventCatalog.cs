@@ -98,18 +98,10 @@ public sealed class HiddenEventCatalog
     /// </summary>
     public HiddenEvent? Pick(int box)
     {
-        if (box is <= 0 or > ushort.MaxValue || !_events.TryGet(unchecked((short)box), out var row))
+        if (!TryChoices(box, out var row, out var choices))
         {
             return null;
         }
-
-        var choices = new List<(HiddenEventCondition Condition, int Weight)>(5);
-
-        Add(row.Condition1, row.Rate1);
-        Add(row.Condition2, row.Rate2);
-        Add(row.Condition3, row.Rate3);
-        Add(row.Condition4, row.Rate4);
-        Add(row.Condition5, row.Rate5);
 
         var total = choices.Sum(e => e.Weight);
 
@@ -126,20 +118,59 @@ public sealed class HiddenEventCatalog
 
             if (roll <= 0)
             {
-                var reward = _rewards.TryGet((ushort)box, out var paid) ? new HiddenEventReward(paid.Item, paid.Count) : new HiddenEventReward(row.RewardItem, row.RewardCount);
-
-                return new HiddenEvent((ushort)box, condition, reward, CountsAnyItem);
+                return Make(box, row, condition);
             }
         }
 
         return null;
+    }
 
-        void Add(int id, short weight)
+    /// <summary>
+    /// The event of the box with the condition named, without a roll: nothing when the row of the box does not name the
+    /// condition, or the server does not count it.
+    /// </summary>
+    public HiddenEvent? Pick(int box, int condition)
+    {
+        return TryChoices(box, out var row, out var choices) && choices.FirstOrDefault(e => e.Condition.Id == condition) is { Weight: > 0 } chosen
+            ? Make(box, row, chosen.Condition)
+            : null;
+    }
+
+    private HiddenEvent Make(int box, in HiddenEventRow row, HiddenEventCondition condition)
+    {
+        var reward = _rewards.TryGet((ushort)box, out var paid) ? new HiddenEventReward(paid.Item, paid.Count) : new HiddenEventReward(row.RewardItem, row.RewardCount);
+
+        return new HiddenEvent((ushort)box, condition, reward, CountsAnyItem);
+    }
+
+    /// <summary>
+    /// The row of the box and the conditions of it the server counts, with their weights.
+    /// </summary>
+    private bool TryChoices(int box, out HiddenEventRow row, out List<(HiddenEventCondition Condition, int Weight)> choices)
+    {
+        choices = new List<(HiddenEventCondition Condition, int Weight)>(5);
+
+        if (box is <= 0 or > ushort.MaxValue || !_events.TryGet(unchecked((short)box), out row))
+        {
+            row = default;
+
+            return false;
+        }
+
+        Add(choices, row.Condition1, row.Rate1);
+        Add(choices, row.Condition2, row.Rate2);
+        Add(choices, row.Condition3, row.Rate3);
+        Add(choices, row.Condition4, row.Rate4);
+        Add(choices, row.Condition5, row.Rate5);
+
+        return true;
+
+        void Add(List<(HiddenEventCondition Condition, int Weight)> list, int id, short weight)
         {
             if (id != 0 && weight > 0 && _conditions.TryGet(id, out var found) && Counted.Contains((HiddenEventTarget)found.Target) &&
                 Enum.IsDefined((HiddenEventKind)found.Kind))
             {
-                choices.Add((new HiddenEventCondition(found.Id, (HiddenEventKind)found.Kind, (HiddenEventTarget)found.Target, found.TargetId, found.Count), weight));
+                list.Add((new HiddenEventCondition(found.Id, (HiddenEventKind)found.Kind, (HiddenEventTarget)found.Target, found.TargetId, found.Count), weight));
             }
         }
     }

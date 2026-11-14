@@ -40,6 +40,28 @@ public partial class LuaMaze
             return;
         }
 
+        Begin(started);
+    }
+
+    /// <summary>
+    /// A game master starts the hidden event of the box with the condition named, at once. False when the maze is over or
+    /// already has one, or the box has no such condition the server counts.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool StartHiddenEvent(Entity player, int box, int condition)
+    {
+        if (Closed || IsComplete || HiddenEvent is not null || Find(player) is null || HiddenEvents?.Pick(box, condition) is not { } started)
+        {
+            return false;
+        }
+
+        Begin(started);
+
+        return true;
+    }
+
+    private void Begin(HiddenEvent started)
+    {
         HiddenEvent = started;
 
         creatureManager.Broadcast(HiddenEventMessage(started));
