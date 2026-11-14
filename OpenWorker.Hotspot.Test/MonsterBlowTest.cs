@@ -38,6 +38,13 @@ public sealed class MonsterBlowTest
 
     private const int Shot = 1303043072;
 
+    /// <summary>
+    /// A monster whose shot follows its target: one shot, 1.0 s into the skill.
+    /// </summary>
+    private const string GuidedShooterFile = "MOB_9066_DignitySnasher";
+
+    private const int GuidedShot = 1302050241;
+
     private sealed class Arena(World world, LuaMaze maze, Entity player, MonsterBody body, RecordingConnection connection, FakeTimeProvider time, SimulationClock clock)
     {
         public LuaMaze Maze { get; } = maze;
@@ -61,6 +68,33 @@ public sealed class MonsterBlowTest
 
         public PlayerFrame[] Hits() =>
             connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActionSkillBt)).ToArray();
+
+        public PlayerFrame[] Shots() =>
+            connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ProjectileBt)).ToArray();
+    }
+
+    /// <summary>
+    /// The skills of the client's tables, or null when the variables of the test data are not set.
+    /// </summary>
+    private static (ReadOnlyCollection<SkillRow> Skills, string Actions)? Data(params int[] ids)
+    {
+        var tables = Environment.GetEnvironmentVariable("OPENWORKER_TEST_RES");
+        var actions = Environment.GetEnvironmentVariable("OPENWORKER_TEST_ACTION");
+
+        if (string.IsNullOrEmpty(tables) || string.IsNullOrEmpty(actions))
+        {
+            return null;
+        }
+
+        using var reader = new BinaryReader(File.OpenRead(Path.Join(tables, "tb_Skill.res")));
+        var rows = new SkillRow[reader.ReadInt32()];
+
+        for (var index = 0; index < rows.Length; index++)
+        {
+            rows[index] = new SkillRow(reader);
+        }
+
+        return (new ReadOnlyCollection<SkillRow>([.. ids.Select(id => rows.First(e => e.Id == id))]), actions);
     }
 
     private static async Task WithArenaAsync(Func<Arena, Task> test, MonsterRow? row = null, ReadOnlyCollection<SkillRow>? skills = null, string actions = "action")
@@ -174,5 +208,37 @@ public sealed class MonsterBlowTest
 
             await MetricAssertions.UntilAsync(() => arena.Hits().Length > 0, "The shot lands.");
         }, shooter, skills, actions!);
+    }
+
+    /// <summary>
+    /// The clients fly the shots of a monster themselves: only a shot that follows its target is told to them.
+    /// </summary>
+    [TestMethod]
+    public async Task OnlyAShotThatFollowsItsTargetIsTold()
+    {
+        if (Data(Shot, GuidedShot) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        foreach (var (file, skill, told) in new[] { (ShooterFile, Shot, false), (GuidedShooterFile, GuidedShot, true) })
+        {
+            var shooter = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", file), ("Skill1", skill));
+
+            await WithArenaAsync(async arena =>
+            {
+                var aim = arena.Body.Position + new Vector3(0f, -1000f, 0f);
+
+                Assert.IsTrue(arena.Body.UseSkill(arena.Body.GetSkill(0)!, new AiTarget(100, aim, 40f, 0f, 1, 1, false)));
+
+                arena.Advance(1.5f);
+
+                await Task.Delay(100);
+
+                Assert.AreEqual(told, arena.Shots().Length > 0, $"The shot of {file} is told: {told}.");
+            }, shooter, skills, actions);
+        }
     }
 }

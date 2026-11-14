@@ -954,7 +954,8 @@ internal partial class MonsterBody : IAiHost
 
         _flights.Add(new Flight(flight, trigger, skill));
 
-        if (!_actions.IsFlownByClient(skill))
+        // The clients fly the shots of a monster themselves; only one that follows its target is told.
+        if (trigger.Projectile.IsGuided)
         {
             Broadcast(new SkillProjectileBroadcastResponse
             {
