@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenWorker.Commands.Abstractions;
+using OpenWorker.Commands.MazeEventCommands;
 using OpenWorker.DistrictServer.Server;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Combat;
@@ -370,6 +373,51 @@ public sealed class HiddenEventTest
             jumping.CountHiddenEventBlow(player, monster, JumpStrike, armorWasBroken: false, killed: true, aloft: false);
 
             Assert.AreEqual(1, jumping.HiddenEvent!.Counted);
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A game master starts the event of a box at once with a condition its row names, one a maze; outside a maze, for a
+    /// condition the row lacks and for a box without a row it is refused.
+    /// </summary>
+    [TestMethod]
+    public void AGameMasterStartsTheEventOfABoxWithAConditionOfItsRow()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var player = MonsterArmorTest.Player(world);
+            var outsider = MonsterArmorTest.Player(world);
+            var catalog = Catalog([Event(Box, (1, 10000), (2, 1))],
+                Condition(1, HiddenEventKind.Kill, HiddenEventTarget.Monster, Monster, 2),
+                Condition(2, HiddenEventKind.Kill, HiddenEventTarget.Monster, 0, 5),
+                Condition(3, HiddenEventKind.Kill, HiddenEventTarget.Monster, 0, 5));
+            var maze = TestMazes.Create(world, player, hiddenEvents: catalog);
+
+            world.Add(player, maze);
+
+            using var services = new ServiceCollection().AddSingleton(world).BuildServiceProvider();
+
+            bool Run(Entity who, params string[] tokens) => ((ICommand)new HiddenEventCommand(services)).TryExecute(who, tokens).AsTask().GetAwaiter().GetResult();
+
+            Assert.IsFalse(Run(outsider, "6001", "2"), "outside a maze");
+            Assert.IsFalse(Run(player, "6001", "3"), "a condition the row lacks");
+            Assert.IsFalse(Run(player, "6002", "1"), "a box without a row");
+            Assert.IsFalse(Run(player, "6001"));
+            Assert.IsNull(maze.HiddenEvent);
+
+            Assert.IsTrue(Run(player, "6001", "2"), "the condition of the lighter weight, all the same");
+            Assert.AreEqual(2, maze.HiddenEvent!.Condition.Id);
+            Assert.AreEqual(HiddenEventState.Progress, maze.HiddenEvent.State);
+            Assert.IsFalse(Run(player, "6001", "1"), "one a maze");
+
+            maze.Close();
         }
 
         finally
