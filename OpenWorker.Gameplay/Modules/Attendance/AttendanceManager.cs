@@ -103,7 +103,7 @@ public sealed partial class AttendanceManager(
         {
             world.Set(player, world.Get<AttendanceComponent>(player) with { Sent = true });
 
-            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime() });
+            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime(catalog) });
         }
 
         else
@@ -179,7 +179,7 @@ public sealed partial class AttendanceManager(
 
         if (!AttendanceRules.IsReady(book, catalog))
         {
-            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime() });
+            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime(catalog) });
             return;
         }
 
@@ -203,12 +203,12 @@ public sealed partial class AttendanceManager(
 
         if (granted)
         {
-            session.Send(new EventAttendancePlayTimeRewardResponse { Time = book.ToPlayTime() });
+            session.Send(new EventAttendancePlayTimeRewardResponse { Time = book.ToPlayTime(catalog) });
         }
 
         else
         {
-            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime() });
+            session.Send(new EventAttendanceLoadResponse { Info = book.ToInfo(), Time = book.ToPlayTime(catalog) });
         }
     }
 

@@ -52,5 +52,14 @@ public sealed class AttendanceBook
         };
     }
 
-    public AttendancePlayTime ToPlayTime() => new() { Step = (byte)PlayStep, Seconds = PlaySeconds };
+    /// <summary>
+    /// The client shows the step ready when the time of the step less these seconds is zero, and reads a time past the
+    /// step as a wait of a million hours: the seconds told stop at the time of the step the person waits for.
+    /// </summary>
+    public AttendancePlayTime ToPlayTime(AttendanceCatalog catalog)
+    {
+        var seconds = catalog.HasStep(PlayStep) ? Math.Min(PlaySeconds, catalog.PlayTime[PlayStep].Seconds) : PlaySeconds;
+
+        return new AttendancePlayTime { Step = (byte)PlayStep, Seconds = seconds };
+    }
 }
