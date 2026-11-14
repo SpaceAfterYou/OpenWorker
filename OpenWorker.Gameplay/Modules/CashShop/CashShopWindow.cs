@@ -35,6 +35,11 @@ public sealed partial class CashShopWindow(
     private Frame[]? _products;
 
     /// <summary>
+    /// Whether the cash shop of this server is open.
+    /// </summary>
+    public bool IsOpen => contents[ServerContentIndex.CashShop];
+
+    /// <summary>
     /// Gives the window its contents at an entry into a district while the cash shop is open: always to a client from the
     /// character selection, whose window is new, and to any other only when its login has not been given them yet.
     /// </summary>

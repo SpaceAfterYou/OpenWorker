@@ -3,6 +3,7 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenWorker.DistrictServer.Services;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
@@ -12,8 +13,11 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Login.Components;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
+using OpenWorker.Hotspot.Handler.DataTypes;
+using OpenWorker.Hotspot.Modules.Shop.Requests;
 using OpenWorker.Hotspot.Modules.Shop.Types;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.MazeServer.Services;
 using OpenWorker.Persistence;
 using OpenWorker.UpdateContent.Res.Rows;
 
@@ -329,6 +333,67 @@ public sealed class CashShopTest
         await window.EnterAsync(player, false, CancellationToken.None);
 
         CollectionAssert.AreEqual(ShopBurst, Drain(world, player, connection).Select(e => e.Opcode).ToArray());
+    }
+
+    /// <summary>
+    /// While the shop of a district is closed, every request of its window is refused with the code the client shows for a
+    /// shop that cannot open, whatever its menu shows.
+    /// </summary>
+    [TestMethod]
+    public async Task EveryRequestOfTheShopIsRefusedWhileItIsClosed()
+    {
+        using var world = World.Create();
+        var window = EmptyWindow(world, new ServerContent());
+        var orders = new CashShopOrders(
+            new CashShopCatalog(new ReadOnlyCollection<CashShopRow>([]), new ReadOnlyCollection<CashBillingInfoRow>([]), new ReadOnlyCollection<CashBillingRow>([]), Items()),
+            Items());
+        var service = new CashShopService(world, orders, window, new Balances(0), null!, null!, NullLogger<CashShopService>.Instance);
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+        var context = new ServiceHandleContext(player, CancellationToken.None);
+
+        await service.OnHandleAsync(context, default(ShopCashLoadRequest));
+        await service.OnHandleAsync(context, default(ShopCashBuyRequest));
+        await service.OnHandleAsync(context, default(ShopCashGiftRequest));
+        await service.OnHandleAsync(context, default(ShopCashSetRequest));
+        await service.OnHandleAsync(context, default(ShopCashSetDelRequest));
+
+        AssertRefused(Drain(world, player, connection));
+    }
+
+    /// <summary>
+    /// A maze has no cash shop: the client refuses the window there, and a request that comes anyway gets the same code.
+    /// </summary>
+    [TestMethod]
+    public async Task AMazeRefusesEveryRequestOfTheShop()
+    {
+        using var world = World.Create();
+        var service = new MazeCashShopService(world);
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+        var context = new ServiceHandleContext(player, CancellationToken.None);
+
+        await service.OnHandleAsync(context, default(ShopCashLoadRequest));
+        await service.OnHandleAsync(context, default(ShopCashBuyRequest));
+        await service.OnHandleAsync(context, default(ShopCashGiftRequest));
+        await service.OnHandleAsync(context, default(ShopCashSetRequest));
+        await service.OnHandleAsync(context, default(ShopCashSetDelRequest));
+
+        AssertRefused(Drain(world, player, connection));
+    }
+
+    private static void AssertRefused(PlayerFrame[] sent)
+    {
+        ShopOpcode[] requests = [ShopOpcode.CashLoad, ShopOpcode.CashBuy, ShopOpcode.CashGift, ShopOpcode.CashSet, ShopOpcode.CashSetDel];
+
+        CollectionAssert.AreEqual(
+            requests.Select(e => new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Shop, e), 0).Opcode).ToArray(),
+            sent.Select(e => e.Opcode).ToArray());
+
+        foreach (var frame in sent)
+        {
+            Assert.AreEqual((ushort)CashShopCodes.NotHere, BitConverter.ToUInt16(frame.Body));
+        }
     }
 
     /// <summary>

@@ -25,7 +25,7 @@ using OpenWorker.Hotspot.Modules.System.Responses;
 namespace OpenWorker.DistrictServer.Services;
 
 /// <summary>
-/// The cash shop: the list of products, purchases, presents, the lists a character keeps and the gacha items bought there.
+/// The cash shop of a district: the list of products, purchases, presents and the lists a character keeps.
 /// Its currency is the balance of the account, which only a game master gives; nothing is paid for with anything real.
 /// </summary>
 /// <remarks>
@@ -37,9 +37,7 @@ namespace OpenWorker.DistrictServer.Services;
 public sealed partial class CashShopService(
     World world,
     CashShopOrders orders,
-    CashShopGacha gacha,
     CashShopWindow window,
-    InventoryService inventory,
     ICashShopStore store,
     IPostStore post,
     CommunityNetwork network,
@@ -50,8 +48,7 @@ public sealed partial class CashShopService(
     IHotspotHandler<ShopCashBuyRequest>,
     IHotspotHandler<ShopCashGiftRequest>,
     IHotspotHandler<ShopCashSetRequest>,
-    IHotspotHandler<ShopCashSetDelRequest>,
-    IHotspotHandler<ShopGachaRequest>
+    IHotspotHandler<ShopCashSetDelRequest>
 {
     // The names of the lists the window offers: the basket is 0.
     private const byte LastSet = 8;
@@ -64,7 +61,21 @@ public sealed partial class CashShopService(
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashLoadRequest request)
     {
-        return window.LoadAsync(context.Player, context.CancellationToken);
+        return Closed(context, ShopOpcode.CashLoad) ? ValueTask.CompletedTask : window.LoadAsync(context.Player, context.CancellationToken);
+    }
+
+    /// <summary>
+    /// While the shop of this server is closed, every request of its window is refused, whatever the client's menu shows.
+    /// </summary>
+    private bool Closed(ServiceHandleContext context, ShopOpcode command)
+    {
+        if (window.IsOpen)
+        {
+            return false;
+        }
+
+        Fail(context, command, CashShopCodes.NotHere);
+        return true;
     }
 
     #endregion
@@ -73,6 +84,11 @@ public sealed partial class CashShopService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashBuyRequest request)
     {
+        if (Closed(context, ShopOpcode.CashBuy))
+        {
+            return;
+        }
+
         var player = context.Player;
         var me = Me(context);
         var info = world.Get<PersonInfoComponent>(player);
@@ -104,6 +120,11 @@ public sealed partial class CashShopService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashGiftRequest request)
     {
+        if (Closed(context, ShopOpcode.CashGift))
+        {
+            return;
+        }
+
         var player = context.Player;
         var me = Me(context);
         var info = world.Get<PersonInfoComponent>(player);
@@ -250,6 +271,11 @@ public sealed partial class CashShopService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashSetRequest request)
     {
+        if (Closed(context, ShopOpcode.CashSet))
+        {
+            return;
+        }
+
         if (request.SetNo > LastSet || request.IndexList.Count != CashSetValue.Size || request.ItemList.Count != CashSetValue.Size)
         {
             Fail(context, ShopOpcode.CashSet, CashShopCodes.WrongProduct);
@@ -283,6 +309,11 @@ public sealed partial class CashShopService(
 
     public async ValueTask OnHandleAsync(ServiceHandleContext context, ShopCashSetDelRequest request)
     {
+        if (Closed(context, ShopOpcode.CashSetDel))
+        {
+            return;
+        }
+
         if (request.SetNo is 0 or > LastSet)
         {
             Fail(context, ShopOpcode.CashSetDel, CashShopCodes.WrongProduct);
@@ -302,74 +333,6 @@ public sealed partial class CashShopService(
 
         // A list already gone is gone all the same: the window forgets it.
         Send(context, new ShopCashSetDelResponse { SetNo = request.SetNo });
-    }
-
-    #endregion
-
-    #region Gacha
-
-    /// <summary>
-    /// Opens gacha items of the bags: each one gives one item of its draw, told to the gacha window. Everything happens in
-    /// the inventory of the player, which the flush writes.
-    /// </summary>
-    public async ValueTask OnHandleAsync(ServiceHandleContext context, ShopGachaRequest request)
-    {
-        var player = context.Player;
-
-        if (request.Count is 0 or > CashShopGacha.MaxCount || !gacha.TryGetGacha(request.Item, out var box))
-        {
-            Fail(context, ShopOpcode.Gacha, CashShopCodes.NotGacha);
-            return;
-        }
-
-        if (inventory.CountOf(player, request.Item) < request.Count)
-        {
-            Fail(context, ShopOpcode.Gacha, CashShopCodes.CountMismatch);
-            return;
-        }
-
-        if (!CashShopGacha.Open(box, Time.GetLocalNow().DateTime))
-        {
-            Fail(context, ShopOpcode.Gacha, CashShopCodes.GachaClosed);
-            return;
-        }
-
-        if (gacha.Draw(box, request.Count) is not { } results)
-        {
-            Fail(context, ShopOpcode.Gacha, CashShopCodes.GachaFailed);
-            return;
-        }
-
-        var given = results.Select(e => (e.Item, 1)).ToList();
-
-        await inventory.EnsureSerialsAsync(given);
-
-        // The wait let other work run: the bags are counted again.
-        if (!world.IsAlive(player))
-        {
-            return;
-        }
-
-        if (inventory.CountOf(player, request.Item) < request.Count)
-        {
-            Fail(context, ShopOpcode.Gacha, CashShopCodes.CountMismatch);
-            return;
-        }
-
-        if (!inventory.CanGiveAll(player, given))
-        {
-            Fail(context, ShopOpcode.Gacha, CashShopCodes.NoRoom);
-            return;
-        }
-
-        inventory.TryTake(player, request.Item, request.Count);
-
-        foreach (var (item, count) in given)
-        {
-            inventory.TryGive(player, item, count);
-        }
-
-        Send(context, new ShopGachaResResponse { Results = results });
     }
 
     #endregion

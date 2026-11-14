@@ -38,6 +38,9 @@ public static class CashShopCodes
     /// <summary>The product may not be bought more in its period.</summary>
     public const int LimitReached = 52323;
 
+    /// <summary>The item shop cannot be opened here: in a maze, or while the shop of the server is closed.</summary>
+    public const int NotHere = 52324;
+
     /// <summary>A gacha item to open is missing from the bags, or fewer of it than asked.</summary>
     public const int CountMismatch = 52014;
 
