@@ -62,6 +62,15 @@ public sealed class MonsterBlowTest
     private const int ComboNext = 1303044071;
 
     /// <summary>
+    /// A monster whose skill brings in two small puppets 4 s in, each somewhere in a square of 302 round a point 210 ahead of it,
+    /// one to the left and one to the right.
+    /// </summary>
+    private const string SummonerFile = "MOB_0023_Bloodypuppet";
+
+    private const int SummonSkill = 1301040044;
+    private const int Summoned = 30104001;
+
+    /// <summary>
     /// Where the trap that lies to the right of the monster is, from the monster that looks along -Y.
     /// </summary>
     private static readonly Vector3 RightTrap = new(300f, 0f, 0f);
@@ -89,6 +98,11 @@ public sealed class MonsterBlowTest
 
         public PlayerFrame[] Hits() =>
             connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActionSkillBt)).ToArray();
+
+        public World World => world;
+
+        public int Shown() =>
+            connection.Frames.Select(PlayerFrame.Open).Count(e => e.Is(GroupOpcode.World, (byte)WorldOpcode.OtherInfosMonster));
 
         public PlayerFrame[] Starts() =>
             connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActiveSkillBt)).ToArray();
@@ -143,7 +157,7 @@ public sealed class MonsterBlowTest
         return (new ReadOnlyCollection<SkillRow>([.. ids.Select(id => rows.First(e => e.Id == id))]), actions);
     }
 
-    private static async Task WithArenaAsync(Func<Arena, Task> test, MonsterRow? row = null, ReadOnlyCollection<SkillRow>? skills = null, string actions = "action", SkillChains? chains = null)
+    private static async Task WithArenaAsync(Func<Arena, Task> test, MonsterRow? row = null, ReadOnlyCollection<SkillRow>? skills = null, string actions = "action", SkillChains? chains = null, MonsterRow? other = null)
     {
         var folder = Directory.CreateTempSubdirectory();
         var world = World.Create();
@@ -155,7 +169,7 @@ public sealed class MonsterBlowTest
 
             var time = new FakeTimeProvider();
             var clock = TestMazes.Clock(time);
-            var monsters = new ReadOnlyCollection<MonsterRow>([row ?? TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"))]);
+            var monsters = new ReadOnlyCollection<MonsterRow>([row ?? TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still")), .. other is { } more ? [more] : Array.Empty<MonsterRow>()]);
 
             skills ??= TestMazes.None<SkillRow>();
 
@@ -183,7 +197,7 @@ public sealed class MonsterBlowTest
 
             maze.SpawnSector(1);
 
-            var monster = maze.Creatures.FindMonsters((_, _) => true).Single();
+            var monster = maze.Creatures.FindMonsters((_, _) => true).First();
 
             world.Set(monster, world.Get<CreatureComponent>(monster) with { Health = 100000 });
 
@@ -494,5 +508,56 @@ public sealed class MonsterBlowTest
                 Assert.IsTrue(arena.Body.IsAttacking, "The monster plays on.");
             }, scar, skills, actions, chains);
         }
+    }
+
+    /// <summary>
+    /// An attack that brings in a monster brings it in at its moment, somewhere round the centre of the attack's space, in the sector of
+    /// the monster, and the clients are shown it.
+    /// </summary>
+    [TestMethod]
+    public async Task AnAttackThatBringsInAMonsterBringsItRoundTheCentreOfItsSpace()
+    {
+        if (Data(SummonSkill) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        var summoner = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", SummonerFile), ("Skill1", SummonSkill));
+        var puppet = TestRows.Build<MonsterRow>(("Id", Summoned), ("AiScript", "Ai_Still"));
+        var at = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }.GetTimeline(SummonSkill, SummonerFile).Summons;
+
+        Assert.HasCount(2, at);
+
+        await WithArenaAsync(async arena =>
+        {
+            var start = arena.Body.Position;
+            var aim = start + new Vector3(0f, -3000f, 0f);
+
+            Assert.IsTrue(arena.Body.UseSkill(arena.Body.GetSkill(0)!, new AiTarget(100, aim, 40f, 0f, 1, 1, false)));
+
+            arena.Advance(at[0].Time - 0.1f);
+
+            Assert.HasCount(1, arena.Maze.Creatures.FindMonsters((_, _) => true), "Nobody is brought in before the moment.");
+
+            arena.Advance(0.2f);
+
+            var brought = arena.Maze.Creatures.FindMonsters((_, _) => true).Where(e => e != arena.Body.Entity).ToArray();
+
+            Assert.HasCount(2, brought);
+
+            // The left one is brought in round the left point, the right one round the right point.
+            var places = brought.Select(e => arena.World.Get<WorldComponent>(e).Position).OrderBy(e => e.X).ToArray();
+            var centers = at.Select(e => arena.Body.Position + TrapLayout.Turn(e.Trigger.Center with { Z = 0f }, arena.Body.Yaw)).OrderBy(e => e.X).ToArray();
+
+            for (var i = 0; i < 2; i++)
+            {
+                Assert.IsLessThanOrEqualTo(at[i].Trigger.Radius + 1f, MathF.Abs(places[i].X - centers[i].X));
+                Assert.IsLessThanOrEqualTo(at[i].Trigger.Radius + 1f, MathF.Abs(places[i].Y - centers[i].Y));
+            }
+
+            await MetricAssertions.UntilAsync(() => arena.Shown() >= 3, "The clients are shown them, after the monster itself.");
+        }, summoner, skills, actions, other: puppet);
     }
 }

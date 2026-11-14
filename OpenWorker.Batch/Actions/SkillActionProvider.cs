@@ -91,6 +91,11 @@ public sealed record SkillTimeline(float Length, IReadOnlyList<TimedClip> Clips,
     /// animation or the end animation cannot be cut: then a monster makes no combo with it.
     /// </summary>
     public float? ComboAt { get; init; }
+
+    /// <summary>
+    /// The moments the monster brings in other monsters, in the order of time.
+    /// </summary>
+    public IReadOnlyList<SkillHit> Summons { get; init; } = [];
 }
 
 /// <summary>
@@ -181,6 +186,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         var hidings = new List<SkillHiding>();
         var moves = new List<SkillMove>();
         var marks = new List<float>();
+        var summons = new List<SkillHit>();
         var offset = 0f;
         float? combo = null;
 
@@ -236,6 +242,10 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
                     {
                         hits.Add(new SkillHit(time, attack));
                     }
+                    else if (attack.IsSummon)
+                    {
+                        summons.Add(new SkillHit(time, attack));
+                    }
                 }
 
                 hidings.AddRange((animation.Hides ?? []).Select(hide => new SkillHiding(round + clock.Wall(hide.Start), hide)).Where(e => !rounds || e.Time < end));
@@ -257,6 +267,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         {
             Moves = moves,
             TrapMarks = [.. marks.Order()],
+            Summons = [.. summons.OrderBy(e => e.Time)],
             ComboAt = combo
         };
     }

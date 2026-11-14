@@ -847,6 +847,11 @@ internal partial class MonsterBody : IAiHost
                 _pending.Add(new PendingHit(now + mark, default, skill.Id, Mark: true));
             }
 
+            foreach (var summon in timeline.Summons)
+            {
+                _pending.Add(new PendingHit(now + summon.Time, summon, skill.Id));
+            }
+
             _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
             AddMoves(timeline.Moves, now, timeline.Clips.Count);
@@ -909,6 +914,13 @@ internal partial class MonsterBody : IAiHost
             if (pending.Hit.Trigger.IsTrap)
             {
                 SetTraps(pending.Skill, pending.Hit.Trigger);
+
+                continue;
+            }
+
+            if (pending.Hit.Trigger.IsSummon)
+            {
+                Summon(pending.Hit.Trigger);
 
                 continue;
             }
