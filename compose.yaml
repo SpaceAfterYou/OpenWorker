@@ -31,22 +31,6 @@ services:
       timeout: 10s
       retries: 5
 
-  rabbitmq:
-    container_name: "OpenWorker-RabbitMQ"
-    image: docker.io/library/rabbitmq:management-alpine
-    pull_policy: missing
-    restart: on-failure
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - eva-01
-    healthcheck:
-      test: [ "CMD", "rabbitmqctl", "status" ]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
   # Each server keeps a small pool (Maximum Pool Size in its ConnectionStrings__Postgres: 16 for a gate, a district or a
   # maze, 8 for auth, 4 for the relay and the content loader), since one world loop cannot use more: with four districts
   # that is at most 112 connections. The default of 100 was too few when hundreds of players left at once;
@@ -151,8 +135,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     ports:
@@ -181,8 +163,6 @@ services:
       # - Auth__AllowNextHumanNetworkLogin=true
     depends_on:
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       postgres:
         condition: service_healthy
@@ -215,8 +195,6 @@ services:
       - Game__Version=1.4.2.3
     depends_on:
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       postgres:
         condition: service_healthy
@@ -254,8 +232,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
@@ -288,8 +264,6 @@ services:
       - Gate__Id=1
     depends_on:
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       postgres:
         condition: service_healthy
@@ -331,8 +305,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
@@ -370,8 +342,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
@@ -408,8 +378,6 @@ services:
       - Instance__PublicPort=10014
     depends_on:
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       postgres:
         condition: service_healthy

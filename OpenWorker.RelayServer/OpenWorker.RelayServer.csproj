@@ -20,7 +20,6 @@
 
     <ItemGroup>
         <PackageReference Include="Discord.Net" />
-        <PackageReference Include="MassTransit.RabbitMQ" />
         <PackageReference Include="Microsoft.Extensions.Hosting" />
     </ItemGroup>
 
