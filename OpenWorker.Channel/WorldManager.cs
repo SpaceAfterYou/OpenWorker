@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using OpenWorker.Batch;
 using OpenWorker.Batch.Extensions;
 using OpenWorker.Batch.Entities;
+using OpenWorker.Batch.Entities.Basic;
 using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Hotspot;
@@ -135,16 +136,26 @@ public sealed partial class WorldManager(
     }
 
     /// <summary>
-    /// Finds the requested start point, or the default one of the location when none was requested
-    /// or the requested one does not exist. A batch several mazes share (the stages of the infinite tower) has one start point
-    /// for all of them, named after the first: a map with only one start point is entered by it.
+    /// Finds the box the requested jump lands at (a start point, or the exit box of the portal a way back from a maze or
+    /// District 6 names), or the default start point of the location when none was requested or the map does not have it.
+    /// A batch several mazes share (the stages of the infinite tower) has one start point for all of them, named after the
+    /// first: a map with only one start point is entered by it.
     /// </summary>
-    private static bool TryGetStart(VBatchFile batch, short location, int jump, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out StartEventBox? start)
+    private static bool TryGetStart(VBatchFile batch, short location, int jump, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out BasicEntity? start)
     {
         var starts = batch.EventBox.StartEvents;
 
-        if ((jump != 0 && starts.TryGet(jump, out start)) || starts.TryGet(location * 100 + 1, out start))
+        start = jump != 0 ? batch.EventBox.LandingOf(jump) : null;
+
+        if (start is not null)
         {
+            return true;
+        }
+
+        if (starts.TryGet(location * 100 + 1, out var first))
+        {
+            start = first;
+
             return true;
         }
 
@@ -192,7 +203,7 @@ public sealed partial class WorldManager(
     /// Sends the player into a maze of its own, or into the instance of its channel of an open maze of the world. False when
     /// every channel of the open maze is full.
     /// </summary>
-    private async ValueTask<bool> EnterMaze(Entity player, short location, StartEventBox start)
+    private async ValueTask<bool> EnterMaze(Entity player, short location, BasicEntity start)
     {
         if (worlds is not null && worlds.IsWorld(location))
         {
@@ -249,7 +260,7 @@ public sealed partial class WorldManager(
         return true;
     }
 
-    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (Guid Server, string Host, short Port) maze, Guid instance, int party, int members, int room = 0, short back = 0,
+    private async ValueTask SendToMazeAsync(Entity player, short location, BasicEntity start, (Guid Server, string Host, short Port) maze, Guid instance, int party, int members, int room = 0, short back = 0,
         bool friend = false, byte world = 0)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
@@ -265,7 +276,7 @@ public sealed partial class WorldManager(
         var place = new WorldValue
         {
             Location = location,
-            Position = start.GetPosition(),
+            Position = start.GetLandingPosition(),
             Rotation = start.Rotation,
             Map = map
         };
@@ -317,7 +328,7 @@ public sealed partial class WorldManager(
         changes.Begin(player);
     }
 
-    private async ValueTask<EnterOutcome> TryEnterDistrict(Entity player, short location, StartEventBox start)
+    private async ValueTask<EnterOutcome> TryEnterDistrict(Entity player, short location, BasicEntity start)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
 
@@ -344,7 +355,7 @@ public sealed partial class WorldManager(
         var world = new WorldValue
         {
             Location = location,
-            Position = start.GetPosition(),
+            Position = start.GetLandingPosition(),
             Rotation = start.Rotation,
             Map = map
         };
