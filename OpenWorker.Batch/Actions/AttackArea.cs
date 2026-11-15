@@ -55,6 +55,73 @@ public readonly struct AttackArea
         return _box ? TouchesBox(offset, radius) : TouchesArc(offset, radius);
     }
 
+    /// <summary>
+    /// Whether the area reaches a body made of a standing cylinder and hit bones, and the part it lands on: that of the bone
+    /// nearest to the center of the area, unless the cylinder is nearer. A body above or below the area is reached only by its
+    /// bones. Nothing is a cylinder without a radius.
+    /// </summary>
+    public bool Strikes(Vector3 target, float radius, float height, ReadOnlySpan<BonePlace> bones, out byte part)
+    {
+        part = 0;
+
+        var outOfHeight = target.Z > _top || _bottom > target.Z + height;
+
+        if (outOfHeight && bones.IsEmpty)
+        {
+            return false;
+        }
+
+        var struck = false;
+        var nearest = float.MaxValue;
+
+        if (!outOfHeight && radius > 0f)
+        {
+            var offset = new Vector2(target.X, target.Y) - _center;
+
+            if (_box ? TouchesBox(offset, radius) : TouchesArc(offset, radius))
+            {
+                struck = true;
+                nearest = offset.Length();
+            }
+        }
+
+        foreach (var bone in bones)
+        {
+            var offset = new Vector2(bone.Center.X, bone.Center.Y) - _center;
+            float distance;
+
+            if (_box)
+            {
+                if (!TouchesBox(offset, bone.Radius))
+                {
+                    continue;
+                }
+
+                distance = Vector3.Distance(bone.Center, new Vector3(_center, _bottom));
+            }
+            else
+            {
+                // A ball is taken as high as twice its radius above and below the bone.
+                if (bone.Center.Z - 2f * bone.Radius > _top || _bottom > bone.Center.Z + 2f * bone.Radius || !TouchesArc(offset, bone.Radius))
+                {
+                    continue;
+                }
+
+                distance = offset.Length();
+            }
+
+            struck = true;
+
+            if (distance < nearest)
+            {
+                nearest = distance;
+                part = bone.Part;
+            }
+        }
+
+        return struck;
+    }
+
     private bool TouchesBox(Vector2 offset, float radius)
     {
         var (sin, cos) = MathF.SinCos(-_yaw * DegreesToRadians);

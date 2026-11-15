@@ -14,6 +14,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Controls">The moments at which the one who plays the animation takes control of a monster or lets it go.</param>
 /// <param name="Moves">How the animation carries the one who plays it, frame by frame, in the order of time.</param>
 /// <param name="TrapMarks">The moments at which the one who plays the animation marks where its target stands, for the traps that go there.</param>
+/// <param name="Bones">Where the hit bones of the one who plays the animation are, frame by frame.</param>
 public sealed record ActionAnimation(
     string Name,
     float Length,
@@ -28,7 +29,8 @@ public sealed record ActionAnimation(
     IReadOnlyList<SpeedEvent>? Speeds = null,
     IReadOnlyList<ControlEvent>? Controls = null,
     IReadOnlyList<MoveFrame>? Moves = null,
-    IReadOnlyList<float>? TrapMarks = null);
+    IReadOnlyList<float>? TrapMarks = null,
+    BoneFrames? Bones = null);
 
 /// <summary>
 /// One frame of the way an animation carries the one who plays it: the move since the frame before, in the mover's own frame,
@@ -161,6 +163,9 @@ public sealed class ActionFile
     private const string SequenceTag = "SEQU";
     private const string MovesTag = "OSDT";
     private const int MoveFrameSize = 4 * sizeof(float);
+    private const string BonesTag = "TRNS";
+    private const int BonePlaceSize = 3 * sizeof(float);
+    private const int MaxHitBones = 64;
     private const short CutTriggerType = 2;
     private const short AttackTriggerType = 3;
     private const short SpeedTriggerType = 23;
@@ -432,8 +437,7 @@ public sealed class ActionFile
         }
 
         var moves = ReadMoves(reader);
-
-        SkipFrames(reader);
+        var bones = ReadBones(reader);
 
         if (version >= RotationFramesSinceVersion)
         {
@@ -441,7 +445,47 @@ public sealed class ActionFile
         }
 
         return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches,
-            cuts, speeds, controls.Count > 0 ? controls : null, moves, marks.Count > 0 ? marks : null);
+            cuts, speeds, controls.Count > 0 ? controls : null, moves, marks.Count > 0 ? marks : null, bones);
+    }
+
+    /// <summary>
+    /// Where the hit bones are: the number of frames, then a chunk with the number of bones and a place for each bone of each
+    /// frame. A chunk of another size is left unread.
+    /// </summary>
+    private static BoneFrames? ReadBones(BinaryReader reader)
+    {
+        var count = reader.ReadInt32();
+
+        if (count <= 0)
+        {
+            return null;
+        }
+
+        var chunk = Open(reader);
+        BoneFrames? frames = null;
+
+        if (chunk.Tag == BonesTag && chunk.End - reader.BaseStream.Position >= sizeof(int))
+        {
+            var bones = reader.ReadInt32();
+
+            if (bones is > 0 and <= MaxHitBones && chunk.End - reader.BaseStream.Position == (long)count * bones * BonePlaceSize)
+            {
+                var places = new Vector3[count * bones];
+
+                for (var i = 0; i < places.Length; i++)
+                {
+                    var place = ReadVector3(reader);
+
+                    places[i] = float.IsFinite(place.X) && float.IsFinite(place.Y) && float.IsFinite(place.Z) ? place : Vector3.Zero;
+                }
+
+                frames = new BoneFrames(bones, places);
+            }
+        }
+
+        Close(reader, chunk);
+
+        return frames;
     }
 
     /// <summary>
