@@ -378,32 +378,95 @@ public sealed class MonsterBlowTest
     }
 
     /// <summary>
+    /// The monster that lays traps, as heavy as a player, so that its throws lift one the whole way.
+    /// </summary>
+    private static MonsterRow Thrower()
+    {
+        return TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", TrapperFile), ("Skill1", TrapSkill),
+            ("WeightRank", (byte)PlayerVitals.WeightRank));
+    }
+
+    /// <summary>
     /// A player a monster has thrown is in the air, then lies on the ground, then is up again when the time on the ground is over.
     /// </summary>
     [TestMethod]
-    public Task AThrownPlayerIsInTheAirThenLyingThenUpByTheTime() => WithArenaAsync(async arena =>
+    public async Task AThrownPlayerIsInTheAirThenLyingThenUpByTheTime()
     {
-        var creatures = arena.Maze.Creatures;
+        if (Data(TrapSkill) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
 
-        arena.Place(arena.Body.Position + new Vector3(0f, -200f, 0f));
+            return;
+        }
 
-        Assert.IsFalse(creatures.IsInTheAir(arena.Player) || creatures.IsLying(arena.Player), "Nobody has thrown the player yet.");
-        Assert.IsTrue(arena.Maze.KnockDown(arena.Player), "The monster throws the player.");
-        Assert.AreEqual(1, await arena.HitsAsync(1), "The throw is told.");
-        Assert.IsTrue(creatures.IsInTheAir(arena.Player) && !creatures.IsLying(arena.Player), "Thrown up, the player is in the air.");
+        var trapper = Thrower();
 
-        arena.Advance(1.3f);
+        await WithArenaAsync(async arena =>
+        {
+            var creatures = arena.Maze.Creatures;
 
-        Assert.IsTrue(!creatures.IsInTheAir(arena.Player) && creatures.IsLying(arena.Player), "Landed, the player lies.");
+            arena.Place(arena.Body.Position + new Vector3(0f, -200f, 0f));
 
-        arena.Advance(2.8f);
+            Assert.IsFalse(creatures.IsInTheAir(arena.Player) || creatures.IsLying(arena.Player), "Nobody has thrown the player yet.");
+            Assert.IsTrue(arena.Maze.KnockDown(arena.Player).Hit, "The monster throws the player.");
+            Assert.AreEqual(1, await arena.HitsAsync(1), "The throw is told.");
+            Assert.IsTrue(creatures.IsInTheAir(arena.Player) && !creatures.IsLying(arena.Player), "Thrown up, the player is in the air.");
 
-        Assert.IsTrue(creatures.IsLying(arena.Player), "Three seconds on the ground and the fall before them.");
+            arena.Advance(1.3f);
 
-        arena.Advance(0.9f);
+            Assert.IsTrue(!creatures.IsInTheAir(arena.Player) && creatures.IsLying(arena.Player), "Landed, the player lies.");
 
-        Assert.IsFalse(creatures.IsInTheAir(arena.Player) || creatures.IsLying(arena.Player), "Up again by the time.");
-    });
+            arena.Advance(2.8f);
+
+            Assert.IsTrue(creatures.IsLying(arena.Player), "Three seconds on the ground and the fall before them.");
+
+            arena.Advance(0.9f);
+
+            Assert.IsFalse(creatures.IsInTheAir(arena.Player) || creatures.IsLying(arena.Player), "Up again by the time.");
+        }, trapper, skills, actions);
+    }
+
+    /// <summary>
+    /// The command's throw is a blow of a skill of the monster's own that throws, so that the clients play it; a monster without
+    /// one throws nobody.
+    /// </summary>
+    [TestMethod]
+    public async Task TheCommandThrowsWithABlowOfTheMonstersOwnSkill()
+    {
+        if (Data(TrapSkill) is not var (skills, actions))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_RES and OPENWORKER_TEST_ACTION are not set.");
+
+            return;
+        }
+
+        await WithArenaAsync(arena =>
+        {
+            arena.Place(arena.Body.Position + new Vector3(0f, -200f, 0f));
+
+            var refused = arena.Maze.KnockDown(arena.Player);
+
+            Assert.AreEqual((Monster, 0, false), (refused.Monster, refused.Skill, refused.Hit), "No skill of its own throws.");
+            Assert.IsFalse(arena.Maze.Creatures.IsInTheAir(arena.Player));
+            Assert.IsEmpty(arena.Hits());
+
+            return Task.CompletedTask;
+        });
+
+        var trapper = Thrower();
+
+        await WithArenaAsync(async arena =>
+        {
+            arena.Place(arena.Body.Position + new Vector3(0f, -200f, 0f));
+
+            var thrown = arena.Maze.KnockDown(arena.Player);
+
+            Assert.AreEqual((TrapSkill, true), (thrown.Skill, thrown.Hit));
+            Assert.AreNotEqual(0, thrown.Trigger, "An attack the skill really has.");
+            Assert.AreEqual(1, await arena.HitsAsync(1));
+            Assert.IsTrue(arena.Maze.Creatures.IsInTheAir(arena.Player));
+        }, trapper, skills, actions);
+    }
 
     /// <summary>
     /// While a player a monster has thrown lies on the ground, a blow that is not for one passes over it, and a monster waits with a
@@ -419,7 +482,7 @@ public sealed class MonsterBlowTest
             return;
         }
 
-        var trapper = TestRows.Build<MonsterRow>(("Id", Monster), ("AiScript", "Ai_Still"), ("ActionFile", TrapperFile), ("Skill1", TrapSkill));
+        var trapper = Thrower();
         var laid = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = actions }
             .GetTimeline(TrapSkill, TrapperFile).Hits.First(e => e.Trigger.IsTrap && e.Trigger.Center == RightTrap).Time;
 
@@ -430,7 +493,7 @@ public sealed class MonsterBlowTest
             var skill = arena.Body.GetSkill(0)!;
 
             arena.Place(arena.Body.Position + TrapLayout.Turn(RightTrap, arena.Body.Yaw));
-            Assert.IsTrue(arena.Maze.KnockDown(arena.Player));
+            Assert.IsTrue(arena.Maze.KnockDown(arena.Player).Hit);
             Assert.AreEqual(1, await arena.HitsAsync(1), "The throw.");
 
             arena.Advance(1.3f);

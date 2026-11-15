@@ -1665,18 +1665,19 @@ public sealed partial class LuaCreatureManager
     private const float CommandThrowReach = 3000f;
 
     /// <summary>
-    /// A blow that throws must hurt; this one hurts as little as a blow can.
+    /// A blow that throws must hurt; the command's hurts as little as a blow can.
     /// </summary>
     private const float CommandThrowDamage = 0.01f;
 
     /// <summary>
-    /// The nearest monster throws the player up with a blow that hurts it a little. False when no living monster stands near.
+    /// The nearest monster throws the player with a blow of one of its own skills that lifts a standing target, a blow of its body
+    /// before a trap or a shot, hurting the player a little: the clients play a blow by the skill and the attack it names.
     /// </summary>
-    internal bool KnockDown(Entity player)
+    internal CommandThrow KnockDown(Entity player)
     {
         if (!Vitals.IsAlive(player))
         {
-            return false;
+            return default;
         }
 
         var at = Vitals.PositionOf(player);
@@ -1684,16 +1685,37 @@ public sealed partial class LuaCreatureManager
             .OrderBy(e => Vector3.Distance(ecs.Get<WorldComponent>(e).Position, at))
             .FirstOrDefault();
 
-        if (thrower == Entity.Null)
+        if (thrower == Entity.Null || BodyOf(thrower) is not { } body)
         {
-            return false;
+            return default;
         }
 
-        var reaction = new AttackReaction(200f, 150f, 150f, 0f, AttackReaction.AlongAttacker, 0f, 0f, 0f, 0f, 0f, 0, 0, false, 0, false);
-        var blow = new AttackTrigger(0, 0, 0, 0, 0f, 360f, Vector3.Zero, 0f, 0f, 0f, 0f, 0f, DamageRate: CommandThrowDamage, ReactionType: (int)ReactionKind.LaunchUp,
-            Reaction: reaction);
+        var throws = Services is not { } services
+            ? []
+            : body.Behavior.Skills.Where(e => e != 0)
+                .SelectMany(skill => services.Actions.GetTimeline(skill, body.Behavior.ActionFile).Hits.Select(hit => (Skill: skill, hit.Trigger)))
+                .Where(e => Lifts(e.Trigger))
+                .OrderBy(e => !e.Trigger.HitsArea)
+                .ToArray();
 
-        return HitPlayers(thrower, 0, blow, [player]) != 0;
+        if (throws.Length == 0)
+        {
+            return new CommandThrow(ecs.Get<CreatureComponent>(thrower).Identifier, 0, 0, false);
+        }
+
+        var (skill, trigger) = throws[0];
+        var hit = HitPlayers(body, skill, trigger with { DamageRate = Math.Min(trigger.DamageRate, CommandThrowDamage) }, [player]) != 0;
+
+        return new CommandThrow(ecs.Get<CreatureComponent>(thrower).Identifier, skill, trigger.Id, hit);
+    }
+
+    /// <summary>
+    /// Whether a blow throws an enemy that stands on the ground into the air.
+    /// </summary>
+    private static bool Lifts(AttackTrigger trigger)
+    {
+        return trigger is { DamageRate: > 0f, ForAllies: false, IsSummon: false, Reaction.Height: > 0f } &&
+            MonsterReaction.IsLaunch((ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue)) && trigger.Reaches(lying: false);
     }
 
     /// <summary>
