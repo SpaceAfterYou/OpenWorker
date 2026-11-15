@@ -9,14 +9,16 @@ namespace OpenWorker.Gameplay.Modules.SocialItems;
 /// </summary>
 public sealed class SocialObject
 {
-    internal SocialObject(int actor, short channel, int owner, int item, ushort socialItem, Vector3 position, float rotation,
-        float radius, int seats)
+    internal SocialObject(int actor, short channel, int owner, int item, long serial, ushort socialItem, ushort aura, Vector3 position,
+        float rotation, float radius, int seats)
     {
         Actor = actor;
         Channel = channel;
         Owner = owner;
         Item = item;
+        Serial = serial;
         SocialItem = socialItem;
+        Aura = aura;
         Position = position;
         Rotation = rotation;
         Radius = radius;
@@ -33,7 +35,13 @@ public sealed class SocialObject
 
     public int Item { get; }
 
+    /// <summary>The stack of the owner's bag the object was put down from.</summary>
+    public long Serial { get; }
+
     public ushort SocialItem { get; }
+
+    /// <summary>The aura a player carries while using the object; zero for none.</summary>
+    public ushort Aura { get; }
 
     public Vector3 Position { get; }
 

@@ -246,6 +246,7 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
 
   openworker.mazeserver:
     <<: *openworker-server
@@ -358,6 +359,7 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
 
   openworker.districtserver-gracecity:
     <<: *openworker-server
@@ -395,6 +397,7 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
 
   openworker.districtserver-ruinfortress:
     <<: *openworker-server
@@ -432,6 +435,7 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
 
 networks:
   eva-01:

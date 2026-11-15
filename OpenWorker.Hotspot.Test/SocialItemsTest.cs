@@ -13,6 +13,7 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.SocialItems;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Requests;
 using OpenWorker.Hotspot.Modules.SocialItems.Requests;
 using OpenWorker.Hotspot.Modules.SocialItems.Responses;
 using OpenWorker.Hotspot.Modules.SocialItems.Types;
@@ -32,12 +33,31 @@ public sealed class SocialItemsTest
     private const int Mat = 600000001;
     private const int Radio = 600000002;
     private const short MatRow = 10010;
+    private const ushort Aura = 60001;
+    private const int AuraBuff = 33001;
     private const int SocialKind = 170203;
     private const float Cell = WorldOptions.DefaultVisibilityRadius;
 
     private sealed class Grounds(SocialItemGround ground) : ISocialItemGrounds
     {
         public ValueTask<SocialItemGround> GetAsync() => ValueTask.FromResult(ground);
+    }
+
+    /// <summary>
+    /// Records the buffs given.
+    /// </summary>
+    private sealed class Field : IItemField
+    {
+        public List<(Arch.Core.Entity Player, int Buff)> Given { get; } = [];
+
+        public ItemPlace PlaceOf(Arch.Core.Entity player) => ItemPlace.District;
+
+        public bool GiveBuff(Arch.Core.Entity player, int buff)
+        {
+            Given.Add((player, buff));
+
+            return true;
+        }
     }
 
     private sealed class Harness : IDisposable
@@ -66,14 +86,22 @@ public sealed class SocialItemsTest
             // The mat is an object of a player; the radio's row is of a game for two.
             var rules = new ReadOnlyCollection<SocialItemRuleRow>(
             [
-                TestRows.Build<SocialItemRuleRow>(("Id", (ushort)MatRow), ("CollisionRange", 200), ("UseMax", (byte)seats)),
+                TestRows.Build<SocialItemRuleRow>(("Id", (ushort)MatRow), ("CollisionRange", 200), ("UseMax", (byte)seats), ("Aura", Aura)),
                 TestRows.Build<SocialItemRuleRow>(("Id", (ushort)10020), ("CollisionRange", 200), ("UseMax", (byte)seats), ("Kind", (byte)3))
             ]);
 
             // A square kept free around (3000, 3000), and a floor that ends at y = 9000.
             var ground = new SocialItemGround([(new Vector3(3000, 3000, 0), new Vector3(1000, 1000, 100), 90f)], point => point.Y < 9000);
 
-            Objects = new SocialItems(District.Ecs, Inventory, Catalog, rules, new Grounds(ground), Clock, Options.Create(new WorldOptions()));
+            // The aura of the mat: for its carrier alone, its buff every ten seconds from the first check on.
+            var auras = new ReadOnlyCollection<AuraRow>(
+            [
+                TestRows.Build<AuraRow>(("Id", unchecked((short)Aura)), ("Target", (byte)1), ("CheckType", (byte)1), ("CheckMilliseconds", 10_000),
+                    ("Buff", unchecked((short)AuraBuff)))
+            ]);
+
+            Objects = new SocialItems(District.Ecs, Inventory, Catalog, rules, new Grounds(ground), Clock, Options.Create(new WorldOptions()),
+                auras: auras, field: new Lazy<IItemField?>(Buffs));
         }
 
         public DistrictHarness District { get; } = new();
@@ -87,6 +115,20 @@ public sealed class SocialItemsTest
         public SimulationClock Clock { get; }
 
         public SocialItems Objects { get; }
+
+        public Field Buffs { get; } = new();
+
+        /// <summary>
+        /// Moves the clock of the district on by about <paramref name="seconds"/>, a tick of four periods at a time.
+        /// </summary>
+        public void Run(float seconds)
+        {
+            for (var i = 0; i < (int)Math.Ceiling(seconds / SimulationClock.MaxStep.TotalSeconds); i++)
+            {
+                Time.Advance(SimulationClock.MaxStep);
+                Clock.Tick();
+            }
+        }
 
         /// <summary>
         /// A player at the place with a stack of mats in its cash bag, who has asked what is around it.
@@ -316,6 +358,76 @@ public sealed class SocialItemsTest
 
         Assert.HasCount(1, second.Received().Where(e => e.Is(GroupOpcode.SocialItem, (byte)SocialItemOpcode.Stop)), "the stop is told to those around");
         CollectionAssert.AreEqual(new[] { owner.Actor, second.Actor }, harness.Objects.OwnedBy(owner.Entity)!.Users);
+    }
+
+    /// <summary>
+    /// A player who uses an object carries the aura of its row, told to those who see the player: its buff comes at every check
+    /// of the aura, and the aura goes, told the same way, when the player stops.
+    /// </summary>
+    [TestMethod]
+    public async Task AUserCarriesTheAuraOfTheObject()
+    {
+        using var harness = new Harness();
+
+        var owner = harness.Join(100, 100);
+        var near = harness.Join(150, 100);
+
+        Assert.AreEqual((ushort)0, await harness.Objects.StartAsync(owner.Entity, harness.Start(owner, 200, 100)));
+
+        await harness.District.ResetAsync(owner, near);
+
+        Assert.AreEqual((ushort)0, harness.Objects.Use(owner.Entity, Harness.Use(harness.Objects.OwnedBy(owner.Entity)!.Actor, 100, 100)));
+
+        harness.Run(25);
+
+        CollectionAssert.AreEqual(new[] { (owner.Entity, AuraBuff), (owner.Entity, AuraBuff) }, harness.Buffs.Given,
+            "the buff at each check, the first after ten seconds");
+
+        Assert.AreEqual((ushort)0, harness.Objects.Stop(owner.Entity));
+
+        harness.Run(25);
+
+        Assert.HasCount(2, harness.Buffs.Given, "no buff after the stop");
+
+        await harness.District.SettleAsync(owner, near);
+
+        foreach (var player in new[] { owner, near })
+        {
+            var told = player.Received().Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.AuraUpdateBt))
+                .Select(e => (BinaryPrimitives.ReadInt32LittleEndian(e.Body), BinaryPrimitives.ReadUInt16LittleEndian(e.Body.AsSpan(4))))
+                .ToArray();
+
+            CollectionAssert.AreEqual(new[] { (owner.Actor, Aura), (owner.Actor, (ushort)0) }, told, "the aura and its end are told");
+        }
+    }
+
+    /// <summary>
+    /// The stack the owner's object was put down from stays in its storage while the object stands; a move inside the storage is
+    /// free.
+    /// </summary>
+    [TestMethod]
+    public async Task TheStackOfAnObjectStaysInItsStorage()
+    {
+        using var harness = new Harness();
+
+        var owner = harness.Join(100, 100);
+        var stack = harness.Stack(owner);
+        var from = new MoveItemValue { Storage = StorageGroup.Cash, Index = stack.Slot, Item = stack.Item };
+
+        Assert.IsFalse(harness.Objects.HoldsStack(owner.Entity, from, new MoveItemValue { Storage = StorageGroup.CashStorage, Index = 0, Item = -1 }),
+            "no object yet");
+
+        Assert.AreEqual((ushort)0, await harness.Objects.StartAsync(owner.Entity, harness.Start(owner, 200, 100)));
+
+        Assert.IsTrue(harness.Objects.HoldsStack(owner.Entity, from, new MoveItemValue { Storage = StorageGroup.CashStorage, Index = 0, Item = -1 }));
+        Assert.IsTrue(harness.Objects.HoldsStack(owner.Entity, new MoveItemValue { Storage = StorageGroup.CashStorage, Index = 0, Item = -1 }, from),
+            "nor is it swapped out");
+        Assert.IsFalse(harness.Objects.HoldsStack(owner.Entity, from, new MoveItemValue { Storage = StorageGroup.Cash, Index = 5, Item = -1 }));
+
+        harness.Objects.Leave(owner.Entity);
+
+        Assert.IsFalse(harness.Objects.HoldsStack(owner.Entity, from, new MoveItemValue { Storage = StorageGroup.CashStorage, Index = 0, Item = -1 }),
+            "free once the object is gone");
     }
 
     /// <summary>
