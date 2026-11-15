@@ -460,7 +460,7 @@ public sealed class SkillPlaybackTest
     }
 
     /// <summary>
-    /// A combo taken in a loop plays its animation, and the loop goes on after it until its own end.
+    /// A combo taken in a loop plays its animation, and the loop goes on after it until its own end; the combo stays open as long.
     /// </summary>
     [TestMethod]
     public void AComboInALoopReturnsToTheLoop()
@@ -475,6 +475,14 @@ public sealed class SkillPlaybackTest
 
         // The animation of the combo from 0.2 to 0.7, then the loop again until 3.1, then the end.
         AreTimes([0.3f, 1.2f, 2.2f, 3.2f], Play(playback));
+
+        // Once taken, the combo stays open while the loop lasts, past its own wait.
+        var held = new SkillPlayback(Skill(null, WithCombo(loop, 0f, 0.5f, new ComboStep("next", 0)), null, Clip("end", 0.5f, false), loopTime: 3f).WithStart(Clip("start", 0.1f, false)));
+
+        held.Advance(0.2f);
+        Assert.IsTrue(held.Combo(next, 0.2f));
+        held.Advance(2f);
+        Assert.IsTrue(held.Combo(next, 2f), "Taken again after its wait.");
     }
 
     /// <summary>

@@ -290,12 +290,18 @@ public sealed class SkillPlayback
     /// </summary>
     private void Arm(ComboEvent combo, float at, float ends)
     {
-        if (_armed?.Combo != combo)
+        var until = combo.Wait > 0f ? at + combo.Wait : ends;
+
+        if (_armed is { } armed && armed.Combo == combo)
+        {
+            until = Math.Max(until, armed.Until);
+        }
+        else
         {
             _taken = 0;
         }
 
-        _armed = (combo, combo.Wait > 0f ? at + combo.Wait : ends);
+        _armed = (combo, until);
     }
 
     /// <summary>
@@ -315,7 +321,12 @@ public sealed class SkillPlayback
         _resume = resume;
         _taken++;
 
-        if (resume is not { Step: SkillStep.Loop or SkillStep.Extra })
+        // Once taken in a loop or a wait, the combo no longer runs out with its wait: it stays open while that step lasts.
+        if (resume is { Step: SkillStep.Loop or SkillStep.Extra } kept && _armed is { } armed)
+        {
+            _armed = (armed.Combo, Math.Max(armed.Until, kept.End));
+        }
+        else
         {
             _armed = null;
         }
