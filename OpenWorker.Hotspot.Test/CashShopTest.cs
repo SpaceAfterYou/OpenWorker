@@ -312,9 +312,9 @@ public sealed class CashShopTest
         var sent = Drain(world, player, connection);
 
         CollectionAssert.AreEqual(ShopBurst, sent.Select(e => e.Opcode).ToArray(), "only the entry from the character selection");
-        Assert.AreEqual((0, CashShopCatalog.PartSize), (sent[1].Body[0], BitConverter.ToInt32(sent[1].Body, 1)));
-        Assert.AreEqual((1, 1), (sent[2].Body[0], BitConverter.ToInt32(sent[2].Body, 1)));
-        Assert.AreEqual(1234, BitConverter.ToInt32(sent[3].Body));
+        Assert.AreEqual((0, CashShopCatalog.PartSize), (sent[0].Body[0], BitConverter.ToInt32(sent[0].Body, 1)));
+        Assert.AreEqual((1, 1), (sent[1].Body[0], BitConverter.ToInt32(sent[1].Body, 1)));
+        Assert.AreEqual(1234, BitConverter.ToInt32(sent[2].Body));
     }
 
     /// <summary>
@@ -528,7 +528,7 @@ public sealed class CashShopTest
 
         var notice = MessageOpcode.From(GroupOpcode.System, SystemOpcode.ServerOptionUpdate);
 
-        CollectionAssert.AreEqual(ShopBurst.Append(notice).ToArray(), Wait(lacking, 6).Select(e => e.Opcode).ToArray());
+        CollectionAssert.AreEqual(ShopBurst.Append(notice).ToArray(), Wait(lacking, 5).Select(e => e.Opcode).ToArray());
         CollectionAssert.AreEqual(new[] { notice }, Wait(given, 1).Select(e => e.Opcode).ToArray());
     }
 
@@ -536,7 +536,6 @@ public sealed class CashShopTest
 
     private static readonly MessageOpcode[] ShopBurst =
     [
-        MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.BannerLoad),
         MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashLoad),
         MessageOpcode.From(GroupOpcode.Shop, ShopOpcode.CashLoad),
         MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateCash),

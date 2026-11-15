@@ -185,15 +185,13 @@ public sealed partial class CashShopWindow(
     }
 
     /// <summary>
-    /// The banners (none), then the products in parts of the original's size, the last one marked; an empty list is one last
-    /// part.
+    /// The products in parts of the original's size, the last one marked; an empty list is one last part. The banners (09/28)
+    /// are not sent: there are none, and the original sends them only when it has some.
     /// </summary>
     private Frame[] Encode()
     {
         var listing = catalog.Listing;
         var frames = new List<Frame>();
-
-        Add(new ShopBannerLoadResponse { BannerList = [] });
 
         for (var first = 0; first == 0 || first < listing.Count; first += CashShopCatalog.PartSize)
         {
