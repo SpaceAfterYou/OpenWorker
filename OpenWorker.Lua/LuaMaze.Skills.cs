@@ -1,6 +1,7 @@
 using Arch.Core;
 using Lua;
 using OpenWorker.Batch.Actions;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -127,6 +128,14 @@ public partial class LuaMaze
         }
 
         CountHiddenEvent(HiddenEventTarget.Evade, 0, 1);
+
+        // Gear may name a buff that every evade gives.
+        var buff = combat.GetPlayer(Ecs, player).Special.Of(SpecialEffect.EvadeBuff);
+
+        if (buff >= 1f && buff <= ushort.MaxValue)
+        {
+            _buffs.Give(player, (int)buff, player);
+        }
 
         if (clips.Any(e => e?.Cuts is { Count: > 0 }))
         {

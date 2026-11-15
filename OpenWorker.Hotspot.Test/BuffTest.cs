@@ -179,6 +179,67 @@ public sealed class BuffTest
         }
     }
 
+    private static SpecialEffects Wearing(params (int Effect, float Value)[] effects)
+    {
+        var sheet = new StatSheet();
+
+        foreach (var (effect, value) in effects)
+        {
+            sheet.Apply(effect, value);
+        }
+
+        return sheet.Special;
+    }
+
+    /// <summary>
+    /// A blow that lands gives the buffs the gear of either side names: the attacker's debuff to the one hit and its buff to
+    /// itself. The one hit sends its share of the damage back; damage sent back that fells the attacker fells it at the next step.
+    /// </summary>
+    [TestMethod]
+    public async Task ABlowThatLandsGivesTheBuffsOfTheGearAndSendsBackItsShare()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var connection = new RecordingConnection();
+            var player = Player(world, connection);
+            var maze = Maze(world, player);
+
+            maze.SpawnSector(Sector);
+
+            var monster = maze.Creatures.FindMonsters((_, _) => true).Single();
+
+            world.Set(monster, world.Get<CreatureComponent>(monster) with { Health = 1000 });
+
+            maze.Buffs.AfterLandedBlow(player, monster, Wearing((123, Stun), (146, Might)), SpecialEffects.None, 100);
+
+            Assert.IsTrue(maze.Buffs.IsHeld(monster), "The debuff of the attacker's gear stuns the one hit.");
+            await MetricAssertions.UntilAsync(() => Received(connection, SkillOpcode.BuffUpdateBt).Any(e => BuffOf(e) == Might), "The attacker gives itself its buff.");
+
+            maze.Buffs.AfterLandedBlow(monster, player, SpecialEffects.None, Wearing((125, 50f)), 100);
+            Assert.AreEqual(950, world.Get<CreatureComponent>(monster).Health, "Half the damage comes back.");
+
+            var fallen = new List<Entity>();
+
+            maze.Buffs.MonsterKilled += (dead, _) => fallen.Add(dead);
+            world.Set(monster, world.Get<CreatureComponent>(monster) with { Health = 30 });
+            maze.Buffs.AfterLandedBlow(monster, player, SpecialEffects.None, Wearing((125, 50f)), 100);
+
+            Assert.AreEqual(0, world.Get<CreatureComponent>(monster).Health);
+            Assert.IsEmpty(fallen, "The attacker does not fall in the middle of its own blow.");
+
+            maze.Buffs.Step(0.1f);
+
+            CollectionAssert.AreEqual(new[] { monster }, fallen, "It falls at the next step.");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
     /// <summary>
     /// A group that stacks up to three renews its time with every stack, refuses a lower grade, and turns into its change
     /// buff at the top.

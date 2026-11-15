@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Modules.Boosters;
 using OpenWorker.Gameplay.Modules.HiddenEvents;
@@ -70,8 +71,6 @@ public sealed partial class DropService(
 
     private const int Chances = 10000;
 
-    // The special effect that adds a share in percent to the soul vapor a monster lets fall.
-    private const int MoreSoulVapor = 117;
     private const int BossRank = 4;
 
     // The tables of a party's drop go up to four members.
@@ -240,7 +239,7 @@ public sealed partial class DropService(
             multiple = drop.GoldBonusMultiple;
         }
 
-        var goldRate = player is { } known && boosters is not null ? boosters.GetRate(known, BoosterEffect.IncGoldDrop) : 0f;
+        var goldRate = player is { } known ? GoldRate(known) : 0f;
 
         for (var i = 0; i < multiple; i++)
         {
@@ -249,6 +248,21 @@ public sealed partial class DropService(
 
             things.Add(new DropThing(GoldObject, gold + bonus, bonus));
         }
+    }
+
+    /// <summary>
+    /// The share of gold a player gets on top of what falls: from its gear, its boosters and its buffs.
+    /// </summary>
+    private float GoldRate(Entity player)
+    {
+        var rate = boosters?.GetRate(player, BoosterEffect.IncGoldDrop) ?? 0f;
+
+        if (combat is not null && world.Has<PersonInfoComponent>(player))
+        {
+            rate += combat.GetPlayer(world, player).Special.Of(SpecialEffect.MoreGold) * 0.01f;
+        }
+
+        return rate + (BuffBook.Of(world, player)?.Rates.GoldRate ?? 0f);
     }
 
     /// <summary>
@@ -263,7 +277,7 @@ public sealed partial class DropService(
         }
 
         var share = player is { } known && combat is not null && world.Has<PersonInfoComponent>(known)
-            ? combat.GetPlayer(world, known).Special[MoreSoulVapor] * 0.01f
+            ? combat.GetPlayer(world, known).Special.Of(SpecialEffect.MoreSoulVapor) * 0.01f
             : 0f;
 
         var count = Between(random, (int)(drop.SoulMin * (1f + share)), (int)(drop.SoulMax * (1f + share)), drop.Id, "soul vapor");
@@ -418,7 +432,7 @@ public sealed partial class DropService(
             GoldObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Gold, drop.Count, MoneyEarnFlow.PickUp)) >= 0,
             BattlePointObject => inventory.AddUpToLimit(player, ShopCurrency.Bp, drop.Count) >= 0,
             EtherObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Ether, drop.Count)) >= 0,
-            SoulObject => true,
+            SoulObject => Gain(player, drop.Count),
             // A fever item acts at once and does not go into the bags.
             _ when use?.UseOnPickUp(player, drop.ObjectId) == true => true,
             _ => inventory.TryGive(player, drop.ObjectId, drop.Count)
@@ -453,6 +467,16 @@ public sealed partial class DropService(
         {
             world.Get<ServerSessionComponent>(player).Send(new DropPickUpResponse { Serial = serial });
         }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Soul vapor that is picked up fills the soul vapor of the player up to its size; what does not fit is lost.
+    /// </summary>
+    private bool Gain(Entity player, int count)
+    {
+        PlayerSoulVapor.Gain(world, player, count);
 
         return true;
     }

@@ -203,6 +203,14 @@ public sealed class PlayerGauges(World world, CombatTables tables, ReadOnlyColle
     /// </summary>
     public void Pay(Entity player, SkillCostKind kind, float cost)
     {
+        // Soul vapor is kept in a city as in a maze.
+        if (kind == SkillCostKind.SoulVapor)
+        {
+            PlayerSoulVapor.Spend(world, player, (int)cost);
+
+            return;
+        }
+
         if (cost <= 0f || !world.TryGet<GaugeComponent>(player, out var gauges) || !gauges.Ready)
         {
             return;

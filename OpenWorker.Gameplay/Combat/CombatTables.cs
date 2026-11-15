@@ -105,7 +105,8 @@ public sealed class CombatTables(
     ItemCatalog? items = null,
     ReadOnlyCollection<StatusSoulGaugeRow>? soulGauges = null,
     GearStats? gear = null,
-    BoosterCatalog? boosters = null)
+    BoosterCatalog? boosters = null,
+    ReadOnlyCollection<LevelupPointRow>? levels = null)
 {
     private static readonly StatSheet Nothing = new();
 
@@ -129,6 +130,7 @@ public sealed class CombatTables(
     private readonly RowIndex<short, CharacterInfoRow> _characters = characters.IndexBy(e => e.Id);
     private Dictionary<(Hero Hero, byte Level), CombatStats> People { get; } = [];
     private Dictionary<int, MonsterCombatComponent> MonsterStats { get; } = [];
+    private readonly RowIndex<byte, LevelupPointRow> _levels = (levels ?? new ReadOnlyCollection<LevelupPointRow>([])).IndexBy(e => e.Id);
     private readonly RowIndex<short, StatusSoulGaugeRow> _soulGauges = (soulGauges ?? new ReadOnlyCollection<StatusSoulGaugeRow>([])).IndexBy(e => e.Id);
 
     public MonsterCombatComponent GetMonster(int identifier)
@@ -190,6 +192,8 @@ public sealed class CombatTables(
         Statuses.TryGetValue((short)character.Character_Status, out var status);
 
         var stats = CombatStatCalculator.Calculate(status, level, character.Character_Status_Type, sheet);
+
+        stats = CombatStatCalculator.WithSoulVapor(stats, _levels.TryGet(level, out var reached) ? reached.SoulVaporMax : 0, sheet);
 
         return _soulGauges.TryGet(status.Id, out var row) && status.Id != 0
             ? CombatStatCalculator.WithSoulGauge(stats, hero, row.SoulGauge, sheet)

@@ -27,6 +27,8 @@ public sealed class ExperienceService
 {
     private const int LastRank = 6;
 
+    private const float Percent = 0.01f;
+
     private readonly float _rate;
     private readonly World _world;
     private readonly InventoryService _inventory;
@@ -136,12 +138,13 @@ public sealed class ExperienceService
     }
 
     /// <summary>
-    /// Gives the experience of a kill with what the boosters of the player add to it: the part they add is told to the client as
-    /// a bonus. Returns what the player got in all.
+    /// Gives the experience of a kill with what the gear and the boosters of the player add to it: the part they add is told to
+    /// the client as a bonus. Returns what the player got in all.
     /// </summary>
     private int GiveWithBoosters(Entity player, int experience)
     {
-        var bonus = (int)(experience * (_boosters?.GetRate(player, BoosterEffect.IncExp) ?? 0f));
+        var gear = _stats is not null && _world.Has<PersonInfoComponent>(player) ? _stats.Of(player).Special.Of(SpecialEffect.MoreExperience) * Percent : 0f;
+        var bonus = (int)(experience * (gear + (_boosters?.GetRate(player, BoosterEffect.IncExp) ?? 0f)));
 
         Add(player, experience + bonus, bonus);
 

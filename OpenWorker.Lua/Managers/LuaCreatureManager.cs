@@ -1537,6 +1537,14 @@ public sealed partial class LuaCreatureManager
     }
 
     /// <summary>
+    /// Whether a throw the server dealt the player still holds it in the air.
+    /// </summary>
+    internal bool IsInTheAir(Entity player)
+    {
+        return ecs.TryGet<PlayerPostureComponent>(player, out var posture) && Time < posture.DownUntil;
+    }
+
+    /// <summary>
     /// Whether the player of an actor lies on the ground.
     /// </summary>
     internal bool IsLying(int actor)
@@ -1693,9 +1701,10 @@ public sealed partial class LuaCreatureManager
             var defense = DefenseOfPlayer(victim);
             var shielded = Vitals.IsProtected(victim) || defense == DefenseType.Invincible;
             var harmless = shielded || trigger.DamageRate <= 0f;
+            var guard = Vitals.StatsOf(victim);
             var result = harmless
                 ? new DamageResult(0, HitResults.None)
-                : DamageCalculator.Calculate(stats, Vitals.StatsOf(victim), skill, defense, trigger.DamageRate, Random, context: kind);
+                : DamageCalculator.Calculate(stats, guard, skill, defense, trigger.DamageRate, Random, context: kind with { Flying = IsInTheAir(victim), Down = IsLying(victim) });
 
             if (Buffs is not null && !harmless)
             {
@@ -1709,6 +1718,11 @@ public sealed partial class LuaCreatureManager
             if (Buffs is not null && !harmless)
             {
                 Buffs.OnCondition(victim, result.Flags.HasFlag(HitResults.Critical) ? MazeBuffs.OnCriticallyDamaged : result.Flags.HasFlag(HitResults.Miss) ? MazeBuffs.OnDamagedMissed : MazeBuffs.OnDamaged);
+
+                if (!result.Flags.HasFlag(HitResults.Miss))
+                {
+                    Buffs.AfterLandedBlow(attacker, victim, stats.Special, guard.Special, result.Damage);
+                }
             }
 
             var shownDefense = shielded ? DefenseType.Invincible : defense;

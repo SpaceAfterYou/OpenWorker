@@ -24,9 +24,10 @@ public readonly record struct DamageContext
     public static DamageContext PlayerHits(Opponent monster, bool flying, bool down) => new() { Monster = monster, MonsterIsTarget = true, Flying = flying, Down = down };
 
     /// <summary>
-    /// A monster hits a player: the effects of the player that take damage away count, by the kind of the monster.
+    /// A monster hits a player: the effects of the player that take damage away count, by the kind of the monster and by whether
+    /// the player is in the air or lying on the ground.
     /// </summary>
-    public static DamageContext MonsterHits(Opponent monster) => new() { Monster = monster };
+    public static DamageContext MonsterHits(Opponent monster, bool flying = false, bool down = false) => new() { Monster = monster, Flying = flying, Down = down };
 
     public Opponent? Monster { get; init; }
 
@@ -75,6 +76,16 @@ public static class SpecialDamage
         }
 
         var guard = target.Special;
+
+        if (context.Flying)
+        {
+            damage = Take(damage, guard.Of(SpecialEffect.DamageInTheAirDown));
+        }
+
+        if (context.Down)
+        {
+            damage = Take(damage, guard.Of(SpecialEffect.DamageLyingDown));
+        }
 
         damage = Take(damage, guard.Of(monster.IsBoss ? SpecialEffect.DamageFromBoss : SpecialEffect.DamageFromPlain));
         damage = Take(damage, guard.Of(monster.IsRanged ? SpecialEffect.DamageFromRanged : SpecialEffect.DamageFromMelee));

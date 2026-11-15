@@ -66,4 +66,18 @@ public sealed class SpecialDamageTest
         Assert.AreEqual(19, SpecialDamage.Apply(100, nobody, player, DamageContext.MonsterHits(Plain), true), "a graze loses half of the rest");
         Assert.AreEqual(100, SpecialDamage.Apply(100, nobody, player, default, false), "no monster in the hit");
     }
+
+    /// <summary>
+    /// A player in the air, or lying on the ground, takes less by the share its gear has for that.
+    /// </summary>
+    [TestMethod]
+    public void APlayerInTheAirOrLyingTakesLessByItsGear()
+    {
+        var player = Wearing((143, 50f), (144, 25f));
+        var nobody = new CombatStats();
+
+        Assert.AreEqual(100, SpecialDamage.Apply(100, nobody, player, DamageContext.MonsterHits(Plain), false), "standing");
+        Assert.AreEqual(50, SpecialDamage.Apply(100, nobody, player, DamageContext.MonsterHits(Plain, flying: true), false), "in the air");
+        Assert.AreEqual(75, SpecialDamage.Apply(100, nobody, player, DamageContext.MonsterHits(Plain, down: true), false), "lying");
+    }
 }

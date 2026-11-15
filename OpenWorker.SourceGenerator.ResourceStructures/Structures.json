@@ -518,7 +518,7 @@
   "tb_Levelup_Point": [
     "Byte",
     "Int32 Experience",
-    "Int16"
+    "Int16 SoulVaporMax"
   ],
   "tb_Navigation_Warpmap": [
     "Int32",
