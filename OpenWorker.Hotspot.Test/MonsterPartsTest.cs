@@ -325,6 +325,34 @@ public sealed class MonsterPartsTest
         });
 
     /// <summary>
+    /// Outside a skill the hit bones follow what the monster plays of its own, here a flinch, and then the way it stands.
+    /// </summary>
+    [TestMethod]
+    public Task TheHitBonesFollowTheAnimationTheMonsterPlays() =>
+        WithMachinaAsync(stage =>
+        {
+            var body = stage.Creatures.BodyOf(stage.Machina)!;
+            Assert.IsFalse(stage.Actions.GetAnimation(MachinaFile, "B_DMG_L")!.Repeats, "an animation that plays once");
+
+            var length = body.PlayAction("B_DMG_L");
+
+            Assert.IsGreaterThan(0.2f, length);
+
+            stage.Advance(TimeSpan.FromSeconds(0.2));
+
+            var (playing, time) = body.HitAnimation();
+
+            Assert.AreEqual("B_DMG_L", playing?.Name);
+            Assert.AreEqual(0.2f, time, 0.06f);
+
+            stage.Advance(TimeSpan.FromSeconds(length));
+
+            Assert.AreEqual(body.IsBattlePose ? "B_Stand" : "N_Stand", body.HitAnimation().Animation?.Name, "then the way it stands");
+
+            return Task.CompletedTask;
+        });
+
+    /// <summary>
     /// A shot and a link of a chain that run into a bone of a monster land on the part of that bone, wherever its cylinder is.
     /// </summary>
     [TestMethod]

@@ -125,6 +125,7 @@ internal partial class MonsterBody : IAiHost
         _speeds.Clear();
         _moves.Clear();
         _reactionPlays.Clear();
+        ForgetMotions();
         DropCombo();
         _carried = false;
         _lastChange = 0;
@@ -823,6 +824,7 @@ internal partial class MonsterBody : IAiHost
         _clips.Clear();
         _speeds.Clear();
         _moves.Clear();
+        _motions.Clear();
         _looks.Clear();
         _lookSpeed = 0f;
         _staged = false;
@@ -1149,6 +1151,8 @@ internal partial class MonsterBody : IAiHost
         _lastYawSent = Yaw;
         _stoppedAt = null;
 
+        ShowWalk(true);
+
         Broadcast(WalkMessage());
     }
 
@@ -1184,6 +1188,8 @@ internal partial class MonsterBody : IAiHost
     {
         _lastYawSent = Yaw;
         _stoppedAt = Position;
+
+        ShowWalk(false);
 
         Broadcast(new MovementStopBtResponse
         {
