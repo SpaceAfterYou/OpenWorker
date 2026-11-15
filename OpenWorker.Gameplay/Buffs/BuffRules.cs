@@ -234,7 +234,11 @@ public static class BuffRules
     /// Puts a buff back on someone who carried it before (from one server to the next, or through a relog) with the time it had
     /// left and the stacks it had. What a buff gives when it begins (life back, a hurt) is not given again.
     /// </summary>
-    public static bool Restore(BuffBook book, BuffCatalog catalog, ushort buff, float time, byte count, in BuffCarrier carrier, List<BuffChange> changes)
+    /// <param name="owner">The actor that gave it; the carrier itself without.</param>
+    /// <param name="anyTime">The time is taken as it is, even beyond the length of one buff, which stacks can reach; without, it is
+    /// capped at that length.</param>
+    public static bool Restore(BuffBook book, BuffCatalog catalog, ushort buff, float time, byte count, in BuffCarrier carrier, List<BuffChange> changes, int? owner = null,
+        bool anyTime = false)
     {
         if (!catalog.TryGet(buff, out var definition))
         {
@@ -243,7 +247,7 @@ public static class BuffRules
 
         var begun = new List<BuffChange>();
 
-        if (!Apply(book, catalog, definition, carrier.Actor, carrier, begun))
+        if (!Apply(book, catalog, definition, owner ?? carrier.Actor, carrier, begun))
         {
             return false;
         }
@@ -261,7 +265,7 @@ public static class BuffRules
 
         if (!definition.Lasts && time > 0f)
         {
-            active.Remaining = Math.Min(definition.Duration, time);
+            active.Remaining = anyTime ? time : Math.Min(definition.Duration, time);
         }
 
         active.Count = Math.Clamp(count, (byte)1, MostStacks);

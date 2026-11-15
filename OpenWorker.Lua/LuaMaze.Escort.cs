@@ -368,7 +368,8 @@ public partial class LuaMaze
             return;
         }
 
-        var targets = strike.Targets.Where(e => Ecs.IsAlive(e) && Ecs.Get<CreatureComponent>(e).Health > 0).ToArray();
+        var standing = strike.Targets.Select((target, i) => (Target: target, Part: strike.Parts[i])).Where(e => Ecs.IsAlive(e.Target) && Ecs.Get<CreatureComponent>(e.Target).Health > 0).ToArray();
+        var targets = standing.Select(e => e.Target).ToArray();
 
         if (targets.Length == 0)
         {
@@ -378,7 +379,7 @@ public partial class LuaMaze
         var attacker = Ecs.Get<WorldComponent>(strike.Escorted);
         var stats = _buffs.StatsOf(strike.Escorted, Ecs.Get<MonsterCombatComponent>(strike.Escorted).Stats);
         var skill = combat.GetSkill(strike.Skill);
-        var hits = targets.Select(target => ApplyDamage(strike.Escorted, target, stats, skill, strike.Trigger.DamageRate, strike.Trigger, strike.Skill, HitKinds.Of(strike.Trigger))).ToArray();
+        var hits = standing.Select(e => ApplyDamage(strike.Escorted, e.Target, e.Part, stats, skill, strike.Trigger.DamageRate, strike.Trigger, strike.Skill, HitKinds.Of(strike.Trigger))).ToArray();
 
         creatureManager.TellHitSlow(hits, strike.Trigger);
 

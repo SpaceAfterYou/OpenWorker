@@ -41,6 +41,16 @@ public readonly struct AttackArea
     }
 
     /// <summary>
+    /// The space of a ball: a full circle of its radius, as high as the ball.
+    /// </summary>
+    public static AttackArea Ball(Vector3 center, float radius)
+    {
+        var round = new AttackTrigger(0, 0, 0, 0, 0f, 2f * FullCircle, Vector3.Zero, 0f, 0f, radius, 2f * radius, 0f);
+
+        return new AttackArea(round, center - new Vector3(0f, 0f, radius), 0f);
+    }
+
+    /// <summary>
     /// Whether a standing cylinder touches the area.
     /// </summary>
     public bool Touches(Vector3 target, float radius, float height)

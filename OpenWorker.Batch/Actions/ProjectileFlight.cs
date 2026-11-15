@@ -3,14 +3,15 @@ using System.Numerics;
 namespace OpenWorker.Batch.Actions;
 
 /// <summary>
-/// Something the flight can run into.
+/// Something the flight can run into: a standing cylinder, and the hit bones of a monster that has them.
 /// </summary>
-public readonly record struct FlightTarget(int Key, Vector3 Position, float Radius, float Height);
+public readonly record struct FlightTarget(int Key, Vector3 Position, float Radius, float Height, BonePlace[]? Bones = null);
 
 /// <summary>
-/// A place where a projectile went off. <see cref="Collider"/> is whom it hit, if it hit someone.
+/// A place where a projectile went off. <see cref="Collider"/> is whom it hit, if it hit someone, and <see cref="Part"/> the
+/// part of it the projectile ran into.
 /// </summary>
-public readonly record struct Explosion(Vector3 Position, int? Collider);
+public readonly record struct Explosion(Vector3 Position, int? Collider, byte Part = 0);
 
 /// <summary>
 /// A projectile on its way. The server has no map geometry, so the ground is flat at the height of the shooter's feet, and there are no walls.
@@ -194,7 +195,7 @@ public sealed class ProjectileFlight
         {
             foreach (var target in targets)
             {
-                if (_pierced.Contains(target.Key) || !Touches(target))
+                if (_pierced.Contains(target.Key) || !Touches(target, out var pierced))
                 {
                     continue;
                 }
@@ -206,7 +207,7 @@ public sealed class ProjectileFlight
                     continue;
                 }
 
-                explosions.Add(new Explosion(Position, target.Key));
+                explosions.Add(new Explosion(Position, target.Key, pierced));
 
                 if (_pierced.Count > _info.PenetrateCount)
                 {
@@ -226,6 +227,7 @@ public sealed class ProjectileFlight
 
         FlightTarget? nearest = null;
         var closest = float.PositiveInfinity;
+        byte part = 0;
 
         for (var index = 0; index < targets.Count; index++)
         {
@@ -233,16 +235,17 @@ public sealed class ProjectileFlight
             var distance = Vector3.DistanceSquared(target.Position, Position);
 
             // The first of those at the same distance, as a stable sort gives it.
-            if (distance < closest && Touches(target))
+            if (distance < closest && Touches(target, out var touched))
             {
                 closest = distance;
                 nearest = target;
+                part = touched;
             }
         }
 
         if (nearest is { } hit)
         {
-            explosions.Add(new Explosion(Position, hit.Key));
+            explosions.Add(new Explosion(Position, hit.Key, part));
             IsOver = !_info.IsContinuous;
         }
         else if (_info.IsContinuous)
@@ -251,18 +254,12 @@ public sealed class ProjectileFlight
         }
     }
 
-    private bool Touches(FlightTarget target)
+    /// <summary>
+    /// Whether the ball of the projectile reaches the body of a target, and the part it reaches.
+    /// </summary>
+    private bool Touches(FlightTarget target, out byte part)
     {
-        var radius = _info.Radius;
-
-        if (target.Position.Z > Position.Z + radius || Position.Z - radius > target.Position.Z + target.Height)
-        {
-            return false;
-        }
-
-        var offset = new Vector2(target.Position.X - Position.X, target.Position.Y - Position.Y);
-
-        return offset.Length() <= radius + target.Radius;
+        return AttackArea.Ball(Position, _info.Radius).Strikes(target.Position, target.Radius, target.Height, target.Bones, out part);
     }
 
     /// <summary>

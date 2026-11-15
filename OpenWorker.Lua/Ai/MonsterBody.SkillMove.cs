@@ -43,6 +43,8 @@ internal partial class MonsterBody
     /// </summary>
     private void PlayMoves(string animation, float after = 0f)
     {
+        BeginMotion(animation, after);
+
         if (after <= 0f)
         {
             _moves.Clear();

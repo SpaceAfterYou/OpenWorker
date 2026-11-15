@@ -59,15 +59,7 @@ public sealed partial class LuaCreatureManager
                 continue;
             }
 
-            var place = ecs.Get<WorldComponent>(creature);
-            var body = ecs.Get<MonsterCombatComponent>(creature);
-            var identifier = ecs.Get<CreatureComponent>(creature).Identifier;
-            var hitBody = HitBodyOf(identifier);
-            var (radius, height) = hitBody is { HasCylinder: true } ? (hitBody.CylinderRadius, hitBody.CylinderHeight) : (body.BodyRadius, body.BodyHeight);
-
-            PlaceBones(creature, identifier, hitBody, place);
-
-            if (area.Strikes(place.Position, radius, height, CollectionsMarshal.AsSpan(_bonePlaces), out var part))
+            if (Strikes(creature, area, out var part))
             {
                 struck.Add(creature);
 
@@ -79,6 +71,61 @@ public sealed partial class LuaCreatureManager
         }
 
         return [.. struck];
+    }
+
+    /// <summary>
+    /// Whether a blow over an area lands on a monster, by its cylinder and its hit bones, and the part it lands on.
+    /// </summary>
+    internal bool Strikes(Entity monster, AttackArea area, out byte part)
+    {
+        var place = ecs.Get<WorldComponent>(monster);
+        var (radius, height, hitBody) = HitCylinderOf(monster);
+
+        PlaceBones(monster, ecs.Get<CreatureComponent>(monster).Identifier, hitBody, place);
+
+        return area.Strikes(place.Position, radius, height, CollectionsMarshal.AsSpan(_bonePlaces), out part);
+    }
+
+    /// <summary>
+    /// The part a blow over an area lands on for each of the monsters, in their order: zero where it lands on none.
+    /// </summary>
+    internal byte[] PartsStruck(IReadOnlyList<Entity> monsters, AttackArea area)
+    {
+        var parts = new byte[monsters.Count];
+
+        for (var index = 0; index < monsters.Count; index++)
+        {
+            if (ecs.IsAlive(monsters[index]) && Strikes(monsters[index], area, out var part))
+            {
+                parts[index] = part;
+            }
+        }
+
+        return parts;
+    }
+
+    /// <summary>
+    /// A monster as something a projectile or a chain can run into: the cylinder blows land on, and its hit bones where they are now.
+    /// </summary>
+    internal FlightTarget FlightTargetOf(Entity monster, int key)
+    {
+        var place = ecs.Get<WorldComponent>(monster);
+        var (radius, height, hitBody) = HitCylinderOf(monster);
+
+        PlaceBones(monster, ecs.Get<CreatureComponent>(monster).Identifier, hitBody, place);
+
+        return new FlightTarget(key, place.Position, radius, height, _bonePlaces.Count > 0 ? [.. _bonePlaces] : null);
+    }
+
+    /// <summary>
+    /// The cylinder blows land on: that of the file beside the action file when it gives one, else that of the table.
+    /// </summary>
+    private (float Radius, float Height, HitBody? Body) HitCylinderOf(Entity monster)
+    {
+        var body = ecs.Get<MonsterCombatComponent>(monster);
+        var hitBody = HitBodyOf(ecs.Get<CreatureComponent>(monster).Identifier);
+
+        return hitBody is { HasCylinder: true } ? (hitBody.CylinderRadius, hitBody.CylinderHeight, hitBody) : (body.BodyRadius, body.BodyHeight, hitBody);
     }
 
     /// <summary>
@@ -235,8 +282,9 @@ public sealed partial class LuaCreatureManager
 
     /// <summary>
     /// The monster is taken away and another appears in its place, facing the same way, with the life and the super armor it had
-    /// and in its sector and box. The clients see the first go and the second come, then the parts and the armor of the second.
-    /// Nobody killed the first: it gives nothing and its script is not told.
+    /// and in its sector and box. The clients see the first go and the second come, then the parts and the armor of the second,
+    /// then the buffs the first carried, which the second carries on. Nobody killed the first: it gives nothing and its script is
+    /// not told.
     /// </summary>
     private Entity ChangeMonster(Entity monster, int next)
     {
@@ -246,6 +294,7 @@ public sealed partial class LuaCreatureManager
         var armor = ecs.Get<MonsterCombatComponent>(monster).SuperArmor;
         AggroGroup? group = Bodies.TryGetValue(monster, out var body) ? body.Group : null;
         var actor = ecs.Get<ActorComponent>(monster);
+        var buffs = Buffs?.Carried(monster) ?? [];
 
         var created = CreateMonster(next, MonsterSpawnBox.At(next, place.Position, place.Rotation, origin.Sector));
 
@@ -276,6 +325,8 @@ public sealed partial class LuaCreatureManager
 
         Broadcast(PartsMessage(created, PartsOf(created)));
         Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(created), Current = after.SuperArmor, Max = after.MaxSuperArmor });
+
+        Buffs?.Carry(created, buffs, actor);
 
         return created;
     }

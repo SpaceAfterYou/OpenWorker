@@ -65,13 +65,15 @@ internal sealed class HelperBody : MonsterBody
         return used;
     }
 
-    protected override bool Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
+    protected override bool Strike(int skill, AttackTrigger trigger, AttackArea area, Explosion? collision, bool colliderOnly)
     {
-        var targets = colliderOnly ? [] : _squad.EnemiesTouching(this, area);
+        var parts = new List<byte>();
+        var targets = colliderOnly ? [] : _squad.EnemiesStruck(this, area, parts);
 
-        if (collider is { } key && _squad.FindEnemyEntity(this, key) is { } hit && !targets.Contains(hit))
+        if (collision is { Collider: { } key } explosion && _squad.FindEnemyEntity(this, key) is { } hit && !targets.Contains(hit))
         {
             targets = [.. targets, hit];
+            parts.Add(explosion.Part);
         }
 
         // A blow for the side of the helper (its owner, the party, itself) gives its buff and hurts nobody; one that only
@@ -92,7 +94,7 @@ internal sealed class HelperBody : MonsterBody
 
         if (targets.Length > 0 && trigger.AffectsTargets)
         {
-            _squad.Queue(new HelperStrike(Helper, skill, trigger, targets));
+            _squad.Queue(new HelperStrike(Helper, skill, trigger, targets, [.. parts]));
 
             return true;
         }
@@ -111,7 +113,7 @@ internal sealed class HelperBody : MonsterBody
     {
         if (targets.Count > 0 && trigger.AffectsTargets && !trigger.ForAllies && !(trigger.Buff > 0 && trigger.DamageRate <= 0f))
         {
-            _squad.Queue(new HelperStrike(Helper, skill, trigger, [.. targets]));
+            _squad.Queue(new HelperStrike(Helper, skill, trigger, [.. targets], Manager.PartsStruck(targets, area)));
         }
     }
 }

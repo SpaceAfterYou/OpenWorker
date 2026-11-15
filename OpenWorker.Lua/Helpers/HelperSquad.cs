@@ -795,7 +795,13 @@ public sealed class HelperSquad
         return count;
     }
 
-    internal Entity[] EnemiesTouching(HelperBody helper, AttackArea area)
+    /// <summary>
+    /// The enemies of a helper a blow over an area lands on, by the cylinder and the hit bones of each, as a blow of a player.
+    /// </summary>
+    internal Entity[] EnemiesTouching(HelperBody helper, AttackArea area) => EnemiesStruck(helper, area, null);
+
+    /// <param name="parts">Where the part each enemy is struck on is added, in the order of the enemies.</param>
+    internal Entity[] EnemiesStruck(HelperBody helper, AttackArea area, List<byte>? parts)
     {
         var living = _manager.Living;
         List<Entity>? touched = null;
@@ -804,10 +810,10 @@ public sealed class HelperSquad
         {
             var creature = living[index];
 
-            if (IsEnemy(helper, creature) && area.Touches(_ecs.Get<WorldComponent>(creature).Position, _ecs.Get<MonsterCombatComponent>(creature).BodyRadius,
-                    _ecs.Get<MonsterCombatComponent>(creature).BodyHeight))
+            if (IsEnemy(helper, creature) && _manager.Strikes(creature, area, out var part))
             {
                 (touched ??= []).Add(creature);
+                parts?.Add(part);
             }
         }
 
@@ -824,9 +830,7 @@ public sealed class HelperSquad
 
             if (IsEnemy(helper, creature))
             {
-                var combat = _ecs.Get<MonsterCombatComponent>(creature);
-
-                targets.Add(new FlightTarget(_ecs.Get<ActorComponent>(creature), _ecs.Get<WorldComponent>(creature).Position, combat.BodyRadius, combat.BodyHeight));
+                targets.Add(_manager.FlightTargetOf(creature, _ecs.Get<ActorComponent>(creature)));
             }
         }
     }

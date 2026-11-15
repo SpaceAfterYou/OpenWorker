@@ -14,7 +14,8 @@ namespace OpenWorker.Lua.Ai;
 /// <summary>
 /// A blow of the escorted that lands on monsters, dealt by the maze once all minds have thought.
 /// </summary>
-internal readonly record struct EscortStrike(Entity Escorted, int Skill, AttackTrigger Trigger, Entity[] Targets);
+/// <param name="Parts">The part each target was struck on when the blow landed, in the order of the targets.</param>
+internal readonly record struct EscortStrike(Entity Escorted, int Skill, AttackTrigger Trigger, Entity[] Targets, byte[] Parts);
 
 /// <summary>
 /// The escorted townsman as its mind sees it: it patrols the way of escort points the maze gives it, point after point, and
@@ -87,13 +88,15 @@ internal sealed class EscortBody : MonsterBody, IAiHost
         return Manager.Living.Count(e => IsEnemy(e) && Vector3.Distance(from, Ecs.Get<WorldComponent>(e).Position) <= distance);
     }
 
-    protected override bool Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
+    protected override bool Strike(int skill, AttackTrigger trigger, AttackArea area, Explosion? collision, bool colliderOnly)
     {
-        var targets = colliderOnly ? [] : Touching(area);
+        var parts = new List<byte>();
+        var targets = colliderOnly ? [] : Touching(area, parts);
 
-        if (collider is { } key && FindEnemyEntity(key) is { } hit && !targets.Contains(hit))
+        if (collision is { Collider: { } key } explosion && FindEnemyEntity(key) is { } hit && !targets.Contains(hit))
         {
             targets = [.. targets, hit];
+            parts.Add(explosion.Part);
         }
 
         if (targets.Length == 0 || !trigger.AffectsTargets || trigger.ForAllies || trigger.Buff > 0 && trigger.DamageRate <= 0f)
@@ -101,7 +104,7 @@ internal sealed class EscortBody : MonsterBody, IAiHost
             return false;
         }
 
-        Strikes.Add(new EscortStrike(Entity, skill, trigger, targets));
+        Strikes.Add(new EscortStrike(Entity, skill, trigger, targets, [.. parts]));
 
         return true;
     }
@@ -116,20 +119,18 @@ internal sealed class EscortBody : MonsterBody, IAiHost
 
             if (IsEnemy(creature))
             {
-                var combat = Ecs.Get<MonsterCombatComponent>(creature);
-
-                targets.Add(new FlightTarget(Ecs.Get<ActorComponent>(creature), Ecs.Get<WorldComponent>(creature).Position, combat.BodyRadius, combat.BodyHeight));
+                targets.Add(Manager.FlightTargetOf(creature, Ecs.Get<ActorComponent>(creature)));
             }
         }
     }
 
-    protected override IReadOnlyList<Entity> TrapTargets(AttackTrigger trigger, AttackArea area) => Touching(area);
+    protected override IReadOnlyList<Entity> TrapTargets(AttackTrigger trigger, AttackArea area) => Touching(area, null);
 
     protected override void StrikeByTrap(int skill, AttackTrigger trigger, Vector3 place, AttackArea area, IReadOnlyList<Entity> targets, bool round)
     {
         if (targets.Count > 0 && trigger.AffectsTargets && !trigger.ForAllies && !(trigger.Buff > 0 && trigger.DamageRate <= 0f))
         {
-            Strikes.Add(new EscortStrike(Entity, skill, trigger, [.. targets]));
+            Strikes.Add(new EscortStrike(Entity, skill, trigger, [.. targets], Manager.PartsStruck(targets, area)));
         }
     }
 
@@ -163,12 +164,21 @@ internal sealed class EscortBody : MonsterBody, IAiHost
         return null;
     }
 
-    private Entity[] Touching(AttackArea area)
+    /// <param name="parts">Where the part each enemy is struck on is added, in the order of the enemies.</param>
+    private Entity[] Touching(AttackArea area, List<byte>? parts)
     {
-        return Manager.Living
-            .Where(IsEnemy)
-            .Where(e => area.Touches(Ecs.Get<WorldComponent>(e).Position, Ecs.Get<MonsterCombatComponent>(e).BodyRadius, Ecs.Get<MonsterCombatComponent>(e).BodyHeight))
-            .ToArray();
+        var touched = new List<Entity>();
+
+        foreach (var creature in Manager.Living)
+        {
+            if (IsEnemy(creature) && Manager.Strikes(creature, area, out var part))
+            {
+                touched.Add(creature);
+                parts?.Add(part);
+            }
+        }
+
+        return [.. touched];
     }
 
     private AiTarget Describe(Entity monster)
