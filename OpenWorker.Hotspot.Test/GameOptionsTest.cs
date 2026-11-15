@@ -118,6 +118,49 @@ public sealed class GameOptionsTest
     }
 
     /// <summary>
+    /// The server where the command is given has the switch, and its players have been told, before the command returns: a
+    /// request right after it sees the content. Its own switch coming back from Redis changes nothing, even after a later one.
+    /// </summary>
+    [TestMethod]
+    public void TheServerOfTheCommandHasTheSwitchBeforeTheCommandReturns()
+    {
+        var redis = Environment.GetEnvironmentVariable("OPENWORKER_TEST_REDIS");
+
+        if (string.IsNullOrEmpty(redis))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_REDIS is not set.");
+        }
+
+        using var district = new Host(new MemoryCommunity(), redis);
+        using var alice = district.Server.Join(1, "Alice");
+        using var services = new ServiceCollection()
+            .AddSingleton<IServerContentStore>(new MemoryContentStore())
+            .AddSingleton(district.Changes)
+            .BuildServiceProvider();
+
+        ICommand command = new OptionCommand(services);
+        bool on = false, off = true;
+
+        district.Server.Run(async () =>
+        {
+            await command.TryExecute(alice.Entity, ["3", "true"]);
+            on = district.Contents[ServerContentIndex.Ranking];
+
+            await command.TryExecute(alice.Entity, ["3", "false"]);
+            off = district.Contents[ServerContentIndex.Ranking];
+        });
+
+        Assert.IsTrue(on);
+        Assert.IsFalse(off);
+
+        // Both echoes come back meanwhile; neither switches anything, so the player is told twice and the content stays off.
+        var frames = alice.Read(1000);
+
+        Assert.HasCount(2, frames);
+        Assert.IsFalse(district.Server.Loop.InvokeAsync(() => district.Contents[ServerContentIndex.Ranking]).GetAwaiter().GetResult());
+    }
+
+    /// <summary>
     /// The client of a game master forces whispers, trades, parties, leagues, friends and looks to "nobody" at every entry and
     /// sends that: the server keeps what the player chose for each of them, and takes any other option and any of them the
     /// player set to something else.
