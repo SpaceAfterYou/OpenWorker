@@ -44,6 +44,11 @@ public sealed class SkillMovementTest
     private const float DashWay = 684f;
 
     /// <summary>
+    /// How far the dash turns the puppet to its target: 360 degrees a second for its first twentieth of a second.
+    /// </summary>
+    private const float DashLook = 18f;
+
+    /// <summary>
     /// A monster whose idle action carries it 913 units.
     /// </summary>
     private const string EnochFile = "MOB_9025_Enoch";
@@ -101,6 +106,11 @@ public sealed class SkillMovementTest
             world.Set(player, world.Get<WorldComponent>(player) with { Position = place });
 
             Assert.IsTrue(Body.UseSkill(Body.GetSkill(0)!, new AiTarget(Person, place, PlayerVitals.BodyRadius, 0f, 1, 1, false)));
+        }
+
+        public void PutPlayer(Vector3 place)
+        {
+            world.Set(player, world.Get<WorldComponent>(player) with { Position = place });
         }
 
         /// <summary>
@@ -261,6 +271,26 @@ public sealed class SkillMovementTest
         Assert.IsGreaterThan(reach, arena.Body.Position.Y - player);
         Assert.IsLessThan(reach + 40f, arena.Body.Position.Y - player);
         Assert.HasCount(1, await arena.FramesAsync(MoveOpcode.IgnoreMotionDelta));
+    });
+
+    /// <summary>
+    /// For its first moment the dash turns the monster to its target as fast as its animation says, and then the clients are told
+    /// the way it looks: a target that has stepped aside bends the dash toward it.
+    /// </summary>
+    [TestMethod]
+    public Task ADashTurnsToItsTargetAtItsStartAndTellsTheWayItLooks() => WithPuppetAsync(async arena =>
+    {
+        arena.Body.Machine.OnStruck(Person);
+        arena.DashAt(5000f);
+        arena.PutPlayer(arena.Start + new Vector3(5000f, 0f, 0f));
+        arena.Advance(0.2f);
+
+        Assert.AreEqual(DashLook, arena.Body.Yaw, 0.5f, "Turned for a twentieth of a second, toward the target.");
+
+        var told = (await arena.FramesAsync(MoveOpcode.UpdateDir)).Last();
+
+        Assert.AreEqual(DashLook, BinaryPrimitives.ReadSingleLittleEndian(told.Body.AsSpan(4)), 0.5f);
+        Assert.AreEqual(1, told.Body[12], "At once.");
     });
 
     /// <summary>

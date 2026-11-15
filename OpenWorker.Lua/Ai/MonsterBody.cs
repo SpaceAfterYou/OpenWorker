@@ -323,6 +323,7 @@ internal partial class MonsterBody : IAiHost
         // What the skill had still to do after a combo cuts it is not done.
         var until = Math.Min(now, _comboAt);
 
+        Look(until);
         ResolveHits(until);
         MoveWithSkill(until);
         GoOnWithCombo(now);
@@ -822,6 +823,8 @@ internal partial class MonsterBody : IAiHost
         _clips.Clear();
         _speeds.Clear();
         _moves.Clear();
+        _looks.Clear();
+        _lookSpeed = 0f;
         _staged = false;
         _freezes = start is null;
 
@@ -865,6 +868,7 @@ internal partial class MonsterBody : IAiHost
             _pending.Sort(static (first, second) => first.Time.CompareTo(second.Time));
 
             AddMoves(timeline.Moves, now, timeline.Clips.Count);
+            AddLooks(timeline.Looks, now);
 
             for (var index = 0; index < timeline.Speeds.Count; index++)
             {

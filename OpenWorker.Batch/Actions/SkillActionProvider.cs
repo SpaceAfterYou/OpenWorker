@@ -68,6 +68,12 @@ public sealed record SkillStage(float Length, IReadOnlyList<SkillHit> Hits, IRea
 public readonly record struct SkillSpeed(float From, float To, float Speed);
 
 /// <summary>
+/// From a moment of a skill, on the clock from its start, the monster turns to its target at a speed in degrees a second; zero
+/// or less stops it.
+/// </summary>
+public readonly record struct SkillLook(float Time, int TurnSpeed);
+
+/// <summary>
 /// An animation of a skill on the clock: when it begins, from the start of the skill, and how long it lasts, in seconds.
 /// </summary>
 public readonly record struct TimedClip(float Began, float Length, ActionAnimation Animation);
@@ -90,6 +96,11 @@ public sealed record SkillTimeline(float Length, IReadOnlyList<TimedClip> Clips,
     /// The moments the monster marks where its target stands, for the traps that go there, in the order of time.
     /// </summary>
     public IReadOnlyList<float> TrapMarks { get; init; } = [];
+
+    /// <summary>
+    /// The moments the monster starts or stops turning to its target, in the order of time.
+    /// </summary>
+    public IReadOnlyList<SkillLook> Looks { get; init; } = [];
 
     /// <summary>
     /// The moment the end animation of the skill may first be cut short by the next skill of a combo. Null when the skill has no end
@@ -197,6 +208,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         var hidings = new List<SkillHiding>();
         var moves = new List<SkillMove>();
         var marks = new List<float>();
+        var looks = new List<SkillLook>();
         var summons = new List<SkillHit>();
         var speeds = new List<SkillSpeed>();
         var offset = 0f;
@@ -262,6 +274,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
 
                 hidings.AddRange((animation.Hides ?? []).Select(hide => new SkillHiding(round + clock.Wall(hide.Start), hide)).Where(e => !rounds || e.Time < end));
                 marks.AddRange((animation.TrapMarks ?? []).Select(mark => round + clock.Wall(mark)).Where(e => !rounds || e < end));
+                looks.AddRange((animation.Looks ?? []).Select(look => new SkillLook(round + clock.Wall(look.Start), look.TurnSpeed)).Where(e => !rounds || e.Time < end));
 
                 foreach (var stretch in clock.Speeds(round))
                 {
@@ -287,6 +300,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         {
             Moves = moves,
             TrapMarks = [.. marks.Order()],
+            Looks = [.. looks.OrderBy(e => e.Time)],
             Summons = [.. summons.OrderBy(e => e.Time)],
             Speeds = speeds,
             ComboAt = combo
