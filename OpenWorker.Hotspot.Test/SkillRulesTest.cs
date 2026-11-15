@@ -386,6 +386,44 @@ public sealed class SkillRulesTest
         }
     }
 
+    /// <summary>
+    /// The game master's learning gives any level of a skill of the hero without points, replacing the level the player has in the
+    /// book and in the decks, and puts it first in the position named; a skill of another hero or a position the deck does not have
+    /// changes nothing.
+    /// </summary>
+    [TestMethod]
+    public void AGameMasterGrantsASkillIntoAPositionOfTheDeck()
+    {
+        var (world, player) = Create();
+
+        try
+        {
+            var learning = new SkillLearning(world, Skills, new ReadOnlyCollection<DivergenceRow>([]), new ReadOnlyCollection<LevelSkillPointRow>([]));
+
+            Assert.IsTrue(learning.Grant(player, StrikeTwo, 0), "a level the player has not reached, no points");
+            Assert.IsTrue(learning.Grant(player, Unlearned, 3));
+
+            var book = world.Get<SkillLearnedComponent>(player).Values.Select(e => e.Skill).ToArray();
+            var deck = world.Get<SkillDeckComponent>(player).SlotList;
+
+            CollectionAssert.Contains(book, StrikeTwo);
+            CollectionAssert.DoesNotContain(book, Strike, "the level it had is replaced");
+            Assert.AreEqual(StrikeTwo, deck.Single(e => e.Position == 0).Skill1);
+            Assert.AreEqual(Unlearned, deck.Single(e => e.Position == 3).Skill1);
+
+            Assert.IsFalse(learning.Grant(player, StrikeTwo, SkillLearning.DeckPositions), "no such position");
+
+            world.Set(player, world.Get<PersonInfoComponent>(player) with { Hero = Hero.Lily });
+
+            Assert.IsFalse(learning.Grant(player, Strike, 1), "a skill of another hero");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
     [TestMethod]
     public void ALevelGivesItsSkillPoints()
     {

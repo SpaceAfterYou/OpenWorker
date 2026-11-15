@@ -541,7 +541,8 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             Find(file, row.AnimationLoop),
             Find(file, row.AnimationExtra),
             Find(file, row.AnimationEnd),
-            row.LoopTime / 1000f,
+            // A charge lasts until it is full, whatever loop time the table gives the skill.
+            charging ? steps.Sum() : row.LoopTime / 1000f,
             charging || row.ControlType == ChargingBothSides,
             steps,
             Enumerable.Range(1, steps.Count).Select(level => Find(file, ChargedEnd(row, level), false)).ToArray());
@@ -663,27 +664,88 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             return false;
         }
 
-        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationExtra, row.AnimationEnd])
+        foreach (var animation in Played(row, file))
         {
-            if (Find(file, name) is { } animation && TryFind(animation, attack, accepts, out trigger))
+            if (TryFind(animation, attack, accepts, out trigger))
             {
                 return true;
             }
         }
 
-        // A charged skill ends with the animation of the level its charge reached, which has shots of its own.
+        return false;
+    }
+
+    /// <summary>
+    /// Every animation a player may play for the skill: the ones of the table, the end of each level of a charge, and the
+    /// animations its combos lead to, and theirs in turn.
+    /// </summary>
+    public IReadOnlyList<ActionAnimation> GetPlayedAnimations(int skill, Hero hero)
+    {
+        return Rows.TryGetValue(skill, out var row) && GetFile(GetHeroFileName(hero)) is { } file ? Played(row, file) : [];
+    }
+
+    private static List<ActionAnimation> Played(SkillRow row, ActionFile file)
+    {
+        var played = new List<ActionAnimation>();
+
+        foreach (var name in (ReadOnlySpan<string>)[row.AnimationStart, row.AnimationLoop, row.AnimationExtra, row.AnimationEnd])
+        {
+            if (Find(file, name) is { } animation && !played.Contains(animation))
+            {
+                played.Add(animation);
+            }
+        }
+
+        // A charged skill ends with the animation of the level its charge reached.
         if (row.ControlType is Charging or ChargingToTheEnd)
         {
             for (var level = 1; level <= ChargeSteps(row).Count; level++)
             {
-                if (Find(file, ChargedEnd(row, level), false) is { } animation && TryFind(animation, attack, accepts, out trigger))
+                if (Find(file, ChargedEnd(row, level), false) is { } animation && !played.Contains(animation))
                 {
-                    return true;
+                    played.Add(animation);
                 }
             }
         }
 
-        return false;
+        for (var i = 0; i < played.Count; i++)
+        {
+            foreach (var combo in played[i].Combos ?? [])
+            {
+                foreach (var step in combo.Left.Concat(combo.Right))
+                {
+                    if (Find(file, step.Animation, false) is { } next && !played.Contains(next))
+                    {
+                        played.Add(next);
+                    }
+                }
+            }
+        }
+
+        return played;
+    }
+
+    private Dictionary<string, IReadOnlyDictionary<int, ActionAnimation>> Numbers { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The animation of a hero's file the client names by its number (the animation of a combo it plays), or null.
+    /// </summary>
+    public ActionAnimation? GetNumberedAnimation(Hero hero, int number)
+    {
+        var name = GetHeroFileName(hero);
+
+        if (GetFile(name) is not { } file)
+        {
+            return null;
+        }
+
+        if (!Numbers.TryGetValue(name, out var numbers))
+        {
+            numbers = AnimationNumbers.Of(file);
+            Numbers.Add(name, numbers);
+        }
+
+        return numbers.GetValueOrDefault(number);
     }
 
     private static bool TryFind(ActionAnimation animation, int attack, Func<AttackTrigger, bool> accepts, out AttackTrigger trigger)

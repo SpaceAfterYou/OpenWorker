@@ -118,6 +118,59 @@ public sealed class SkillLearning(
     }
 
     /// <summary>
+    /// A game master gives the player a skill of its hero, any level, without points or checks, and puts it first in a position
+    /// of the deck: the level of its group the player has is replaced, in the book and in the decks. False for a skill of
+    /// another hero or one the table does not have, and for a position the deck does not have.
+    /// </summary>
+    public bool Grant(Entity player, int skill, int position)
+    {
+        if (!_skills.TryGet(skill, out var row) || position is < 0 or >= DeckPositions ||
+            !world.TryGet<SkillLearnedComponent>(player, out var learned) || learned.Values is null ||
+            !world.TryGet<SkillDeckComponent>(player, out var deck) ||
+            !world.TryGet<PersonInfoComponent>(player, out var person) || row.UseClass != (byte)person.Hero)
+        {
+            return false;
+        }
+
+        var values = learned.Values;
+        var index = IndexOfGroup(values, row.Group);
+        var book = values.Where(e => e.Skill != 0).ToList();
+
+        if (index >= 0)
+        {
+            var replaced = values[index].Skill;
+
+            book[book.FindIndex(e => e.Skill == replaced)] = new SkillInfoValue { Skill = skill };
+            world.Set(player, learned with { Values = [.. book] });
+            ReplaceInDecks(player, replaced, skill);
+            deck = world.Get<SkillDeckComponent>(player);
+        }
+        else
+        {
+            book.Add(new SkillInfoValue { Skill = skill });
+            world.Set(player, learned with { Values = [.. book] });
+        }
+
+        var decks = (deck.SlotList ?? []).ToList();
+        var at = decks.FindIndex(e => e.Position == position);
+        var slot = at >= 0 ? decks[at] with { Skill1 = skill } : new SkillDeckValue { Position = (ushort)position, Skill1 = skill };
+
+        if (at >= 0)
+        {
+            decks[at] = slot;
+        }
+        else
+        {
+            decks.Add(slot);
+        }
+
+        world.Set(player, deck with { SlotList = [.. decks] });
+        world.MarkDirty(player, PersonSections.Skills);
+
+        return true;
+    }
+
+    /// <summary>
     /// Chooses the divergence of a learned skill, or its next level: the divergence belongs to a group of the skill, the
     /// level and the points are enough, and a level follows the one the skill has.
     /// </summary>

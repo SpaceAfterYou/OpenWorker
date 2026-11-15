@@ -22,9 +22,9 @@ public sealed class SkillInputRelay(World world, IPlayerAudience audience)
     public const int MaxPreTargets = 32;
 
     /// <summary>
-    /// The highest number of a sub animation a client may ask for.
+    /// The highest number of an animation a client may name: its motion class times a thousand and a little more.
     /// </summary>
-    public const int MaxSubAnimation = 255;
+    public const int MaxSubAnimation = 999_999;
 
     /// <summary>
     /// The longest a key may be held to charge a skill, in seconds.

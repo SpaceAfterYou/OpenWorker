@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using OpenWorker.Gameplay.Mapping;
 using System.Numerics;
 using OpenWorker.Batch;
+using OpenWorker.Batch.Actions;
 using OpenWorker.Batch.Entities;
 using Microsoft.Extensions.Options;
 using OpenWorker.Batch.Entities.Basic;
@@ -309,11 +310,19 @@ public sealed partial class MazeService(
 
         if (ecs.Has<LuaMaze>(context.Player))
         {
-            ecs.Get<LuaMaze>(context.Player).StartSkill(context.Player, skill.Skill, position);
+            ecs.Get<LuaMaze>(context.Player).StartSkill(context.Player, skill.Skill, position, ModeOf(context.Player, skill));
             ecs.Get<LuaMaze>(context.Player).CountHiddenEventDeckSkill(context.Player, skill.Skill, skill.SkillDeckIndex);
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// The level and divergence the player plays the skill with.
+    /// </summary>
+    private SkillMode? ModeOf(Entity player, ActiveSkillValue skill)
+    {
+        return skillUse.TryGetSkill(skill.Skill, out var row) ? new SkillMode(row.Level, skillUse.DivergenceModeOf(player, skill.Skill, skill.ParentSkill)) : null;
     }
 
     /// <summary>
@@ -551,12 +560,18 @@ public sealed partial class MazeService(
     }
 
     /// <summary>
-    /// The player asks for a sub animation of its skill. The others play it too.
+    /// The player follows its skill with the animation of a combo by a button, named by the number the client gives it. It plays
+    /// here when a combo of the skill offers it, and its attacks land; the others are told in any case, as the original does.
     /// </summary>
     public ValueTask OnHandleAsync(ServiceHandleContext context, SkillSubInputRequest request)
     {
         if (IsFighting(context.Player))
         {
+            if (!ecs.Get<LuaMaze>(context.Player).FollowWithCombo(context.Player, request.SubAnimIndex))
+            {
+                LogComboRefused(request.SubAnimIndex);
+            }
+
             relay.SubInput(context.Player, request.SubAnimIndex);
         }
 
@@ -1233,6 +1248,9 @@ public sealed partial class MazeService(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Skill {Skill} refused with {Code}")]
     private partial void LogSkillRefused(int skill, ushort code);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Animation {Animation} of a combo asked for when no combo of the skill offers it")]
+    private partial void LogComboRefused(int animation);
 
     // What a client sends is no reason to fill the log at a higher level than Debug.
     [LoggerMessage(Level = LogLevel.Debug, Message = "{Request} from a player who is not in a maze, ignored")]

@@ -32,7 +32,30 @@ public sealed record ActionAnimation(
     IReadOnlyList<MoveFrame>? Moves = null,
     IReadOnlyList<float>? TrapMarks = null,
     BoneFrames? Bones = null,
-    IReadOnlyList<LookEvent>? Looks = null);
+    IReadOnlyList<LookEvent>? Looks = null)
+{
+    /// <summary>
+    /// The moments from which the player may follow the animation with another one by a button.
+    /// </summary>
+    public IReadOnlyList<ComboEvent>? Combos { get; init; }
+}
+
+/// <summary>
+/// From a moment of an animation the player may follow it with another animation by a button: the next one of the list of that
+/// button whose level the skill has reached. The client asks for it by the number it gives the animation (06/4A).
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="Left">The animations of the left button, in their order.</param>
+/// <param name="Right">The animations of the right button, in their order.</param>
+/// <param name="Wait">How long the choice stays open, in seconds; zero for as long as the animation plays.</param>
+/// <param name="Count">How often the choice may be taken; zero for no limit.</param>
+/// <param name="Filter">The modes the event is for.</param>
+public sealed record ComboEvent(float Start, IReadOnlyList<ComboStep> Left, IReadOnlyList<ComboStep> Right, float Wait, int Count, ActionFilter Filter);
+
+/// <summary>
+/// An animation a combo leads to and the lowest level of the skill it is for.
+/// </summary>
+public readonly record struct ComboStep(string Animation, int Level);
 
 /// <summary>
 /// From a moment of an animation the one who plays it turns to its target as it moves, or stops turning.
@@ -185,6 +208,18 @@ public sealed class ActionFile
     private const short DetachTriggerType = 30;
     private const short SummonTriggerType = 16;
     private const short ActionTriggerType = 5;
+    private const short ComboTriggerType = 21;
+
+    /// <summary>
+    /// A combo event names ten animations for the left button and ten for the right.
+    /// </summary>
+    private const int ComboSteps = 10;
+
+    private const short ComboWaitSinceVersion = 203;
+    private const short ComboRightClickSinceVersion = 219;
+    private const short ComboOnceSinceVersion = 220;
+    private const short ComboTurnSinceVersion = 238;
+    private const short ComboCountSinceVersion = 247;
 
     /// <summary>
     /// The action of an action event that marks where the target stands, for a trap that goes there.
@@ -416,6 +451,7 @@ public sealed class ActionFile
         var attaches = new List<AttachEvent>();
         var cuts = new List<CutEvent>();
         var speeds = new List<SpeedEvent>();
+        var combos = new List<ComboEvent>();
         var controls = new List<ControlEvent>();
         var marks = new List<float>();
         var looks = new List<LookEvent>();
@@ -456,6 +492,10 @@ public sealed class ActionFile
                     speeds.Add(ReadSpeed(reader, header));
                     break;
 
+                case ComboTriggerType:
+                    combos.Add(ReadCombo(reader, version, header));
+                    break;
+
                 case SummonTriggerType when ReadControl(reader, header) is { } control:
                     controls.Add(control);
                     break;
@@ -487,7 +527,10 @@ public sealed class ActionFile
         }
 
         return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches,
-            cuts, speeds, controls.Count > 0 ? controls : null, moves, marks.Count > 0 ? marks : null, bones, looks.Count > 0 ? looks : null);
+            cuts, speeds, controls.Count > 0 ? controls : null, moves, marks.Count > 0 ? marks : null, bones, looks.Count > 0 ? looks : null)
+        {
+            Combos = combos.Count > 0 ? combos : null
+        };
     }
 
     /// <summary>
@@ -575,7 +618,10 @@ public sealed class ActionFile
     /// What every event starts with: its kind, name, number, the moments it begins and ends, and the filters of the modes it
     /// is for.
     /// </summary>
-    private readonly record struct EventHeader(short Type, int Id, float Start, float End, bool Filtered = false);
+    private readonly record struct EventHeader(short Type, int Id, float Start, float End, ActionFilter Filter = default)
+    {
+        public bool Filtered => !Filter.IsEmpty;
+    }
 
     private static EventHeader ReadHeader(BinaryReader reader, short version)
     {
@@ -586,15 +632,51 @@ public sealed class ActionFile
         var id = reader.ReadInt32();
         var start = reader.ReadSingle();
         var end = reader.ReadSingle();
-        var filters = version >= ThirdFilterSinceVersion ? 3 : version >= FiltersSinceVersion ? 2 : 0;
-        var filtered = false;
+        var filter = version >= FiltersSinceVersion ? new ActionFilter(reader.ReadInt32(), reader.ReadInt32(), version >= ThirdFilterSinceVersion ? reader.ReadInt32() : 0) : default;
 
-        for (var i = 0; i < filters; i++)
+        return new EventHeader(type, id, start, end, filter);
+    }
+
+    /// <summary>
+    /// The animations the player may follow the animation with by a button, each with the lowest level of the skill it is for,
+    /// how long the choice stays open and how often it may be taken.
+    /// </summary>
+    private static ComboEvent ReadCombo(BinaryReader reader, short version, in EventHeader header)
+    {
+        var left = new List<ComboStep>();
+        var right = new List<ComboStep>();
+
+        for (var i = 0; i < 2 * ComboSteps; i++)
         {
-            filtered |= reader.ReadInt32() != 0;
+            var animation = ReadString(reader);
+            var level = reader.ReadInt32();
+
+            if (animation.Length > 1)
+            {
+                (i < ComboSteps ? left : right).Add(new ComboStep(animation, level));
+            }
         }
 
-        return new EventHeader(type, id, start, end, filtered);
+        var wait = version >= ComboWaitSinceVersion ? reader.ReadSingle() : 0f;
+        var count = version >= ComboCountSinceVersion ? reader.ReadInt32() : 0;
+
+        if (version >= ComboRightClickSinceVersion)
+        {
+            reader.ReadBoolean();
+        }
+
+        if (version >= ComboOnceSinceVersion)
+        {
+            reader.ReadBoolean();
+            reader.ReadBoolean();
+        }
+
+        if (version >= ComboTurnSinceVersion)
+        {
+            reader.ReadBoolean();
+        }
+
+        return new ComboEvent(header.Start, left, right, float.IsFinite(wait) ? wait : 0f, count, header.Filter);
     }
 
     /// <summary>
@@ -725,7 +807,7 @@ public sealed class ActionFile
 
         return new AttackTrigger(id, rangeType, attackType, spawnObject, start, angle, center, boxX, boxY, radius, height, startPosition,
             reaction.DamageRate, reaction.ReactionType, projectile, chain, reaction.Buff, reaction.TargetType, reaction.Aura,
-            reaction.Push with { Hardness = hardness }, reaction.GrabDrop, reaction.TargetStatus);
+            reaction.Push with { Hardness = hardness }, reaction.GrabDrop, reaction.TargetStatus, header.Filter);
     }
 
     /// <summary>
