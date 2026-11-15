@@ -24,7 +24,7 @@ public sealed class MapLandingTest
     private static EventBox District() => new(XElement.Parse(
         "<Batchs eventtype=\"EventBox\">" +
         $"""<VStartEventBox boxtype="eEventBoxType_Start"> {Basic(DefaultStart, new Vector3(10000f, 10000f, 90f), new Vector3(10100f, 10100f, 90f))} <m_eSpawnType type="4" value="Random" /> </VStartEventBox>""" +
-        $"""<VPortalExitBox boxtype="eEventBoxType_PortalExit"> {Basic(PortalExit, new Vector3(40000f, 29500f, 250f), new Vector3(40100f, 29600f, 250f))} <m_iParentPortalBoxID type="0" value="0" /> </VPortalExitBox>""" +
+        $"""<VPortalExitBox boxtype="eEventBoxType_PortalExit"> {Basic(PortalExit, new Vector3(40000f, 29500f, 250f), new Vector3(40100f, 29600f, 350f))} <m_iParentPortalBoxID type="0" value="0" /> </VPortalExitBox>""" +
         "</Batchs>"));
 
     [TestMethod]
@@ -39,6 +39,7 @@ public sealed class MapLandingTest
         var position = landing.GetLandingPosition();
 
         Assert.IsTrue(position.X is >= 40000f and <= 40100f && position.Y is >= 29500f and <= 29600f, $"inside the exit box: {position}");
+        Assert.AreEqual(250f, position.Z, "at the height of the box's first corner");
         Assert.IsInstanceOfType<StartEventBox>(district.LandingOf(DefaultStart), "a start box is landed at too");
         Assert.IsNull(district.LandingOf(12345), "an id the map does not have");
     }
