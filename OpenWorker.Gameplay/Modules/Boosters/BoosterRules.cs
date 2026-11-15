@@ -94,6 +94,25 @@ public static class BoosterRules
         boosters.SelectMany(e => e.Effects).Where(e => e.Effect == effect && e.Apply == BoosterApply.Value).Sum(e => e.Value);
 
     /// <summary>
+    /// The most extra fatigue a person holds; each game day fills it to this.
+    /// </summary>
+    public const short MaxExtraFatigue = 200;
+
+    /// <summary>
+    /// The extra fatigue after the boosters of <see cref="BoosterEffect.AddFP"/> changed from <paramref name="before"/> to
+    /// <paramref name="after"/>: a booster that adds some adds what it adds, one that ends brings it down to what is left.
+    /// </summary>
+    public static short ExtraFatigueAfter(short extra, int before, int after)
+    {
+        if (after > before)
+        {
+            return (short)Math.Clamp(extra + (after - before), 0, MaxExtraFatigue);
+        }
+
+        return after < before && extra > after ? (short)Math.Max(0, after) : extra;
+    }
+
+    /// <summary>
     /// An amount with the boosters applied: the amount, a part of it for the rates, and the values.
     /// </summary>
     public static float Apply(IReadOnlyCollection<BoosterDefinition> boosters, BoosterEffect effect, float origin) =>

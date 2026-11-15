@@ -21,5 +21,15 @@ public sealed class BoosterBook
 {
     public List<BoosterEntry> Boosters { get; set; } = [];
 
+    /// <summary>
+    /// The extra fatigue of the day that a booster of <see cref="BoosterEffect.AddFP"/> lets a maze spend first.
+    /// </summary>
+    public short ExtraFatigue { get; set; }
+
+    /// <summary>
+    /// The start of the game day the extra fatigue was last filled for; null when it never was.
+    /// </summary>
+    public DateTime? ExtraFatigueDay { get; set; }
+
     public BoosterEntry? Find(short booster) => Boosters.Find(e => e.Booster == booster);
 }

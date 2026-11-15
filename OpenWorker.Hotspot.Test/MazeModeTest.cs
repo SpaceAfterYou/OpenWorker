@@ -63,7 +63,7 @@ public sealed class MazeModeTest
     /// <summary>
     /// A spawn box with up to ten monsters in its slots, which either appears at once or waits for a signal and sends waves.
     /// </summary>
-    private static string SpawnBox(int id, int[] monsters, bool waves = false, float delay = 0f, float sequence = 0f, int count = 0, int entities = 1, string order = "All")
+    private static string SpawnBox(int id, int[] monsters, bool waves = false, float delay = 0f, float sequence = 0f, int count = 0, int entities = 1, string order = "All", int chance = 10000)
     {
         var text = new StringBuilder($"""<VMonsterSpawnBox boxtype="eEventBoxType_MonsterSpawn"> {Basic(id, 500, 500, 100)} """);
 
@@ -71,7 +71,7 @@ public sealed class MazeModeTest
         {
             var monster = slot <= monsters.Length ? monsters[slot - 1] : 0;
 
-            text.Append(CultureInfo.InvariantCulture, $"""<m_eType{slot} type="4" value="Monster" /> <m_iMonsterID{slot} type="0" value="{monster}" /> <m_iChance{slot} type="0" value="{(monster == 0 ? 0 : 10000)}" /> """);
+            text.Append(CultureInfo.InvariantCulture, $"""<m_eType{slot} type="4" value="Monster" /> <m_iMonsterID{slot} type="0" value="{monster}" /> <m_iChance{slot} type="0" value="{(monster == 0 ? 0 : chance)}" /> """);
         }
 
         text.Append(CultureInfo.InvariantCulture, $"""<m_eCreationPositionType type="4" value="Random" /> <m_eMoveType type="4" value="Free" /> <m_eCreationCondition type="4" value="{(waves ? "WaitSignal" : "Immediate")}" /> <m_CreationEffectFile type="12" value="" /> <m_fWaitCreationDelayTime type="2" value="{delay.ToString("0.0000", CultureInfo.InvariantCulture)}" /> <m_fWaitCreationSequenceTime type="2" value="{sequence.ToString("0.0000", CultureInfo.InvariantCulture)}" /> <m_iWaitCreationMaxWave type="0" value="{count}" /> <m_iMaxEntityCount type="0" value="{entities}" /> <m_eWaitCreationSequenceType type="4" value="{order}" /> <m_iWaypoint type="0" value="0" /> <m_iAggroGroupID type="0" value="0" /> <m_iAggroDistance type="0" value="0" /> <m_iAggroMaxCount type="0" value="0" /> <m_fLookRatio type="2" value="3.0000" /> <m_bShowSight type="5" value="FALSE" /> <m_szObjectKey type="12" value="" /> <m_eScriptType type="4" value="None" /> <m_iCheckScriptHP1 type="0" value="0" /> <m_iCheckScriptHP2 type="0" value="0" /> <m_iCheckScriptHP3 type="0" value="0" /> <m_iCheckScriptHP4 type="0" value="0" /> <m_iCheckScriptHP5 type="0" value="0" /> <m_iSectorID type="0" value="{Sector}" /> <m_ChangeSpawnAction type="12" value="" /> <m_ProtectionTarget type="0" value="0" /> <m_RespawnTime type="2" value="1.0000" /> <m_iStep type="0" value="1" /> <m_eRespawnType type="4" value="None" /> <m_iRespawnCondition type="0" value="0" /> <m_iGroupID type="0" value="0" /> </VMonsterSpawnBox>""");
@@ -346,6 +346,27 @@ public sealed class MazeModeTest
 
         CollectionAssert.AreEqual(new[] { Wolf, Crab, Bat }, seen);
         Assert.HasCount(3, test.Monsters());
+    }
+
+    /// <summary>
+    /// What a booster of a player adds to the chance of the slots makes a slot that would never roll well send its monster; the
+    /// best a player brought stays.
+    /// </summary>
+    [TestMethod]
+    public void ABoosterOfAPlayerRaisesTheChanceOfTheSlots()
+    {
+        using var test = new Test(Map(SectorBox(Sector), SpawnBox(101, [Wolf], waves: true, delay: 1f, sequence: 1f, count: 2, chance: 0)), Modes());
+        var waves = new SpawnWaves(test.Creatures, test.Batch);
+
+        waves.Start(101, false);
+        waves.Step(1.1f);
+        Assert.IsEmpty(test.Monsters(), "a slot of no chance sends nothing");
+
+        waves.RaiseChance(10_000);
+        waves.RaiseChance(10);
+        waves.Step(1.1f);
+        Assert.HasCount(1, test.Monsters());
+        Assert.AreEqual(10_000, waves.ChanceBonus);
     }
 
     // ---- Survival -------------------------------------------------------------------------------

@@ -52,6 +52,7 @@ using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Tower;
+using OpenWorker.Gameplay.Modules.Boosters;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -103,7 +104,8 @@ public sealed partial class PersonService(
     PersistenceWriter writes,
     ILogger<PersonService> logger,
     HiddenEventCatalog? hiddenEvents = null,
-    UnityEvents? unityEvents = null
+    UnityEvents? unityEvents = null,
+    BoosterManager? boosters = null
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
@@ -440,7 +442,8 @@ public sealed partial class PersonService(
             World = channel,
             HiddenEvents = hiddenEvents,
             SceneAttacker = mazeInfo.Id > 0 && _rules.TryGet((ushort)mazeInfo.Id, out var rule) ? (int)rule.SceneAttacker : 0,
-            UnityEvents = unityEvents
+            UnityEvents = unityEvents,
+            WaveChanceOf = boosters is null ? null : e => (int)boosters.GetValue(e, BoosterEffect.IncGroutonRate)
         };
 
         // What happens in the instance is wired once, for every player who is in it then.

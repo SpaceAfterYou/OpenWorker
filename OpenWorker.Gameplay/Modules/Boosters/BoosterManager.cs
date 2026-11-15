@@ -77,10 +77,14 @@ public sealed partial class BoosterManager(
         var book = component.Book!;
         var session = world.Get<ServerSessionComponent>(player);
         var now = time.GetUtcNow();
+        var extraBefore = ExtraFatigueValue(book);
 
         foreach (var other in book.Boosters.Where(e => e.Booster != booster && catalog.TryGet(e.Booster, out var existing) && existing.Group == definition.Group).ToArray())
         {
+            var before = ExtraFatigueValue(book);
+
             book.Boosters.Remove(other);
+            book.ExtraFatigue = BoosterRules.ExtraFatigueAfter(book.ExtraFatigue, before, ExtraFatigueValue(book));
             session.Send(new BoosterRemoveResponse { Id = other.Booster });
         }
 
@@ -93,6 +97,7 @@ public sealed partial class BoosterManager(
         }
 
         BoosterRules.Charge(definition, entry, milliseconds, now.ToUnixTimeSeconds());
+        book.ExtraFatigue = BoosterRules.ExtraFatigueAfter(book.ExtraFatigue, extraBefore, ExtraFatigueValue(book));
         stats?.Refresh(player);
 
         session.Send(new BoosterAddResponse
@@ -114,7 +119,10 @@ public sealed partial class BoosterManager(
             return false;
         }
 
+        var before = ExtraFatigueValue(component.Book);
+
         component.Book.Boosters.Remove(entry);
+        component.Book.ExtraFatigue = BoosterRules.ExtraFatigueAfter(component.Book.ExtraFatigue, before, ExtraFatigueValue(component.Book));
 
         world.Get<ServerSessionComponent>(player)
             .Send(new BoosterRemoveResponse { Id = booster });
@@ -135,7 +143,10 @@ public sealed partial class BoosterManager(
             return;
         }
 
+        var before = ExtraFatigueValue(component.Book!);
+
         component.Book!.Boosters.Clear();
+        component.Book.ExtraFatigue = BoosterRules.ExtraFatigueAfter(component.Book.ExtraFatigue, before, 0);
 
         world.Get<ServerSessionComponent>(player)
             .Send(new BoosterClearResponse());
@@ -179,6 +190,45 @@ public sealed partial class BoosterManager(
     public float GetValue(Entity player, BoosterEffect effect)
     {
         return TryGet(player, out var component) ? BoosterRules.GetValue(GetDefinitions(component.Book!), effect) : 0;
+    }
+
+    /// <summary>
+    /// The extra fatigue a maze may spend before the fatigue of the person: what is left of it while a booster of
+    /// <see cref="BoosterEffect.AddFP"/> is on, else none.
+    /// </summary>
+    public int ExtraFatigue(Entity player)
+    {
+        return TryGet(player, out var component) && ExtraFatigueValue(component.Book!) > 0 ? component.Book!.ExtraFatigue : 0;
+    }
+
+    /// <summary>
+    /// Spends extra fatigue; no more than there is.
+    /// </summary>
+    public void SpendExtraFatigue(Entity player, int amount)
+    {
+        if (amount <= 0 || !TryGet(player, out var component))
+        {
+            return;
+        }
+
+        component.Book!.ExtraFatigue = (short)Math.Max(0, component.Book.ExtraFatigue - amount);
+        world.MarkDirty(player, PersonSections.MiscState);
+    }
+
+    /// <summary>
+    /// Fills the extra fatigue once for the game day that starts at <paramref name="day"/>, with or without a booster on.
+    /// Nothing while the boosters are not loaded.
+    /// </summary>
+    public void FillExtraFatigue(Entity player, DateTime day)
+    {
+        if (!TryGet(player, out var component) || component.Book!.ExtraFatigueDay >= day)
+        {
+            return;
+        }
+
+        component.Book.ExtraFatigue = BoosterRules.MaxExtraFatigue;
+        component.Book.ExtraFatigueDay = day;
+        world.MarkDirty(player, PersonSections.MiscState);
     }
 
     /// <summary>
@@ -239,7 +289,10 @@ public sealed partial class BoosterManager(
 
             if (BoosterRules.IsOver(definition, entry, now.ToUnixTimeSeconds()))
             {
+                var before = ExtraFatigueValue(book);
+
                 book.Boosters.Remove(entry);
+                book.ExtraFatigue = BoosterRules.ExtraFatigueAfter(book.ExtraFatigue, before, ExtraFatigueValue(book));
                 session.Send(new BoosterRemoveResponse { Id = entry.Booster });
                 changed = true;
             }
@@ -268,6 +321,8 @@ public sealed partial class BoosterManager(
         world.Get<ServerSessionComponent>(player)
             .Send(new BoosterLoadResponse { Area = area, Entries = entries });
     }
+
+    private int ExtraFatigueValue(BoosterBook book) => (int)BoosterRules.GetValue(GetDefinitions(book), BoosterEffect.AddFP);
 
     private List<BoosterDefinition> GetDefinitions(BoosterBook book)
     {

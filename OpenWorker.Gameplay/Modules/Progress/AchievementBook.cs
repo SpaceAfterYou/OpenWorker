@@ -252,18 +252,32 @@ public sealed class AchievementBook
     {
         var counts = new ushort[AchievementCatalog.Categories];
 
-        foreach (var counter in Counters)
+        foreach (var id in Reached(catalog))
         {
-            for (var id = catalog.ChainOf(counter.Achievement); catalog.TryGet(id, out var rule) && id <= counter.Achievement; id++)
+            if (catalog.TryGet(id, out var rule) && rule.Category < counts.Length)
             {
-                if ((id < counter.Achievement || counter.Count >= rule.Count) && rule.Category < counts.Length)
-                {
-                    counts[rule.Category]++;
-                }
+                counts[rule.Category]++;
             }
         }
 
         return counts;
+    }
+
+    /// <summary>
+    /// Every achievement the person has reached: those before the one each chain stands at, and that one when its count is met.
+    /// </summary>
+    public IEnumerable<int> Reached(AchievementCatalog catalog)
+    {
+        foreach (var counter in Counters)
+        {
+            for (var id = catalog.ChainOf(counter.Achievement); catalog.TryGet(id, out var rule) && id <= counter.Achievement; id++)
+            {
+                if (id < counter.Achievement || counter.Count >= rule.Count)
+                {
+                    yield return id;
+                }
+            }
+        }
     }
 
     /// <summary>

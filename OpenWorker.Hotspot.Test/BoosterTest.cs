@@ -126,6 +126,20 @@ public sealed class BoosterTest
         Assert.AreEqual(100f, BoosterRules.Apply(boosters, BoosterEffect.IncEtherDrop, 100f), 0.0001f);
     }
 
+    /// <summary>
+    /// A booster of extra fatigue adds what it adds, up to the most there is; one that ends brings the extra fatigue down to
+    /// what the boosters left give.
+    /// </summary>
+    [TestMethod]
+    public void ExtraFatigueGrowsWithABoosterAndFallsToWhatIsLeft()
+    {
+        Assert.AreEqual((short)150, BoosterRules.ExtraFatigueAfter(100, 0, 50));
+        Assert.AreEqual(BoosterRules.MaxExtraFatigue, BoosterRules.ExtraFatigueAfter(180, 0, 50));
+        Assert.AreEqual((short)30, BoosterRules.ExtraFatigueAfter(150, 80, 30));
+        Assert.AreEqual((short)0, BoosterRules.ExtraFatigueAfter(150, 50, 0));
+        Assert.AreEqual((short)20, BoosterRules.ExtraFatigueAfter(20, 50, 30), "less than is left stays");
+    }
+
     [TestMethod]
     public void BookSurvivesTheStore()
     {

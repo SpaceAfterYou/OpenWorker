@@ -19,8 +19,9 @@ public sealed class OpenTitleBook
 
 /// <summary>
 /// A title opens, which shows it in the list of the client with what is needed to earn it, when its row asks for what the
-/// person has just done: an achievement it reached (<see cref="ByAchievement"/>), or the level it came to
-/// (<see cref="ByLevel"/>). A prefix and a suffix may open at once. A title the person has earned is not listed as open. A
+/// person has just done: an achievement it reached (<see cref="ByAchievement"/>), the level it came to
+/// (<see cref="ByLevel"/>), a monster it killed (<see cref="ByMonsterKill"/>), or an event a game master names
+/// (<see cref="ByEvent"/>). A prefix and a suffix may open at once. A title the person has earned is not listed as open. A
 /// change marks <see cref="PersonSections.Progress"/> and the flush writes the book.
 /// </summary>
 public sealed class OpenTitleManager(World world, PersonStateStore store, TitleCatalog catalog)
@@ -30,6 +31,12 @@ public sealed class OpenTitleManager(World world, PersonStateStore store, TitleC
 
     /// <summary>The title opens with a level; the value is the level.</summary>
     public const byte ByLevel = 3;
+
+    /// <summary>The title opens when the person kills a monster; the value is the monster.</summary>
+    public const byte ByMonsterKill = 6;
+
+    /// <summary>The title opens with an event; only a game master opens it.</summary>
+    public const byte ByEvent = 9;
 
     /// <summary>
     /// The book of the open titles as the flush writes it.
@@ -70,16 +77,37 @@ public sealed class OpenTitleManager(World world, PersonStateStore store, TitleC
     }
 
     /// <summary>
-    /// The person has done what the rows of titles may ask for: opens the prefix and the suffix that ask for exactly this,
-    /// unless they are open already or the person has them. Each that opens is told.
+    /// Opens, without telling, the titles of what the person reached before it came in: its achievements and every level up
+    /// to its own. Titles opened this way are listed with the others when the client asks.
     /// </summary>
-    public void Update(Entity player, byte condition, int value)
+    public void CatchUp(Entity player, IEnumerable<int> achievements, int level)
+    {
+        foreach (var achievement in achievements)
+        {
+            Update(player, ByAchievement, achievement, tell: false);
+        }
+
+        for (var reached = 1; reached <= level; reached++)
+        {
+            Update(player, ByLevel, reached, tell: false);
+        }
+    }
+
+    /// <summary>
+    /// The person has done what the rows of titles may ask for: opens the prefix and the suffix that ask for exactly this,
+    /// unless they are open already or the person has them. Each that opens is told. Returns how many opened.
+    /// </summary>
+    public int Update(Entity player, byte condition, int value) => Update(player, condition, value, tell: true);
+
+    private int Update(Entity player, byte condition, int value, bool tell)
     {
         if (!world.IsAlive(player) || !world.TryGet<OpenTitleComponent>(player, out var component) || component.Book is not { } book ||
             !world.TryGet<PersonInfoComponent>(player, out var info))
         {
-            return;
+            return 0;
         }
+
+        var opened = 0;
 
         var owned = world.TryGet<TitleComponent>(player, out var titles) ? titles.Owned ?? [] : [];
 
@@ -91,13 +119,16 @@ public sealed class OpenTitleManager(World world, PersonStateStore store, TitleC
             }
 
             book.Titles.Add(title);
+            opened++;
 
             world.MarkDirty(player, PersonSections.Progress);
 
-            if (world.TryGet<ServerSessionComponent>(player, out var session))
+            if (tell && world.TryGet<ServerSessionComponent>(player, out var session))
             {
                 session.Send(new PersonUpdateOpenTitleResponse { Title = title });
             }
         }
+
+        return opened;
     }
 }

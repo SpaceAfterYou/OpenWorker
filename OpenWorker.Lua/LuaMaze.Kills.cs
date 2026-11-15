@@ -20,6 +20,11 @@ public partial class LuaMaze
     {
         CountHiddenEvent(HiddenEventTarget.Monster, monster, 1);
 
+        if (Ecs.IsAlive(killer))
+        {
+            reports.MonsterSlain(killer, monster);
+        }
+
         // In an open maze of the world a kill is the killer's alone.
         var heard = IsWorld ? new List<Entity>() : _members.Select(e => e.Player).ToList();
 

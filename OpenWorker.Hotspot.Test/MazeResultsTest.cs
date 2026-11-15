@@ -11,6 +11,8 @@ using OpenWorker.Domain.Stores;
 using OpenWorker.Extensions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
+using OpenWorker.Gameplay.Modules.Boosters;
+using OpenWorker.Gameplay.Modules.Boosters.Components;
 using OpenWorker.Gameplay.Modules.Drops;
 using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Items;
@@ -520,11 +522,14 @@ public sealed class MazeResultsTest
         public Entity Player { get; }
         public PersonDirty Dirty { get; } = new(7);
 
-        public FatigueFixture(short common, short bonus, DateTime? refilled)
+        /// <param name="boosters">The boosters the person has, of the one booster there is: extra fatigue of 50.</param>
+        public FatigueFixture(short common, short bonus, DateTime? refilled, BoosterBook? boosters = null)
         {
             var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeRow(Maze, level: 6, fatigue: 9)]);
+            var extra = new BoosterDefinition(1, 1, BoosterTime.Endless, 0, [new BoosterEffectValue(BoosterEffect.AddFP, BoosterApply.Value, 50)]);
+            var manager = boosters is null ? null : new BoosterManager(World, null!, BoosterCatalog.From([extra]), Time, NullLogger<BoosterManager>.Instance);
 
-            Fatigue = new FatigueService(World, mazes, Time, Options.Create(new DailyMissionOptions()), NullLogger<FatigueService>.Instance);
+            Fatigue = new FatigueService(World, mazes, Time, Options.Create(new DailyMissionOptions()), NullLogger<FatigueService>.Instance, manager);
 
             var progress = new SharePointManager(World, new PersonStateStore(null!), SharePointCatalog.Of([]), null!, NullLogger<SharePointManager>.Instance);
 
@@ -541,6 +546,11 @@ public sealed class MazeResultsTest
             World.Set(Player, new LevelComponent(10, 0));
             World.Set(Player, new DirtyComponent(Dirty));
             World.Set(Player, new ServerSessionComponent(new RecordingConnection()));
+
+            if (boosters is not null)
+            {
+                World.Add(Player, new BoosterComponent { Person = 7, Book = boosters, LastTick = Time.GetUtcNow() });
+            }
         }
 
         public FatiguePointsComponent Points => World.Get<FatiguePointsComponent>(Player);
@@ -575,6 +585,31 @@ public sealed class MazeResultsTest
         f.World.Set(f.Player, f.Points with { Common = 200 });
 
         Assert.AreEqual(MazeAdmission.LevelTooLow, f.Admission.Check(f.Player, Maze), "the level is checked before the fatigue");
+    }
+
+    /// <summary>
+    /// The extra fatigue fills up with the game day and is spent before anything else, but only while a booster of extra fatigue
+    /// is on.
+    /// </summary>
+    [TestMethod]
+    public void ExtraFatigueOfABoosterIsSpentFirst()
+    {
+        var today = new DateTime(2026, 11, 9, 11, 30, 0, DateTimeKind.Utc);
+        var book = new BoosterBook { Boosters = [new BoosterEntry { Booster = 1 }] };
+
+        using var f = new FatigueFixture(common: 3, bonus: 0, refilled: today, boosters: book);
+
+        Assert.IsNull(f.Admission.Check(f.Player, Maze), "three points and the extra fatigue pay for nine");
+        Assert.AreEqual(BoosterRules.MaxExtraFatigue, book.ExtraFatigue, "the day filled it");
+
+        f.Results.Start(f.Player, Maze);
+
+        Assert.AreEqual(BoosterRules.MaxExtraFatigue - 4, book.ExtraFatigue);
+        Assert.AreEqual(3, f.Points.Common, "the points of the day are not touched");
+
+        book.Boosters.Clear();
+
+        Assert.AreEqual(FatigueService.NotEnough, f.Admission.Check(f.Player, Maze), "without the booster the extra fatigue is not there");
     }
 
     [TestMethod]
