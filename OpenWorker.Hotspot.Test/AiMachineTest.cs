@@ -757,8 +757,12 @@ public sealed partial class AiMachineTest
         Assert.IsTrue(host.IsDead);
     }
 
+    /// <summary>
+    /// A battle move from afar comes round the target as far as a quarter of a turn, to stand before where it looks at the
+    /// state's distance off its body.
+    /// </summary>
     [TestMethod]
-    public void BattleMoveGoesToAPlaceAroundTheTarget()
+    public void BattleMoveGoesToAPlaceBeforeTheTarget()
     {
         var host = new Host { Player = Player(new Vector3(1000, 0, 0)) };
         var builder = Fighter();
@@ -772,10 +776,50 @@ public sealed partial class AiMachineTest
         var machine = Create(builder, host);
 
         machine.Start();
-        Run(machine, host, 4f);
+
+        for (var elapsed = 0f; elapsed < 2f && host.Destination is null; elapsed += Step)
+        {
+            Run(machine, host, Step);
+        }
+
+        var target = host.Player!.Value;
+        var end = host.Destination!.Value;
 
         CollectionAssert.Contains(host.Log, "run");
-        Assert.AreEqual(300f, Vector3.Distance(host.Position, host.Player!.Value.Position), 1f);
+        Assert.AreEqual(300f + target.Radius, Vector3.Distance(end, target.Position), 1f);
+        Assert.IsLessThanOrEqualTo(30.5f, AiMath.AngleBetween(target.Yaw, AiMath.YawTo(target.Position, end)));
+    }
+
+    /// <summary>
+    /// A battle move from behind a near target comes round it at most an eighth of a turn in one leg.
+    /// </summary>
+    [TestMethod]
+    public void BattleMoveComesRoundANearTargetAnEighthOfATurnAtATime()
+    {
+        var target = Player(Vector3.Zero);
+        var behind = new Vector3(AiMath.Direction(target.Yaw + 180f) * 300f, 0f);
+        var host = new Host { Player = target, Position = behind };
+        var builder = Fighter();
+
+        builder.RegisterStateVars(AiState.SelectAction, AiStateVariable.NextState, (int)AiState.BattleMove, 100);
+        builder.RegisterStateVars(AiState.SelectAction, AiStateVariable.NextState, (int)AiState.Attack, 0);
+        builder.RegisterStateVars(AiState.BattleMove, AiStateVariable.TargetDistance, 250, 350);
+        builder.RegisterStateVars(AiState.BattleMove, AiStateVariable.Angle, 0, 0);
+        builder.RegisterStateFunctions(AiState.BattleMove);
+
+        var machine = Create(builder, host);
+
+        machine.Start();
+
+        for (var elapsed = 0f; elapsed < 2f && host.Destination is null; elapsed += Step)
+        {
+            Run(machine, host, Step);
+        }
+
+        var end = host.Destination!.Value;
+
+        Assert.IsLessThanOrEqualTo(45.5f, AiMath.AngleBetween(AiMath.YawTo(target.Position, behind), AiMath.YawTo(target.Position, end)));
+        Assert.IsGreaterThanOrEqualTo(44.5f, AiMath.AngleBetween(AiMath.YawTo(target.Position, behind), AiMath.YawTo(target.Position, end)));
     }
 
     [TestMethod]

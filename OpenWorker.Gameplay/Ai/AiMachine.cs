@@ -1523,16 +1523,7 @@ public sealed partial class AiMachine
 
         StopGaze();
 
-        // The monster goes to a place around the target: the distance and the angle from the side it stands on.
-        for (var attempt = 0; attempt < 3; attempt++)
-        {
-            var destination = PlaceAround(target, _settings.TargetDistanceMin, _settings.TargetDistanceMax, _settings.AngleMin, _settings.AngleMax);
-
-            if (_host.MoveTo(destination, true))
-            {
-                return;
-            }
-        }
+        GoRoundTarget(target, _settings.TargetDistanceMin, _settings.TargetDistanceMax, _settings.AngleMin, _settings.AngleMax);
     }
 
     private Vector3 PlaceAround(AiTarget target, float distanceMin, float distanceMax, float angleMin, float angleMax)
