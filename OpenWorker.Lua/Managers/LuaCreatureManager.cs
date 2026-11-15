@@ -159,6 +159,11 @@ public sealed partial class LuaCreatureManager
     /// Monsters a command keeps where they were brought in: their armor comes back, but they never walk or attack.
     /// </summary>
     private HashSet<Entity> Still { get; } = [];
+
+    /// <summary>
+    /// Monsters a command told to play a skill: their bodies go on (the skill, its traps, their reactions), their minds no more.
+    /// </summary>
+    private HashSet<Entity> Puppets { get; } = [];
     private Dictionary<Entity, MonsterBody> Bodies { get; } = [];
 
     /// <summary>
@@ -811,6 +816,7 @@ public sealed partial class LuaCreatureManager
         Scenery.Remove(creature);
         Unseen.Remove(creature);
         Still.Remove(creature);
+        Puppets.Remove(creature);
         Buffs?.Forget(creature);
 
         ecs.Destroy(creature);
@@ -837,6 +843,7 @@ public sealed partial class LuaCreatureManager
         Players.Clear();
         Unseen.Clear();
         Still.Clear();
+        Puppets.Clear();
         Helpers.Clear();
     }
 
@@ -1005,7 +1012,7 @@ public sealed partial class LuaCreatureManager
                         continue;
                     }
 
-                    body.Update(now, seconds);
+                    body.Update(now, seconds, !Puppets.Contains(body.Entity));
                 }
 
                 catch (Exception e)
@@ -1625,6 +1632,24 @@ public sealed partial class LuaCreatureManager
     }
 
     internal MonsterBody? BodyOf(Entity monster) => Bodies.GetValueOrDefault(monster);
+
+    /// <summary>
+    /// A monster whose row holds the skill plays it at the player now and thinks no more after it; a still one plays it where it
+    /// stands. False when its row lacks the skill or it cannot start it now.
+    /// </summary>
+    internal bool PlaySkillAt(Entity monster, Entity player, int skill)
+    {
+        if (BodyOf(monster) is not { IsDead: false } body || !body.Behavior.Skills.Contains(skill) || body.FindSkill(skill) is not { } found ||
+            !Vitals.IsAlive(player))
+        {
+            return false;
+        }
+
+        Puppets.Add(monster);
+        Still.Remove(monster);
+
+        return body.UseSkill(found, Describe(player));
+    }
 
     /// <summary>
     /// What a player's hit needs to know of the monster it hits: its kind, and whether it is in the air or on the ground.

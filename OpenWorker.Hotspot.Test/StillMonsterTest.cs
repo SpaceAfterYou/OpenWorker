@@ -123,4 +123,81 @@ public sealed class StillMonsterTest
             World.Destroy(world);
         }
     }
+
+    /// <summary>
+    /// A still monster told a skill by a command plays it at the player once, where it stands, and still never attacks by itself;
+    /// a skill its row lacks is refused.
+    /// </summary>
+    [TestMethod]
+    public async Task AStillMonsterToldASkillPlaysItOnceAndThinksNoMore()
+    {
+        var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_AI");
+
+        if (string.IsNullOrEmpty(folder))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_AI is not set.");
+        }
+
+        var monsters = TestTables.Load<MonsterRow>("tb_Monster");
+        var skills = TestTables.Load<SkillRow>("tb_Skill");
+        var time = new FakeTimeProvider();
+        var clock = TestMazes.Clock(time);
+        var combat = new CombatTables(monsters, TestTables.Load<StatusRow>("tb_Status"), skills, TestTables.Load<CharacterInfoRow>("tb_Character_Info"));
+        var services = new CreatureServices(
+            new AiScriptLoader(NullLogger<AiScriptLoader>.Instance, folder),
+            new MonsterBehaviorTables(monsters, skills, TestTables.Load<FactionRow>("tb_Faction")),
+            new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance),
+            clock,
+            new NavMeshProvider());
+        var world = World.Create();
+
+        try
+        {
+            var connection = new RecordingConnection();
+            var life = new AbilityComponentEntry { Current = 100_000, Max = 100_000 };
+            var player = world.Create(
+                new ActorComponent(1, ActorType.User),
+                new ServerSessionComponent(connection),
+                new WorldComponent { Location = 0, Position = new Vector3(1000f, 1000f, 0f), Rotation = 0f, Jump = 0 },
+                new LevelComponent(20, 0),
+                new PersonInfoComponent { Name = "Master", Hero = Hero.Haru },
+                new AbilityComponent { Health = life, SoulGain = life, SoulVapor = life, Stamina = life, SuperArmor = life, Speed = new SpeedComponentEntry { Move = 1f, Attack = 1f } });
+            var batch = TestMazes.Map();
+            var creatures = new LuaCreatureManager(world, batch, combat, services);
+            var maze = TestMazes.Create(world, player, clock: clock, batch: batch, creatures: creatures, tables: combat);
+
+            maze.MarkLoaded(player);
+            maze.TryStart();
+
+            Assert.IsTrue(maze.CallMonsters(player, Discus, 1, still: true));
+
+            var still = creatures.Living.Single();
+            var skill = creatures.BodyOf(still)!.Behavior.Skills.First(e => e != 0);
+
+            Assert.IsFalse(maze.PlayMonsterSkill(player, skill + 1_000_000), "a skill its row lacks");
+            Assert.IsTrue(maze.PlayMonsterSkill(player, skill));
+
+            for (var passed = TimeSpan.Zero; passed < TimeSpan.FromSeconds(15); passed += SimulationClock.Period)
+            {
+                time.Advance(SimulationClock.Period);
+                clock.Tick();
+            }
+
+            await QueueMarker.SettleAsync(world.Get<ServerSessionComponent>(player), connection);
+
+            var stillActor = world.Get<ActorComponent>(still).Identifier;
+            var played = connection.Frames.Select(PlayerFrame.Open)
+                .Where(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActiveSkillBt))
+                .Count(e => (BitConverter.ToInt32(e.Body, 0) & ~MonsterActors) == stillActor);
+
+            Assert.AreEqual(1, played, "the skill it was told, and nothing of its own");
+
+            maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
 }
