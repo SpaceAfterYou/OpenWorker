@@ -431,5 +431,10 @@ public sealed class ItemUseTest
 
         Assert.AreEqual(ItemUseCodes.NotUsable, (await rig.UseAsync(item)).Error, "A fever item in a bag is not usable");
         Assert.AreEqual(1, rig.Field.Given.Count, "The refused use gives nothing");
+
+        // One that came into a bag stays there until its owner throws it away.
+        rig.Fixture.Inventory.Break(rig.Fixture.Player, item.Storage, item.Slot, item.Serial, 1);
+
+        Assert.AreEqual(0L, rig.Fixture.Inventory.CountOf(rig.Fixture.Player, fever.Id), "It can be thrown away");
     }
 }
