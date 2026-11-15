@@ -1,9 +1,12 @@
 using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Abstractions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
@@ -227,6 +230,25 @@ public sealed class MazeEntryLimitsTest
         Assert.IsTrue(f.Limits.TakeBackCasualEntry(f.Player));
         Assert.IsFalse(f.Limits.TakeBackCasualEntry(f.Player), "no casual raid entered");
         Assert.HasCount(3, f.Sent(3).Where(e => e.Opcode.Command == (byte)WorldOpcode.EnterMazeLimitCountUpdate).ToArray());
+    }
+
+    [TestMethod]
+    public async Task TheCommandSetsACountAndStartsANewDay()
+    {
+        using var f = new Fixture(Rules(Rule(21061, limit: 2)));
+        using var services = new ServiceCollection().AddSingleton(f.Limits).BuildServiceProvider();
+
+        ICommand command = new MazeEntryCountCommand(services);
+
+        Assert.IsFalse(await command.TryExecute(f.Player, ["21061"]));
+        Assert.IsFalse(await command.TryExecute(f.Player, ["21311", "1"]), "a maze the table has no row for");
+
+        Assert.IsTrue(await command.TryExecute(f.Player, ["21061", "2"]));
+        Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21061));
+
+        Assert.IsTrue(await command.TryExecute(f.Player, ["reset"]));
+        Assert.IsNull(f.Limits.Check(f.Player, 21061));
+        Assert.AreEqual((byte)WorldOpcode.EnterMazeLimitCountReset, f.Sent(2).Last().Opcode.Command);
     }
 
     [TestMethod]
