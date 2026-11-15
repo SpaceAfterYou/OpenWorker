@@ -338,7 +338,7 @@ public enum SkillOpcode : byte
     SkillDivergenceLearn = 0x77,
 
     /// <summary>
-    /// Response
+    /// Has no message: the client asks for nothing by it and reads nothing of it, and the gesture slots go by their own group.
     /// </summary>
     GestureQuickSlot = 0x78,
 
