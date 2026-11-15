@@ -285,7 +285,7 @@ public partial class LuaMaze
     {
         var attacker = Ecs.Get<WorldComponent>(member.Player);
         var area = new AttackArea(hit.Trigger, attacker.Position, attacker.Rotation);
-        var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
+        var targets = creatureManager.MonstersStruck(area);
 
         // A blow that lands holds the animation of the attacker for a moment, on its client as here.
         if (targets.Length > 0)

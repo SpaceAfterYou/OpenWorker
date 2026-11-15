@@ -208,7 +208,9 @@ public partial class LuaMaze
 
         result = result with { Damage = _buffs.Adjust(attacker, target, result.Damage) };
 
-        var lost = LifeTaken(target, result.Damage);
+        // A monster with parts takes the blow on the part it lands on, never on its own life.
+        var part = creatureManager.StruckPart(target);
+        var lost = creatureManager.TakeOnParts(target, part, result.Damage) ? 0 : LifeTaken(target, result.Damage);
 
         var health = Math.Max(0, creature.Health - lost);
 
@@ -231,7 +233,8 @@ public partial class LuaMaze
             ExtraMove = effect.ExtraMove,
             FlySpeed = effect.FlySpeed,
             DefenseType = effect.Defense,
-            CurSuperArmorGauge = effect.SuperArmor
+            CurSuperArmorGauge = effect.SuperArmor,
+            HitPartsIndex = part
         };
     }
 

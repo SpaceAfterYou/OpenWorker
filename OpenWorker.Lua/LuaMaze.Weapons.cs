@@ -188,7 +188,7 @@ public partial class LuaMaze
         var place = Ecs.Get<WorldComponent>(weapon).Position;
         var yaw = Ecs.Get<WorldComponent>(member.Player).Rotation;
         var area = new AttackArea(trigger, place, yaw);
-        var targets = creatureManager.FindMonsters((at, body) => area.Touches(at, body.BodyRadius, body.BodyHeight));
+        var targets = creatureManager.MonstersStruck(area);
 
         Run(ApplyDamageAsync(member, skill, trigger, targets, position, origin: place, card: new CardStrike(ride.Weapon, place, yaw),
             strength: Ecs.Get<MonsterCombatComponent>(weapon).Stats));
