@@ -14,6 +14,9 @@ internal static partial class LuaLog
 {
     // ---- The server calls the script -------------------------------------------------------
 
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Script event OnMazeCreated")]
+    public static partial void EventMazeCreated(this ILogger logger);
+
     [LoggerMessage(Level = LogLevel.Debug, Message = "Script event OnEnterPlayer: actor {Actor}")]
     public static partial void EventEnterPlayer(this ILogger logger, int actor);
 

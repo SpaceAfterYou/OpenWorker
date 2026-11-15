@@ -500,6 +500,8 @@ public sealed partial class PersonService(
         // A helper sent away, by whatever way, gives back the orb of a friend it wore.
         creatures.Helpers.Released += helper => helperGear.ReleaseOrb(helper.Owner, helper.Helper);
 
+        await state.OnMazeCreatedAsync(maze, cancellationToken);
+
         return maze;
     }
 
