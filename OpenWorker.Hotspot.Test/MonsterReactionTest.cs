@@ -148,6 +148,33 @@ public sealed class MonsterReactionTest
     }
 
     /// <summary>
+    /// A thrown monster lands the length it is told away along the blow, however the steps of the maze fall: no cut, no shorter.
+    /// </summary>
+    [TestMethod]
+    public void AThrowLandsTheToldLengthAwayWhateverTheSteps()
+    {
+        foreach (var steps in new[] { new[] { 0.016f }, new[] { 0.05f }, new[] { 0.15f }, new[] { 0.01f, 0.2f, 0.05f, 0.33f, 0.02f } })
+        {
+            var reaction = Create();
+            var outcome = reaction.Hit(Strike(ReactionKind.KnockDown, 893.7f, height: 101.25f, speed: 3000f), DefenseType.Normal, true, Vector3.Zero, new BlowRolls(0, 0));
+            var position = outcome.Position;
+            var events = ReactionEvents.None;
+
+            for (var index = 0; !events.HasFlag(ReactionEvents.Landed) && index < 1000; index++)
+            {
+                var step = reaction.Step(steps[index % steps.Length], position);
+
+                position = step.Position;
+                events |= step.Events;
+            }
+
+            Assert.IsTrue(events.HasFlag(ReactionEvents.Landed));
+            Assert.IsFalse(events.HasFlag(ReactionEvents.FlightCut));
+            Assert.AreEqual(893.7f, new Vector2(position.X, position.Y).Length(), 2f, $"Steps of {string.Join(", ", steps)} s.");
+        }
+    }
+
+    /// <summary>
     /// A wall stops a flight a radius before it, and the monster falls where it is: the clients are told where.
     /// </summary>
     [TestMethod]
