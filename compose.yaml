@@ -142,7 +142,7 @@ services:
     networks:
       - eva-01
     volumes:
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res:ro
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
 
   openworker.authserver:
@@ -207,10 +207,10 @@ services:
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res:ro
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
       # The gate reads the map of the first tutorial maze to find where the prologue starts.
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch:ro
 
   openworker.districtserver-roccotown:
     <<: *openworker-server
@@ -245,10 +245,10 @@ services:
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res:ro
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh:ro
 
   openworker.mazeserver:
     <<: *openworker-server
@@ -279,14 +279,16 @@ services:
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res:ro
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action:ro
+      # Not read-only: the minds of monsters are mounted inside it, and their folder is made there (an empty AI folder in
+      # Scripts/Server of the client's data).
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
       # The minds of monsters: the server looks for them in scripts/AI.
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/AI:/app/scripts/AI
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/AI:/app/scripts/AI:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh:ro
 
   # A second maze server of the gate: it registers itself as the first does, players are sent to the least busy one, and a
   # reservation names the server it was made for.
@@ -320,14 +322,16 @@ services:
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res:ro
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action:ro
+      # Not read-only: the minds of monsters are mounted inside it, and their folder is made there (an empty AI folder in
+      # Scripts/Server of the client's data).
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
       # The minds of monsters: the server looks for them in scripts/AI.
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/AI:/app/scripts/AI
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/AI:/app/scripts/AI:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh:ro
 
   openworker.districtserver-canduscity:
     <<: *openworker-server
@@ -362,10 +366,10 @@ services:
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res:ro
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh:ro
 
   openworker.districtserver-gracecity:
     <<: *openworker-server
@@ -400,10 +404,10 @@ services:
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res:ro
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh:ro
 
   openworker.districtserver-ruinfortress:
     <<: *openworker-server
@@ -438,10 +442,10 @@ services:
       - eva-01
     volumes:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res:ro
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
-      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh:ro
 
 networks:
   eva-01:
@@ -450,9 +454,13 @@ networks:
 volumes:
   prometheus-data:
 
-# Volumes with the data of the client come from SOULWORKER_DATAS, the `datas` folder of an
-# installed client: set it in the shell or in `.env` next to this file, e.g.
-# SOULWORKER_DATAS=/mnt/games/soulworker/datas
+# Volumes with the data of the client come from SOULWORKER_DATAS, the unpacked `datas` folder of an installed client
+# (bin/Table, World/Table, World/Navmesh, Character/ActionData, Scripts/Server, Scripts/AI): set it in the shell or in
+# `.env` next to this file, e.g.
+# SOULWORKER_DATAS=/mnt/games/soulworker/_datas
+# Each kind of server mounts every folder it reads (ComposeDataTest checks this file against the folders the servers
+# name), and a server says at its start, as an error, which folder is missing or empty and what will not work; a maze
+# without its maps, scripts, minds of monsters or action files, and a district without its maps, do not start.
 # The tables only the original server has (tb_Status with the size of the soul gauge, the reward tables of a maze,
 # ...) come from SOULWORKER_SERVER_RES, mounted at /app/res-server. Without it the folder of the client tables stands
 # in, and every server-only table is missing: the soul gauge is not counted (the client shows 0 and refuses the skills
