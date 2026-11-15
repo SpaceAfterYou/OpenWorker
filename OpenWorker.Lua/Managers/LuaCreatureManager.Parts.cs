@@ -282,8 +282,9 @@ public sealed partial class LuaCreatureManager
 
     /// <summary>
     /// The monster is taken away and another appears in its place, facing the same way, with the life and the super armor it had
-    /// and in its sector and box. The clients see the first go and the second come, then the parts and the armor of the second.
-    /// Nobody killed the first: it gives nothing and its script is not told.
+    /// and in its sector and box. The clients see the first go and the second come, then the parts and the armor of the second,
+    /// then the buffs the first carried, which the second carries on. Nobody killed the first: it gives nothing and its script is
+    /// not told.
     /// </summary>
     private Entity ChangeMonster(Entity monster, int next)
     {
@@ -293,6 +294,7 @@ public sealed partial class LuaCreatureManager
         var armor = ecs.Get<MonsterCombatComponent>(monster).SuperArmor;
         AggroGroup? group = Bodies.TryGetValue(monster, out var body) ? body.Group : null;
         var actor = ecs.Get<ActorComponent>(monster);
+        var buffs = Buffs?.Carried(monster) ?? [];
 
         var created = CreateMonster(next, MonsterSpawnBox.At(next, place.Position, place.Rotation, origin.Sector));
 
@@ -323,6 +325,8 @@ public sealed partial class LuaCreatureManager
 
         Broadcast(PartsMessage(created, PartsOf(created)));
         Broadcast(new MonsterSuperArmorGageResponse { Actor = ecs.Get<ActorComponent>(created), Current = after.SuperArmor, Max = after.MaxSuperArmor });
+
+        Buffs?.Carry(created, buffs, actor);
 
         return created;
     }

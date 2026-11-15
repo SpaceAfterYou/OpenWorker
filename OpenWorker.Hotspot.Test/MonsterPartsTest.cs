@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,6 +8,7 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes.Enums.Opcodes;
 using OpenWorker.Gameplay.Ai;
+using OpenWorker.Gameplay.Buffs;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
@@ -157,6 +159,11 @@ public sealed class MonsterPartsTest
         }
     }
 
+    /// <summary>
+    /// A buff the tests give the monster: it lasts a minute and stacks to three.
+    /// </summary>
+    private const ushort Mark = 901;
+
     private static async Task WithMachinaAsync(Func<Stage, Task> test)
     {
         var actionFolder = Folder("OPENWORKER_TEST_ACTION");
@@ -175,6 +182,11 @@ public sealed class MonsterPartsTest
             clock,
             new NavMeshProvider(),
             parts: new MonsterPartRules(monsters, TestTables.Load<MonsterBrokenPartsRow>("tb_Monster_Broken_Parts")));
+        var buffs = new ReadOnlyCollection<BuffRow>(
+        [
+            TestRows.Build<BuffRow>(("Id", Mark), ("AllowedPlaces", 10), ("Kind", (byte)BuffKind.Debuff), ("Group", Mark), ("SuccessRate", 10000), ("Grade", 1),
+                ("DurationMilliseconds", 60_000), ("OverlapCount", 3))
+        ]);
         var world = World.Create();
 
         try
@@ -190,7 +202,7 @@ public sealed class MonsterPartsTest
                 new AbilityComponent { Health = life, SoulGain = life, SoulVapor = life, Stamina = life, SuperArmor = life, Speed = new SpeedComponentEntry { Move = 1f, Attack = 1f } });
             var batch = TestMazes.Map();
             var creatures = new LuaCreatureManager(world, batch, combat, services);
-            var maze = TestMazes.Create(world, player, clock: clock, batch: batch, creatures: creatures, tables: combat, actions: actions);
+            var maze = TestMazes.Create(world, player, clock: clock, batch: batch, creatures: creatures, tables: combat, actions: actions, buffs: new BuffManager(buffs));
 
             maze.MarkLoaded(player);
             maze.TryStart();
@@ -226,13 +238,23 @@ public sealed class MonsterPartsTest
 
             Assert.AreEqual((int)(health * 0.5f), creatures.PartsOf(machina).First.MaxHealth, "each hand has half the life of the monster");
 
+            // A buff the monster gave itself, twice, and one of the player.
+            Assert.IsTrue(stage.Maze.Buffs.Give(machina, Mark, machina));
+            Assert.IsTrue(stage.Maze.Buffs.Give(machina, Mark, machina));
+
+            stage.Maze.Buffs.Step(5f);
+
+            var given = stage.Maze.Buffs.Carried(machina).Single().Time;
+
             CollectionAssert.AreEqual(new[] { machina }, creatures.MonstersStruck(stage.AroundTheLeftHand()));
             Assert.AreEqual((byte)1, creatures.StruckPart(machina));
 
             Assert.IsTrue(creatures.TakeOnParts(machina, 1, 10_000_000));
             Assert.AreEqual(health, world.Get<CreatureComponent>(machina).Health, "the life of the monster is not touched");
 
-            for (var passed = TimeSpan.Zero; passed < TimeSpan.FromSeconds(30) && world.IsAlive(machina); passed += SimulationClock.Period)
+            var passed = TimeSpan.Zero;
+
+            for (; passed < TimeSpan.FromSeconds(30) && world.IsAlive(machina); passed += SimulationClock.Period)
             {
                 stage.Advance(SimulationClock.Period);
             }
@@ -245,6 +267,13 @@ public sealed class MonsterPartsTest
             Assert.AreEqual(place, world.Get<WorldComponent>(changed).Position);
             Assert.AreEqual(Math.Min(health, (int)world.Get<MonsterCombatComponent>(changed).Stats.MaxHealth), world.Get<CreatureComponent>(changed).Health);
             Assert.IsGreaterThan(0, creatures.PartsOf(changed).First.Health, "the hand left has its own life");
+
+            var carried = stage.Maze.Buffs.Carried(changed).Single();
+
+            Assert.AreEqual(Mark, carried.Buff, "the buff of the first is carried on");
+            Assert.AreEqual((byte)2, carried.Count, "with its stacks");
+            Assert.IsTrue(carried.Time <= given + 0.01f && carried.Time >= given - 0.2f - passed.TotalSeconds, $"and the time it had left: {carried.Time} of {given}");
+            Assert.AreEqual((int)world.Get<ActorComponent>(changed), carried.Owner, "a buff the first gave itself is the new one's own");
 
             await QueueMarker.SettleAsync(world.Get<ServerSessionComponent>(stage.Player), stage.Connection);
 

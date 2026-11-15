@@ -349,6 +349,52 @@ public sealed partial class MazeBuffs
     }
 
     /// <summary>
+    /// The buffs someone carries now, with the time each has left and its stacks.
+    /// </summary>
+    public IReadOnlyList<SavedBuff> Carried(Entity carrier)
+    {
+        if (!_books.TryGetValue(carrier, out var book) || book.IsEmpty)
+        {
+            return [];
+        }
+
+        var carried = new List<SavedBuff>();
+
+        foreach (var buff in book.Buffs)
+        {
+            if (buff.Definition.Lasts || buff.Remaining > 0f)
+            {
+                carried.Add(new SavedBuff { Buff = buff.Buff, Time = Time(buff), Count = buff.Count, Owner = buff.Owner });
+            }
+        }
+
+        return carried;
+    }
+
+    /// <summary>
+    /// A monster that another has turned into takes on the buffs the first carried, each with the time it had left, its stacks
+    /// and its giver; a buff the first gave itself is the new one's own. What a buff gives when it begins is not given again.
+    /// </summary>
+    /// <param name="former">The actor of the monster the buffs were carried by.</param>
+    public void Carry(Entity carrier, IReadOnlyList<SavedBuff> buffs, int former)
+    {
+        if (buffs.Count == 0 || BookOf(carrier) is not { } book || !IsUp(carrier))
+        {
+            return;
+        }
+
+        var state = Carrier(carrier);
+
+        foreach (var buff in buffs)
+        {
+            BuffRules.Restore(book, _catalog, buff.Buff, buff.Time, buff.Count, state, _changes, buff.Owner == former ? state.Actor : buff.Owner, anyTime: true);
+        }
+
+        Process(carrier, book);
+        Flush();
+    }
+
+    /// <summary>
     /// A monster is gone from the maze.
     /// </summary>
     public void Forget(Entity creature)
