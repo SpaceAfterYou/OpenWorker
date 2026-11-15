@@ -54,7 +54,7 @@ public sealed class ServerChangeTest
             var changes = new ServerChanges(world, time);
             var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Other, level: 30, fatigue: 0)]);
             var fatigue = new FatigueService(world, mazes, TimeProvider.System, Options.Create(new DailyMissionOptions()), NullLogger<FatigueService>.Instance);
-            var progress = new SharePointManager(world, new PersonStateStore(null!), SharePointCatalog.Of([]), null!, NullLogger<SharePointManager>.Instance);
+            var progress = new SharePointManager(world, new PersonStateStore(null!), SharePointCatalog.Of([]), MazeEpisodes.Of([]), null!, NullLogger<SharePointManager>.Instance);
             var admission = new MazeAdmission(world, mazes, fatigue, MazeResultsTest.Scoring(MazeResultsTest.None<MazePlayScoreRow>(), MazeResultsTest.None<MazeRuleRow>()), progress);
             var service = MazeRequestGuardTest.Service(world, admission: admission, changes: changes);
             var connection = new RecordingConnection();

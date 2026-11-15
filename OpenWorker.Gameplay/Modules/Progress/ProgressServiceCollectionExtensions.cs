@@ -36,6 +36,7 @@ public static class ProgressServiceCollectionExtensions
         services.AddSingleton<IMiscTick>(provider => provider.GetRequiredService<AchievementManager>());
 
         services.AddSingleton<SharePointCatalog>();
+        services.AddSingleton<MazeEpisodes>();
         services.AddSingleton<SharePointManager>();
 
         services.AddSingleton(AchievementManager.Document);

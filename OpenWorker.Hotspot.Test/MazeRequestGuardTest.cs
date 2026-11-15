@@ -163,7 +163,7 @@ public sealed class MazeRequestGuardTest
         {
             var mazes = new ReadOnlyCollection<MazeInfoRow>([MazeResultsTest.MazeRow(Other, level: 30, fatigue: 0)]);
             var fatigue = new FatigueService(world, mazes, TimeProvider.System, Options.Create(new DailyMissionOptions()), NullLogger<FatigueService>.Instance);
-            var progress = new SharePointManager(world, new PersonStateStore(null!), SharePointCatalog.Of([]), null!, NullLogger<SharePointManager>.Instance);
+            var progress = new SharePointManager(world, new PersonStateStore(null!), SharePointCatalog.Of([]), MazeEpisodes.Of([]), null!, NullLogger<SharePointManager>.Instance);
             var admission = new MazeAdmission(world, mazes, fatigue, MazeResultsTest.Scoring(MazeResultsTest.None<MazePlayScoreRow>(), MazeResultsTest.None<MazeRuleRow>()), progress);
             var connection = new RecordingConnection();
             var player = world.Create(new LevelComponent(1, 0), new ServerSessionComponent(connection));
