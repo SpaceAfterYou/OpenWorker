@@ -1,11 +1,14 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
+using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Modules.Persistence;
 using OpenWorker.Gameplay.Modules.Progress.Components;
 using OpenWorker.Gameplay.Modules.State;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Maze.Responses;
+using OpenWorker.Hotspot.Modules.Maze.Types;
 using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 
@@ -20,6 +23,7 @@ public sealed partial class SharePointManager(
     World world,
     PersonStateStore store,
     SharePointCatalog catalog,
+    MazeEpisodes episodes,
     ProgressItems items,
     ILogger<SharePointManager> logger)
 {
@@ -43,7 +47,8 @@ public sealed partial class SharePointManager(
     /// Loads the share points of the person as it enters a district and tells the client every district and group, the
     /// districts first: the client files a group under its district. The district the person is in gets a state when it has
     /// none. The client takes the lists only as it enters the world from the gate and the change of one state only once it
-    /// is in the world, so a new district is in the list and is told by itself as well.
+    /// is in the world, so a new district is in the list and is told by itself as well. Then the mazes cleared, all of them:
+    /// the board of the mazes opens its episodes from them, and a client that has just started knows none.
     /// </summary>
     public async ValueTask EnterDistrictAsync(Entity player, int person, int district, CancellationToken cancellationToken)
     {
@@ -63,6 +68,8 @@ public sealed partial class SharePointManager(
         {
             States = book.Groups.Take(MaxGroups).Select(e => e.ToValue()).ToArray()
         });
+
+        SendClears(player, episodes.Groups(book.Mazes), true);
 
         if (visited is not null)
         {
@@ -96,7 +103,8 @@ public sealed partial class SharePointManager(
     }
 
     /// <summary>
-    /// A clear of a maze with its rank and time, kept with the progress of the mazes of the person.
+    /// A clear of a maze with its rank and time, kept with the progress of the mazes of the person. The client is told the
+    /// whole group of the maze, as it replaces what it knew of the group.
     /// </summary>
     public void RecordClear(Entity player, int maze, byte rank, int seconds)
     {
@@ -107,6 +115,11 @@ public sealed partial class SharePointManager(
 
         book.Record(maze, rank, seconds);
         world.MarkDirty(player, PersonSections.Progress);
+
+        if (episodes.TryGet(maze, out var episode))
+        {
+            SendClears(player, [episodes.Group(book.Mazes, episode.Group)], false);
+        }
     }
 
     /// <summary>
@@ -200,6 +213,14 @@ public sealed partial class SharePointManager(
             Result = (byte)result,
             Items = given.Take(sbyte.MaxValue).Select(e => new RewardItemValue { Item = e.Item, Count = (short)e.Count }).ToArray()
         };
+    }
+
+    private void SendClears(Entity player, MazeClearValue[] groups, bool all)
+    {
+        if (world.IsAlive(player) && world.TryGet<ActorComponent>(player, out var actor))
+        {
+            Send(player, new MazeClearInfoResponse { Groups = groups, Person = actor, IsReset = all });
+        }
     }
 
     private async ValueTask<SharePointBook?> LoadAsync(Entity player, int person, CancellationToken cancellationToken)

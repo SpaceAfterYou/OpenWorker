@@ -16,6 +16,22 @@ public sealed class MazeWireFormatTest
     private static byte[] Written(IResponseHotspotMessage message) => WireBytes.Of(message);
 
     [TestMethod]
+    public void ClearInfoPutsANormalAndAHardMazeInEachOfTenSlots()
+    {
+        var bytes = Written(new MazeClearInfoResponse { Groups = [new MazeClearValue(33, 1, [21311], [21342])], Person = 7, IsReset = true });
+
+        Assert.HasCount(1 + 4 + 1 + MazeClearValue.Slots * 8 + 4 + 1, bytes);
+        Assert.AreEqual((byte)1, bytes[0]);
+        Assert.AreEqual(33, BitConverter.ToInt32(bytes, 1));
+        Assert.AreEqual((byte)1, bytes[5]);
+        Assert.AreEqual(21311, BitConverter.ToInt32(bytes, 6));
+        Assert.AreEqual(21342, BitConverter.ToInt32(bytes, 10));
+        Assert.AreEqual(0, BitConverter.ToInt32(bytes, 14));
+        Assert.AreEqual(7, BitConverter.ToInt32(bytes, 86));
+        Assert.AreEqual((byte)1, bytes[90]);
+    }
+
+    [TestMethod]
     public void MonsterSuperArmorIsActorAndTwoFloats()
     {
         var data = Written(new MonsterSuperArmorGageResponse { Current = 1.5f, Max = 2.5f });

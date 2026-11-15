@@ -111,7 +111,7 @@ public sealed class ProgressTest
 
             Achievements = new AchievementManager(World, store, achievements, rewards, Inventory, new ReadOnlyCollection<MonsterRow>([]),
                 NullLogger<AchievementManager>.Instance, granter: granter);
-            SharePoints = new SharePointManager(World, store, sharePoints, rewards, NullLogger<SharePointManager>.Instance);
+            SharePoints = new SharePointManager(World, store, sharePoints, MazeEpisodes.Of([]), rewards, NullLogger<SharePointManager>.Instance);
 
             Player = World.Create(
                 Component.GetComponentType(typeof(ActorComponent)),

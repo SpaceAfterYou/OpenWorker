@@ -531,7 +531,7 @@ public sealed class MazeResultsTest
 
             Fatigue = new FatigueService(World, mazes, Time, Options.Create(new DailyMissionOptions()), NullLogger<FatigueService>.Instance, manager);
 
-            var progress = new SharePointManager(World, new PersonStateStore(null!), SharePointCatalog.Of([]), null!, NullLogger<SharePointManager>.Instance);
+            var progress = new SharePointManager(World, new PersonStateStore(null!), SharePointCatalog.Of([]), MazeEpisodes.Of([]), null!, NullLogger<SharePointManager>.Instance);
 
             Admission = new MazeAdmission(World, mazes, Fatigue, Scoring(None<MazePlayScoreRow>(), None<MazeRuleRow>()), progress);
             Results = new MazeResults(World, TestMazes.Clock(Time), fatigue: Fatigue);

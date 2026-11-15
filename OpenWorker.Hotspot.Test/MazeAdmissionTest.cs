@@ -84,7 +84,7 @@ public sealed class MazeAdmissionTest
             Factory = new InventoryFactory(catalog, Load<CreateClothRow>("tb_Create_Cloth"), serials);
 
             var fatigue = new FatigueService(World, mazes, Time, Options.Create(new DailyMissionOptions()), NullLogger<FatigueService>.Instance);
-            var progress = new SharePointManager(World, new PersonStateStore(null!), SharePointCatalog.Of([]), null!, NullLogger<SharePointManager>.Instance);
+            var progress = new SharePointManager(World, new PersonStateStore(null!), SharePointCatalog.Of([]), MazeEpisodes.Of([]), null!, NullLogger<SharePointManager>.Instance);
 
             Limits = new MazeEntryLimits(
                 World,

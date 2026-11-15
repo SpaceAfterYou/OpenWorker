@@ -3,8 +3,6 @@ using OpenWorker.Domain.Components;
 using OpenWorker.Hotspot.Modules.Persons.Types;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Modules.Maze.Responses;
-using OpenWorker.Hotspot.Modules.Maze.Types;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 
@@ -13,35 +11,13 @@ namespace OpenWorker.Lua;
 public partial class LuaMaze
 {
     /// <summary>
-    /// A group of mazes has four episodes.
-    /// </summary>
-    private const int MaxEpisode = 4;
-
-    /// <summary>
     /// The maze is won: its last sector has been cleared. Doors that open from now on say so to the client.
     /// </summary>
     public bool IsComplete { get; private set; }
 
     /// <summary>
-    /// The client learns which maze of its group is cleared, and that the next episode is open. The mazes cleared
-    /// before are not kept anywhere yet, so only this one is told.
-    /// </summary>
-    internal void SendClearInfo()
-    {
-        var group = new MazeClearValue(info.Group, (byte)Math.Min(info.Episode + 1, MaxEpisode), [(info.Id, 1)]);
-
-        foreach (var member in _members)
-        {
-            if (TrySession(member.Player, out var session))
-            {
-                session.Send(new MazeClearInfoResponse { Groups = [group], Person = Ecs.Get<ActorComponent>(member.Player), IsReset = false });
-            }
-        }
-    }
-
-    /// <summary>
     /// What happens once, when the last sector is cleared: the rest of its monsters go, the clock stops, the hidden event is
-    /// decided and the client is told that the maze is won.
+    /// decided and each player present has the clear recorded, which tells its client the group of the maze.
     /// </summary>
     private async ValueTask CompleteMazeAsync(SectorBox last)
     {
@@ -52,8 +28,6 @@ public partial class LuaMaze
 
         IsComplete = true;
         MazeState = MazeState.None;
-
-        SendClearInfo();
 
         // The hidden event is decided before the rewards of the clear, which carry its item.
         DecideHiddenEvent();

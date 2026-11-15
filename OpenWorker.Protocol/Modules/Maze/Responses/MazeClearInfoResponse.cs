@@ -9,7 +9,8 @@ using OpenWorker.Wire;
 namespace OpenWorker.Hotspot.Modules.Maze.Responses;
 
 /// <summary>
-/// The mazes a person has cleared. The client puts them next to the ones it knows, or throws the old ones away.
+/// The mazes a person has cleared, by group: the board of the mazes opens the episodes from it. A group told replaces what
+/// the client knew of it; the other groups stay, unless the list is told as all the person has.
 /// </summary>
 [WireMessage]
 [HotspotMessage(Group, (byte)Command, HotspotMessageDirection.Response)]
