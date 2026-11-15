@@ -1069,10 +1069,9 @@ public sealed partial class MazeService(
             return;
         }
 
-        // A map leads either to a portal exit or to a start point of the district.
-        BasicEntity? exit = districtBatch.EventBox.PortalExits.Find(eventObject);
-        exit ??= districtBatch.EventBox.StartEvents.Find(eventObject);
-        exit ??= districtBatch.EventBox.StartEvents.Find(districtCache.Location * 100 + 1);
+        // The way out lands at the box it names in the district (the exit box of the maze's portal there), else at the start.
+        var exit = districtBatch.EventBox.LandingOf(eventObject) ??
+                   districtBatch.EventBox.StartEvents.Find(districtCache.Location * 100 + 1);
 
         if (exit is null)
         {
@@ -1087,7 +1086,7 @@ public sealed partial class MazeService(
             Server = Gate
         };
 
-        var position = exit.GetRandomPosition();
+        var position = exit.GetLandingPosition();
 
         var location = new WorldValue
         {

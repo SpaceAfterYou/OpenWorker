@@ -83,6 +83,15 @@ public sealed class EventBox(XElement x)
         .XPathSelectElements("VCheckEventSpawnBox")
         .Select(v => new CheckEventSpawnBox(v)));
 
+    /// <summary>
+    /// The box a way into the map lands at, by the id a portal or an escape box of another map names: a start box, the
+    /// exit box of a portal or a common position. Nothing for an id the map does not have.
+    /// </summary>
+    public BasicEntity? LandingOf(int id)
+    {
+        return (BasicEntity?)StartEvents.Find(id) ?? (BasicEntity?)PortalExits.Find(id) ?? CommonPositions.Find(id);
+    }
+
     private ILookup<int, MonsterSpawnBox>? _spawnsOfSector;
     private ILookup<int, SectorStartBox>? _startsOfSector;
 

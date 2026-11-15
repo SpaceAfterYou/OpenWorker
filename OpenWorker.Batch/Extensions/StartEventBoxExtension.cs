@@ -21,6 +21,15 @@ public static class StartEventBoxExtension
         return self.SpawnType != SpawnType.Random ? self.PosTopLeft : self.GetRandomPosition();
     }
 
+    /// <summary>
+    /// Where a player who lands at the box stands: a start box says it itself, any other box is landed at anywhere across
+    /// it, at the height of its first corner.
+    /// </summary>
+    public static Vector3 GetLandingPosition(this BasicEntity self)
+    {
+        return self is StartEventBox start ? start.GetPosition() : self.GetRandomPosition() with { Z = self.PosTopLeft.Z };
+    }
+
     public static Vector3 GetPosition(this MonsterSpawnBox self)
     {
         return self.CreationPositionType switch
