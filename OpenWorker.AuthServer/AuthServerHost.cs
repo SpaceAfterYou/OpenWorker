@@ -3,6 +3,7 @@ using OpenWorker.AuthServer.Server.Extensions;
 using OpenWorker.DependencyInjection;
 using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Extensions.Data;
 
 namespace OpenWorker.AuthServer;
 
@@ -11,6 +12,11 @@ namespace OpenWorker.AuthServer;
 /// </summary>
 public static class AuthServerHost
 {
+    /// <summary>
+    /// The game data the auth server reads: none.
+    /// </summary>
+    public static IReadOnlyList<DataNeed> Data { get; } = [];
+
     public static IHostBuilder CreateBuilder(string[] args)
     {
         return Host

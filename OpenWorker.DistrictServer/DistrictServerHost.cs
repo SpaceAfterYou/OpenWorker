@@ -12,6 +12,7 @@ using OpenWorker.DistrictServer.Trade;
 using OpenWorker.DistrictServer.Services;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
+using OpenWorker.Extensions.Data;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay.Extensions;
 using OpenWorker.Gameplay.Modules.CashShop;
@@ -34,6 +35,17 @@ namespace OpenWorker.DistrictServer;
 /// </summary>
 public static class DistrictServerHost
 {
+    /// <summary>
+    /// The game data the district reads.
+    /// </summary>
+    public static IReadOnlyList<DataNeed> Data { get; } =
+    [
+        new DataNeed(DataFolders.ClientTables, "the server reads every client table at start", Refuse: true),
+        new DataNeed(DataFolders.ServerTables, "what only the server's tables give is missing: drops of boxes, item rolls, crafts, targets of achievements"),
+        new DataNeed(DataFolders.Maps, "no player can enter the district: its start points are on its map", Refuse: true),
+        new DataNeed(DataFolders.NavMeshes, "social items are placed without a check of the floor")
+    ];
+
     public static IHostBuilder CreateBuilder(string[] args)
     {
         return Host
@@ -44,6 +56,7 @@ public static class DistrictServerHost
 
     private static void AddServices(HostBuilderContext context, IServiceCollection services)
     {
+        services.AddDataCheck(Data);
         context.Configuration[ConfigurationUtils.InstanceIdentifierKey] = Guid.CreateVersion7().ToString();
 
         services.AddCache();
@@ -86,7 +99,7 @@ public static class DistrictServerHost
         services.AddTrade();
         services.AddPartyMazeEntry();
         services.AddMyRoom().AddSingleton<IMyRoomPlace, DistrictRoomPlace>();
-        services.AddSocialItems().AddSingleton<ISocialItemGrounds, DistrictSocialItemGrounds>().AddSingleton<NavMeshProvider>();
+        services.AddSocialItems().AddSingleton<ISocialItemGrounds, DistrictSocialItemGrounds>().AddSingleton(_ => new NavMeshProvider(DataFolders.NavMeshes.Path));
         services.AddHostedService<PostSweepService>();
         services.AddHostedService<CashShopSweepService>();
         services.AddHostedService<RewardLetterRecovery>();

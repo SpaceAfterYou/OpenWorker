@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using OpenWorker.DependencyInjection;
 using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Extensions;
+using OpenWorker.Extensions.Data;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Persistence;
 using OpenWorker.RelayServer.DependencyInjection;
@@ -16,6 +17,11 @@ namespace OpenWorker.RelayServer;
 /// </summary>
 public static class RelayServerHost
 {
+    /// <summary>
+    /// The game data the relay reads.
+    /// </summary>
+    public static IReadOnlyList<DataNeed> Data { get; } = [new DataNeed(DataFolders.ClientTables, "the server reads every client table at start", Refuse: true)];
+
     public static IHostBuilder CreateBuilder(string[] args)
     {
         return Host
@@ -26,6 +32,7 @@ public static class RelayServerHost
 
     private static void AddServices(IServiceCollection services)
     {
+        services.AddDataCheck(Data);
         services.AddCache();
         services.AddPersistence();
         services.AddTelemetry();

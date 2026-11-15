@@ -11,6 +11,7 @@ using OpenWorker.DependencyInjection;
 using OpenWorker.DependencyInjection.Health;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
+using OpenWorker.Extensions.Data;
 using OpenWorker.Hotspot;
 using OpenWorker.Gameplay;
 using OpenWorker.Gameplay.Buffs;
@@ -40,6 +41,20 @@ namespace OpenWorker.MazeServer;
 /// </summary>
 public static class MazeServerHost
 {
+    /// <summary>
+    /// The game data the maze reads.
+    /// </summary>
+    public static IReadOnlyList<DataNeed> Data { get; } =
+    [
+        new DataNeed(DataFolders.ClientTables, "the server reads every client table at start", Refuse: true),
+        new DataNeed(DataFolders.ServerTables, "the soul gauge is not counted (the client refuses the skills that cost it), maze ranks and drops give nothing"),
+        new DataNeed(DataFolders.Maps, "no maze can be entered", Refuse: true),
+        new DataNeed(DataFolders.MazeScripts, "no maze runs its script: no monsters, no waves, no end", Refuse: true),
+        new DataNeed(DataFolders.MonsterMinds, "monsters stand still and never attack", Refuse: true),
+        new DataNeed(DataFolders.Actions, "skills have no blows: monsters hit nobody", Refuse: true),
+        new DataNeed(DataFolders.NavMeshes, "monsters walk through walls and off the floor")
+    ];
+
     public static IHostBuilder CreateBuilder(string[] args)
     {
         return Host
@@ -50,6 +65,8 @@ public static class MazeServerHost
 
     private static void AddServices(HostBuilderContext context, IServiceCollection services)
     {
+        services.AddDataCheck(Data);
+
         context.Configuration[ConfigurationUtils.InstanceIdentifierKey] = Guid.CreateVersion7().ToString();
 
         services.AddCache();
@@ -72,7 +89,7 @@ public static class MazeServerHost
         services.AddSingleton<CombatTables>();
         services.AddSingleton(provider => new AiScriptLoader(provider.GetRequiredService<ILogger<AiScriptLoader>>()));
         services.AddSingleton<MonsterBehaviorTables>();
-        services.AddSingleton<NavMeshProvider>();
+        services.AddSingleton(_ => new NavMeshProvider(DataFolders.NavMeshes.Path));
         services.AddSingleton<PartyRevision>();
         services.AddSingleton<SkillAggro>();
         services.AddSingleton<SkillChains>();

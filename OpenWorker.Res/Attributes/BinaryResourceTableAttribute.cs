@@ -1,15 +1,17 @@
-﻿namespace OpenWorker.Res.Attributes;
+﻿using OpenWorker.Extensions.Data;
+
+namespace OpenWorker.Res.Attributes;
 
 [AttributeUsage(AttributeTargets.Struct)]
 public sealed class BinaryResourceTableAttribute(string table) : Attribute
 {
     /// <summary>The folder of the client tables.</summary>
-    public const string ClientFolder = "res";
+    public static string ClientFolder => DataFolders.ClientTables.Path;
 
     /// <summary>
     /// The folder of the server-only tables, next to <see cref="ClientFolder"/>, which the operator fills.
     /// </summary>
-    public const string ServerFolder = "res-server";
+    public static string ServerFolder => DataFolders.ServerTables.Path;
 
     public string Table { get; } = table;
 

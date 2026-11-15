@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using OpenWorker.Extensions.Data;
 
 namespace OpenWorker.Batch;
 
@@ -45,7 +46,7 @@ public sealed record VBatchFile
     /// </summary>
     public static bool TryCreate(string name, [NotNullWhen(true)] out VBatchFile? file, string? layer = null)
     {
-        var path = Path.Join("batch", $"{name}.vbatch");
+        var path = Path.Join(DataFolders.Maps.Path, $"{name}.vbatch");
 
         if (!File.Exists(path))
         {

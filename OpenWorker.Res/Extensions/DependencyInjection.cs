@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using OpenWorker.Extensions.Data;
 using OpenWorker.Res.Attributes;
 
 namespace OpenWorker.Res.Extensions;
@@ -10,6 +11,13 @@ public static class DependencyInjection
 {
     public static void AddRes(this IServiceCollection services)
     {
+        // Without this, the first table read would fail with the name of one file and nothing about the folder.
+        if (!DataFolders.ClientTables.IsFilledIn(string.Empty))
+        {
+            throw new InvalidOperationException(
+                $"The folder {Path.GetFullPath(DataFolders.ClientTables.Path)} holds no {DataFolders.ClientTables.Holds}: the server reads every client table at start.");
+        }
+
         var types = AppDomain.CurrentDomain
             .GetAssemblies()
             .SelectMany(e => e.GetTypes())
