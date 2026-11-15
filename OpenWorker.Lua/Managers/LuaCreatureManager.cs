@@ -125,7 +125,10 @@ public sealed partial class LuaCreatureManager
         (Navigation as NavMeshNavigation)?.SetGate(gate, open);
     }
 
-    internal Random Random { get; } = new();
+    /// <summary>
+    /// The dice of the maze's monsters: their minds, blows and reactions.
+    /// </summary>
+    internal Random Random { get; init; } = new();
 
     /// <summary>
     /// The game time: the time of the maze's clock, or the steps added up for a manager no clock steps.
