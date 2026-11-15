@@ -3,6 +3,7 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Channel;
 using OpenWorker.Gameplay.Modules.HiddenEvents;
+using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Handler;
 using OpenWorker.Hotspot.Modules.Movement.Responses;
 
@@ -18,9 +19,10 @@ public sealed class MovementService(
     MovementPace pace,
     HandlerExecutor errors,
     ILogger<MovementService> logger,
-    HiddenEventCounter? hiddenEvents = null
+    HiddenEventCounter? hiddenEvents = null,
+    SimulationClock? clock = null
 ) :
-    MovementServiceBase(world, pace, errors, logger)
+    MovementServiceBase(world, pace, errors, logger, clock)
 {
     protected override void Broadcast<T>(Entity player, in T message)
     {

@@ -5,6 +5,7 @@ using OpenWorker.Domain.Types;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Movement;
 using OpenWorker.Gameplay.Modules.Npcs.Components;
 using OpenWorker.Hotspot.Handler.Abstractions;
 using OpenWorker.Hotspot.Handler.DataTypes;
@@ -35,7 +36,8 @@ namespace OpenWorker.Channel;
 /// A player on a ride of an NPC of transports (<see cref="TransportRideComponent"/>) is carried by the ride: what its client
 /// reports meanwhile is not a move.
 /// </summary>
-public abstract partial class MovementServiceBase(World world, MovementPace pace, HandlerExecutor errors, ILogger logger) :
+/// <param name="clock">The game clock the runs of the players are timed by; without one no run is kept.</param>
+public abstract partial class MovementServiceBase(World world, MovementPace pace, HandlerExecutor errors, ILogger logger, SimulationClock? clock = null) :
     IHotspotHandler<MovementMoveRequest>,
     IHotspotHandler<MovementStopRequest>,
     IHotspotHandler<MovementJumpRequest>,
@@ -107,6 +109,8 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
             float.IsFinite(request.fTargetPosX) &&
             float.IsFinite(request.fTargetPosY))
         {
+            KeepRun(context.Player, position, new Vector2(request.fTargetPosX, request.fTargetPosY), request.fMoveSpeed);
+
             Move(context.Player, new MovementMoveBtResponse
             {
                 Actor = request.dwActorID,
@@ -367,6 +371,29 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
         OnPlaced(player, position);
 
         return true;
+    }
+
+    /// <summary>
+    /// The player runs on from the place it named toward the end of its move until its next message: the monsters aim at where
+    /// it has got to.
+    /// </summary>
+    private void KeepRun(Entity player, Vector3 position, Vector2 end, float speed)
+    {
+        if (clock is null)
+        {
+            return;
+        }
+
+        var run = new PlayerRunComponent(position, end, float.IsFinite(speed) ? Math.Clamp(speed, 0f, PlayerRunComponent.MaxSpeed) : 0f, clock.Time);
+
+        if (world.Has<PlayerRunComponent>(player))
+        {
+            world.Set(player, run);
+        }
+        else
+        {
+            world.Add(player, run);
+        }
     }
 
     /// <summary>
