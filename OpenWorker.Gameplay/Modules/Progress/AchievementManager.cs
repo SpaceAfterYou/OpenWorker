@@ -114,12 +114,23 @@ public sealed partial class AchievementManager(
 
         world.Set(player, new AchievementComponent { Person = person, Book = book, PlayCountedAt = _time.GetTimestamp() });
 
+        // Titles of what was reached before the titles opened by themselves.
+        openTitles?.CatchUp(player, book.Reached(catalog), level);
+
         Send(player, new PersonAchieveSelectResponse
         {
             RewardBits = book.Rewarded,
             Achievements = book.Values().Take(MaxListLength).ToArray(),
             Categories = book.Categories(catalog)
         });
+    }
+
+    /// <summary>
+    /// The person landed the blow that killed the monster: the titles that ask for that monster open.
+    /// </summary>
+    public void OnMonsterSlain(Entity killer, int monster)
+    {
+        openTitles?.Update(killer, OpenTitleManager.ByMonsterKill, monster);
     }
 
     public void OnMonsterKilled(Entity player, int monster)

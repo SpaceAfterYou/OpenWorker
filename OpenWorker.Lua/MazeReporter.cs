@@ -65,6 +65,14 @@ public partial class MazeReporter(
     private static uint Bit(DailyMissionCondition condition) => 1u << (int)condition;
 
     /// <summary>
+    /// The player landed the blow that killed the monster.
+    /// </summary>
+    public virtual void MonsterSlain(Entity killer, int monster)
+    {
+        achievements?.OnMonsterSlain(killer, monster);
+    }
+
+    /// <summary>
     /// The person has killed a monster.
     /// </summary>
     public virtual async ValueTask MonsterKilledAsync(Entity player, int monster, uint conditions)

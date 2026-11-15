@@ -1,7 +1,10 @@
 using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using OpenWorker.Channel.Community;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Abstractions;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
@@ -307,6 +310,111 @@ public sealed class TitleTest
         Assert.HasCount(1, messages);
         CollectionAssert.AreEqual(new[] { 20 }, messages[0].TitleList.ToArray());
         CollectionAssert.AreEqual(new[] { 10, 30 }, messages[0].OpenList.ToArray());
+    }
+
+    /// <summary>
+    /// A person with the titles of the open list, a hero, and a session.
+    /// </summary>
+    private static Entity OpenTitlePerson(World world, RecordingConnection connection)
+    {
+        var player = world.Create(
+            Component.GetComponentType(typeof(OpenTitleComponent)),
+            Component.GetComponentType(typeof(PersonInfoComponent)),
+            Component.GetComponentType(typeof(TitleComponent)),
+            Component.GetComponentType(typeof(DirtyComponent)),
+            Component.GetComponentType(typeof(ServerSessionComponent)));
+
+        world.Set(player, new OpenTitleComponent { Person = 7, Book = new OpenTitleBook() });
+        world.Set(player, new PersonInfoComponent { Name = "Test", Hero = Hero.Haru });
+        world.Set(player, new TitleComponent { Primary = 0, Secondary = 0 });
+        world.Set(player, new DirtyComponent(new PersonDirty(7)));
+        world.Set(player, new ServerSessionComponent(connection));
+
+        return player;
+    }
+
+    private static int[] ToldOpen(RecordingConnection connection)
+    {
+        return connection.Frames.Select(PlayerFrame.Open)
+            .Where(e => e.Is(GroupOpcode.Character, (byte)CharacterOpcode.UpdateOpenTitle))
+            .Select(e => BinaryPrimitives.ReadInt32LittleEndian(e.Body))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// The titles of the achievements reached and of every level up to the person's own open as the person comes in, without
+    /// being told: the client reads them in the list.
+    /// </summary>
+    [TestMethod]
+    public async Task WhatWasReachedBeforeOpensItsTitlesAsThePersonComesIn()
+    {
+        using var world = World.Create();
+
+        var catalog = Catalog(
+            Row(10, TitleKind.Prefix, 0, OpenTitleManager.ByAchievement, AchievementChains.FirstAchievement),
+            Row(30, TitleKind.Suffix, 0, OpenTitleManager.ByLevel, 5),
+            Row(31, TitleKind.Prefix, 0, OpenTitleManager.ByLevel, 20),
+            Row(40, TitleKind.Prefix, 0, OpenTitleManager.ByMonsterKill, 1000));
+        var titles = new OpenTitleManager(world, new PersonStateStore(null!), catalog);
+        var chains = new AchievementChains(world, 1, null, (AchievementType.Death, 0));
+        var connection = new RecordingConnection();
+        var player = OpenTitlePerson(world, connection);
+
+        chains.Enter(player);
+        chains.Manager.Count(player, AchievementType.Death);
+
+        var book = world.Get<AchievementComponent>(player).Book!;
+
+        CollectionAssert.AreEqual(new[] { AchievementChains.FirstAchievement }, book.Reached(chains.Catalog).ToArray());
+
+        titles.CatchUp(player, book.Reached(chains.Catalog), 12);
+
+        CollectionAssert.AreEqual(new[] { 10, 30 }, titles.OpenOf(player).ToArray(), "the achievement and a level below the person's");
+
+        // A title told afterwards is the only one the client hears of.
+        Assert.AreEqual(1, titles.Update(player, OpenTitleManager.ByMonsterKill, 1000));
+        await MetricAssertions.UntilAsync(() => ToldOpen(connection).Length >= 1, "the later title is told");
+        CollectionAssert.AreEqual(new[] { 40 }, ToldOpen(connection));
+    }
+
+    /// <summary>
+    /// The player who lands the killing blow opens the titles of that monster.
+    /// </summary>
+    [TestMethod]
+    public void TheKillerOfAMonsterOpensItsTitle()
+    {
+        using var world = World.Create();
+
+        var titles = new OpenTitleManager(world, new PersonStateStore(null!), Catalog(Row(40, TitleKind.Prefix, 0, OpenTitleManager.ByMonsterKill, 1000)));
+        var chains = new AchievementChains(world, 1, titles, (AchievementType.Death, 0));
+        var player = OpenTitlePerson(world, new RecordingConnection());
+
+        chains.Manager.OnMonsterSlain(player, 1001);
+        Assert.IsEmpty(titles.OpenOf(player));
+
+        chains.Manager.OnMonsterSlain(player, 1000);
+        CollectionAssert.AreEqual(new[] { 40 }, titles.OpenOf(player).ToArray());
+    }
+
+    /// <summary>
+    /// The titles of an event open only by a game master's command, which names the condition and the value.
+    /// </summary>
+    [TestMethod]
+    public async Task AGameMasterOpensTheTitlesOfAnEvent()
+    {
+        using var world = World.Create();
+
+        var titles = new OpenTitleManager(world, new PersonStateStore(null!), Catalog(Row(50, TitleKind.Prefix, 0, OpenTitleManager.ByEvent, 0)));
+        var player = OpenTitlePerson(world, new RecordingConnection());
+
+        using var services = new ServiceCollection().AddSingleton(titles).BuildServiceProvider();
+        ICommand command = new TitleOpenCommand(services);
+
+        Assert.IsFalse(await command.TryExecute(player, ["9"]));
+        Assert.IsFalse(await command.TryExecute(player, ["9", "1"]), "no title asks for that value");
+        Assert.IsTrue(await command.TryExecute(player, ["9", "0"]));
+        Assert.IsFalse(await command.TryExecute(player, ["9", "0"]), "it is open already");
+        CollectionAssert.AreEqual(new[] { 50 }, titles.OpenOf(player).ToArray());
     }
 
     [TestMethod]
