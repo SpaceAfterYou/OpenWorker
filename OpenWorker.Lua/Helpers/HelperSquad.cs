@@ -470,6 +470,22 @@ public sealed class HelperSquad
     }
 
     /// <summary>
+    /// Whether the helper of an actor lies on the ground.
+    /// </summary>
+    internal bool IsLying(int actor)
+    {
+        foreach (var helper in _helpers)
+        {
+            if ((int)helper.Actor == actor)
+            {
+                return helper.Body?.IsLying == true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// A helper a monster is angry with, by its actor.
     /// </summary>
     internal AiTarget? FindTarget(int id)
@@ -564,17 +580,21 @@ public sealed class HelperSquad
     /// A blow of a monster lands on the helpers in its area, or on the one its projectile ran into. A helper that is getting
     /// up takes nothing; one whose life would reach zero keeps one point and starts to get up. Everybody sees the blow.
     /// </summary>
-    internal void HitBy(MonsterBody attacker, int skillId, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
+    /// <param name="trap">The blow is a trap's: one with a reaction and no damage throws the helpers it reaches, as it does the
+    /// players.</param>
+    internal void HitBy(MonsterBody attacker, int skillId, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly, bool trap = false)
     {
         Defended.HitBy(attacker, skillId, trigger, area, collider, colliderOnly);
 
-        // A blow for the side of the monster, or one that only gives a buff, was dealt with for the players already, and the
-        // helpers are not of its side.
-        if (!trigger.AffectsTargets || !_ecs.IsAlive(attacker.Entity) || trigger.ForAllies || (trigger.Buff > 0 && trigger.DamageRate <= 0f))
+        // A blow for the side of the monster was dealt with already, and the helpers are not of its side.
+        if (!trigger.AffectsTargets || !_ecs.IsAlive(attacker.Entity) || trigger.ForAllies)
         {
             return;
         }
 
+        // As for the players: a blow with no damage hurts nobody and only its buff lands, unless it is a trap's with a reaction,
+        // which throws the helpers and deals them nothing.
+        var hurts = trigger.DamageRate > 0f || trap && trigger.ReactionType != 0;
         var buffs = _manager.Buffs;
         var stats = buffs?.StatsOf(attacker.Entity, _ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats) ?? _ecs.Get<MonsterCombatComponent>(attacker.Entity).Stats;
         var struck = new List<Entity>();
@@ -602,10 +622,17 @@ public sealed class HelperSquad
                 continue;
             }
 
+            if (!hurts)
+            {
+                struck.Add(helper.Entity);
+
+                continue;
+            }
+
             var creature = _ecs.Get<CreatureComponent>(helper.Entity);
             var defense = buffs?.DefenseOf(helper.Entity, combat.Defense) ?? combat.Defense;
             var shielded = helper.IsRecovering || defense == DefenseType.Invincible;
-            var result = shielded
+            var result = shielded || trigger.DamageRate <= 0f
                 ? new DamageResult(0, HitResults.None)
                 : DamageCalculator.Calculate(stats, buffs?.StatsOf(helper.Entity, combat.Stats) ?? combat.Stats, skill, defense, trigger.DamageRate, _manager.Random);
             var left = creature.Health - result.Damage;
@@ -642,6 +669,8 @@ public sealed class HelperSquad
 
         if (hits.Count == 0)
         {
+            buffs?.GiveFromHit(attacker.Entity, trigger, struck);
+
             return;
         }
 

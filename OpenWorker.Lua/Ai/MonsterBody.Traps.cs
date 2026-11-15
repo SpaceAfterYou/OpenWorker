@@ -372,7 +372,7 @@ internal partial class MonsterBody
 
         if (round && _manager.Helpers.HasTargets)
         {
-            _manager.Helpers.HitBy(this, skill, trigger, area, null, false);
+            _manager.Helpers.HitBy(this, skill, trigger, area, null, false, true);
         }
     }
 }

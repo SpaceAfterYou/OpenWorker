@@ -777,8 +777,8 @@ internal partial class MonsterBody : IAiHost
             return false;
         }
 
-        // A target on the ground waits for a skill that is for it.
-        if (!skill.ForLying && _manager.IsLying(target.Id))
+        // A target on the ground, a player or a helper, waits for a skill that is for it.
+        if (!skill.ForLying && (_manager.IsLying(target.Id) || _manager.Helpers.IsLying(target.Id)))
         {
             return false;
         }
