@@ -209,6 +209,8 @@ services:
       - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
       - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
+      # The gate reads the map of the first tutorial maze to find where the prologue starts.
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
 
   openworker.districtserver-roccotown:
     <<: *openworker-server
