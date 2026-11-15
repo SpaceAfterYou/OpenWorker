@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Hotspot;
 
 namespace OpenWorker.Gameplay.Modules.SocialItems;
@@ -11,7 +12,8 @@ public static class SocialItemsServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddSocialItems(this IServiceCollection services)
     {
-        services.AddSingleton<SocialItems>();
+        services.AddSingleton(provider => ActivatorUtilities.CreateInstance<SocialItems>(provider,
+            new Lazy<IItemField?>(provider.GetService<IItemField>)));
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<SocialItems>());
 
         return services;

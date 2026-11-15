@@ -11,6 +11,8 @@ using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
+using OpenWorker.Hotspot.Modules.Items.Requests;
+using OpenWorker.Hotspot.Modules.Skill.Responses;
 using OpenWorker.Hotspot.Modules.SocialItems.Requests;
 using OpenWorker.Hotspot.Modules.SocialItems.Responses;
 using OpenWorker.Hotspot.Modules.SocialItems.Types;
@@ -24,8 +26,8 @@ namespace OpenWorker.Gameplay.Modules.SocialItems;
 /// The social objects of the channels of a district: a player puts one down with an item, everybody who sees it may use it,
 /// and it goes when its time runs out, when its owner leaves the channel or puts down another. An object is told to the
 /// players who see its place, by the cells of the channel's visibility grid: when it comes, when a player comes into sight of
-/// it, and when it goes. Everything here belongs to the world loop, and a check and the change it allows run without an await
-/// between them, so the limits of a channel hold.
+/// it, and when it goes. A player who uses an object carries the aura of its row. Everything here belongs to the world loop, and a
+/// check and the change it allows run without an await between them, so the limits of a channel hold.
 /// </summary>
 public sealed class SocialItems : ISessionCloseHandler
 {
@@ -42,6 +44,9 @@ public sealed class SocialItems : ISessionCloseHandler
     // The largest cell index, as the channel's grid has it.
     private const int MaxCell = 1 << 24;
 
+    // The target type of an aura for its carrier alone.
+    private const byte AuraSelf = 1;
+
     private readonly World _world;
     private readonly InventoryService _inventory;
     private readonly ItemCatalog _catalog;
@@ -49,14 +54,19 @@ public sealed class SocialItems : ISessionCloseHandler
     private readonly ISocialItemGrounds _grounds;
     private readonly SimulationClock _clock;
     private readonly IItemLocks? _locks;
+    private readonly RowIndex<ushort, AuraRow> _auras;
+    private readonly Lazy<IItemField?>? _field;
     private readonly float _cellSize;
 
     private readonly Dictionary<short, List<SocialObject>> _channels = [];
     private readonly Dictionary<Entity, Person> _persons = [];
     private int _next;
 
+    /// <param name="field">Gives the buffs of auras; lazy, as the buffs of a district tell those who see the player, which the
+    /// district learns from here.</param>
     public SocialItems(World world, InventoryService inventory, ItemCatalog catalog, ReadOnlyCollection<SocialItemRuleRow> rules,
-        ISocialItemGrounds grounds, SimulationClock clock, IOptions<WorldOptions> sight, IItemLocks? locks = null)
+        ISocialItemGrounds grounds, SimulationClock clock, IOptions<WorldOptions> sight, IItemLocks? locks = null,
+        ReadOnlyCollection<AuraRow>? auras = null, Lazy<IItemField?>? field = null)
     {
         _world = world;
         _inventory = inventory;
@@ -65,15 +75,19 @@ public sealed class SocialItems : ISessionCloseHandler
         _grounds = grounds;
         _clock = clock;
         _locks = locks;
+        _auras = (auras ?? new ReadOnlyCollection<AuraRow>([])).IndexBy(e => unchecked((ushort)e.Id));
+        _field = field;
         _cellSize = sight.Value.VisibilityRadius;
     }
 
     /// <summary>
     /// What this server knows of a player: its channel, the cell it was last seen in, the objects it has been told about, the
-    /// object it owns and the one it uses.
+    /// object it owns and the one it uses, and the aura it carries for it.
     /// </summary>
-    private sealed class Person(int actor, ServerSessionComponent session)
+    private sealed class Person(Entity entity, int actor, ServerSessionComponent session)
     {
+        public Entity Entity { get; } = entity;
+
         public int Actor { get; } = actor;
 
         public ServerSessionComponent Session { get; } = session;
@@ -92,6 +106,12 @@ public sealed class SocialItems : ISessionCloseHandler
         public SocialObject? Owned { get; set; }
 
         public SocialObject? Using { get; set; }
+
+        public AuraRow? Aura { get; set; }
+
+        public TimeSpan? AuraEnds { get; set; }
+
+        public ScheduledAction AuraCheck { get; set; }
     }
 
     /// <summary>
@@ -164,8 +184,8 @@ public sealed class SocialItems : ISessionCloseHandler
             Remove(old);
         }
 
-        var placed = new SocialObject(ActorRange | (++_next & ActorMask), member.Index, person.Actor, row.Id, rule.Id, place,
-            request.Rotation, radius, rule.UseMax);
+        var placed = new SocialObject(ActorRange | (++_next & ActorMask), member.Index, person.Actor, row.Id, item.Serial, rule.Id,
+            rule.Aura, place, request.Rotation, radius, rule.UseMax);
 
         (placed.CellX, placed.CellY) = CellOf(place);
 
@@ -222,6 +242,8 @@ public sealed class SocialItems : ISessionCloseHandler
         found.Users.Add(person.Actor);
         person.Using = found;
 
+        StartAura(person, found.Aura, place);
+
         Nearby(person, place, new SocialItemUseResponse
         {
             Actor = person.Actor,
@@ -251,8 +273,11 @@ public sealed class SocialItems : ISessionCloseHandler
 
         person.Using = null;
 
-        Nearby(person, _world.Get<WorldComponent>(player).Position, new SocialItemStopResponse { Actor = person.Actor, Prop = ValueOf(used) },
-            others: false);
+        var position = _world.Get<WorldComponent>(player).Position;
+
+        EndAura(person, position, others: false);
+
+        Nearby(person, position, new SocialItemStopResponse { Actor = person.Actor, Prop = ValueOf(used) }, others: false);
 
         return 0;
     }
@@ -352,6 +377,8 @@ public sealed class SocialItems : ISessionCloseHandler
 
             var position = _world.IsAlive(player) && _world.TryGet<WorldComponent>(player, out var place) ? place.Position : used.Position;
 
+            EndAura(person, position, others: true);
+
             Nearby(person, position, new SocialItemStopResponse { Actor = person.Actor, Prop = ValueOf(used) }, others: true);
         }
 
@@ -366,6 +393,20 @@ public sealed class SocialItems : ISessionCloseHandler
         Leave(player);
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Whether a move of items between two storages would take away the stack the player's object was put down from, which the
+    /// original refuses while the object stands.
+    /// </summary>
+    public bool HoldsStack(Entity player, MoveItemValue src, MoveItemValue dest)
+    {
+        if (src.Storage == dest.Storage || OwnedBy(player) is not { } owned || _inventory.InventoryOf(player) is not { } bag)
+        {
+            return false;
+        }
+
+        return bag.At(src.Storage, src.Index)?.Serial == owned.Serial || bag.At(dest.Storage, dest.Index)?.Serial == owned.Serial;
     }
 
     /// <summary>
@@ -416,6 +457,8 @@ public sealed class SocialItems : ISessionCloseHandler
             if (person.Using == placed)
             {
                 person.Using = null;
+
+                EndAura(person, PositionOf(person, placed.Position), others: false);
             }
 
             if (person.Seen.Remove(placed.Actor) && frame is not null)
@@ -479,11 +522,122 @@ public sealed class SocialItems : ISessionCloseHandler
         }
     }
 
+    /// <summary>
+    /// The player starts to carry the aura of the object it uses, told to those who see it: the buff of the aura goes to those it
+    /// is for at once (when the aura is checked from the start) and at every check, until the aura ends or the player stops.
+    /// </summary>
+    private void StartAura(Person person, ushort aura, Vector3 position)
+    {
+        if (aura == 0 || !_auras.TryGet(aura, out var row))
+        {
+            return;
+        }
+
+        person.Aura = row;
+        person.AuraEnds = row.DurationMilliseconds > 0 ? _clock.Now + TimeSpan.FromMilliseconds(row.DurationMilliseconds) : null;
+
+        Nearby(person, position, new SkillAuraUpdateBroadcastResponse { Target = person.Actor, Aura = unchecked((short)aura) }, others: false);
+
+        if (row.CheckType == 0)
+        {
+            ApplyAura(person, row);
+        }
+
+        CheckLater(person, row);
+    }
+
+    private void CheckLater(Person person, AuraRow row)
+    {
+        var every = TimeSpan.FromMilliseconds(row.CheckMilliseconds);
+
+        person.AuraCheck = _clock.Schedule(every > SimulationClock.Period ? every : SimulationClock.Period, () => CheckAura(person, row));
+    }
+
+    private void CheckAura(Person person, AuraRow row)
+    {
+        if (person.Aura is null || !_persons.TryGetValue(person.Entity, out var current) || current != person)
+        {
+            return;
+        }
+
+        if (person.AuraEnds is { } ends && _clock.Now >= ends)
+        {
+            EndAura(person, PositionOf(person, Vector3.Zero), others: false);
+
+            return;
+        }
+
+        ApplyAura(person, row);
+        CheckLater(person, row);
+    }
+
+    /// <summary>
+    /// The player no longer carries its aura; those who see it are told, and the player too unless <paramref name="others"/>.
+    /// </summary>
+    private void EndAura(Person person, Vector3 position, bool others)
+    {
+        if (person.Aura is null)
+        {
+            return;
+        }
+
+        person.Aura = null;
+        person.AuraEnds = null;
+        person.AuraCheck.Cancel();
+
+        Nearby(person, position, new SkillAuraUpdateBroadcastResponse { Target = person.Actor, Aura = 0 }, others);
+    }
+
+    /// <summary>
+    /// Gives the buff of an aura to the ones it is for: the carrier alone, or by the target type the players of its channel close
+    /// enough to it (1 the carrier, 2 and 7 the carrier and the others, 4, 6 and 8 the others; a district has no enemies).
+    /// </summary>
+    private void ApplyAura(Person carrier, AuraRow row)
+    {
+        if (_field?.Value is not { } field || !_world.IsAlive(carrier.Entity) || !_world.TryGet<WorldComponent>(carrier.Entity, out var origin))
+        {
+            return;
+        }
+
+        var buff = row.Buff & ushort.MaxValue;
+
+        if (row.Target == AuraSelf)
+        {
+            field.GiveBuff(carrier.Entity, buff);
+
+            return;
+        }
+
+        var reach = (float)row.Distance * row.Distance;
+
+        foreach (var (other, person) in _persons)
+        {
+            var self = person == carrier;
+            var meant = row.Target switch
+            {
+                2 or 7 => true,
+                4 or 6 or 8 => !self,
+                _ => false
+            };
+
+            if (meant && person.Channel == carrier.Channel && _world.IsAlive(other) && _world.TryGet<WorldComponent>(other, out var place) &&
+                Vector3.DistanceSquared(origin.Position, place.Position) < reach)
+            {
+                field.GiveBuff(other, buff);
+            }
+        }
+    }
+
+    private Vector3 PositionOf(Person person, Vector3 fallback)
+    {
+        return _world.IsAlive(person.Entity) && _world.TryGet<WorldComponent>(person.Entity, out var place) ? place.Position : fallback;
+    }
+
     private Person PersonOf(Entity player, short channel)
     {
         if (!_persons.TryGetValue(player, out var person))
         {
-            person = new Person((int)_world.Get<ActorComponent>(player), _world.Get<ServerSessionComponent>(player)) { Channel = channel };
+            person = new Person(player, (int)_world.Get<ActorComponent>(player), _world.Get<ServerSessionComponent>(player)) { Channel = channel };
 
             _persons.Add(player, person);
         }

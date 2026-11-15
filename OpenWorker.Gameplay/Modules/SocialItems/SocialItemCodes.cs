@@ -26,4 +26,7 @@ public static class SocialItemCodes
 
     /// <summary>The social item is unknown, or the player uses no object.</summary>
     public const ushort Unknown = 59308;
+
+    /// <summary>The stack the player's object was put down from leaves its storage (an answer of the item move).</summary>
+    public const ushort ItemInUse = 52066;
 }

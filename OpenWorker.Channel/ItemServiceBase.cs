@@ -94,15 +94,17 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
         {
             if (ItemUseService.IsMemoryPlace(storage, slot) && !use.IsMemoryPlaceOpen(context.Player, slot))
             {
-                if (world.Has<ServerSessionComponent>(context.Player))
-                {
-                    world.Get<ServerSessionComponent>(context.Player).Send(new ErrorMessageResponse(
-                        MessageOpcode.From(GroupOpcode.Item, ItemOpcode.Move),
-                        ItemUseService.PlaceShut));
-                }
+                RefuseMove(context.Player, ItemUseService.PlaceShut);
 
                 return ValueTask.CompletedTask;
             }
+        }
+
+        if (MoveHeldBack(context.Player, request.Src, request.Dest) is var held and not 0)
+        {
+            RefuseMove(context.Player, held);
+
+            return ValueTask.CompletedTask;
         }
 
         inventory.Move(context.Player, request.Src, request.Dest);
@@ -140,6 +142,19 @@ public abstract class ItemServiceBase(World world, InventoryService inventory, I
     /// Tells the players who see the player what it now wears; the server knows who they are.
     /// </summary>
     protected abstract void WornChanged(Entity player, ItemMoveBtResponse notice);
+
+    /// <summary>
+    /// The code a move is refused with for what the server holds the items for; zero when nothing holds them.
+    /// </summary>
+    protected virtual ushort MoveHeldBack(Entity player, MoveItemValue src, MoveItemValue dest) => 0;
+
+    private void RefuseMove(Entity player, ushort code)
+    {
+        if (world.Has<ServerSessionComponent>(player))
+        {
+            world.Get<ServerSessionComponent>(player).Send(new ErrorMessageResponse(MessageOpcode.From(GroupOpcode.Item, ItemOpcode.Move), code));
+        }
+    }
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, ItemCombineRequest request)
     {
