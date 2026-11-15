@@ -120,6 +120,7 @@ public sealed partial class PersonService(
         // The person is always taken from the session, never from the request.
         if (world.Get<ClaimsComponent>(context.Player).Account != 0)
         {
+            StaffOptions.ExpectForced(world, context.Player);
             world.Get<ServerSessionComponent>(context.Player)
                 .Send(PersonSnapshotMapper.CreateCharacterInfoResponse(world, context.Player));
         }
@@ -311,6 +312,12 @@ public sealed partial class PersonService(
         // A client that was already playing reads the answer of the play scene; one from the character selection, the record.
         // Until it has taken the place in it, the client goes on sending the place of the map it left.
         MovementPace.PlaceTold(world, context.Player);
+
+        if (request.FirstConnect)
+        {
+            StaffOptions.ExpectForced(world, context.Player);
+        }
+
         session.Send(PersonSnapshotMapper.CreateEntryResponse(world, context.Player, request.FirstConnect));
         skills.Send(context.Player);
         creatureServices.Stats?.SendAll(context.Player);

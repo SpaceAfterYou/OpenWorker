@@ -46,8 +46,8 @@ public static class PersonOptions
     }
 
     /// <summary>
-    /// What the client of a game master writes over whispers, trades, parties, leagues, friends and looks at every entry
-    /// before it sends the options: nobody, and no friend requests. It is not what the player chose.
+    /// What an unchanged client of a game master writes over whispers, trades, parties, leagues, friends and looks when it
+    /// reads its record, before it sends the options: nobody, and no friend requests. It is not what the player chose.
     /// </summary>
     private static readonly (int Index, byte Forced, byte Default)[] StaffForced =
     [
@@ -60,20 +60,22 @@ public static class PersonOptions
     ];
 
     /// <summary>
-    /// The options a game master's client sent, with each of those its client forces kept as the player had it (or the
-    /// client's default when it never saved them): a game master is not refused for what its client forces, and the account
-    /// keeps its choice. A forced option the player changes to something else is taken.
+    /// The options a game master's client sent when it read its record. When all six carry what the client forces, they are
+    /// the forced block, not a choice: each keeps what the player had (or the client's default when it never saved them), so
+    /// a game master is not refused for it and the account keeps its choice. Anything else is the player's own and is taken.
     /// </summary>
     public static byte[] KeepChoiceOfStaff(byte[] sent, IReadOnlyList<byte>? kept)
     {
         var options = sent.ToArray();
 
-        foreach (var (index, forced, value) in StaffForced)
+        if (!StaffForced.All(e => options.Length > e.Index && options[e.Index] == e.Forced))
         {
-            if (options.Length > index && options[index] == forced)
-            {
-                options[index] = IsSaved(kept, index) ? kept[index] : value;
-            }
+            return options;
+        }
+
+        foreach (var (index, _, value) in StaffForced)
+        {
+            options[index] = IsSaved(kept, index) ? kept[index] : value;
         }
 
         return options;
