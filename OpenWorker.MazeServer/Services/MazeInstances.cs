@@ -12,7 +12,7 @@ namespace OpenWorker.MazeServer.Services;
 /// instance, the maze goes on for the rest, and the last one out ends it. Everything runs on the world loop.
 /// </summary>
 public sealed partial class MazeInstances(World world, IRedisCollection<PartyMazeCache> parties, ILogger<MazeInstances> logger, MyRooms? rooms = null,
-    WorldMazeKeeper? worlds = null)
+    WorldMazeKeeper? worlds = null, WorldMazeSight? sight = null)
 {
     private readonly Dictionary<Guid, LuaMaze> _running = [];
 
@@ -93,6 +93,9 @@ public sealed partial class MazeInstances(World world, IRedisCollection<PartyMaz
         {
             return;
         }
+
+        // Those who saw the player in the open maze of the world see it go.
+        sight?.Leave(player, maze);
 
         world.Remove<LuaMaze>(player);
 

@@ -311,7 +311,8 @@ public partial class LuaMaze(
             return true;
         }
 
-        if (member.Loaded && Ecs.IsAlive(player) && Ecs.Has<ActorComponent>(player))
+        // In the open maze of the world only those around it saw the player, and its grid of sight tells them.
+        if (!IsWorld && member.Loaded && Ecs.IsAlive(player) && Ecs.Has<ActorComponent>(player))
         {
             creatureManager.Broadcast(new WorldOutInfoPcResponse { Actors = [Ecs.Get<ActorComponent>(player)] });
         }

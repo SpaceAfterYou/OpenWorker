@@ -66,7 +66,8 @@ public sealed partial class MazeService(
     MazeAdmission admission,
     ServerChanges changes,
     ILogger<MazeService> logger,
-    MazeHelperField? helpers = null
+    MazeHelperField? helpers = null,
+    WorldMazeSight? sight = null
 ) :
     IHotspotHandler<MazeCompleteRequest>,
     IHotspotHandler<SkillActiveSkillRequest>,
@@ -212,6 +213,14 @@ public sealed partial class MazeService(
     /// </summary>
     private void ShowMembers(Entity player, LuaMaze maze)
     {
+        // In the open maze of the world only those around see each other.
+        if (maze.IsWorld && sight is not null)
+        {
+            sight.Arrive(player, maze);
+
+            return;
+        }
+
         if (maze.MemberCount < 2)
         {
             return;
@@ -379,7 +388,8 @@ public sealed partial class MazeService(
 
         if (taken)
         {
-            ecs.Get<LuaMaze>(context.Player).Creatures.Broadcast(warp);
+            audience.Relocate(context.Player, place.Position);
+            audience.Nearby(context.Player, in warp);
         }
         else
         {

@@ -9,13 +9,16 @@ using OpenWorker.Channel;
 using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Domain.Types;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot.Cache;
+using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua;
+using OpenWorker.MazeServer.Services;
 using OpenWorker.UpdateContent.Res.Rows;
 using StackExchange.Redis;
 
@@ -399,4 +402,77 @@ public sealed class WorldMazeTest
             World.Destroy(world);
         }
     }
+
+    /// <summary>
+    /// In an open maze only the players around see each other: a far one sees nothing of a player and is not told it came; when
+    /// it comes near, both are told about each other, and from then on it sees what the other does.
+    /// </summary>
+    [TestMethod]
+    public async Task InAnOpenMazeOnlyThePlayersAroundSeeEachOther()
+    {
+        var world = World.Create();
+
+        try
+        {
+            const float cell = WorldOptions.DefaultVisibilityRadius;
+
+            var provider = ChannelMembers.Provider();
+            var nearConnection = new RecordingConnection();
+            var farConnection = new RecordingConnection();
+            var near = Placed(world, provider, nearConnection, 1, new Vector3(100f, 100f, 0f));
+            var far = Placed(world, provider, farConnection, 2, new Vector3(cell * 4f, 100f, 0f));
+            var maze = TestMazes.Create(world, near, channel: 1);
+            var sight = new WorldMazeSight(world);
+            var audience = new MazeAudience(world, sight);
+
+            Assert.IsTrue(maze.Join(far));
+
+            world.Add(near, maze);
+            world.Add(far, maze);
+
+            sight.Arrive(near, maze);
+            sight.Arrive(far, maze);
+
+            var came = default(WorldInInfoPcResponse).Opcode.Value;
+            var acted = new MovementTransportOffResponse { Actor = new ActorValue(0, ActorType.User) }.Opcode.Value;
+
+            audience.Nearby(near, new MovementTransportOffResponse { Actor = new ActorValue(1, ActorType.User) });
+            audience.Nearby(far, new MovementTransportOffResponse { Actor = new ActorValue(2, ActorType.User) });
+
+            await MetricAssertions.UntilAsync(() => Opcodes(farConnection).Contains(acted), "the far player hears itself");
+
+            Assert.IsFalse(Opcodes(farConnection).Contains(came), "the far player is not told about the other");
+            Assert.AreEqual(1, Opcodes(farConnection).Count(e => e == acted), "the far player does not hear the other");
+
+            world.Set(far, world.Get<WorldComponent>(far) with { Position = new Vector3(cell + 100f, 100f, 0f) });
+            audience.Relocate(far, new Vector3(cell + 100f, 100f, 0f));
+
+            await MetricAssertions.UntilAsync(() => Opcodes(nearConnection).Contains(came) && Opcodes(farConnection).Contains(came),
+                "the two come into sight of each other");
+
+            audience.Nearby(far, new MovementTransportOffResponse { Actor = new ActorValue(2, ActorType.User) });
+
+            await MetricAssertions.UntilAsync(() => Opcodes(nearConnection).Count(e => e == acted) == 2, "the near player sees what the other does now");
+
+            maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    private static Entity Placed(World world, OpenWorker.DependencyInjection.ArchComponentProvider provider, RecordingConnection connection, int person, Vector3 position)
+    {
+        var player = ChannelMembers.Create(world, provider, connection, person);
+
+        world.Set(player, new ActorComponent(person, ActorType.User));
+        world.Set(player, new WorldComponent { Location = District6, Position = position, Rotation = 0f, Jump = 0 });
+
+        return player;
+    }
+
+    private static short[] Opcodes(RecordingConnection connection) =>
+        connection.Frames.Select(PlayerFrame.Open).Select(e => e.Opcode.Value).ToArray();
 }

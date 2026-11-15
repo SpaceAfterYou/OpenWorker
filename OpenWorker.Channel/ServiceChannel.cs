@@ -59,6 +59,13 @@ public sealed class ServiceChannel : IEndOfPass
         _changes = changes;
     }
 
+    /// <summary>
+    /// A grid of sight of its own, outside the channels of a district: the players of an open maze of the world.
+    /// </summary>
+    public ServiceChannel(float cellSize) : this(0, cellSize)
+    {
+    }
+
     public short Identifier { get; }
 
     /// <summary>
@@ -326,7 +333,7 @@ public sealed class ServiceChannel : IEndOfPass
         }
     }
 
-    internal void Join(Entity entity, World world)
+    public void Join(Entity entity, World world)
     {
         var position = world.TryGet(entity, out WorldComponent place) ? place.Position : Vector3.Zero;
         var (x, y) = CellOf(position);
@@ -351,7 +358,7 @@ public sealed class ServiceChannel : IEndOfPass
     /// Whether the player is told that the others it saw are gone: it is when it stays on the server and only changes
     /// channel, and is not when its connection closes.
     /// </param>
-    internal void Leave(Entity player, bool tellPlayer = false)
+    public void Leave(Entity player, bool tellPlayer = false)
     {
         // A connection can close before its player has joined a channel.
         if (!_members.Remove(player, out var member))
@@ -386,6 +393,28 @@ public sealed class ServiceChannel : IEndOfPass
         }
 
         SendGone(member);
+    }
+
+    /// <summary>
+    /// Tells the player about each player it sees, one arrival each, as a maze shows its players.
+    /// </summary>
+    public void ShowAround(Entity player, World world)
+    {
+        if (!_members.TryGetValue(player, out var member))
+        {
+            return;
+        }
+
+        foreach (var cell in Around(member.Cell))
+        {
+            foreach (var other in cell.Members)
+            {
+                if (other != member)
+                {
+                    SendArrival(member.Session, other, world);
+                }
+            }
+        }
     }
 
     /// <summary>
