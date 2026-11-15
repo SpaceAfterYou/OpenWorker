@@ -65,6 +65,45 @@ public sealed partial class AiMachineTest
     }
 
     /// <summary>
+    /// A monster in reach that looks away from its target does not start the skill the way it looks: it walks on toward its place
+    /// around the target and starts the skill once it looks at the target.
+    /// </summary>
+    [TestMethod]
+    public void AMonsterInReachThatLooksAwayWalksOnBeforeItAttacks()
+    {
+        var host = new Host { Player = Player(Vector3.Zero), Position = new Vector3(3000, 0, 0) };
+
+        host.Skills[0] = Skill(11, max: 2000);
+
+        var machine = Create(Fighter(), host);
+
+        machine.Start();
+        machine.OnDamaged(new AiHit(1000, 50f, 30));
+
+        for (var elapsed = 0f; elapsed < 3f && !host.IsMoving; elapsed += Step)
+        {
+            Run(machine, host, Step);
+        }
+
+        Assert.IsTrue(host.IsMoving, "It walks to the target, out of reach.");
+        Assert.IsEmpty(host.Used);
+
+        // The target is now behind the walking monster, in reach.
+        host.Player = Player(host.Position + new Vector3(800, 0, 0));
+
+        var searches = host.Searches;
+
+        Run(machine, host, Step);
+
+        Assert.IsEmpty(host.Used, "Not the way it looks.");
+
+        Run(machine, host, 2f);
+
+        Assert.IsNotEmpty(host.Used);
+        Assert.IsGreaterThan(searches, host.Searches, "It turned on its way first.");
+    }
+
+    /// <summary>
     /// The approach looks again every tenth of a second, but looks for a new way only when the target has moved.
     /// </summary>
     [TestMethod]

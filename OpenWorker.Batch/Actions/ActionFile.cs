@@ -15,6 +15,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Moves">How the animation carries the one who plays it, frame by frame, in the order of time.</param>
 /// <param name="TrapMarks">The moments at which the one who plays the animation marks where its target stands, for the traps that go there.</param>
 /// <param name="Bones">Where the hit bones of the one who plays the animation are, frame by frame.</param>
+/// <param name="Looks">The moments at which the one who plays the animation starts or stops turning to its target.</param>
 public sealed record ActionAnimation(
     string Name,
     float Length,
@@ -30,7 +31,15 @@ public sealed record ActionAnimation(
     IReadOnlyList<ControlEvent>? Controls = null,
     IReadOnlyList<MoveFrame>? Moves = null,
     IReadOnlyList<float>? TrapMarks = null,
-    BoneFrames? Bones = null);
+    BoneFrames? Bones = null,
+    IReadOnlyList<LookEvent>? Looks = null);
+
+/// <summary>
+/// From a moment of an animation the one who plays it turns to its target as it moves, or stops turning.
+/// </summary>
+/// <param name="Start">Seconds from the start of the animation.</param>
+/// <param name="TurnSpeed">How fast it turns, in degrees a second; zero or less stops the turning.</param>
+public readonly record struct LookEvent(float Start, int TurnSpeed);
 
 /// <summary>
 /// One frame of the way an animation carries the one who plays it: the move since the frame before, in the mover's own frame,
@@ -181,6 +190,11 @@ public sealed class ActionFile
     /// The action of an action event that marks where the target stands, for a trap that goes there.
     /// </summary>
     private const int MarkTrapPlace = 8;
+
+    /// <summary>
+    /// The action of an action event that starts or stops turning to the target.
+    /// </summary>
+    private const int LookAtTarget = 18;
 
     /// <summary>
     /// The kind of summon by which the player controls the monster it brings in.
@@ -404,6 +418,7 @@ public sealed class ActionFile
         var speeds = new List<SpeedEvent>();
         var controls = new List<ControlEvent>();
         var marks = new List<float>();
+        var looks = new List<LookEvent>();
         var events = reader.ReadInt32();
 
         for (var i = 0; i < events; i++)
@@ -445,8 +460,18 @@ public sealed class ActionFile
                     controls.Add(control);
                     break;
 
-                case ActionTriggerType when reader.ReadInt32() == MarkTrapPlace:
-                    marks.Add(header.Start);
+                case ActionTriggerType:
+                    switch (reader.ReadInt32())
+                    {
+                        case MarkTrapPlace:
+                            marks.Add(header.Start);
+                            break;
+
+                        case LookAtTarget:
+                            looks.Add(new LookEvent(header.Start, reader.ReadInt32()));
+                            break;
+                    }
+
                     break;
             }
 
@@ -462,7 +487,7 @@ public sealed class ActionFile
         }
 
         return new ActionAnimation(name, length, attacks, repeats, hides, (byte)Math.Clamp((int)defense, byte.MinValue, byte.MaxValue), defenses, detaches, attaches,
-            cuts, speeds, controls.Count > 0 ? controls : null, moves, marks.Count > 0 ? marks : null, bones);
+            cuts, speeds, controls.Count > 0 ? controls : null, moves, marks.Count > 0 ? marks : null, bones, looks.Count > 0 ? looks : null);
     }
 
     /// <summary>

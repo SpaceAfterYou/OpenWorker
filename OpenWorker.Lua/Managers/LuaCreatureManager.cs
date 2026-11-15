@@ -16,6 +16,7 @@ using OpenWorker.Gameplay.Mapping;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.Movement;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.GameServer.SoulWorker.Network.DataTypes;
@@ -1462,11 +1463,27 @@ public sealed partial class LuaCreatureManager
         }
     }
 
+    /// <summary>
+    /// The longest a player is taken to run on after its last move: a client sends one well before this while it runs.
+    /// </summary>
+    private static readonly TimeSpan RunAhead = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// A player as the monsters see it: a running player has gone on along its run since its last move.
+    /// </summary>
     private AiTarget Describe(Entity player)
     {
         var place = ecs.Get<WorldComponent>(player);
+        var (position, moving) = (place.Position, false);
 
-        return new AiTarget(ecs.Get<ActorComponent>(player), place.Position, PlayerVitals.BodyRadius, place.Rotation, Vitals.Health(player), Vitals.MaxHealth(player), false);
+        if (ecs.TryGet<PlayerRunComponent>(player, out var run) && run.Reached(place.Position, Min(Time, run.At + RunAhead)) is { } reached)
+        {
+            (position, moving) = reached;
+        }
+
+        return new AiTarget(ecs.Get<ActorComponent>(player), position, PlayerVitals.BodyRadius, place.Rotation, Vitals.Health(player), Vitals.MaxHealth(player), moving);
+
+        static TimeSpan Min(TimeSpan first, TimeSpan second) => first < second ? first : second;
     }
 
     /// <summary>
