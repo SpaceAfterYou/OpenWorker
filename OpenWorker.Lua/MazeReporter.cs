@@ -257,7 +257,7 @@ public partial class MazeReporter(
     /// <summary>
     /// A cube lies in the maze for the person to take. The value tells which reward it holds.
     /// </summary>
-    public void RegisterCube(Entity player, int box, int interaction, TimeSpan duration)
+    public virtual void RegisterCube(Entity player, int box, int interaction, TimeSpan duration)
     {
         cubes.Register(player, box, interaction, duration);
     }

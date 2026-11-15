@@ -300,6 +300,8 @@ public sealed class WorldMazeTest
 
         public List<Entity> PartyKilled { get; } = [];
 
+        public List<int> Cubes { get; } = [];
+
         public override ValueTask MonsterKilledAsync(Entity player, int monster, uint conditions)
         {
             Killed.Add(player);
@@ -312,6 +314,11 @@ public sealed class WorldMazeTest
             PartyKilled.Add(player);
 
             return ValueTask.CompletedTask;
+        }
+
+        public override void RegisterCube(Entity player, int box, int interaction, TimeSpan duration)
+        {
+            Cubes.Add(box);
         }
     }
 
@@ -349,6 +356,42 @@ public sealed class WorldMazeTest
             CollectionAssert.AreEqual(new[] { member }, reports.PartyKilled, "the quests of its party in the instance count it");
 
             maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    private const string CubeMap =
+        """<root><Batchs eventtype="EventBox"><VInterActionBox boxtype="eEventBoxType_InteractionObjectBox"> <m_ID type="0" value="101" /> <m_iGenerateID type="0" value="101" /> <iLayerBitmask type="4" value="Common" /> <m_vPosTopLeft type="7" value="0.000,0.000,0.000" /> <m_vPosBottomRight type="7" value="100.000,100.000,100.000" /> <m_fRotation type="2" value="0.0000" /> <m_vSize type="7" value="100.000,100.000,100.000" /> <m_bShowCustomEntity type="5" value="TRUE" /> <m_ColorLDR type="132" value="0,0,0,255" /> <m_iInteractionID type="0" value="50050" /> <m_sObjectKey type="12" value="UpTown_VaccumCube_1" /> </VInterActionBox></Batchs><Batchs eventtype="EventPoint"/></root>""";
+
+    /// <summary>
+    /// The open maze of the world shows none of the cubes its map places; another maze shows them.
+    /// </summary>
+    [TestMethod]
+    public void AnOpenMazeShowsNoCubes()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var player = Player(world, 1, Vector3.Zero);
+            var reports = new RecordingReporter();
+            var open = TestMazes.Create(world, player, reports: reports, map: CubeMap, channel: 1);
+            var other = TestMazes.Create(world, player, reports: reports, map: CubeMap);
+
+            open.RegisterCubes(player);
+
+            Assert.IsEmpty(reports.Cubes, "no cube in the open maze");
+
+            other.RegisterCubes(player);
+
+            CollectionAssert.AreEqual(new[] { 101 }, reports.Cubes, "the same map elsewhere has its cube");
+
+            open.Close();
+            other.Close();
         }
 
         finally
