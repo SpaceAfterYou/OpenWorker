@@ -72,4 +72,18 @@ public sealed class MazeReserveCache
     /// </summary>
     [RedisField]
     public bool Friend { get; set; }
+
+    /// <summary>
+    /// The maze server the person is sent to; empty when none had registered, and any maze server of the gate takes it then.
+    /// </summary>
+    [RedisField]
+    public Guid Server { get; set; }
+
+    /// <summary>
+    /// Whether the maze server may let the person in with this reservation: it is the one the person was sent to.
+    /// </summary>
+    public bool Admits(Guid server)
+    {
+        return Server == Guid.Empty || Server == server;
+    }
 }

@@ -86,7 +86,7 @@ public sealed partial class MyRoomEntryService(
             return;
         }
 
-        if (!await manager.SendToRoomAsync(player, (short)row.Maze, (record.Host, record.Port), record.Instance, owner, back, friend))
+        if (!await manager.SendToRoomAsync(player, (short)row.Maze, (record.Server, record.Host, record.Port), record.Instance, owner, back, friend))
         {
             if (world.IsAlive(player))
             {

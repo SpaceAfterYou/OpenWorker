@@ -81,7 +81,7 @@ public sealed class PartyMazeRoutes(
 
     public ValueTask<bool> SendAsync(Entity player, short location, int jump, PartyMazeCache maze)
     {
-        return manager.SendToMazeAsync(player, location, jump, (maze.Host, maze.Port), maze.Instance, maze.Party, maze.Members);
+        return manager.SendToMazeAsync(player, location, jump, (maze.Server, maze.Host, maze.Port), maze.Instance, maze.Party, maze.Members);
     }
 }
 
