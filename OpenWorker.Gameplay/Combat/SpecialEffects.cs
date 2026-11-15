@@ -48,15 +48,62 @@ public enum SpecialEffect : byte
     SoulCostDown = 114,
 
     /// <summary>
+    /// A share in percent more experience from a kill, more gold in what a kill drops and more soul vapor.
+    /// </summary>
+    MoreExperience = 115,
+    MoreGold = 116,
+    MoreSoulVapor = 117,
+
+    /// <summary>
     /// Life and soul gauge a kill gives back.
     /// </summary>
     HealthOnKill = 121,
     SoulGaugeOnKill = 122,
 
     /// <summary>
+    /// A buff, named by its number, that a blow which lands gives: to the one hit, from the attacker; to the attacker, from the
+    /// one hit.
+    /// </summary>
+    AttackDebuff = 123,
+    DamagedDebuff = 124,
+
+    /// <summary>
+    /// A share in percent of the damage of a blow that lands which the attacker takes back.
+    /// </summary>
+    Reflection = 125,
+
+    /// <summary>
     /// Less damage from a blow that missed.
     /// </summary>
-    GrazeDamageDown = 142
+    GrazeDamageDown = 142,
+
+    /// <summary>
+    /// Less damage taken while in the air, and while lying on the ground.
+    /// </summary>
+    DamageInTheAirDown = 143,
+    DamageLyingDown = 144,
+
+    /// <summary>
+    /// A share in percent of the size of the stamina gauge that a blow which lands gives the attacker.
+    /// </summary>
+    StaminaOnAttack = 145,
+
+    /// <summary>
+    /// A buff, named by its number, that a blow which lands gives the attacker, and the one hit, each to itself.
+    /// </summary>
+    AttackBuff = 146,
+    DamagedBuff = 147,
+
+    /// <summary>
+    /// A buff, named by its number, that an evade gives.
+    /// </summary>
+    EvadeBuff = 148,
+
+    /// <summary>
+    /// A share in percent faster on foot in a district, and in a maze.
+    /// </summary>
+    DistrictSpeed = 149,
+    MazeSpeed = 150
 }
 
 /// <summary>

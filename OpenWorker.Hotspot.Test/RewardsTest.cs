@@ -8,6 +8,8 @@ using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Persistent;
+using OpenWorker.Gameplay.Buffs;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Boosters;
@@ -162,7 +164,7 @@ public sealed class RewardsTest
         public Fixture(byte level = 1, ReadOnlyCollection<MonsterExpRow>? monsterExp = null, ReadOnlyCollection<PartyExpMobRow>? intervals = null,
             ReadOnlyCollection<DropRow>? drops = null, ReadOnlyCollection<DropGroupRow>? groups = null,
             ReadOnlyCollection<DropRateLevelRow>? levelRates = null, ReadOnlyCollection<DropRateMemberRow>? memberRates = null,
-            BoosterEffectValue? boost = null, ILogger<DropService>? dropLogger = null)
+            BoosterEffectValue? boost = null, ILogger<DropService>? dropLogger = null, CombatTables? combat = null)
         {
             // The person carries one booster with the effect, when a test asks for one.
             var boosters = boost is { } effect
@@ -186,6 +188,7 @@ public sealed class RewardsTest
                 intervals ?? Rows<PartyExpMobRow>(),
                 Rows<MonsterRewardRow>(),
                 Monsters,
+                stats: combat is null ? null : new PlayerStatsService(World, combat),
                 boosters: boosters);
 
             Clock = TestMazes.Clock(Time);
@@ -203,7 +206,8 @@ public sealed class RewardsTest
                 levelRates: levelRates,
                 memberRates: memberRates,
                 boosters: boosters,
-                logger: dropLogger);
+                logger: dropLogger,
+                combat: combat);
 
             Player = World.Create(
                 Component.GetComponentType(typeof(ActorComponent)),
@@ -587,6 +591,42 @@ public sealed class RewardsTest
         Assert.IsTrue(souls.All(e => e.Count is >= 3 and <= 8));
         Assert.AreEqual(6, souls.Select(e => e.Count).Distinct().Count(), "every amount between the two falls");
         Assert.IsTrue(f.Drops.Roll(half[0], 0f, random).Count == 0, "no chance, no soul vapor");
+    }
+
+    /// <summary>
+    /// Gear (here a buff, which writes the same effects) with a share of experience and of gold adds it to the experience of a
+    /// kill and to each heap of gold that falls, told as the bonus.
+    /// </summary>
+    [TestMethod]
+    public void GearAddsItsShareToTheExperienceAndTheGoldOfAKill()
+    {
+        const ushort Fortune = 800;
+        var monster = FindMonster();
+        var combat = new CombatTables(Rows<MonsterRow>(), Rows<StatusRow>(), Rows<SkillRow>(), Rows<CharacterInfoRow>());
+
+        using var f = new Fixture(
+            monsterExp: Rows<MonsterExpRow>(MonsterExp((byte)monster.Level, monster.Rank, 40)),
+            drops: Rows<DropRow>(Drop(monster.DropId, 10000, 100, 100, 0, 0)),
+            combat: combat);
+
+        var catalog = new BuffCatalog(new ReadOnlyCollection<BuffRow>(
+        [
+            TestRows.Build<BuffRow>(("Id", Fortune), ("AllowedPlaces", (byte)10), ("Kind", (byte)BuffKind.Buff), ("Effect", (ushort)BuffEffect.Stats), ("Group", Fortune),
+                ("SuccessRate", 10000), ("Grade", (byte)1), ("OverlapCount", (byte)1), ("Stat1", (byte)115), ("Value1", 25), ("Stat2", (byte)116), ("Value2", 50))
+        ]));
+        var book = new BuffBook();
+
+        Assert.IsTrue(BuffRules.Give(book, catalog, Fortune, 7, new BuffCarrier(7, 100, 100, false), new Random(1), [], roll: false));
+        f.World.Add(f.Player, new BuffBookComponent { Book = book });
+
+        Assert.AreEqual(50, f.Experience.GiveForMonster(f.Player, monster.Id), "40 and a quarter of it");
+
+        f.Drops.DropForKill(f.Player, monster.Id, Vector3.Zero);
+
+        var heap = f.Drops.On(f.Player).Single();
+
+        Assert.AreEqual(150, heap.Count);
+        Assert.AreEqual(50, heap.Bonus);
     }
 
     [TestMethod]

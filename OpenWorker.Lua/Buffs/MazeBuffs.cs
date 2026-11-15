@@ -489,6 +489,9 @@ public sealed partial class MazeBuffs
     /// </summary>
     public void Step(float seconds)
     {
+        _fallen.AddRange(_fallenLater);
+        _fallenLater.Clear();
+
         if (_books.Count == 0)
         {
             return;

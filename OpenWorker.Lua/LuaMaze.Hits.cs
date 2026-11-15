@@ -66,12 +66,17 @@ public partial class LuaMaze
         // that wait for a hit, a critical hit or a miss, and the combo.
         for (var i = 0; i < targets.Length; i++)
         {
+            var flags = (HitResults)hits[i].DamageFlags;
+
             if (hits[i].Damage > 0 && Ecs.IsAlive(targets[i]))
             {
                 _buffs.AfterHit(player, targets[i], i, hits[i].Damage, Ecs.Get<MonsterCombatComponent>(targets[i]).Stats);
-            }
 
-            var flags = (HitResults)hits[i].DamageFlags;
+                if (!flags.HasFlag(HitResults.Miss))
+                {
+                    _buffs.AfterLandedBlow(player, targets[i], attackerStats.Special, Ecs.Get<MonsterCombatComponent>(targets[i]).Stats.Special, hits[i].Damage);
+                }
+            }
 
             _buffs.OnCondition(player, flags.HasFlag(HitResults.Miss) ? MazeBuffs.OnMissedAttack : MazeBuffs.OnAttack);
 

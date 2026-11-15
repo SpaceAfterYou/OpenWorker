@@ -4,6 +4,7 @@ using Arch.Core;
 using Microsoft.Extensions.Options;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Combat;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Movement;
 using OpenWorker.Gameplay.Modules.Skill.Components;
@@ -191,6 +192,12 @@ public sealed class MovementPace
         if (world.TryGet(player, out AbilityComponent abilities) && abilities.Speed.Move > 0f)
         {
             speed *= abilities.Speed.Move / 100f;
+        }
+
+        // Gear that makes the player faster in a district or in a maze.
+        if (world.TryGet(player, out SpecialSpeedComponent special))
+        {
+            speed *= 1f + special.Share / 100f;
         }
 
         return speed * _tolerance;

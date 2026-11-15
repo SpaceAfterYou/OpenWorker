@@ -100,7 +100,7 @@ public sealed class PlayerSpeedsTest
         }
     }
 
-    private static bool Told(RecordingConnection connection, STAT_TYPE stat, float value)
+    internal static bool Told(RecordingConnection connection, STAT_TYPE stat, float value)
     {
         var opcode = new MessageOpcode(GroupOpcode.Character, (byte)CharacterOpcode.UpdateStatList);
 
@@ -121,6 +121,47 @@ public sealed class PlayerSpeedsTest
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Gear that makes a player faster on foot counts its share for a district in a district and its share for a maze in a maze,
+    /// for the pace of its moves; the move speed of the stats does not show it.
+    /// </summary>
+    [TestMethod]
+    public void GearMakesThePlayerFasterOnFootInADistrictOrAMaze()
+    {
+        const ushort Swift = 811;
+        var world = World.Create();
+
+        try
+        {
+            var player = world.Create(
+                new ActorComponent(100, ActorType.User),
+                new PersonInfoComponent { Name = "Haru", Hero = Hero.Haru },
+                new LevelComponent(10, 0),
+                new WorldComponent { Location = 10003, Position = default, Rotation = 0f, Jump = 0 });
+            var tables = new CombatTables(TestMazes.None<MonsterRow>(), TestMazes.None<StatusRow>(), TestMazes.None<SkillRow>(), TestMazes.None<CharacterInfoRow>());
+            var stats = new PlayerStatsService(world, tables);
+            var catalog = new BuffCatalog(Rows(TestRows.Build<BuffRow>(
+                ("Id", Swift), ("AllowedPlaces", (byte)10), ("Kind", (byte)BuffKind.Buff), ("Effect", (ushort)BuffEffect.Stats), ("Group", Swift), ("SuccessRate", 10000),
+                ("Grade", (byte)1), ("OverlapCount", (byte)1), ("Stat1", (byte)149), ("Value1", 20), ("Stat2", (byte)150), ("Value2", 40))));
+            var book = new BuffBook();
+
+            Assert.IsTrue(BuffRules.Give(book, catalog, Swift, 100, new BuffCarrier(100, 100, 100, false), new Random(1), [], roll: false));
+            world.Add(player, new BuffBookComponent { Book = book });
+
+            stats.SendAll(player);
+            Assert.AreEqual(20f, world.Get<SpecialSpeedComponent>(player).Share, "in a district");
+
+            world.Set(player, world.Get<WorldComponent>(player) with { Location = 21311 });
+            stats.Send(player);
+            Assert.AreEqual(40f, world.Get<SpecialSpeedComponent>(player).Share, "in a maze");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
     }
 
     /// <summary>

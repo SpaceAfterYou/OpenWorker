@@ -2,6 +2,7 @@ using Arch.Core;
 using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot;
@@ -10,6 +11,13 @@ using OpenWorker.Hotspot.Modules.Persons.Responses;
 using OpenWorker.Hotspot.Modules.World.Responses;
 
 namespace OpenWorker.Gameplay.Combat;
+
+/// <summary>
+/// The share in percent by which the gear of a player makes it faster on foot where it is now: its special effect for a
+/// district or for a maze. The stats the client is told do not hold it.
+/// </summary>
+[EntityComponent(EntityComponentService.District)]
+public readonly record struct SpecialSpeedComponent(float Share);
 
 /// <summary>
 /// The stats a player was last told: its origin stats (its hero at its level) and its stats with everything on them.
@@ -49,6 +57,11 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
 {
     /// <summary>The client keeps this many stats; it logs the others and drops them.</summary>
     private const int ClientStats = 61;
+
+    /// <summary>The locations of the mazes.</summary>
+    private const short FirstMaze = 20000;
+
+    private const short LastMaze = 30000;
 
     /// <summary>A change of the stats of the player, which the client may write into its chat.</summary>
     private const byte Changed = 0;
@@ -198,6 +211,8 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
     /// </summary>
     private void KeepSpeeds(Entity player, in CombatStats stats)
     {
+        KeepSpecialSpeed(player, stats);
+
         if (stats.MoveSpeed <= 0f || !world.TryGet<AbilityComponent>(player, out var ability))
         {
             return;
@@ -206,6 +221,24 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
         if (ability.Speed.Move != stats.MoveSpeed || ability.Speed.Attack != stats.AttackSpeed)
         {
             world.Set(player, ability with { Speed = new SpeedComponentEntry { Move = stats.MoveSpeed, Attack = stats.AttackSpeed } });
+        }
+    }
+
+    private void KeepSpecialSpeed(Entity player, in CombatStats stats)
+    {
+        var inMaze = world.TryGet<WorldComponent>(player, out var place) && place.Location is >= FirstMaze and < LastMaze;
+        var share = stats.Special.Of(inMaze ? SpecialEffect.MazeSpeed : SpecialEffect.DistrictSpeed);
+
+        if (world.TryGet<SpecialSpeedComponent>(player, out var known))
+        {
+            if (known.Share != share)
+            {
+                world.Set(player, new SpecialSpeedComponent(share));
+            }
+        }
+        else if (share != 0f)
+        {
+            world.Add(player, new SpecialSpeedComponent(share));
         }
     }
 
