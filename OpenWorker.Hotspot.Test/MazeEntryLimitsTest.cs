@@ -1,9 +1,12 @@
 using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Commands;
+using OpenWorker.Commands.Abstractions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Domain.Types;
@@ -164,6 +167,88 @@ public sealed class MazeEntryLimitsTest
 
         Assert.AreEqual((byte)WorldOpcode.EnterMazeLimitCountReset, reset.Opcode.Command);
         Assert.AreEqual(Actor, reset.Actor);
+    }
+
+    [TestMethod]
+    public async Task ADayOfTheWeekTheRowNamesAllowsMoreEntries()
+    {
+        // One entry a day, two on Mondays.
+        using var f = new Fixture(Rules(Rule(21061, limit: 1, plusDays: 1 << (int)DayOfWeek.Monday, plus: 1)));
+
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.IsNull(f.Limits.Check(f.Player, 21061), "the second entry of a Monday");
+
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21061));
+
+        f.Time.Advance(TimeSpan.FromDays(1));
+        await f.Limits.TickAsync(CancellationToken.None);
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21061), "one on a Tuesday");
+    }
+
+    [TestMethod]
+    public void TheItemThatRenewsAMazeClearsItsCountOnlyOnceTheEntriesAreUsedUp()
+    {
+        using var f = new Fixture(Rules(Rule(21061, limit: 2), Rule(21011, type: 2)));
+
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.IsFalse(f.Limits.Renew(f.Player, 21061), "an entry is left");
+        Assert.IsFalse(f.Limits.Renew(f.Player, 21011), "a maze without a limit");
+
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.IsTrue(f.Limits.Renew(f.Player, 21061));
+        Assert.IsNull(f.Limits.Check(f.Player, 21061));
+        Assert.AreEqual(0, f.Limits.CountOf(f.Player, 21061));
+
+        // The client is told the count it has now.
+        var told = f.Sent(1).Last();
+
+        Assert.AreEqual((byte)WorldOpcode.EnterMazeLimitCountUpdate, told.Opcode.Command);
+        Assert.AreEqual((21061, 0), (BinaryPrimitives.ReadUInt16LittleEndian(told.Body.AsSpan(4)), BinaryPrimitives.ReadUInt16LittleEndian(told.Body.AsSpan(6))));
+    }
+
+    [TestMethod]
+    public void TheItemOfTheCasualRaidsGivesBackOneEntryOfEachEnteredToday()
+    {
+        using var f = new Fixture(Rules(Rule(21011, type: 2), Rule(21012, type: 2), Rule(21061, limit: 2)));
+
+        f.Book.Mazes[21011] = 2;
+        f.Book.Mazes[21012] = 1;
+        f.Book.Mazes[21061] = 2;
+
+        Assert.IsTrue(f.Limits.TakeBackCasualEntry(f.Player));
+        Assert.AreEqual(1, f.Book.Mazes[21011]);
+        Assert.IsFalse(f.Book.Mazes.ContainsKey(21012));
+        Assert.AreEqual(2, f.Book.Mazes[21061], "not a casual raid");
+
+        Assert.IsTrue(f.Limits.TakeBackCasualEntry(f.Player));
+        Assert.IsFalse(f.Limits.TakeBackCasualEntry(f.Player), "no casual raid entered");
+        Assert.HasCount(3, f.Sent(3).Where(e => e.Opcode.Command == (byte)WorldOpcode.EnterMazeLimitCountUpdate).ToArray());
+    }
+
+    [TestMethod]
+    public async Task TheCommandSetsACountAndStartsANewDay()
+    {
+        using var f = new Fixture(Rules(Rule(21061, limit: 2)));
+        using var services = new ServiceCollection().AddSingleton(f.Limits).BuildServiceProvider();
+
+        ICommand command = new MazeEntryCountCommand(services);
+
+        Assert.IsFalse(await command.TryExecute(f.Player, ["21061"]));
+        Assert.IsFalse(await command.TryExecute(f.Player, ["21311", "1"]), "a maze the table has no row for");
+
+        Assert.IsTrue(await command.TryExecute(f.Player, ["21061", "2"]));
+        Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21061));
+
+        Assert.IsTrue(await command.TryExecute(f.Player, ["reset"]));
+        Assert.IsNull(f.Limits.Check(f.Player, 21061));
+        Assert.AreEqual((byte)WorldOpcode.EnterMazeLimitCountReset, f.Sent(2).Last().Opcode.Command);
     }
 
     [TestMethod]

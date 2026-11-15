@@ -23,11 +23,14 @@ public readonly struct MazeRuleRow
 
         // The daily limit of entering: the group of mazes that share it, whether it is counted for the account or for the
         // character, and the count; then the count in a net cafe, the days that add more, how many they add and the count of
-        // helpers, which a server without a net cafe has no use for.
+        // helpers. A server without a net cafe has no use for its count.
         EntryLimitGroup = reader.ReadUInt16();
         reader.ReadByte();
         EntryLimit = reader.ReadByte();
-        reader.ReadBytes(4);
+        reader.ReadByte();
+        EntryLimitPlusDays = reader.ReadByte();
+        EntryLimitPlus = reader.ReadByte();
+        reader.ReadByte();
 
         RequiredQuest = reader.ReadUInt32();
         RequiredItem = reader.ReadUInt32();
@@ -120,6 +123,16 @@ public readonly struct MazeRuleRow
     /// The group of mazes that share the daily count of entering, 0 for a maze that counts alone.
     /// </summary>
     public ushort EntryLimitGroup { get; }
+
+    /// <summary>
+    /// The days of the week that allow <see cref="EntryLimitPlus"/> more entries: bit 0 Sunday to bit 6 Saturday.
+    /// </summary>
+    public byte EntryLimitPlusDays { get; }
+
+    /// <summary>
+    /// How many more entries a day of <see cref="EntryLimitPlusDays"/> allows.
+    /// </summary>
+    public byte EntryLimitPlus { get; }
 
     /// <summary>
     /// What a fallen player may do in the maze: 0 get up, 1 not get up at all, 2 get up as often as it likes, by itself.

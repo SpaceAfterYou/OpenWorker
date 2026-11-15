@@ -97,7 +97,8 @@ public sealed partial class ItemUseService(
     InfiniteTower? tower = null,
     IItemLocks? locks = null,
     ReadOnlyCollection<ItemPackageUnpackRow>? unpacking = null,
-    ReadOnlyCollection<ReinforceRow>? reinforces = null)
+    ReadOnlyCollection<ReinforceRow>? reinforces = null,
+    MazeEntryLimits? entryLimits = null)
 {
     // The group of the classify table that holds the items taken at a meal: potions and fatigue items.
     private const int ConsumableGroup = 17;
@@ -163,6 +164,8 @@ public sealed partial class ItemUseService(
             ItemUseType.EFFECT => UseEffect(player, item, row, classify, place),
             ItemUseType.EQUIP_SLOT_OPEN => OpenEquipSlot(player, item, classify),
             ItemUseType.INFINITE_TOWER => UseTowerTicket(player, item),
+            ItemUseType.CASUAL_INIT => RenewMaze(player, item, row),
+            ItemUseType.CASUAL_DECREASE_ENTER_LIMIT => TakeBackCasualEntry(player, item),
             ItemUseType.FEVER => UseFever(),
             _ => ItemUseResult.Refused()
         };
