@@ -45,6 +45,22 @@ public partial class LuaMaze
     private SpawnWaves Waves => _waves ??= new SpawnWaves(creatureManager, Batch);
 
     /// <summary>
+    /// What the boosters of a player add to the chance of the slots of the waves, out of ten thousand.
+    /// </summary>
+    public Func<Entity, int>? WaveChanceOf { get; init; }
+
+    /// <summary>
+    /// A player has loaded the maze: the waves take the best chance the players brought.
+    /// </summary>
+    private void RaiseWaveChance(Entity player)
+    {
+        if (WaveChanceOf?.Invoke(player) is > 0 and var bonus)
+        {
+            Waves.RaiseChance(bonus);
+        }
+    }
+
+    /// <summary>
     /// Whether a mode is being played.
     /// </summary>
     [LuaIgnoreMember]

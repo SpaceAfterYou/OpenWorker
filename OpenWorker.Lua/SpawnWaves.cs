@@ -40,6 +40,20 @@ public sealed class SpawnWaves(LuaCreatureManager creatures, VBatchFile batch)
     public bool IsRunning => _running.Count > 0;
 
     /// <summary>
+    /// What the boosters of the players add to the chance of every slot that rolls by itself, out of ten thousand: the most any
+    /// player brought into the maze, kept for the life of the maze.
+    /// </summary>
+    public int ChanceBonus { get; private set; }
+
+    /// <summary>
+    /// A player brought a booster that raises the chance of the slots.
+    /// </summary>
+    public void RaiseChance(int bonus)
+    {
+        ChanceBonus = Math.Max(ChanceBonus, Math.Min(bonus, Chances));
+    }
+
+    /// <summary>
     /// The box that waits for a signal, or nothing for a box the map lacks and for one that appears by itself.
     /// </summary>
     private MonsterSpawnBox? Find(int box)
@@ -165,7 +179,7 @@ public sealed class SpawnWaves(LuaCreatureManager creatures, VBatchFile batch)
             }
             else
             {
-                found = Roll() <= monster.Chance;
+                found = Roll() <= monster.Chance + (monster.Type == MonsterSpawnType.Npc ? 0 : ChanceBonus);
             }
 
             if (!found)

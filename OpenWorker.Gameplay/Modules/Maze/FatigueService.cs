@@ -27,6 +27,8 @@ namespace OpenWorker.Gameplay.Modules.Maze;
 /// <item>At the start of each game day (the day of the daily missions) the points of the day fill up and half of what was
 /// left of them, at most <see cref="DailyBonus"/>, is saved up, with <see cref="DailyBonus"/> more for each whole day the
 /// person was away, at most <see cref="MaxBonusDays"/> days.</item>
+/// <item>While a booster of extra fatigue is on, a maze spends the extra fatigue of the day before anything else
+/// (<see cref="BoosterManager.ExtraFatigue"/>); it fills up with the day as well.</item>
 /// <item>An item of fatigue adds its value to the points of the day, unless the person has saved points or a full day
 /// (<see cref="CannotRestore"/>).</item>
 /// </list>
@@ -86,7 +88,7 @@ public sealed partial class FatigueService(
 
         cost = Math.Max(0, cost - (int)(boosters?.GetValue(player, BoosterEffect.FatigueDecrease) ?? 0));
 
-        return fatigue.Common + fatigue.Bonus >= cost;
+        return fatigue.Common + fatigue.Bonus + (boosters?.ExtraFatigue(player) ?? 0) >= cost;
     }
 
     /// <summary>
@@ -111,13 +113,21 @@ public sealed partial class FatigueService(
     }
 
     /// <summary>
-    /// Spends fatigue, the saved points first; what is not there is not spent.
+    /// Spends fatigue: the extra fatigue of a booster first, then the saved points; what is not there is not spent.
     /// </summary>
     public void Spend(Entity player, int amount)
     {
         if (amount <= 0 || !Refresh(player, out var fatigue))
         {
             return;
+        }
+
+        var fromExtra = Math.Min(amount, boosters?.ExtraFatigue(player) ?? 0);
+
+        if (fromExtra > 0)
+        {
+            boosters!.SpendExtraFatigue(player, fromExtra);
+            amount -= fromExtra;
         }
 
         var fromBonus = Math.Min(amount, (int)fatigue.Bonus);
@@ -155,6 +165,8 @@ public sealed partial class FatigueService(
 
         var now = time.GetUtcNow();
         var day = GameDay.Get(now, Reset).Start.UtcDateTime;
+
+        boosters?.FillExtraFatigue(player, day);
 
         // A person that was never filled starts its days now, with what it was made with.
         if (fatigue.RefilledAt is not { } last)

@@ -336,6 +336,7 @@ public partial class LuaMaze(
         JoinPartyQuest(player);
         TellHiddenEvent(player);
         TellUnity(player);
+        RaiseWaveChance(player);
 
         return true;
     }
