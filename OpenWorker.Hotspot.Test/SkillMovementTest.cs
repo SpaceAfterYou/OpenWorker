@@ -103,22 +103,25 @@ public sealed class SkillMovementTest
             Assert.IsTrue(Body.UseSkill(Body.GetSkill(0)!, new AiTarget(Person, place, PlayerVitals.BodyRadius, 0f, 1, 1, false)));
         }
 
-        public PlayerFrame[] Frames(MoveOpcode command) =>
-            connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Move, (byte)command)).ToArray();
-
         /// <summary>
-        /// Waits for the messages told so far to come out, then gives those of the kind.
+        /// Closes the player's connection once what was told so far is sent, so every message of the steps before is read and
+        /// none is still on its way.
         /// </summary>
-        public async Task<PlayerFrame[]> FramesAsync(MoveOpcode command, int atLeast)
+        public async Task<PlayerFrame[]> SentAsync()
         {
-            await MetricAssertions.UntilAsync(() => Frames(command).Length >= atLeast, $"{atLeast} messages {command} are told.");
-            await Task.Delay(100);
+            var session = world.Get<ServerSessionComponent>(player);
 
-            return Frames(command);
+            session.Disconnect();
+            await session.Closed.WaitAsync(TimeSpan.FromSeconds(30));
+
+            return connection.Frames.Select(PlayerFrame.Open).ToArray();
         }
 
-        public int Hits() =>
-            connection.Frames.Select(PlayerFrame.Open).Count(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActionSkillBt));
+        public async Task<PlayerFrame[]> FramesAsync(MoveOpcode command) =>
+            (await SentAsync()).Where(e => e.Is(GroupOpcode.Move, (byte)command)).ToArray();
+
+        public async Task<int> HitsAsync() =>
+            (await SentAsync()).Count(e => e.Is(GroupOpcode.Skill, (byte)SkillOpcode.ActionSkillBt));
     }
 
     private static async Task WithPuppetAsync(Func<Arena, Task> test, string file = PuppetFile)
@@ -221,7 +224,7 @@ public sealed class SkillMovementTest
 
         Assert.AreEqual(stop, arena.Body.Position.Y, 1f);
 
-        var told = await arena.FramesAsync(MoveOpcode.IgnoreMotionDelta, 1);
+        var told = await arena.FramesAsync(MoveOpcode.IgnoreMotionDelta);
 
         Assert.HasCount(1, told, "The cut is told once.");
         Assert.AreEqual(stop, PlaceOf(told[0], 4).Y, 1f);
@@ -237,7 +240,7 @@ public sealed class SkillMovementTest
         arena.DashAt(560f);
         arena.Advance(3.5f);
 
-        await MetricAssertions.UntilAsync(() => arena.Hits() > 0, "The player ahead is hit.");
+        Assert.IsGreaterThan(0, await arena.HitsAsync(), "The player ahead is hit.");
     });
 
     /// <summary>
@@ -257,7 +260,7 @@ public sealed class SkillMovementTest
 
         Assert.IsGreaterThan(reach, arena.Body.Position.Y - player);
         Assert.IsLessThan(reach + 40f, arena.Body.Position.Y - player);
-        Assert.HasCount(1, await arena.FramesAsync(MoveOpcode.IgnoreMotionDelta, 1));
+        Assert.HasCount(1, await arena.FramesAsync(MoveOpcode.IgnoreMotionDelta));
     });
 
     /// <summary>
@@ -294,7 +297,9 @@ public sealed class SkillMovementTest
         Assert.IsTrue(arena.Body.MoveTo(after + new Vector3(0f, -300f, 0f), false));
         arena.Advance(1f);
 
-        var walk = await arena.FramesAsync(MoveOpcode.MoveBt, 1);
+        var walk = await arena.FramesAsync(MoveOpcode.MoveBt);
+
+        Assert.IsNotEmpty(walk);
 
         Assert.AreEqual(after.Y, PlaceOf(walk[0], 4 + 8).Y, 1f);
         Assert.IsGreaterThan(DashWay - 10f, arena.Start.Y - PlaceOf(walk[0], 4 + 8).Y, "Not from where the skill began.");
