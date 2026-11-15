@@ -542,40 +542,61 @@ public sealed class InventoryService(
 
         world.MarkDirty(player, PersonSections.Currencies);
 
+        TellBalance(world, player, currency, flow);
+
+        if (currency == ShopCurrency.Bp && amount > 0)
+        {
+            arrivals?.BattlePointsArrived(player, amount);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Tells the client the balance of a currency in the message of its kind: gold (with the bonus and the way it came),
+    /// battle points, ether, cash. False for a kind the client has no message for: it learns that one at its next entry.
+    /// </summary>
+    public static bool TellBalance(World world, Entity player, ShopCurrency currency, MoneyEarnFlow flow = MoneyEarnFlow.Normal, int bonus = 0)
+    {
+        if (!world.IsAlive(player) || !world.Has<ServerSessionComponent>(player))
+        {
+            return false;
+        }
+
+        var session = world.Get<ServerSessionComponent>(player);
+        var total = world.Get<CurrencyComponent>(player)[currency];
+
         switch (currency)
         {
             case ShopCurrency.Gold:
             {
-                Send(player, new ItemUpdateInvenMoneyResponse { Total = total, Bonus = 0, Type = flow });
-                break;
+                session.Send(new ItemUpdateInvenMoneyResponse { Total = total, Bonus = bonus, Type = flow });
+                return true;
             }
 
             case ShopCurrency.Bp:
             {
-                Send(player, new ItemUpdateBpResponse { Actor = world.Get<ActorComponent>(player).Identifier, Total = total, Type = (byte)flow });
-
-                if (amount > 0)
-                {
-                    arrivals?.BattlePointsArrived(player, amount);
-                }
-
-                break;
+                session.Send(new ItemUpdateBpResponse { Actor = world.Get<ActorComponent>(player).Identifier, Total = total, Type = (byte)flow });
+                return true;
             }
 
             case ShopCurrency.Ether:
             {
-                Send(player, new ItemUpdateEtherResponse { Total = total });
-                break;
+                session.Send(new ItemUpdateEtherResponse { Total = total });
+                return true;
             }
 
             case ShopCurrency.Cash:
             {
-                Send(player, new ItemUpdateCashResponse { Total = (int)total });
-                break;
+                session.Send(new ItemUpdateCashResponse { Total = (int)total });
+                return true;
+            }
+
+            default:
+            {
+                return false;
             }
         }
-
-        return true;
     }
 
     #endregion
