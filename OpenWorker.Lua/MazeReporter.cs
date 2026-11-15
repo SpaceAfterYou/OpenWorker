@@ -92,6 +92,24 @@ public partial class MazeReporter(
     }
 
     /// <summary>
+    /// A member of the party of the killer, in the same maze, counts the kill for its quests and achievements.
+    /// </summary>
+    public virtual async ValueTask PartyMonsterKilledAsync(Entity player, int monster)
+    {
+        try
+        {
+            achievements?.OnMonsterKilled(player, monster);
+
+            await quests.OnMonsterKilledAsync(player, monster, CancellationToken.None);
+        }
+
+        catch (Exception e)
+        {
+            LogReportFailed(logger, e, "PartyMonsterKilled");
+        }
+    }
+
+    /// <summary>
     /// The person has won a maze, with the rank its run was given.
     /// </summary>
     public async ValueTask MazeClearedAsync(Entity player, MazeInfoRow info, int seconds, int hero, byte level)

@@ -2,14 +2,21 @@ using System.Globalization;
 using System.Numerics;
 using System.Text;
 using Arch.Core;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Channel;
+using OpenWorker.Channel.Community;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Messages.Response.Person;
+using OpenWorker.Gameplay.Modules.Channels.Components;
+using OpenWorker.Gameplay.Modules.Maze;
 using OpenWorker.Hotspot.Cache;
 using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua;
+using OpenWorker.UpdateContent.Res.Rows;
 using StackExchange.Redis;
 
 namespace OpenWorker.Hotspot.Test;
@@ -213,6 +220,133 @@ public sealed class WorldMazeTest
             Assert.HasCount(1, back, "the monster of the box with a respawn time is back, the other stays dead");
             Assert.AreEqual(Monster, world.Get<CreatureComponent>(back[0]).Identifier);
             Assert.AreEqual(Returning, world.Get<NonPlayableCreatureComponent>(back[0]).SpawnBox);
+
+            maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    private sealed class Party(params int[] members) : IPartyRoster
+    {
+        public ValueTask<IReadOnlyList<int>> MembersAsync(int person) =>
+            ValueTask.FromResult<IReadOnlyList<int>>(members.Contains(person) ? members : []);
+
+        public ValueTask<PartyView?> PartyAsync(int person) =>
+            ValueTask.FromResult(members.Contains(person) ? new PartyView(1, members[0], members) : null);
+    }
+
+    /// <summary>
+    /// Where the persons are, as the servers wrote it.
+    /// </summary>
+    private sealed class Presence(params PresenceRecord[] records) : IPresenceStore
+    {
+        public ValueTask SetAsync(PresenceRecord record, TimeSpan lifetime) => ValueTask.CompletedTask;
+
+        public ValueTask RemoveAsync(PresenceRecord record) => ValueTask.CompletedTask;
+
+        public ValueTask<PresenceRecord?> GetAsync(int person) => ValueTask.FromResult(records.FirstOrDefault(e => e.Person == person));
+
+        public ValueTask<PresenceRecord?> GetByNameAsync(string name) => ValueTask.FromResult<PresenceRecord?>(null);
+
+        public ValueTask<IReadOnlyList<PresenceRecord?>> GetManyAsync(IReadOnlyList<int> persons) =>
+            ValueTask.FromResult<IReadOnlyList<PresenceRecord?>>(persons.Select(e => records.FirstOrDefault(r => r.Person == e)).ToArray());
+    }
+
+    /// <summary>
+    /// A member of a party goes to the channel where another member already plays the open maze, not to its own.
+    /// </summary>
+    [TestMethod]
+    public async Task APartyMemberGoesToTheChannelWhereAMemberAlreadyPlays()
+    {
+        var redis = await RedisAsync();
+        var directory = new WorldMazeDirectory(redis);
+        var world = World.Create();
+
+        // A gate of its own, so the records of the other tests do not meet these.
+        const short gate = Gate + 40;
+
+        try
+        {
+            var channels = new ServiceChannels(Options.Create(new ChannelOptions { From = 1, To = 3 }), world);
+            var player = world.Create(new ActorComponent(1, ActorType.User), new ChannelMemberComponent(0));
+            var member = new PresenceRecord(Guid.NewGuid(), 2, "Member", 1, 20, District6, 3, true, 0, 0);
+            var routes = new WorldMazeRoutes(world, new WorldMazes(TestMazes.None<MazeInfoRow>()), directory,
+                Options.Create(new GateOptions { Id = gate }), NullLogger<WorldMazeRoutes>.Instance, channels, new Party(1, 2), new Presence(member));
+
+            var routed = await routes.RouteAsync(player, District6, Unregistered);
+
+            Assert.AreEqual(3, routed?.Channel, "the member goes where the other member plays");
+
+            await directory.ReleaseAsync(gate, District6, 3, routed!.Value.Route.Instance);
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    private sealed class RecordingReporter : MazeReporter
+    {
+        public RecordingReporter() : base(null!, null!, null!, null!, null!, null!)
+        {
+        }
+
+        public List<Entity> Killed { get; } = [];
+
+        public List<Entity> PartyKilled { get; } = [];
+
+        public override ValueTask MonsterKilledAsync(Entity player, int monster, uint conditions)
+        {
+            Killed.Add(player);
+
+            return ValueTask.CompletedTask;
+        }
+
+        public override ValueTask PartyMonsterKilledAsync(Entity player, int monster)
+        {
+            PartyKilled.Add(player);
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private static Entity Player(World world, int person, Vector3 position, RecordingConnection? connection = null) =>
+        world.Create(
+            new ActorComponent(person, ActorType.User),
+            new ServerSessionComponent(connection ?? new RecordingConnection()),
+            new WorldComponent { Location = District6, Position = position, Rotation = 0f, Jump = 0 });
+
+    /// <summary>
+    /// A kill in an open maze counts in full for the killer, and for the quests of the members of its party in the instance;
+    /// the others in the instance hear nothing of it.
+    /// </summary>
+    [TestMethod]
+    public async Task AKillInAnOpenMazeCountsForTheQuestsOfTheKillersPartyInIt()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var killer = Player(world, 1, Vector3.Zero);
+            var member = Player(world, 2, Vector3.Zero);
+            var stranger = Player(world, 3, Vector3.Zero);
+            var reports = new RecordingReporter();
+            var maze = TestMazes.Create(world, killer, reports: reports, channel: 1);
+
+            Assert.IsTrue(maze.Join(member));
+            Assert.IsTrue(maze.Join(stranger));
+
+            maze.PartyOf = _ => ValueTask.FromResult<IReadOnlyList<Entity>>([killer, member]);
+
+            await maze.ReportKillAsync(killer, 4242, 0);
+
+            CollectionAssert.AreEqual(new[] { killer }, reports.Killed, "the kill is the killer's");
+            CollectionAssert.AreEqual(new[] { member }, reports.PartyKilled, "the quests of its party in the instance count it");
 
             maze.Close();
         }

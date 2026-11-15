@@ -1,6 +1,8 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenWorker.Channel.Community;
+using OpenWorker.Domain.Components;
 using OpenWorker.Extensions;
 using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Gameplay.Modules.Maze;
@@ -9,9 +11,10 @@ using OpenWorker.Hotspot.Cache;
 namespace OpenWorker.Channel;
 
 /// <summary>
-/// Which instance of an open maze of the world a player goes into: the one of the channel it stands on, while that has room,
-/// else the first other channel of this server with room. The record of each channel in Redis
-/// (<see cref="WorldMazeDirectory"/>) sends everybody of the channel into the same instance.
+/// Which instance of an open maze of the world a player goes into: the one of the channel where a member of its party already
+/// plays that maze, else the one of the channel it stands on, while that has room, else the first other channel of this server
+/// with room. The record of each channel in Redis (<see cref="WorldMazeDirectory"/>) sends everybody of the channel into the
+/// same instance.
 /// </summary>
 public sealed partial class WorldMazeRoutes(
     World world,
@@ -19,7 +22,9 @@ public sealed partial class WorldMazeRoutes(
     WorldMazeDirectory directory,
     IOptions<GateOptions> gate,
     ILogger<WorldMazeRoutes> logger,
-    ServiceChannels? channels = null)
+    ServiceChannels? channels = null,
+    IPartyRoster? parties = null,
+    IPresenceStore? presence = null)
 {
     /// <summary>
     /// The channel a player of a server without channels (a maze) goes to.
@@ -36,7 +41,14 @@ public sealed partial class WorldMazeRoutes(
     /// </summary>
     public async ValueTask<(WorldMazeRoute Route, int Channel)?> RouteAsync(Entity player, short location, (Guid Server, string Host, short Port) server)
     {
-        foreach (var channel in ChannelsOf(player))
+        var party = await PartyChannelsAsync(player, location);
+
+        if (!world.IsAlive(player))
+        {
+            return null;
+        }
+
+        foreach (var channel in party.Concat(ChannelsOf(player)).Distinct())
         {
             WorldMazeRoute? route;
 
@@ -66,6 +78,42 @@ public sealed partial class WorldMazeRoutes(
     }
 
     /// <summary>
+    /// The channels of the maze where the other members of the player's party are, in the order of the party.
+    /// </summary>
+    private async ValueTask<IReadOnlyList<int>> PartyChannelsAsync(Entity player, short location)
+    {
+        if (parties is null || presence is null || !world.TryGet(player, out ActorComponent actor))
+        {
+            return [];
+        }
+
+        try
+        {
+            var others = (await parties.MembersAsync(actor.Identifier)).Where(e => e != actor.Identifier).ToArray();
+
+            if (others.Length == 0)
+            {
+                return [];
+            }
+
+            var found = await presence.GetManyAsync(others);
+
+            return found
+                .Where(e => e is { InMaze: true, Channel: > 0 } && e.Location == location)
+                .Select(e => (int)e!.Channel)
+                .Distinct()
+                .ToArray();
+        }
+
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogPartyUnknown(e, location);
+
+            return [];
+        }
+    }
+
+    /// <summary>
     /// The channel of the player first, then the others of this server in their order.
     /// </summary>
     private IEnumerable<int> ChannelsOf(Entity player)
@@ -88,6 +136,9 @@ public sealed partial class WorldMazeRoutes(
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Where the party of a player plays the open maze {Location} could not be read, the player goes by its own channel")]
+    private partial void LogPartyUnknown(Exception exception, short location);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The record of the open maze {Location} on channel {Channel} could not be read")]
     private partial void LogRouteFailed(Exception exception, short location, int channel);
