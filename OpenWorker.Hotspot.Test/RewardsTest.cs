@@ -291,6 +291,29 @@ public sealed class RewardsTest
     }
 
     [TestMethod]
+    public void AGameMasterSetsTheLevelOnTheServerUpAndDown()
+    {
+        using var f = new Fixture();
+        var reached = new List<byte>();
+
+        f.Experience.LevelReached += player => reached.Add(f.World.Get<LevelComponent>(player).Level);
+        f.Experience.Add(f.Player, 10);
+
+        Assert.IsTrue(f.Experience.SetLevel(f.Player, 25));
+        Assert.AreEqual(25, f.Rank.Level);
+        Assert.AreEqual(0, f.Rank.Experience, "The experience starts over.");
+
+        Assert.IsTrue(f.Experience.SetLevel(f.Player, 3));
+        Assert.AreEqual(3, f.Rank.Level);
+
+        Assert.IsFalse(f.Experience.SetLevel(f.Player, f.Experience.MaxLevel + 1));
+        Assert.IsFalse(f.Experience.SetLevel(f.Player, 0));
+        Assert.AreEqual(3, f.Rank.Level);
+        CollectionAssert.AreEqual(new byte[] { 25, 3 }, reached, "Each change is a level reached.");
+        Assert.IsTrue(f.World.DirtyOf(f.Player)!.Sections.HasFlag(PersonSections.Level));
+    }
+
+    [TestMethod]
     public void NothingIsGainedOnTheLastLevel()
     {
         using var f = new Fixture(Load<LevelupPointRow>("tb_Levelup_Point").Max(e => e.Id));

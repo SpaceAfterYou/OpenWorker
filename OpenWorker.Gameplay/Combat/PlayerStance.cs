@@ -5,7 +5,10 @@ namespace OpenWorker.Gameplay.Combat;
 /// </summary>
 /// <param name="Lands">The game time the flight is over at.</param>
 /// <param name="GetsUp">The game time the player begins to get up at, unless its client gets it up sooner.</param>
-public readonly record struct PlayerPostureComponent(TimeSpan Lands, TimeSpan GetsUp);
+/// <param name="Rises">The game time the player starts to rise at.</param>
+/// <param name="From">How high above the ground the player rises from.</param>
+/// <param name="Lift">How much higher it rises before it hangs and falls.</param>
+public readonly record struct PlayerPostureComponent(TimeSpan Lands, TimeSpan GetsUp, TimeSpan Rises = default, float From = 0f, float Lift = 0f);
 
 /// <summary>
 /// Whether a player is in the air or lies on the ground. Only a throw the server dealt puts it there: the client gets its
@@ -18,6 +21,11 @@ public static class PlayerStance
     private const float HangTime = 0.3f;
     private const float GroundDelay = 0.2f;
     private const float AirDelay = 0.05f;
+
+    /// <summary>
+    /// A launch that catches the player in the air lifts it at least this much more, whatever height it has gained.
+    /// </summary>
+    private const float LeastLiftInTheAir = 50f;
 
     /// <summary>
     /// The step of a knock-down motion in which the player gets up.
@@ -37,18 +45,59 @@ public static class PlayerStance
 
     /// <summary>
     /// A throw to a height: up and down again, with the moment it hangs at the top and, for a knock-down, the moment before it
-    /// leaves the ground; then the fall and the time on the ground.
+    /// leaves the ground; then the fall and the time on the ground. A launch that catches the player in the air lifts it by what
+    /// the blow asks less the height it has already gained, never less than a little and never above the highest a throw goes;
+    /// a knock-down puts it on the ground first and throws it from there, as high as it could still have gone.
     /// </summary>
-    /// <param name="inTheAir">Whether a throw already holds the player in the air.</param>
-    public static PlayerPostureComponent Thrown(TimeSpan now, ReactionKind kind, float height, bool inTheAir)
+    /// <param name="current">What the throws before it left: the player is in the air when one still holds it there.</param>
+    public static PlayerPostureComponent Thrown(TimeSpan now, ReactionKind kind, float height, in PlayerPostureComponent current)
     {
-        var lift = Math.Clamp(height, 0f, HighestLift);
-        var delay = kind == ReactionKind.KnockDown ? inTheAir ? AirDelay : GroundDelay : 0f;
-        var flight = delay + 2f * MathF.Sqrt(2f * lift / Gravity) + HangTime;
-        var lands = now + TimeSpan.FromSeconds(flight);
+        var gained = IsInTheAir(current, now) ? HeightAt(current, now) : 0f;
+        var asked = Math.Max(height, 0f);
+        var lift = gained > 0f && kind != ReactionKind.KnockDown ? Math.Max(asked - gained, LeastLiftInTheAir) : asked;
 
-        return new PlayerPostureComponent(lands, lands + Landing + GroundDown);
+        lift = Math.Clamp(lift, 0f, Math.Max(HighestLift - gained, 0f));
+
+        var from = kind == ReactionKind.KnockDown ? 0f : gained;
+        var delay = kind == ReactionKind.KnockDown ? IsInTheAir(current, now) ? AirDelay : GroundDelay : 0f;
+        var rises = now + TimeSpan.FromSeconds(delay);
+        var lands = rises + TimeSpan.FromSeconds(RiseTime(lift) + HangTime + FallTime(from + lift));
+
+        return new PlayerPostureComponent(lands, lands + Landing + GroundDown, rises, from, lift);
     }
+
+    /// <summary>
+    /// How high above the ground a throw holds the player at a moment of its flight.
+    /// </summary>
+    public static float HeightAt(in PlayerPostureComponent posture, TimeSpan now)
+    {
+        if (!IsInTheAir(posture, now))
+        {
+            return 0f;
+        }
+
+        var time = (float)(now - posture.Rises).TotalSeconds;
+
+        if (time <= 0f)
+        {
+            return posture.From;
+        }
+
+        var rise = RiseTime(posture.Lift);
+
+        if (time < rise)
+        {
+            return posture.From + MathF.Sqrt(2f * posture.Lift * Gravity) * time - 0.5f * Gravity * time * time;
+        }
+
+        var fall = Math.Max(time - rise - HangTime, 0f);
+
+        return Math.Max(posture.From + posture.Lift - 0.5f * Gravity * fall * fall, 0f);
+    }
+
+    private static float RiseTime(float lift) => MathF.Sqrt(2f * lift / Gravity);
+
+    private static float FallTime(float height) => MathF.Sqrt(2f * height / Gravity);
 
     public static bool IsInTheAir(in PlayerPostureComponent posture, TimeSpan now) => now < posture.Lands;
 

@@ -34,6 +34,28 @@ public sealed class PlayerStanceTest
     }
 
     /// <summary>
+    /// A launch that catches the player in the air lifts it from where it is, by what the blow asks less the height already
+    /// gained: a ring of nine launches to 189, the last 4 s after the first, lands it as the real client did, 0.88 s after the
+    /// last, and gets it up as that client began to, 4.47 s after.
+    /// </summary>
+    [TestMethod]
+    public void ALaunchInTheAirCountsTheHeightAlreadyGained()
+    {
+        var posture = default(PlayerPostureComponent);
+
+        foreach (var at in new[] { 0.0, 0.55, 1.05, 1.6, 2.1, 2.65, 3.15, 3.7, 4.0 })
+        {
+            posture = PlayerStance.Thrown(TimeSpan.FromSeconds(at), ReactionKind.LaunchUp, 189f, posture);
+        }
+
+        var last = TimeSpan.FromSeconds(4.0);
+
+        Assert.AreEqual(0.88, (posture.Lands - last).TotalSeconds, 0.05, "Lands with the client.");
+        Assert.AreEqual(4.47, (posture.GetsUp - last).TotalSeconds, 0.1, "Gets up with the client.");
+        Assert.AreEqual(1.18, (PlayerStance.Thrown(last, ReactionKind.LaunchUp, 189f, default).Lands - last).TotalSeconds, 0.01, "From the ground it goes the whole way.");
+    }
+
+    /// <summary>
     /// A client that says its player lies, when no throw of the server put it there, makes nobody lie.
     /// </summary>
     [TestMethod]

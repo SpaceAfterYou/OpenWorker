@@ -103,13 +103,13 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// The nearest monster throws the player up with a blow that hurts it a little, as any throw of a monster: the player is in the
-    /// air, then lies on the ground. False when no living monster stands near.
+    /// The nearest monster throws the player with a blow of its own skill that hurts it a little, as any throw of a monster: the
+    /// player is in the air, then lies on the ground.
     /// </summary>
     [LuaIgnoreMember]
-    public bool KnockDown(Entity player)
+    public CommandThrow KnockDown(Entity player)
     {
-        return !Closed && Find(player) is not null && creatureManager.KnockDown(player);
+        return Closed || Find(player) is null ? default : creatureManager.KnockDown(player);
     }
 
     /// <summary>
