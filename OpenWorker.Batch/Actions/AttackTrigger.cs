@@ -11,6 +11,7 @@ namespace OpenWorker.Batch.Actions;
 /// <param name="Aura">The aura the attack puts on the targets it reaches (they give its buff to those around them), zero for none.</param>
 /// <param name="Reaction">How hard the attack throws its targets.</param>
 /// <param name="GrabDrop">For an attack that grabs: where the target is put down, from the attacker, turned by the way it looks.</param>
+/// <param name="Filter">The modes of the skill the attack is for: its levels, divergences, steps of a charge.</param>
 /// <param name="TargetStatus">Whom the attack reaches by the way they stand: <see cref="AttackTrigger.LyingToo"/> and <see cref="AttackTrigger.LyingOnly"/> reach a target that lies on the ground, any other value only one that does not.</param>
 public readonly record struct AttackTrigger(
     int Id,
@@ -34,7 +35,8 @@ public readonly record struct AttackTrigger(
     int Aura = 0,
     AttackReaction Reaction = default,
     Vector3 GrabDrop = default,
-    int TargetStatus = 0)
+    int TargetStatus = 0,
+    ActionFilter Filter = default)
 {
     /// <summary>
     /// The attack reaches a target whether it lies on the ground or not.

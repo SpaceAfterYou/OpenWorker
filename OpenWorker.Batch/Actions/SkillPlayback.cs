@@ -23,7 +23,25 @@ public enum SkillStep
     Loop,
     Extra,
     End,
+
+    /// <summary>
+    /// An animation the player follows the skill with by a button (a combo of the animation that played).
+    /// </summary>
+    Combo,
     Done
+}
+
+/// <summary>
+/// The mode a player plays a skill in, which picks the events of its animations that are for it.
+/// </summary>
+/// <param name="Level">The level of the skill, from 1.</param>
+/// <param name="Divergence">Zero for none, <see cref="ActionFilter.FirstGroup"/> or <see cref="ActionFilter.SecondGroup"/> plus its level otherwise.</param>
+public readonly record struct SkillMode(int Level, int Divergence)
+{
+    /// <summary>
+    /// The filter of the mode at a step of the charge. The combat type of a player is not followed: every one matches.
+    /// </summary>
+    public ActionFilter At(int charge) => ActionFilter.Of(Level, charge, ActionFilter.Any, Divergence);
 }
 
 /// <summary>
@@ -88,10 +106,39 @@ public sealed class SkillPlayback
     private float _cutUntil = float.NegativeInfinity;
     private ActionAnimation? _clip;
 
+    private readonly SkillMode? _mode;
+    private ActionFilter _filter;
+
+    /// <summary>
+    /// The combos of the animations played so far whose moment has not come yet, in the order of time.
+    /// </summary>
+    private readonly List<(float Time, ComboEvent Combo, float Ends)> _combos = [];
+
+    /// <summary>
+    /// The combo the player may take now, until when, and how often it was taken.
+    /// </summary>
+    private (ComboEvent Combo, float Until)? _armed;
+
+    private int _taken;
+
+    /// <summary>
+    /// The animation of a combo the client asked for before the combo came here: it plays at the moment the combo comes.
+    /// </summary>
+    private ActionAnimation? _asked;
+
+    /// <summary>
+    /// The step a combo cut short, and when it was to end: the skill goes back to it after the animation of the combo.
+    /// </summary>
+    private (SkillStep Step, float End)? _resume;
+
+    private ActionAnimation? _comboClip;
+
     /// <param name="speed">The attack speed of the player as a share of the normal one: 1.2 plays the animations a fifth faster.</param>
-    public SkillPlayback(SkillAnimations animations, float speed = 1f)
+    /// <param name="mode">The level and divergence the skill is played with; without one every event of the animations counts.</param>
+    public SkillPlayback(SkillAnimations animations, float speed = 1f, SkillMode? mode = null)
     {
         _animations = animations;
+        _mode = mode;
         _pressed = animations.StartsPressed;
         _speed = float.IsFinite(speed) && speed > 0f ? Math.Clamp(speed, SlowestSpeed, FastestSpeed) : 1f;
 
@@ -132,6 +179,11 @@ public sealed class SkillPlayback
                 next = Math.Min(next, _nextRound);
             }
 
+            if (_asked is not null && _combos.Count > 0)
+            {
+                next = Math.Min(next, _combos[0].Time);
+            }
+
             return next;
         }
     }
@@ -147,20 +199,25 @@ public sealed class SkillPlayback
         {
             Round(now);
 
-            while (_pending.Count > 0 && _pending[0].Time <= now)
+            // A combo that comes up to now opens; one the client asked for already plays from its moment.
+            if (_combos.Count > 0 && _combos[0].Time <= Math.Min(now, _stepEnd))
             {
-                due.Add(_pending[0]);
-                _pending.RemoveAt(0);
+                var (time, combo, ends) = _combos[0];
+
+                Due(due, time);
+                _combos.RemoveAt(0);
+                Arm(combo, time, ends);
+
+                if (_asked is { } asked && Offers(combo, asked))
+                {
+                    _asked = null;
+                    PlayCombo(asked, time);
+                }
+
+                continue;
             }
 
-            // A shot comes due at its own moment, and only while its animation plays.
-            var until = Math.Min(now, _stepEnd);
-
-            while (_coming.Count > 0 && _coming[0].Time <= until)
-            {
-                _shots[_coming[0].Trigger.Id] = _shots.GetValueOrDefault(_coming[0].Trigger.Id) + 1;
-                _coming.RemoveAt(0);
-            }
+            Due(due, now);
 
             if (_stepEnd > now)
             {
@@ -171,6 +228,101 @@ public sealed class SkillPlayback
         }
 
         return due;
+    }
+
+    /// <summary>
+    /// Moves the attacks and the shots whose moment has come by this time out of the waiting lists.
+    /// </summary>
+    private void Due(List<SkillHit> due, float now)
+    {
+        while (_pending.Count > 0 && _pending[0].Time <= now)
+        {
+            due.Add(_pending[0]);
+            _pending.RemoveAt(0);
+        }
+
+        // A shot comes due at its own moment, and only while its animation plays.
+        var until = Math.Min(now, _stepEnd);
+
+        while (_coming.Count > 0 && _coming[0].Time <= until)
+        {
+            _shots[_coming[0].Trigger.Id] = _shots.GetValueOrDefault(_coming[0].Trigger.Id) + 1;
+            _coming.RemoveAt(0);
+        }
+    }
+
+    /// <summary>
+    /// The player follows the skill with an animation of a combo by a button. A combo that has come and is still open must offer
+    /// it (for the level of the skill, and not taken more often than it allows); one still to come in the animation that plays
+    /// keeps the request and plays it at its moment, as the client may be a little ahead. <see cref="Advance"/> has to run up to
+    /// this moment first.
+    /// </summary>
+    /// <returns>Whether the animation plays, now or at the moment of its combo.</returns>
+    public bool Combo(ActionAnimation animation, float now)
+    {
+        if (_armed is { } armed && now <= armed.Until + ShotLeeway && Offers(armed.Combo, animation) &&
+            (armed.Combo.Count <= 0 || _taken < armed.Combo.Count))
+        {
+            PlayCombo(animation, now);
+
+            return true;
+        }
+
+        if (!IsDone && _combos.Any(e => Offers(e.Combo, animation)))
+        {
+            _asked = animation;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool Offers(ComboEvent combo, ActionAnimation animation)
+    {
+        var level = _mode?.Level ?? int.MaxValue;
+
+        return combo.Left.Concat(combo.Right).Any(e => e.Level <= level && string.Equals(e.Animation, animation.Name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// A combo comes: it stays open for its time, or while the animation that holds it plays.
+    /// </summary>
+    private void Arm(ComboEvent combo, float at, float ends)
+    {
+        if (_armed?.Combo != combo)
+        {
+            _taken = 0;
+        }
+
+        _armed = (combo, combo.Wait > 0f ? at + combo.Wait : ends);
+    }
+
+    /// <summary>
+    /// The animation of a combo cuts the step that plays. A loop or a wait it cuts plays on after it until its own end, and a
+    /// start goes on to what follows it; the combo stays open in a loop or a wait, as the client keeps it.
+    /// </summary>
+    private void PlayCombo(ActionAnimation animation, float at)
+    {
+        var resume = Step switch
+        {
+            SkillStep.Loop or SkillStep.Extra when _stepEnd > at => (Step, _stepEnd),
+            SkillStep.Start => (SkillStep.Start, at),
+            SkillStep.Combo => _resume,
+            _ => null
+        };
+
+        _resume = resume;
+        _taken++;
+
+        if (resume is not { Step: SkillStep.Loop or SkillStep.Extra })
+        {
+            _armed = null;
+        }
+
+        _asked = null;
+        _comboClip = animation;
+        Enter(SkillStep.Combo, at);
     }
 
     /// <summary>
@@ -219,6 +371,21 @@ public sealed class SkillPlayback
 
         Shift(_pending, seconds);
         Shift(_coming, seconds);
+
+        for (var i = 0; i < _combos.Count; i++)
+        {
+            _combos[i] = (_combos[i].Time + seconds, _combos[i].Combo, _combos[i].Ends + seconds);
+        }
+
+        if (_armed is { } armed)
+        {
+            _armed = (armed.Combo, armed.Until + seconds);
+        }
+
+        if (_resume is { Step: SkillStep.Loop or SkillStep.Extra } resume)
+        {
+            _resume = (resume.Step, resume.End + seconds);
+        }
     }
 
     private static void Shift(List<SkillHit> list, float seconds)
@@ -299,12 +466,37 @@ public sealed class SkillPlayback
                 Enter(SkillStep.End, at);
                 break;
 
+            case SkillStep.Combo when _resume is { } resume:
+                _resume = null;
+
+                if (resume.Step == SkillStep.Start)
+                {
+                    // What follows the start, as if it had played to its end.
+                    Step = SkillStep.Start;
+                    Leave(at);
+                }
+                else if (resume.End > at)
+                {
+                    Enter(resume.Step, at);
+                    _stepEnd = Math.Min(_stepEnd, resume.End);
+                    _roundsEnded |= _nextRound >= _stepEnd;
+                }
+                else
+                {
+                    Step = resume.Step;
+                    Leave(at);
+                }
+
+                break;
+
             default:
                 KeepCutOpen(at);
                 Step = SkillStep.Done;
                 _doneAt = at;
                 _pending.Clear();
                 _coming.Clear();
+                _combos.Clear();
+                _asked = null;
                 break;
         }
     }
@@ -396,6 +588,13 @@ public sealed class SkillPlayback
             SkillStep.Start => _animations.Extra,
             SkillStep.Extra when _pressed && _animations.Loop is not null => _animations.Loop,
             SkillStep.Extra or SkillStep.Loop => EndClip(_stepEnd),
+            SkillStep.Combo => _resume switch
+            {
+                { Step: SkillStep.Loop or SkillStep.Extra } resume when resume.End > _stepEnd => resume.Step == SkillStep.Loop ? _animations.Loop : _animations.Extra,
+                { Step: SkillStep.Start } => _animations.Loop is null ? EndClip(_stepEnd) : _animations.Extra is null || _pressed ? _animations.Loop : _animations.Extra,
+                null => null,
+                _ => EndClip(_stepEnd)
+            },
             _ => null
         };
 
@@ -416,13 +615,16 @@ public sealed class SkillPlayback
         _roundStart = at;
         _pending.Clear();
         _coming.Clear();
+        _combos.Clear();
         _roundsEnded = true;
+        _filter = _mode is { } mode ? mode.At(step == SkillStep.End ? ChargeLevel(at) : 0) : default;
 
         var clip = step switch
         {
             SkillStep.Start => _animations.Start,
             SkillStep.Loop => _animations.Loop,
             SkillStep.Extra => _animations.Extra,
+            SkillStep.Combo => _comboClip,
             _ => EndClip(at)
         };
 
@@ -440,6 +642,18 @@ public sealed class SkillPlayback
         }
 
         _stepEnd = at + Duration(step, clip);
+
+        // Each level a charge grows plays the animation of the growth, with its blows, as the loop goes on.
+        if (step == SkillStep.Loop && _animations.Extra is { } growth && _animations.ChargeSteps.Count > 1)
+        {
+            var grown = at;
+
+            foreach (var length in _animations.ChargeSteps.Take(_animations.ChargeSteps.Count - 1))
+            {
+                grown += length;
+                AddAttacks(growth, grown, _stepEnd);
+            }
+        }
 
         if (step is SkillStep.Loop or SkillStep.Extra && clip.Repeats && clip.Length > 0f)
         {
@@ -493,11 +707,26 @@ public sealed class SkillPlayback
     /// </summary>
     private ActionAnimation? EndClip(float at)
     {
+        if (_animations.ChargeSteps.Count == 0 || _loopStart > at)
+        {
+            return _animations.End;
+        }
+
+        var level = ChargeLevel(at);
+
+        return level < _animations.ChargedEnds.Count && _animations.ChargedEnds[level] is { } charged ? charged : _animations.End;
+    }
+
+    /// <summary>
+    /// The level the charge has reached by this moment, from zero.
+    /// </summary>
+    private int ChargeLevel(float at)
+    {
         var steps = _animations.ChargeSteps;
 
         if (steps.Count == 0 || _loopStart > at)
         {
-            return _animations.End;
+            return 0;
         }
 
         var held = at - _loopStart;
@@ -509,7 +738,7 @@ public sealed class SkillPlayback
             level++;
         }
 
-        return level < _animations.ChargedEnds.Count && _animations.ChargedEnds[level] is { } charged ? charged : _animations.End;
+        return level;
     }
 
     /// <summary>
@@ -544,11 +773,23 @@ public sealed class SkillPlayback
     {
         var clock = Clock(clip);
 
+        foreach (var combo in clip.Combos ?? [])
+        {
+            var time = at + clock.Wall(combo.Start);
+
+            if (time < limit && !_filter.Excludes(combo.Filter))
+            {
+                _combos.Add((time, combo, Math.Min(limit, at + clock.Length)));
+            }
+        }
+
+        _combos.Sort((a, b) => a.Time.CompareTo(b.Time));
+
         foreach (var attack in clip.Attacks)
         {
             var time = at + clock.Wall(attack.Start);
 
-            if (time >= limit)
+            if (time >= limit || _filter.Excludes(attack.Filter))
             {
                 continue;
             }

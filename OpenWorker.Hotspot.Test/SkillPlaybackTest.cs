@@ -390,6 +390,114 @@ public sealed class SkillPlaybackTest
 
         Assert.AreEqual(0.7f, playback.NextTime!.Value, 0.001f);
     }
+
+    private static ActionAnimation WithCombo(ActionAnimation clip, float at, float wait, params ComboStep[] right)
+    {
+        return clip with { Combos = [new ComboEvent(at, [], right, wait, 0, default)] };
+    }
+
+    /// <summary>
+    /// A combo of the animation that plays, once it has come, lets the player follow the skill with the animation it offers: that
+    /// animation cuts the one that played, and its attacks land instead of the rest.
+    /// </summary>
+    [TestMethod]
+    public void AComboPlaysTheAnimationItOffersInsteadOfTheRest()
+    {
+        var next = Clip("next", 1f, false, Attack(3, 0.2f));
+        var playback = new SkillPlayback(Skill(null, null, null, WithCombo(Clip("end", 1f, false, Attack(1, 0.1f), Attack(2, 0.8f)), 0.5f, 3f, new ComboStep("next", 0))));
+
+        var first = playback.Advance(0.6f);
+
+        Assert.IsTrue(playback.Combo(next, 0.6f));
+
+        var after = playback.Advance(5f);
+
+        Assert.AreSequenceEqual([1], first.Select(e => e.Trigger.Id).ToArray());
+        Assert.AreSequenceEqual([3], after.Select(e => e.Trigger.Id).ToArray());
+        Assert.AreEqual(0.8f, after[0].Time, 0.001f);
+    }
+
+    /// <summary>
+    /// A client a little ahead asks for the animation of a combo before the combo has come here: it plays from the moment the combo
+    /// comes.
+    /// </summary>
+    [TestMethod]
+    public void AComboAskedForEarlyPlaysFromItsMoment()
+    {
+        var next = Clip("next", 1f, false, Attack(3, 0.2f));
+        var playback = new SkillPlayback(Skill(null, null, null, WithCombo(Clip("end", 1f, false), 0.5f, 3f, new ComboStep("next", 0))));
+
+        playback.Advance(0.3f);
+
+        Assert.IsTrue(playback.Combo(next, 0.3f));
+        Assert.AreEqual(0.5f, playback.NextTime!.Value, 0.001f, "The skill wakes at the moment of the combo.");
+        AreTimes([0.7f], Play(playback));
+    }
+
+    /// <summary>
+    /// Only an animation a combo of the skill offers plays: not one it does not name, not one for a higher level of the skill, and
+    /// not once the combo is closed.
+    /// </summary>
+    [TestMethod]
+    public void OnlyAnAnimationTheComboOffersPlays()
+    {
+        var next = Clip("next", 1f, false, Attack(3, 0.2f));
+        var later = Clip("later", 1f, false);
+        var end = WithCombo(Clip("end", 1f, false), 0.5f, 1f, new ComboStep("next", 0), new ComboStep("later", 3));
+
+        var playback = new SkillPlayback(Skill(null, null, null, end), mode: new SkillMode(2, 0));
+
+        playback.Advance(0.6f);
+
+        Assert.IsFalse(playback.Combo(Clip("other", 1f, false), 0.6f), "An animation the combo does not name.");
+        Assert.IsFalse(playback.Combo(later, 0.6f), "An animation for a higher level.");
+
+        var closed = new SkillPlayback(Skill(null, null, null, end));
+
+        closed.Advance(2f);
+
+        Assert.IsFalse(closed.Combo(next, 2f), "The combo is closed.");
+    }
+
+    /// <summary>
+    /// A combo taken in a loop plays its animation, and the loop goes on after it until its own end.
+    /// </summary>
+    [TestMethod]
+    public void AComboInALoopReturnsToTheLoop()
+    {
+        var next = Clip("next", 0.5f, false, Attack(3, 0.1f));
+        var loop = WithCombo(Clip("loop", 1f, true, Attack(2, 0.5f)), 0f, 5f, new ComboStep("next", 0));
+        var playback = new SkillPlayback(Skill(null, loop, null, Clip("end", 0.5f, false, Attack(4, 0.1f)), loopTime: 3f).WithStart(Clip("start", 0.1f, false)));
+
+        playback.Advance(0.2f);
+
+        Assert.IsTrue(playback.Combo(next, 0.2f));
+
+        // The animation of the combo from 0.2 to 0.7, then the loop again until 3.1, then the end.
+        AreTimes([0.3f, 1.2f, 2.2f, 3.2f], Play(playback));
+    }
+
+    /// <summary>
+    /// The events of an animation for some modes of the skill only count in those: an event for no divergence is left out once the
+    /// skill has one, one for a divergence counts only with it, one for higher levels only at them.
+    /// </summary>
+    [TestMethod]
+    public void EventsCountOnlyInTheModesTheyAreFor()
+    {
+        var clip = Clip("end", 1f, false,
+            Attack(1, 0.1f) with { Filter = new ActionFilter(0, 1 << 30, 0) },
+            Attack(2, 0.2f) with { Filter = new ActionFilter(0, 0x7, 0) },
+            Attack(3, 0.3f) with { Filter = new ActionFilter(0, 1 << 16, 0) },
+            Attack(4, 0.4f) with { Filter = new ActionFilter(0x1C, 0, 0) },
+            Attack(5, 0.5f));
+
+        int[] Ids(SkillMode mode) => Play(new SkillPlayback(Skill(null, null, null, clip), mode: mode)).Select(e => e.Id).ToArray();
+
+        Assert.AreSequenceEqual([1, 5], Ids(new SkillMode(1, 0)), "level 1, no divergence");
+        Assert.AreSequenceEqual([2, 5], Ids(new SkillMode(1, ActionFilter.FirstGroup + 2)), "the first group");
+        Assert.AreSequenceEqual([3, 4, 5], Ids(new SkillMode(3, ActionFilter.SecondGroup + 1)), "the second group at level 3");
+        Assert.AreSequenceEqual([1, 2, 3, 4, 5], Play(new SkillPlayback(Skill(null, null, null, clip))).Select(e => e.Id).ToArray(), "no mode: every event");
+    }
 }
 
 internal static class SkillAnimationsExtensions
