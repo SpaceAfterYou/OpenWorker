@@ -15,8 +15,8 @@ public readonly partial struct MonsterRow(BinaryReader reader)
     public int Field3 { get; } = reader.ReadInt32();
     public string Field4 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
     public int Field5 { get; } = reader.ReadInt32();
-    public int Field6 { get; } = reader.ReadInt32();
-    public int Field7 { get; } = reader.ReadInt32();
+    public int PartsId2 { get; } = reader.ReadInt32();
+    public int PartsId3 { get; } = reader.ReadInt32();
     public byte Faction { get; } = reader.ReadByte();
     public int QuestGroup1 { get; } = reader.ReadInt32();
     public int QuestGroup2 { get; } = reader.ReadInt32();
@@ -103,7 +103,7 @@ public readonly partial struct MonsterRow(BinaryReader reader)
     public int Skill10 { get; } = reader.ReadInt32();
     public int DropId { get; } = reader.ReadInt32();
     public int HitDropId { get; } = reader.ReadInt32();
-    public float Field94 { get; } = reader.ReadSingle();
+    public float Scale { get; } = reader.ReadSingle();
     public byte Field95 { get; } = reader.ReadByte();
     public short CollisionRadius { get; } = reader.ReadInt16();
     public short CollisionHeight { get; } = reader.ReadInt16();

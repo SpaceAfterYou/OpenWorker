@@ -96,7 +96,7 @@ public partial class LuaMaze
         }
 
         var area = new AttackArea(trigger, strike.Place, strike.Yaw);
-        var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
+        var targets = creatureManager.MonstersStruck(area);
 
         Run(ApplyDamageAsync(member, skill, trigger, targets, position, origin: strike.Place, card: strike));
     }

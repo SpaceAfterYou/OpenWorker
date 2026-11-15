@@ -10,13 +10,13 @@ namespace OpenWorker.UpdateContent.Res.Rows;
 public readonly partial struct MonsterBrokenPartsRow(BinaryReader reader)
 {
     public int Id { get; } = reader.ReadInt32();
-    public string Field1 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public string Field2 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public int Field3 { get; } = reader.ReadInt32();
-    public int Field4 { get; } = reader.ReadInt32();
-    public int Field5 { get; } = reader.ReadInt32();
-    public string Field6 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
-    public int Field7 { get; } = reader.ReadInt32();
-    public int Field8 { get; } = reader.ReadInt32();
-    public string Field9 { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string Model { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public string BrokenModel { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public int Bones { get; } = reader.ReadInt32();
+    public int HealthShare { get; } = reader.ReadInt32();
+    public int Spawn { get; } = reader.ReadInt32();
+    public string SpawnAnimation { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
+    public int LinkedPart { get; } = reader.ReadInt32();
+    public int Link { get; } = reader.ReadInt32();
+    public string LinkAnimation { get; } = reader.ReadUtf16UnicodeStringWithoutTerminator();
 }

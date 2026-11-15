@@ -451,6 +451,8 @@ public sealed partial class LuaCreatureManager
         ecs.Set(creature, combat);
         ecs.Set(creature, ecs.Get<CreatureComponent>(creature) with { Level = combat.Stats.Level, Health = (int)combat.Stats.MaxHealth });
 
+        GiveParts(creature, identifier);
+
         if (combat.HoldsSector)
         {
             GetKillProgress(spawn.Sector).Added();
@@ -804,6 +806,7 @@ public sealed partial class LuaCreatureManager
         }
 
         Defenses.Remove(creature);
+        ForgetParts(creature);
         Creatures.Remove(creature);
         Scenery.Remove(creature);
         Unseen.Remove(creature);
@@ -1017,6 +1020,7 @@ public sealed partial class LuaCreatureManager
             Minds.EndStep();
         }
 
+        StepParts(now);
         Helpers.Step(now, seconds);
     }
 

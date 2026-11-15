@@ -13,7 +13,7 @@ namespace OpenWorker.Lua.Ai;
 /// </summary>
 public sealed class CreatureServices(AiScriptLoader scripts, MonsterBehaviorTables behaviors, SkillActionProvider actions, SimulationClock clock, NavMeshProvider meshes,
     PlayerGauges? gauges = null, PlayerStatsService? stats = null, EnduranceWear? wear = null, PartyRevision? revision = null, SkillAggro? aggro = null, GameModes? modes = null,
-    AkashicCalls? akashic = null, SkillChains? chains = null)
+    AkashicCalls? akashic = null, SkillChains? chains = null, MonsterPartRules? parts = null)
 {
     /// <summary>
     /// The cards the players have called from their akashic records, which their akashic skill brings into the fight. A maze
@@ -67,4 +67,9 @@ public sealed class CreatureServices(AiScriptLoader scripts, MonsterBehaviorTabl
     /// The game modes a script can start. A maze without it starts none.
     /// </summary>
     public GameModes? Modes { get; } = modes;
+
+    /// <summary>
+    /// The parts of the monsters that blows break off. A maze without it gives no monster a part.
+    /// </summary>
+    public MonsterPartRules? Parts { get; } = parts;
 }

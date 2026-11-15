@@ -77,6 +77,7 @@ public static class MazeServerHost
         services.AddSingleton<SkillAggro>();
         services.AddSingleton<SkillChains>();
         services.AddSingleton<GameModes>();
+        services.AddSingleton<MonsterPartRules>();
         services.AddSingleton<CreatureServices>();
         services.AddSingleton<IPlayerHealthResize, MazeHealthResize>();
         services.AddSingleton(_ => new MazeScripts());

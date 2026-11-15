@@ -92,7 +92,7 @@ public partial class LuaMaze
 
         // The place is read again at every hit: the player may have moved the trap since the last one.
         var area = new AttackArea(trigger, site.Position, yaw);
-        var targets = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
+        var targets = creatureManager.MonstersStruck(area);
 
         Run(ApplyDamageAsync(member, skill, trigger, targets, position, origin: site.Position));
 

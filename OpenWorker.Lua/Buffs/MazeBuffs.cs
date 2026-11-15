@@ -718,7 +718,8 @@ public sealed partial class MazeBuffs
                 return;
             }
 
-            left = Math.Max(0, creature.Health - change.Amount);
+            // A monster with parts takes nothing on its own life.
+            left = _creatures.PartsOf(carrier).Any ? creature.Health : Math.Max(0, creature.Health - change.Amount);
             _ecs.Set(carrier, creature with { Health = left });
 
             // The monster is angered at the one who gave the burn and wakes, as a blow would wake it.

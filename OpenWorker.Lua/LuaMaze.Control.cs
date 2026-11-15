@@ -278,7 +278,7 @@ public partial class LuaMaze
         var place = play.CarryTo(hit.Time, creatureManager.Navigation);
         var yaw = play.Position.Angle;
         var area = new AttackArea(hit.Trigger, place, yaw);
-        var targets = creatureManager.FindMonsters((at, body) => area.Touches(at, body.BodyRadius, body.BodyHeight));
+        var targets = creatureManager.MonstersStruck(area);
 
         Logger.ControlledStrike((int)controlled.Actor, play.Skill, hit.Trigger.Id, hit.Trigger.RangeType, hit.Trigger.Radius, hit.Trigger.Angle, hit.Trigger.Center,
             hit.Trigger.Height, place, yaw, targets.Length);

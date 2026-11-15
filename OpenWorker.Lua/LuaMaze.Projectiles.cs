@@ -144,7 +144,7 @@ public partial class LuaMaze
         var area = new AttackArea(trigger, explosion.Position, yaw);
         var targets = trigger.Projectile is { TargetOnly: true }
             ? []
-            : creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
+            : creatureManager.MonstersStruck(area);
 
         if (explosion.Collider is { } key && creatureManager.FindMonster(key) is { } collider && !targets.Contains(collider))
         {
