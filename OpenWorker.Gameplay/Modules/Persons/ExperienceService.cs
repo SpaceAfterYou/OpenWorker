@@ -257,6 +257,33 @@ public sealed class ExperienceService
     }
 
     /// <summary>
+    /// A game master puts the player on a level, up or down: the experience starts over at nothing and the level is taken as
+    /// one gained. False when the table has no such level.
+    /// </summary>
+    public bool SetLevel(Entity player, int level)
+    {
+        if (level < 1 || level > MaxLevel || !_world.IsAlive(player) || !_world.TryGet<LevelComponent>(player, out var rank))
+        {
+            return false;
+        }
+
+        _world.Set(player, new LevelComponent((byte)level, 0));
+        _world.MarkDirty(player, PersonSections.Level);
+
+        if (level != rank.Level)
+        {
+            LevelChanged(player, rank.Level, (byte)level);
+        }
+
+        if (_world.Has<ServerSessionComponent>(player))
+        {
+            _world.Get<ServerSessionComponent>(player).Send(new PersonExpResponse { Value = 0 });
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// A player has reached another level.
     /// </summary>
     public event Action<Entity>? LevelReached;

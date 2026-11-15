@@ -1,37 +1,28 @@
-﻿using Arch.Core;
+﻿using System.Globalization;
+using Arch.Core;
 using OpenWorker.Commands.Abstractions;
 using OpenWorker.Commands.Attributes;
-using OpenWorker.Domain.Components;
-using OpenWorker.Hotspot;
-using OpenWorker.Hotspot.Modules.Persons.Responses;
+using OpenWorker.Gameplay.Modules.Persons;
 
 namespace OpenWorker.Commands.Persons;
 
+/// <summary>
+/// Puts the player on a level, up or down, as if it had been gained: <c>/level 25</c>.
+/// </summary>
 [CommandTrigger("level")]
-[CommandDescription("Set player level")]
+[CommandDescription("Set the player's level, with its stats and skill points")]
 internal sealed partial class PersonLevelCommand : ICommand
 {
     [ExternalDependency]
-    private World World { get; }
-    
+    private ExperienceService Experience { get; }
+
     ValueTask<bool> ICommand.TryExecute(Entity player, string[] tokens)
     {
-        if (!byte.TryParse(tokens.ElementAtOrDefault(0), out var level))
+        if (tokens.Length != 1 || !int.TryParse(tokens[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var level))
         {
-            // TODO: Failed parser message
             return ValueTask.FromResult(false);
         }
-        
-        PrivateExecute(player, level);
-        
-        return ValueTask.FromResult(true);
-    }
-    
-    private void PrivateExecute(Entity player, byte level)
-    {
-        var session = World.Get<ServerSessionComponent>(player);
-        var actor = World.Get<ActorComponent>(player);
 
-        session.Send(new PersonLevelResponse { Actor = actor, Value = level });
+        return ValueTask.FromResult(Experience.SetLevel(player, level));
     }
 }
