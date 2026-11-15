@@ -124,6 +124,11 @@ public readonly record struct CombatStats
 
     public float StaminaMax { get; init; }
 
+    /// <summary>
+    /// How much soul vapor the character can hold: the size its level gives and the number gear, titles and buffs add.
+    /// </summary>
+    public float SoulVaporMax { get; init; }
+
     private readonly SpecialEffects? _special;
 
     /// <summary>
@@ -209,6 +214,7 @@ public readonly record struct CombatStats
             (STAT_TYPE.STAT_SG_REG, SoulGaugeRegen),
             (STAT_TYPE.STAT_ST_MAX, StaminaMax),
             (STAT_TYPE.STAT_ST_REG, StaminaRegen),
+            (STAT_TYPE.STAT_SV_MAX, SoulVaporMax),
             (STAT_TYPE.STAT_MSR, MoveSpeed),
             (STAT_TYPE.STAT_ASR, AttackSpeed),
             (STAT_TYPE.STAT_PATK_MIN, Physical.AttackMin),

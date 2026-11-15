@@ -269,6 +269,7 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
                 SkillCostKind.SoulGauge => gauges.Of(player).SoulGauge,
                 SkillCostKind.Stamina => gauges.Of(player).Stamina,
                 SkillCostKind.Health => world.TryGet<AbilityComponent>(player, out var ability) ? ability.Health.Current : 0,
+                SkillCostKind.SoulVapor => PlayerSoulVapor.Of(world, player),
                 _ => 0f
             };
 

@@ -432,7 +432,7 @@ public sealed partial class DropService(
             GoldObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Gold, drop.Count, MoneyEarnFlow.PickUp)) >= 0,
             BattlePointObject => inventory.AddUpToLimit(player, ShopCurrency.Bp, drop.Count) >= 0,
             EtherObject => (added = inventory.AddUpToLimit(player, ShopCurrency.Ether, drop.Count)) >= 0,
-            SoulObject => true,
+            SoulObject => Gain(player, drop.Count),
             // A fever item acts at once and does not go into the bags.
             _ when use?.UseOnPickUp(player, drop.ObjectId) == true => true,
             _ => inventory.TryGive(player, drop.ObjectId, drop.Count)
@@ -467,6 +467,16 @@ public sealed partial class DropService(
         {
             world.Get<ServerSessionComponent>(player).Send(new DropPickUpResponse { Serial = serial });
         }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Soul vapor that is picked up fills the soul vapor of the player up to its size; what does not fit is lost.
+    /// </summary>
+    private bool Gain(Entity player, int count)
+    {
+        PlayerSoulVapor.Gain(world, player, count);
 
         return true;
     }

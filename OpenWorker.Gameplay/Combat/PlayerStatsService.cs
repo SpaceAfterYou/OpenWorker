@@ -99,6 +99,9 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
         Remember(player, origin, final);
         KeepSpeeds(player, final);
 
+        // Every entry into a district or a maze begins with no soul vapor.
+        PlayerSoulVapor.Empty(world, player, final.SoulVaporMax);
+
         // The life the player enters with is kept to the greatest its stats give.
         if (world.TryGet<AbilityComponent>(player, out var ability) && ability.Health.Max != (int)Math.Max(1f, final.MaxHealth))
         {
@@ -123,7 +126,8 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
             .. List(final.Values()),
             new ST_STAT { wStatID = (short)STAT_TYPE.STAT_HP_CUR, fValue = world.Get<AbilityComponent>(player).Health.Current },
             new ST_STAT { wStatID = (short)STAT_TYPE.STAT_SG_CUR, fValue = full ? final.SoulGaugeMax : gauges.SoulGauge },
-            new ST_STAT { wStatID = (short)STAT_TYPE.STAT_ST_CUR, fValue = full ? final.StaminaMax : gauges.Stamina }
+            new ST_STAT { wStatID = (short)STAT_TYPE.STAT_ST_CUR, fValue = full ? final.StaminaMax : gauges.Stamina },
+            new ST_STAT { wStatID = (short)STAT_TYPE.STAT_SV_CUR, fValue = 0f }
         ];
 
         session.Send(new PersonUpdateOriginStatListResponse { Actor = actor, Stats = OriginList(origin) });
@@ -180,6 +184,11 @@ public sealed class PlayerStatsService(World world, CombatTables combat, PlayerG
         if (final.MaxHealth != shown.Final.MaxHealth && ResizeHealth(player, final.MaxHealth) is { } current)
         {
             stats.Add(new ST_STAT { wStatID = (short)STAT_TYPE.STAT_HP_CUR, fValue = current });
+        }
+
+        if (final.SoulVaporMax != shown.Final.SoulVaporMax && PlayerSoulVapor.Resize(world, player, final.SoulVaporMax) is { } vapor)
+        {
+            stats.Add(vapor);
         }
 
         if (gauges is not null && (final.SoulGaugeMax != shown.Final.SoulGaugeMax || final.StaminaMax != shown.Final.StaminaMax))

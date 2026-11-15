@@ -53,10 +53,11 @@ public sealed class PersonRegistry(World world, TimeProvider time)
                 Current = 100,
                 Max = 100
             },
+            // A person enters with no soul vapor; its size comes with the stats.
             SoulVapor = new AbilityComponentEntry
             {
-                Current = 100,
-                Max = 100
+                Current = 0,
+                Max = 0
             },
             Stamina = new AbilityComponentEntry
             {

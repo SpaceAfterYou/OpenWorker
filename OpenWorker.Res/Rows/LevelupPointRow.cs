@@ -10,5 +10,5 @@ public readonly partial struct LevelupPointRow(BinaryReader reader)
 {
     public byte Id { get; } = reader.ReadByte();
     public int Experience { get; } = reader.ReadInt32();
-    public short Field2 { get; } = reader.ReadInt16();
+    public short SoulVaporMax { get; } = reader.ReadInt16();
 }

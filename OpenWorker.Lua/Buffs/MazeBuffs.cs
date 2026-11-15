@@ -31,6 +31,8 @@ public sealed partial class MazeBuffs
     private const byte SoulGaugeShare = 18;
     private const byte FlatStamina = 21;
     private const byte StaminaShare = 22;
+    private const byte FlatSoulVapor = 27;
+    private const byte SoulVaporShare = 28;
     private const float Percent = 0.01f;
 
     private readonly World _ecs;
@@ -790,6 +792,10 @@ public sealed partial class MazeBuffs
 
             case FlatStamina or StaminaShare when player && _gauges is not null:
                 _gauges.Restore(carrier, SkillCostKind.Stamina, change.Amount, change.Stat == StaminaShare);
+                break;
+
+            case FlatSoulVapor or SoulVaporShare when player && _ecs.TryGet<AbilityComponent>(carrier, out var ability):
+                PlayerSoulVapor.Gain(_ecs, carrier, change.Stat == FlatSoulVapor ? change.Amount : (int)(ability.SoulVapor.Max * change.Amount * Percent));
                 break;
         }
     }

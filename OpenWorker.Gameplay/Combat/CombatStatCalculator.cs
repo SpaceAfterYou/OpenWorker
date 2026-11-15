@@ -199,6 +199,14 @@ public static class CombatStatCalculator
     }
 
     /// <summary>
+    /// The soul vapor a hero can hold: the size of its level and the number added to it; a share adds nothing.
+    /// </summary>
+    public static CombatStats WithSoulVapor(in CombatStats stats, float first, StatSheet sheet)
+    {
+        return stats with { SoulVaporMax = first + sheet.Added(STAT_TYPE.STAT_SV_MAX) };
+    }
+
+    /// <summary>
     /// A stat that grows by its share and then takes its number.
     /// </summary>
     private static float Final(float value, StatSheet sheet, STAT_TYPE stat)

@@ -454,6 +454,8 @@ public sealed partial class MazeBuffs
     /// </summary>
     private void ApplyCombo(Entity player, in ComboBuffRow combo)
     {
+        PlayerSoulVapor.Gain(_ecs, player, combo.SoulVapor);
+
         if (combo.FixedBuff != 0)
         {
             Give(player, combo.FixedBuff & ushort.MaxValue, owner: 0, roll: false);
