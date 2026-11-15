@@ -14,8 +14,8 @@ public interface IServerContentListener
 
 /// <summary>
 /// Switches a content on every server at once. The client must hear the same from every server: the auth server enables
-/// the entries of the menu at the login, a district or a maze by 01/07 later. A switch goes to every server through Redis,
-/// the one that asked included; each takes the new state on its world loop and tells its listeners. A server that starts
+/// the entries of the menu at the login, a district or a maze by 01/07 later. The server that asks takes the switch at once
+/// and tells its listeners; then the switch goes to the other servers through Redis, and each does the same on its loop. A server that starts
 /// later reads the table, which is written before the switch is sent.
 /// </summary>
 public sealed partial class ServerContentChanges(
@@ -26,6 +26,12 @@ public sealed partial class ServerContentChanges(
     ILogger<ServerContentChanges> logger)
 {
     private static RedisChannel Channel { get; } = RedisChannel.Literal("ow:server-contents");
+
+    /// <summary>
+    /// Names this process in its switches, so it does not take its own back from Redis: it has applied them already, and a
+    /// late echo could undo a later switch.
+    /// </summary>
+    private Guid Origin { get; } = Guid.NewGuid();
 
     /// <summary>
     /// Starts taking the switches of the other servers. A server listens before it reads the table, so no switch falls
@@ -41,18 +47,27 @@ public sealed partial class ServerContentChanges(
     /// </summary>
     private void Receive(RedisValue value)
     {
-        if (value.HasValue && (byte[])value! is [var index, var state])
+        if (value.HasValue && (byte[])value! is { Length: 18 } body && new Guid(body.AsSpan(2)) != Origin)
         {
-            _ = loop.InvokeAsync(() => ApplyAsync(index, state != 0));
+            _ = loop.InvokeAsync(() => ApplyAsync(body[0], body[1] != 0));
         }
     }
 
     /// <summary>
-    /// Tells every server, this one too, that the content has the state. The caller writes the table first.
+    /// Switches the content here, its players told, then tells every other server. Runs on the world loop: a request that
+    /// follows the switch on this server sees it. The caller writes the table first.
     /// </summary>
     public async Task SwitchAsync(ServerContentIndex index, bool state)
     {
-        await redis.GetSubscriber().PublishAsync(Channel, new[] { (byte)index, (byte)(state ? 1 : 0) });
+        await ApplyAsync((byte)index, state);
+
+        var body = new byte[18];
+
+        body[0] = (byte)index;
+        body[1] = (byte)(state ? 1 : 0);
+        Origin.TryWriteBytes(body.AsSpan(2));
+
+        await redis.GetSubscriber().PublishAsync(Channel, body);
     }
 
     private async ValueTask ApplyAsync(byte index, bool state)
