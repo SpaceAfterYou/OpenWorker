@@ -69,7 +69,7 @@ public readonly partial struct MakeRow(BinaryReader reader)
     /// </summary>
     public short MaterialCount4 { get; } = reader.ReadInt16();
     /// <summary>
-    /// A cost in a second currency. 0 in every row of this client, so which currency is not settled.
+    /// The battle points the making of one item costs. 0 in every row of this client.
     /// </summary>
     public short BattlePoint { get; } = reader.ReadInt16();
     /// <summary>

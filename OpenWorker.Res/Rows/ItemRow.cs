@@ -218,7 +218,7 @@ public readonly partial struct ItemRow(BinaryReader reader)
     /// </summary>
     public int EffectValue { get; } = reader.ReadInt32();
     /// <summary>
-    /// What the client starts on a player who is told to have used the item (08/13). 0 in every row of this client, so nothing is shown.
+    /// The visual effect, a row of tb_ResVFX, the client plays on a player who is told to have used the item (08/13). 0 in every row of this client, so nothing is shown.
     /// </summary>
     public short UseEffect { get; } = reader.ReadInt16();
     /// <summary>
