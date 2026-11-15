@@ -23,7 +23,9 @@ namespace OpenWorker.Gameplay.Modules.Maze;
 /// <list type="bullet">
 /// <item>A maze that limits entering (<c>EntryLimit</c> of its server row) is counted for the person when the person comes into
 /// it, not at the portal (<see cref="Entered"/>); the portal only asks whether the count is below the limit
-/// (<see cref="Check"/>). Mazes of one group share one count.</item>
+/// (<see cref="Check"/>). Mazes of one group share one count. The days of the week the row names allow more.</item>
+/// <item>An item renews the entries of one maze once they are used up (<see cref="Renew"/>); another takes one entry off
+/// every casual raid entered today (<see cref="TakeBackCasualEntry"/>).</item>
 /// <item>The counts clear when a new game day begins (the day of the daily missions, as the fatigue): the client is told by
 /// 04/44, and by 04/43 as the person enters the world, so the board shows what is left.</item>
 /// <item>The casual raids of a portal take turns by the day of the week (<see cref="MazeDailyPortalRow"/>); one that is not
@@ -61,6 +63,7 @@ public sealed partial class MazeEntryLimits : IMiscTick
     private readonly RowIndex<ushort, MazeDailyPortalRow> _portals;
     private readonly Dictionary<uint, MazeOpenControlRow> _windows;
     private readonly Dictionary<ushort, ushort[]> _groups;
+    private readonly ushort[] _casualRaids;
 
     public MazeEntryLimits(
         World world,
@@ -92,6 +95,8 @@ public sealed partial class MazeEntryLimits : IMiscTick
             .Where(e => e.EntryLimitGroup != 0)
             .GroupBy(e => e.EntryLimitGroup)
             .ToDictionary(e => e.Key, e => e.Select(r => r.Id).ToArray());
+
+        _casualRaids = rules.Where(e => e.Type == CasualRaid).Select(e => e.Id).ToArray();
     }
 
     private static QueryDescription Persons { get; } = new QueryDescription().WithAll<MazeEntryComponent, ServerSessionComponent>();
@@ -211,7 +216,23 @@ public sealed partial class MazeEntryLimits : IMiscTick
             return null;
         }
 
-        return CountOf(player, counted.Id) >= counted.EntryLimit ? LimitReached : null;
+        return CountOf(player, counted.Id) >= LimitOf(counted) ? LimitReached : null;
+    }
+
+    /// <summary>
+    /// How many times the maze may be entered on the game day that is running: its limit, and more on the days its row names.
+    /// 0 for a maze without a limit.
+    /// </summary>
+    public int LimitOf(in MazeRuleRow rule)
+    {
+        if (rule.EntryLimit == 0)
+        {
+            return 0;
+        }
+
+        var day = (int)GameDay.Get(_time.GetUtcNow(), Reset).Start.DayOfWeek;
+
+        return rule.EntryLimit + ((rule.EntryLimitPlusDays >> day & 1) != 0 ? rule.EntryLimitPlus : 0);
     }
 
     /// <summary>
@@ -341,6 +362,119 @@ public sealed partial class MazeEntryLimits : IMiscTick
     }
 
     /// <summary>
+    /// The item that renews the entries of a maze: usable once the person has entered the maze (or its group) as often as its
+    /// limit allows. The count clears and the client is told. False when the maze has no limit or entries are left.
+    /// </summary>
+    public bool Renew(Entity player, int maze)
+    {
+        if (!TryGet(player, out var book) || !_rules.TryGet(ToKey(maze), out var rule) || rule.EntryLimit == 0)
+        {
+            return false;
+        }
+
+        Refresh(player, book);
+
+        if (CountOf(player, maze) < rule.EntryLimit)
+        {
+            return false;
+        }
+
+        Reopen(player, maze);
+
+        return true;
+    }
+
+    /// <summary>
+    /// The item that gives back one entry of every casual raid the person has entered today. False when it has entered none.
+    /// </summary>
+    public bool TakeBackCasualEntry(Entity player)
+    {
+        if (!TryGet(player, out var book))
+        {
+            return false;
+        }
+
+        Refresh(player, book);
+
+        var entered = _casualRaids.Where(e => book.Mazes.GetValueOrDefault(e) > 0).ToArray();
+
+        if (entered.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var maze in entered)
+        {
+            var left = book.Mazes[maze] - 1;
+
+            if (left > 0)
+            {
+                book.Mazes[maze] = left;
+            }
+
+            else
+            {
+                book.Mazes.Remove(maze);
+            }
+
+            Update(player, _rules.GetOrDefault(maze));
+        }
+
+        _world.MarkDirty(player, PersonSections.MiscState);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Sets how often the person has entered the maze (or its group) today, and tells the client. False for a maze the server
+    /// table has no row for.
+    /// </summary>
+    public bool SetCount(Entity player, int maze, int count)
+    {
+        if (!TryGet(player, out var book) || !_rules.TryGet(ToKey(maze), out var rule) || count < 0)
+        {
+            return false;
+        }
+
+        Refresh(player, book);
+
+        var counts = rule.EntryLimitGroup != 0 ? book.Groups : book.Mazes;
+        var key = rule.EntryLimitGroup != 0 ? rule.EntryLimitGroup : rule.Id;
+
+        if (count == 0)
+        {
+            counts.Remove(key);
+        }
+
+        else
+        {
+            counts[key] = Math.Min(count, ushort.MaxValue);
+        }
+
+        _world.MarkDirty(player, PersonSections.MiscState);
+        Update(player, rule);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Clears every count of the person as a new game day does, and tells the client.
+    /// </summary>
+    public bool StartNewDay(Entity player)
+    {
+        if (!TryGet(player, out var book))
+        {
+            return false;
+        }
+
+        book.StartDay(Today);
+        _world.MarkDirty(player, PersonSections.MiscState);
+        TellReset(player);
+
+        return true;
+    }
+
+    /// <summary>
     /// How many free revives the person used today.
     /// </summary>
     public int FreeRevivesUsed(Entity player)
@@ -406,15 +540,18 @@ public sealed partial class MazeEntryLimits : IMiscTick
 
         book.StartDay(today);
         _world.MarkDirty(player, PersonSections.MiscState);
+        TellReset(player);
+        LogNewDay(_logger, today);
 
+        return true;
+    }
+
+    private void TellReset(Entity player)
+    {
         if (_world.Has<ServerSessionComponent>(player))
         {
             _world.Get<ServerSessionComponent>(player).Send(new WorldEnterMazeLimitCountResetResponse { Actor = _world.Get<ActorComponent>(player) });
         }
-
-        LogNewDay(_logger, today);
-
-        return true;
     }
 
     /// <summary>

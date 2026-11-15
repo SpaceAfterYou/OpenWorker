@@ -167,6 +167,69 @@ public sealed class MazeEntryLimitsTest
     }
 
     [TestMethod]
+    public async Task ADayOfTheWeekTheRowNamesAllowsMoreEntries()
+    {
+        // One entry a day, two on Mondays.
+        using var f = new Fixture(Rules(Rule(21061, limit: 1, plusDays: 1 << (int)DayOfWeek.Monday, plus: 1)));
+
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.IsNull(f.Limits.Check(f.Player, 21061), "the second entry of a Monday");
+
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21061));
+
+        f.Time.Advance(TimeSpan.FromDays(1));
+        await f.Limits.TickAsync(CancellationToken.None);
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.AreEqual(MazeEntryLimits.LimitReached, f.Limits.Check(f.Player, 21061), "one on a Tuesday");
+    }
+
+    [TestMethod]
+    public void TheItemThatRenewsAMazeClearsItsCountOnlyOnceTheEntriesAreUsedUp()
+    {
+        using var f = new Fixture(Rules(Rule(21061, limit: 2), Rule(21011, type: 2)));
+
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.IsFalse(f.Limits.Renew(f.Player, 21061), "an entry is left");
+        Assert.IsFalse(f.Limits.Renew(f.Player, 21011), "a maze without a limit");
+
+        f.Limits.Entered(f.Player, 21061);
+
+        Assert.IsTrue(f.Limits.Renew(f.Player, 21061));
+        Assert.IsNull(f.Limits.Check(f.Player, 21061));
+        Assert.AreEqual(0, f.Limits.CountOf(f.Player, 21061));
+
+        // The client is told the count it has now.
+        var told = f.Sent(1).Last();
+
+        Assert.AreEqual((byte)WorldOpcode.EnterMazeLimitCountUpdate, told.Opcode.Command);
+        Assert.AreEqual((21061, 0), (BinaryPrimitives.ReadUInt16LittleEndian(told.Body.AsSpan(4)), BinaryPrimitives.ReadUInt16LittleEndian(told.Body.AsSpan(6))));
+    }
+
+    [TestMethod]
+    public void TheItemOfTheCasualRaidsGivesBackOneEntryOfEachEnteredToday()
+    {
+        using var f = new Fixture(Rules(Rule(21011, type: 2), Rule(21012, type: 2), Rule(21061, limit: 2)));
+
+        f.Book.Mazes[21011] = 2;
+        f.Book.Mazes[21012] = 1;
+        f.Book.Mazes[21061] = 2;
+
+        Assert.IsTrue(f.Limits.TakeBackCasualEntry(f.Player));
+        Assert.AreEqual(1, f.Book.Mazes[21011]);
+        Assert.IsFalse(f.Book.Mazes.ContainsKey(21012));
+        Assert.AreEqual(2, f.Book.Mazes[21061], "not a casual raid");
+
+        Assert.IsTrue(f.Limits.TakeBackCasualEntry(f.Player));
+        Assert.IsFalse(f.Limits.TakeBackCasualEntry(f.Player), "no casual raid entered");
+        Assert.HasCount(3, f.Sent(3).Where(e => e.Opcode.Command == (byte)WorldOpcode.EnterMazeLimitCountUpdate).ToArray());
+    }
+
+    [TestMethod]
     public void ACasualRaidIsOpenOnlyOnTheDaysItsPortalNames()
     {
         // The portal opens its own raid and the second on Monday, its own and the third on every other day.
