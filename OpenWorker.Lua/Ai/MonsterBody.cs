@@ -946,7 +946,7 @@ internal partial class MonsterBody : IAiHost
                 continue;
             }
 
-            if (Strike(pending.Skill, pending.Hit.Trigger, new AttackArea(pending.Hit.Trigger, Position, Yaw), null, false) && _freezes)
+            if (Strike(pending.Skill, pending.Hit.Trigger, new AttackArea(pending.Hit.Trigger, Position, Yaw), null, colliderOnly: false) && _freezes)
             {
                 Freeze(now, pending.Hit.Trigger.Reaction.HitFreeze);
             }
@@ -998,8 +998,10 @@ internal partial class MonsterBody : IAiHost
     /// A blow of the monster lands on an area, and on what a projectile ran into: the players and the helpers in it are hit.
     /// </summary>
     /// <returns>Whether it struck a player.</returns>
-    protected virtual bool Strike(int skill, AttackTrigger trigger, AttackArea area, int? collider, bool colliderOnly)
+    protected virtual bool Strike(int skill, AttackTrigger trigger, AttackArea area, Explosion? collision, bool colliderOnly)
     {
+        var collider = collision?.Collider;
+
         IReadOnlyList<Entity> victims = colliderOnly ? [] : _manager.PlayersTouching(area);
 
         if (collider is { } key && _manager.FindPlayerEntity(key) is { } hit && !victims.Contains(hit))
@@ -1127,7 +1129,7 @@ internal partial class MonsterBody : IAiHost
             {
                 var area = new AttackArea(flight.Trigger, explosion.Position, Yaw);
 
-                Strike(flight.Skill, flight.Trigger, area, explosion.Collider, flight.Trigger.Projectile is { TargetOnly: true });
+                Strike(flight.Skill, flight.Trigger, area, explosion, flight.Trigger.Projectile is { TargetOnly: true });
             }
         }
 

@@ -146,11 +146,14 @@ public partial class LuaMaze
             ? []
             : creatureManager.MonstersStruck(area);
 
+        var parts = targets.Select(creatureManager.StruckPart).ToList();
+
         if (explosion.Collider is { } key && creatureManager.FindMonster(key) is { } collider && !targets.Contains(collider))
         {
             targets = [.. targets, collider];
+            parts.Add(explosion.Part);
         }
 
-        return ApplyDamageAsync(member, skill, trigger, targets, position, origin: explosion.Position);
+        return ApplyDamageAsync(member, skill, trigger, targets, position, origin: explosion.Position, parts: [.. parts]);
     }
 }

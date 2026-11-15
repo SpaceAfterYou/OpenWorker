@@ -3,9 +3,10 @@ using System.Numerics;
 namespace OpenWorker.Batch.Actions;
 
 /// <summary>
-/// A target the chain reaches. <see cref="Order"/> is its place in the chain, the first one is 0.
+/// A target the chain reaches. <see cref="Order"/> is its place in the chain, the first one is 0; <see cref="Part"/> the part of
+/// the target the link ran into.
 /// </summary>
-public readonly record struct ChainHit(int Target, int Order);
+public readonly record struct ChainHit(int Target, int Order, byte Part = 0);
 
 /// <summary>
 /// A target the chain takes on its way or lets go.
@@ -60,7 +61,7 @@ public sealed class ChainLightning
         var chain = new ChainLightning(trigger, position);
         var area = new AttackArea(in trigger, position, yaw);
         var nearest = targets
-            .Where(target => area.Touches(target.Position, target.Radius, target.Height))
+            .Where(target => area.Strikes(target.Position, target.Radius, target.Height, target.Bones, out _))
             .OrderBy(target => Vector3.DistanceSquared(target.Position, position))
             .Select(target => (int?)target.Key)
             .FirstOrDefault();
@@ -213,7 +214,7 @@ public sealed class ChainLightning
             .OrderBy(e => e.Distance)
             .Take(Nearest)
             .Select(e => e.Target)
-            .Where(target => area.Touches(target.Position, target.Radius, target.Height))
+            .Where(target => area.Strikes(target.Position, target.Radius, target.Height, target.Bones, out _))
             .Select(target => (int?)target.Key)
             .FirstOrDefault();
 
@@ -288,26 +289,26 @@ public sealed class ChainLightning
             return;
         }
 
-        var area = new AttackArea(new AttackTrigger(0, 0, 0, 0, 0f, 360f, Vector3.Zero, 0f, 0f, _flight.Radius, 2f * _flight.Radius, 0f), link - new Vector3(0, 0, _flight.Radius), 0f);
+        var area = AttackArea.Ball(link, _flight.Radius);
         var flat = new Vector2(link.X, link.Y);
 
-        var touched = targets.Values
+        var nearest = targets.Values
             .Where(target => !_struck.Contains(target.Key))
             .Select(target => (Target: target, Distance: Vector2.Distance(new Vector2(target.Position.X, target.Position.Y), flat)))
             .Where(e => e.Distance < SearchDistance)
             .OrderBy(e => e.Distance)
             .Take(Nearest)
-            .Select(e => e.Target)
-            .Where(target => area.Touches(target.Position, target.Radius, target.Height))
-            .Select(target => (int?)target.Key)
-            .FirstOrDefault();
+            .Select(e => e.Target);
 
-        if (touched is not { } key)
+        foreach (var target in nearest)
         {
-            return;
-        }
+            if (area.Strikes(target.Position, target.Radius, target.Height, target.Bones, out var part))
+            {
+                hits.Add(new ChainHit(target.Key, _struck.Count, part));
+                _struck.Add(target.Key);
 
-        hits.Add(new ChainHit(key, _struck.Count));
-        _struck.Add(key);
+                return;
+            }
+        }
     }
 }

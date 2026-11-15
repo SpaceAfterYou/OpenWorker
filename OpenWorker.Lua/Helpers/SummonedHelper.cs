@@ -57,4 +57,5 @@ public sealed class SummonedHelper
 /// <summary>
 /// A blow of a helper: the monsters it lands on take it through the damage of the maze, and what they drop is the owner's.
 /// </summary>
-internal readonly record struct HelperStrike(SummonedHelper Helper, int Skill, AttackTrigger Trigger, Entity[] Targets);
+/// <param name="Parts">The part each target was struck on when the blow landed, in the order of the targets.</param>
+internal readonly record struct HelperStrike(SummonedHelper Helper, int Skill, AttackTrigger Trigger, Entity[] Targets, byte[] Parts);

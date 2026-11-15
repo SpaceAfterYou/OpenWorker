@@ -157,6 +157,7 @@ public partial class LuaMaze
     {
         var targets = new List<Entity>();
         var shares = new List<float>();
+        var parts = new List<byte>();
 
         foreach (var hit in hits)
         {
@@ -164,9 +165,10 @@ public partial class LuaMaze
             {
                 targets.Add(monster);
                 shares.Add(hit.Order > 0 ? trigger.Chain!.DamageMultiple : 1f);
+                parts.Add(hit.Part);
             }
         }
 
-        return ApplyDamageAsync(member, skill, trigger, [.. targets], position, [.. shares]);
+        return ApplyDamageAsync(member, skill, trigger, [.. targets], position, [.. shares], parts: [.. parts]);
     }
 }

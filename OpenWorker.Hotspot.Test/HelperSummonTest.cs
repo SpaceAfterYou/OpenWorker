@@ -204,7 +204,7 @@ public sealed class HelperSummonTest
             var helper = maze.SummonHelper(owner, stats.Combat(Mirium, 20, []), new HelperValue { Helper = Mirium, Summoned = true })!;
             var blow = new AttackTrigger(1, 0, 0, 0, 0f, 360f, Vector3.Zero, 0, 0, 100, 100, 0);
 
-            maze.Helpers.Queue(new HelperStrike(helper, 0, blow, [target]));
+            maze.Helpers.Queue(new HelperStrike(helper, 0, blow, [target], [0]));
             maze.Creatures.Step(TimeSpan.FromMilliseconds(50));
 
             await MetricAssertions.UntilAsync(() => killed.Count == 1, "The monster dies.");

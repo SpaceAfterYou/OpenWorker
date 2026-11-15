@@ -201,7 +201,7 @@ public partial class LuaMaze
                 return players;
             }
 
-            var monsters = creatureManager.FindMonsters((place, body) => area.Touches(place, body.BodyRadius, body.BodyHeight));
+            var monsters = creatureManager.MonstersStruck(area);
 
             return [.. players, .. monsters];
         };

@@ -24,8 +24,10 @@ public partial class LuaMaze
     /// <param name="origin">Where the blow comes from when it is not the player: the place a shot burst at or a trap lies.</param>
     /// <param name="card">The card of the player that strikes, when it is not the player: the hit is shown as the card's.</param>
     /// <param name="strength">The stats the blow is dealt with when they are not the player's: those of the weapon it fires.</param>
+    /// <param name="parts">The part each target is struck on, by their place in the list; without, the parts the last blow over an
+    /// area found.</param>
     private async ValueTask ApplyDamageAsync(Fighter member, int skill, AttackTrigger trigger, Entity[] targets, SkillPositionValue position, float[]? shares = null, Vector3? origin = null,
-        CardStrike? card = null, CombatStats? strength = null)
+        CardStrike? card = null, CombatStats? strength = null, byte[]? parts = null)
     {
         var player = member.Player;
 
@@ -47,7 +49,8 @@ public partial class LuaMaze
         var skillDamage = combat.GetSkill(skill);
         var dealt = strength ?? attackerStats;
         var deck = card is null ? DeckLink.DamageShare(Ecs, player) : 0f;
-        var hits = targets.Select((target, i) => ApplyDamage(player, target, dealt, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, skill, HitKinds.Of(trigger), origin, deck)).ToArray();
+        var hits = targets.Select((target, i) => ApplyDamage(player, target, parts is null ? creatureManager.StruckPart(target) : parts[i], dealt, skillDamage, trigger.DamageRate * (shares?[i] ?? 1f), trigger, skill,
+            HitKinds.Of(trigger), origin, deck)).ToArray();
 
         // The combo of the player goes into the message of the hit: the client shows it. The blows of a card do not count.
         var now = (long)Clock.Time.TotalMilliseconds;
@@ -186,8 +189,9 @@ public partial class LuaMaze
         }
     }
 
-    private SkillDmgValue ApplyDamage(Entity attacker, Entity target, in CombatStats attackerStats, in SkillDamage skill, float attackRate, in AttackTrigger trigger, int skillId = 0, AiHitKind kind = AiHitKind.Skill, Vector3? origin = null,
-        float deckShare = 0f)
+    /// <param name="part">The part of the monster the blow landed on; zero for none.</param>
+    private SkillDmgValue ApplyDamage(Entity attacker, Entity target, byte part, in CombatStats attackerStats, in SkillDamage skill, float attackRate, in AttackTrigger trigger, int skillId = 0, AiHitKind kind = AiHitKind.Skill,
+        Vector3? origin = null, float deckShare = 0f)
     {
         // An armor whose time is up is whole for this hit: what the hit deals and how it is taken are read after that.
         creatureManager.RestoreSuperArmor(target);
@@ -209,7 +213,6 @@ public partial class LuaMaze
         result = result with { Damage = _buffs.Adjust(attacker, target, result.Damage) };
 
         // A monster with parts takes the blow on the part it lands on, never on its own life.
-        var part = creatureManager.StruckPart(target);
         var lost = creatureManager.TakeOnParts(target, part, result.Damage) ? 0 : LifeTaken(target, result.Damage);
 
         var health = Math.Max(0, creature.Health - lost);

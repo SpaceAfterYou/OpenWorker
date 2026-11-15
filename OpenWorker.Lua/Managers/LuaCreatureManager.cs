@@ -790,7 +790,7 @@ public sealed partial class LuaCreatureManager
     {
         return Creatures
             .Where(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster && !IsHidden(e))
-            .Select(e => new FlightTarget(ecs.Get<ActorComponent>(e).Identifier, ecs.Get<WorldComponent>(e).Position, ecs.Get<MonsterCombatComponent>(e).BodyRadius, ecs.Get<MonsterCombatComponent>(e).BodyHeight))
+            .Select(e => FlightTargetOf(e, ecs.Get<ActorComponent>(e).Identifier))
             .ToArray();
     }
 
