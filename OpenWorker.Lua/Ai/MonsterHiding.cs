@@ -24,7 +24,8 @@ internal sealed class MonsterHiding
     /// </summary>
     private const double Look = 1.0;
 
-    private double _end;
+    // The time a hiding for a time has left, in seconds of the monster's animation.
+    private double _left;
     private double _nextLook;
 
     public InvisibleEvent? Event { get; private set; }
@@ -42,8 +43,20 @@ internal sealed class MonsterHiding
     public void Begin(InvisibleEvent hide, double now)
     {
         Event = hide;
-        _end = now + hide.Value * 0.001;
+        _left = hide.Value * 0.001;
         _nextLook = now + Look;
+    }
+
+    /// <summary>
+    /// The animation of the monster has played on by so many of its own seconds: a hiding for a time runs out by them, not by
+    /// the clock.
+    /// </summary>
+    public void CountDown(double animationSeconds)
+    {
+        if (Event?.ConditionType == InvisibleEvent.ForTime)
+        {
+            _left -= animationSeconds;
+        }
     }
 
     public void Clear()
@@ -62,7 +75,7 @@ internal sealed class MonsterHiding
                 return false;
 
             case InvisibleEvent.ForTime:
-                return now >= _end;
+                return _left <= 0;
 
             case InvisibleEvent.UntilMonstersDie:
                 // Looked at once a second.
@@ -73,7 +86,17 @@ internal sealed class MonsterHiding
 
                 _nextLook = now + Look;
 
-                return !(Event.Waits ?? []).Any(isMonsterAlive);
+                var waits = Event.Waits ?? [];
+
+                for (var index = 0; index < waits.Count; index++)
+                {
+                    if (isMonsterAlive(waits[index]))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
 
             default:
                 return maxHealth > 0 && (long)health * 1000 / maxHealth <= Event.Value;
@@ -83,10 +106,10 @@ internal sealed class MonsterHiding
     /// <summary>
     /// The notice that the monster has gone; for one who comes in later, a hiding for a time names the time that is left.
     /// </summary>
-    public MonsterInvisibleResponse Notice(ActorValue actor, double now)
+    public MonsterInvisibleResponse Notice(ActorValue actor)
     {
         var hide = Event!;
-        var value = hide.ConditionType == InvisibleEvent.ForTime ? Math.Max(1, (int)Math.Round((_end - now) * 1000)) : hide.Value;
+        var value = hide.ConditionType == InvisibleEvent.ForTime ? Math.Max(1, (int)Math.Round(_left * 1000)) : hide.Value;
 
         return new MonsterInvisibleResponse { Actor = actor, Invisible = true, Flags = hide.Flags, Type = hide.ConditionType, Value = value };
     }

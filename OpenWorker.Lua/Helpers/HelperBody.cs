@@ -100,7 +100,7 @@ internal sealed class HelperBody : MonsterBody
         return false;
     }
 
-    protected override FlightTarget[] FlightTargets() => _squad.EnemyFlightTargets(this);
+    protected override void CollectFlightTargets(List<FlightTarget> targets) => _squad.AddEnemyFlightTargets(this, targets);
 
     protected override IReadOnlyList<Entity> TrapTargets(AttackTrigger trigger, AttackArea area) => _squad.EnemiesTouching(this, area);
 

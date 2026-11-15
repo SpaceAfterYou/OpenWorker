@@ -220,6 +220,23 @@ public sealed class ActionFile
         Indexes = indexes;
     }
 
+    /// <summary>
+    /// A file made of the given animations, numbered in their order.
+    /// </summary>
+    internal static ActionFile Of(params ActionAnimation[] animations)
+    {
+        var named = new Dictionary<string, ActionAnimation>(StringComparer.OrdinalIgnoreCase);
+        var indexes = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var animation in animations)
+        {
+            indexes[animation.Name] = named.Count;
+            named[animation.Name] = animation;
+        }
+
+        return new ActionFile(named, indexes);
+    }
+
     public IReadOnlyDictionary<string, ActionAnimation> Animations { get; }
 
     /// <summary>

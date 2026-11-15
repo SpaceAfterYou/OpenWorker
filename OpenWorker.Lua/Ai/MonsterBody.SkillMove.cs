@@ -27,8 +27,10 @@ internal partial class MonsterBody
 
     private void AddMoves(IReadOnlyList<SkillMove> moves, double at, int clips)
     {
-        foreach (var move in moves)
+        for (var index = 0; index < moves.Count; index++)
         {
+            var move = moves[index];
+
             _moves.Add((at + move.Time, new Vector2(move.Offset.X, move.Offset.Y), _moveClips + move.Clip));
         }
 

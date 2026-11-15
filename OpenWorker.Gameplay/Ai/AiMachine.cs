@@ -80,7 +80,9 @@ public sealed partial class AiMachine
     private int _targetId = NoTarget;
     private int _nesting;
     private int _runawayCount;
-    private AiStateSettings _settings = new();
+    private static readonly AiStateSettings NoSettings = new();
+
+    private AiStateSettings _settings = NoSettings;
     private Vector3 _moveStart;
     private float _actionEnd;
 
@@ -133,6 +135,63 @@ public sealed partial class AiMachine
     }
 
     /// <summary>
+    /// The machine takes a new monster of the same script: it forgets everything it knew of the one before, as a new machine
+    /// would, and keeps only what it has made for the script.
+    /// </summary>
+    public void Reset()
+    {
+        _history.Clear();
+
+        foreach (var timers in _timers.Values)
+        {
+            timers.Timer = 0f;
+            timers.Attack = 0f;
+            timers.Move = 0f;
+        }
+
+        _rolled.Clear();
+        _aggro.Clear();
+        _stateEnded.Clear();
+        _cooldowns.Clear();
+        Array.Clear(_skillOrder);
+        _ordered.Clear();
+
+        _now = 0;
+        _globalCooldownEnd = 0;
+        _state = AiState.None;
+        _sinceCheck = 0f;
+        _stateTime = 0f;
+        _lifeTime = -1f;
+        _activeTime = 0f;
+        _searchTime = 0f;
+        _retargetTime = 0f;
+        _repathTime = 0f;
+        _aggroTime = 0f;
+        _lastSkillTime = -1f;
+        _lastDamageTime = -1f;
+        _statePreviousHealth = 0;
+        _preSkillDamageCount = 0;
+        _hitCount = 0;
+        _previousRandom = 1;
+        _targetId = NoTarget;
+        _nesting = 0;
+        _runawayCount = 0;
+        _settings = NoSettings;
+        _moveStart = default;
+        _actionEnd = 0f;
+        _skill = null;
+        _skillSlot = -1;
+        _skillGroup = -1;
+        _skillStarted = false;
+        _aggroChanged = false;
+        _gazing = false;
+
+        ResetApproach();
+        ResetDamage();
+        ResetFollower();
+    }
+
+    /// <summary>
     /// The monster has just come to life.
     /// </summary>
     public void Start(AiState initial = AiState.Wait)
@@ -175,9 +234,11 @@ public sealed partial class AiMachine
 
         if (_host.CanAttack || _host.CanMove)
         {
-            foreach (var transition in _profile.GetTransitions(_state))
+            var transitions = _profile.GetTransitions(_state);
+
+            for (var index = 0; index < transitions.Count; index++)
             {
-                var timers = TimersOf(transition);
+                var timers = TimersOf(transitions[index]);
 
                 if (_host.CanAttack)
                 {
@@ -369,17 +430,26 @@ public sealed partial class AiMachine
 
     private void Enter(AiState state)
     {
-        foreach (var transition in TransitionsOf(state))
+        var transitions = TransitionsOf(state);
+
+        for (var index = 0; index < transitions.Count; index++)
         {
-            foreach (var condition in transition.Conditions)
+            var transition = transitions[index];
+            var timed = false;
+
+            for (var at = 0; at < transition.Conditions.Count; at++)
             {
+                var condition = transition.Conditions[at];
+
                 if (condition.IsRandom)
                 {
                     Roll(condition);
                 }
+
+                timed |= condition.Variable == AiVariable.Timer;
             }
 
-            if (transition.Conditions.Any(e => e.Variable == AiVariable.Timer))
+            if (timed)
             {
                 TimersOf(transition).Timer = 0f;
             }
@@ -437,7 +507,12 @@ public sealed partial class AiMachine
         }
 
         var next = _settings.NextStates;
-        var total = next.Sum(e => Math.Max(0, e.Weight));
+        var total = 0;
+
+        for (var index = 0; index < next.Count; index++)
+        {
+            total += Math.Max(0, next[index].Weight);
+        }
 
         if (total == 0)
         {
@@ -448,8 +523,10 @@ public sealed partial class AiMachine
 
         var roll = _random.Next(total);
 
-        foreach (var (state, weight) in next)
+        for (var index = 0; index < next.Count; index++)
         {
+            var (state, weight) = next[index];
+
             if (roll < weight)
             {
                 ChangeState(state);
@@ -468,27 +545,29 @@ public sealed partial class AiMachine
     /// </summary>
     private void SelectAction()
     {
-        var options = _profile.GetSettings(AiState.SelectAction).NextStates
-            .Where(e => e.State is AiState.Attack or AiState.BattleMove or AiState.Runaway or AiState.Protection
-                or AiState.Gaze or AiState.BattleWait or AiState.Move)
-            .Where(e => e.Weight > 0)
-            .ToArray();
-
+        var next = _profile.GetSettings(AiState.SelectAction).NextStates;
         var skipRunaway = _profile.RunawayHealth > 0 && HealthPercent() > _profile.RunawayHealth
             || _runawayCount >= _profile.RunawayCount;
+        var count = 0;
+        var total = 0;
+        var only = AiState.None;
 
-        options = options
-            .Where(e => e.State != AiState.Protection && !(skipRunaway && e.State == AiState.Runaway))
-            .ToArray();
-
-        if (options.Length == 1)
+        for (var index = 0; index < next.Count; index++)
         {
-            ChangeState(options[0].State);
+            if (IsOption(next[index], skipRunaway))
+            {
+                count++;
+                total += next[index].Weight;
+                only = next[index].State;
+            }
+        }
+
+        if (count == 1)
+        {
+            ChangeState(only);
 
             return;
         }
-
-        var total = options.Sum(e => e.Weight);
 
         if (total == 0)
         {
@@ -499,8 +578,15 @@ public sealed partial class AiMachine
 
         var roll = _random.Next(total);
 
-        foreach (var (state, weight) in options)
+        for (var index = 0; index < next.Count; index++)
         {
+            if (!IsOption(next[index], skipRunaway))
+            {
+                continue;
+            }
+
+            var (state, weight) = next[index];
+
             if (roll < weight)
             {
                 ChangeState(state);
@@ -510,6 +596,17 @@ public sealed partial class AiMachine
 
             roll -= weight;
         }
+    }
+
+    /// <summary>
+    /// A way out of the select-action state the monster may take now: one of the fighting states, weighed, and not a run away it has
+    /// no reason or no runs left for.
+    /// </summary>
+    private static bool IsOption((AiState State, int Weight) option, bool skipRunaway)
+    {
+        return option.Weight > 0
+            && option.State is AiState.Attack or AiState.BattleMove or AiState.Runaway or AiState.Gaze or AiState.BattleWait or AiState.Move
+            && !(skipRunaway && option.State == AiState.Runaway);
     }
 
     /// <summary>
@@ -533,8 +630,9 @@ public sealed partial class AiMachine
             return true;
         }
 
-        foreach (var transition in transitions)
+        for (var index = 0; index < transitions.Count; index++)
         {
+            var transition = transitions[index];
             var timers = TimersOf(transition);
 
             timers.Timer += elapsed;
@@ -568,8 +666,10 @@ public sealed partial class AiMachine
 
     private bool AreMet(AiTransition transition, TransitionTimers timers)
     {
-        foreach (var condition in transition.Conditions)
+        for (var index = 0; index < transition.Conditions.Count; index++)
         {
+            var condition = transition.Conditions[index];
+
             if (AiCondition.IsTimer(condition.Variable))
             {
                 var time = condition.Variable switch
@@ -626,7 +726,15 @@ public sealed partial class AiMachine
 
     private bool AreMet(IReadOnlyList<AiCondition> conditions)
     {
-        return conditions.All(IsMet);
+        for (var index = 0; index < conditions.Count; index++)
+        {
+            if (!IsMet(conditions[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private double Rolled(AiCondition condition)
@@ -820,9 +928,11 @@ public sealed partial class AiMachine
         // A new target starts the waiting of the transitions of the state anew.
         if (_state == AiState.SelectAction)
         {
-            foreach (var transition in TransitionsOf(_state))
+            var transitions = TransitionsOf(_state);
+
+            for (var index = 0; index < transitions.Count; index++)
             {
-                var timers = TimersOf(transition);
+                var timers = TimersOf(transitions[index]);
 
                 timers.Timer = 0f;
                 timers.Attack = 0f;
@@ -886,8 +996,12 @@ public sealed partial class AiMachine
             return false;
         }
 
-        foreach (var slot in _profile.SkillGroups[group])
+        var slots = _profile.SkillGroups[group];
+
+        for (var index = 0; index < slots.Count; index++)
         {
+            var slot = slots[index];
+
             if (slot > 0 && _host.GetSkill(slot - 1) is { } skill && Cooldown(skill.CooldownGroup) > 0)
             {
                 return true;
@@ -943,21 +1057,18 @@ public sealed partial class AiMachine
             return group;
         }
 
-        int[] order;
+        Span<int> order = [0, 1, 2];
 
         switch (_profile.SkillSortTypes[group])
         {
             case 1:
-                order = [0, 1, 2];
                 _random.Shuffle(order);
                 break;
 
             case 2:
-                order = [_skillOrder[group], (_skillOrder[group] + 1) % 3, (_skillOrder[group] + 2) % 3];
-                break;
-
-            default:
-                order = [0, 1, 2];
+                order[0] = _skillOrder[group];
+                order[1] = (_skillOrder[group] + 1) % 3;
+                order[2] = (_skillOrder[group] + 2) % 3;
                 break;
         }
 
@@ -1014,9 +1125,17 @@ public sealed partial class AiMachine
             return;
         }
 
-        var weights = _profile.SkillGroupRatios.ToArray();
-        var order = new List<AiState>();
-        var total = weights.Sum();
+        var ratios = _profile.SkillGroupRatios;
+        Span<int> weights = stackalloc int[ratios.Count];
+        Span<AiState> order = stackalloc AiState[ratios.Count];
+        var count = 0;
+        var total = 0;
+
+        for (var i = 0; i < weights.Length; i++)
+        {
+            weights[i] = ratios[i];
+            total += weights[i];
+        }
 
         while (total > 0)
         {
@@ -1026,7 +1145,8 @@ public sealed partial class AiMachine
             {
                 if (roll < weights[i])
                 {
-                    order.Add(AiState.AttackSkill1 + i);
+                    order[count++] = AiState.AttackSkill1 + i;
+                    total -= weights[i];
                     weights[i] = 0;
 
                     break;
@@ -1034,15 +1154,21 @@ public sealed partial class AiMachine
 
                 roll -= weights[i];
             }
-
-            total = weights.Sum();
         }
 
-        var list = _profile.GetTransitions(AiState.Attack).ToList();
-
-        for (var i = order.Count - 1; i >= 0; i--)
+        // The list is the machine's own and is laid out anew each time.
+        if (!_ordered.TryGetValue(AiState.Attack, out var list))
         {
-            var index = list.FindIndex(e => e.Output == order[i]);
+            list = [];
+            _ordered[AiState.Attack] = list;
+        }
+
+        list.Clear();
+        list.AddRange(_profile.GetTransitions(AiState.Attack));
+
+        for (var i = count - 1; i >= 0; i--)
+        {
+            var index = IndexOf(list, order[i]);
 
             if (index > 0)
             {
@@ -1052,8 +1178,19 @@ public sealed partial class AiMachine
                 list.Insert(0, transition);
             }
         }
+    }
 
-        _ordered[AiState.Attack] = list;
+    private static int IndexOf(List<AiTransition> transitions, AiState output)
+    {
+        for (var index = 0; index < transitions.Count; index++)
+        {
+            if (transitions[index].Output == output)
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     // ---- States -------------------------------------------------------------------------------

@@ -105,8 +105,8 @@ internal partial class MonsterBody : IAiHost
     }
 
     /// <summary>
-    /// The body of a monster that is gone takes a new monster of the same script: its lists are kept, everything it
-    /// knew is forgotten, and the mind starts afresh, because a mind carries too much to clear by hand.
+    /// The body of a monster that is gone takes a new monster of the same script: its lists and its mind are kept, and everything
+    /// they knew is forgotten.
     /// </summary>
     public MonsterBody Revive(Entity entity, MonsterBehavior behavior, Vector3 home)
     {
@@ -122,6 +122,7 @@ internal partial class MonsterBody : IAiHost
         _grab.Release();
         _detaches.Clear();
         _clips.Clear();
+        _speeds.Clear();
         _moves.Clear();
         _reactionPlays.Clear();
         DropCombo();
@@ -151,7 +152,7 @@ internal partial class MonsterBody : IAiHost
         _trapRuns.Clear();
         _trapMark = null;
 
-        Machine = CreateMind(Machine.Profile);
+        Machine.Reset();
 
         return this;
     }
@@ -174,6 +175,8 @@ internal partial class MonsterBody : IAiHost
     }
 
     private readonly List<Flight> _flights = [];
+    private readonly List<FlightTarget> _flightTargets = [];
+    private readonly List<Explosion> _explosions = [];
     private uint _shotSession;
 
     // ---- The body in the world ----------------------------------------------------------------
@@ -290,6 +293,7 @@ internal partial class MonsterBody : IAiHost
         _attackEnd = 0;
         _pending.Clear();
         _clips.Clear();
+        _speeds.Clear();
         _moves.Clear();
         DropCombo();
         ReleaseGrab(true);
@@ -323,7 +327,7 @@ internal partial class MonsterBody : IAiHost
         MoveWithSkill(until);
         GoOnWithCombo(now);
         ResolveGrab(now);
-        ResolveHidings(now);
+        ResolveHidings(now, elapsed);
         CheckIdleTime(now);
         Fly(elapsed);
         TickTraps(elapsed);
@@ -431,7 +435,10 @@ internal partial class MonsterBody : IAiHost
         _route.Clear();
 
         // The first point of the way is the place the monster stands at.
-        _route.AddRange(_found.Skip(1));
+        for (var index = 1; index < _found.Count; index++)
+        {
+            _route.Add(_found[index]);
+        }
 
         // A walk ends whatever animation carried the monster.
         if (_route.Count > 0)
@@ -770,8 +777,8 @@ internal partial class MonsterBody : IAiHost
             return false;
         }
 
-        // A target on the ground waits for a skill that is for it.
-        if (!skill.ForLying && _manager.IsLying(target.Id))
+        // A target on the ground, a player or a helper, waits for a skill that is for it.
+        if (!skill.ForLying && (_manager.IsLying(target.Id) || _manager.Helpers.IsLying(target.Id)))
         {
             return false;
         }
@@ -813,6 +820,7 @@ internal partial class MonsterBody : IAiHost
         _hidings.Clear();
         _detaches.Clear();
         _clips.Clear();
+        _speeds.Clear();
         _moves.Clear();
         _staged = false;
         _freezes = start is null;
@@ -827,41 +835,50 @@ internal partial class MonsterBody : IAiHost
         }
         else
         {
-            foreach (var clip in timeline.Clips)
+            for (var index = 0; index < timeline.Clips.Count; index++)
             {
+                var clip = timeline.Clips[index];
+
                 _clips.Add((now + clip.Began, now + clip.Began + clip.Length, clip.Animation));
             }
 
-            foreach (var hit in timeline.Hits)
+            for (var index = 0; index < timeline.Hits.Count; index++)
             {
-                _pending.Add(new PendingHit(now + hit.Time, hit, skill.Id));
+                _pending.Add(new PendingHit(now + timeline.Hits[index].Time, timeline.Hits[index], skill.Id));
             }
 
-            foreach (var shot in timeline.Shots)
+            for (var index = 0; index < timeline.Shots.Count; index++)
             {
-                _pending.Add(new PendingHit(now + shot.Time, shot, skill.Id, true));
+                _pending.Add(new PendingHit(now + timeline.Shots[index].Time, timeline.Shots[index], skill.Id, true));
             }
 
-            foreach (var mark in timeline.TrapMarks)
+            for (var index = 0; index < timeline.TrapMarks.Count; index++)
             {
-                _pending.Add(new PendingHit(now + mark, default, skill.Id, Mark: true));
+                _pending.Add(new PendingHit(now + timeline.TrapMarks[index], default, skill.Id, Mark: true));
             }
 
-            foreach (var summon in timeline.Summons)
+            for (var index = 0; index < timeline.Summons.Count; index++)
             {
-                _pending.Add(new PendingHit(now + summon.Time, summon, skill.Id));
+                _pending.Add(new PendingHit(now + timeline.Summons[index].Time, timeline.Summons[index], skill.Id));
             }
 
-            _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
+            _pending.Sort(static (first, second) => first.Time.CompareTo(second.Time));
 
             AddMoves(timeline.Moves, now, timeline.Clips.Count);
 
-            foreach (var hiding in timeline.Hidings)
+            for (var index = 0; index < timeline.Speeds.Count; index++)
+            {
+                var speed = timeline.Speeds[index];
+
+                _speeds.Add((now + speed.From, now + speed.To, speed.Speed));
+            }
+
+            for (var index = 0; index < timeline.Hidings.Count; index++)
             {
                 // The kinds that wait for other monsters to die are not followed.
-                if (IsFollowed(hiding.Event))
+                if (IsFollowed(timeline.Hidings[index].Event))
                 {
-                    _hidings.Add((now + hiding.Time, hiding.Event));
+                    _hidings.Add((now + timeline.Hidings[index].Time, timeline.Hidings[index].Event));
                 }
             }
         }
@@ -963,6 +980,8 @@ internal partial class MonsterBody : IAiHost
             _hidings[i] = (_hidings[i].Time + seconds, _hidings[i].Event);
         }
 
+        HoldSpeeds(now, seconds);
+
         for (var i = 0; i < _moves.Count; i++)
         {
             _moves[i] = _moves[i] with { Time = _moves[i].Time + seconds };
@@ -1006,17 +1025,44 @@ internal partial class MonsterBody : IAiHost
     /// </summary>
     private IReadOnlyList<Entity> Reachable(AttackTrigger trigger, IReadOnlyList<Entity> players)
     {
-        return players.Count == 0 ? players : players.Where(e => trigger.Reaches(_manager.IsLying(e))).ToArray();
+        var count = 0;
+
+        for (var index = 0; index < players.Count; index++)
+        {
+            count += trigger.Reaches(_manager.IsLying(players[index])) ? 1 : 0;
+        }
+
+        if (count == players.Count)
+        {
+            return players;
+        }
+
+        var reached = new Entity[count];
+
+        count = 0;
+
+        for (var index = 0; index < players.Count; index++)
+        {
+            if (trigger.Reaches(_manager.IsLying(players[index])))
+            {
+                reached[count++] = players[index];
+            }
+        }
+
+        return reached;
     }
 
     /// <summary>
     /// What the projectiles of the monster can run into.
     /// </summary>
-    protected virtual FlightTarget[] FlightTargets()
+    protected virtual void CollectFlightTargets(List<FlightTarget> targets)
     {
-        var players = _manager.GetPlayerTargets();
+        _manager.AddPlayerTargets(targets);
 
-        return !_manager.Helpers.HasTargets ? players : [.. players, .. _manager.Helpers.FlightTargets(this)];
+        if (_manager.Helpers.HasTargets)
+        {
+            _manager.Helpers.AddFlightTargets(this, targets);
+        }
     }
 
     /// <summary>
@@ -1062,14 +1108,18 @@ internal partial class MonsterBody : IAiHost
             return;
         }
 
-        var targets = FlightTargets();
+        _flightTargets.Clear();
+        CollectFlightTargets(_flightTargets);
 
         // In place: a projectile that is over leaves the list after the round.
         for (var index = 0; index < _flights.Count; index++)
         {
             var flight = _flights[index];
 
-            foreach (var explosion in flight.Projectile.Advance(elapsed, targets))
+            _explosions.Clear();
+            flight.Projectile.Advance(elapsed, _flightTargets, _explosions);
+
+            foreach (var explosion in _explosions)
             {
                 var area = new AttackArea(flight.Trigger, explosion.Position, Yaw);
 

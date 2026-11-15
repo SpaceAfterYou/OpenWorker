@@ -19,3 +19,4 @@ services:
   openworker.districtserver-gracecity: *after-relay
   openworker.districtserver-ruinfortress: *after-relay
   openworker.mazeserver: *after-relay
+  openworker.mazeserver-2: *after-relay

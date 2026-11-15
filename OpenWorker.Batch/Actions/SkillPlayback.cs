@@ -623,6 +623,17 @@ public sealed class SkillPlayback
         public float CutOpens { get; }
 
         /// <summary>
+        /// The stretches that play at a speed of their own, on the clock from the start of the animation.
+        /// </summary>
+        public IEnumerable<SkillSpeed> Speeds(float began)
+        {
+            foreach (var (from, to, speed) in _stretches)
+            {
+                yield return new SkillSpeed(began + Wall(from), began + Wall(to), speed);
+            }
+        }
+
+        /// <summary>
         /// The moment on the clock, from the start of the animation, at which the animation reaches the given time of its own.
         /// </summary>
         public float Wall(float time)

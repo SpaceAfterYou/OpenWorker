@@ -74,7 +74,7 @@ public sealed partial class PrologueEntry(
             return false;
         }
 
-        var maze = await mazes.PickAsync(Gate) ?? (mazeEndpoint.Value.Host, (short)mazeEndpoint.Value.Port);
+        var maze = await mazes.PickServerAsync(Gate) ?? (Guid.Empty, mazeEndpoint.Value.Host, (short)mazeEndpoint.Value.Port);
 
         // The player may have left while the servers were looked up: the selection is over either way.
         if (!world.IsAlive(player))
@@ -94,7 +94,8 @@ public sealed partial class PrologueEntry(
             Y = position.Y,
             Z = position.Z,
             R = start.Rotation,
-            Jump = start.Id
+            Jump = start.Id,
+            Server = maze.Server
         }, WorldManager.ReservationLifetime);
 
         if (!world.IsAlive(player))

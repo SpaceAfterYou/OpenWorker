@@ -16,6 +16,17 @@ public sealed partial class AiMachine
     private int _failedWays;
     private float _noFloorTime = NoFloorWarp;
 
+    private void ResetApproach()
+    {
+        _ownPlaces = null;
+        _place = TargetPlaces.None;
+        _placeTarget = NoTarget;
+        _placeOffset = default;
+        _approachEnd = null;
+        _failedWays = 0;
+        _noFloorTime = NoFloorWarp;
+    }
+
     private TargetPlaces Places => _host.Places ?? (_ownPlaces ??= new TargetPlaces());
 
     /// <summary>

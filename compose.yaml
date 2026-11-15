@@ -283,6 +283,45 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
 
+  # A second maze server of the gate: it registers itself as the first does, players are sent to the least busy one, and a
+  # reservation names the server it was made for.
+  openworker.mazeserver-2:
+    <<: *openworker-server
+    container_name: "OpenWorker-MazeServer-2"
+    build:
+      args:
+        - BUILD_CONFIGURATION=Debug
+      context: .
+      dockerfile: OpenWorker.MazeServer/Dockerfile
+    environment:
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__System=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Warning
+      - Game__Version=1.4.2.3
+      - Gate__Id=1
+      - Instance__PublicPort=10102
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      # The relay migrates the database and makes the Redis indexes; it is healthy when both are done.
+      openworker.relayserver:
+        condition: service_healthy
+    ports:
+      - "10102:10000"
+    networks:
+      - eva-01
+    volumes:
+      - ./OpenWorker.Hotspot.Test/Datas:/app/test/hotspot
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table:/app/res
+      - ${SOULWORKER_SERVER_RES:-${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/bin/Table}:/app/res-server:ro
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
+
   openworker.districtserver-canduscity:
     <<: *openworker-server
     container_name: "OpenWorker-DistrictServer-CandusCity"

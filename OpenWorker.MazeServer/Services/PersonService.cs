@@ -88,6 +88,7 @@ public sealed partial class PersonService(
     ILogger<LuaMaze> mazeLogger,
     ILogger<LuaGameHelper> helperLogger,
     IOptions<GateOptions> gate,
+    IOptions<InstanceOptions> server,
     CommunityNetwork community,
     AchievementManager achievements,
     SharePointManager sharePoints,
@@ -158,6 +159,14 @@ public sealed partial class PersonService(
         if (mazeReserve.Account != request.Account)
         {
             LogForeignReservation(logger, request.Account, request.Actor.Identifier, mazeReserve.Account);
+            session.Disconnect();
+            return;
+        }
+
+        // The reservation of another maze server stays: the person goes there.
+        if (!mazeReserve.Admits(server.Value.Identifier))
+        {
+            LogOtherServer(logger, request.Account, request.Actor.Identifier, mazeReserve.Server);
             session.Disconnect();
             return;
         }
@@ -524,6 +533,9 @@ public sealed partial class PersonService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the reservation of that person belongs to account {ReservedAccount}, and it is turned away")]
     private static partial void LogForeignReservation(ILogger logger, int account, int person, int reservedAccount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the reservation sends that person to the maze server {Server}, and it is turned away")]
+    private static partial void LogOtherServer(ILogger logger, int account, int person, Guid server);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Account {Account} came to a maze as person {Person}, but the location {Location} has no maze batch, and it is turned away")]
     private static partial void LogNoMazeBatch(ILogger logger, int account, int person, short location);

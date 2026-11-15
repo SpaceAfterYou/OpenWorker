@@ -50,14 +50,6 @@ public sealed partial class WorldManager(
     private (string Host, short Port) DefaultMaze { get; } = (mazeEndpoint.Value.Host, (short)mazeEndpoint.Value.Port);
 
     /// <summary>
-    /// The maze server of this gate with the fewest players: one call to the sorted set of <see cref="MazeDirectory"/>.
-    /// </summary>
-    private async ValueTask<(string Host, short Port)> GetMazeAsync()
-    {
-        return await mazes.PickAsync(Gate) ?? DefaultMaze;
-    }
-
-    /// <summary>
     /// How an attempt to enter a location ended.
     /// </summary>
     private enum EnterOutcome
@@ -182,7 +174,7 @@ public sealed partial class WorldManager(
     /// Sends the player into an instance of a maze on the given maze server: the instance a party shares, which the maze
     /// server opens for the first member to come and the others join. False when the location has no start to enter by.
     /// </summary>
-    public async ValueTask<bool> SendToMazeAsync(Entity player, short location, int jump, (string Host, short Port) maze, Guid instance, int party, int members = 0)
+    public async ValueTask<bool> SendToMazeAsync(Entity player, short location, int jump, (Guid Server, string Host, short Port) maze, Guid instance, int party, int members = 0)
     {
         if (!provider.TryGetAndCache(location, out var batch, out var type) ||
             type != BatchType.Maze ||
@@ -218,13 +210,13 @@ public sealed partial class WorldManager(
 
             if (ecs.IsAlive(player))
             {
-                await SendToMazeAsync(player, location, start, (route.Host, route.Port), route.Instance, 0, 0, world: (byte)channel);
+                await SendToMazeAsync(player, location, start, (route.Server, route.Host, route.Port), route.Instance, 0, 0, world: (byte)channel);
             }
 
             return true;
         }
 
-        var maze = await GetMazeAsync();
+        var maze = await PickMazeServerAsync();
 
         // The player may have left while the servers were looked up.
         if (!ecs.IsAlive(player))
@@ -242,7 +234,7 @@ public sealed partial class WorldManager(
     /// the district the player goes back to when it leaves; <paramref name="friend"/> tells the room that the owner is a friend
     /// of the player. False when the location has no start to enter by.
     /// </summary>
-    public async ValueTask<bool> SendToRoomAsync(Entity player, short location, (string Host, short Port) maze, Guid instance, int owner, short back,
+    public async ValueTask<bool> SendToRoomAsync(Entity player, short location, (Guid Server, string Host, short Port) maze, Guid instance, int owner, short back,
         bool friend = false)
     {
         if (!provider.TryGetAndCache(location, out var batch, out var type) ||
@@ -257,7 +249,7 @@ public sealed partial class WorldManager(
         return true;
     }
 
-    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (string Host, short Port) maze, Guid instance, int party, int members, int room = 0, short back = 0,
+    private async ValueTask SendToMazeAsync(Entity player, short location, StartEventBox start, (Guid Server, string Host, short Port) maze, Guid instance, int party, int members, int room = 0, short back = 0,
         bool friend = false, byte world = 0)
     {
         var session = ecs.Get<ServerSessionComponent>(player);
@@ -311,7 +303,8 @@ public sealed partial class WorldManager(
             Members = (byte)Math.Clamp(members, 0, byte.MaxValue),
             Room = room,
             Return = back,
-            Friend = friend
+            Friend = friend,
+            Server = maze.Server
         };
 
         // The maze loads the person from the database: what this server has must be there first.

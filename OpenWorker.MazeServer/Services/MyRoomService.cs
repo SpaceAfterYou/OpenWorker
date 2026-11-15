@@ -205,7 +205,7 @@ public sealed partial class MyRoomService(
 
         var location = world.Get<WorldComponent>(player).Location;
 
-        if (!await manager.SendToRoomAsync(player, location, (elsewhere.Host, elsewhere.Port), elsewhere.Instance, owner, back, friend))
+        if (!await manager.SendToRoomAsync(player, location, (elsewhere.Server, elsewhere.Host, elsewhere.Port), elsewhere.Instance, owner, back, friend))
         {
             await SendOutAsync(player, back, MyRoomCodes.EnterFailed);
             return;
