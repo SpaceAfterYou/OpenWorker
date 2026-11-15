@@ -103,6 +103,16 @@ public partial class LuaMaze
     }
 
     /// <summary>
+    /// The nearest monster throws the player up with a blow that hurts it a little, as any throw of a monster: the player is in the
+    /// air, then lies on the ground. False when no living monster stands near.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool KnockDown(Entity player)
+    {
+        return !Closed && Find(player) is not null && creatureManager.KnockDown(player);
+    }
+
+    /// <summary>
     /// The player takes a monster of that row as a skill would give it, where it stands; row 0 lets its monster go. False
     /// when the table has no such monster, it is a defensive weapon, the player has fallen, or it has no monster to let go.
     /// </summary>

@@ -83,16 +83,10 @@ public abstract partial class MovementServiceBase(World world, MovementPace pace
 
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonChangeMotionReqRequest request)
     {
-        // The motion after a blow says whether the player lies on the ground.
-        var stance = new PlayerStanceComponent(request.Motion, request.SubMotion);
-
-        if (world.Has<PlayerStanceComponent>(context.Player))
+        // The client gets its player up from a throw of the server; it never puts it on the ground.
+        if (world.TryGet<PlayerPostureComponent>(context.Player, out var posture))
         {
-            world.Set(context.Player, stance);
-        }
-        else
-        {
-            world.Add(context.Player, stance);
+            world.Set(context.Player, PlayerStance.Told(posture, request.Motion, request.SubMotion));
         }
 
         BroadcastToOthers(context.Player, new PersonChangeMotionBroadcastResponse

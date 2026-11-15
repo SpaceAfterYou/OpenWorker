@@ -121,15 +121,12 @@ public sealed class MonsterBlowTest
             return Hits().Length;
         }
 
-        public void Stance(short motion, short step)
+        /// <summary>
+        /// The client of the player says it plays a motion.
+        /// </summary>
+        public void Tell(short motion, short step)
         {
-            world.Add(Player, new PlayerStanceComponent(motion, step));
-            world.Add(Player, new PlayerPostureComponent(TimeSpan.FromHours(1)));
-        }
-
-        public void SetStance(short motion, short step)
-        {
-            world.Set(Player, new PlayerStanceComponent(motion, step));
+            world.Set(Player, PlayerStance.Told(world.Get<PlayerPostureComponent>(Player), motion, step));
         }
     }
 
@@ -381,8 +378,36 @@ public sealed class MonsterBlowTest
     }
 
     /// <summary>
-    /// A player who lies on the ground is not reached by a blow that is not for one, and a monster waits with a skill that is not
-    /// for one; once the player is up again, it is hit.
+    /// A player a monster has thrown is in the air, then lies on the ground, then is up again when the time on the ground is over.
+    /// </summary>
+    [TestMethod]
+    public Task AThrownPlayerIsInTheAirThenLyingThenUpByTheTime() => WithArenaAsync(async arena =>
+    {
+        var creatures = arena.Maze.Creatures;
+
+        arena.Place(arena.Body.Position + new Vector3(0f, -200f, 0f));
+
+        Assert.IsFalse(creatures.IsInTheAir(arena.Player) || creatures.IsLying(arena.Player), "Nobody has thrown the player yet.");
+        Assert.IsTrue(arena.Maze.KnockDown(arena.Player), "The monster throws the player.");
+        Assert.AreEqual(1, await arena.HitsAsync(1), "The throw is told.");
+        Assert.IsTrue(creatures.IsInTheAir(arena.Player) && !creatures.IsLying(arena.Player), "Thrown up, the player is in the air.");
+
+        arena.Advance(1.3f);
+
+        Assert.IsTrue(!creatures.IsInTheAir(arena.Player) && creatures.IsLying(arena.Player), "Landed, the player lies.");
+
+        arena.Advance(2.8f);
+
+        Assert.IsTrue(creatures.IsLying(arena.Player), "Three seconds on the ground and the fall before them.");
+
+        arena.Advance(0.9f);
+
+        Assert.IsFalse(creatures.IsInTheAir(arena.Player) || creatures.IsLying(arena.Player), "Up again by the time.");
+    });
+
+    /// <summary>
+    /// While a player a monster has thrown lies on the ground, a blow that is not for one passes over it, and a monster waits with a
+    /// skill that is not for one; once its client gets it up, it is hit.
     /// </summary>
     [TestMethod]
     public async Task APlayerOnTheGroundIsNotHitByWhatIsNotForOne()
@@ -404,20 +429,23 @@ public sealed class MonsterBlowTest
             var player = new AiTarget(100, ahead, 40f, 0f, 1, 1, false);
             var skill = arena.Body.GetSkill(0)!;
 
-            arena.Stance(MotionClass.DownUp, 2);
+            arena.Place(arena.Body.Position + TrapLayout.Turn(RightTrap, arena.Body.Yaw));
+            Assert.IsTrue(arena.Maze.KnockDown(arena.Player));
+            Assert.AreEqual(1, await arena.HitsAsync(1), "The throw.");
+
+            arena.Advance(1.3f);
 
             Assert.IsFalse(arena.Body.UseSkill(skill, player), "The monster waits while its target lies.");
             Assert.IsTrue(arena.Body.UseSkill(skill with { ForLying = true }, player), "A skill for one on the ground starts.");
 
-            arena.Place(arena.Body.Position + TrapLayout.Turn(RightTrap, arena.Body.Yaw));
             arena.Advance(laid + 0.2f);
 
-            Assert.AreEqual(0, await arena.HitsAsync(0), "The trap passes over the player on the ground.");
+            Assert.AreEqual(1, await arena.HitsAsync(1), "The trap passes over the player on the ground.");
 
-            arena.SetStance(MotionClass.DownUp, 5);
+            arena.Tell(MotionClass.DownUp, PlayerStance.Rising);
             arena.Advance(0.2f);
 
-            Assert.AreEqual(1, await arena.HitsAsync(1), "Up again, the player is hit.");
+            Assert.AreEqual(2, await arena.HitsAsync(2), "Up again, the player is hit.");
         }, trapper, skills, actions);
     }
 
