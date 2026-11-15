@@ -169,6 +169,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     private Dictionary<(int Skill, string File), SkillHit[]> Hits { get; } = [];
     private Dictionary<(int Skill, string File), SkillHit[]> Shots { get; } = [];
     private Dictionary<(int Skill, string File), SkillTimeline> Timelines { get; } = [];
+    private Dictionary<(string File, string Animation), SkillMove[]> AnimationMoves { get; } = [];
 
     /// <summary>
     /// How a skill plays out for a monster, which presses no key: the start, the loop for the time of the table, then the end, each
@@ -465,14 +466,22 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     /// </summary>
     public IReadOnlyList<SkillMove> GetMoves(string actionFile, string animation)
     {
-        if (GetFile(actionFile) is not { } file || Find(file, animation, false) is not { Moves.Count: > 0 } found)
+        if (AnimationMoves.TryGetValue((actionFile, animation), out var moves))
         {
-            return [];
+            return moves;
         }
 
-        var clock = new SkillPlayback.ClipClock(found, 1f);
+        if (GetFile(actionFile) is { } file && Find(file, animation, false) is { Moves.Count: > 0 } found)
+        {
+            var clock = new SkillPlayback.ClipClock(found, 1f);
 
-        return Frames(found, false).Select(e => new SkillMove(clock.Wall(e.Time), e.Offset, 0)).ToArray();
+            moves = Frames(found, false).Select(e => new SkillMove(clock.Wall(e.Time), e.Offset, 0)).ToArray();
+        }
+
+        moves ??= [];
+        AnimationMoves.Add((actionFile, animation), moves);
+
+        return moves;
     }
 
     /// <summary>

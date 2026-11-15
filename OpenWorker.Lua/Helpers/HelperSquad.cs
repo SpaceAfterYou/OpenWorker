@@ -55,6 +55,10 @@ public sealed class HelperSquad
     private readonly Dictionary<Entity, double> _lastSummon = [];
     private readonly List<HelperStrike> _strikes = [];
 
+    // Kept between the steps so that a step makes no lists of its own.
+    private readonly List<SummonedHelper> _thinking = [];
+    private readonly List<HelperStrike> _dealing = [];
+
     internal HelperSquad(World ecs, LuaCreatureManager manager, CombatTables tables)
     {
         _ecs = ecs;
@@ -312,23 +316,34 @@ public sealed class HelperSquad
             return;
         }
 
-        foreach (var helper in _helpers.ToArray())
+        // A helper may leave while the others think: they think from a copy.
+        _thinking.AddRange(_helpers);
+
+        try
         {
-            // A helper that is stunned, asleep, paralysed or frozen stands still until it is over, as a monster does.
-            if (helper.Body is not { } body || !_ecs.IsAlive(helper.Entity) || _manager.Buffs?.IsHeld(helper.Entity) == true)
+            foreach (var helper in _thinking)
             {
-                continue;
-            }
+                // A helper that is stunned, asleep, paralysed or frozen stands still until it is over, as a monster does.
+                if (helper.Body is not { } body || !_ecs.IsAlive(helper.Entity) || _manager.Buffs?.IsHeld(helper.Entity) == true)
+                {
+                    continue;
+                }
 
-            try
-            {
-                body.Update(now, seconds);
-            }
+                try
+                {
+                    body.Update(now, seconds);
+                }
 
-            catch (Exception e)
-            {
-                _manager.Logger.MonsterFailedToThink(e, helper.Helper);
+                catch (Exception e)
+                {
+                    _manager.Logger.MonsterFailedToThink(e, helper.Helper);
+                }
             }
+        }
+
+        finally
+        {
+            _thinking.Clear();
         }
 
         if (_strikes.Count == 0)
@@ -336,16 +351,23 @@ public sealed class HelperSquad
             return;
         }
 
-        var strikes = _strikes.ToArray();
-
+        _dealing.AddRange(_strikes);
         _strikes.Clear();
 
-        foreach (var strike in strikes)
+        try
         {
-            if (_helpers.Contains(strike.Helper))
+            foreach (var strike in _dealing)
             {
-                Strikes?.Invoke(strike);
+                if (_helpers.Contains(strike.Helper))
+                {
+                    Strikes?.Invoke(strike);
+                }
             }
+        }
+
+        finally
+        {
+            _dealing.Clear();
         }
     }
 
@@ -523,7 +545,7 @@ public sealed class HelperSquad
         return count + Defended.CountFoes(monster, distance);
     }
 
-    internal IEnumerable<FlightTarget> FlightTargets(MonsterBody monster)
+    internal void AddFlightTargets(MonsterBody monster, List<FlightTarget> targets)
     {
         foreach (var helper in _helpers)
         {
@@ -531,14 +553,11 @@ public sealed class HelperSquad
             {
                 var combat = _ecs.Get<MonsterCombatComponent>(helper.Entity);
 
-                yield return new FlightTarget(helper.Actor, _ecs.Get<WorldComponent>(helper.Entity).Position, combat.BodyRadius, combat.BodyHeight);
+                targets.Add(new FlightTarget(helper.Actor, _ecs.Get<WorldComponent>(helper.Entity).Position, combat.BodyRadius, combat.BodyHeight));
             }
         }
 
-        foreach (var target in Defended.FlightTargets(monster))
-        {
-            yield return target;
-        }
+        Defended.AddFlightTargets(monster, targets);
     }
 
     /// <summary>
@@ -733,22 +752,53 @@ public sealed class HelperSquad
     {
         var from = helper.Position;
 
-        return _manager.Living.Count(e => IsEnemy(helper, e) && Vector3.Distance(from, _ecs.Get<WorldComponent>(e).Position) <= distance);
+        var living = _manager.Living;
+        var count = 0;
+
+        for (var index = 0; index < living.Count; index++)
+        {
+            if (IsEnemy(helper, living[index]) && Vector3.Distance(from, _ecs.Get<WorldComponent>(living[index]).Position) <= distance)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     internal Entity[] EnemiesTouching(HelperBody helper, AttackArea area)
     {
-        return _manager.Living
-            .Where(e => IsEnemy(helper, e))
-            .Where(e => area.Touches(_ecs.Get<WorldComponent>(e).Position, _ecs.Get<MonsterCombatComponent>(e).BodyRadius, _ecs.Get<MonsterCombatComponent>(e).BodyHeight))
-            .ToArray();
+        var living = _manager.Living;
+        List<Entity>? touched = null;
+
+        for (var index = 0; index < living.Count; index++)
+        {
+            var creature = living[index];
+
+            if (IsEnemy(helper, creature) && area.Touches(_ecs.Get<WorldComponent>(creature).Position, _ecs.Get<MonsterCombatComponent>(creature).BodyRadius,
+                    _ecs.Get<MonsterCombatComponent>(creature).BodyHeight))
+            {
+                (touched ??= []).Add(creature);
+            }
+        }
+
+        return touched is null ? [] : [.. touched];
     }
 
-    internal FlightTarget[] EnemyFlightTargets(HelperBody helper)
+    internal void AddEnemyFlightTargets(HelperBody helper, List<FlightTarget> targets)
     {
-        return _manager.Living
-            .Where(e => IsEnemy(helper, e))
-            .Select(e => new FlightTarget(_ecs.Get<ActorComponent>(e), _ecs.Get<WorldComponent>(e).Position, _ecs.Get<MonsterCombatComponent>(e).BodyRadius, _ecs.Get<MonsterCombatComponent>(e).BodyHeight))
-            .ToArray();
+        var living = _manager.Living;
+
+        for (var index = 0; index < living.Count; index++)
+        {
+            var creature = living[index];
+
+            if (IsEnemy(helper, creature))
+            {
+                var combat = _ecs.Get<MonsterCombatComponent>(creature);
+
+                targets.Add(new FlightTarget(_ecs.Get<ActorComponent>(creature), _ecs.Get<WorldComponent>(creature).Position, combat.BodyRadius, combat.BodyHeight));
+            }
+        }
     }
 }

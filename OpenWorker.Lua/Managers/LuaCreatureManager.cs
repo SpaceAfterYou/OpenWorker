@@ -1465,12 +1465,15 @@ public sealed partial class LuaCreatureManager
     /// <summary>
     /// The players as something a projectile can run into, named by the actor.
     /// </summary>
-    internal FlightTarget[] GetPlayerTargets()
+    internal void AddPlayerTargets(List<FlightTarget> targets)
     {
-        return Players
-            .Where(e => ecs.IsAlive(e) && Vitals.IsAlive(e))
-            .Select(e => new FlightTarget(ecs.Get<ActorComponent>(e).Identifier, Vitals.PositionOf(e), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight))
-            .ToArray();
+        foreach (var player in Players)
+        {
+            if (ecs.IsAlive(player) && Vitals.IsAlive(player))
+            {
+                targets.Add(new FlightTarget(ecs.Get<ActorComponent>(player).Identifier, Vitals.PositionOf(player), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight));
+            }
+        }
     }
 
     internal Entity? FindPlayerEntity(int identifier)
@@ -1504,8 +1507,13 @@ public sealed partial class LuaCreatureManager
         AiTarget? best = null;
         var nearest = distance;
 
-        foreach (var player in Players.Where(e => ecs.IsAlive(e) && Vitals.IsAlive(e)))
+        foreach (var player in Players)
         {
+            if (!ecs.IsAlive(player) || !Vitals.IsAlive(player))
+            {
+                continue;
+            }
+
             var target = Describe(player);
             var between = Vector3.Distance(from, target.Position) - target.Radius;
 
@@ -1521,12 +1529,32 @@ public sealed partial class LuaCreatureManager
 
     internal int CountPlayers(Vector3 from, float distance)
     {
-        return Players.Count(e => ecs.IsAlive(e) && Vitals.IsAlive(e) && Vector3.Distance(from, Vitals.PositionOf(e)) <= distance);
+        var count = 0;
+
+        foreach (var player in Players)
+        {
+            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && Vector3.Distance(from, Vitals.PositionOf(player)) <= distance)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     internal int CountMonsters(int sector)
     {
-        return Creatures.Count(e => ecs.Get<ActorComponent>(e).Type == ActorType.Monster && ecs.Get<NonPlayableCreatureComponent>(e).Sector == sector);
+        var count = 0;
+
+        foreach (var creature in Creatures)
+        {
+            if (ecs.Get<ActorComponent>(creature).Type == ActorType.Monster && ecs.Get<NonPlayableCreatureComponent>(creature).Sector == sector)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     internal Vector3 PositionOf(Entity player) => Vitals.PositionOf(player);
@@ -1614,7 +1642,16 @@ public sealed partial class LuaCreatureManager
     /// </summary>
     internal bool IsMonsterAlive(int table)
     {
-        return Creatures.Any(e => ecs.IsAlive(e) && ecs.Get<ActorComponent>(e).Type == ActorType.Monster && ecs.Get<CreatureComponent>(e) is { Health: > 0 } creature && creature.Identifier == table);
+        foreach (var monster in Creatures)
+        {
+            if (ecs.IsAlive(monster) && ecs.Get<ActorComponent>(monster).Type == ActorType.Monster && ecs.Get<CreatureComponent>(monster) is { Health: > 0 } creature &&
+                creature.Identifier == table)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -1644,9 +1681,17 @@ public sealed partial class LuaCreatureManager
 
     internal IReadOnlyList<Entity> PlayersTouching(AttackArea area)
     {
-        return Players
-            .Where(e => ecs.IsAlive(e) && Vitals.IsAlive(e) && area.Touches(Vitals.PositionOf(e), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight))
-            .ToArray();
+        List<Entity>? touched = null;
+
+        foreach (var player in Players)
+        {
+            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && area.Touches(Vitals.PositionOf(player), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight))
+            {
+                (touched ??= []).Add(player);
+            }
+        }
+
+        return touched ?? (IReadOnlyList<Entity>)[];
     }
 
     /// <summary>

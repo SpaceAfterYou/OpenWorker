@@ -142,10 +142,21 @@ public sealed class DefendedTargets
 
     internal int CountFoes(MonsterBody monster, float distance)
     {
-        return _targets.Count(e => IsFoe(monster, e) && Vector3.Distance(monster.Position, _ecs.Get<WorldComponent>(e).Position) <= distance);
+        var from = monster.Position;
+        var count = 0;
+
+        foreach (var creature in _targets)
+        {
+            if (IsFoe(monster, creature) && Vector3.Distance(from, _ecs.Get<WorldComponent>(creature).Position) <= distance)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
-    internal IEnumerable<FlightTarget> FlightTargets(MonsterBody monster)
+    internal void AddFlightTargets(MonsterBody monster, List<FlightTarget> targets)
     {
         foreach (var creature in _targets)
         {
@@ -153,7 +164,7 @@ public sealed class DefendedTargets
             {
                 var combat = _ecs.Get<MonsterCombatComponent>(creature);
 
-                yield return new FlightTarget(_ecs.Get<ActorComponent>(creature), _ecs.Get<WorldComponent>(creature).Position, combat.BodyRadius, combat.BodyHeight);
+                targets.Add(new FlightTarget(_ecs.Get<ActorComponent>(creature), _ecs.Get<WorldComponent>(creature).Position, combat.BodyRadius, combat.BodyHeight));
             }
         }
     }

@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Reflection;
 using OpenWorker.Gameplay.Ai;
 
 namespace OpenWorker.Hotspot.Test;
@@ -248,6 +249,64 @@ public sealed partial class AiMachineTest
         builder.RegisterStateFunctions(AiState.SelectAction);
 
         return builder;
+    }
+
+    /// <summary>
+    /// A mind kept for the next monster of its script forgets the one before: it is as a new mind would be.
+    /// </summary>
+    [TestMethod]
+    public void AMindResetForANewMonsterIsAsANewMind()
+    {
+        var host = new Host { Player = Player(new Vector3(100, 0, 0)) };
+
+        host.Skills[0] = Skill(11);
+
+        var used = Create(Fighter(), host);
+
+        used.Start();
+        used.OnDamaged(new AiHit(1000, 50f, 30));
+        Run(used, host, 5f);
+        Assert.IsNotEmpty(host.Used, "The mind has fought.");
+
+        used.Reset();
+
+        var fresh = new AiMachine(used.Profile, host, new Random(1));
+
+        foreach (var field in typeof(AiMachine).GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+        {
+            var (kept, made) = (field.GetValue(used), field.GetValue(fresh));
+
+            switch (kept)
+            {
+                case Delegate or Random:
+                    continue;
+
+                case System.Collections.IDictionary dictionary when field.Name == "_timers":
+                    foreach (var timers in dictionary.Values)
+                    {
+                        foreach (var time in timers!.GetType().GetFields())
+                        {
+                            Assert.AreEqual(0f, time.GetValue(timers), $"{field.Name}.{time.Name}");
+                        }
+                    }
+
+                    continue;
+
+                case System.Collections.ICollection collection:
+                    Assert.AreEqual(((System.Collections.ICollection)made!).Count, collection.Count, field.Name);
+
+                    if (collection is Array array)
+                    {
+                        CollectionAssert.AreEqual((Array)made!, array, field.Name);
+                    }
+
+                    continue;
+
+                default:
+                    Assert.AreEqual(made, kept, field.Name);
+                    continue;
+            }
+        }
     }
 
     [TestMethod]

@@ -31,6 +31,12 @@ public sealed partial class AiMachine
     private int _farChecksLeft = FarChecks;
     private float _recoveryTime;
 
+    private void ResetFollower()
+    {
+        _farChecksLeft = FarChecks;
+        _recoveryTime = 0f;
+    }
+
     /// <summary>
     /// The machine drives a helper of a person, not a monster of the maze.
     /// </summary>

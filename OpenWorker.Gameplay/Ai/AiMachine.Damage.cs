@@ -40,6 +40,16 @@ public sealed partial class AiMachine
     /// </summary>
     private AiHitKind _lastHitKind = AiHitKind.Skill;
 
+    private void ResetDamage()
+    {
+        _escapePoints = -1f;
+        _sinceEscapePoint = 0f;
+        _escapeSawQuickBlow = false;
+        _taunt = NoTarget;
+        _lastHitKind = AiHitKind.Skill;
+        CallsGroup = false;
+    }
+
     /// <summary>
     /// The monsters of this one's group are called when it has an enemy and is hurt or has just seen one.
     /// </summary>
@@ -219,7 +229,8 @@ public sealed partial class AiMachine
         var most = 0f;
         var reset = _profile.DamageAggroResetTime;
 
-        foreach (var (id, aggro) in _aggro.ToArray())
+        // A dictionary lets its entries go while it is walked.
+        foreach (var (id, aggro) in _aggro)
         {
             if (_host.GetTarget(id) is null)
             {

@@ -100,6 +100,16 @@ public sealed class ProjectileFlight
     public List<Explosion> Advance(float seconds, IReadOnlyList<FlightTarget> targets)
     {
         var explosions = new List<Explosion>();
+
+        Advance(seconds, targets, explosions);
+
+        return explosions;
+    }
+
+    /// <inheritdoc cref="Advance(float, IReadOnlyList{FlightTarget})"/>
+    /// <param name="explosions">Where the explosions of this advance are added.</param>
+    public void Advance(float seconds, IReadOnlyList<FlightTarget> targets, List<Explosion> explosions)
+    {
         var stride = MathF.Max(_info.Radius, MinStride);
         var steps = _info.Speed > 0f ? Math.Max(1, (int)MathF.Ceiling(_info.Speed * seconds / stride)) : 1;
         var step = seconds / steps;
@@ -108,8 +118,6 @@ public sealed class ProjectileFlight
         {
             Step(step, targets, explosions);
         }
-
-        return explosions;
     }
 
     private void Step(float seconds, IReadOnlyList<FlightTarget> targets, List<Explosion> explosions)
@@ -216,11 +224,21 @@ public sealed class ProjectileFlight
             return;
         }
 
-        var nearest = targets
-            .Where(Touches)
-            .OrderBy(e => Vector3.DistanceSquared(e.Position, Position))
-            .Select(e => (FlightTarget?)e)
-            .FirstOrDefault();
+        FlightTarget? nearest = null;
+        var closest = float.PositiveInfinity;
+
+        for (var index = 0; index < targets.Count; index++)
+        {
+            var target = targets[index];
+            var distance = Vector3.DistanceSquared(target.Position, Position);
+
+            // The first of those at the same distance, as a stable sort gives it.
+            if (distance < closest && Touches(target))
+            {
+                closest = distance;
+                nearest = target;
+            }
+        }
 
         if (nearest is { } hit)
         {

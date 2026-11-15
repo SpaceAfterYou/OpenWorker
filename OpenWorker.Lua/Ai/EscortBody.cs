@@ -106,12 +106,21 @@ internal sealed class EscortBody : MonsterBody, IAiHost
         return true;
     }
 
-    protected override FlightTarget[] FlightTargets()
+    protected override void CollectFlightTargets(List<FlightTarget> targets)
     {
-        return Manager.Living
-            .Where(IsEnemy)
-            .Select(e => new FlightTarget(Ecs.Get<ActorComponent>(e), Ecs.Get<WorldComponent>(e).Position, Ecs.Get<MonsterCombatComponent>(e).BodyRadius, Ecs.Get<MonsterCombatComponent>(e).BodyHeight))
-            .ToArray();
+        var living = Manager.Living;
+
+        for (var index = 0; index < living.Count; index++)
+        {
+            var creature = living[index];
+
+            if (IsEnemy(creature))
+            {
+                var combat = Ecs.Get<MonsterCombatComponent>(creature);
+
+                targets.Add(new FlightTarget(Ecs.Get<ActorComponent>(creature), Ecs.Get<WorldComponent>(creature).Position, combat.BodyRadius, combat.BodyHeight));
+            }
+        }
     }
 
     protected override IReadOnlyList<Entity> TrapTargets(AttackTrigger trigger, AttackArea area) => Touching(area);
