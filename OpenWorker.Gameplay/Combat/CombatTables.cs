@@ -153,6 +153,26 @@ public sealed class CombatTables(
     }
 
     /// <summary>
+    /// The monster with the level, the status row and the added life of another table (the server's own monster table) in place
+    /// of those of the client's; everything else stays as the client's row gives it. A status row the tables lack leaves the
+    /// monster as it is.
+    /// </summary>
+    public MonsterCombatComponent GetMonster(int identifier, byte level, int statusId, byte statusType, int addHealth)
+    {
+        var combat = GetMonster(identifier);
+
+        if (!Monsters.TryGetValue(identifier, out var row) || statusId is < short.MinValue or > short.MaxValue ||
+            !Statuses.TryGetValue((short)statusId, out var status))
+        {
+            return combat;
+        }
+
+        var stats = CombatStatCalculator.Calculate(status, level, statusType, StatBonuses.From(row) with { Health = addHealth });
+
+        return combat with { Stats = stats, StatusType = statusType };
+    }
+
+    /// <summary>
     /// What a hero is at a level with nothing added: what the client calls its origin stats.
     /// </summary>
     public CombatStats GetPerson(Hero hero, byte level)

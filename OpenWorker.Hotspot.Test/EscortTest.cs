@@ -355,6 +355,74 @@ public sealed class EscortTest
     }
 
     /// <summary>
+    /// The townsman a maze escorts takes its level, status row and added life from the server's own monster table when the server
+    /// has it, then the rate of its group for one member; without that table it is what the client's table makes it. Any other
+    /// monster keeps the client's table.
+    /// </summary>
+    [TestMethod]
+    public void TheEscortedTakesItsLifeFromTheServersMonsterTable()
+    {
+        var monsters = TestTables.Load<MonsterRow>("tb_Monster");
+        var tables = new CombatTables(monsters, TestTables.Load<StatusRow>("tb_Status"), TestMazes.None<SkillRow>(), TestMazes.None<CharacterInfoRow>());
+        var revision = new Gameplay.Modules.Maze.PartyRevision(
+            TestTables.LoadServer<MonsterReviseGroupRow>("tb_Monster"), TestTables.LoadServer<PartyReviseRatesRow>("tb_PartyRevise"));
+        var none = new Gameplay.Modules.Maze.PartyRevision(TestMazes.None<MonsterReviseGroupRow>(), TestMazes.None<PartyReviseRatesRow>());
+
+        Assert.IsTrue(revision.TryGetMonster(Escorted, out var server));
+
+        var expected = revision.Apply(tables.GetMonster(Escorted, server.Level, server.StatusId, server.StatusType, server.AddHealth), Escorted, 1);
+        var client = tables.GetMonster(Escorted);
+
+        Assert.AreNotEqual(client.Stats.MaxHealth, expected.Stats.MaxHealth, "The two tables differ for the townsman");
+
+        var withServer = Spawn(revision, out var puppet);
+
+        Assert.AreEqual((int)expected.Stats.MaxHealth, withServer.Health);
+        Assert.AreEqual(server.Level, withServer.Level);
+        Assert.AreEqual(revision.Apply(tables.GetMonster(Puppet), Puppet, 1).Stats.MaxHealth, puppet.Stats.MaxHealth, "Another monster keeps the client's table");
+
+        var withoutServer = Spawn(none, out _);
+
+        Assert.AreEqual((int)client.Stats.MaxHealth, withoutServer.Health);
+        Assert.AreEqual(client.Stats.Level, withoutServer.Level);
+
+        CreatureComponent Spawn(Gameplay.Modules.Maze.PartyRevision rates, out MonsterCombatComponent other)
+        {
+            var world = World.Create();
+
+            try
+            {
+                var player = world.Create(new ActorComponent(1, ActorType.User), new ServerSessionComponent(Stream.Null),
+                    new WorldComponent { Location = 0, Position = new Vector3(100f, 100f, 0f), Rotation = 0f, Jump = 0 });
+                var services = new CreatureServices(null!, new MonsterBehaviorTables(TestMazes.None<MonsterRow>(), TestMazes.None<SkillRow>()), null!,
+                    TestMazes.Clock(), new NavMeshProvider(), revision: rates);
+                var batch = TestMazes.Map(Map());
+                var creatures = new LuaCreatureManager(world, batch, tables, services);
+                var maze = TestMazes.Create(world, player, batch: batch, creatures: creatures, tables: tables);
+
+                maze.SetEscortMonster(Episode, new LuaValue(Escorted), LuaValue.Nil);
+                maze.SpawnSector(Sector);
+
+                var townsman = creatures.Living.Single(e => world.Get<CreatureComponent>(e).Identifier == Escorted);
+                var spawned = creatures.CreateMonstersAt(Puppet, [new Vector3(1300f, 900f, 0f)], 0f, Sector, still: true).Single();
+
+                other = world.Get<MonsterCombatComponent>(spawned);
+
+                var state = world.Get<CreatureComponent>(townsman);
+
+                maze.Close();
+
+                return state;
+            }
+
+            finally
+            {
+                World.Destroy(world);
+            }
+        }
+    }
+
+    /// <summary>
     /// The real script of the one maze with an escort names the escort and the quest of the party when the maze is made. A player
     /// who has done the talk of the episode and loads the maze in its first sector starts the quest; the box of that sector brings
     /// the townsman in, and its way starts.

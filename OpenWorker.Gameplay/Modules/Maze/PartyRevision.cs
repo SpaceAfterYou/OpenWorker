@@ -42,6 +42,16 @@ public sealed class PartyRevision(ReadOnlyCollection<MonsterReviseGroupRow> mons
     }
 
     /// <summary>
+    /// The row of the server's own monster table for the monster, if the server has that table.
+    /// </summary>
+    public bool TryGetMonster(int monster, out MonsterReviseGroupRow row)
+    {
+        row = default;
+
+        return monster >= 0 && _monsters.TryGet((uint)monster, out row);
+    }
+
+    /// <summary>
     /// The row that says how strong the monster is for the number of members, if the tables have one.
     /// </summary>
     public bool TryGet(int monster, int members, out PartyReviseRatesRow row)

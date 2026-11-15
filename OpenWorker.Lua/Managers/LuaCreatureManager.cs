@@ -503,12 +503,37 @@ public sealed partial class LuaCreatureManager
     }
 
     /// <summary>
+    /// The kinds of monster that take their level, status row and life from the server's own monster table when the server has
+    /// it: the townsman a maze escorts.
+    /// </summary>
+    private readonly HashSet<int> _serverStats = [];
+
+    /// <summary>
+    /// The monsters of the kind made from now on take their level, status row and life from the server's own monster table, when
+    /// the server has that table and a row for them.
+    /// </summary>
+    public void UseServerStats(int identifier)
+    {
+        _serverStats.Add(identifier);
+    }
+
+    /// <summary>
+    /// What the tables make of a monster of the kind before the party's rates.
+    /// </summary>
+    private MonsterCombatComponent Table(int identifier)
+    {
+        return _serverStats.Contains(identifier) && Services?.Revision is { } revision && revision.TryGetMonster(identifier, out var row)
+            ? tables.GetMonster(identifier, row.Level, row.StatusId, row.StatusType, row.AddHealth)
+            : tables.GetMonster(identifier);
+    }
+
+    /// <summary>
     /// The monster as strong as it is for the number of members: what its group says when the tables have a row for it, else
     /// what its own table gives and a guessed gauge for its super armor.
     /// </summary>
     private MonsterCombatComponent Strength(int identifier, int members)
     {
-        var combat = tables.GetMonster(identifier);
+        var combat = Table(identifier);
 
         if (Services?.Revision is { } revision && revision.TryGet(identifier, members, out _))
         {
@@ -567,7 +592,7 @@ public sealed partial class LuaCreatureManager
     private void Restrengthen(Entity creature, CreatureComponent state, PartyRevision revision)
     {
         var before = ecs.Get<MonsterCombatComponent>(creature);
-        var after = revision.Apply(tables.GetMonster(state.Identifier), state.Identifier, PartyCount);
+        var after = revision.Apply(Table(state.Identifier), state.Identifier, PartyCount);
 
         // The share of life the monster has left stays, and so does the share of its super armor.
         var share = state.Health > 0 && before.Stats.MaxHealth > 0f ? state.Health / before.Stats.MaxHealth : 1f;

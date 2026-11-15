@@ -80,6 +80,11 @@ public partial class LuaMaze
             : monster.TryRead<string>(out var text) && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
 
         Logger.CallSetEscortMonster(episode, _escortMonster);
+
+        if (_escortMonster != 0)
+        {
+            creatureManager.UseServerStats(_escortMonster);
+        }
     }
 
     /// <summary>
