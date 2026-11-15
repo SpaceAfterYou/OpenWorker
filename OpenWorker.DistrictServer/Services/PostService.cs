@@ -34,7 +34,7 @@ namespace OpenWorker.DistrictServer.Services;
 /// <remarks>
 /// A letter is written by its store when it changes (see <see cref="IPostStore"/>). What it carries moves through
 /// <see cref="InventoryService"/>, which marks the inventory and the wallet for the flush. Sending takes the gold and the
-/// items and writes the sender (<see cref="IPersonCommit"/>) before the letter is written, and gives them back if that write
+/// items and writes the sender (<see cref="IPersonFlush"/>) before the letter is written, and gives them back if that write
 /// or the letter fails; taking what a letter carries claims it in the database first, puts the claim back if it cannot be
 /// given, and flushes the person after. A crash in between loses what moved, it never doubles it.
 /// </remarks>
@@ -44,7 +44,6 @@ public sealed partial class PostService(
     InventoryService inventory,
     CommunityNetwork network,
     IPersonFlush persons,
-    IPersonCommit commit,
     ILogger<PostService> logger
 ) :
     IHotspotHandler<PostSendListRequest>,
@@ -213,7 +212,7 @@ public sealed partial class PostService(
         {
             // What the letter carries is written as gone from the sender before the letter is written: a crash in between
             // loses it, and never leaves it both with the sender and in the letter.
-            if (await commit.CommitAsync(player))
+            if (await persons.FlushAsync(player))
             {
                 result = await store.SendAsync(draft, context.CancellationToken);
             }

@@ -216,7 +216,7 @@ public sealed class PostTest
         var inventory = new InventoryService(server.World, catalog, new LocalItemSerials());
         var factory = new InventoryFactory(catalog, new([]), new LocalItemSerials());
 
-        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TestPersonCommit.Written,
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, TestPersonFlush.Written,
             NullLogger<PostService>.Instance);
 
         foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
@@ -328,7 +328,7 @@ public sealed class PostTest
         var inventory = new InventoryService(server.World, Catalog(), new LocalItemSerials());
         var factory = new InventoryFactory(Catalog(), new([]), new LocalItemSerials());
 
-        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TestPersonCommit.Written,
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, TestPersonFlush.Written,
             NullLogger<PostService>.Instance);
 
         foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
@@ -404,9 +404,9 @@ public sealed class PostTest
 
         var inventory = new InventoryService(server.World, Catalog(), new LocalItemSerials());
         var factory = new InventoryFactory(Catalog(), new([]), new LocalItemSerials());
-        var commit = new TestPersonCommit(false);
+        var commit = new TestPersonFlush(false);
 
-        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, commit,
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, commit,
             NullLogger<PostService>.Instance);
 
         var person = new PersonPersistent

@@ -35,7 +35,6 @@ public static class PersistenceServiceCollectionExtensions
         services.AddSingleton<PersonFlush>();
         services.Replace(ServiceDescriptor.Singleton<IPersonFlush>(provider => provider.GetRequiredService<PersonFlush>()));
         services.AddSingleton<ISessionCloseHandler>(provider => provider.GetRequiredService<PersonFlush>());
-        services.AddSingleton<IPersonCommit, PersonCommit>();
 
         return services;
     }
