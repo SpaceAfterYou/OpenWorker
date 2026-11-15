@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Arch.Core;
+using OpenWorker.Batch.Actions;
 using OpenWorker.Domain.Attributes;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Buffs;
@@ -74,8 +75,10 @@ public static class SkillRefusal
 /// and starts the cooldown of its group and the global cooldown.
 /// </summary>
 public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, PlayerGauges gauges, ReadOnlyCollection<DeckBonusRow>? deckBonuses = null, CombatTables? combat = null,
-    HiddenEventCounter? hiddenEvents = null)
+    HiddenEventCounter? hiddenEvents = null, ReadOnlyCollection<DivergenceRow>? divergences = null)
 {
+    private readonly RowIndex<int, DivergenceRow> _divergences = (divergences ?? new ReadOnlyCollection<DivergenceRow>([])).IndexBy(e => e.Id);
+
     private readonly RowIndex<short, DeckBonusRow> _deckBonuses = (deckBonuses ?? new ReadOnlyCollection<DeckBonusRow>([])).IndexBy(e => e.Id);
 
     /// <summary>
@@ -122,6 +125,41 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
         var own = DivergenceOfSkill(player, skill);
 
         return own != 0 || parent == 0 ? own : DivergenceOfSkill(player, parent);
+    }
+
+    /// <summary>
+    /// The divergence the player plays the skill with, as the events of its animations name one: zero for none, the level of the
+    /// chosen divergence plus <see cref="ActionFilter.FirstGroup"/> when it is of the first divergence group of the skill (or of
+    /// its parent) and plus <see cref="ActionFilter.SecondGroup"/> for the second.
+    /// </summary>
+    public int DivergenceModeOf(Entity player, int skill, int parent = 0)
+    {
+        var chosen = DivergenceOf(player, skill, parent);
+
+        if (chosen == 0 || !_divergences.TryGet(chosen, out var divergence))
+        {
+            return 0;
+        }
+
+        foreach (var owner in (ReadOnlySpan<int>)[skill, parent])
+        {
+            if (owner == 0 || !_skills.TryGet(owner, out var row))
+            {
+                continue;
+            }
+
+            if (row.DivergenceGroup1 == divergence.Group)
+            {
+                return ActionFilter.FirstGroup + divergence.Level;
+            }
+
+            if (row.DivergenceGroup2 == divergence.Group)
+            {
+                return ActionFilter.SecondGroup + divergence.Level;
+            }
+        }
+
+        return 0;
     }
 
     private int DivergenceOfSkill(Entity player, int skill)

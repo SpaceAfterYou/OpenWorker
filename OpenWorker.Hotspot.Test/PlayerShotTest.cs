@@ -15,6 +15,7 @@ using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Skill.Components;
 using OpenWorker.Hotspot.Modules.Skill.Requests;
 using OpenWorker.Hotspot.Modules.Skill.Types;
+using OpenWorker.Hotspot.Modules.World.Responses;
 using OpenWorker.Lua;
 using OpenWorker.Lua.Ai;
 using OpenWorker.Lua.Managers;
@@ -74,6 +75,18 @@ public sealed class PlayerShotTest
     private const int PierceStep = 12000411;
 
     private const int LightMonster = 30103001;
+
+    /// <summary>
+    /// Haru's First Blade, and the number the client gives the animation of its combo by the right button (seen in the client).
+    /// </summary>
+    private const int FirstBlade = 12000211;
+
+    private const int FirstBladeCombo = 71100;
+
+    /// <summary>
+    /// The number of First Blade's own animation, which no combo offers.
+    /// </summary>
+    private const int FirstBladeItself = 70100;
 
     /// <summary>
     /// The shot of a skill leaves from where the server has the player, whatever place the client names, the way the client aims.
@@ -408,6 +421,52 @@ public sealed class PlayerShotTest
 
     private static SkillProjectileValue ChainOf(int skill, short attack) => default(SkillProjectileValue) with { Skill = skill, TriggerIndex = attack };
 
+    /// <summary>
+    /// The skill a player follows with the animation of a combo (06/4A names it by its number) lands the blows of that animation
+    /// too, the ones for the mode the skill is played in; a number no combo of the skill offers plays nothing.
+    /// </summary>
+    [TestMethod]
+    public async Task TheAnimationOfAComboLandsItsBlows()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var arena = new Arena(world, Hero.Haru, 350f).Open();
+            var mode = new SkillMode(1, 0);
+            var combo = arena.Actions.GetNumberedAnimation(Hero.Haru, FirstBladeCombo);
+
+            Assert.IsNotNull(combo);
+
+            var blows = combo.Attacks.Where(e => e.HitsArea && !mode.At(0).Excludes(e.Filter)).Select(e => (short)e.Id).ToHashSet();
+
+            world.Set(arena.Monster, world.Get<CreatureComponent>(arena.Monster) with { Health = 1_000_000 });
+            arena.Maze.StartSkill(arena.Player, FirstBlade, default, mode);
+
+            Assert.IsFalse(arena.Maze.FollowWithCombo(arena.Player, FirstBladeItself), "No combo offers it.");
+            Assert.IsTrue(arena.Maze.FollowWithCombo(arena.Player, FirstBladeCombo), "Taken as the combo comes.");
+
+            arena.Run(4.0);
+
+            await MetricAssertions.UntilAsync(() => Frames(arena.Connection, SkillOpcode.ActionSkillBt).Any(e => blows.Contains(TriggerOf(e.Body))),
+                "A blow of the animation of the combo lands.");
+
+            Assert.HasCount(1, blows, "One blow of that animation is for a skill without a divergence.");
+
+            arena.Maze.Close();
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// The attack a hit (06/13) names: the short six bytes before its end.
+    /// </summary>
+    private static short TriggerOf(byte[] body) => BinaryPrimitives.ReadInt16LittleEndian(body.AsSpan(body.Length - 6));
+
     private static PlayerFrame[] Frames(RecordingConnection connection, SkillOpcode command) =>
         connection.Frames.Select(PlayerFrame.Open).Where(e => e.Is(GroupOpcode.Skill, (byte)command)).ToArray();
 
@@ -424,6 +483,7 @@ public sealed class PlayerShotTest
         public Entity Monster { get; private set; }
         public LuaCreatureManager Creatures { get; private set; } = null!;
         public LuaMaze Maze { get; private set; } = null!;
+        public SkillActionProvider Actions { get; private set; } = null!;
 
         public Arena Open()
         {
@@ -440,6 +500,8 @@ public sealed class PlayerShotTest
             var tables = new CombatTables(monsters, TestTables.Load<StatusRow>("tb_Status"), skills, heroes);
             var kind = monster != 0 ? monster : monsters.First(e => e.Level is > 1 and < 20 && e.Type == 0 && e.Rank <= 6 && tables.GetMonster(e.Id).Stats.MaxHealth >= 100f).Id;
             var actions = new SkillActionProvider(skills, NullLogger<SkillActionProvider>.Instance) { Folder = folder };
+
+            Actions = actions;
 
             Clock = TestMazes.Clock(Time);
             Player = Person(world, 1, hero, Connection);

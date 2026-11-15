@@ -34,8 +34,10 @@ public partial class LuaMaze
     /// The client only says that a skill has started, so the server decides what it hits and when.
     /// A new skill interrupts the previous one, along with the attacks it has not reached yet.
     /// </summary>
+    /// <param name="mode">The level and divergence the skill is played with, which pick the events of its animations; without
+    /// one every event counts.</param>
     [LuaIgnoreMember]
-    public void StartSkill(Entity player, int skill, SkillPositionValue position)
+    public void StartSkill(Entity player, int skill, SkillPositionValue position, SkillMode? mode = null)
     {
         if (!Started || Find(player) is not { } member)
         {
@@ -49,7 +51,33 @@ public partial class LuaMaze
 
         CountHiddenEventSkill(skill);
 
-        Begin(member, skill, position, true);
+        Begin(member, skill, position, true, mode);
+    }
+
+    /// <summary>
+    /// The player follows the skill it plays with the animation of a combo, which the client names by its number: the
+    /// animation plays and its attacks land when a combo of the skill offers it now, or comes a moment later.
+    /// </summary>
+    /// <returns>Whether the animation plays.</returns>
+    [LuaIgnoreMember]
+    public bool FollowWithCombo(Entity player, int animation)
+    {
+        if (!Started || Find(player) is not { Playback: { } run } member)
+        {
+            return false;
+        }
+
+        BringUp(member, run);
+
+        if (member.Playback != run || actions.GetNumberedAnimation(Ecs.Get<PersonInfoComponent>(player).Hero, animation) is not { } clip ||
+            !run.Playback.Combo(clip, run.Last))
+        {
+            return false;
+        }
+
+        BringUp(member, run);
+
+        return true;
     }
 
     /// <summary>
@@ -168,7 +196,7 @@ public partial class LuaMaze
     /// A new skill interrupts the previous one, along with the attacks it has not reached yet. The akashic skill with a called
     /// card plays the card's coming instead of its own attacks, when <paramref name="callsCards"/>.
     /// </summary>
-    private void Begin(Fighter member, int skill, SkillPositionValue position, bool callsCards)
+    private void Begin(Fighter member, int skill, SkillPositionValue position, bool callsCards, SkillMode? mode = null)
     {
         var generation = ++member.SkillGeneration;
         var hero = Ecs.Get<PersonInfoComponent>(member.Player).Hero;
@@ -187,7 +215,7 @@ public partial class LuaMaze
             return;
         }
 
-        var run = new SkillRun(skill, new SkillPlayback(animations, AttackSpeedOf(member.Player)), position, generation, Clock.Time);
+        var run = new SkillRun(skill, new SkillPlayback(animations, AttackSpeedOf(member.Player), mode), position, generation, Clock.Time);
 
         member.Playback = run;
         member.PressedKeys.Clear();
