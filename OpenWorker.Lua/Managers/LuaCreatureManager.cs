@@ -1647,7 +1647,7 @@ public sealed partial class LuaCreatureManager
     /// </summary>
     private void Throw(Entity player, ReactionKind kind, float height)
     {
-        var posture = PlayerStance.Thrown(Time, kind, height, IsInTheAir(player));
+        var posture = PlayerStance.Thrown(Time, kind, height, ecs.TryGet<PlayerPostureComponent>(player, out var current) ? current : default);
 
         if (ecs.Has<PlayerPostureComponent>(player))
         {
