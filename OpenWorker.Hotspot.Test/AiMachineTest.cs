@@ -205,6 +205,8 @@ public sealed partial class AiMachineTest
                 {
                     Position += offset / distance * Speed * seconds;
                 }
+
+                Yaw = AiMath.YawOf(offset.X, offset.Y);
             }
         }
     }

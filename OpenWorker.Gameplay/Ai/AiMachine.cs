@@ -17,6 +17,11 @@ public sealed partial class AiMachine
     private const float ReturnGiveUpTime = 30f;
     private const float RangeSlack = 30f;
     private const float DefaultSkillAngle = 45f;
+
+    /// <summary>
+    /// A target this much beyond the monster's own body is close against it: any way it looks, it may start a skill on it.
+    /// </summary>
+    private const float LookSlack = 10f;
     private const float RetargetPause = 0.2f;
     private const float ApproachLook = 0.1f;
 
@@ -1714,7 +1719,9 @@ public sealed partial class AiMachine
 
         var distance = SkillDistance(_host.Position, target.Value.Position);
 
-        if (_host.CanAttack && distance >= _skill.RangeMin - RangeSlack && distance <= _skill.RangeMax + target.Value.Radius)
+        // In reach it starts the skill when it looks at the target; one that looks away walks on to its place, and turns there.
+        if (_host.CanAttack && distance >= _skill.RangeMin - RangeSlack && distance <= _skill.RangeMax + target.Value.Radius
+            && (LooksAt(target.Value, _skill) || !_host.IsMoving && (!_host.CanMove || IsAtPlace(target.Value))))
         {
             _host.FaceTo(target.Value.Position);
 
@@ -1753,6 +1760,30 @@ public sealed partial class AiMachine
         }
 
         Approach(target.Value, _skill);
+    }
+
+    /// <summary>
+    /// Whether the monster may start the skill the way it looks: the target lies within the skill's angle of it (never under
+    /// <see cref="DefaultSkillAngle"/>), the skill starts whatever way it looks, the monster never walks, or the target is
+    /// close against it.
+    /// </summary>
+    private bool LooksAt(AiTarget target, AiSkill skill)
+    {
+        if (skill.IgnoresRotation || _host.IsRooted || AiMath.Distance2D(_host.Position, target.Position) <= _host.Radius + LookSlack)
+        {
+            return true;
+        }
+
+        return AiMath.AngleBetween(_host.Yaw, AiMath.YawTo(_host.Position, target.Position)) <= Math.Max(skill.Angle, DefaultSkillAngle);
+    }
+
+    /// <summary>
+    /// The monster stands at the place it holds around the target.
+    /// </summary>
+    private bool IsAtPlace(AiTarget target)
+    {
+        return _place != TargetPlaces.None && _placeTarget == target.Id
+            && AiMath.Distance2D(_host.Position, target.Position + new Vector3(_placeOffset, 0f)) < PlaceReached;
     }
 
     /// <summary>
