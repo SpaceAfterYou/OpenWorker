@@ -8,6 +8,23 @@ namespace OpenWorker.Gameplay.Ai;
 /// </summary>
 public sealed partial class AiMachine
 {
+    private const float HalfTurn = 180f;
+
+    /// <summary>
+    /// The angle between two places round a target.
+    /// </summary>
+    private const float PlaceWidth = 360f / TargetPlaces.Count;
+
+    /// <summary>
+    /// How far round its target a monster comes in one leg of a battle move, in degrees.
+    /// </summary>
+    private const float LegTurn = 45f;
+
+    /// <summary>
+    /// How many legs a battle move tries toward one place before it looks at the other angles.
+    /// </summary>
+    private const int RoundTries = 7;
+
     private TargetPlaces? _ownPlaces;
     private int _place = TargetPlaces.None;
     private int _placeTarget = NoTarget;
@@ -113,6 +130,95 @@ public sealed partial class AiMachine
 
             GiveUpReaching();
         }
+    }
+
+    /// <summary>
+    /// The monster takes a place before its target, within the angles from where the target looks, and walks one leg round the
+    /// target toward it. When no way is found there it tries the other angles round the target, a twelfth of a turn at a time.
+    /// </summary>
+    private void GoRoundTarget(AiTarget target, float distanceMin, float distanceMax, float angleMin, float angleMax)
+    {
+        LeavePlace();
+
+        if (TryGoRound(target, distanceMin, distanceMax, angleMin, angleMax))
+        {
+            return;
+        }
+
+        for (var from = angleMax; from < HalfTurn; from += PlaceWidth)
+        {
+            if (TryGoRound(target, distanceMin, distanceMax, from, Math.Min(from + PlaceWidth, HalfTurn)))
+            {
+                return;
+            }
+        }
+
+        for (var from = 0f; from < angleMin; from += PlaceWidth)
+        {
+            if (TryGoRound(target, distanceMin, distanceMax, from, Math.Min(from + PlaceWidth, angleMin)))
+            {
+                return;
+            }
+        }
+
+        CountFailedWay();
+    }
+
+    private bool TryGoRound(AiTarget target, float distanceMin, float distanceMax, float angleMin, float angleMax)
+    {
+        LeavePlace();
+
+        var place = Places.ChooseByAngle(target.Id, angleMin, angleMax);
+        var high = TargetPlaces.Angle(place);
+        var low = Math.Max(0f, high - PlaceWidth);
+
+        Places.Take(target.Id, place);
+
+        _place = place;
+        _placeTarget = target.Id;
+
+        var away = new Vector2(_host.Position.X - target.Position.X, _host.Position.Y - target.Position.Y);
+        var current = away.Length();
+        var side = current < 1f ? _host.Yaw + HalfTurn : AiMath.YawOf(away.X, away.Y);
+
+        for (var attempt = 0; attempt < RoundTries; attempt++)
+        {
+            // It keeps its distance half the time when that is within the state's, and stands off the target's body.
+            var distance = current < distanceMin || current > distanceMax || _random.Next(2) == 0
+                ? RandomBetween(distanceMin, distanceMax)
+                : current;
+
+            distance += target.Radius;
+
+            if ((int)distance == 0)
+            {
+                break;
+            }
+
+            // Far away it may come round twice as much in one leg.
+            var legTurn = (int)current / (int)distance >= 2 ? 2 * LegTurn : LegTurn;
+            var wanted = RandomBetween((int)low * 10, (int)high * 10) * 0.1f * (_random.Next(2) == 0 ? -1 : 1);
+            var turn = Wrap(side - (target.Yaw + wanted));
+            var leg = Math.Clamp(turn, -legTurn, legTurn);
+            var offset = AiMath.Direction(side - leg) * distance;
+            var end = new Vector3(target.Position.X + offset.X, target.Position.Y + offset.Y, target.Position.Z);
+
+            _placeOffset = offset;
+
+            if (_host.MoveTo(end, true))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static float Wrap(float angle)
+    {
+        angle %= 2 * HalfTurn;
+
+        return angle > HalfTurn ? angle - 2 * HalfTurn : angle < -HalfTurn ? angle + 2 * HalfTurn : angle;
     }
 
     /// <summary>

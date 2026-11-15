@@ -89,6 +89,51 @@ public sealed class TargetPlaces
         return taken[place] < taken[farNext] + 1 ? place : farNext;
     }
 
+    /// <summary>
+    /// The place a monster takes to stand before a target, within angles from where the target looks: the first free one of
+    /// those angles, on its right or its left, else the one the fewest monsters hold.
+    /// </summary>
+    public int ChooseByAngle(int target, float angleMin, float angleMax)
+    {
+        var taken = TakenAround(target);
+        var low = Math.Min(angleMin, 180f);
+        var high = Math.Min(angleMax, 180f);
+        var begin = Math.Max(0, (int)(low / Width));
+        var end = (int)(high / Width);
+
+        if ((int)high % Width > 0 && high > Width * begin)
+        {
+            end = Math.Min(end + 1, Count / 2 - 1);
+        }
+
+        var best = begin;
+        var fewest = int.MaxValue;
+
+        for (var next = begin; next < end; next++)
+        {
+            foreach (var place in (ReadOnlySpan<int>)[next, Count - next - 1])
+            {
+                if (taken[place] == 0)
+                {
+                    return place;
+                }
+
+                if (taken[place] < fewest)
+                {
+                    fewest = taken[place];
+                    best = place;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// The angle of a place from where its target looks, in degrees.
+    /// </summary>
+    public static float Angle(int place) => Width * (place + 1);
+
     public void Take(int target, int place)
     {
         if (place is >= 0 and < Count)
