@@ -19,6 +19,7 @@ using OpenWorker.Hotspot.Modules.Maze.Responses;
 using OpenWorker.Hotspot.Modules.Maze.Types;
 using OpenWorker.Hotspot.Modules.Quests.Enums;
 using OpenWorker.Hotspot.Modules.World.Responses;
+using OpenWorker.Batch;
 using OpenWorker.Batch.Actions;
 using OpenWorker.Gameplay.Ai;
 using OpenWorker.Gameplay.Modules.Skill.Components;
@@ -331,24 +332,126 @@ public sealed class EscortTest
     }
 
     /// <summary>
-    /// An escorted that falls ends its way where it is, and the quest of the party fails for the player who has its episode.
+    /// An escorted that falls ends its way where it is, and the quest of the party fails for the player who has its episode. A game
+    /// master fells it here; with none on its way there is nothing to fell.
     /// </summary>
     [TestMethod]
     public void AFallenEscortFailsTheQuestOfTheParty()
     {
         using var test = new Test();
 
+        Assert.IsFalse(test.Maze.FellEscorted(test.Player), "None on its way yet");
+
         test.Start();
         test.Pass(0.2);
 
-        var escort = test.Escort!.Value;
-
-        test.World.Set(escort, test.World.Get<CreatureComponent>(escort) with { Health = 0 });
+        Assert.IsTrue(test.Maze.FellEscorted(test.Player));
         test.Pass(0.2);
 
         Assert.AreEqual((402, EscortStatus.Ended), test.Statuses()[^1]);
         Assert.IsNull(test.Escort);
         Assert.IsTrue(test.Book.Failed);
+        Assert.IsFalse(test.Maze.FellEscorted(test.Player), "None on its way after its fall");
+    }
+
+    /// <summary>
+    /// The real script of the one maze with an escort names the escort and the quest of the party when the maze is made. A player
+    /// who has done the talk of the episode and loads the maze in its first sector starts the quest; the box of that sector brings
+    /// the townsman in, and its way starts.
+    /// </summary>
+    [TestMethod]
+    public async Task TheRealEscortMazeStartsItsEscortFromTheBoxOfItsFirstSector()
+    {
+        const string name = "M07_CONCRETEJUNGLE_EP_04";
+        const int episode = 100200;
+        const int talk = 1002001;
+        const int firstSector = 10001;
+        const int firstBox = 9101;
+
+        var ai = Environment.GetEnvironmentVariable("OPENWORKER_TEST_AI");
+        var scripts = string.IsNullOrEmpty(ai) ? null : Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(ai));
+        var maps = scripts is null ? null : Path.Join(Path.GetDirectoryName(scripts), "client_batch");
+
+        if (scripts is null || maps is null || !File.Exists(Path.Join(scripts, name + "_Normal.lua")) || !File.Exists(Path.Join(maps, name + ".vbatch")))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_AI is not set to the AI folder of a stand with the maze scripts and maps.");
+        }
+
+        // The episode: the talk, then the four guards of the townsman, each after the one before.
+        int[] guards = [1002002, 1002003, 1002004, 1002005];
+        var catalog = QuestCatalog.From(
+            [new QuestDefinition(episode, 1, QuestContents.Side, 0, 0, [], false, false, [], [], QuestRewardDefinition.None, [talk, .. guards])],
+            [
+                new QuestConditionDefinition(talk, QuestConditionType.Talk, QuestConditionTarget.Npc, 0, 0, 1, 0, [], []),
+                .. guards.Select((e, i) => new QuestConditionDefinition(e, QuestConditionType.Guard, QuestConditionTarget.Monster, Escorted, i == 0 ? talk : guards[i - 1], 1, 0, [], []))
+            ]);
+
+        var world = World.Create();
+        var batch = VBatchFile.CreateFromPath(Path.Join(maps, name + ".vbatch"));
+        var box = batch.EventBox.LuaFunctions.Find(firstBox)!;
+        var connection = new RecordingConnection();
+        var book = new QuestEpisodeState { Episode = episode, Done = 1 };
+
+        book.Steps[0] = 1;
+
+        var player = world.Create(
+            new ActorComponent(1, ActorType.User),
+            new ServerSessionComponent(connection),
+            new WorldComponent { Location = 22141, Position = (box.PosTopLeft + box.PosBottomRight) / 2f, Rotation = 0f, Jump = 0 },
+            new PersonInfoComponent { Name = "Member", Hero = Hero.Haru },
+            new LevelComponent(20, 0),
+            new AbilityComponent { Health = Life, SoulGain = Life, SoulVapor = Life, Stamina = Life, SuperArmor = Life, Speed = new SpeedComponentEntry { Move = 1f, Attack = 1f } },
+            new QuestComponent { Book = new QuestBook { Episodes = [book] } });
+
+        var time = new FakeTimeProvider();
+        var clock = TestMazes.Clock(time);
+        var state = LuaState.Create();
+
+        state.OpenStandardLibraries();
+        LuaCompatibility.Apply(state);
+
+        Assert.IsTrue(await new MazeScripts(scripts).RunAsync(state, name + "_Normal", CancellationToken.None));
+
+        var quests = new QuestManager(world, null!, catalog, null!, null!, null!, null!, NullLogger<QuestManager>.Instance);
+        var maze = TestMazes.Create(world, player, clock: clock, state: state, batch: batch, quests: quests);
+
+        try
+        {
+            await state.OnMazeCreatedAsync(maze);
+
+            maze.MarkLoaded(player);
+            Assert.IsTrue(maze.TryStart());
+            maze.SpawnSector(firstSector);
+
+            await maze.RunFunctionBoxAsync(player, "OnPartyQuestEvent", firstBox);
+
+            for (var elapsed = 0d; elapsed < 3; elapsed += SimulationClock.Period.TotalSeconds)
+            {
+                time.Advance(SimulationClock.Period);
+                clock.Tick();
+            }
+
+            Assert.IsTrue(maze.Creatures.Living.Any(e => world.IsAlive(e) && world.Get<CreatureComponent>(e).Identifier == Escorted), "The townsman came");
+
+            var opcode = new MazeEscortStatusResponse().Opcode.Value;
+            var deadline = DateTime.UtcNow.AddSeconds(2);
+            PlayerFrame[] statuses = [];
+
+            while (statuses.Length == 0 && DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(5);
+                statuses = connection.Frames.Select(PlayerFrame.Open).Where(e => e.Opcode.Value == opcode).ToArray();
+            }
+
+            Assert.IsNotEmpty(statuses, "Its way started");
+            Assert.AreEqual(EscortStatus.Started, (EscortStatus)statuses[0].Body[4]);
+        }
+
+        finally
+        {
+            maze.Close();
+            World.Destroy(world);
+        }
     }
 
     /// <summary>

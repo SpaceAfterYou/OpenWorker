@@ -42,6 +42,17 @@ public static class LuaStateExtensions
         }
     }
 
+    /// <summary>
+    /// The maze is made, before anyone is in it: the script names what the maze holds for the whole run, such as the escort
+    /// and the quest of the party. No actor of the system stands for the maze here, so the script gets none.
+    /// </summary>
+    public static async ValueTask OnMazeCreatedAsync(this LuaState state, LuaMaze maze, CancellationToken cancellationToken = default)
+    {
+        maze.Logger.EventMazeCreated();
+
+        await CallAsync(state, maze, "OnMazeCreated", [LuaValue.Nil, new LuaValue(maze)], cancellationToken);
+    }
+
     public static async ValueTask OnEnterPlayerAsync(this LuaState state, ActorValue actor, LuaMaze maze, CancellationToken cancellationToken = default)
     {
         maze.Logger.EventEnterPlayer(actor.Identifier);
