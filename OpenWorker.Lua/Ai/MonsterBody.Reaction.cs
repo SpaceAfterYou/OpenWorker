@@ -113,6 +113,7 @@ internal partial class MonsterBody
         _attackEnd = 0;
         _pending.Clear();
         _clips.Clear();
+        _speeds.Clear();
         _moves.Clear();
         DropCombo();
         ReleaseGrab(true);

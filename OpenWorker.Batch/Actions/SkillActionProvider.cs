@@ -63,6 +63,11 @@ public sealed record SkillStage(float Length, IReadOnlyList<SkillHit> Hits, IRea
 }
 
 /// <summary>
+/// A stretch of a skill whose animation plays at a speed of its own, from and to on the clock from the start of the skill.
+/// </summary>
+public readonly record struct SkillSpeed(float From, float To, float Speed);
+
+/// <summary>
 /// An animation of a skill on the clock: when it begins, from the start of the skill, and how long it lasts, in seconds.
 /// </summary>
 public readonly record struct TimedClip(float Began, float Length, ActionAnimation Animation);
@@ -96,6 +101,11 @@ public sealed record SkillTimeline(float Length, IReadOnlyList<TimedClip> Clips,
     /// The moments the monster brings in other monsters, in the order of time.
     /// </summary>
     public IReadOnlyList<SkillHit> Summons { get; init; } = [];
+
+    /// <summary>
+    /// The stretches that play at a speed of their own, in the order of time.
+    /// </summary>
+    public IReadOnlyList<SkillSpeed> Speeds { get; init; } = [];
 }
 
 /// <summary>
@@ -187,6 +197,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
         var moves = new List<SkillMove>();
         var marks = new List<float>();
         var summons = new List<SkillHit>();
+        var speeds = new List<SkillSpeed>();
         var offset = 0f;
         float? combo = null;
 
@@ -251,6 +262,14 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
                 hidings.AddRange((animation.Hides ?? []).Select(hide => new SkillHiding(round + clock.Wall(hide.Start), hide)).Where(e => !rounds || e.Time < end));
                 marks.AddRange((animation.TrapMarks ?? []).Select(mark => round + clock.Wall(mark)).Where(e => !rounds || e < end));
 
+                foreach (var stretch in clock.Speeds(round))
+                {
+                    if (stretch.From < end)
+                    {
+                        speeds.Add(stretch with { To = Math.Min(stretch.To, end) });
+                    }
+                }
+
                 round += clock.Length;
             }
             while (rounds && round < end);
@@ -268,6 +287,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
             Moves = moves,
             TrapMarks = [.. marks.Order()],
             Summons = [.. summons.OrderBy(e => e.Time)],
+            Speeds = speeds,
             ComboAt = combo
         };
     }
@@ -712,6 +732,14 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     private static string GetHeroFileName(Hero hero)
     {
         return $"{HeroFilePrefix}{(char)('A' + (int)hero - 1)}";
+    }
+
+    /// <summary>
+    /// Gives the provider a file it would otherwise read from the folder.
+    /// </summary>
+    internal void Add(string name, ActionFile file)
+    {
+        Files[name] = file;
     }
 
     private ActionFile? GetFile(string name)

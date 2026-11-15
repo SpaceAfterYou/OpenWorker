@@ -122,6 +122,7 @@ internal partial class MonsterBody : IAiHost
         _grab.Release();
         _detaches.Clear();
         _clips.Clear();
+        _speeds.Clear();
         _moves.Clear();
         _reactionPlays.Clear();
         DropCombo();
@@ -290,6 +291,7 @@ internal partial class MonsterBody : IAiHost
         _attackEnd = 0;
         _pending.Clear();
         _clips.Clear();
+        _speeds.Clear();
         _moves.Clear();
         DropCombo();
         ReleaseGrab(true);
@@ -323,7 +325,7 @@ internal partial class MonsterBody : IAiHost
         MoveWithSkill(until);
         GoOnWithCombo(now);
         ResolveGrab(now);
-        ResolveHidings(now);
+        ResolveHidings(now, elapsed);
         CheckIdleTime(now);
         Fly(elapsed);
         TickTraps(elapsed);
@@ -813,6 +815,7 @@ internal partial class MonsterBody : IAiHost
         _hidings.Clear();
         _detaches.Clear();
         _clips.Clear();
+        _speeds.Clear();
         _moves.Clear();
         _staged = false;
         _freezes = start is null;
@@ -855,6 +858,11 @@ internal partial class MonsterBody : IAiHost
             _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
             AddMoves(timeline.Moves, now, timeline.Clips.Count);
+
+            foreach (var speed in timeline.Speeds)
+            {
+                _speeds.Add((now + speed.From, now + speed.To, speed.Speed));
+            }
 
             foreach (var hiding in timeline.Hidings)
             {
@@ -962,6 +970,8 @@ internal partial class MonsterBody : IAiHost
         {
             _hidings[i] = (_hidings[i].Time + seconds, _hidings[i].Event);
         }
+
+        HoldSpeeds(now, seconds);
 
         for (var i = 0; i < _moves.Count; i++)
         {

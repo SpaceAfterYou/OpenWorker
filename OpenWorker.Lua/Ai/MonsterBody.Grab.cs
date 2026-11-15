@@ -56,9 +56,12 @@ internal partial class MonsterBody
 
         _pending.Sort((first, second) => first.Time.CompareTo(second.Time));
 
-        foreach (var hiding in stage.Hidings.Where(e => IsFollowed(e.Event)))
+        foreach (var hiding in stage.Hidings)
         {
-            _hidings.Add((at + hiding.Time, hiding.Event));
+            if (IsFollowed(hiding.Event))
+            {
+                _hidings.Add((at + hiding.Time, hiding.Event));
+            }
         }
 
         foreach (var detach in stage.Detaches)
