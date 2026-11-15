@@ -26,6 +26,12 @@ public partial class LuaMaze
     public bool IsWorld => World != 0;
 
     /// <summary>
+    /// The members of the killer's party who play the same instance, the killer among them; nobody when it is not set.
+    /// </summary>
+    [LuaIgnoreMember]
+    public Func<Entity, ValueTask<IReadOnlyList<Entity>>>? PartyOf { get; set; }
+
+    /// <summary>
     /// Every box that brings its monsters at once does so, whatever sector the first player stands in.
     /// </summary>
     private void StartWorld()

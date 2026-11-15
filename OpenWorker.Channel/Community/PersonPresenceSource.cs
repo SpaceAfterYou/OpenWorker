@@ -5,6 +5,7 @@ using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Gameplay.Messages.Response.Person.Components;
 using OpenWorker.Gameplay.Modules.Channels.Components;
 using OpenWorker.Gameplay.Modules.Login.Components;
+using OpenWorker.Gameplay.Modules.Maze.Components;
 using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Hotspot;
 using OpenWorker.Hotspot.Modules.Persons.Types;
@@ -33,9 +34,10 @@ internal sealed partial class PersonPresenceSource(
         var info = world.Get<PersonInfoComponent>(player);
         var place = world.Get<WorldComponent>(player);
 
+        // In the open maze of the world the channel is the one of its instance.
         var channel = channels.Count > 0 && world.Has<ChannelMemberComponent>(player)
             ? channels[world.Get<ChannelMemberComponent>(player).Index].Identifier
-            : (short)0;
+            : world.TryGet(player, out WorldMazeChannelComponent open) ? open.Channel : (short)0;
 
         var options = world.Has<PersonOptionComponent>(player) ? world.Get<PersonOptionComponent>(player).Collection : null;
 

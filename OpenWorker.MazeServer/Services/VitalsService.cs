@@ -9,7 +9,9 @@ using OpenWorker.Hotspot.Handler.DataTypes;
 using OpenWorker.Hotspot.Modules.Persons.Enums;
 using OpenWorker.Hotspot.Modules.Persons.Requests;
 using OpenWorker.Hotspot.Modules.System.Responses;
+using OpenWorker.Gameplay.Messages.Response.Person;
 using OpenWorker.Lua;
+using OpenWorker.Server.Common;
 
 namespace OpenWorker.MazeServer.Services;
 
@@ -17,7 +19,7 @@ namespace OpenWorker.MazeServer.Services;
 /// A player who has fallen in a maze asks to get up. The maze decides whether the player may by the way it asks
 /// (<see cref="MazeRevival"/>), and answers a refusal with the code of the reference.
 /// </summary>
-public sealed class VitalsService(World world, MazeRevival revival) : IHotspotHandler<PersonReviveReqRequest>
+public sealed class VitalsService(World world, MazeRevival revival, IPlayerAudience? audience = null) : IHotspotHandler<PersonReviveReqRequest>
 {
     public ValueTask OnHandleAsync(ServiceHandleContext context, PersonReviveReqRequest request)
     {
@@ -50,6 +52,12 @@ public sealed class VitalsService(World world, MazeRevival revival) : IHotspotHa
         }
 
         maze.Creatures.Revive(context.Player, request.Type, owner);
+
+        // Those around the safe place now see the player, and those it left no longer do.
+        if (request.Type == ReviveType.SafetyZone && world.IsAlive(context.Player))
+        {
+            audience?.Relocate(context.Player, world.Get<WorldComponent>(context.Player).Position);
+        }
 
         return ValueTask.CompletedTask;
     }

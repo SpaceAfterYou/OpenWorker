@@ -67,10 +67,16 @@ public partial class LuaMaze
     }
 
     /// <summary>
-    /// The cubes of the maze, which the person takes by holding the click for the time the table gives the object.
+    /// The cubes of the maze, which the person takes by holding the click for the time the table gives the object. The open maze
+    /// of the world shows none.
     /// </summary>
     public void RegisterCubes(Entity player)
     {
+        if (IsWorld)
+        {
+            return;
+        }
+
         foreach (var box in Batch.EventBox.InterActions.Where(e => e.ObjectKey.Contains(CubeKey, StringComparison.OrdinalIgnoreCase)))
         {
             var row = interactions.GetOrDefault(box.Interaction);

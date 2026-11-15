@@ -50,6 +50,7 @@ using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.Skill;
 using OpenWorker.Gameplay.Modules.Helpers;
 using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.Maze.Components;
 using OpenWorker.Gameplay.Modules.MyRoom;
 using OpenWorker.Gameplay.Modules.Tower;
 using OpenWorker.Gameplay.Modules.Boosters;
@@ -105,7 +106,8 @@ public sealed partial class PersonService(
     ILogger<PersonService> logger,
     HiddenEventCatalog? hiddenEvents = null,
     UnityEvents? unityEvents = null,
-    BoosterManager? boosters = null
+    BoosterManager? boosters = null,
+    WorldMazeParties? worldParties = null
 ) :
     IHotspotHandler<PersonEnterGameServerRequest>,
     IHotspotHandler<PersonInfoReqRequest>,
@@ -298,6 +300,20 @@ public sealed partial class PersonService(
 
         world.Add(context.Player, maze);
 
+        // The others find the player on the channel of the open maze, and a member of its party comes to that one.
+        if (maze.IsWorld)
+        {
+            if (world.Has<WorldMazeChannelComponent>(context.Player))
+            {
+                world.Set(context.Player, new WorldMazeChannelComponent(maze.World));
+            }
+
+            else
+            {
+                world.Add(context.Player, new WorldMazeChannelComponent(maze.World));
+            }
+        }
+
         maze.FollowQuests(questCatalog);
 
         maze.Creatures.Vitals.Initialize(context.Player);
@@ -445,6 +461,12 @@ public sealed partial class PersonService(
             UnityEvents = unityEvents,
             WaveChanceOf = boosters is null ? null : e => (int)boosters.GetValue(e, BoosterEffect.IncGroutonRate)
         };
+
+        // In an open maze of the world the quests of the killer's party in the instance count its kills.
+        if (maze.IsWorld && worldParties is not null)
+        {
+            maze.PartyOf = killer => worldParties.InMazeAsync(killer, maze);
+        }
 
         // What happens in the instance is wired once, for every player who is in it then.
         // In an open maze of the world what a kill gives is the killer's alone.
