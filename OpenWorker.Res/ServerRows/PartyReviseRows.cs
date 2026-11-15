@@ -2,8 +2,9 @@ using OpenWorker.Res.Attributes;
 
 namespace OpenWorker.UpdateContent.Res.Rows;
 
-// The tables the server reads to make the monsters of a maze stronger for a party. The client has a smaller copy of the
-// first one, and none of the monster's group.
+// The tables the server reads to make the monsters of a maze stronger for a party, and the stats the server's own monster
+// table gives where they differ from the client's. The client has a smaller copy of the first one, and none of the monster's
+// group.
 
 /// <summary>
 /// The server's own <c>tb_Monster</c>, of which only what the strength of a monster needs is kept: its level, its kind and
@@ -24,7 +25,10 @@ public readonly struct MonsterReviseGroupRow
         reader.ReadBytes(3);
         SkipString(reader);
         SkipString(reader);
-        reader.ReadBytes(47);
+        reader.ReadBytes(39);
+        StatusType = reader.ReadByte();
+        StatusId = reader.ReadInt32();
+        reader.ReadBytes(3);
         SkipString(reader);
         reader.ReadBytes(2);
         SkipString(reader);
@@ -42,7 +46,9 @@ public readonly struct MonsterReviseGroupRow
         SkipString(reader);
         reader.ReadBytes(62);
         PartyRevise = reader.ReadUInt32();
-        reader.ReadBytes(186);
+        reader.ReadByte();
+        AddHealth = reader.ReadInt32();
+        reader.ReadBytes(181);
     }
 
     public uint Id { get; }
@@ -54,6 +60,18 @@ public readonly struct MonsterReviseGroupRow
 
     /// <summary>The group of rows of <see cref="PartyReviseRatesRow"/> that says how much stronger the monster is for a party.</summary>
     public uint PartyRevise { get; }
+
+    public byte StatusType { get; }
+
+    /// <summary>
+    /// The row of the status table the monster's stats grow from.
+    /// </summary>
+    public int StatusId { get; }
+
+    /// <summary>
+    /// The life added to what the status row gives.
+    /// </summary>
+    public int AddHealth { get; }
 
     private static void SkipString(BinaryReader reader)
     {

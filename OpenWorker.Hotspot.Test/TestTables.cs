@@ -17,7 +17,27 @@ internal static class TestTables
             Assert.Inconclusive("OPENWORKER_TEST_RES is not set.");
         }
 
-        using var reader = new BinaryReader(File.OpenRead(Path.Join(Folder, $"{table}.res")));
+        return Read<T>(Path.Join(Folder, $"{table}.res"));
+    }
+
+    /// <summary>
+    /// A table only the server has: set OPENWORKER_TEST_SERVER_RES to the folder with them.
+    /// </summary>
+    public static ReadOnlyCollection<T> LoadServer<T>(string table) where T : struct
+    {
+        var folder = Environment.GetEnvironmentVariable("OPENWORKER_TEST_SERVER_RES");
+
+        if (string.IsNullOrEmpty(folder))
+        {
+            Assert.Inconclusive("OPENWORKER_TEST_SERVER_RES is not set.");
+        }
+
+        return Read<T>(Path.Join(folder, $"{table}.res"));
+    }
+
+    private static ReadOnlyCollection<T> Read<T>(string path) where T : struct
+    {
+        using var reader = new BinaryReader(File.OpenRead(path));
 
         var rows = new T[reader.ReadInt32()];
 
