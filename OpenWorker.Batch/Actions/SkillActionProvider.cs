@@ -4,6 +4,7 @@ using System.Numerics;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Domain.Enums;
 using OpenWorker.UpdateContent.Res.Rows;
+using OpenWorker.Extensions.Data;
 
 namespace OpenWorker.Batch.Actions;
 
@@ -173,7 +174,7 @@ public sealed partial class SkillActionProvider(ReadOnlyCollection<SkillRow> ski
     /// <summary>
     /// Where the action files of the client are.
     /// </summary>
-    public string Folder { get; init; } = "action";
+    public string Folder { get; init; } = DataFolders.Actions.Path;
 
     private Dictionary<int, SkillRow> Rows { get; } = skills.DistinctBy(e => e.Id).ToDictionary(e => e.Id);
     private Dictionary<string, ActionFile?> Files { get; } = new(StringComparer.OrdinalIgnoreCase);

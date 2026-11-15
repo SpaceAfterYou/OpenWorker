@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Lua;
 using Lua.Runtime;
+using OpenWorker.Extensions.Data;
 
 namespace OpenWorker.Lua;
 
@@ -10,9 +11,16 @@ namespace OpenWorker.Lua;
 /// new state instead of reading and compiling the file again.
 /// </summary>
 /// <param name="folder">Where the scripts of the client are, by name.</param>
-public sealed class MazeScripts(string folder = "scripts")
+public sealed class MazeScripts(string folder)
 {
     private readonly ConcurrentDictionary<string, Lazy<Task<Prototype?>>> _compiled = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The scripts of the folder the server reads them from.
+    /// </summary>
+    public MazeScripts() : this(DataFolders.MazeScripts.Path)
+    {
+    }
 
     /// <summary>
     /// The compiled script of the name, or nothing when the client has no such file. Everyone who asks while it is being

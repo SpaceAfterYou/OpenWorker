@@ -3,6 +3,7 @@ using Lua;
 using Lua.Standard;
 using Microsoft.Extensions.Logging;
 using OpenWorker.Gameplay.Ai;
+using OpenWorker.Extensions.Data;
 
 namespace OpenWorker.Lua;
 
@@ -14,7 +15,6 @@ public sealed class AiScriptLoader
 {
     private const string EntryPoint = "Initial_Normal";
     private const string Extension = ".lua";
-    private static readonly string[] Folders = ["scripts/AI", "scripts/ai", "scripts"];
 
     private static readonly byte[] ByteOrderMark = [0xEF, 0xBB, 0xBF];
 
@@ -131,7 +131,7 @@ public sealed class AiScriptLoader
         }
     }
 
-    private static Dictionary<string, string> IndexFiles() => IndexFiles(Folders);
+    private static Dictionary<string, string> IndexFiles() => IndexFiles([DataFolders.MonsterMinds.Path]);
 
     private static Dictionary<string, string> IndexFiles(IEnumerable<string> folders)
     {
