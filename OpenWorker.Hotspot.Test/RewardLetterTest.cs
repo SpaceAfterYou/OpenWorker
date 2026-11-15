@@ -165,6 +165,29 @@ public sealed class RewardLetterTest
         Assert.AreEqual(Gear, f.Post.Letters[0].Items.Single().Item);
     }
 
+    /// <summary>
+    /// A letter the database took while its answer was lost is not written a second time by the tries that follow.
+    /// </summary>
+    [TestMethod]
+    public async Task ALetterWhoseAnswerIsLostIsWrittenOnce()
+    {
+        using var f = new Fixture();
+
+        f.FillCommonBag(leaveFree: 0);
+        f.Post.LostAnswers = 1;
+
+        Assert.IsTrue(await f.Granter.TryGrantAsync(f.Player, new Reward([new RewardItem(Gear, 1)]), RewardSource.PlayTime, CancellationToken.None));
+
+        await MetricAssertions.UntilAsync(() => f.Received(PostOpcode.AccountRecv) == 1, "the person is told of the letter found after the lost answer");
+
+        f.Time.Advance(TimeSpan.FromMinutes(5));
+        await Task.Delay(50);
+
+        Assert.HasCount(1, f.Post.Letters, "one letter");
+        Assert.HasCount(0, f.Post.Pending, "and no pending one beside it");
+        Assert.AreEqual(0, f.Post.Deliveries);
+    }
+
     private sealed class Fixture : IDisposable
     {
         public World World { get; } = World.Create();
@@ -241,18 +264,25 @@ public sealed class RewardLetterTest
 
     /// <summary>
     /// Keeps the letters of the game it is asked to write and the pending ones, and refuses the first writes or deliveries
-    /// when told to.
+    /// when told to, or writes a letter and loses the answer. A letter written again under its serial comes back as it is.
     /// </summary>
     private sealed class RecordingPost : IPostStore
     {
         private long _serial;
+        private readonly Dictionary<long, PostPersistent> _written = [];
 
         public List<PostAccountDraft> Letters { get; } = [];
         public Dictionary<long, PostAccountDraft> Pending { get; } = [];
         public int Calls { get; private set; }
         public int Failures { get; set; }
+        public int LostAnswers { get; set; }
         public int Deliveries { get; private set; }
         public int DeliveryFailures { get; set; }
+
+        public Task<long> ReserveSerialAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(++_serial);
+        }
 
         public Task<PostPersistent> SendToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default)
         {
@@ -265,21 +295,42 @@ public sealed class RewardLetterTest
                 return Task.FromException<PostPersistent>(new InvalidOperationException("The database did not take the letter."));
             }
 
+            if (_written.TryGetValue(draft.Serial, out var there))
+            {
+                return Task.FromResult(there);
+            }
+
+            var letter = Write(draft, PostState.None);
+
             Letters.Add(draft);
 
-            return Task.FromResult(Letter(++_serial, draft));
+            if (LostAnswers > 0)
+            {
+                LostAnswers--;
+
+                return Task.FromException<PostPersistent>(new InvalidOperationException("The letter is in, its answer is lost."));
+            }
+
+            return Task.FromResult(letter);
         }
 
         public Task<PostPersistent> SendPendingToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default)
         {
-            Pending[++_serial] = draft;
+            if (_written.TryGetValue(draft.Serial, out var there))
+            {
+                return Task.FromResult(there);
+            }
 
-            return Task.FromResult(Letter(_serial, draft));
+            var letter = Write(draft, PostState.Pending);
+
+            Pending[letter.Id] = draft;
+
+            return Task.FromResult(letter);
         }
 
         public Task<List<PostPersistent>> ListPendingAsync(DateTime writtenBefore, int limit, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(Pending.Select(e => Letter(e.Key, e.Value)).Take(limit).ToList());
+            return Task.FromResult(Pending.Select(e => Letter(e.Key, e.Value, PostState.Pending)).Take(limit).ToList());
         }
 
         public Task<PostPersistent?> DeliverPendingAsync(long serial, IReadOnlyList<PostItemPersistent> items, CancellationToken cancellationToken = default)
@@ -302,14 +353,22 @@ public sealed class RewardLetterTest
 
             Letters.Add(delivered);
 
-            return Task.FromResult<PostPersistent?>(Letter(serial, delivered));
+            return Task.FromResult<PostPersistent?>(_written[serial] = Letter(serial, delivered, PostState.None));
         }
 
-        private static PostPersistent Letter(long serial, PostAccountDraft draft)
+        private PostPersistent Write(PostAccountDraft draft, PostState state)
+        {
+            var serial = draft.Serial != 0 ? draft.Serial : ++_serial;
+
+            return _written[serial] = Letter(serial, draft, state);
+        }
+
+        private static PostPersistent Letter(long serial, PostAccountDraft draft, PostState state)
         {
             return new PostPersistent
             {
                 Id = serial,
+                State = state,
                 Kind = PostKind.Account,
                 ReceiverAccountId = draft.Account,
                 SenderName = draft.SenderName,

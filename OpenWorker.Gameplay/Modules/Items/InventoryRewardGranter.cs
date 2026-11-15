@@ -207,39 +207,43 @@ public sealed partial class InventoryRewardGranter(
     /// <summary>
     /// Writes one letter of the reward to the account and tells the person when it is in, if the person is still here. The
     /// items are made when the letter is written, with what the tables give a new item, and are taken out of the letter under
-    /// serials of their own. A letter that is not written at once is kept pending and delivered from there.
+    /// serials of their own. A letter that is not written at once is kept pending and delivered from there. Every write is
+    /// under one serial of the letter, so a write whose answer was lost is found by the next instead of written twice.
     /// </summary>
     private async Task MailAsync(Entity player, int account, RewardSource source, (int Item, int Count)[] items, long gold)
     {
         var (title, body, row) = Text(source);
 
         PostPersistent? letter = null;
-
-        try
-        {
-            letter = await post!.SendToAccountAsync(
-                new PostAccountDraft(account, Sender, title, body, gold, await MakeAsync(items), GameLetters.AccountKind, row),
-                CancellationToken.None);
-        }
-
-        catch (Exception e)
-        {
-            LogLetterRetried(e, account, source, 1);
-        }
-
         PostPersistent? pending = null;
+        long serial = 0;
 
         for (var attempt = 0; letter is null; attempt++)
         {
             try
             {
+                if (serial == 0)
+                {
+                    serial = await post!.ReserveSerialAsync(CancellationToken.None);
+                }
+
+                if (attempt == 0)
+                {
+                    letter = await post!.SendToAccountAsync(
+                        new PostAccountDraft(account, Sender, title, body, gold, await MakeAsync(items), GameLetters.AccountKind, row) { Serial = serial },
+                        CancellationToken.None);
+
+                    continue;
+                }
+
                 // Each item with its count only: the items are made when the letter is delivered.
                 pending ??= await post!.SendPendingToAccountAsync(
                     new PostAccountDraft(account, Sender, title, body, gold, items.Select(e => new PostItemPersistent { Item = e.Item, Count = (short)e.Count }).ToList(),
-                        GameLetters.AccountKind, row),
+                        GameLetters.AccountKind, row) { Serial = serial },
                     CancellationToken.None);
 
-                letter = await DeliverAsync(pending.Id, items);
+                // The letter itself when an earlier write landed after all.
+                letter = (pending.State & PostState.Pending) == 0 ? pending : await DeliverAsync(pending.Id, items);
 
                 if (letter is null)
                 {
@@ -248,11 +252,17 @@ public sealed partial class InventoryRewardGranter(
                 }
             }
 
-            catch (Exception e) when (attempt < RetryDelays.Length)
+            catch (Exception e) when (attempt == 0)
             {
-                LogLetterRetried(e, account, source, attempt + 2);
+                // The pending letter is written at once.
+                LogLetterRetried(e, account, source, 1);
+            }
 
-                await Task.Delay(RetryDelays[attempt], _time);
+            catch (Exception e) when (attempt <= RetryDelays.Length)
+            {
+                LogLetterRetried(e, account, source, attempt + 1);
+
+                await Task.Delay(RetryDelays[attempt - 1], _time);
             }
 
             catch (Exception e)

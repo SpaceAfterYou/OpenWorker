@@ -269,18 +269,17 @@ public sealed class Inventory(int person)
     }
 
     /// <summary>
-    /// Puts back what could not be written.
+    /// Puts back what could not be written. An item stays counted as saved: the write may have reached the database without
+    /// its answer, and an item destroyed later must then be deleted there too, or it would come back.
     /// </summary>
     public void Restore(PersonChanges changes)
     {
-        var added = changes.Added.Select(e => e.Id).ToHashSet();
         var items = Items.ToDictionary(e => e.Serial);
 
         foreach (var serial in changes.Added.Select(e => e.Id).Concat(changes.Changed.Select(e => e.Id)))
         {
             if (items.TryGetValue(serial, out var item))
             {
-                item.IsNew = item.IsNew || added.Contains(serial);
                 _pending.Add(item);
             }
         }

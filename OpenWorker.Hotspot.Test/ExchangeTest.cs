@@ -180,13 +180,13 @@ public sealed class ExchangeTest
         TestServer server,
         ItemCatalog catalog,
         IExchangeStore? store = null,
-        IPersonCommit? commit = null,
+        IPersonFlush? persons = null,
         TimeProvider? time = null)
     {
         var inventory = new InventoryService(server.World, catalog, new LocalItemSerials());
 
         return new ExchangeService(server.World, store ?? new ExchangeStore(Factory), new PostStore(Factory), inventory, server.Network,
-            NoPersonFlush.Instance, commit ?? TestPersonCommit.Written, Fees(), NullLogger<ExchangeService>.Instance, time: time);
+            persons ?? TestPersonFlush.Written, Fees(), NullLogger<ExchangeService>.Instance, time: time);
     }
 
     /// <summary>
@@ -270,7 +270,7 @@ public sealed class ExchangeTest
 
         Equip(server, player, buyerAccount, catalog, 5_000);
 
-        var commit = new TestPersonCommit(false);
+        var commit = new TestPersonFlush(false);
         var service = Service(server, catalog, store, commit);
 
         Handle(server, player, c => service.OnHandleAsync(c, new ExchangeItemBuyRequest { Exchange = listing.Id, Item = Sword, Count = 1 }));

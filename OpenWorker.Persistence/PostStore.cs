@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using OpenWorker.Domain.Persistent;
 using OpenWorker.Domain.Stores;
 
@@ -15,6 +16,27 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
     private DateTime Now => (time ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
     public async Task<PostSendResult> SendAsync(PostDraft draft, CancellationToken cancellationToken = default)
+    {
+        long serial = 0;
+
+        try
+        {
+            return await SendOnceAsync(draft, reserved => serial = reserved, cancellationToken);
+        }
+
+        catch (Exception) when (serial != 0 && !cancellationToken.IsCancellationRequested)
+        {
+            // The letter may be in although the answer was lost.
+            if (await FindSentAsync(serial, draft.Sender, cancellationToken) is { } sent)
+            {
+                return sent;
+            }
+
+            throw;
+        }
+    }
+
+    private async Task<PostSendResult> SendOnceAsync(PostDraft draft, Action<long> reserved, CancellationToken cancellationToken)
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
@@ -56,8 +78,14 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
             return new PostSendResult(PostSendOutcome.Full, null, 0);
         }
 
+        // Under a serial known before the write, so that a write whose answer is lost can be found.
+        var serial = await NextSerialAsync(database, cancellationToken);
+
+        reserved(serial);
+
         var letter = new PostPersistent
         {
+            Id = serial,
             Kind = PostKind.Person,
             SenderId = draft.Sender,
             SenderName = draft.SenderName,
@@ -85,6 +113,51 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
         await transaction.CommitAsync(cancellationToken);
 
         return new PostSendResult(PostSendOutcome.Sent, letter, unread);
+    }
+
+    /// <summary>
+    /// Settles a letter whose write failed after it was sent to the database: a row under its serial that nobody sees takes
+    /// the serial, so the letter cannot land after this; when the serial is taken already, the letter is there.
+    /// </summary>
+    private async Task<PostSendResult?> FindSentAsync(long serial, int sender, CancellationToken cancellationToken)
+    {
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
+
+        var now = Now;
+        var kind = (short)PostKind.Person;
+        var nobody = (short)(PostState.Received | PostState.GoneForReceiver | PostState.GoneForSender);
+
+        // The row expires at once and goes with the next sweep. An insert of the letter still on its way is waited for.
+        var claimed = await database.Database.ExecuteSqlAsync($"""
+            INSERT INTO "Posts" ("Id", "Kind", "SenderName", "SenderHero", "ReceiverId", "ReceiverName", "ReceiverHero", "Title", "Body",
+                                 "Money", "Postage", "MainType", "SubType", "State", "CreatedAt", "UpdatedAt", "ExpiresAt")
+            VALUES ({serial}, {kind}, '', 0, {sender}, '', 0, '', '', 0, 0, 0, 0, {nobody}, {now}, {now}, {now})
+            ON CONFLICT ("Id") DO NOTHING
+            """, cancellationToken);
+
+        if (claimed == 1)
+        {
+            return null;
+        }
+
+        var letter = await database.Posts.FirstAsync(e => e.Id == serial, cancellationToken);
+        var unread = await Unread(database.Posts, letter.ReceiverId ?? 0, now).CountAsync(cancellationToken);
+
+        return new PostSendResult(PostSendOutcome.Sent, letter, unread);
+    }
+
+    public async Task<long> ReserveSerialAsync(CancellationToken cancellationToken = default)
+    {
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
+
+        return await NextSerialAsync(database, cancellationToken);
+    }
+
+    private static Task<long> NextSerialAsync(PersistenceContext database, CancellationToken cancellationToken)
+    {
+        return database.Database
+            .SqlQueryRaw<long>("""SELECT nextval(pg_get_serial_sequence('"Posts"', 'Id')) AS "Value" """)
+            .SingleAsync(cancellationToken);
     }
 
     public Task<PostPersistent> SendToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default)
@@ -125,7 +198,10 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
         }
 
         var letter = AccountLetter(
-            new PostAccountDraft(pending.ReceiverAccountId ?? 0, pending.SenderName, pending.Title, pending.Body, pending.Money, items, pending.MainType, pending.SubType),
+            new PostAccountDraft(pending.ReceiverAccountId ?? 0, pending.SenderName, pending.Title, pending.Body, pending.Money, items, pending.MainType, pending.SubType)
+            {
+                Serial = serial
+            },
             PostState.None);
 
         database.Posts.Add(letter);
@@ -138,15 +214,26 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
 
     private async Task<PostPersistent> AddToAccountAsync(PostAccountDraft draft, PostState state, CancellationToken cancellationToken)
     {
-        await using var database = await factory.CreateDbContextAsync(cancellationToken);
-
         var letter = AccountLetter(draft, state);
 
-        database.Posts.Add(letter);
+        try
+        {
+            await using var database = await factory.CreateDbContextAsync(cancellationToken);
 
-        await database.SaveChangesAsync(cancellationToken);
+            database.Posts.Add(letter);
 
-        return letter;
+            await database.SaveChangesAsync(cancellationToken);
+
+            return letter;
+        }
+
+        catch (DbUpdateException e) when (draft.Serial != 0 && e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_Posts" })
+        {
+            // Written before under this serial: the answer of that write was lost.
+            await using var database = await factory.CreateDbContextAsync(cancellationToken);
+
+            return await database.Posts.FirstAsync(e => e.Id == draft.Serial, cancellationToken);
+        }
     }
 
     private PostPersistent AccountLetter(PostAccountDraft draft, PostState state)
@@ -155,6 +242,7 @@ public sealed class PostStore(IDbContextFactory<PersistenceContext> factory, Tim
 
         return new PostPersistent
         {
+            Id = draft.Serial,
             Kind = PostKind.Account,
             SenderName = draft.SenderName,
             ReceiverAccountId = draft.Account,

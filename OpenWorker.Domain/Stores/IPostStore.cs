@@ -27,7 +27,14 @@ public sealed record PostAccountDraft(
     long Money,
     IReadOnlyList<PostItemPersistent> Items,
     byte MainType = 0,
-    byte SubType = 0);
+    byte SubType = 0)
+{
+    /// <summary>
+    /// The serial the letter is written under (<see cref="IPostStore.ReserveSerialAsync"/>), or 0 for a new one. A letter
+    /// written again under its serial is written once: the store gives back the letter already there.
+    /// </summary>
+    public long Serial { get; init; }
+}
 
 public enum PostSendOutcome
 {
@@ -118,18 +125,27 @@ public interface IPostStore
 {
     /// <summary>
     /// Finds the receiver and stores the letter for them, in one transaction that holds the box of the receiver, so two
-    /// servers that send at the same moment cannot overfill it.
+    /// servers that send at the same moment cannot overfill it. When the database took the letter but its answer was lost,
+    /// this still says it was sent; when it throws, the letter is not there and never will be, unless the database could
+    /// not be asked at all.
     /// </summary>
     Task<PostSendResult> SendAsync(PostDraft draft, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Stores a letter of the game for an account.
+    /// A serial for a letter of the game that is written under it (<see cref="PostAccountDraft.Serial"/>), so that its
+    /// writes after a failure land once.
+    /// </summary>
+    Task<long> ReserveSerialAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stores a letter of the game for an account. Under a serial that is taken already, the letter there comes back.
     /// </summary>
     Task<PostPersistent> SendToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Stores a letter of the game for an account that nobody sees yet (<see cref="PostState.Pending"/>): what it carries is
-    /// each item and its count, made when it is delivered.
+    /// each item and its count, made when it is delivered. Under a serial that is taken already, the letter there comes
+    /// back, pending or delivered.
     /// </summary>
     Task<PostPersistent> SendPendingToAccountAsync(PostAccountDraft draft, CancellationToken cancellationToken = default);
 
@@ -139,7 +155,7 @@ public interface IPostStore
     Task<List<PostPersistent>> ListPendingAsync(DateTime writtenBefore, int limit, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Replaces a pending letter with the letter itself, under a serial of its own, with the items made for it and a lifetime
+    /// Replaces a pending letter with the letter itself, under the same serial, with the items made for it and a lifetime
     /// from now, once: the letter comes back to the call that delivered it and <see langword="null"/> to every other, from any
     /// server.
     /// </summary>

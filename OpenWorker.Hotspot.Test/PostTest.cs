@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Text;
 using Arch.Core;
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -37,6 +40,8 @@ public sealed class PostTest
 
     private static IDbContextFactory<PersistenceContext> Factory { get; set; } = null!;
 
+    private static string Connection { get; set; } = null!;
+
     private static ServiceProvider? Services { get; set; }
 
     [ClassInitialize]
@@ -50,6 +55,8 @@ public sealed class PostTest
         }
 
         var database = "openworker_test_" + Guid.NewGuid().ToString("N");
+
+        Connection = connection + ";Database=" + database;
 
         Services = new ServiceCollection()
             .AddPooledDbContextFactory<PersistenceContext>(builder => builder
@@ -216,7 +223,7 @@ public sealed class PostTest
         var inventory = new InventoryService(server.World, catalog, new LocalItemSerials());
         var factory = new InventoryFactory(catalog, new([]), new LocalItemSerials());
 
-        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TestPersonCommit.Written,
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, TestPersonFlush.Written,
             NullLogger<PostService>.Instance);
 
         foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
@@ -328,7 +335,7 @@ public sealed class PostTest
         var inventory = new InventoryService(server.World, Catalog(), new LocalItemSerials());
         var factory = new InventoryFactory(Catalog(), new([]), new LocalItemSerials());
 
-        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, TestPersonCommit.Written,
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, TestPersonFlush.Written,
             NullLogger<PostService>.Instance);
 
         foreach (var (player, account) in new[] { (sender, 1), (receiver, toAccount) })
@@ -404,9 +411,9 @@ public sealed class PostTest
 
         var inventory = new InventoryService(server.World, Catalog(), new LocalItemSerials());
         var factory = new InventoryFactory(Catalog(), new([]), new LocalItemSerials());
-        var commit = new TestPersonCommit(false);
+        var commit = new TestPersonFlush(false);
 
-        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, NoPersonFlush.Instance, commit,
+        var service = new PostService(server.World, new PostStore(Factory), inventory, server.Network, commit,
             NullLogger<PostService>.Instance);
 
         var person = new PersonPersistent
@@ -654,5 +661,105 @@ public sealed class PostTest
         Assert.AreEqual(50, letter.Items.Single().Endurance, "with the items made for it");
         Assert.AreEqual(clock.GetUtcNow().UtcDateTime + PostLimits.Lifetime, letter.ExpiresAt, "it lives from its delivery");
         Assert.IsFalse((await store.ListPendingAsync(DateTime.MaxValue, 100)).Any(e => e.ReceiverAccountId == account));
+    }
+    /// <summary>
+    /// A commit whose answer is lost after the database took it, or before it did, as the test says.
+    /// </summary>
+    private sealed class LostCommit(bool landed) : DbTransactionInterceptor
+    {
+        public int Left { get; set; } = 1;
+
+        public override ValueTask<InterceptionResult> TransactionCommittingAsync(DbTransaction transaction, TransactionEventData eventData,
+            InterceptionResult result, CancellationToken cancellationToken = default)
+        {
+            if (!landed && Left > 0)
+            {
+                Left--;
+
+                throw new TimeoutException("The commit did not reach the database.");
+            }
+
+            return ValueTask.FromResult(result);
+        }
+
+        public override Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
+        {
+            if (landed && Left > 0)
+            {
+                Left--;
+
+                throw new TimeoutException("The answer of the commit was lost.");
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private static PostStore StoreWith(IInterceptor interceptor)
+    {
+        var options = new DbContextOptionsBuilder<PersistenceContext>()
+            .UseNpgsql(Connection)
+            .UsePersistenceDefaults()
+            .AddInterceptors(interceptor);
+
+        return new PostStore(new PooledDbContextFactory<PersistenceContext>((DbContextOptions<PersistenceContext>)options.Options));
+    }
+
+    /// <summary>
+    /// A letter the database took while the answer was lost is sent, once; one it never took is not sent, and cannot land
+    /// after the sender was told so.
+    /// </summary>
+    [TestMethod]
+    public async Task ALetterWhoseAnswerIsLostIsKnownAsSentOrNot()
+    {
+        var (_, sender) = await CreatePersonAsync("lostfrom");
+        var (_, receiver) = await CreatePersonAsync("lostto");
+
+        var sent = await StoreWith(new LostCommit(landed: true)).SendAsync(Draft(sender, "lostfrom", "lostto", 500));
+
+        Assert.AreEqual(PostSendOutcome.Sent, sent.Outcome, "the letter that landed is found");
+        Assert.AreEqual(1, sent.Unread);
+
+        await Assert.ThrowsExactlyAsync<TimeoutException>(() => StoreWith(new LostCommit(landed: false)).SendAsync(Draft(sender, "lostfrom", "lostto", 700)));
+
+        var store = new PostStore(Factory);
+
+        Assert.AreEqual(sent.Letter!.Id, (await store.ListReceivedAsync(receiver, saved: false)).Single().Id, "one letter, the one that landed");
+        Assert.AreEqual(sent.Letter.Id, (await store.ListSentAsync(sender)).Single().Id);
+    }
+
+    /// <summary>
+    /// A letter of the game written again under its serial is written once, pending or not, and keeps its serial when it is
+    /// delivered.
+    /// </summary>
+    [TestMethod]
+    public async Task ALetterOfTheGameUnderItsSerialIsWrittenOnce()
+    {
+        var store = new PostStore(Factory);
+
+        var (account, _) = await CreatePersonAsync("serial");
+
+        var draft = new PostAccountDraft(account, "game", "Title", "Body", 10, [new PostItemPersistent { Item = Sword, Count = 1 }], 4, 9)
+        {
+            Serial = await store.ReserveSerialAsync()
+        };
+
+        var first = await store.SendToAccountAsync(draft);
+
+        Assert.AreEqual(draft.Serial, first.Id);
+        Assert.AreEqual(first.Id, (await store.SendToAccountAsync(draft)).Id);
+
+        var found = await store.SendPendingToAccountAsync(draft);
+
+        Assert.AreEqual(first.Id, found.Id, "a pending letter under the serial of a letter finds the letter");
+        Assert.AreEqual(PostState.None, found.State & PostState.Pending);
+
+        var later = draft with { Serial = await store.ReserveSerialAsync() };
+        var pending = await store.SendPendingToAccountAsync(later);
+
+        Assert.AreEqual(later.Serial, (await store.DeliverPendingAsync(pending.Id, [new PostItemPersistent { Item = Sword, Count = 1 }]))!.Id);
+        Assert.AreNotEqual(PostState.Pending, (await store.SendPendingToAccountAsync(later)).State & PostState.Pending, "a delivered letter is not pending again");
+
+        CollectionAssert.AreEquivalent(new[] { first.Id, later.Serial }, (await store.ListAccountAsync(account)).Select(e => e.Id).ToArray());
     }
 }

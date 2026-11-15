@@ -4,18 +4,18 @@ using OpenWorker.Gameplay.Modules.Persistence;
 namespace OpenWorker.Hotspot.Test;
 
 /// <summary>
-/// The write of a player that a handler awaits before a store, ending as the test says, and counted.
+/// The write of a player that a handler awaits, ending as the test says, and counted.
 /// </summary>
-internal sealed class TestPersonCommit(bool written) : IPersonCommit
+internal sealed class TestPersonFlush(bool written) : IPersonFlush
 {
     /// <summary>
     /// The database takes every write.
     /// </summary>
-    public static TestPersonCommit Written => new(true);
+    public static TestPersonFlush Written => new(true);
 
     public int Calls { get; private set; }
 
-    public ValueTask<bool> CommitAsync(Entity player)
+    public ValueTask<bool> FlushAsync(Entity player)
     {
         Calls++;
 

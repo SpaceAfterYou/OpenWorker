@@ -41,7 +41,7 @@ namespace OpenWorker.Server.Common.Services;
 /// </summary>
 /// <remarks>
 /// What leaves a player (an item given, a fee, the price of a purchase) is taken in memory and written to the database
-/// (<see cref="IPersonCommit"/>) before the store is asked for what it pays for; it is given back when that write, or the
+/// (<see cref="IPersonFlush"/>) before the store is asked for what it pays for; it is given back when that write, or the
 /// store, refuses or fails, and the request is answered with its error code. A crash after the write loses what was paid; it
 /// never leaves an item both in the bags and on sale, nor a purchase unpaid. The tickets of a sale are spent after the sale
 /// is written, as they are spent only when it is.
@@ -53,7 +53,6 @@ public sealed partial class ExchangeService(
     InventoryService inventory,
     CommunityNetwork network,
     IPersonFlush persons,
-    IPersonCommit commit,
     ReadOnlyCollection<ItemClassifyFeeRow> fees,
     ILogger<ExchangeService> logger,
     BoosterManager? boosters = null,
@@ -672,7 +671,7 @@ public sealed partial class ExchangeService(
 
         try
         {
-            if (await commit.CommitAsync(context.Player))
+            if (await persons.FlushAsync(context.Player))
             {
                 return await call();
             }
