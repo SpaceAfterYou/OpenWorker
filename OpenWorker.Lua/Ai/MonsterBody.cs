@@ -304,7 +304,7 @@ internal partial class MonsterBody : IAiHost
         }
     }
 
-    public void Update(double now, float elapsed)
+    public void Update(double now, float elapsed, bool think = true)
     {
         if (!IsRevealed || IsDead)
         {
@@ -333,7 +333,7 @@ internal partial class MonsterBody : IAiHost
         TickTraps(elapsed);
 
         // A monster that has hidden thinks no more, unless its animation leaves the mind on.
-        if (!_carried && _hiding.CanThink)
+        if (think && !_carried && _hiding.CanThink)
         {
             Machine.Update(elapsed);
         }

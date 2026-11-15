@@ -71,6 +71,38 @@ public partial class LuaMaze
     }
 
     /// <summary>
+    /// How far from the player a monster told a skill by a command may stand.
+    /// </summary>
+    private const float CommandSkillReach = 3000f;
+
+    /// <summary>
+    /// The monsters near the player whose rows hold the skill play it at the player now, and think no more after it. False when
+    /// none did.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool PlayMonsterSkill(Entity player, int skill)
+    {
+        if (Closed || !Started || Find(player) is null)
+        {
+            return false;
+        }
+
+        var at = Ecs.Get<WorldComponent>(player).Position;
+        var played = 0;
+
+        foreach (var monster in creatureManager.Living.ToArray())
+        {
+            if (Ecs.IsAlive(monster) && Vector3.Distance(Ecs.Get<WorldComponent>(monster).Position, at) <= CommandSkillReach &&
+                creatureManager.PlaySkillAt(monster, player, skill))
+            {
+                played++;
+            }
+        }
+
+        return played > 0;
+    }
+
+    /// <summary>
     /// The player takes a monster of that row as a skill would give it, where it stands; row 0 lets its monster go. False
     /// when the table has no such monster, it is a defensive weapon, the player has fallen, or it has no monster to let go.
     /// </summary>
