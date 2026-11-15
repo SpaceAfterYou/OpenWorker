@@ -1567,12 +1567,11 @@ public sealed partial class LuaCreatureManager
     internal Vector3 PositionOf(Entity player) => Vitals.PositionOf(player);
 
     /// <summary>
-    /// Whether the player lies on the ground: its client says so, and a throw the server dealt it has landed a short while ago.
+    /// Whether the player lies on the ground after a throw the server dealt it.
     /// </summary>
     internal bool IsLying(Entity player)
     {
-        return ecs.TryGet<PlayerStanceComponent>(player, out var stance) && PlayerStance.IsDown(stance) &&
-               ecs.TryGet<PlayerPostureComponent>(player, out var posture) && Time < posture.DownUntil + PlayerStance.MostLying;
+        return ecs.TryGet<PlayerPostureComponent>(player, out var posture) && PlayerStance.IsLying(posture, Time);
     }
 
     /// <summary>
@@ -1580,7 +1579,7 @@ public sealed partial class LuaCreatureManager
     /// </summary>
     internal bool IsInTheAir(Entity player)
     {
-        return ecs.TryGet<PlayerPostureComponent>(player, out var posture) && Time < posture.DownUntil;
+        return ecs.TryGet<PlayerPostureComponent>(player, out var posture) && PlayerStance.IsInTheAir(posture, Time);
     }
 
     /// <summary>
@@ -1592,20 +1591,57 @@ public sealed partial class LuaCreatureManager
     }
 
     /// <summary>
-    /// The server knows the player is in the air for at least this long.
+    /// A blow throws the player to a height: it is in the air, then on the ground.
     /// </summary>
-    private void Posture(Entity player, long milliseconds)
+    private void Throw(Entity player, ReactionKind kind, float height)
     {
-        var until = new PlayerPostureComponent(Time + TimeSpan.FromMilliseconds(milliseconds));
+        var posture = PlayerStance.Thrown(Time, kind, height, IsInTheAir(player));
 
         if (ecs.Has<PlayerPostureComponent>(player))
         {
-            ecs.Set(player, until);
+            ecs.Set(player, posture);
         }
         else
         {
-            ecs.Add(player, until);
+            ecs.Add(player, posture);
         }
+    }
+
+    /// <summary>
+    /// How far from the player a monster that throws it at a command may stand.
+    /// </summary>
+    private const float CommandThrowReach = 3000f;
+
+    /// <summary>
+    /// A blow that throws must hurt; this one hurts as little as a blow can.
+    /// </summary>
+    private const float CommandThrowDamage = 0.01f;
+
+    /// <summary>
+    /// The nearest monster throws the player up with a blow that hurts it a little. False when no living monster stands near.
+    /// </summary>
+    internal bool KnockDown(Entity player)
+    {
+        if (!Vitals.IsAlive(player))
+        {
+            return false;
+        }
+
+        var at = Vitals.PositionOf(player);
+        var thrower = Living.Where(e => ecs.IsAlive(e) && BodyOf(e) is { IsDead: false } && Vector3.Distance(ecs.Get<WorldComponent>(e).Position, at) <= CommandThrowReach)
+            .OrderBy(e => Vector3.Distance(ecs.Get<WorldComponent>(e).Position, at))
+            .FirstOrDefault();
+
+        if (thrower == Entity.Null)
+        {
+            return false;
+        }
+
+        var reaction = new AttackReaction(200f, 150f, 150f, 0f, AttackReaction.AlongAttacker, 0f, 0f, 0f, 0f, 0f, 0, 0, false, 0, false);
+        var blow = new AttackTrigger(0, 0, 0, 0, 0f, 360f, Vector3.Zero, 0f, 0f, 0f, 0f, 0f, DamageRate: CommandThrowDamage, ReactionType: (int)ReactionKind.LaunchUp,
+            Reaction: reaction);
+
+        return HitPlayers(thrower, 0, blow, [player]) != 0;
     }
 
     /// <summary>
@@ -1804,10 +1840,10 @@ public sealed partial class LuaCreatureManager
                 ? (Vector3.Zero, 0f)
                 : PlayerThrow.Told(blow, new Struck(Vitals.PositionOf(victim), PlayerVitals.WeightRank, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
 
-            // A player thrown into the air cannot start an ordinary skill until it lands.
-            if (!shielded && extraMove.Z > 0f && MonsterReaction.IsLaunch((ReactionKind)(byte)Math.Clamp(trigger.ReactionType, 0, byte.MaxValue)) && left > 0)
+            // A player thrown into the air flies, then lies on the ground.
+            if (!shielded && extraMove.Z > 0f && MonsterReaction.IsLaunch(blow.Kind) && left > 0)
             {
-                Posture(victim, SkillStates.FlightMilliseconds(extraMove.Z));
+                Throw(victim, blow.Kind, extraMove.Z);
             }
 
             if (hits.Count == 0)

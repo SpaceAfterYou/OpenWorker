@@ -194,7 +194,7 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
         }
 
         // A player thrown into the air cannot start a skill that is not for the air.
-        if (world.TryGet<PlayerPostureComponent>(player, out var posture) && posture.DownUntil > now && !SkillStates.CanStartInTheAir(row.UseState, row.NormalState))
+        if (world.TryGet<PlayerPostureComponent>(player, out var posture) && PlayerStance.IsInTheAir(posture, now) && !SkillStates.CanStartInTheAir(row.UseState, row.NormalState))
         {
             return SkillStates.Refusal(row.UseState, row.NormalState);
         }
@@ -242,6 +242,12 @@ public sealed class SkillUse(World world, ReadOnlyCollection<SkillRow> skills, P
         gauges.Rest(player, row.SkipPriorityGroup);
 
         StartCooldown(player, row, now);
+
+        // A player that starts a skill no longer lies on the ground.
+        if (world.TryGet<PlayerPostureComponent>(player, out var posture))
+        {
+            world.Set(player, PlayerStance.Acts(posture, now));
+        }
     }
 
     /// <summary>

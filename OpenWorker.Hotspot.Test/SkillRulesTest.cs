@@ -117,7 +117,7 @@ public sealed class SkillRulesTest
 
             Assert.AreEqual(SkillRefusal.None, use.Check(player, Strike, TimeSpan.Zero));
 
-            world.Add(player, new PlayerPostureComponent(TimeSpan.FromSeconds(5)));
+            world.Add(player, new PlayerPostureComponent(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(8)));
 
             Assert.AreEqual(SkillStates.NotForThisState, use.Check(player, Strike, TimeSpan.Zero), "a plain skill");
             Assert.AreEqual(SkillStates.NotForThisState, use.Check(player, Evade, TimeSpan.Zero), "a move of the plain kind");
@@ -128,7 +128,6 @@ public sealed class SkillRulesTest
             Assert.IsTrue(SkillStates.CanStartInTheAir(0, 4), "a skill whose normal state allows a hit");
             Assert.AreEqual(SkillRefusal.CannotAttack, SkillStates.Refusal(4, 0));
             Assert.AreEqual(SkillRefusal.CannotAttack, SkillStates.Refusal(0, 0x10));
-            Assert.IsGreaterThan(600L, SkillStates.FlightMilliseconds(108f), "up and down again takes more than half a second");
         }
 
         finally
