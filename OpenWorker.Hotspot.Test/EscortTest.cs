@@ -332,24 +332,26 @@ public sealed class EscortTest
     }
 
     /// <summary>
-    /// An escorted that falls ends its way where it is, and the quest of the party fails for the player who has its episode.
+    /// An escorted that falls ends its way where it is, and the quest of the party fails for the player who has its episode. A game
+    /// master fells it here; with none on its way there is nothing to fell.
     /// </summary>
     [TestMethod]
     public void AFallenEscortFailsTheQuestOfTheParty()
     {
         using var test = new Test();
 
+        Assert.IsFalse(test.Maze.FellEscorted(test.Player), "None on its way yet");
+
         test.Start();
         test.Pass(0.2);
 
-        var escort = test.Escort!.Value;
-
-        test.World.Set(escort, test.World.Get<CreatureComponent>(escort) with { Health = 0 });
+        Assert.IsTrue(test.Maze.FellEscorted(test.Player));
         test.Pass(0.2);
 
         Assert.AreEqual((402, EscortStatus.Ended), test.Statuses()[^1]);
         Assert.IsNull(test.Escort);
         Assert.IsTrue(test.Book.Failed);
+        Assert.IsFalse(test.Maze.FellEscorted(test.Player), "None on its way after its fall");
     }
 
     /// <summary>

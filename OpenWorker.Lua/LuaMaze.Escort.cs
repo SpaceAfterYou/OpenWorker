@@ -200,11 +200,33 @@ public partial class LuaMaze
 
         _partyState = PartyQuestState.Over;
 
-        if (_escort is { } escort && Ecs.IsAlive(escort.Monster))
+        DropEscorted();
+    }
+
+    /// <summary>
+    /// The escorted on its way falls now, as a game master tells it to; the next step of the maze takes its fall. False when
+    /// no escort is on its way or the player is not in this maze.
+    /// </summary>
+    [LuaIgnoreMember]
+    public bool FellEscorted(Entity player)
+    {
+        return !Closed && Find(player) is not null && DropEscorted();
+    }
+
+    /// <summary>
+    /// The life of the escorted on its way goes to nothing, and the clients see it fall.
+    /// </summary>
+    private bool DropEscorted()
+    {
+        if (_escort is not { } escort || !Ecs.IsAlive(escort.Monster))
         {
-            Ecs.Set(escort.Monster, Ecs.Get<CreatureComponent>(escort.Monster) with { Health = 0 });
-            creatureManager.Broadcast(new MonsterDieResponse { Actor = Ecs.Get<ActorComponent>(escort.Monster) });
+            return false;
         }
+
+        Ecs.Set(escort.Monster, Ecs.Get<CreatureComponent>(escort.Monster) with { Health = 0 });
+        creatureManager.Broadcast(new MonsterDieResponse { Actor = Ecs.Get<ActorComponent>(escort.Monster) });
+
+        return true;
     }
 
     private async ValueTask FailPartyQuestAsync(Entity player)
