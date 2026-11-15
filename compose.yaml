@@ -284,6 +284,8 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
+      # The minds of monsters: the server looks for them in scripts/AI.
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/AI:/app/scripts/AI
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
 
   # A second maze server of the gate: it registers itself as the first does, players are sent to the least busy one, and a
@@ -323,6 +325,8 @@ services:
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Table:/app/batch
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Character/ActionData:/app/action
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/Server:/app/scripts
+      # The minds of monsters: the server looks for them in scripts/AI.
+      - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/Scripts/AI:/app/scripts/AI
       - ${SOULWORKER_DATAS:-T:/Games/HanPurple/soulworker/datas}/World/Navmesh:/app/navmesh
 
   openworker.districtserver-canduscity:
