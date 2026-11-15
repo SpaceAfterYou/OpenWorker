@@ -492,6 +492,38 @@ public sealed class CashShopTest
             Drain(world, player, connection).Select(e => e.Opcode).ToArray());
     }
 
+    /// <summary>
+    /// /currency tells each kind in its own message; a kind the client has no message for is told by a line of the chat.
+    /// </summary>
+    [TestMethod]
+    public async Task TheCurrencyCommandTellsEachKindInItsOwnMessage()
+    {
+        using var world = World.Create();
+        await using var services = new ServiceCollection().AddSingleton(world).BuildServiceProvider();
+        var connection = new RecordingConnection();
+        var player = Player(world, connection, 3);
+
+        world.Add(player, new CurrencyComponent());
+
+        ICommand command = new CurrencyCommand(services);
+
+        (ShopCurrency Kind, MessageOpcode Message)[] kinds =
+        [
+            (ShopCurrency.Gold, MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateInvenMoney)),
+            (ShopCurrency.Bp, MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateBp)),
+            (ShopCurrency.Ether, MessageOpcode.From(GroupOpcode.Item, ItemOpcode.UpdateEther)),
+            (ShopCurrency.Token, MessageOpcode.From(GroupOpcode.Chat, ChatOpcode.Normal))
+        ];
+
+        foreach (var (kind, _) in kinds)
+        {
+            Assert.IsTrue(await command.TryExecute(player, ["5000", kind.ToString()]));
+            Assert.AreEqual(5000, world.Get<CurrencyComponent>(player)[kind]);
+        }
+
+        CollectionAssert.AreEqual(kinds.Select(e => e.Message).ToArray(), Drain(world, player, connection).Select(e => e.Opcode).ToArray());
+    }
+
     private static void AssertRefused(PlayerFrame[] sent)
     {
         ShopOpcode[] requests = [ShopOpcode.CashLoad, ShopOpcode.CashBuy, ShopOpcode.CashGift, ShopOpcode.CashSet, ShopOpcode.CashSetDel];

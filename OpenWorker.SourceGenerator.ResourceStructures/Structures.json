@@ -1243,7 +1243,7 @@
     "Byte CooldownSaved // Whether the cooldown is kept over a logout. 0 in every row of this client.",
     "Int16 EffectType // What using the item does: the kind of effect.",
     "Int32 EffectValue // The number the effect works with: a row of another table or an amount, by the kind.",
-    "Int16 UseEffect // What the client starts on a player who is told to have used the item (08/13). 0 in every row of this client, so nothing is shown.",
+    "Int16 UseEffect // The visual effect, a row of tb_ResVFX, the client plays on a player who is told to have used the item (08/13). 0 in every row of this client, so nothing is shown.",
     "Byte Cash // 1 for an item of the cash shop.",
     "Byte UsePeriodType // How the time the item lasts is counted: 0 for an item that does not expire; 1 and 3 are in use.",
     "Int32 UsePeriodValue // The time the item lasts, in minutes.",
@@ -2998,7 +2998,7 @@
     "Int16 MaterialCount2 // How many of the second material.",
     "Int16 MaterialCount3 // How many of the third material.",
     "Int16 MaterialCount4 // How many of the fourth material.",
-    "Int16 BattlePoint // A cost in a second currency. 0 in every row of this client, so which currency is not settled.",
+    "Int16 BattlePoint // The battle points the making of one item costs. 0 in every row of this client.",
     "Int32 Gold // The gold the making costs.",
     "Int16 Priority // The order in the list. 9999 in every row of this client."
   ],
