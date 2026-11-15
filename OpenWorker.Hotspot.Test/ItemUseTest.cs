@@ -1,15 +1,25 @@
 using System.Collections.ObjectModel;
+using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Extensions;
+using OpenWorker.Gameplay.Modules.HiddenEvents;
 using OpenWorker.Gameplay.Modules.Items;
 using OpenWorker.Gameplay.Modules.Maze;
+using OpenWorker.Gameplay.Modules.Persons;
+using OpenWorker.Gameplay.Modules.Persons.Components;
 using OpenWorker.Gameplay.Modules.Progress;
 using OpenWorker.Gameplay.Modules.State;
+using OpenWorker.Hotspot.Messages.Abstractions;
 using OpenWorker.Hotspot.Modules.Items.Enums;
+using OpenWorker.Hotspot.Modules.Items.Requests;
+using OpenWorker.Hotspot.Modules.Movement.Responses;
 using OpenWorker.Res.Types;
+using OpenWorker.Server.Common;
+using OpenWorker.Server.Common.Services;
+using OpenWorker.Wire;
 using OpenWorker.UpdateContent.Res.Rows;
 
 namespace OpenWorker.Hotspot.Test;
@@ -216,6 +226,74 @@ public sealed class ItemUseTest
 
         Assert.IsTrue((await rig.UseAsync(rig.Fixture.Give(place.Id, 1))).Ok);
         Assert.AreEqual(1, rig.Chains.Counted(rig.Fixture.Player, AchievementType.ItemUsed));
+    }
+
+    /// <summary>
+    /// Every item used from the bag counts once for the hidden event of the maze, with its id, and opens the titles of its use;
+    /// a refused use counts for nothing.
+    /// </summary>
+    [TestMethod]
+    public async Task AnItemUsedFromTheBagCountsForTheHiddenEventAndOpensTheTitlesOfItsUse()
+    {
+        using var rig = new Rig();
+
+        var world = rig.Fixture.World;
+        var player = rig.Fixture.Player;
+        var potion = rig.Potion();
+        var counted = new List<(HiddenEventTarget Target, int What, int Amount)>();
+        var hidden = new HiddenEventCounter { Route = (_, target, what, amount) => counted.Add((target, what, amount)) };
+        var titles = new OpenTitleManager(world, new PersonStateStore(null!), new TitleCatalog(new ReadOnlyCollection<TitleInfoRow>(
+        [
+            TestRows.Build<TitleInfoRow>(("Id", 10), ("Type", (byte)TitleKind.Prefix), ("OpenCondition", OpenTitleManager.ByItemUse), ("OpenValue", potion.Id))
+        ])));
+        var items = new ItemService(world, rig.Fixture.Inventory, rig.Use, new Audience(), hidden, openTitles: titles);
+
+        world.Add(player, new OpenTitleComponent { Person = 7, Book = new OpenTitleBook() }, new TitleComponent { Primary = 0, Secondary = 0 },
+            new ServerSessionComponent(new RecordingConnection()));
+
+        var item = rig.Fixture.Give(potion.Id, 5);
+
+        await items.OnHandleAsync(rig.Fixture.Context, UseRequest(item));
+
+        Assert.IsEmpty(counted, "A use refused in a city counts for nothing");
+        Assert.IsEmpty(titles.OpenOf(player));
+
+        rig.Field.Place = Maze;
+
+        await items.OnHandleAsync(rig.Fixture.Context, UseRequest(item));
+
+        CollectionAssert.AreEqual(new[] { (HiddenEventTarget.ItemUsed, potion.Id, 1) }, counted);
+        CollectionAssert.AreEqual(new[] { 10 }, titles.OpenOf(player).ToArray());
+    }
+
+    private static ItemUseRequest UseRequest(ItemInstance item)
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+
+        writer.Write((byte)item.Storage);
+        writer.Write(item.Slot);
+        writer.Write(item.Serial);
+        writer.Flush();
+        stream.Position = 0;
+
+        return new ItemUseRequest(new BinaryReader(stream));
+    }
+
+    /// <summary>
+    /// Nobody sees the player of these tests.
+    /// </summary>
+    private sealed class Audience : IPlayerAudience
+    {
+        public void Chat<T>(Entity player, in T message) where T : IResponseHotspotMessage { }
+
+        public void Nearby<T>(Entity player, in T message) where T : struct, IResponseHotspotMessage, IWireWritable { }
+
+        public void NearbyToOthers<T>(Entity player, in T message) where T : IResponseHotspotMessage { }
+
+        public void Move(Entity player, in MovementMoveBtResponse message) { }
+
+        public void Relocate(Entity player, Vector3 position) { }
     }
 
     [TestMethod]

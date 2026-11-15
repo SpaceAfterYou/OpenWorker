@@ -20,7 +20,8 @@ public sealed class OpenTitleBook
 /// <summary>
 /// A title opens, which shows it in the list of the client with what is needed to earn it, when its row asks for what the
 /// person has just done: an achievement it reached (<see cref="ByAchievement"/>), the level it came to
-/// (<see cref="ByLevel"/>), a monster it killed (<see cref="ByMonsterKill"/>), or an event a game master names
+/// (<see cref="ByLevel"/>), a monster it killed (<see cref="ByMonsterKill"/>), an item it used (<see cref="ByItemUse"/>), or an
+/// event a game master names
 /// (<see cref="ByEvent"/>). A prefix and a suffix may open at once. A title the person has earned is not listed as open. A
 /// change marks <see cref="PersonSections.Progress"/> and the flush writes the book.
 /// </summary>
@@ -34,6 +35,9 @@ public sealed class OpenTitleManager(World world, PersonStateStore store, TitleC
 
     /// <summary>The title opens when the person kills a monster; the value is the monster.</summary>
     public const byte ByMonsterKill = 6;
+
+    /// <summary>The title opens when the person uses an item from its bag; the value is the item.</summary>
+    public const byte ByItemUse = 8;
 
     /// <summary>The title opens with an event; only a game master opens it.</summary>
     public const byte ByEvent = 9;
