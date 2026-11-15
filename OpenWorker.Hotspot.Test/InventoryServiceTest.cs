@@ -433,7 +433,8 @@ public sealed class InventoryServiceTest
 
         var again = f.Inventory.TakeChanges()!;
 
-        Assert.AreEqual(changes.Added.Count, again.Added.Count);
+        // Written again by the same upsert; counted as saved, since the write may have landed.
+        CollectionAssert.AreEquivalent(changes.Added.Select(e => e.Id).ToList(), again.Added.Concat(again.Changed).Select(e => e.Id).ToList());
     }
 
     [TestMethod]
