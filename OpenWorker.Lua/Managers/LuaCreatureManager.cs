@@ -1244,7 +1244,7 @@ public sealed partial class LuaCreatureManager
     {
         foreach (var player in Players)
         {
-            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && AiMath.Distance2D(Vitals.PositionOf(player), place) <= distance + PlayerVitals.BodyRadius)
+            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && AiMath.Distance2D(PlaceOf(player), place) <= distance + PlayerVitals.BodyRadius)
             {
                 return true;
             }
@@ -1499,14 +1499,24 @@ public sealed partial class LuaCreatureManager
     private AiTarget Describe(Entity player)
     {
         var place = ecs.Get<WorldComponent>(player);
-        var (position, moving) = (place.Position, false);
-
-        if (ecs.TryGet<PlayerRunComponent>(player, out var run) && run.Reached(place.Position, Min(Time, run.At + RunAhead)) is { } reached)
-        {
-            (position, moving) = reached;
-        }
+        var (position, moving) = RunPlaceOf(player, place.Position);
 
         return new AiTarget(ecs.Get<ActorComponent>(player), position, PlayerVitals.BodyRadius, place.Rotation, Vitals.Health(player), Vitals.MaxHealth(player), moving);
+    }
+
+    /// <summary>
+    /// Where the monsters take a player to be: a running player has gone on along its run since its last move.
+    /// </summary>
+    internal Vector3 PlaceOf(Entity player) => RunPlaceOf(player, Vitals.PositionOf(player)).Position;
+
+    private (Vector3 Position, bool Moving) RunPlaceOf(Entity player, Vector3 place)
+    {
+        if (ecs.TryGet<PlayerRunComponent>(player, out var run) && run.Reached(place, Min(Time, run.At + RunAhead)) is { } reached)
+        {
+            return reached;
+        }
+
+        return (place, false);
 
         static TimeSpan Min(TimeSpan first, TimeSpan second) => first < second ? first : second;
     }
@@ -1520,7 +1530,7 @@ public sealed partial class LuaCreatureManager
         {
             if (ecs.IsAlive(player) && Vitals.IsAlive(player))
             {
-                targets.Add(new FlightTarget(ecs.Get<ActorComponent>(player).Identifier, Vitals.PositionOf(player), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight));
+                targets.Add(new FlightTarget(ecs.Get<ActorComponent>(player).Identifier, PlaceOf(player), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight));
             }
         }
     }
@@ -1582,7 +1592,7 @@ public sealed partial class LuaCreatureManager
 
         foreach (var player in Players)
         {
-            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && Vector3.Distance(from, Vitals.PositionOf(player)) <= distance)
+            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && Vector3.Distance(from, PlaceOf(player)) <= distance)
             {
                 count++;
             }
@@ -1606,7 +1616,7 @@ public sealed partial class LuaCreatureManager
         return count;
     }
 
-    internal Vector3 PositionOf(Entity player) => Vitals.PositionOf(player);
+    internal Vector3 PositionOf(Entity player) => PlaceOf(player);
 
     /// <summary>
     /// Whether the player lies on the ground after a throw the server dealt it.
@@ -1788,7 +1798,7 @@ public sealed partial class LuaCreatureManager
 
         foreach (var player in Players)
         {
-            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && area.Touches(Vitals.PositionOf(player), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight))
+            if (ecs.IsAlive(player) && Vitals.IsAlive(player) && area.Touches(PlaceOf(player), PlayerVitals.BodyRadius, PlayerVitals.BodyHeight))
             {
                 (touched ??= []).Add(player);
             }
@@ -1880,7 +1890,7 @@ public sealed partial class LuaCreatureManager
             var shownDefense = shielded ? DefenseType.Invincible : defense;
             var (extraMove, flySpeed) = shielded
                 ? (Vector3.Zero, 0f)
-                : PlayerThrow.Told(blow, new Struck(Vitals.PositionOf(victim), PlayerVitals.WeightRank, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
+                : PlayerThrow.Told(blow, new Struck(PlaceOf(victim), PlayerVitals.WeightRank, ReactionLimit.None, 0, shownDefense, false), BlowRolls.Roll(Random), Navigation, PlayerVitals.BodyRadius);
 
             // A player thrown into the air flies, then lies on the ground.
             if (!shielded && extraMove.Z > 0f && MonsterReaction.IsLaunch(blow.Kind) && left > 0)

@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using Microsoft.Extensions.Time.Testing;
+using OpenWorker.Batch.Actions;
 using OpenWorker.Domain.Components;
 using OpenWorker.Domain.Enums;
 using OpenWorker.Gameplay.Messages.Response.Person;
@@ -62,6 +63,53 @@ public sealed class MonsterAimTest
             world.Set(player, world.Get<WorldComponent>(player) with { Position = new Vector3(-50f, 0f, 0f) });
 
             Assert.AreEqual(-50f, maze.Creatures.FindPlayer(Person)!.Value.Position.X, "Put somewhere since.");
+        }
+
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>
+    /// A blow, a shot or a trap of a monster lands on a running player where it has run to, not where its client last said.
+    /// </summary>
+    [TestMethod]
+    public void ABlowOfAMonsterLandsOnARunningPlayerWhereItHasRunTo()
+    {
+        var world = World.Create();
+
+        try
+        {
+            var time = new FakeTimeProvider();
+            var clock = TestMazes.Clock(time);
+            var player = world.Create(
+                new ActorComponent(Person, ActorType.User),
+                new WorldComponent { Location = 0, Position = Vector3.Zero, Rotation = 0f, Jump = 0 },
+                new AbilityComponent
+                {
+                    Health = new AbilityComponentEntry { Current = 100, Max = 100 },
+                    SoulGain = default,
+                    SoulVapor = default,
+                    Stamina = default,
+                    SuperArmor = default,
+                    Speed = new SpeedComponentEntry { Move = 1f, Attack = 1f }
+                });
+            var maze = TestMazes.Create(world, player, clock: clock);
+            var circle = new AttackTrigger(0, 0, 0, 0, 0f, 360f, Vector3.Zero, 0, 0, 50, 200, 0);
+
+            world.Add(player, new PlayerRunComponent(Vector3.Zero, new Vector2(300f, 0f), 400f, clock.Time));
+
+            Advance(time, clock, 0.5f);
+
+            Assert.IsEmpty(maze.Creatures.PlayersTouching(new AttackArea(circle, Vector3.Zero, 0f)), "Not where it began to run.");
+            CollectionAssert.AreEqual(new[] { player }, maze.Creatures.PlayersTouching(new AttackArea(circle, new Vector3(200f, 0f, 0f), 0f)).ToArray(), "Where it has run to.");
+
+            var targets = new List<FlightTarget>();
+
+            maze.Creatures.AddPlayerTargets(targets);
+
+            Assert.AreEqual(200f, targets.Single().Position.X, 1f, "A shot runs into it there.");
         }
 
         finally
