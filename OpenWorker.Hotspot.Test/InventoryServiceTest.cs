@@ -484,6 +484,26 @@ public sealed class InventoryServiceTest
         Assert.AreEqual(24, f.Inventory.Find(StorageGroup.Common)!.Size, "The level is too low");
     }
 
+    /// <summary>
+    /// The cash bag is not extended, though its table has steps: the person keeps its size and pays nothing.
+    /// </summary>
+    [TestMethod]
+    public void TheCashBagIsNeverExtended()
+    {
+        using var f = new Fixture(level: 99);
+
+        var size = f.Inventory.Find(StorageGroup.Cash)!.Size;
+
+        Assert.IsNotNull(f.Catalog.Extension(StorageGroup.Cash, 1), "The table has a step");
+        Assert.IsTrue(f.Service.TryAddGold(f.Player, InventoryService.WalletLimit));
+
+        f.Service.GradeUp(f.Player, StorageGroup.Cash);
+
+        Assert.AreEqual(size, f.Inventory.Find(StorageGroup.Cash)!.Size);
+        Assert.AreEqual(0, f.Inventory.Find(StorageGroup.Cash)!.Grade);
+        Assert.AreEqual(InventoryService.WalletLimit, f.Service.Gold(f.Player), "Nothing is paid");
+    }
+
     [TestMethod]
     public void GoldCannotGoBelowZero()
     {

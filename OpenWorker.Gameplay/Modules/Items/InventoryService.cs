@@ -797,13 +797,14 @@ public sealed class InventoryService(
     /// <summary>
     /// Opens the next step of a storage if the person can pay for it: with gold, or with the item its table names (a bag or a
     /// bank step). A step the storage has not, a level that is too low and a payment the game does not take are refused with
-    /// <see cref="NoStep"/>, too little gold with <see cref="NotEnoughGold"/>.
+    /// <see cref="NoStep"/>, too little gold with <see cref="NotEnoughGold"/>. The cash bag is never extended, though its table
+    /// has steps: a person who has one keeps its size.
     /// </summary>
     public void GradeUp(Entity player, StorageGroup group)
     {
         var inventory = InventoryOf(player);
         var storage = inventory?.Find(group);
-        var step = catalog.Extension(group, (storage?.Grade ?? 0) + 1);
+        var step = group == StorageGroup.Cash ? null : catalog.Extension(group, (storage?.Grade ?? 0) + 1);
 
         if (inventory is null || storage is null || step is not { } info ||
             world.Get<LevelComponent>(player).Level < info.NeedLevel)
