@@ -149,7 +149,13 @@ public sealed class QuestInventoryTest
         await f.Quests.EnterAsync(f.Player, 7, CancellationToken.None);
         await f.Quests.AcceptAsync(f.Player, craft.Id, CancellationToken.None);
 
-        new ItemMakeService(f.Inventory, ItemSetupFixture.Load<MakeRow>("tb_Make"), new ItemSetupAnswers(f.World), f.Quests).Make(f.Player, recipe.Id, 2);
+        var makes = new ItemMakeService(f.Inventory, ItemSetupFixture.Load<MakeRow>("tb_Make"), new ItemSetupAnswers(f.World), f.Quests);
+
+        // One item a request, the first material from a slot that holds it.
+        for (var i = 0; i < 2; i++)
+        {
+            makes.Make(f.Player, recipe.Id, ItemSetupFixture.SlotOf(f.Inventory.InventoryOf(f.Player)!.Items.First(e => e.Item == recipe.Material1)));
+        }
 
         var state = f.State(craft.Id)!;
 

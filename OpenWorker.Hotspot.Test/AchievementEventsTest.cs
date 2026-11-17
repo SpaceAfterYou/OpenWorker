@@ -369,15 +369,16 @@ public sealed class AchievementEventsTest
 
         foreach (var (material, count) in recipe.Materials.Where(e => e.Item != 0))
         {
-            f.Give(material, count * 2);
+            f.Give(material, count);
         }
 
-        f.Gold = recipe.Gold * 2L;
+        f.Gold = recipe.Gold;
 
-        new ItemMakeService(f.Inventory, ItemSetupFixture.Load<MakeRow>("tb_Make"), answers, achievements: chains.Manager).Make(f.Player, recipe.Id, 2);
+        new ItemMakeService(f.Inventory, ItemSetupFixture.Load<MakeRow>("tb_Make"), answers, achievements: chains.Manager)
+            .Make(f.Player, recipe.Id, ItemSetupFixture.SlotOf(f.Bag.Items.First(e => e.Item == recipe.Material1)));
 
-        Assert.AreEqual(2, f.Inventory.CountOf(f.Player, recipe.Product), "two items were made");
-        Assert.AreEqual(1, chains.Counted(f.Player, AchievementType.ItemMade), "by one request");
+        Assert.AreEqual(1, f.Inventory.CountOf(f.Player, recipe.Product), "the item was made");
+        Assert.AreEqual(1, chains.Counted(f.Player, AchievementType.ItemMade), "and counted");
 
         var results = ItemSetupFixture.Load<DisassembleResultRow>("tb_Disassemble", ItemSetupFixture.ServerTablesVariable);
         var byId = results.GroupBy(e => e.Id).ToDictionary(e => e.Key, e => e.First());

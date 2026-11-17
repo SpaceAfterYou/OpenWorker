@@ -176,6 +176,21 @@ public sealed class ItemWireFormatTest
     }
 
     [TestMethod]
+    public void MakeRequestNamesTheSlotOfTheFirstMaterialAfterTheRecipe()
+    {
+        byte[] bytes = [7, 0, 0, 0, 0x2D, 0x5F, 0x9E, 0x06, (byte)StorageGroup.Common, 12, 0];
+
+        var reader = new PacketReader(bytes);
+        var request = ItemSetupMakeRequest.Read(ref reader);
+
+        Assert.AreEqual(0, reader.Remaining);
+        Assert.AreEqual(7, request.Npc);
+        Assert.AreEqual(111042349, request.MakeIndex);
+        Assert.AreEqual(StorageGroup.Common, request.Material.Storage);
+        Assert.AreEqual(12, request.Material.Slot);
+    }
+
+    [TestMethod]
     public void EvolutionRequestReadsTheItemInTheLayoutTheServerWritesIt()
     {
         var item = new ItemValue

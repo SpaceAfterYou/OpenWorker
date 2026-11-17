@@ -31,7 +31,7 @@ public sealed class ItemCraftService(
         if (npcs.TryServe(context.Player, request.Npc, NpcFunction.Production, Opcode(ItemSetupOpcode.Make), ServiceNpcCodes.Make, out var npc,
                 makes.GroupOf(request.MakeIndex)))
         {
-            makes.Make(context.Player, request.MakeIndex, request.MakeCount, npc);
+            makes.Make(context.Player, request.MakeIndex, request.Material, npc);
         }
 
         return ValueTask.CompletedTask;

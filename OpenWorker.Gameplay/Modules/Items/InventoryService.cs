@@ -245,7 +245,7 @@ public sealed class InventoryService(
     /// The bags a cost is paid from. What lies in the bank or is worn is neither counted nor taken: an item put away
     /// must not pay for anything while it stays where it is.
     /// </summary>
-    private static bool PaysFrom(StorageGroup group)
+    public static bool PaysFrom(StorageGroup group)
     {
         return group is StorageGroup.Common or StorageGroup.Costume or StorageGroup.Cash or StorageGroup.Cube;
     }

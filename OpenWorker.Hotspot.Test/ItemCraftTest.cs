@@ -148,29 +148,41 @@ public sealed class ItemCraftTest
     }
 
     [TestMethod]
-    public async Task MakeChargesTheMaterialsOfTheRecipeAndGivesTheProduct()
+    public async Task MakeChargesTheMaterialsOfTheRecipeAndGivesOneProduct()
     {
         using var f = new ItemSetupFixture();
         var handler = Handler(f);
 
-        // A recipe of the bag with gold and two different materials.
+        // A recipe of the bag with gold and two different materials, the first of them gear that does not stack.
         var recipe = ItemSetupFixture.Load<MakeRow>("tb_Make").First(e =>
-            e.Gold > 0 && e.Material2 != 0 && e.Material1 != e.Material2 && f.Catalog.Exists(e.Product) &&
+            e.Gold > 0 && e.Material2 != 0 && e.Material1 != e.Material2 && e.MaterialCount1 == 1 &&
+            f.Catalog.StackLimit(e.Material1) == 1 && f.Catalog.Exists(e.Product) &&
             f.Catalog.HomeOf(e.Product) == StorageGroup.Common && e.Materials.All(m => m.Item == 0 || f.Catalog.Exists(m.Item)));
 
         foreach (var (material, count) in recipe.Materials.Where(e => e.Item != 0))
         {
-            f.Give(material, count * 2);
+            f.Give(material, count);
         }
 
-        f.Gold = recipe.Gold * 2L;
+        // Two pieces of the gear: the one picked in the dialog is the one used.
+        f.Give(recipe.Material1, 1);
+        var picked = f.Bag.Items.Last(e => e.Item == recipe.Material1);
 
-        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest { Npc = f.NpcOffering(NpcFunction.Production, recipe.Group), MakeIndex = recipe.Id, MakeCount = 2 });
+        f.Gold = recipe.Gold;
 
-        Assert.AreEqual(2, CountOf(f, recipe.Product));
+        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest
+        {
+            Npc = f.NpcOffering(NpcFunction.Production, recipe.Group),
+            MakeIndex = recipe.Id,
+            Material = ItemSetupFixture.SlotOf(picked)
+        });
+
+        Assert.AreEqual(1, CountOf(f, recipe.Product));
         Assert.AreEqual(0, f.Gold);
-        Assert.IsTrue(recipe.Materials.Where(e => e.Item != 0 && e.Item != recipe.Product).All(e => CountOf(f, e.Item) == 0),
-            "Every material of the recipe is used up");
+        Assert.IsFalse(f.Bag.Items.Any(e => e.Serial == picked.Serial), "The picked gear is used");
+        Assert.AreEqual(1, CountOf(f, recipe.Material1), "The other gear stays");
+        Assert.IsTrue(recipe.Materials.Skip(1).Where(e => e.Item != 0 && e.Item != recipe.Product).All(e => CountOf(f, e.Item) == 0),
+            "Every other material of the recipe is used up");
     }
 
     [TestMethod]
@@ -189,7 +201,12 @@ public sealed class ItemCraftTest
 
         var items = f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray();
 
-        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest { Npc = f.NpcOffering(NpcFunction.Production, recipe.Group), MakeIndex = recipe.Id, MakeCount = 1 });
+        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest
+        {
+            Npc = f.NpcOffering(NpcFunction.Production, recipe.Group),
+            MakeIndex = recipe.Id,
+            Material = ItemSetupFixture.SlotOf(f.Bag.Items.First(e => e.Item == recipe.Material1))
+        });
 
         CollectionAssert.AreEqual(items, f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray(), "The bag is as it was");
         Assert.AreEqual(recipe.Gold, f.Gold);
@@ -211,7 +228,12 @@ public sealed class ItemCraftTest
 
         items = f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray();
 
-        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest { Npc = f.NpcOffering(NpcFunction.Production, recipe.Group), MakeIndex = recipe.Id, MakeCount = 1 });
+        await handler.OnHandleAsync(f.Context, new ItemSetupMakeRequest
+        {
+            Npc = f.NpcOffering(NpcFunction.Production, recipe.Group),
+            MakeIndex = recipe.Id,
+            Material = ItemSetupFixture.SlotOf(f.Bag.Items.First(e => e.Item == recipe.Material1))
+        });
 
         CollectionAssert.AreEqual(items, f.Bag.Items.Select(e => (e.Serial, e.Count)).ToArray(), "A product without room takes nothing");
         Assert.AreEqual(recipe.Gold, f.Gold);
